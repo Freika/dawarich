@@ -6,11 +6,15 @@ setup_backend: bundle
 
 setup:
 	make bundle
+	make setup_frontend
 	make setup_db
 
 bundle:
 	docker-compose run --rm solo_customer_template_app gem install bundler --conservative
 	docker-compose run --rm solo_customer_template_app bundle install
+
+setup_frontend:
+	npm i daisyui
 
 setup_db:
 	docker-compose run --rm solo_customer_template_app rails db:create db:migrate db:seed
@@ -24,7 +28,7 @@ rollback:
 
 # Debugging the project
 bash:
-	docker-compose run --rm solo_customer_template_app bash
+	docker-compose run --rm solo_customer_template_app sh
 
 console:
 	docker-compose run --rm solo_customer_template_app bundle exec rails c

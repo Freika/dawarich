@@ -25,3 +25,6 @@ group :test do
   gem 'shoulda-matchers', '~> 5.1'
 end
 
+group :development do
+  gem 'foreman'
+end
