@@ -27,4 +27,5 @@ end
 
 group :development do
   gem 'foreman'
+  gem 'rubocop-rails', require: false
 end
