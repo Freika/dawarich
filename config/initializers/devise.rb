@@ -263,7 +263,9 @@ Devise.setup do |config|
   # should add them to the navigational formats lists.
   #
   # The "*/*" below is required to match Internet Explorer requests.
-  # config.navigational_formats = ['*/*', :html]
+  # turbo_stream is a custom format for Turbo Streams (https://turbo.hotwired.dev/handbook/streams)
+  # https://stackoverflow.com/questions/36646226/undefined-method-user-url-for-devise-sessionscontrollercreate/71297012#71297012
+  config.navigational_formats = ['*/*', :html, :turbo_stream]
 
   # The default HTTP method used to sign out a resource. Default is :delete.
   config.sign_out_via = :delete
