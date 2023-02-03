@@ -45,6 +45,9 @@ start_sidekiq:
 start:
 	docker-compose up -d solo_customer_template_app
 	make debug
+
+overmind:
+	overmind start -f Procfile.dev
 # Running the project
 
 test:

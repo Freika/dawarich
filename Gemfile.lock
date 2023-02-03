@@ -227,6 +227,8 @@ GEM
       sprockets (>= 3.0.0)
     stimulus-rails (1.2.1)
       railties (>= 6.0.0)
+    strong_migrations (1.4.2)
+      activerecord (>= 5.2)
     tailwindcss-rails (2.0.21-aarch64-linux)
       railties (>= 6.0.0)
     tailwindcss-rails (2.0.21-arm64-darwin)
@@ -268,6 +270,7 @@ DEPENDENCIES
   simplecov (~> 0.21)
   sprockets-rails
   stimulus-rails
+  strong_migrations
   tailwindcss-rails
   turbo-rails
   tzinfo-data
