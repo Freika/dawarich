@@ -23,3 +23,32 @@ Notice, the name must be in snake_case. Default app name is `solo_customer_templ
 Press `Ctrl+C` to stop the app.
 
 Dockerized with https://betterprogramming.pub/rails-6-development-with-docker-55437314a1ad
+
+## Deployment (1st time)
+
+0. Set variables in Homelab repo
+1. `make dokku_new_app`
+2. `make dokku_setup_backups`
+3. `make dokku_add_domain`
+4. Create certificates files in Homelab repo
+5. `make dokku_add_ssl`
+6. Set SSL/TLS mode to Full in Cloudflare
+7. `git remote add dokku dokku@DOKKU_SERVER_UP:APP_NAME`
+8. `git push dokku master`
+9. Add app.json to the repo:
+
+```json
+  {
+    "scripts": {
+      "predeploy": "dokku ps:stop solo_customer_template"
+    },
+    "formation": {
+      "web": {
+        "quantity": 1
+      },
+      "worker": {
+        "quantity": 1
+      }
+    }
+  }
+```
