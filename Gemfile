@@ -3,13 +3,13 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '3.1.0'
+ruby '3.2.2'
 gem 'bootsnap', require: false
-gem 'devise', '4.8.1'
+gem 'devise', '4.9.2'
 gem 'pg', '~> 1.1'
-gem 'puma', '~> 5.0'
+gem 'puma', '~> 6.4'
 gem 'pundit', '~> 2.2'
-gem 'rails', '7.0.4'
+gem 'rails', '7.1.1'
 gem 'sprockets-rails'
 gem 'strong_migrations'
 gem 'stimulus-rails'
