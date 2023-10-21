@@ -1,4 +1,37 @@
-<div>
-  <h1 class="font-bold text-4xl">Home#index</h1>
-  <p>Find me in app/views/home/index.html.erb</p>
+<div class="w-full mx-auto">
+  <div class="flex justify-between items-center mt-5 mb-5">
+    <div class="hero h-fit bg-base-200 py-20" style="background-image: url(<%= '/images/bg-image.jpg' %>);">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h1 class="text-5xl font-bold">SoloCustomerTemplate</h1>
+          <p class="py-6 text-3xl">The only SoloCustomerTemplate you'll ever need.</p>
+
+          <%= link_to 'Sign up', new_user_registration_path, class: "rounded-lg py-3 px-5 my-3 bg-blue-600 text-white block font-medium" %>
+          <%= link_to 'Sign in', new_user_session_path, class: "rounded-lg py-3 px-5 bg-neutral text-neutral-content block font-medium" %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grid grid-cols-3 gap-4 m-auto justify-center">
+    <div class="card w-96 bg-base-100 justify-self-center shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title mx-auto">Feature #1</h2>
+        <p class='text-center'>Lorem ipsum dolor sit amet consectetur adipisicing elit. Et nesciunt fugiat esse, vero culpa illum molestias aut, pariatur ullam animi vel cum tenetur blanditiis, ratione nostrum quidem facilis a harum.</p>
+      </div>
+    </div>
+
+    <div class="card w-96 bg-base-100 justify-self-center shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title mx-auto">Feature #2</h2>
+        <p class='text-center'>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Nihil natus deserunt deleniti velit expedita, explicabo voluptatem blanditiis laboriosam id at eveniet eius officiis rerum, beatae maiores non inventore iste voluptate?</p>
+      </div>
+    </div>
+
+    <div class="card w-96 bg-base-100 justify-self-center shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title mx-auto">Feature #3</h2>
+        <p class='text-center'>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Enim ullam porro eaque! Ea praesentium deserunt magni voluptatum maxime veritatis! Obcaecati ipsa ipsum adipisci quae corporis odit blanditiis placeat culpa tempora.</p>
+      </div>
+    </div>
+  </div>
 </div>
