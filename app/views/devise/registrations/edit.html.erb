@@ -1,0 +1,61 @@
+<div class="hero min-h-content bg-base-200">
+  <div class="hero-content flex-col lg:flex-row-reverse w-full">
+    <div class="text-center lg:text-left">
+      <h1 class="text-5xl font-bold">Edit your account!</h1>
+      <p class="py-6">And change this text!</p>
+    </div>
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+      <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', html: { method: :put }) do |f| %>
+        <div class="form-control">
+          <%= f.label :email, class: 'label' do %>
+            <span class="label-text">Email</span>
+          <% end %>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered' %>
+        </div>
+
+        <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
+          <div>Currently waiting confirmation for: <%= resource.unconfirmed_email %></div>
+        <% end %>
+
+        <div class="form-control mt-5">
+          <%= f.label :password, class: 'label' do %>
+            <span class="label-text">Password <i>(leave blank if you don't want to change it)</i></span>
+          <% end %>
+          <% if @minimum_password_length %>
+            <em class='text-xs'>(<%= @minimum_password_length %> characters minimum)</em>
+          <% end %>
+          <%= f.password_field :password, autocomplete: "new-password", class: 'input input-bordered' %>
+        </div>
+
+        <div class="form-control mt-5">
+          <%= f.label :password_confirmation, class: 'label' do %>
+            <span class="label-text">Password confirmation</span>
+          <% end %>
+          <% if @minimum_password_length %>
+            <em class='text-xs'>(<%= @minimum_password_length %> characters minimum)</em>
+          <% end %>
+          <%= f.password_field :password_confirmation, autocomplete: "new-password", class: 'input input-bordered' %>
+        </div>
+
+        <div class="form-control mt-5">
+          <%= f.label :current_password, class: 'label' do %>
+            <span class="label-text">Current password</span>
+          <% end %>
+          <% if @minimum_password_length %>
+            <em class='text-xs'>(<%= @minimum_password_length %> characters minimum)</em>
+          <% end %><br />
+          <i class='text-xs'>(we need your current password to confirm your changes)</i>
+          <%= f.password_field :current_password, autocomplete: "current-password", class: 'input input-bordered' %>
+        </div>
+
+        <div class="form-control mt-6">
+          <%= f.submit "Update", class: 'btn btn-primary' %>
+        </div>
+
+        <%= render "devise/shared/links" %>
+      <% end %>
+
+      <p class='mt-3'>Unhappy? <%= button_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?" }, method: :delete, class: 'btn' %></p>
+    </div>
+  </div>
+</div>

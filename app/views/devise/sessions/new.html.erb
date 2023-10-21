@@ -1,0 +1,37 @@
+<div class="hero min-h-content bg-base-200">
+  <div class="hero-content flex-col lg:flex-row-reverse w-full">
+    <div class="text-center lg:text-left">
+      <h1 class="text-5xl font-bold">Login now!</h1>
+      <p class="py-6">And change this text!</p>
+    </div>
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+      <%= form_for(resource, as: resource_name, url: session_path(resource_name), class: 'form-body ') do |f| %>
+        <div class="form-control">
+          <%= f.label :email, class: 'label' do %>
+            <span class="label-text">Email</span>
+          <% end %>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered' %>
+        </div>
+        <div class="form-control">
+          <%= f.label :password, class: 'label' do %>
+            <span class="label-text">Password</span>
+          <% end %>
+          <%= f.password_field :password, autocomplete: "current-password", class: 'input input-bordered' %>
+          <% if devise_mapping.rememberable? %>
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Remember me</span>
+                <%= f.check_box :remember_me, class: 'checkbox checkbox-sm' %>
+              </label>
+            </div>
+          <% end %>
+        </div>
+        <div class="form-control mt-6">
+          <%= f.submit "Log in", class: 'btn btn-primary' %>
+        </div>
+
+        <%= render "devise/shared/links" %>
+      <% end %>
+    </div>
+  </div>
+</div>
