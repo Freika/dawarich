@@ -1,0 +1,11 @@
+<% flash.each do |key, value| %>
+  <div data-controller="removals" class="flex items-center fixed top-5 right-5 <%= classes_for_flash(key) %> py-3 px-5 rounded-lg">
+    <div class="mr-4"><%= value %></div>
+
+    <button type="button" data-action="click->removals#remove">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+<% end %>
