@@ -110,7 +110,7 @@ GEM
       activesupport (>= 6.1)
     i18n (1.14.1)
       concurrent-ruby (~> 1.0)
-    importmap-rails (1.2.3)
+    importmap-rails (2.0.1)
       actionpack (>= 6.0.0)
       activesupport (>= 6.0.0)
       railties (>= 6.0.0)
@@ -208,7 +208,7 @@ GEM
     redis-client (0.19.1)
       connection_pool
     regexp_parser (2.8.3)
-    reline (0.4.1)
+    reline (0.4.2)
       io-console (~> 0.5)
     responders (3.1.1)
       actionpack (>= 5.2)
