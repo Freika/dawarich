@@ -1,43 +1,15 @@
 <!DOCTYPE html>
-<html data-theme="light">
+<html data-theme="dark">
   <head>
     <title>SoloCustomerTemplate</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.3/dist/full.css" rel="stylesheet" type="text/css">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.css" rel="stylesheet" type="text/css">
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-    <script>
-      document.addEventListener("turbo:load", function () {
-        const themeToggle = document.getElementById("themeToggle");
-
-        // Function to toggle the theme
-        function toggleTheme() {
-          const currentTheme = document.body.getAttribute("data-theme");
-          const newTheme = currentTheme === "light" ? "dark" : "light";
-          document.body.setAttribute("data-theme", newTheme);
-          localStorage.setItem("theme", newTheme);
-          updateButtonEmoji(newTheme);
-        }
-
-        function updateButtonEmoji(theme) {
-          themeToggle.textContent = theme === "light" ? "🌞" : "🌚";
-        }
-
-        // Attach the theme toggle function to the button click
-        themeToggle.addEventListener("click", toggleTheme);
-
-        // Set the initial theme based on stored preference
-        const storedTheme = localStorage.getItem("theme");
-        if (storedTheme) {
-          document.body.setAttribute("data-theme", storedTheme);
-          updateButtonEmoji(storedTheme);
-        }
-      });
-    </script>
     <%= javascript_importmap_tags %>
   </head>
 
