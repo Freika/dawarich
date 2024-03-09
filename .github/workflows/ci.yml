@@ -1,57 +1,53 @@
-name: CI
-on: [pull_request]
+# .github/workflows/ruby.yml
+name: Ruby
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  POSTGRES_DB: postgres
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: password
+
 jobs:
-  build:
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:12
-        ports:
-          - 5432:5432
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+          POSTGRES_PASSWORD: password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - uses: actions/checkout@v1
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - name: Setup Ruby and install gems
+      - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
+          ruby-version: 3.2.2
           bundler-cache: true
 
-      - name: Install dependent libraries
-        run: sudo apt-get install libpq-dev
-
-      - name: Bundle install
+      - name: Install dependencies
         run: |
-          gem install bundler
+          sudo apt-get update && sudo apt-get -yqq install libpq-dev
           bundle install --jobs 4 --retry 3
-
-      - name: Install daisyui
-        run: npm i daisyui
-
-      - name: Compile assets
-        run: bundle exec rake assets:precompile
-
-      - name: Setup Database
+      - name: Run Tests
+        env:
+          RAILS_ENV: test
+          PGHOST: localhost
+          DISABLE_SPRING: 1
         run: |
-          cp config/database.yml.github-actions config/database.yml
-          bundle exec rake db:create
-          bundle exec rake db:schema:load
-        env:
-          RAILS_ENV: test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-
-      - name: Run RSpec
-        run: COVERAGE=true bundle exec rspec  --require rails_helper
-        env:
-          RAILS_ENV: test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-
-      - name: Simplecov Report
-        uses: aki77/simplecov-report-action@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          cp config/database.ci.yml config/database.yml
+          bundle exec rails db:schema:load
+          bundle exec rspec --format progress
