@@ -67,6 +67,6 @@ production_migrate:
 	ssh dokku_frey 'dokku run dawarich bundle exec rails db:migrate'
 
 build_and_push:
-	docker build . -t dawarich --platform=linux/amd64 --no-cache
+	docker build . -t dawarich --platform=linux/amd64
 	docker tag dawarich registry.chibi.rodeo/dawarich
 	docker push registry.chibi.rodeo/dawarich
