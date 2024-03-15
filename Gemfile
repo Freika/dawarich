@@ -5,11 +5,11 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby '3.2.3'
 gem 'bootsnap', require: false
-gem 'devise', '4.9.2'
+gem 'devise'
 gem 'pg'
 gem 'puma'
 gem 'pundit'
-gem 'rails', '7.1.1'
+gem 'rails'
 gem 'sprockets-rails'
 gem 'strong_migrations'
 gem 'stimulus-rails'

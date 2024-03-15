@@ -31,7 +31,7 @@
           </a>
           <ul class="p-2 bg-base-300">
             <li><%= link_to 'Settings', edit_user_registration_path %></li>
-            <li><%= button_to 'Logout', destroy_user_session_path, method: :delete %></li>
+            <li><%= link_to 'Logout', destroy_user_session_path, method: :delete, data: { turbo_method: :delete } %></li>
           </ul>
         </li>
       <% else %>
