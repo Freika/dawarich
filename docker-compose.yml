@@ -1,16 +1,14 @@
 version: '3'
 networks:
-  development:
+  dawarich:
 services:
   dawarich_redis:
     image: redis:7.0-alpine
     command: redis-server
     networks:
-      - development
+      - dawarich
     volumes:
       - shared_data:/var/shared/redis
-    ports:
-      - 6379:6379
   dawarich_db:
     image: postgres:14.2-alpine
     container_name: dawarich_db
@@ -18,19 +16,17 @@ services:
       - db_data:/var/lib/postgresql/data
       - shared_data:/var/shared
     networks:
-      - development
+      - dawarich
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-    ports:
-      - 5099:5432
   dawarich_app:
     image: registry.chibi.rodeo/dawarich:latest
     container_name: dawarich_app
     volumes:
       - gem_cache:/usr/local/bundle/gems
     networks:
-      - development
+      - dawarich
     ports:
       - 3000:3000
     stdin_open: true

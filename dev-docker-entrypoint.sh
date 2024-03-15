@@ -8,7 +8,7 @@ echo "Environment: $RAILS_ENV"
 rm -f $APP_PATH/tmp/pids/server.pid
 
 # Wait for the database to be ready
-until nc -zv wardu_db 5432; do
+until nc -zv $DATABASE_HOST 5432; do
   echo "Waiting for PostgreSQL to be ready..."
   sleep 1
 done
