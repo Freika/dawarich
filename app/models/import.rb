@@ -1,5 +1,5 @@
 class Import < ApplicationRecord
-  belongs_to :user, dependent: :destroy
+  belongs_to :user
   has_many :points, dependent: :destroy
 
   enum source: { google: 0, owntracks: 1 }

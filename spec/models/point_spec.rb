@@ -2,7 +2,7 @@ require 'rails_helper'
 
 RSpec.describe Point, type: :model do
   describe 'associations' do
-    it { is_expected.to belong_to(:tracker).optional }
+    it { is_expected.to belong_to(:import).optional }
   end
 
   describe 'validations' do
