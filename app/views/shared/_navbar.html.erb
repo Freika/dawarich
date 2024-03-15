@@ -5,7 +5,8 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
       </label>
       <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-        <li><%= link_to 'Test url', 'portfolios_url' %></li>
+        <li><%= link_to 'Imports', imports_url %></li>
+        <li><%= link_to 'Points', points_url %></li>
       </ul>
     </div>
     <%= link_to 'Dawarich', root_path, class: 'btn btn-ghost normal-case text-xl'%>
@@ -17,23 +18,26 @@
   </div>
   <div class="navbar-center hidden lg:flex">
     <ul class="menu menu-horizontal px-1">
-      <li><%= link_to 'Test url', 'portfolios_url' %></li>
+      <li><%= link_to 'Imports', imports_url %></li>
+      <li><%= link_to 'Points', points_url %></li>
     </ul>
   </div>
   <div class="navbar-end">
   <%# menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 %>
-    <ul class="menu menu-horizontal dropdown-content bg-base-100 rounded-box px-1">
+    <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
       <% if user_signed_in? %>
-        <li tabindex="0">
-          <a>
+        <li>
+        <details>
+          <summary>
             <%= "#{current_user.email}" %>
-            <svg class="fill-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg>
-          </a>
-          <ul class="p-2 bg-base-300">
+          </summary>
+          <ul class="p-2 bg-base-100 rounded-t-none">
             <li><%= link_to 'Settings', edit_user_registration_path %></li>
             <li><%= link_to 'Logout', destroy_user_session_path, method: :delete, data: { turbo_method: :delete } %></li>
           </ul>
-        </li>
+        </details>
+      </li>
+        </details>
       <% else %>
         <li><%= link_to 'Login', new_user_session_path %></li>
         <li><%= link_to 'Register', new_user_registration_path %></li>

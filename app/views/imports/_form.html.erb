@@ -1,0 +1,31 @@
+<%= form_with(model: import, class: "contents") do |form| %>
+  <% if import.errors.any? %>
+    <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
+      <h2><%= pluralize(import.errors.count, "error") %> prohibited this import from being saved:</h2>
+
+      <ul>
+        <% import.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <label class="form-control w-full max-w-xs my-5">
+    <div class="label">
+      <span class="label-text">Select source</span>
+    </div>
+    <%= form.collection_radio_buttons :source, Import.sources, :first, :first  %>
+  </label>
+
+  <label class="form-control w-full max-w-xs my-5">
+    <div class="label">
+      <span class="label-text">Pick a file</span>
+    </div>
+    <%= form.file_field :files, multiple: true, class: "file-input file-input-bordered w-full max-w-xs" %>
+  </label>
+
+  <div class="inline">
+    <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+  </div>
+<% end %>

@@ -3,3 +3,7 @@
 import "@rails/actioncable"
 import "controllers"
 import "@hotwired/turbo-rails"
+
+import "mapkick/bundle"
+import "leaflet"
+import "leaflet-providers"

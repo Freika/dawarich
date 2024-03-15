@@ -1,0 +1,61 @@
+<h1 class="text-2xl font-bold mb-4">Points Table</h1>
+
+<table class="min-w-full bg-white border border-gray-300">
+  <thead>
+    <tr>
+      <th class="py-2 px-4 border-b">ID</th>
+      <th class="py-2 px-4 border-b">Battery Status</th>
+      <th class="py-2 px-4 border-b">Ping</th>
+      <th class="py-2 px-4 border-b">Battery</th>
+      <th class="py-2 px-4 border-b">Tracked ID</th>
+      <th class="py-2 px-4 border-b">Topic</th>
+      <th class="py-2 px-4 border-b">Altitude</th>
+      <th class="py-2 px-4 border-b">Velocity</th>
+      <th class="py-2 px-4 border-b">Trigger</th>
+      <th class="py-2 px-4 border-b">BSSID</th>
+      <th class="py-2 px-4 border-b">SSID</th>
+      <th class="py-2 px-4 border-b">Connection</th>
+      <th class="py-2 px-4 border-b">Vertical Accuracy</th>
+      <th class="py-2 px-4 border-b">Accuracy</th>
+      <th class="py-2 px-4 border-b">Timestamp</th>
+      <th class="py-2 px-4 border-b">Mode</th>
+      <th class="py-2 px-4 border-b">Latitude</th>
+      <th class="py-2 px-4 border-b">Longitude</th>
+      <th class="py-2 px-4 border-b">Inrids</th>
+      <th class="py-2 px-4 border-b">In Regions</th>
+      <th class="py-2 px-4 border-b">Raw Data</th>
+      <th class="py-2 px-4 border-b">Tracker ID</th>
+      <th class="py-2 px-4 border-b">Created At</th>
+      <th class="py-2 px-4 border-b">Updated At</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @points.each do |point| %>
+      <tr>
+        <td class="py-2 px-4 border-b"><%= point.id %></td>
+        <td class="py-2 px-4 border-b"><%= point.battery_status %></td>
+        <td class="py-2 px-4 border-b"><%= point.ping %></td>
+        <td class="py-2 px-4 border-b"><%= point.battery %></td>
+        <td class="py-2 px-4 border-b"><%= point.tracker_id %></td>
+        <td class="py-2 px-4 border-b"><%= point.topic %></td>
+        <td class="py-2 px-4 border-b"><%= point.altitude %></td>
+        <td class="py-2 px-4 border-b"><%= point.velocity %></td>
+        <td class="py-2 px-4 border-b"><%= point.trigger %></td>
+        <td class="py-2 px-4 border-b"><%= point.bssid %></td>
+        <td class="py-2 px-4 border-b"><%= point.ssid %></td>
+        <td class="py-2 px-4 border-b"><%= point.connection %></td>
+        <td class="py-2 px-4 border-b"><%= point.vertical_accuracy %></td>
+        <td class="py-2 px-4 border-b"><%= point.accuracy %></td>
+        <td class="py-2 px-4 border-b"><%= point.timestamp %></td>
+        <td class="py-2 px-4 border-b"><%= point.mode %></td>
+        <td class="py-2 px-4 border-b"><%= point.latitude %></td>
+        <td class="py-2 px-4 border-b"><%= point.longitude %></td>
+        <td class="py-2 px-4 border-b"><%= point.inrids %></td>
+        <td class="py-2 px-4 border-b"><%= point.in_regions %></td>
+        <td class="py-2 px-4 border-b"><%= point.raw_data %></td>
+        <td class="py-2 px-4 border-b"><%= point.created_at %></td>
+        <td class="py-2 px-4 border-b"><%= point.updated_at %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

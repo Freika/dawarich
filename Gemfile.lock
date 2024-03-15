@@ -97,6 +97,10 @@ GEM
       warden (~> 1.2.3)
     diff-lcs (1.5.1)
     docile (1.4.0)
+    dotenv (3.1.0)
+    dotenv-rails (3.1.0)
+      dotenv (= 3.1.0)
+      railties (>= 6.1)
     drb (2.2.1)
     erubi (1.12.0)
     factory_bot (6.4.6)
@@ -106,6 +110,7 @@ GEM
       railties (>= 5.0.0)
     ffaker (2.23.0)
     foreman (0.87.2)
+    geocoder (1.8.2)
     globalid (1.2.1)
       activesupport (>= 6.1)
     i18n (1.14.4)
@@ -128,6 +133,7 @@ GEM
       net-imap
       net-pop
       net-smtp
+    mapkick-rb (0.1.5)
     marcel (1.0.4)
     mini_mime (1.1.5)
     minitest (5.22.3)
@@ -252,6 +258,11 @@ GEM
     ruby-progressbar (1.13.0)
     shoulda-matchers (6.1.0)
       activesupport (>= 5.2.0)
+    sidekiq (7.2.2)
+      concurrent-ruby (< 2)
+      connection_pool (>= 2.3.0)
+      rack (>= 2.2.4)
+      redis-client (>= 0.19.0)
     simplecov (0.22.0)
       docile (~> 1.1)
       simplecov-html (~> 0.11)
@@ -305,10 +316,13 @@ DEPENDENCIES
   bootsnap
   debug
   devise
+  dotenv-rails
   factory_bot_rails
   ffaker
   foreman
+  geocoder
   importmap-rails
+  mapkick-rb
   pg
   puma
   pundit
@@ -317,6 +331,7 @@ DEPENDENCIES
   rspec-rails
   rubocop-rails
   shoulda-matchers
+  sidekiq
   simplecov
   sprockets-rails
   stimulus-rails
