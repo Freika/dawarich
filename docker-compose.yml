@@ -2,7 +2,7 @@ version: '3'
 networks:
   development:
 services:
-  wardu_redis:
+  dawarich_redis:
     image: redis:7.0-alpine
     command: redis-server
     networks:
@@ -11,9 +11,9 @@ services:
       - shared_data:/var/shared/redis
     ports:
       - 6379:6379
-  wardu_db:
+  dawarich_db:
     image: postgres:14.2-alpine
-    container_name: wardu_db
+    container_name: dawarich_db
     volumes:
       - db_data:/var/lib/postgresql/data
       - shared_data:/var/shared
@@ -24,9 +24,9 @@ services:
       POSTGRES_PASSWORD: password
     ports:
       - 5099:5432
-  wardu_app:
-    image: registry.chibi.rodeo/wardu:latest
-    container_name: wardu_app
+  dawarich_app:
+    image: registry.chibi.rodeo/dawarich:latest
+    container_name: dawarich_app
     volumes:
       - gem_cache:/usr/local/bundle/gems
     networks:
@@ -39,14 +39,14 @@ services:
     command: ['bin/dev']
     environment:
       RAILS_ENV: development
-      REDIS_URL: redis://wardu_redis:6379/0
-      DATABASE_HOST: wardu_db
+      REDIS_URL: redis://dawarich_redis:6379/0
+      DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
-      DATABASE_NAME: wardu_development
+      DATABASE_NAME: dawarich_development
     depends_on:
-      - wardu_db
-      - wardu_redis
+      - dawarich_db
+      - dawarich_redis
 
 volumes:
   db_data:
