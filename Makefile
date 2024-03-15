@@ -10,31 +10,31 @@ setup:
 	make setup_db
 
 bundle:
-	docker-compose run --rm solo_customer_template_app gem install bundler --conservative
-	docker-compose run --rm solo_customer_template_app bundle install
+	docker-compose run --rm dawarich_app gem install bundler --conservative
+	docker-compose run --rm dawarich_app bundle install
 
 setup_frontend:
 	npm i daisyui
 
 setup_db:
-	docker-compose run --rm solo_customer_template_app rails db:create db:migrate db:seed
+	docker-compose run --rm dawarich_app rails db:create db:migrate db:seed
 
 migrate:
-	docker-compose run --rm solo_customer_template_app bin/rails db:migrate
+	docker-compose run --rm dawarich_app bin/rails db:migrate
 rollback:
-	docker-compose run --rm solo_customer_template_app bin/rails db:rollback
+	docker-compose run --rm dawarich_app bin/rails db:rollback
 # Setting up the project
 
 
 # Debugging the project
 bash:
-	docker-compose run --rm solo_customer_template_app sh
+	docker-compose run --rm dawarich_app sh
 
 console:
-	docker-compose run --rm solo_customer_template_app bundle exec rails c
+	docker-compose run --rm dawarich_app bundle exec rails c
 
 debug:
-	docker attach solo_customer_template_app
+	docker attach dawarich_app
 # Debugging the project
 
 
@@ -43,7 +43,7 @@ start_sidekiq:
 	docker-compose up sidekiq
 
 start:
-	docker-compose up -d solo_customer_template_app
+	docker-compose up -d dawarich_app
 	make debug
 
 overmind:
@@ -51,17 +51,17 @@ overmind:
 # Running the project
 
 test:
-	RAILS_ENV=test NODE_ENV=test docker-compose run --rm solo_customer_template_test bundle exec rspec
+	RAILS_ENV=test NODE_ENV=test docker-compose run --rm dawarich_test bundle exec rspec
 # Running tests
 
 deploy:
 	git push dokku master
 
 unlock_deploy:
-	ssh dokku_frey 'dokku apps:unlock solo_customer_template'
+	ssh dokku_frey 'dokku apps:unlock dawarich'
 
 tail_production_log:
-	ssh dokku_frey 'dokku logs solo_customer_template --tail'
+	ssh dokku_frey 'dokku logs dawarich --tail'
 
 production_migrate:
-	ssh dokku_frey 'dokku run solo_customer_template bundle exec rails db:migrate'
+	ssh dokku_frey 'dokku run dawarich bundle exec rails db:migrate'

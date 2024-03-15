@@ -11,13 +11,13 @@ default: &default
 
 development:
   <<: *default
-  database: solo_customer_template_development
+  database: dawarich_development
 
 test:
   <<: *default
-  database: solo_customer_template_test
+  database: dawarich_test
 
 production:
   <<: *default
-  database: solo_customer_template_production
+  database: dawarich_production
   url: <%= ENV['DATABASE_URL'] %>

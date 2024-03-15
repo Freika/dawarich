@@ -1,4 +1,4 @@
-# SoloCustomerTemplate
+# Dawarich
 
 This is a Rails 7.0.2.3 app template with test suite, user auth and development docker env.
 
@@ -10,7 +10,7 @@ Run
 ruby rename_app.rb old_app_name new_app_name
 ```
 
-Notice, the name must be in snake_case. Default app name is `solo_customer_template`.
+Notice, the name must be in snake_case. Default app name is `dawarich`.
 
 
 ## How to start the app locally
@@ -40,7 +40,7 @@ Dockerized with https://betterprogramming.pub/rails-6-development-with-docker-55
 ```json
   {
     "scripts": {
-      "predeploy": "dokku ps:stop solo_customer_template"
+      "predeploy": "dokku ps:stop dawarich"
     },
     "formation": {
       "web": {
