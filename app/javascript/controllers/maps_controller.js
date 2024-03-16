@@ -6,8 +6,11 @@ export default class extends Controller {
   static targets = ["container"]
 
   connect() {
+    console.log("Map controller connected")
     var markers = JSON.parse(this.element.dataset.coordinates)
-    var map = L.map(this.containerTarget).setView(markers[0], 14);
+    var center = markers[0]
+    var center = (center === undefined) ? [52.516667, 13.383333] : center;
+    var map = L.map(this.containerTarget).setView(center, 14);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -22,7 +25,7 @@ export default class extends Controller {
       L.marker([lat, lon]).addTo(map);
     }
 
-    L.polyline(markers).addTo(map);
+    // L.polyline(markers).addTo(map);
   }
 
   disconnect() {

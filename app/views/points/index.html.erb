@@ -1,3 +1,20 @@
+
+<%= form_with url: points_path, method: :get do |f| %>
+  <div class="flex flex-col space-y-4">
+    <div class="flex flex-col space-y-2">
+      <%= f.label :start_at, class: "text-sm font-semibold" %>
+      <%= f.datetime_local_field :start_at, class: "rounded-md", value: params[:start_at] %>
+    </div>
+    <div class="flex flex-col space-y-2">
+      <%= f.label :end_at, class: "text-sm font-semibold" %>
+      <%= f.datetime_local_field :end_at, class: "rounded-md", value: params[:end_at] %>
+    </div>
+    <div class="flex justify-center">
+      <%= f.submit "Search", class: "px-4 py-2 bg-blue-500 text-white rounded-md" %>
+    </div>
+  </div>
+<% end %>
+
 <div data-controller="maps" data-coordinates="<%= @coordinates %>">
   <div data-maps-target="container" class="h-[25rem] w-auto min-h-screen"></div>
 </div>
