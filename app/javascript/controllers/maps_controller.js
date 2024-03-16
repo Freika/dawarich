@@ -22,10 +22,10 @@ export default class extends Controller {
       var lat = markers[i][0];
       var lon = markers[i][1];
 
-      L.marker([lat, lon]).addTo(map);
+      L.circleMarker([lat, lon], {radius: 3}).addTo(map);
     }
 
-    // L.polyline(markers).addTo(map);
+    L.polyline(markers).addTo(map);
   }
 
   disconnect() {

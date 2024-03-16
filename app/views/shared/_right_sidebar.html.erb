@@ -1,0 +1,10 @@
+<% if @countries_and_cities.any? %>
+  <% @countries_and_cities.each do |country, cities| %>
+    <h2 class="text-lg font-semibold"><%= country %></h2>
+    <ul>
+      <% cities.each do |city| %>
+        <li><%= city %></li>
+      <% end %>
+    </ul>
+  <% end %>
+<% end %>
