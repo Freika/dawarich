@@ -2,8 +2,8 @@ class PointsController < ApplicationController
   before_action :authenticate_user!
 
   def index
-    start_at = params[:start_at].to_datetime.to_i
-    end_at = params[:end_at].to_datetime.to_i
+    start_at = params[:start_at]&.to_datetime.to_i
+    end_at = params[:end_at]&.to_datetime.to_i
 
     @points =
       if start_at && end_at
