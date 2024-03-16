@@ -9,6 +9,7 @@ export default class extends Controller {
     console.log("Map controller connected")
     var markers = JSON.parse(this.element.dataset.coordinates)
     var center = markers[0]
+    var lastMarker = markers[markers.length - 1]
     var center = (center === undefined) ? [52.516667, 13.383333] : center;
     var map = L.map(this.containerTarget).setView(center, 14);
 
@@ -25,6 +26,7 @@ export default class extends Controller {
       L.circleMarker([lat, lon], {radius: 3}).addTo(map);
     }
 
+    L.marker(lastMarker).addTo(map);
     L.polyline(markers).addTo(map);
   }
 
