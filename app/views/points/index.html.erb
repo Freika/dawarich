@@ -1,3 +1,3 @@
-<%= js_map(@coordinates, style: "mapbox://styles/mapbox/outdoors-v12", trail: true, width: '100%', height: '800px') %>
-
-<%#= render 'points/table', points: @points %>
+<div data-controller="maps" data-coordinates="<%= @coordinates %>">
+  <div data-maps-target="container" class="h-[25rem] w-auto min-h-screen"></div>
+</div>
