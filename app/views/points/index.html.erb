@@ -5,13 +5,13 @@
       <div class="w-full md:w-1/3">
         <div class="flex flex-col space-y-2">
           <%= f.label :start_at, class: "text-sm font-semibold" %>
-          <%= f.datetime_local_field :start_at, class: "rounded-md w-full", value: params[:start_at] %>
+          <%= f.datetime_local_field :start_at, class: "rounded-md w-full", value: @start_at %>
         </div>
       </div>
       <div class="w-full md:w-1/3">
         <div class="flex flex-col space-y-2">
           <%= f.label :end_at, class: "text-sm font-semibold" %>
-          <%= f.datetime_local_field :end_at, class: "rounded-md w-full", value: params[:end_at] %>
+          <%= f.datetime_local_field :end_at, class: "rounded-md w-full", value: @end_at %>
         </div>
       </div>
       <div class="w-full md:w-1/3">
@@ -23,6 +23,6 @@
   <% end %>
 
   <div class="w-full" data-controller="maps" data-coordinates="<%= @coordinates %>">
-    <div data-maps-target="container" class="h-[25rem] w-auto h-screen"></div>
+    <div data-maps-target="container" class="h-[25rem] w-auto min-h-screen"></div>
   </div>
 </div>

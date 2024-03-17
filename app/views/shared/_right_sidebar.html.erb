@@ -1,9 +1,11 @@
+<%= "#{@distance} km" if @distance %>
+
 <% if @countries_and_cities.any? %>
-  <% @countries_and_cities.each do |country, cities| %>
-    <h2 class="text-lg font-semibold"><%= country %></h2>
+  <% @countries_and_cities.each do |country| %>
+    <h2 class="text-lg font-semibold"><%= country[:country] %></h2>
     <ul>
-      <% cities.each do |city| %>
-        <li><%= city %></li>
+      <% country[:cities].each do |city| %>
+        <li><%= city[:city] %> (<%= Time.at(city[:timestamp]).strftime("%d.%m.%Y") %>)</li>
       <% end %>
     </ul>
   <% end %>

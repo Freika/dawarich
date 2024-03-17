@@ -17,17 +17,12 @@ class Point < ApplicationRecord
     Time.at(timestamp).strftime('%Y-%m-%d %H:%M:%S')
   end
 
-  def cities_by_countries
-    group_by { _1.country }.compact.map { |k, v| { k => v.pluck(:city).uniq.compact } }
-  end
-
   private
 
   def async_reverse_geocode
     ReverseGeocodingJob.perform_later(id)
   end
 end
-
 
 def group_records_by_hour(records)
   grouped_records = Hash.new { |hash, key| hash[key] = [] }
