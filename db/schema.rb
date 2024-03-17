@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_03_15_215423) do
+ActiveRecord::Schema[7.1].define(version: 2024_03_17_171559) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -57,6 +57,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_03_15_215423) do
     t.index ["connection"], name: "index_points_on_connection"
     t.index ["country"], name: "index_points_on_country"
     t.index ["import_id"], name: "index_points_on_import_id"
+    t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["trigger"], name: "index_points_on_trigger"
   end
 
