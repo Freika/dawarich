@@ -32,7 +32,7 @@ class PointsController < ApplicationController
     @distance ||= 0
 
     @coordinates.each_cons(2) do
-      @distance += Geocoder::Calculations.distance_between(_1[0], _1[1], units: :km)
+      @distance += Geocoder::Calculations.distance_between([_1[0], _1[1]], [_2[0], _2[1]], units: :km)
     end
 
     @distance.round(1)
