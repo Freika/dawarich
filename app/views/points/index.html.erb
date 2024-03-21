@@ -22,7 +22,11 @@
     </div>
   <% end %>
 
-  <div class="w-full" data-controller="maps" data-coordinates="<%= @coordinates %>">
+  <div
+    class="w-full"
+    data-controller="maps"
+    data-coordinates="<%= @coordinates %>"
+    data-center="<%= MAP_CENTER %>">
     <div data-maps-target="container" class="h-[25rem] w-auto min-h-screen"></div>
   </div>
 </div>

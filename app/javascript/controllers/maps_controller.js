@@ -8,31 +8,14 @@ export default class extends Controller {
   connect() {
     console.log("Map controller connected")
     var markers = JSON.parse(this.element.dataset.coordinates)
-    var center = markers[0]
-    var lastMarker = markers[markers.length - 1].slice(0, 2)
+    var center = markers[0] || JSON.parse(this.element.dataset.center)
     var center = (center === undefined) ? [52.516667, 13.383333] : center;
     var map = L.map(this.containerTarget).setView([center[0], center[1]], 14);
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
-
-    for (var i = 0; i < markers.length; i++) {
-      var lat = markers[i][0];
-      var lon = markers[i][1];
-
-      var popupContent = this.popupContent(markers[i]);
-      var circleMarker = L.circleMarker([lat, lon], {radius: 4})
-
-      circleMarker.bindPopup(popupContent).openPopup();
-      circleMarker.addTo(map);
-    }
-
-    var coordinates = markers.map(element => element.slice(0, 2));
-
-    L.marker(lastMarker).addTo(map);
-    L.polyline(coordinates).addTo(map);
+    this.addTileLayer(map);
+    this.addMarkers(map, markers);
+    this.addPolyline(map, markers);
+    this.addLastMarker(map, markers);
   }
 
   disconnect() {
@@ -62,5 +45,39 @@ export default class extends Controller {
     let seconds = ('0' + date.getSeconds()).slice(-2);
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  setMap
+
+  addTileLayer(map) {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+  }
+
+  addMarkers(map, markers) {
+    for (var i = 0; i < markers.length; i++) {
+      var lat = markers[i][0];
+      var lon = markers[i][1];
+
+      var popupContent = this.popupContent(markers[i]);
+      var circleMarker = L.circleMarker([lat, lon], {radius: 4})
+
+      circleMarker.bindPopup(popupContent).openPopup();
+      circleMarker.addTo(map);
+    }
+  }
+
+  addPolyline(map, markers) {
+    var coordinates = markers.map(element => element.slice(0, 2));
+    L.polyline(coordinates).addTo(map);
+  }
+
+  addLastMarker(map, markers) {
+    if (markers.length > 0) {
+      var lastMarker = markers[markers.length - 1].slice(0, 2)
+      L.marker(lastMarker).addTo(map);
+    }
   }
 }
