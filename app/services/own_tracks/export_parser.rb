@@ -17,6 +17,8 @@ class OwnTracks::ExportParser
     points_data = parse_json
 
     points_data.each do |point_data|
+      next if Point.exists?(timestamp: point_data[:timestamp], tracker_id: point_data[:tracker_id])
+
       Point.create(
         latitude: point_data[:latitude],
         longitude: point_data[:longitude],

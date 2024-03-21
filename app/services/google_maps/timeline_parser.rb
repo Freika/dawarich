@@ -17,7 +17,7 @@ class GoogleMaps::TimelineParser
     points_data = parse_json
 
     points_data.each do |point_data|
-      # next if Point.exists?(timestamp: point_data[:timestamp])
+      next if Point.exists?(timestamp: point_data[:timestamp])
 
       Point.create(
         latitude: point_data[:latitude],
