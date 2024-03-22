@@ -27,9 +27,9 @@ export default class extends Controller {
       <b>Timestamp:</b> ${this.formatDate(marker[4])}<br>
       <b>Latitude:</b> ${marker[0]}<br>
       <b>Longitude:</b> ${marker[1]}<br>
-      <b>Altitude:</b> ${marker[3]}<br>
-      <b>Velocity:</b> ${marker[5]}<br>
-      <b>Battery:</b> ${marker[2]}<br>
+      <b>Altitude:</b> ${marker[3]}m<br>
+      <b>Velocity:</b> ${marker[5]}km/h<br>
+      <b>Battery:</b> ${marker[2]}%<br>
     `;
   }
 

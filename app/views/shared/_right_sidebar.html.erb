@@ -1,6 +1,6 @@
 <%= "#{@distance} km" if @distance %>
 
-<% if @countries_and_cities.any? %>
+<% if @countries_and_cities&.any? %>
   <% @countries_and_cities.each do |country| %>
     <h2 class="text-lg font-semibold"><%= country[:country] %></h2>
     <ul>
