@@ -55,17 +55,19 @@ export default class extends Controller {
     }).addTo(map);
   }
 
-  addMarkers(map, markers) {
-    for (var i = 0; i < markers.length; i++) {
-      var lat = markers[i][0];
-      var lon = markers[i][1];
+  addMarkers(map, markers_data) {
+    var markers = []
+    for (var i = 0; i < markers_data.length; i++) {
+      var lat = markers_data[i][0];
+      var lon = markers_data[i][1];
 
-      var popupContent = this.popupContent(markers[i]);
+      var popupContent = this.popupContent(markers_data[i]);
       var circleMarker = L.circleMarker([lat, lon], {radius: 4})
 
-      circleMarker.bindPopup(popupContent).openPopup();
-      circleMarker.addTo(map);
+      markers.push(circleMarker.bindPopup(popupContent).openPopup())
     }
+
+    L.layerGroup(markers).addTo(map);
   }
 
   addPolyline(map, markers) {
