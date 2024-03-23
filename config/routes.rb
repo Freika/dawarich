@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
-  get 'points/index'
   resources :imports
+  resources :stats, only: :index
+
   root to: 'home#index'
   devise_for :users
 

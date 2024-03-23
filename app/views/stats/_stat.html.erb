@@ -1,0 +1,13 @@
+<div id="<%= dom_id stat %>" class="card w-full bg-base-200 shadow-xl">
+  <div class="card-body">
+    <h2 class="card-title">
+      <%= link_to points_url(url_time(stat)), class: 'underline hover:no-underline' do %>
+        <%= "#{Date::MONTHNAMES[stat.month]} of #{stat.year}" %>
+      <% end %>
+    </h2>
+    <p><%= stat.distance %>km</p>
+    <div class="card-actions justify-end">
+      <%= stat.toponyms.count %> countries, <%= stat.toponyms.sum { _1['cities'].count } %> cities
+    </div>
+  </div>
+</div>
