@@ -8,6 +8,16 @@ class User < ApplicationRecord
   has_many :points, through: :imports
   has_many :stats
 
+  def export_data
+    excepted_attributes = %w[raw_data id created_at updated_at country city import_id]
+
+    {
+      email => {
+        'dawarich-export' => self.points.map { _1.attributes.except(*excepted_attributes) }
+      }
+    }.to_json
+  end
+
   def total_km
     Stat.where(user: self).sum(:distance)
   end
@@ -19,5 +29,4 @@ class User < ApplicationRecord
   def total_cities
     Stat.where(user: self).pluck(:toponyms).flatten.size
   end
-
 end

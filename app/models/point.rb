@@ -13,25 +13,9 @@ class Point < ApplicationRecord
 
   after_create :async_reverse_geocode
 
-  def tracked_at
-    Time.at(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-  end
-
   private
 
   def async_reverse_geocode
     ReverseGeocodingJob.perform_later(id)
   end
-end
-
-def group_records_by_hour(records)
-  grouped_records = Hash.new { |hash, key| hash[key] = [] }
-
-  records.each do |record|
-    # Round timestamp to the nearest hour
-    rounded_time = Time.at(record.timestamp).beginning_of_hour
-    grouped_records[rounded_time] << record
-  end
-
-  grouped_records
 end

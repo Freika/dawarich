@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  get 'export', to: 'export#index'
   resources :imports
   resources :stats, only: :index
 
