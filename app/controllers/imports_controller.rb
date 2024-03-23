@@ -32,6 +32,8 @@ class ImportsController < ApplicationController
       end
     end
 
+    StatCreatingJob.perform_later(current_user.id)
+
     redirect_to imports_url, notice: "#{imports.size} import files were imported successfully", status: :see_other
   rescue StandardError => e
     imports.each { |import| import&.destroy! }

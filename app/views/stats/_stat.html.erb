@@ -1,7 +1,7 @@
 <div id="<%= dom_id stat %>" class="card w-full bg-base-200 shadow-xl">
   <div class="card-body">
     <h2 class="card-title">
-      <%= link_to points_url(url_time(stat)), class: 'underline hover:no-underline' do %>
+      <%= link_to points_url(month_timespan(stat)), class: 'underline hover:no-underline' do %>
         <%= "#{Date::MONTHNAMES[stat.month]} of #{stat.year}" %>
       <% end %>
     </h2>

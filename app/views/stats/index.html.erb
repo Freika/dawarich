@@ -1,6 +1,10 @@
 <div class="w-full">
   <% @stats.each do |year, stats| %>
-    <h2 class='text-3xl font-bold mt-10'><%= year %></h2>
+    <h2 class='text-3xl font-bold mt-10'>
+      <%= link_to points_url(year_timespan(year)), class: 'underline hover:no-underline' do %>
+        <%= year %>
+      <% end %>
+    </h2>
     <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
       <% stats.each do |stat| %>
         <%= render stat %>

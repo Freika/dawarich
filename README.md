@@ -29,3 +29,8 @@ Dockerized with https://betterprogramming.pub/rails-6-development-with-docker-55
 
 Then go to Portainer and update the service to use the new image
 
+## Environment variables
+
+`MINIMUM_POINTS_IN_CITY` — minimum number of points in a city to consider it as a city visited, eg. `10`
+`MAP_CENTER` — default map center, e.g. `55.7558,37.6176`
+`TIME_ZONE` — time zone, e.g. `Europe/Berlin`
