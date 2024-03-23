@@ -16,6 +16,8 @@ class OwnTracks::ExportParser
   def call
     points_data = parse_json
 
+    points = 0
+
     points_data.each do |point_data|
       next if Point.exists?(timestamp: point_data[:timestamp], tracker_id: point_data[:tracker_id])
 
@@ -28,7 +30,13 @@ class OwnTracks::ExportParser
         tracker_id: point_data[:tracker_id],
         import_id: import_id
       )
+
+      points += 1
     end
+
+    doubles = points_data.size - points
+
+    { raw_points: points_data.size, points: points, doubles: doubles }
   end
 
   private

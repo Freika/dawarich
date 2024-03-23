@@ -16,6 +16,8 @@ class GoogleMaps::TimelineParser
   def call
     points_data = parse_json
 
+    points = 0
+
     points_data.each do |point_data|
       next if Point.exists?(timestamp: point_data[:timestamp])
 
@@ -28,7 +30,13 @@ class GoogleMaps::TimelineParser
         tracker_id: 'google-maps-timeline-export',
         import_id: import_id
       )
+
+      points += 1
     end
+
+    doubles = points_data.size - points
+
+    { raw_points: points_data.size, points: points, doubles: doubles }
   end
 
   private
@@ -43,7 +51,7 @@ class GoogleMaps::TimelineParser
             {
               latitude: waypoint['latE7'].to_f / 10**7,
               longitude: waypoint['lngE7'].to_f / 10**7,
-              timestamp: DateTime.parse(timeline_object['activitySegment']['duration']['startTimestamp']),
+              timestamp: DateTime.parse(timeline_object['activitySegment']['duration']['startTimestamp']).to_i,
               raw_data: timeline_object
             }
           end

@@ -11,7 +11,9 @@
         <thead>
           <tr>
             <th>Name</th>
-            <th>Points</th>
+            <th>Raw points</th>
+            <th>Points created</th>
+            <th>Doubles</th>
             <th>Created at</th>
           </tr>
         </thead>
@@ -21,6 +23,8 @@
               <td>
                 <%= link_to import.name, import, class: 'underline hover:no-underline' %> (<%= import.source %>)
               </td>
+              <td><%= import.raw_points %></td>
+              <td><%= import.doubles %></td>
               <td><%= import.points.count %></td>
               <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
             </tr>

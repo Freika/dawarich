@@ -16,18 +16,23 @@ class ImportsController < ApplicationController
   def create
     files = import_params[:files].reject(&:blank?)
     imports = []
-    success = true
+    report = ''
 
     files.each do |file|
       json = JSON.parse(file.read)
       import = current_user.imports.create(name: file.original_filename, source: params[:import][:source])
-      parser.new(file.path, import.id).call
+      result = parser.new(file.path, import.id).call
 
-      imports << import
+      if result[:points].zero?
+        import.destroy!
+      else
+        import.update(raw_points: result[:raw_points], doubles: result[:doubles])
+
+        imports << import
+      end
     end
 
-    redirect_to imports_url, notice: "#{imports.count} imports was successfully created.", status: :see_other
-
+    redirect_to imports_url, notice: "#{imports.size} import files were imported successfully", status: :see_other
   rescue StandardError => e
     imports.each { |import| import&.destroy! }
 

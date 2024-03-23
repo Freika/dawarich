@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_03_17_171559) do
+ActiveRecord::Schema[7.1].define(version: 2024_03_23_125126) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -20,6 +20,8 @@ ActiveRecord::Schema[7.1].define(version: 2024_03_17_171559) do
     t.integer "source", default: 0
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "raw_points", default: 0
+    t.integer "doubles", default: 0
     t.index ["source"], name: "index_imports_on_source"
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
