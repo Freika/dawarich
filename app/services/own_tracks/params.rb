@@ -4,7 +4,7 @@ class OwnTracks::Params
   attr_reader :params
 
   def initialize(params)
-    @params = params
+    @params = params.to_h.deep_symbolize_keys
   end
 
   def call
@@ -23,11 +23,11 @@ class OwnTracks::Params
       bssid: params[:BSSID],
       trigger: trigger,
       tracker_id: params[:tid],
-      timestamp: Time.at(params[:tst].to_i),
+      timestamp: params[:tst].to_i,
       inrids: params[:inrids],
       in_regions: params[:inregions],
       topic: params[:topic],
-      raw_data: params
+      raw_data: params.deep_stringify_keys
     }
   end
 

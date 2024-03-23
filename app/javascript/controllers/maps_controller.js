@@ -30,6 +30,7 @@ export default class extends Controller {
       <b>Altitude:</b> ${marker[3]}m<br>
       <b>Velocity:</b> ${marker[5]}km/h<br>
       <b>Battery:</b> ${marker[2]}%<br>
+      id: ${marker[6]}<br>
     `;
   }
 
@@ -46,8 +47,6 @@ export default class extends Controller {
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
-
-  setMap
 
   addTileLayer(map) {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {

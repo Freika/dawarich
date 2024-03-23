@@ -5,6 +5,28 @@
   </div>
 
   <div id="imports" class="min-w-full">
-    <%= render @imports %>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <!-- head -->
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Points</th>
+            <th>Created at</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @imports.each do |import| %>
+            <tr>
+              <td>
+                <%= link_to import.name, import, class: 'underline hover:no-underline' %> (<%= import.source %>)
+              </td>
+              <td><%= import.points.count %></td>
+              <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

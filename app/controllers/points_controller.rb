@@ -7,8 +7,8 @@ class PointsController < ApplicationController
     @countries_and_cities = CountriesAndCities.new(@points).call
     @coordinates =
       @points
-        .pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity)
-        .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s] }
+        .pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id)
+        .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7] }
     @distance = distance
     @start_at = Time.at(start_at)
     @end_at = Time.at(end_at)

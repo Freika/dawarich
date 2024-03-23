@@ -20,7 +20,7 @@ class ImportsController < ApplicationController
 
     files.each do |file|
       json = JSON.parse(file.read)
-      import = current_user.imports.create(name: file.original_filename)
+      import = current_user.imports.create(name: file.original_filename, source: params[:import][:source])
       parser.new(file.path, import.id).call
 
       imports << import

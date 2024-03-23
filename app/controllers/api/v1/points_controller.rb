@@ -13,6 +13,13 @@ class Api::V1::PointsController < ApplicationController
     end
   end
 
+  def destroy
+    @point = Point.find(params[:id])
+    @point.destroy
+
+    head :no_content
+  end
+
   private
 
   def point_params
