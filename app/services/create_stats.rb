@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 
 class CreateStats
   attr_reader :years, :months, :user
