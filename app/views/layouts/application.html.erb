@@ -18,13 +18,8 @@
     <div class='container mx-auto'>
       <%= render 'shared/navbar' %>
       <%= render 'shared/flash' %>
-      <div class="flex flex-row gap-5">
-        <div class='w-3/4 mt-10'>
-          <%= yield %>
-        </div>
-        <div class='w-1/4 mt-10'>
-          <%= render 'shared/right_sidebar' %>
-        </div>
+      <div class="flex flex-row gap-5 w-full">
+        <%= yield %>
       </div>
     </div>
   </body>
