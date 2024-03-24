@@ -1,5 +1,5 @@
 class ReverseGeocodingJob < ApplicationJob
-  queue_as :default
+  queue_as :low
 
   def perform(point_id)
     point = Point.find(point_id)

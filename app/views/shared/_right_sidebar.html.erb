@@ -1,6 +1,6 @@
 <%= "#{@distance} km" if @distance %>
 
-<% if @countries_and_cities&.any? %>
+<% if REVERSE_GEOCODING_ENABLED && @countries_and_cities&.any? %>
   <% @countries_and_cities.each do |country| %>
     <h2 class="text-lg font-semibold mt-5">
       <%= country[:country] %> (<%= country[:cities].count %> cities)

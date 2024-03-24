@@ -32,5 +32,7 @@ module Dawarich
       g.routing_specs false
       g.helper_specs false
     end
+
+    config.active_job.queue_adapter = :sidekiq
   end
 end

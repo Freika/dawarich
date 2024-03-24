@@ -1,16 +1,11 @@
 # frozen_string_literal: true
 
 class OwnTracks::ExportParser
-  attr_reader :file_path, :file, :json, :import_id
+  attr_reader :import, :json
 
-  def initialize(file_path, import_id = nil)
-    @file_path = file_path
-
-    raise 'File not found' unless File.exist?(@file_path)
-
-    @file = File.read(@file_path)
-    @json = JSON.parse(@file)
-    @import_id = import_id
+  def initialize(import)
+    @import = import
+    @json = JSON.parse(import.file.download)
   end
 
   def call
@@ -28,15 +23,16 @@ class OwnTracks::ExportParser
         raw_data: point_data[:raw_data],
         topic: point_data[:topic],
         tracker_id: point_data[:tracker_id],
-        import_id: import_id
+        import_id: import.id
       )
 
       points += 1
     end
 
     doubles = points_data.size - points
+    processed = points + doubles
 
-    { raw_points: points_data.size, points: points, doubles: doubles }
+    { raw_points: points_data.size, points: points, doubles: doubles, processed: processed }
   end
 
   private

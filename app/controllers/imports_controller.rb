@@ -15,29 +15,19 @@ class ImportsController < ApplicationController
 
   def create
     files = import_params[:files].reject(&:blank?)
-    imports = []
-    report = ''
-
     files.each do |file|
-      json = JSON.parse(file.read)
-      import = current_user.imports.create(name: file.original_filename, source: params[:import][:source])
-      result = parser.new(file.path, import.id).call
+      import = current_user.imports.create(
+        name: file.original_filename,
+        source: params[:import][:source],
+      )
 
-      if result[:points].zero?
-        import.destroy!
-      else
-        import.update(raw_points: result[:raw_points], doubles: result[:doubles])
-
-        imports << import
-      end
+      import.file.attach(file)
     end
 
-    StatCreatingJob.perform_later(current_user.id)
-
-    redirect_to imports_url, notice: "#{imports.size} import files were imported successfully", status: :see_other
+    redirect_to imports_url, notice: "#{files.size} files are queued to be imported in background", status: :see_other
   rescue StandardError => e
-    imports.each { |import| import&.destroy! }
-
+    Import.where(user: current_user, name: files.map(&:original_filename)).destroy_all
+Rails.logger.debug e.message
     flash.now[:error] = e.message
 
     redirect_to new_import_path, notice: e.message, status: :unprocessable_entity
@@ -56,12 +46,5 @@ class ImportsController < ApplicationController
 
   def import_params
     params.require(:import).permit(:source, files: [])
-  end
-
-  def parser
-    case params[:import][:source]
-    when 'google' then GoogleMaps::TimelineParser
-    when 'owntracks' then OwnTracks::ExportParser
-    end
   end
 end
