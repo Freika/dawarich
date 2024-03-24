@@ -10,13 +10,13 @@
       <div class="card-actions justify-end">
         <%= stat.toponyms.count %> countries, <%= stat.toponyms.sum { _1['cities'].count } %> cities
       </div>
-      <%= column_chart(
-        stat.daily_distance,
-        height: '100px',
-        suffix: ' km',
-        xtitle: 'Days',
-        ytitle: 'Distance'
-      ) %>
     <% end %>
+    <%= column_chart(
+      stat.daily_distance,
+      height: '100px',
+      suffix: ' km',
+      xtitle: 'Days',
+      ytitle: 'Distance'
+    ) %>
   </div>
 </div>

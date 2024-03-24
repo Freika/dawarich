@@ -30,4 +30,10 @@ class Stat < ApplicationRecord
       [data[:day], data[:distance].round(2)]
     end
   end
+
+  def self.year_distance(year)
+    stats = where(year: year).order(:month)
+
+    stats.map { |stat| [Date::MONTHNAMES[stat.month], stat.distance] }
+  end
 end

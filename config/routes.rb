@@ -6,6 +6,7 @@ Rails.application.routes.draw do
       post :update
     end
   end
+  get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
 
   root to: 'home#index'
   devise_for :users
