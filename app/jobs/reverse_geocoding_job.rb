@@ -2,6 +2,8 @@ class ReverseGeocodingJob < ApplicationJob
   queue_as :low
 
   def perform(point_id)
+    return unless REVERSE_GEOCODING_ENABLED
+
     point = Point.find(point_id)
     return if point.city.present? && point.country.present?
 

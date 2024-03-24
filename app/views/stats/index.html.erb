@@ -7,20 +7,21 @@
       <div class="stat-title">Total distance</div>
     </div>
 
-    <div class="stat text-center">
-      <div class="stat-value text-secondary">
-        <%= current_user.total_countries %>
+    <% if REVERSE_GEOCODING_ENABLED %>
+      <div class="stat text-center">
+        <div class="stat-value text-secondary">
+          <%= current_user.total_countries %>
+        </div>
+        <div class="stat-title">Countries visited</div>
       </div>
-      <div class="stat-title">Countries visited</div>
-    </div>
 
-    <div class="stat text-center">
-      <div class="stat-value">
-        <%= current_user.total_cities %>
+      <div class="stat text-center">
+        <div class="stat-value">
+          <%= current_user.total_cities %>
+        </div>
+        <div class="stat-title">Cities visited</div>
       </div>
-      <div class="stat-title">Cities visited</div>
-    </div>
-
+    <% end %>
   </div>
 
   <% @stats.each do |year, stats| %>

@@ -6,8 +6,10 @@
       <% end %>
     </h2>
     <p><%= stat.distance %>km</p>
-    <div class="card-actions justify-end">
-      <%= stat.toponyms.count %> countries, <%= stat.toponyms.sum { _1['cities'].count } %> cities
-    </div>
+    <% if REVERSE_GEOCODING_ENABLED %>
+      <div class="card-actions justify-end">
+        <%= stat.toponyms.count %> countries, <%= stat.toponyms.sum { _1['cities'].count } %> cities
+      </div>
+    <% end %>
   </div>
 </div>
