@@ -16,7 +16,6 @@ gem 'tailwindcss-rails'
 gem 'turbo-rails'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 gem "importmap-rails"
-gem "mapkick-rb"
 gem "chartkick"
 gem 'geocoder'
 gem 'sidekiq'

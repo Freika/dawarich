@@ -136,7 +136,6 @@ GEM
       net-imap
       net-pop
       net-smtp
-    mapkick-rb (0.1.5)
     marcel (1.0.4)
     method_source (1.0.0)
     mini_mime (1.1.5)
@@ -333,7 +332,6 @@ DEPENDENCIES
   foreman
   geocoder
   importmap-rails
-  mapkick-rb
   pg
   pry-byebug
   pry-rails

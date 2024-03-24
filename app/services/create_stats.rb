@@ -18,9 +18,11 @@ class CreateStats
         points = points(beginning_of_month_timestamp, end_of_month_timestamp)
         next if points.empty?
 
-        stat = Stat.create(year:, month:, user:, distance: distance(points), toponyms: toponyms(points))
-
-        stat.update(daily_distance: stat.distance_by_day) if stat.persisted?
+        stat = Stat.find_or_initialize_by(year: year, month: month, user: user)
+        stat.distance = distance(points)
+        stat.toponyms = toponyms(points)
+        stat.daily_distance = stat.distance_by_day
+        stat.save
 
         stat
       end

@@ -1,7 +1,11 @@
 Rails.application.routes.draw do
   get 'export', to: 'export#index'
   resources :imports
-  resources :stats, only: :index
+  resources :stats, only: :index do
+    collection do
+      post :update
+    end
+  end
 
   root to: 'home#index'
   devise_for :users
