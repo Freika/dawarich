@@ -1,8 +1,28 @@
 <div id="<%= dom_id import %>">
-  <p class="my-5">
-    <strong class="block font-medium mb-1">Name:</strong>
-    <%= import.name %>
-  </p>
+  <table class="table">
+    <!-- head -->
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Processed</th>
+        <th>Doubles</th>
+        <th>Created at</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <%= link_to import.name, import, class: 'underline hover:no-underline' %> (<%= import.source %>)
+        </td>
+        <td>
+          <%= "✅" if import.processed == import.raw_points %>
+          <%= "#{import.processed}/#{import.raw_points}" %>
+        </td>
+        <td><%= import.doubles %></td>
+        <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
+      </tr>
+    </tbody>
+  </table>
 
   <% if action_name != "show" %>
     <%= link_to "Show this import", import, class: "rounded-lg py-3 px-5 bg-gray-100 inline-block font-medium" %>
