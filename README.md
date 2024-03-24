@@ -35,3 +35,12 @@ Copy the contents of the `docker-compose.yml` file to your server and run `docke
 `MAP_CENTER` — default map center, e.g. `55.7558,37.6176`
 
 `TIME_ZONE` — time zone, e.g. `Europe/Berlin`
+
+## Screenshots
+
+![Map](screenshots/map.jpeg)
+
+![Stats](screenshots/stats.jpeg)
+
+![Import](screenshots/imports.jpeg)
+
