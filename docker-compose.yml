@@ -44,6 +44,27 @@ services:
     depends_on:
       - dawarich_db
       - dawarich_redis
+  dawarich_sidekiq:
+    image: registry.chibi.rodeo/dawarich:latest
+    container_name: dawarich_sidekiq
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
+    networks:
+      - dawarich
+    stdin_open: true
+    tty: true
+    entrypoint: dev-entrypoint.sh
+    command: ['sidekiq']
+    environment:
+      RAILS_ENV: development
+      REDIS_URL: redis://dawarich_redis:6379/0
+      DATABASE_HOST: dawarich_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: dawarich_development
+    depends_on:
+      - dawarich_db
+      - dawarich_redis
 
 volumes:
   db_data:

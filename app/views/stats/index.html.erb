@@ -38,7 +38,7 @@
     <% end %>
   </div>
 
-  <%= link_to 'Update stats', stats_path, method: :post, class: 'btn btn-primary mt-5' %>
+  <%= link_to 'Update stats', stats_path, data: { 'turbo-method' => :post }, class: 'btn btn-primary mt-5' %>
 
   <% @stats.each do |year, stats| %>
     <%= render partial: 'stats/year', locals: { year: year, stats: stats } %>
