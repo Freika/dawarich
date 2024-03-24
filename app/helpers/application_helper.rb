@@ -22,4 +22,8 @@ module ApplicationHelper
 
     { start_at: start_at, end_at: end_at }
   end
+
+  def header_colors
+    %w[info success warning error accent secondary primary]
+  end
 end

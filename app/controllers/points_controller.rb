@@ -6,12 +6,11 @@ class PointsController < ApplicationController
 
     @countries_and_cities = CountriesAndCities.new(@points).call
     @coordinates =
-      @points
-        .pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id)
-        .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7] }
+      @points.pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id)
+             .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7] }
     @distance = distance
-    @start_at = Time.at(start_at)
-    @end_at = Time.at(end_at)
+    @start_at = Time.zone.at(start_at)
+    @end_at = Time.zone.at(end_at)
   end
 
   private
@@ -23,7 +22,7 @@ class PointsController < ApplicationController
   end
 
   def end_at
-    return Date.today.end_of_day.to_i if params[:end_at].nil?
+    return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
 
     params[:end_at].to_datetime.to_i
   end

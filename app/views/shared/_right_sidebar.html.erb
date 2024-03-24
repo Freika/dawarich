@@ -7,7 +7,7 @@
     </h2>
     <ul>
       <% country[:cities].each do |city| %>
-        <li><%= city[:city] %> (<%= Time.at(city[:timestamp]).strftime("%d.%m.%Y") %>)</li>
+        <li><%= city[:city] %> (<%= Time.zone.at(city[:timestamp]).strftime("%d.%m.%Y") %>)</li>
       <% end %>
     </ul>
   <% end %>

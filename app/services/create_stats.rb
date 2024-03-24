@@ -16,16 +16,13 @@ class CreateStats
         end_of_month_timestamp = DateTime.new(year, month).end_of_month.to_i
 
         points = points(beginning_of_month_timestamp, end_of_month_timestamp)
-
         next if points.empty?
 
-        Stat.create(
-          year: year,
-          month: month,
-          distance: distance(points),
-          toponyms: toponyms(points),
-          user: user
-        )
+        stat = Stat.create(year:, month:, user:, distance: distance(points), toponyms: toponyms(points))
+
+        stat.update(daily_distance: stat.distance_by_day) if stat.persisted?
+
+        stat
       end
     end.compact
   end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_03_24_161800) do
+ActiveRecord::Schema[7.1].define(version: 2024_03_24_173315) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -101,6 +101,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_03_24_161800) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.jsonb "daily_distance", default: {}
     t.index ["distance"], name: "index_stats_on_distance"
     t.index ["month"], name: "index_stats_on_month"
     t.index ["user_id"], name: "index_stats_on_user_id"

@@ -29,4 +29,8 @@ class User < ApplicationRecord
   def total_cities
     Stat.where(user: self).pluck(:toponyms).flatten.size
   end
+
+  def total_reverse_geocoded
+    points.where.not(country: nil, city: nil).count
+  end
 end

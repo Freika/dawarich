@@ -18,7 +18,7 @@ class ImportsController < ApplicationController
     files.each do |file|
       import = current_user.imports.create(
         name: file.original_filename,
-        source: params[:import][:source],
+        source: params[:import][:source]
       )
 
       import.file.attach(file)
@@ -27,7 +27,7 @@ class ImportsController < ApplicationController
     redirect_to imports_url, notice: "#{files.size} files are queued to be imported in background", status: :see_other
   rescue StandardError => e
     Import.where(user: current_user, name: files.map(&:original_filename)).destroy_all
-Rails.logger.debug e.message
+
     flash.now[:error] = e.message
 
     redirect_to new_import_path, notice: e.message, status: :unprocessable_entity
