@@ -11,12 +11,14 @@
         <%= stat.toponyms.count %> countries, <%= stat.toponyms.sum { _1['cities'].count } %> cities
       </div>
     <% end %>
-    <%= column_chart(
-      stat.daily_distance,
-      height: '100px',
-      suffix: ' km',
-      xtitle: 'Days',
-      ytitle: 'Distance'
-    ) %>
+    <% if stat.daily_distance %>
+      <%= column_chart(
+        stat.daily_distance,
+        height: '100px',
+        suffix: ' km',
+        xtitle: 'Days',
+        ytitle: 'Distance'
+      ) %>
+    <% end %>
   </div>
 </div>
