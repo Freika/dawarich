@@ -7,7 +7,7 @@ class StatsController < ApplicationController
 
   def show
     @year = params[:year].to_i
-    @stats = current_user.stats.where(year: @year)
+    @stats = current_user.stats.where(year: @year).order(:month)
   end
 
   def update

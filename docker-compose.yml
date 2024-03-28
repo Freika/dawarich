@@ -65,6 +65,7 @@ services:
     depends_on:
       - dawarich_db
       - dawarich_redis
+      - dawarich_app
 
 volumes:
   db_data:

@@ -29,8 +29,7 @@ export default class extends Controller {
       <b>Longitude:</b> ${marker[1]}<br>
       <b>Altitude:</b> ${marker[3]}m<br>
       <b>Velocity:</b> ${marker[5]}km/h<br>
-      <b>Battery:</b> ${marker[2]}%<br>
-      id: ${marker[6]}<br>
+      <b>Battery:</b> ${marker[2]}%
     `;
   }
 

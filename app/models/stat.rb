@@ -34,6 +34,21 @@ class Stat < ApplicationRecord
   def self.year_distance(year)
     stats = where(year: year).order(:month)
 
-    stats.map { |stat| [Date::MONTHNAMES[stat.month], stat.distance] }
+    (1..12).to_a.map do |month|
+      month_stat = stats.select { |stat| stat.month == month }.first
+
+      month_name = Date::MONTHNAMES[month]
+      distance = month_stat&.distance || 0
+
+      [month_name, distance]
+    end
+  end
+
+  def self.year_cities_and_countries(year)
+    points = Point.where(timestamp: DateTime.new(year).beginning_of_year..DateTime.new(year).end_of_year)
+
+    data = CountriesAndCities.new(points).call
+
+    { countries: data.count, cities: data.sum { |country| country[:cities].count } }
   end
 end

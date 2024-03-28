@@ -60,12 +60,28 @@ class GoogleMaps::TimelineParser
           }
         end
       elsif timeline_object['placeVisit'].present?
-        {
-          latitude: timeline_object['placeVisit']['location']['latitudeE7'].to_f / 10**7,
-          longitude: timeline_object['placeVisit']['location']['longitudeE7'].to_f / 10**7,
-          timestamp: DateTime.parse(timeline_object['placeVisit']['duration']['startTimestamp']),
-          raw_data: timeline_object
-        }
+        if timeline_object['placeVisit']['location']['latitudeE7'].present? &&
+            timeline_object['placeVisit']['location']['longitudeE7'].present?
+          {
+            latitude: timeline_object['placeVisit']['location']['latitudeE7'].to_f / 10**7,
+            longitude: timeline_object['placeVisit']['location']['longitudeE7'].to_f / 10**7,
+            timestamp: DateTime.parse(timeline_object['placeVisit']['duration']['startTimestamp']),
+            raw_data: timeline_object
+          }
+        elsif timeline_object['placeVisit']['otherCandidateLocations'].any?
+          point = timeline_object['placeVisit']['otherCandidateLocations'][0]
+
+          next unless point['latitudeE7'].present? && point['longitudeE7'].present?
+
+          {
+            latitude: point['latitudeE7'].to_f / 10**7,
+            longitude: point['longitudeE7'].to_f / 10**7,
+            timestamp: DateTime.parse(timeline_object['placeVisit']['duration']['startTimestamp']),
+            raw_data: timeline_object
+          }
+        else
+          next
+        end
       end
     end.reject(&:blank?)
   end

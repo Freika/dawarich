@@ -23,7 +23,7 @@ class User < ApplicationRecord
   end
 
   def total_countries
-    Stat.where(user: self).pluck(:toponyms).flatten.uniq.size
+    Stat.where(user: self).pluck(:toponyms).flatten.map { _1['country'] }.uniq.size
   end
 
   def total_cities

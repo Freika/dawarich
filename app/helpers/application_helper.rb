@@ -26,4 +26,16 @@ module ApplicationHelper
   def header_colors
     %w[info success warning error accent secondary primary]
   end
+
+  def countries_and_cities_stat(year)
+    data = Stat.year_cities_and_countries(year)
+    countries = data[:countries]
+    cities = data[:cities]
+
+    "#{countries} countries, #{cities} cities"
+  end
+
+  def year_distance_stat_in_km(year)
+    Stat.year_distance(year).sum { _1[1] }
+  end
 end
