@@ -5,19 +5,15 @@ class Stat < ApplicationRecord
 
   belongs_to :user
 
-  def timespan
-    DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
-  end
-
   def distance_by_day
     timespan.to_a.map.with_index(1) do |day, index|
       beginning_of_day = day.beginning_of_day.to_i
       end_of_day = day.end_of_day.to_i
 
-      data = { day: index, distance: 0 }
-
       # We have to filter by user as well
       points = Point.where(timestamp: beginning_of_day..end_of_day)
+
+      data = { day: index, distance: 0 }
 
       points.each_cons(2) do |point1, point2|
         distance = Geocoder::Calculations.distance_between(
@@ -49,12 +45,18 @@ class Stat < ApplicationRecord
 
     data = CountriesAndCities.new(points).call
 
-    { countries: data.count, cities: data.sum { |country| country[:cities].count } }
+    { countries: data.map { _1[:country] }.uniq.count, cities: data.sum { |country| country[:cities].count } }
   end
 
   def self.years
-    starting_year = pluck(:year).uniq.min || Time.current.year
+    starting_year = select(:year).min&.year || Time.current.year
 
     (starting_year..Time.current.year).to_a.reverse
+  end
+
+  private
+
+  def timespan
+    DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
   end
 end

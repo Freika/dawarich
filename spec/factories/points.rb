@@ -21,7 +21,7 @@ FactoryBot.define do
     raw_data { "" }
     tracker_id { "MyString" }
     import_id { "" }
-    city { "MyString" }
-    country { "MyString" }
+    city { nil }
+    country { nil }
   end
 end
