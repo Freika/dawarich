@@ -11,6 +11,7 @@ class PointsController < ApplicationController
     @distance = distance
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
+    @years = (@start_at.year..@end_at.year).to_a
   end
 
   private
@@ -18,13 +19,13 @@ class PointsController < ApplicationController
   def start_at
     return 1.month.ago.beginning_of_day.to_i if params[:start_at].nil?
 
-    params[:start_at].to_datetime.to_i
+    Time.parse(params[:start_at]).to_i
   end
 
   def end_at
     return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
 
-    params[:end_at].to_datetime.to_i
+    Time.parse(params[:end_at]).to_i
   end
 
   def distance

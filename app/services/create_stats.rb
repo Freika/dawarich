@@ -1,32 +1,34 @@
 # frozen_string_literal: true
 
 class CreateStats
-  attr_reader :years, :months, :user
+  attr_reader :years, :months, :users
 
-  def initialize(user_id)
-    @user = User.find(user_id)
+  def initialize(user_ids)
+    @users = User.where(id: user_ids)
     @years = (1970..Time.current.year).to_a
     @months = (1..12).to_a
   end
 
   def call
-    years.flat_map do |year|
-      months.map do |month|
-        beginning_of_month_timestamp = DateTime.new(year, month).beginning_of_month.to_i
-        end_of_month_timestamp = DateTime.new(year, month).end_of_month.to_i
+    users.each do |user|
+      years.each do |year|
+        months.each do |month|
+          beginning_of_month_timestamp = DateTime.new(year, month).beginning_of_month.to_i
+          end_of_month_timestamp = DateTime.new(year, month).end_of_month.to_i
 
-        points = points(beginning_of_month_timestamp, end_of_month_timestamp)
-        next if points.empty?
+          points = points(beginning_of_month_timestamp, end_of_month_timestamp)
+          next if points.empty?
 
-        stat = Stat.find_or_initialize_by(year: year, month: month, user: user)
-        stat.distance = distance(points)
-        stat.toponyms = toponyms(points)
-        stat.daily_distance = stat.distance_by_day
-        stat.save
+          stat = Stat.find_or_initialize_by(year: year, month: month, user: user)
+          stat.distance = distance(points)
+          stat.toponyms = toponyms(points)
+          stat.daily_distance = stat.distance_by_day
+          stat.save
 
-        stat
+          stat
+        end
       end
-    end.compact
+    end
   end
 
   private

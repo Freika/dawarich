@@ -1,6 +1,36 @@
 <%= "#{@distance} km" if @distance %>
 
+<div id='years-nav'>
+  <div class="dropdown">
+    <div tabindex="0" role="button" class="btn m-1">Select year</div>
+    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+      <% Stat.years.each do |year| %>
+        <li><%= link_to year, points_url(year_timespan(year).merge(year: year)) %></li>
+      <% end %>
+    </ul>
+  </div>
+
+  <% @years.each do |year| %>
+    <h3 class='text-xl'>
+      <%= year %>
+    </h3>
+
+    <div class='grid grid-cols-3 gap-3'>
+      <% (1..12).to_a.each_slice(3) do |months| %>
+        <% months.each do |month_number| %>
+          <% if is_past?(year, month_number) && points_exist?(year, month_number) %>
+            <%= link_to Date::ABBR_MONTHNAMES[month_number], points_url(timespan(month_number, year)), class: 'btn btn-default' %>
+          <% else %>
+            <div class='btn btn-disabled'><%= Date::ABBR_MONTHNAMES[month_number] %></div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
 <% if REVERSE_GEOCODING_ENABLED && @countries_and_cities&.any? %>
+  <hr class='my-5'>
   <% @countries_and_cities.each do |country| %>
     <h2 class="text-lg font-semibold mt-5">
       <%= country[:country] %> (<%= country[:cities].count %> cities)

@@ -51,4 +51,10 @@ class Stat < ApplicationRecord
 
     { countries: data.count, cities: data.sum { |country| country[:cities].count } }
   end
+
+  def self.years
+    starting_year = pluck(:year).uniq.min || Time.current.year
+
+    (starting_year..Time.current.year).to_a.reverse
+  end
 end

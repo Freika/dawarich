@@ -37,8 +37,10 @@ class CountriesAndCities
     end
   end
 
-
   def filter_cities(mapped_with_cities)
+    # In future, we would want to remove cities where user spent less than
+    # 1 hour per day
+
     # Remove cities with less than MINIMUM_POINTS_IN_CITY
     mapped_with_cities.transform_values do |cities|
       cities.reject { |_, data| data[:points] < MINIMUM_POINTS_IN_CITY }
@@ -48,8 +50,8 @@ class CountriesAndCities
   def normalize_result(hash)
     hash.map do |country, cities|
       {
-        country: country,
-        cities: cities.map { |city, data| { city: city, points: data[:points], timestamp: data[:timestamp] } }
+        country:,
+        cities: cities.map { |city, data| { city:, points: data[:points], timestamp: data[:timestamp] } }
       }
     end
   end
