@@ -1,6 +1,7 @@
 FactoryBot.define do
   factory :import do
-    user_id { "" }
+    user
+    name { 'APRIL_2013.json' }
     source { 1 }
   end
 end

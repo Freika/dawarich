@@ -2,7 +2,7 @@ require 'rails_helper'
 
 RSpec.describe OwnTracks::ExportParser do
   describe '#call' do
-    subject(:parser) { described_class.new(import.id).call }
+    subject(:parser) { described_class.new(import).call }
 
     let(:file_path) { 'spec/fixtures/owntracks_export.json' }
     let(:file) { fixture_file_upload(file_path) }

@@ -15,10 +15,11 @@ gem 'stimulus-rails'
 gem 'tailwindcss-rails'
 gem 'turbo-rails'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
-gem "importmap-rails"
-gem "chartkick"
+gem 'importmap-rails'
+gem 'chartkick'
 gem 'geocoder'
 gem 'sidekiq'
+gem 'sidekiq-cron'
 
 
 group :development, :test do
@@ -42,4 +43,4 @@ group :development do
 end
 
 # Use Redis for Action Cable
-gem "redis"
+gem 'redis'

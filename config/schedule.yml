@@ -1,0 +1,6 @@
+# config/schedule.yml
+
+stat_creating_job:
+  cron: "0 */6 * * *"
+  class: "StatCreatingJob"
+  queue: default

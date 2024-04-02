@@ -17,10 +17,18 @@ module ApplicationHelper
   end
 
   def year_timespan(year)
-    start_at = DateTime.new(year).beginning_of_year.to_time.strftime('%Y-%m-%dT%H:%M')
-    end_at = DateTime.new(year).end_of_year.to_time.strftime('%Y-%m-%dT%H:%M')
+    start_at = Time.utc(year).in_time_zone('Europe/Berlin').beginning_of_year.strftime('%Y-%m-%dT%H:%M')
+    end_at = Time.utc(year).in_time_zone('Europe/Berlin').end_of_year.strftime('%Y-%m-%dT%H:%M')
 
-    { start_at: start_at, end_at: end_at }
+    { start_at:, end_at: }
+  end
+
+  def timespan(month, year)
+    month = DateTime.new(year, month).in_time_zone(Time.zone)
+    start_at = month.beginning_of_month.to_time.strftime('%Y-%m-%dT%H:%M')
+    end_at = month.end_of_month.to_time.strftime('%Y-%m-%dT%H:%M')
+
+    { start_at:, end_at: }
   end
 
   def header_colors
@@ -37,5 +45,15 @@ module ApplicationHelper
 
   def year_distance_stat_in_km(year)
     Stat.year_distance(year).sum { _1[1] }
+  end
+
+  def is_past?(year, month)
+    DateTime.new(year, month).past?
+  end
+
+  def points_exist?(year, month)
+    Point.where(
+      timestamp: DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
+    ).exists?
   end
 end

@@ -48,10 +48,16 @@
             <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
             <%= link_to '[Map]', points_url(year_timespan(year)), class: 'underline hover:no-underline' %>
           </h2>
-          <p><%= number_with_delimiter year_distance_stat_in_km(year) %>km</p>
+          <p>
+            <% cache [current_user, 'year_distance_stat_in_km', year], skip_digest: true do %>
+              <%= number_with_delimiter year_distance_stat_in_km(year) %>km
+              <% end %>
+          </p>
           <% if REVERSE_GEOCODING_ENABLED %>
             <div class="card-actions justify-end">
-              <%= countries_and_cities_stat(year) %>
+              <% cache [current_user, 'countries_and_cities_stat', year], skip_digest: true do %>
+                <%= countries_and_cities_stat(year) %>
+              <% end %>
             </div>
           <% end %>
           <%= column_chart(

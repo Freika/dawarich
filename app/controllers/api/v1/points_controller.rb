@@ -2,15 +2,9 @@ class Api::V1::PointsController < ApplicationController
   skip_forgery_protection
 
   def create
-    parsed_params = OwnTracks::Params.new(point_params).call
+    PointCreatingJob.perform_later(point_params)
 
-    @point = Point.create(parsed_params)
-
-    if @point.valid?
-      render json: @point, status: :ok
-    else
-      render json: @point.errors, status: :unprocessable_entity
-    end
+    render json: {}, status: :ok
   end
 
   def destroy
