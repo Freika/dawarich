@@ -12,5 +12,11 @@ RSpec.describe ImportJob, type: :job do
     it 'creates points' do
       expect { perform }.to change { Point.count }.by(8)
     end
+
+    it 'calls StatCreatingJob' do
+      expect(StatCreatingJob).to receive(:perform_later).with(user.id)
+
+      perform
+    end
   end
 end
