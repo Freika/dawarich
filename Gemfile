@@ -35,6 +35,7 @@ end
 group :test do
   gem 'shoulda-matchers'
   gem 'simplecov'
+  gem 'super_diff'
 end
 
 group :development do
