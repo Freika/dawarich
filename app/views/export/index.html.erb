@@ -1,4 +1,8 @@
 <div class="w-full">
+  <div class='m-5'>
+    <h1 class='text-3xl font-bold'>Export Data</h1>
+    <%= link_to 'Download JSON', export_download_path, class: 'btn btn-primary my-5' %>
+  </div>
   <div class="mockup-code p-5">
     <code><%= current_user.export_data %></code>
   </div>

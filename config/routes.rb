@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   get 'export', to: 'export#index'
+  get 'export/download', to: 'export#download'
   resources :imports
   resources :stats, only: :index do
     collection do

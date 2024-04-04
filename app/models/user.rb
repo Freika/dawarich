@@ -9,13 +9,7 @@ class User < ApplicationRecord
   has_many :stats
 
   def export_data
-    excepted_attributes = %w[raw_data id created_at updated_at country city import_id]
-
-    {
-      email => {
-        'dawarich-export' => self.points.map { _1.attributes.except(*excepted_attributes) }
-      }
-    }.to_json
+    ::ExportSerializer.new(points, self.email).call
   end
 
   def total_km
