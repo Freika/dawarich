@@ -132,7 +132,7 @@ GEM
     irb (1.12.0)
       rdoc
       reline (>= 0.4.2)
-    json (2.7.1)
+    json (2.7.2)
     language_server-protocol (3.17.0.3)
     loofah (2.22.0)
       crass (~> 1.0.2)
@@ -155,9 +155,9 @@ GEM
       net-protocol
     net-protocol (0.2.2)
       timeout
-    net-smtp (0.4.0.1)
+    net-smtp (0.5.0)
       net-protocol
-    nio4r (2.7.0)
+    nio4r (2.7.1)
     nokogiri (1.16.3-aarch64-linux)
       racc (~> 1.4)
     nokogiri (1.16.3-arm64-darwin)
@@ -227,12 +227,12 @@ GEM
       thor (~> 1.0, >= 1.2.2)
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
-    rake (13.1.0)
+    rake (13.2.0)
     rdoc (6.6.3.1)
       psych (>= 4.0.0)
     redis (5.1.0)
       redis-client (>= 0.17.0)
-    redis-client (0.21.0)
+    redis-client (0.21.1)
       connection_pool
     regexp_parser (2.9.0)
     reline (0.5.0)
@@ -374,4 +374,4 @@ RUBY VERSION
    ruby 3.2.3p157
 
 BUNDLED WITH
-   2.3.3
+   2.5.7
