@@ -1,5 +1,8 @@
 #!/bin/sh
 
+unset BUNDLE_PATH
+unset BUNDLE_BIN
+
 set -e
 
 echo "Environment: $RAILS_ENV"
@@ -12,6 +15,10 @@ until nc -zv $DATABASE_HOST 5432; do
   echo "Waiting for PostgreSQL to be ready..."
   sleep 1
 done
+
+# Install gems
+gem update --system
+gem install bundler --version '2.5.7'
 
 # Create the database
 echo "Creating database $DATABASE_NAME..."

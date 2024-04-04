@@ -34,7 +34,6 @@ RUN apk -U add --no-cache \
     && rm -rf /var/cache/apk/* \
     && mkdir -p $APP_PATH
 
-RUN gem update --system
 RUN gem install bundler --version "$BUNDLE_VERSION" \
     && rm -rf $GEM_HOME/cache/*
 

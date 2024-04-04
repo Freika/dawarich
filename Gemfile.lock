@@ -160,7 +160,13 @@ GEM
     nio4r (2.7.1)
     nokogiri (1.16.3-aarch64-linux)
       racc (~> 1.4)
+    nokogiri (1.16.3-arm-linux)
+      racc (~> 1.4)
     nokogiri (1.16.3-arm64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.16.3-x86-linux)
+      racc (~> 1.4)
+    nokogiri (1.16.3-x86_64-darwin)
       racc (~> 1.4)
     nokogiri (1.16.3-x86_64-linux)
       racc (~> 1.4)
@@ -308,9 +314,15 @@ GEM
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
+    tailwindcss-rails (2.3.0)
+      railties (>= 6.0.0)
     tailwindcss-rails (2.3.0-aarch64-linux)
       railties (>= 6.0.0)
+    tailwindcss-rails (2.3.0-arm-linux)
+      railties (>= 6.0.0)
     tailwindcss-rails (2.3.0-arm64-darwin)
+      railties (>= 6.0.0)
+    tailwindcss-rails (2.3.0-x86_64-darwin)
       railties (>= 6.0.0)
     tailwindcss-rails (2.3.0-x86_64-linux)
       railties (>= 6.0.0)
@@ -333,10 +345,10 @@ GEM
 
 PLATFORMS
   aarch64-linux
-  aarch64-linux-musl
-  arm64-darwin-21
-  arm64-darwin-22
-  arm64-darwin-23
+  arm-linux
+  arm64-darwin
+  x86-linux
+  x86_64-darwin
   x86_64-linux
 
 DEPENDENCIES
