@@ -8,6 +8,8 @@ class User < ApplicationRecord
   has_many :points, through: :imports
   has_many :stats
 
+  after_create :create_api_key
+
   def export_data
     ::ExportSerializer.new(points, self.email).call
   end
@@ -26,5 +28,12 @@ class User < ApplicationRecord
 
   def total_reverse_geocoded
     points.where.not(country: nil, city: nil).count
+  end
+
+  private
+
+  def create_api_key
+    self.api_key = SecureRandom.hex(16)
+    save
   end
 end

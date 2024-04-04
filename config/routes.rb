@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   get 'export', to: 'export#index'
   get 'export/download', to: 'export#download'
+
   resources :imports
   resources :stats, only: :index do
     collection do
@@ -11,6 +12,8 @@ Rails.application.routes.draw do
 
   root to: 'home#index'
   devise_for :users
+
+  post 'settings/generate_api_key', to: 'devise/api_keys#create', as: :generate_api_key
 
   get 'points', to: 'points#index'
 

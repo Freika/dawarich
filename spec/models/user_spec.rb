@@ -7,6 +7,16 @@ RSpec.describe User, type: :model do
     it { is_expected.to have_many(:stats) }
   end
 
+  describe 'callbacks' do
+    describe '#create_api_key' do
+      let(:user) { create(:user) }
+
+      it 'creates api key' do
+        expect(user.api_key).to be_present
+      end
+    end
+  end
+
   describe 'methods' do
     let(:user) { create(:user) }
 
