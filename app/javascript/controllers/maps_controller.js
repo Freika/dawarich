@@ -8,7 +8,7 @@ export default class extends Controller {
   connect() {
     console.log("Map controller connected")
     var markers = JSON.parse(this.element.dataset.coordinates)
-    var center = markers[0] || JSON.parse(this.element.dataset.center)
+    var center = markers[markers.length - 1] || JSON.parse(this.element.dataset.center)
     var center = (center === undefined) ? [52.516667, 13.383333] : center;
     var map = L.map(this.containerTarget).setView([center[0], center[1]], 14);
 
