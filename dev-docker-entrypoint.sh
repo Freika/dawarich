@@ -17,7 +17,7 @@ until nc -zv $DATABASE_HOST 5432; do
 done
 
 # Install gems
-gem update --system
+gem update --system 3.5.7
 gem install bundler --version '2.5.7'
 
 # Create the database
