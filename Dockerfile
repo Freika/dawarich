@@ -9,8 +9,7 @@ ENV RAILS_PORT 3000
 
 # Copy entrypoint scripts and grant execution permissions
 COPY ./dev-docker-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
-COPY ./test-docker-entrypoint.sh /usr/local/bin/test-entrypoint.sh
-RUN chmod +x /usr/local/bin/dev-entrypoint.sh && chmod +x /usr/local/bin/test-entrypoint.sh
+RUN chmod +x /usr/local/bin/dev-entrypoint.sh
 
 # Copy application files to workdir
 COPY . $APP_PATH

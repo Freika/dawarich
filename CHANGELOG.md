@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.1.6.1] — 2024-04-06
+
+### Fixed
+
+- `ActiveStorage::FileNotFoundError: ActiveStorage::FileNotFoundError` error when uploading export files
+
 ## [0.1.6] — 2024-04-06
 
 You can now use [Overland](https://overland.p3k.app/) mobile app to track your location.
