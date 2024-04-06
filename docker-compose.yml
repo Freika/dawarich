@@ -21,7 +21,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
   dawarich_app:
-    image: freikin/dawarich:0.1.4.1
+    image: freikin/dawarich:0.1.6
     container_name: dawarich_app
     volumes:
       - gem_cache:/usr/local/bundle/gems
@@ -46,7 +46,7 @@ services:
       - dawarich_db
       - dawarich_redis
   dawarich_sidekiq:
-    image: freikin/dawarich:0.1.4.1
+    image: freikin/dawarich:0.1.6
     container_name: dawarich_sidekiq
     volumes:
       - gem_cache:/usr/local/bundle/gems
