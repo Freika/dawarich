@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.1.6] - 2024-04-06
+## [0.1.6] — 2024-04-06
 
 You can now use [Overland](https://overland.p3k.app/) mobile app to track your location.
 
@@ -17,7 +17,7 @@ You can now use [Overland](https://overland.p3k.app/) mobile app to track your l
 
 ### Fixed
 
-## [0.1.5] - 2024-04-05
+## [0.1.5] — 2024-04-05
 
 You can now specify the host of the application by setting the `APPLICATION_HOST` environment variable in the `docker-compose.yml` file.
 

@@ -4,7 +4,7 @@ RSpec.describe OwnTracks::ExportParser do
   describe '#call' do
     subject(:parser) { described_class.new(import).call }
 
-    let(:file_path) { 'spec/fixtures/owntracks_export.json' }
+    let(:file_path) { 'spec/fixtures/files/owntracks/export.json' }
     let(:file) { fixture_file_upload(file_path) }
     let(:user) { create(:user) }
     let(:import) { create(:import, user: user, file: file, name: File.basename(file.path)) }

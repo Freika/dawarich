@@ -56,6 +56,7 @@ services:
     tty: true
     entrypoint: dev-entrypoint.sh
     command: ['sidekiq']
+    restart: on-failure
     environment:
       RAILS_ENV: development
       REDIS_URL: redis://dawarich_redis:6379/0

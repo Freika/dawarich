@@ -2,7 +2,7 @@ require 'rails_helper'
 
 RSpec.describe "Api::V1::Overland::Batches", type: :request do
   describe "POST /index" do
-    let(:file_path) { 'spec/fixtures/overland/geodata.json' }
+    let(:file_path) { 'spec/fixtures/files/overland/geodata.json' }
     let(:file) { File.open(file_path) }
     let(:json) { JSON.parse(file.read) }
     let(:params) { json }

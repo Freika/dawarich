@@ -4,7 +4,7 @@ RSpec.describe Overland::BatchCreatingJob, type: :job do
   describe '#perform' do
     subject(:perform) { described_class.new.perform(json) }
 
-    let(:file_path) { 'spec/fixtures/overland/geodata.json' }
+    let(:file_path) { 'spec/fixtures/files/overland/geodata.json' }
     let(:file) { File.open(file_path) }
     let(:json) { JSON.parse(file.read) }
 
