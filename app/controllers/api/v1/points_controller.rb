@@ -2,7 +2,7 @@ class Api::V1::PointsController < ApplicationController
   skip_forgery_protection
 
   def create
-    PointCreatingJob.perform_later(point_params)
+    Owntracks::PointCreatingJob.perform_later(point_params)
 
     render json: {}, status: :ok
   end

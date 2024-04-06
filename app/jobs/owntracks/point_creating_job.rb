@@ -1,4 +1,4 @@
-class PointCreatingJob < ApplicationJob
+class Owntracks::PointCreatingJob < ApplicationJob
   queue_as :default
 
   def perform(point_params)

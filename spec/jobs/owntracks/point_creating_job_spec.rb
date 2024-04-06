@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe PointCreatingJob, type: :job do
+RSpec.describe Owntracks::PointCreatingJob, type: :job do
   describe '#perform' do
     subject(:perform) { described_class.new.perform(point_params) }
 

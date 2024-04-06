@@ -1,7 +1,7 @@
 class Point < ApplicationRecord
   belongs_to :import, optional: true
 
-  validates :latitude, :longitude, :tracker_id, :timestamp, :topic, presence: true
+  validates :latitude, :longitude, :timestamp, presence: true
 
   enum battery_status: { unknown: 0, unplugged: 1, charging: 2, full: 3 }, _suffix: true
   enum trigger: {

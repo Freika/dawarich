@@ -16,7 +16,7 @@ RSpec.describe "Api::V1::Points", type: :request do
       it 'enqueues a job' do
         expect {
           post api_v1_points_path, params: params
-        }.to have_enqueued_job(PointCreatingJob)
+        }.to have_enqueued_job(Owntracks::PointCreatingJob)
       end
     end
   end
