@@ -17,9 +17,6 @@ class Api::V1::PointsController < ApplicationController
   private
 
   def point_params
-    params.permit(
-      :lat, :lon, :bs, :batt, :p, :alt, :acc, :vac, :vel, :conn, :SSID, :BSSID, :m, :tid, :tst,
-      :topic, :_type, :cog, :t, inrids: [], inregions: [], point: {}
-    )
+    params.permit!
   end
 end
