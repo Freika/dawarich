@@ -55,3 +55,14 @@ APPLICATION_HOST — host of the application, e.g. `localhost` or `dawarich.exam
 
 ![Import](screenshots/imports.jpeg)
 
+## Star History
+
+As you could probably guess, I like statistics.
+
+<a href="https://star-history.com/#Freika/dawarich&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date" />
+ </picture>
+</a>
