@@ -115,7 +115,7 @@ GEM
       factory_bot (~> 6.4)
       railties (>= 5.0.0)
     ffaker (2.23.0)
-    foreman (0.87.2)
+    foreman (0.88.1)
     fugit (1.10.1)
       et-orbi (~> 1, >= 1.2.7)
       raabro (~> 1.4)
