@@ -22,7 +22,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Removed strong_params from POST /api/v1/points
 
-
 ## [0.1.6.1] — 2024-04-06
 
 ### Fixed
