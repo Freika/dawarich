@@ -10,11 +10,55 @@ export default class extends Controller {
     var markers = JSON.parse(this.element.dataset.coordinates)
     var center = markers[markers.length - 1] || JSON.parse(this.element.dataset.center)
     var center = (center === undefined) ? [52.516667, 13.383333] : center;
-    var map = L.map(this.containerTarget).setView([center[0], center[1]], 14);
+    var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    });
+
+    var osmHOT = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team hosted by OpenStreetMap France'
+    });
+
+    var baseMaps = {
+      "OpenStreetMap": osm,
+      "OpenStreetMap.HOT": osmHOT
+  };
+
+    var map = L.map(this.containerTarget, {
+      layers: [osm, osmHOT]
+    }).setView([center[0], center[1]], 14);
+
+
+    var markersArray = []
+
+    for (var i = 0; i < markers.length; i++) {
+      var lat = markers[i][0];
+      var lon = markers[i][1];
+
+      var popupContent = this.popupContent(markers[i]);
+      var circleMarker = L.circleMarker([lat, lon], {radius: 4})
+
+      markersArray.push(circleMarker.bindPopup(popupContent).openPopup())
+    }
+
+    var markersLayer = L.layerGroup(markersArray)
+    markersLayer.addTo(map);
+
+    var polylineCoordinates = markers.map(element => element.slice(0, 2));
+    var polylineLayer = L.polyline(polylineCoordinates)
+    polylineLayer.addTo(map);
+
+    var controlsLayer = {
+      "Points": markersLayer,
+      "Polyline": polylineLayer
+    }
+
+    var layerControl = L.control.layers(baseMaps, controlsLayer).addTo(map);
 
     this.addTileLayer(map);
-    this.addMarkers(map, markers);
-    this.addPolyline(map, markers);
+    // var markersLayer = this.addMarkers(map, markers);
+    // this.addPolyline(map, markers);
     this.addLastMarker(map, markers);
   }
 
