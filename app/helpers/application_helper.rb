@@ -56,4 +56,10 @@ module ApplicationHelper
       timestamp: DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
     ).exists?
   end
+
+  def new_version_available?
+    Rails.cache.fetch('dawarich/app-version-check', expires_in: 1.day) do
+      CheckAppVersion.new.call
+    end
+  end
 end
