@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.1.8] — 2024-04-21
+
+### Added
+
+- Application version badge to the navbar with check for updates button
+- Npm dependencies install to Github build workflow
+- Footer
+
+### Changed
+
+- Disabled map points rendering by default to improve performance on big datasets
+
 ## [0.1.7] — 2024-04-17
 
 ### Added
