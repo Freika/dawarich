@@ -62,4 +62,8 @@ module ApplicationHelper
       CheckAppVersion.new.call
     end
   end
+
+  def app_version
+    File.read('.app_version').strip
+  end
 end
