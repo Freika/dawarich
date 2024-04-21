@@ -29,7 +29,7 @@ export default class extends Controller {
     var layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(map);
 
     this.addTileLayer(map);
-    markersLayer.addTo(map);
+    // markersLayer.addTo(map);
     polylineLayer.addTo(map);
     this.addLastMarker(map, markers);
   }
