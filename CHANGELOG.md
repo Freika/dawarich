@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.1.8.1] — 2024-04-21
+
+### Changed
+
+- Set Redis as default cache store
+
+### Fixed
+
+- Consider timezone when parsing datetime params in points controller
+- Add rescue for check version service class
+
 ## [0.1.8] — 2024-04-21
 
 ### Added

@@ -19,13 +19,13 @@ class PointsController < ApplicationController
   def start_at
     return 1.month.ago.beginning_of_day.to_i if params[:start_at].nil?
 
-    Time.parse(params[:start_at]).to_i
+    Time.zone.parse(params[:start_at]).to_i
   end
 
   def end_at
     return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
 
-    Time.parse(params[:end_at]).to_i
+    Time.zone.parse(params[:end_at]).to_i
   end
 
   def distance
