@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.1.9] — 2024-04-25
+
+### Added
+
+- A test for CheckAppVersion service class
+
+### Changed
+
+- Replaced ActiveStorage with Shrine for file uploads
+
+### Fixed
+
+- `ActiveStorage::FileNotFoundError` error when uploading export files
+
+
 ## [0.1.8.1] — 2024-04-21
 
 ### Changed
