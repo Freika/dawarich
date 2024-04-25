@@ -5,7 +5,7 @@ class OwnTracks::ExportParser
 
   def initialize(import)
     @import = import
-    @json = JSON.parse(import.file.download)
+    @json = import.raw_data
   end
 
   def call
@@ -32,7 +32,7 @@ class OwnTracks::ExportParser
     doubles = points_data.size - points
     processed = points + doubles
 
-    { raw_points: points_data.size, points: points, doubles: doubles, processed: processed }
+    { raw_points: points_data.size, points:, doubles:, processed: }
   end
 
   private
@@ -40,8 +40,8 @@ class OwnTracks::ExportParser
   def parse_json
     points = []
 
-    json.keys.each do |user|
-      json[user].keys.each do |devise|
+    json.each_key do |user|
+      json[user].each_key do |devise|
         json[user][devise].each { |point| points << OwnTracks::Params.new(point).call }
       end
     end

@@ -15,13 +15,14 @@ class ImportsController < ApplicationController
 
   def create
     files = import_params[:files].reject(&:blank?)
+
     import_ids = files.map do |file|
       import = current_user.imports.create(
         name: file.original_filename,
         source: params[:import][:source]
       )
 
-      import.file.attach(file)
+      import.update(raw_data: JSON.parse(File.read(file)))
       import.id
     end
 

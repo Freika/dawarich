@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
 class GoogleMaps::TimelineParser
-  attr_reader :import, :json
+  attr_reader :import
 
   def initialize(import)
     @import = import
-    @json = JSON.parse(import.file.download)
   end
 
   def call
@@ -38,7 +37,7 @@ class GoogleMaps::TimelineParser
   private
 
   def parse_json
-    json['timelineObjects'].flat_map do |timeline_object|
+    import.raw_data['timelineObjects'].flat_map do |timeline_object|
       if timeline_object['activitySegment'].present?
         if timeline_object['activitySegment']['startLocation'].blank?
           next if timeline_object['activitySegment']['waypointPath'].blank?
@@ -61,7 +60,7 @@ class GoogleMaps::TimelineParser
         end
       elsif timeline_object['placeVisit'].present?
         if timeline_object['placeVisit']['location']['latitudeE7'].present? &&
-            timeline_object['placeVisit']['location']['longitudeE7'].present?
+           timeline_object['placeVisit']['location']['longitudeE7'].present?
           {
             latitude: timeline_object['placeVisit']['location']['latitudeE7'].to_f / 10**7,
             longitude: timeline_object['placeVisit']['location']['longitudeE7'].to_f / 10**7,
