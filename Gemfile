@@ -36,6 +36,7 @@ group :test do
   gem 'shoulda-matchers'
   gem 'simplecov'
   gem 'super_diff'
+  gem 'webmock'
 end
 
 group :development do
