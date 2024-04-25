@@ -9,7 +9,7 @@ class CheckAppVersion
   def call
     begin
       latest_version = JSON.parse(Net::HTTP.get(URI.parse(@repo_url)))[0]['name']
-    rescue
+    rescue StandardError
       return false
     end
 

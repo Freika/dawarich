@@ -1,7 +1,12 @@
 require 'rails_helper'
 
-RSpec.describe "Imports", type: :request do
-  describe "GET /imports" do
+RSpec.describe 'Imports', type: :request do
+  before do
+    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
+      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
+  end
+
+  describe 'GET /imports' do
     context 'when user is logged in' do
       let(:user) { create(:user) }
 
@@ -9,7 +14,7 @@ RSpec.describe "Imports", type: :request do
         sign_in user
       end
 
-      it "returns http success" do
+      it 'returns http success' do
         get imports_path
 
         expect(response).to have_http_status(200)
@@ -27,7 +32,7 @@ RSpec.describe "Imports", type: :request do
     end
   end
 
-  describe "POST /imports" do
+  describe 'POST /imports' do
     context 'when user is logged in' do
       let(:user) { create(:user) }
       let(:file) { fixture_file_upload('owntracks/export.json', 'application/json') }
