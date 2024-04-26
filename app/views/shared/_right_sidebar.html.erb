@@ -32,12 +32,16 @@
 <% if REVERSE_GEOCODING_ENABLED && @countries_and_cities&.any? %>
   <hr class='my-5'>
   <% @countries_and_cities.each do |country| %>
+    <% next if country[:cities].empty? %>
+
     <h2 class="text-lg font-semibold mt-5">
       <%= country[:country] %> (<%= country[:cities].count %> cities)
     </h2>
     <ul>
       <% country[:cities].each do |city| %>
-        <li><%= city[:city] %> (<%= Time.zone.at(city[:timestamp]).strftime("%d.%m.%Y") %>)</li>
+        <li>
+          <%= city[:city] %> (<%= Time.zone.at(city[:timestamp]).strftime("%d.%m.%Y") %>)
+        </li>
       <% end %>
     </ul>
   <% end %>

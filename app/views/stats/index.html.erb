@@ -23,17 +23,44 @@
       </div>
 
       <div class="stat text-center">
-        <div class="stat-value text-warning">
+        <div class="stat-value text-warning" onclick="countries_visited.showModal()">
           <%= number_with_delimiter current_user.total_countries %>
         </div>
         <div class="stat-title">Countries visited</div>
+
+        <dialog id="countries_visited" class="modal">
+          <div class="modal-box">
+            <h3 class="font-bold text-lg">Countries visited</h3>
+            <p class="py-4">
+              <% current_user.countries_visited.each do |country| %>
+                <p><%= country %></p>
+              <% end %>
+            </p>
+          </div>
+          <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+          </form>
+        </dialog>
       </div>
 
       <div class="stat text-center">
-        <div class="stat-value">
+        <div class="stat-value" onclick="cities_visited.showModal()">
           <%= current_user.total_cities %>
         </div>
         <div class="stat-title">Cities visited</div>
+                <dialog id="cities_visited" class="modal">
+          <div class="modal-box">
+            <h3 class="font-bold text-lg">Countries visited</h3>
+            <p class="py-4">
+              <% current_user.cities_visited.each do |city| %>
+                <p><%= city %></p>
+              <% end %>
+            </p>
+          </div>
+          <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+          </form>
+        </dialog>
       </div>
     <% end %>
   </div>

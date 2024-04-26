@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Stat, type: :model do
@@ -13,19 +15,31 @@ RSpec.describe Stat, type: :model do
     describe '.year_cities_and_countries' do
       subject { described_class.year_cities_and_countries(year) }
 
+      let(:timestamp) { DateTime.new(year, 1, 1, 0, 0, 0) }
+
       before do
-        stub_const('MINIMUM_POINTS_IN_CITY', 1)
+        stub_const('CITY_VISIT_THRESHOLD', 60)
       end
 
       context 'when there are points' do
         let!(:points) do
-          create_list(:point, 3, city: 'City', country: 'Country', timestamp: DateTime.new(year, 1))
-          create_list(:point, 2, city: 'Some City', country: 'Another country', timestamp: DateTime.new(year, 2))
+          [
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 10.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 40.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 50.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 60.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 70.minutes),
+            create(:point, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 80.minutes),
+            create(:point, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 90.minutes)
+          ]
         end
 
-
         it 'returns countries and cities' do
-          expect(subject).to eq(countries: 2, cities: 2)
+          # User spent only 20 minutes in Brugges, so it should not be included
+          expect(subject).to eq(countries: 2, cities: 1)
         end
       end
 
@@ -50,8 +64,8 @@ RSpec.describe Stat, type: :model do
         let(:expected_years) { (year..Time.current.year).to_a.reverse }
 
         before do
-          create(:stat, year: 2021, user: user)
-          create(:stat, year: 2020, user: user)
+          create(:stat, year: 2021, user:)
+          create(:stat, year: 2020, user:)
         end
 
         it 'returns years' do
@@ -64,7 +78,7 @@ RSpec.describe Stat, type: :model do
       subject { stat.distance_by_day }
 
       let(:user) { create(:user) }
-      let(:stat) { create(:stat, year: year, month: 1, user: user) }
+      let(:stat) { create(:stat, year:, month: 1, user:) }
       let(:expected_distance) do
         # 31 day of January
         (1..31).map { |day| [day, 0] }
@@ -93,7 +107,7 @@ RSpec.describe Stat, type: :model do
     describe '#timespan' do
       subject { stat.send(:timespan) }
 
-      let(:stat) { build(:stat, year: year, month: 1) }
+      let(:stat) { build(:stat, year:, month: 1) }
       let(:expected_timespan) { DateTime.new(year, 1).beginning_of_month..DateTime.new(year, 1).end_of_month }
 
       it 'returns timespan' do
@@ -111,8 +125,8 @@ RSpec.describe Stat, type: :model do
 
       context 'when there are stats' do
         let!(:stats) do
-          create(:stat, year: year, month: 1, distance: 100, user: user)
-          create(:stat, year: year, month: 2, distance: 200, user: user)
+          create(:stat, year:, month: 1, distance: 100, user:)
+          create(:stat, year:, month: 2, distance: 200, user:)
         end
 
         before do

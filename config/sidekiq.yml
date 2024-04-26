@@ -1,4 +1,5 @@
 :queues:
-  - critical
   - default
-  - low
+  - imports
+  - stats
+  - reverse_geocoding

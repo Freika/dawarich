@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe 'Imports', type: :request do
@@ -21,7 +23,7 @@ RSpec.describe 'Imports', type: :request do
       end
 
       context 'when user has imports' do
-        let!(:import) { create(:import, user: user) }
+        let!(:import) { create(:import, user:) }
 
         it 'displays imports' do
           get imports_path
@@ -40,15 +42,15 @@ RSpec.describe 'Imports', type: :request do
       before { sign_in user }
 
       it 'queues import job' do
-        expect {
+        expect do
           post imports_path, params: { import: { source: 'owntracks', files: [file] } }
-        }.to have_enqueued_job(ImportJob).on_queue('default').at_least(1).times
+        end.to have_enqueued_job(ImportJob).on_queue('imports').at_least(1).times
       end
 
       it 'creates a new import' do
-        expect {
+        expect do
           post imports_path, params: { import: { source: 'owntracks', files: [file] } }
-        }.to change(user.imports, :count).by(1)
+        end.to change(user.imports, :count).by(1)
 
         expect(response).to redirect_to(imports_path)
       end

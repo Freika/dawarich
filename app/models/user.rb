@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class User < ApplicationRecord
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
@@ -6,24 +8,41 @@ class User < ApplicationRecord
 
   has_many :imports, dependent: :destroy
   has_many :points, through: :imports
-  has_many :stats
+  has_many :stats, dependent: :destroy
 
   after_create :create_api_key
 
   def export_data
-    ::ExportSerializer.new(points, self.email).call
+    ::ExportSerializer.new(points, email).call
+  end
+
+  def countries_visited
+    stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact
+  end
+
+  def cities_visited
+    stats
+      .where.not(toponyms: nil)
+      .pluck(:toponyms)
+      .flatten
+      .reject { |toponym| toponym['cities'].blank? }
+      .pluck('cities')
+      .flatten
+      .pluck('city')
+      .uniq
+      .compact
   end
 
   def total_km
-    Stat.where(user: self).sum(:distance)
+    stats.sum(:distance)
   end
 
   def total_countries
-    Stat.where(user: self).pluck(:toponyms).flatten.map { _1['country'] }.uniq.size
+    countries_visited.size
   end
 
   def total_cities
-    Stat.where(user: self).pluck(:toponyms).flatten.size
+    cities_visited.size
   end
 
   def total_reverse_geocoded

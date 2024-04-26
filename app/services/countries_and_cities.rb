@@ -27,23 +27,21 @@ class CountriesAndCities
       grouped_points
         .pluck(:city, :timestamp) # Extract city and timestamp
         .delete_if { _1.first.nil? } # Remove records without city
-        .group_by { |city, _| city }
+        .group_by { |city, _| city } # Group by city
         .transform_values do |cities|
           {
             points: cities.count,
-            timestamp: cities.map(&:last).max # Get the maximum timestamp
+            last_timestamp: cities.map(&:last).max, # Get the maximum timestamp
+            stayed_for: ((cities.map(&:last).max - cities.map(&:last).min).to_i / 60) # Calculate the time stayed in minutes
           }
         end
     end
   end
 
   def filter_cities(mapped_with_cities)
-    # In future, we would want to remove cities where user spent less than
-    # 1 hour per day
-
-    # Remove cities with less than MINIMUM_POINTS_IN_CITY
+    # Remove cities where user stayed for less than 1 hour
     mapped_with_cities.transform_values do |cities|
-      cities.reject { |_, data| data[:points] < MINIMUM_POINTS_IN_CITY }
+      cities.reject { |_, data| data[:stayed_for] < CITY_VISIT_THRESHOLD }
     end
   end
 
@@ -51,7 +49,9 @@ class CountriesAndCities
     hash.map do |country, cities|
       {
         country:,
-        cities: cities.map { |city, data| { city:, points: data[:points], timestamp: data[:timestamp] } }
+        cities: cities.map do |city, data|
+          { city:, points: data[:points], timestamp: data[:last_timestamp], stayed_for: data[:stayed_for]}
+        end
       }
     end
   end
