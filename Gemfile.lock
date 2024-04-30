@@ -295,7 +295,7 @@ GEM
     ruby-progressbar (1.13.0)
     shoulda-matchers (6.2.0)
       activesupport (>= 5.2.0)
-    shrine (3.5.0)
+    shrine (3.6.0)
       content_disposition (~> 1.0)
       down (~> 5.1)
     sidekiq (7.2.4)
@@ -389,7 +389,7 @@ DEPENDENCIES
   rspec-rails
   rubocop-rails
   shoulda-matchers
-  shrine (~> 3.5)
+  shrine (~> 3.6)
   sidekiq
   sidekiq-cron
   simplecov
