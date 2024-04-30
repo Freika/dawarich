@@ -21,7 +21,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
   dawarich_app:
-    image: freikin/dawarich:0.1.6.1
+    image: freikin/dawarich:latest
     container_name: dawarich_app
     volumes:
       - gem_cache:/usr/local/bundle/gems
@@ -40,13 +40,13 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      MINIMUM_POINTS_IN_CITY: 5
+      CITY_VISIT_THRESHOLD: 60
       APPLICATION_HOST: localhost
     depends_on:
       - dawarich_db
       - dawarich_redis
   dawarich_sidekiq:
-    image: freikin/dawarich:0.1.6.1
+    image: freikin/dawarich:latest
     container_name: dawarich_sidekiq
     volumes:
       - gem_cache:/usr/local/bundle/gems

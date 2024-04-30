@@ -23,7 +23,7 @@
       </div>
 
       <div class="stat text-center">
-        <div class="stat-value text-warning" onclick="countries_visited.showModal()">
+        <div class="stat-value text-warning underline hover:no-underline  hover:cursor-pointer" onclick="countries_visited.showModal()">
           <%= number_with_delimiter current_user.total_countries %>
         </div>
         <div class="stat-title">Countries visited</div>
@@ -44,7 +44,7 @@
       </div>
 
       <div class="stat text-center">
-        <div class="stat-value" onclick="cities_visited.showModal()">
+        <div class="stat-value hover:cursor-pointer hover:no-underline underline" onclick="cities_visited.showModal()">
           <%= current_user.total_cities %>
         </div>
         <div class="stat-title">Cities visited</div>
