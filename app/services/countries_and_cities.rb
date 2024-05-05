@@ -41,7 +41,7 @@ class CountriesAndCities
   def filter_cities(mapped_with_cities)
     # Remove cities where user stayed for less than 1 hour
     mapped_with_cities.transform_values do |cities|
-      cities.reject { |_, data| data[:stayed_for] < CITY_VISIT_THRESHOLD }
+      cities.reject { |_, data| data[:stayed_for] < MIN_MINUTES_SPENT_IN_CITY }
     end
   end
 

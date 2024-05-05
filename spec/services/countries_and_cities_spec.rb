@@ -27,9 +27,9 @@ RSpec.describe CountriesAndCities do
       ]
     end
 
-    context 'when CITY_VISIT_THRESHOLD is 60 (in minutes)' do
+    context 'when MIN_MINUTES_SPENT_IN_CITY is 60 (in minutes)' do
       before do
-        stub_const('CITY_VISIT_THRESHOLD', 60)
+        stub_const('MIN_MINUTES_SPENT_IN_CITY', 60)
       end
 
       context 'when user stayed in the city for more than 1 hour' do

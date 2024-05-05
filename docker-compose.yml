@@ -40,7 +40,7 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      CITY_VISIT_THRESHOLD: 60
+      MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOST: localhost
     depends_on:
       - dawarich_db

@@ -18,7 +18,7 @@ RSpec.describe Stat, type: :model do
       let(:timestamp) { DateTime.new(year, 1, 1, 0, 0, 0) }
 
       before do
-        stub_const('CITY_VISIT_THRESHOLD', 60)
+        stub_const('MIN_MINUTES_SPENT_IN_CITY', 60)
       end
 
       context 'when there are points' do

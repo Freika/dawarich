@@ -41,7 +41,7 @@ Copy the contents of the `docker-compose.yml` file to your server and run `docke
 ## Environment variables
 
 ```
-CITY_VISIT_THRESHOLD — minimum minutes between two points to consider them as visited the same city, e.g. `60`
+MIN_MINUTES_SPENT_IN_CITY — minimum minutes between two points to consider them as visited the same city, e.g. `60`
 MAP_CENTER — default map center, e.g. `55.7558,37.6176`
 TIME_ZONE — time zone, e.g. `Europe/Berlin`
 APPLICATION_HOST — host of the application, e.g. `localhost` or `dawarich.example.com`
