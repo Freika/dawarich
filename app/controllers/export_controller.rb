@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ExportController < ApplicationController
   before_action :authenticate_user!
 
@@ -6,12 +8,17 @@ class ExportController < ApplicationController
   end
 
   def download
-    first_point_datetime = Time.at(current_user.points.first.timestamp).to_s
-    last_point_datetime = Time.at(current_user.points.last.timestamp).to_s
-    filename = "dawarich-export-#{first_point_datetime}-#{last_point_datetime}.json".gsub(' ', '_')
-
     export = current_user.export_data
 
-    send_data export, filename: filename
+    send_data export, filename:
+  end
+
+  private
+
+  def filename
+    first_point_datetime = Time.zone.at(current_user.points.first.timestamp).to_s
+    last_point_datetime = Time.zone.at(current_user.points.last.timestamp).to_s
+
+    "dawarich-export-#{first_point_datetime}-#{last_point_datetime}.json".gsub(' ', '_')
   end
 end

@@ -45,7 +45,10 @@ class Stat < ApplicationRecord
 
     data = CountriesAndCities.new(points).call
 
-    { countries: data.map { _1[:country] }.uniq.count, cities: data.sum { |country| country[:cities].count } }
+    {
+      countries: data.map { _1[:country] }.uniq.count,
+      cities: data.sum { |country| country[:cities].count }
+    }
   end
 
   def self.years
