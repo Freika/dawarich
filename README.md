@@ -1,5 +1,7 @@
 # Dawarich
 
+[Discord](https://discord.gg/pHsBjpt5J8) | [Support the project](https://ko-fi.com/freika)
+
 Dawarich is a self-hosted web application to replace Google Timeline (aka Google Location History). It allows you to import your location history from Google Maps Timeline and Owntracks, view it on a map and see some statistics, such as the number of countries and cities visited, and distance traveled.
 
 You can find changelog [here](CHANGELOG.md).
