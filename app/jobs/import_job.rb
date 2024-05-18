@@ -20,7 +20,8 @@ class ImportJob < ApplicationJob
 
   def parser(source)
     case source
-    when 'google' then GoogleMaps::TimelineParser
+    when 'google_semantic_history' then GoogleMaps::SemanticHistoryParser
+    when 'google_records' then GoogleMaps::RecordsParser
     when 'owntracks' then OwnTracks::ExportParser
     end
   end

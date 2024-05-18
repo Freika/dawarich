@@ -1,13 +1,14 @@
+# frozen_string_literal: true
+
 class ImportsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_import, only: %i[ show destroy ]
+  before_action :set_import, only: %i[show destroy]
 
   def index
     @imports = current_user.imports
   end
 
-  def show
-  end
+  def show; end
 
   def new
     @import = Import.new
@@ -39,7 +40,7 @@ class ImportsController < ApplicationController
 
   def destroy
     @import.destroy!
-    redirect_to imports_url, notice: "Import was successfully destroyed.", status: :see_other
+    redirect_to imports_url, notice: 'Import was successfully destroyed.', status: :see_other
   end
 
   private

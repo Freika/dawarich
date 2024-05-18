@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class GoogleMaps::TimelineParser
+class GoogleMaps::SemanticHistoryParser
   attr_reader :import
 
   def initialize(import)

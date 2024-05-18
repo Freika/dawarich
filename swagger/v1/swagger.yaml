@@ -71,7 +71,7 @@ paths:
                 summary: Creates a batch of points
                 value:
                   locations:
-                  - type: FeatureCollection
+                  - type: Feature
                     geometry:
                       type: Point
                       coordinates:
@@ -172,7 +172,7 @@ paths:
                   lat: 52.502397
                   lon: 13.356718
                   tid: Swagger
-                  tst: 1716033410
+                  tst: 1716036830
 servers:
 - url: http://{defaultHost}
   variables:
