@@ -12,6 +12,8 @@ To track your location, install the [Owntracks app](https://owntracks.org/bookle
 
 To import your Google Maps Timeline data, download your location history from [Google Takeout](https://takeout.google.com/) and upload it to Dawarich.
 
+- [How to import Google Location History to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Takeout-data)
+
 ## Features
 
 ### Location Tracking
