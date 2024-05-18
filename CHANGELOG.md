@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.2] — 2024-05-18
+
+### Added
+
+- Swagger docs, can be found at `https:<your-host>/api-docs`
+
+---
+
 ## [0.2.1] — 2024-05-18
 
 ### Added
@@ -15,6 +23,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Dark/light theme switcher in navbar is now being saved in user settings, so it persists between sessions
 
+---
+
 ## [0.2.0] — 2024-05-05
 
 *Breaking changes:*
@@ -24,6 +34,8 @@ This release changes how Dawarich handles a city visit threshold. Previously, th
 The logic behind this is the following: if you have a lot of points in a city, it doesn't mean you've spent a lot of time there, especially if your OwnTracks app was in "Move" mode. So, it's better to consider the time spent in a city rather than the number of points.
 
 In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY` environment variable with `MIN_MINUTES_SPENT_IN_CITY`. The default value is `60`, in minutes.
+
+---
 
 ## [0.1.9] — 2024-04-25
 
@@ -39,6 +51,7 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 - `ActiveStorage::FileNotFoundError` error when uploading export files
 
+---
 
 ## [0.1.8.1] — 2024-04-21
 
@@ -50,6 +63,8 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 - Consider timezone when parsing datetime params in points controller
 - Add rescue for check version service class
+
+---
 
 ## [0.1.8] — 2024-04-21
 
@@ -63,6 +78,8 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 - Disabled map points rendering by default to improve performance on big datasets
 
+---
+
 ## [0.1.7] — 2024-04-17
 
 ### Added
@@ -74,17 +91,23 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 - Added content padding for mobile view
 - Fixed stat card layout for mobile view
 
+---
+
 ## [0.1.6.3] — 2024-04-07
 
 ### Changed
 
 - Removed strong_params from POST /api/v1/points
 
+---
+
 ## [0.1.6.1] — 2024-04-06
 
 ### Fixed
 
 - `ActiveStorage::FileNotFoundError: ActiveStorage::FileNotFoundError` error when uploading export files
+
+---
 
 ## [0.1.6] — 2024-04-06
 
@@ -97,6 +120,8 @@ You can now use [Overland](https://overland.p3k.app/) mobile app to track your l
 ### Changed
 
 ### Fixed
+
+---
 
 ## [0.1.5] — 2024-04-05
 

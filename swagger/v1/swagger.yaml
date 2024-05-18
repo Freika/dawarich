@@ -4,6 +4,96 @@ info:
   title: API V1
   version: v1
 paths:
+  "/api/v1/overland/batches":
+    post:
+      summary: Creates a batch of points
+      tags:
+      - Batches
+      parameters: []
+      responses:
+        '201':
+          description: Batch of points created
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                geometry:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    coordinates:
+                      type: array
+                properties:
+                  type: object
+                  properties:
+                    timestamp:
+                      type: string
+                    altitude:
+                      type: number
+                    speed:
+                      type: number
+                    horizontal_accuracy:
+                      type: number
+                    vertical_accuracy:
+                      type: number
+                    motion:
+                      type: array
+                    pauses:
+                      type: boolean
+                    activity:
+                      type: string
+                    desired_accuracy:
+                      type: number
+                    deferred:
+                      type: number
+                    significant_change:
+                      type: string
+                    locations_in_payload:
+                      type: number
+                    device_id:
+                      type: string
+                    wifi:
+                      type: string
+                    battery_state:
+                      type: string
+                    battery_level:
+                      type: number
+                required:
+                - geometry
+                - properties
+            examples:
+              '0':
+                summary: Creates a batch of points
+                value:
+                  locations:
+                  - type: FeatureCollection
+                    geometry:
+                      type: Point
+                      coordinates:
+                      - 13.356718
+                      - 52.502397
+                    properties:
+                      timestamp: '2021-06-01T12:00:00Z'
+                      altitude: 0
+                      speed: 0
+                      horizontal_accuracy: 0
+                      vertical_accuracy: 0
+                      motion: []
+                      pauses: false
+                      activity: unknown
+                      desired_accuracy: 0
+                      deferred: 0
+                      significant_change: unknown
+                      locations_in_payload: 1
+                      device_id: Swagger
+                      wifi: unknown
+                      battery_state: unknown
+                      battery_level: 0
   "/api/v1/points":
     post:
       summary: Creates a point
@@ -82,7 +172,7 @@ paths:
                   lat: 52.502397
                   lon: 13.356718
                   tid: Swagger
-                  tst: 1716032145
+                  tst: 1716033410
 servers:
 - url: http://{defaultHost}
   variables:

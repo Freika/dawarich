@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Overland::BatchCreatingJob < ApplicationJob
   queue_as :default
 

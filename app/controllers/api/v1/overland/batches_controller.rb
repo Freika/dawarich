@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Api::V1::Overland::BatchesController < ApplicationController
   skip_forgery_protection
 
