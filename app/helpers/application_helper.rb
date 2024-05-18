@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ApplicationHelper
   def classes_for_flash(flash_type)
     case flash_type.to_sym
@@ -47,7 +49,7 @@ module ApplicationHelper
     Stat.year_distance(year).sum { _1[1] }
   end
 
-  def is_past?(year, month)
+  def past?(year, month)
     DateTime.new(year, month).past?
   end
 
@@ -65,5 +67,9 @@ module ApplicationHelper
 
   def app_version
     File.read('.app_version').strip
+  end
+
+  def app_theme
+    current_user&.theme == 'light' ? 'light' : 'dark'
   end
 end

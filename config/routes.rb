@@ -1,4 +1,7 @@
+# frozen_string_literal: true
+
 Rails.application.routes.draw do
+  get 'settings/theme', to: 'settings#theme'
   get 'export', to: 'export#index'
   get 'export/download', to: 'export#download'
 
