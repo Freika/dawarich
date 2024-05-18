@@ -40,7 +40,7 @@
     <ul>
       <% country[:cities].each do |city| %>
         <li>
-          <%= city[:city] %> (<%= Time.zone.at(city[:timestamp]).strftime("%d.%m.%Y") %>)
+          <%= city[:city] %> (<%= link_to_date(city[:timestamp]) %>)
         </li>
       <% end %>
     </ul>
