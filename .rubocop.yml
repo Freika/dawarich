@@ -2,3 +2,12 @@ require: rubocop-rails
 
 Style/Documentation:
   Enabled: false
+
+Style/ClassAndModuleChildren:
+  Enabled: false
+
+Layout/HashAlignment:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: false

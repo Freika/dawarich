@@ -6,6 +6,11 @@ require_relative '../config/environment'
 
 abort('The Rails environment is running in production mode!') if Rails.env.production?
 require 'rspec/rails'
+require 'rswag/specs'
+
+require 'rake'
+
+Rails.application.load_tasks
 # Add additional requires below this line. Rails is not loaded until this point!
 
 Dir[Rails.root.join('spec/support/**/*.rb')].sort.each { |f| require f }
@@ -27,8 +32,14 @@ RSpec.configure do |config|
   config.include FactoryBot::Syntax::Methods
   config.include Devise::Test::IntegrationHelpers, type: :request
 
+  config.rswag_dry_run = false
+
   config.before do
     ActiveJob::Base.queue_adapter = :test
+  end
+
+  config.after(:suite) do
+    Rake::Task['rswag:generate'].invoke
   end
 end
 

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  mount Rswag::Api::Engine => '/api-docs'
+  mount Rswag::Ui::Engine => '/api-docs'
   get 'settings/theme', to: 'settings#theme'
   get 'export', to: 'export#index'
   get 'export/download', to: 'export#download'

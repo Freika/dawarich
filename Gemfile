@@ -13,6 +13,8 @@ gem 'pg'
 gem 'puma'
 gem 'pundit'
 gem 'rails'
+gem 'rswag-api'
+gem 'rswag-ui'
 gem 'shrine', '~> 3.6'
 gem 'sidekiq'
 gem 'sidekiq-cron'
@@ -30,6 +32,7 @@ group :development, :test do
   gem 'pry-byebug'
   gem 'pry-rails'
   gem 'rspec-rails'
+  gem 'rswag-specs'
 end
 
 group :test do

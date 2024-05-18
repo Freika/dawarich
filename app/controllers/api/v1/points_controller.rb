@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Api::V1::PointsController < ApplicationController
   skip_forgery_protection
 
