@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.1] — 2024-05-18
+
+### Added
+
+- Cities, visited by user and listed in right sidebar now also have an active link to a date they were visited
+
+### Fixed
+
+- Dark/light theme switcher in navbar is now being saved in user settings, so it persists between sessions
+
 ## [0.2.0] — 2024-05-05
 
 *Breaking changes:*
