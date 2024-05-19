@@ -72,4 +72,19 @@ module ApplicationHelper
   def app_theme
     current_user&.theme == 'light' ? 'light' : 'dark'
   end
+
+  def sidebar_distance(distance)
+    return unless distance
+
+    "#{distance} km"
+  end
+
+  def sidebar_points(points)
+    return unless points
+
+    points_number = points.size
+    points_pluralized = pluralize(points_number, 'point')
+
+    "(#{points_pluralized})"
+  end
 end

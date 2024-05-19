@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.4] — 2024-05-19
+
+### Added
+
+- In right sidebar you can now see the total amount of geopoints aside of kilometers traveled
+
+### Fixed
+
+- Improved overall performance if the application by ignoring `raw_data` column during requests to `imports` and `points` tables.
+
+---
+
+
 ## [0.2.3] — 2024-05-18
 
 ### Added
