@@ -19,7 +19,7 @@ export default class extends Controller {
     var markersLayer = L.layerGroup(markersArray)
 
     var polylineCoordinates = markers.map(element => element.slice(0, 2));
-    var polylineLayer = L.polyline(polylineCoordinates)
+    var polylineLayer = L.polyline(polylineCoordinates, { color: 'blue', opacity: 0.6, weight: 3 })
 
     var controlsLayer = {
       "Points": markersLayer,

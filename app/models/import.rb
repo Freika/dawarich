@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Import < ApplicationRecord
-  self.ignored_columns = %w[raw_data]
+  # self.ignored_columns = %w[raw_data]
 
   belongs_to :user
   has_many :points, dependent: :destroy

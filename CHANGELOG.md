@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.5] — 2024-05-21
+
+### Fixed
+
+- Stop ignoring `raw_data` column during requests to `imports` and `points` tables. This was preventing points from being created.
+
 ## [0.2.4] — 2024-05-19
 
 ### Added
