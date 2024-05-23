@@ -10,11 +10,20 @@
 
       <pre class="bg-gray-100 rounded-lg my-2">
         <code class="language-bash">
-          $ rake import:big_file['tmp/Records.json','user@email.com']
+          $ bundle exec rake import:big_file['tmp/Records.json','user@email.com']
         </code>
       </pre>
 
       Don't forget to replace email with email address of your Dawarich user.
+
+      The command must be ran in your docker container, so you need to connect to it first:
+
+      <pre class="bg-gray-100 rounded-lg my-2">
+        <code class="language-bash">
+          $ docker exec -it dawarich_web_1 bash
+        </code>
+
+
     </span>
   </div>
 
