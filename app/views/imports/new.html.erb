@@ -3,7 +3,19 @@
 
   <div role="alert" class="alert alert-info my-5">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-    <span>To import <code>Records.json</code> file from your Google Takeout Archive, use rake task</span>
+    <span>
+      To import <code>Records.json</code> file from your Google Takeout Archive, use rake task.
+
+      Upload your json file to your server, into the <code>tmp</code> folder and run the following command:
+
+      <pre class="bg-gray-100 rounded-lg my-2">
+        <code class="language-bash">
+          $ rake import:big_file['tmp/Records.json','user@email.com']
+        </code>
+      </pre>
+
+      Don't forget to replace email with email address of your Dawarich user.
+    </span>
   </div>
 
   <%= render "form", import: @import %>
