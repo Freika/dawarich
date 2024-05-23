@@ -15,12 +15,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Instruction on how to import Google Takeout data to the application
 
+---
+
 ## [0.3.1] — 2024-05-23
 
 ### Added
 
 - Instruction on how to import Google Takeout data to the application
 
+---
 
 ## [0.3.0] — 2024-05-23
 
