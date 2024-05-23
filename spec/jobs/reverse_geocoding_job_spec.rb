@@ -14,7 +14,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       before { stub_const('REVERSE_GEOCODING_ENABLED', false) }
 
       it 'does not update point' do
-        expect { perform }.not_to change { point.reload.city }
+        expect { perform }.not_to(change { point.reload.city })
       end
 
       it 'does not call Geocoder' do

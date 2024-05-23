@@ -1,4 +1,4 @@
-<%= form_with(model: import, class: "contents") do |form| %>
+<%= form_with model: import, class: "contents" do |form| %>
   <% if import.errors.any? %>
     <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
       <h2><%= pluralize(import.errors.count, "error") %> prohibited this import from being saved:</h2>

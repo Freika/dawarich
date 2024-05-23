@@ -12,8 +12,10 @@ class User < ApplicationRecord
 
   after_create :create_api_key
 
-  def export_data
-    ::ExportSerializer.new(points, email).call
+  def export_data(start_at: nil, end_at: nil)
+    geopoints = time_framed_points(start_at, end_at)
+
+    ::ExportSerializer.new(geopoints, email).call
   end
 
   def countries_visited
@@ -46,13 +48,26 @@ class User < ApplicationRecord
   end
 
   def total_reverse_geocoded
-    points.where.not(country: nil, city: nil).count
+    points.select(:id).where.not(country: nil, city: nil).count
   end
 
   private
 
   def create_api_key
     self.api_key = SecureRandom.hex(16)
+
     save
+  end
+
+  def time_framed_points(start_at, end_at)
+    return points.without_raw_data if start_at.nil? && end_at.nil?
+
+    if start_at && end_at
+      points.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
+    elsif start_at
+      points.without_raw_data.where('timestamp >= ?', start_at)
+    elsif end_at
+      points.without_raw_data.where('timestamp <= ?', end_at)
+    end
   end
 end

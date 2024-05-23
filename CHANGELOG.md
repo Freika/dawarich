@@ -5,11 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.0] — 2024-05-23
+
+### Added
+
+- Add Points page to display all the points as a table with pagination to allow users to delete points
+- Sidekiq web interface to monitor background jobs is now available at `/sidekiq`
+- Now you can choose a date range of points to be exported
+
+### Fixed
+
+- Stop selecting `raw_data` column during requests to `imports` and `points` tables to improve performance.
+
+### Changed
+
+- Rename PointsController to MapController along with all the views and routes
+
+---
+
 ## [0.2.5] — 2024-05-21
 
 ### Fixed
 
 - Stop ignoring `raw_data` column during requests to `imports` and `points` tables. This was preventing points from being created.
+
+---
 
 ## [0.2.4] — 2024-05-19
 

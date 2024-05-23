@@ -1,0 +1,113 @@
+{
+  "timelineObjects": [{
+    "activitySegment": {
+      "startLocation": {
+      },
+      "endLocation": {
+      },
+      "duration": {
+        "startTimestamp": "2013-12-01T07:05:14.222Z",
+        "endTimestamp": "2013-12-01T07:11:13.214Z"
+      },
+      "confidence": "LOW",
+      "activities": [{
+        "activityType": "WALKING",
+        "probability": 0.0
+      }, {
+        "activityType": "CYCLING",
+        "probability": 0.0
+      }, {
+        "activityType": "IN_VEHICLE",
+        "probability": 0.0
+      }],
+      "waypointPath": {
+        "waypoints": [{
+          "latE7": 533407440,
+          "lngE7": 837026901
+        }, {
+          "latE7": 533410301,
+          "lngE7": 837051010
+        }],
+        "source": "BACKFILLED",
+        "distanceMeters": 209.65263509609417,
+        "travelMode": "WALK",
+        "confidence": 1.0
+      },
+      "editConfirmationStatus": "NOT_CONFIRMED"
+    }
+  }, {
+    "activitySegment": {
+      "startLocation": {
+      },
+      "endLocation": {
+      },
+      "duration": {
+        "startTimestamp": "2013-12-01T07:11:13.214Z",
+        "endTimestamp": "2013-12-01T08:25:17.226Z"
+      },
+      "distance": 3853,
+      "confidence": "LOW",
+      "activities": [{
+        "activityType": "IN_VEHICLE",
+        "probability": 0.0
+      }, {
+        "activityType": "WALKING",
+        "probability": 0.0
+      }, {
+        "activityType": "CYCLING",
+        "probability": 0.0
+      }],
+      "waypointPath": {
+        "waypoints": [{
+          "latE7": 533410301,
+          "lngE7": 837051010
+        }, {
+          "latE7": 533519706,
+          "lngE7": 837596359
+        }],
+        "source": "BACKFILLED",
+        "distanceMeters": 4877.009216418153,
+        "travelMode": "DRIVE",
+        "confidence": 1.0
+      },
+      "editConfirmationStatus": "NOT_CONFIRMED"
+    }
+  }, {
+    "activitySegment": {
+      "startLocation": {
+      },
+      "endLocation": {
+      },
+      "duration": {
+        "startTimestamp": "2013-12-01T08:25:17.226Z",
+        "endTimestamp": "2013-12-01T09:11:45.637Z"
+      },
+      "distance": 413,
+      "confidence": "LOW",
+      "activities": [{
+        "activityType": "WALKING",
+        "probability": 0.0
+      }, {
+        "activityType": "CYCLING",
+        "probability": 0.0
+      }, {
+        "activityType": "IN_VEHICLE",
+        "probability": 0.0
+      }],
+      "waypointPath": {
+        "waypoints": [{
+          "latE7": 533519706,
+          "lngE7": 837596359
+        }, {
+          "latE7": 533481369,
+          "lngE7": 837608337
+        }],
+        "source": "BACKFILLED",
+        "distanceMeters": 529.8583466261781,
+        "travelMode": "WALK",
+        "confidence": 1.0
+      },
+      "editConfirmationStatus": "NOT_CONFIRMED"
+    }
+  }]
+}

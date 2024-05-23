@@ -87,4 +87,8 @@ module ApplicationHelper
 
     "(#{points_pluralized})"
   end
+
+  def active_class?(link_path)
+    'btn-active' if current_page?(link_path)
+  end
 end

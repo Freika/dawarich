@@ -11,7 +11,7 @@ class Stat < ApplicationRecord
       end_of_day = day.end_of_day.to_i
 
       # We have to filter by user as well
-      points = Point.where(timestamp: beginning_of_day..end_of_day)
+      points = Point.without_raw_data.where(timestamp: beginning_of_day..end_of_day)
 
       data = { day: index, distance: 0 }
 

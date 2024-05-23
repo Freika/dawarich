@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Point < ApplicationRecord
   # self.ignored_columns = %w[raw_data]
 
@@ -14,6 +16,14 @@ class Point < ApplicationRecord
   enum connection: { mobile: 0, wifi: 1, offline: 2 }, _suffix: true
 
   after_create :async_reverse_geocode
+
+  def self.without_raw_data
+    select(column_names - ['raw_data'])
+  end
+
+  def recorded_at
+    Time.zone.at(timestamp)
+  end
 
   private
 

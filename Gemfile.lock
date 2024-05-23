@@ -123,6 +123,7 @@ GEM
     factory_bot_rails (6.4.3)
       factory_bot (~> 6.4)
       railties (>= 5.0.0)
+    fakeredis (0.1.4)
     ffaker (2.23.0)
     foreman (0.88.1)
     fugit (1.10.1)
@@ -184,6 +185,8 @@ GEM
       racc (~> 1.4)
     nokogiri (1.16.5-x86_64-linux)
       racc (~> 1.4)
+    oj (3.16.3)
+      bigdecimal (>= 3.0)
     optimist (3.1.0)
     orm_adapter (0.5.0)
     parallel (1.24.0)
@@ -374,6 +377,7 @@ GEM
     websocket-driver (0.7.6)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    will_paginate (4.0.0)
     zeitwerk (2.6.14)
 
 PLATFORMS
@@ -391,10 +395,12 @@ DEPENDENCIES
   devise
   dotenv-rails
   factory_bot_rails
+  fakeredis
   ffaker
   foreman
   geocoder
   importmap-rails
+  oj
   pg
   pry-byebug
   pry-rails
@@ -419,6 +425,7 @@ DEPENDENCIES
   turbo-rails
   tzinfo-data
   webmock
+  will_paginate (~> 4.0)
 
 RUBY VERSION
    ruby 3.2.3p157

@@ -1,6 +1,6 @@
 <h2 class='text-3xl font-bold mt-10'>
   <%= link_to year, "/stats/#{year}", class: "underline hover:no-underline text-#{header_colors.sample}" %>
-  <%= link_to '[Map]', points_url(year_timespan(year)), class: 'underline hover:no-underline' %>
+  <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
 </h2>
 <div class='my-10'>
   <%= column_chart(

@@ -1,0 +1,19 @@
+<tr id="<%= dom_id point %>" class='hover'>
+  <td>
+    <%= check_box_tag "point_ids[]",
+      point.id,
+      nil,
+      {
+        multiple: true,
+        form: :bulk_destroy_form,
+        data: {
+          checkbox_select_all_target: 'child',
+          action: 'change->checkbox-select-all#toggleParent'
+        }
+      }
+    %>
+  </td>
+  <td><%= point.recorded_at %></td>
+  <td><%= point.latitude %>, <%= point.longitude %></td>
+  <td></td>
+</tr>

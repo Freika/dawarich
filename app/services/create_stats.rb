@@ -33,6 +33,7 @@ class CreateStats
 
   def points(beginning_of_month_timestamp, end_of_month_timestamp)
     Point
+      .without_raw_data
       .where(timestamp: beginning_of_month_timestamp..end_of_month_timestamp)
       .order(:timestamp)
       .select(:latitude, :longitude, :timestamp, :city, :country)

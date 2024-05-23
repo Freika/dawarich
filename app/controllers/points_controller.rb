@@ -1,21 +1,31 @@
 # frozen_string_literal: true
+
 class PointsController < ApplicationController
   before_action :authenticate_user!
 
   def index
-    @points = Point.where('timestamp >= ? AND timestamp <= ?', start_at, end_at).order(timestamp: :asc)
+    @points =
+      Point
+      .without_raw_data
+      .where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
+      .order(timestamp: :asc)
+      .paginate(page: params[:page], per_page: 50)
 
-    @countries_and_cities = CountriesAndCities.new(@points).call
-    @coordinates =
-      @points.pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id)
-             .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7] }
-    @distance = distance
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
-    @years = (@start_at.year..@end_at.year).to_a
+  end
+
+  def bulk_destroy
+    Point.where(id: params[:point_ids].compact).destroy_all
+
+    redirect_to points_url, notice: "Points were successfully destroyed.", status: :see_other
   end
 
   private
+
+  def point_params
+    params.fetch(:point, {})
+  end
 
   def start_at
     return 1.month.ago.beginning_of_day.to_i if params[:start_at].nil?
@@ -27,15 +37,5 @@ class PointsController < ApplicationController
     return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
 
     Time.zone.parse(params[:end_at]).to_i
-  end
-
-  def distance
-    @distance ||= 0
-
-    @coordinates.each_cons(2) do
-      @distance += Geocoder::Calculations.distance_between([_1[0], _1[1]], [_2[0], _2[1]], units: :km)
-    end
-
-    @distance.round(1)
   end
 end
