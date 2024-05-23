@@ -15,7 +15,7 @@
     <div class="label">
       <span class="label-text">Select source</span>
     </div>
-    <%= form.collection_radio_buttons :source, Import.sources, :first, :first  %>
+    <%= form.collection_radio_buttons :source, Import.sources.except('google_records'), :first, :first  %>
   </label>
 
   <label class="form-control w-full max-w-xs my-5">

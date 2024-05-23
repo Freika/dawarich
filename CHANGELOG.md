@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Sidekiq web interface to monitor background jobs is now available at `/sidekiq`
 - Now you can choose a date range of points to be exported
 
+---
+
+## [0.2.6] — 2024-05-23
+
 ### Fixed
 
 - Stop selecting `raw_data` column during requests to `imports` and `points` tables to improve performance.
@@ -20,6 +24,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Rename PointsController to MapController along with all the views and routes
+
+### Added
+
+- Add Points page to display all the points as a table with pagination to allow users to delete points
 
 ---
 

@@ -31,7 +31,7 @@ class GoogleMaps::SemanticHistoryParser
     doubles = points_data.size - points
     processed = points + doubles
 
-    { raw_points: points_data.size, points: points, doubles: doubles, processed: processed }
+    { raw_points: points_data.size, points:, doubles:, processed: }
   end
 
   private

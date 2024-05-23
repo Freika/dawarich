@@ -13,6 +13,7 @@ RSpec.describe 'Exports', type: :request do
 
     it 'returns http success' do
       get '/export'
+
       expect(response).to have_http_status(:success)
     end
   end
