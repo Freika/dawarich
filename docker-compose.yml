@@ -25,6 +25,7 @@ services:
     container_name: dawarich_app
     volumes:
       - gem_cache:/usr/local/bundle/gems
+      - tmp:/var/app/tmp
     networks:
       - dawarich
     ports:
@@ -75,3 +76,4 @@ volumes:
   db_data:
   gem_cache:
   shared_data:
+  tmp:

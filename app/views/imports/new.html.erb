@@ -4,26 +4,17 @@
   <div role="alert" class="alert alert-info my-5">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
     <span>
-      To import <code>Records.json</code> file from your Google Takeout Archive, use rake task.
+      <p>To import <code>Records.json</code> file from your Google Takeout Archive, use rake task.</p>
 
-      Upload your json file to your server, into the <code>tmp</code> folder and run the following command:
+      <p class='mb-3'>Import takes a while to finish, so you might want to run it in <code>screen</code> session.</p>
 
-      <pre class="bg-gray-100 rounded-lg my-2">
-        <code class="language-bash">
-          $ bundle exec rake import:big_file['tmp/Records.json','user@email.com']
-        </code>
-      </pre>
+      <p>1. Upload your Records.json file to your server</p>
+      <p>2. Copy you Records.json to the <code>tmp</code> folder: <code>$ docker cp Records.json dawarich_app:/var/app/tmp/Records.json</code></p>
+      <p>3. Attach to the docker container: <code>$ docker exec -it dawarich_app sh</code></p>
+      <p>4. Run the rake task: <code>$ bundle exec rake import:big_file['tmp/Records.json','user@example.com']</code></p>
+      <p>5. Wait patiently for process to finish</p>
 
-      Don't forget to replace email with email address of your Dawarich user.
-
-      The command must be ran in your docker container, so you need to connect to it first:
-
-      <pre class="bg-gray-100 rounded-lg my-2">
-        <code class="language-bash">
-          $ docker exec -it dawarich_web_1 bash
-        </code>
-
-
+      <p class='mt-3'>You can monitor progress in <a href="/sidekiq" class="underline">Sidekiq UI</a></p>
     </span>
   </div>
 
