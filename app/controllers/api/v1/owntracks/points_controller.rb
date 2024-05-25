@@ -5,7 +5,7 @@ class Api::V1::Owntracks::PointsController < ApplicationController
   before_action :authenticate_api_key
 
   def create
-    Owntracks::PointCreatingJob.perform_later(point_params, current_user.id)
+    Owntracks::PointCreatingJob.perform_later(point_params, current_api_user.id)
 
     render json: {}, status: :ok
   end
