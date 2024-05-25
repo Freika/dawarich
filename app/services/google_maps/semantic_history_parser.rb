@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 class GoogleMaps::SemanticHistoryParser
-  attr_reader :import
+  attr_reader :import, :user_id
 
-  def initialize(import)
+  def initialize(import, user_id)
     @import = import
+    @user_id = user_id
   end
 
   def call
@@ -22,7 +23,8 @@ class GoogleMaps::SemanticHistoryParser
         raw_data: point_data[:raw_data],
         topic: 'Google Maps Timeline Export',
         tracker_id: 'google-maps-timeline-export',
-        import_id: import.id
+        import_id: import.id,
+        user_id:
       )
 
       points += 1

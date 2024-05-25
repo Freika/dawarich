@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 class OwnTracks::ExportParser
-  attr_reader :import, :json
+  attr_reader :import, :json, :user_id
 
-  def initialize(import)
+  def initialize(import, user_id)
     @import = import
     @json = import.raw_data
+    @user_id = user_id
   end
 
   def call
@@ -23,7 +24,8 @@ class OwnTracks::ExportParser
         raw_data: point_data[:raw_data],
         topic: point_data[:topic],
         tracker_id: point_data[:tracker_id],
-        import_id: import.id
+        import_id: import.id,
+        user_id:
       )
 
       points += 1

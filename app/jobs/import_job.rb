@@ -7,7 +7,7 @@ class ImportJob < ApplicationJob
     user = User.find(user_id)
     import = user.imports.find(import_id)
 
-    result = parser(import.source).new(import).call
+    result = parser(import.source).new(import, user_id).call
 
     import.update(
       raw_points: result[:raw_points], doubles: result[:doubles], processed: result[:processed]

@@ -180,7 +180,7 @@ paths:
                   lat: 52.502397
                   lon: 13.356718
                   tid: Swagger
-                  tst: 1716636414
+                  tst: 1716636973
 servers:
 - url: http://{defaultHost}
   variables:

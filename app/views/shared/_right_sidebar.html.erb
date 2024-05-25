@@ -4,7 +4,7 @@
   <div class="dropdown">
     <div tabindex="0" role="button" class="btn m-1">Select year</div>
     <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-      <% Stat.years.each do |year| %>
+      <% current_user.stats.years.each do |year| %>
         <li><%= link_to year, map_url(year_timespan(year).merge(year: year)) %></li>
       <% end %>
     </ul>
@@ -18,7 +18,7 @@
     <div class='grid grid-cols-3 gap-3'>
       <% (1..12).to_a.each_slice(3) do |months| %>
         <% months.each do |month_number| %>
-          <% if past?(year, month_number) && points_exist?(year, month_number) %>
+          <% if past?(year, month_number) && points_exist?(year, month_number, current_user) %>
             <%= link_to Date::ABBR_MONTHNAMES[month_number], map_url(timespan(month_number, year)), class: 'btn btn-default' %>
           <% else %>
             <div class='btn btn-disabled'><%= Date::ABBR_MONTHNAMES[month_number] %></div>

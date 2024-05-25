@@ -53,8 +53,8 @@ module ApplicationHelper
     DateTime.new(year, month).past?
   end
 
-  def points_exist?(year, month)
-    Point.where(
+  def points_exist?(year, month, user)
+    user.tracked_points.where(
       timestamp: DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
     ).exists?
   end
