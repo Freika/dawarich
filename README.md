@@ -1,6 +1,6 @@
 # Dawarich
 
-[Discord](https://discord.gg/pHsBjpt5J8) | [Support the project](https://ko-fi.com/freika)
+[Discord](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD)
 
 Dawarich is a self-hosted web application to replace Google Timeline (aka Google Location History). It allows you to import your location history from Google Maps Timeline and Owntracks, view it on a map and see some statistics, such as the number of countries and cities visited, and distance traveled.
 
@@ -8,7 +8,21 @@ You can find changelog [here](CHANGELOG.md).
 
 ## Usage
 
-To track your location, install the [Owntracks app](https://owntracks.org/booklet/guide/apps/) on your phone and configure it to send location updates to your Dawarich instance. Currently, the app only supports [HTTP mode](https://owntracks.org/booklet/tech/http/). The url to send the location updates to is `http://<your-dawarich-instance>/api/v1/points`.
+
+
+To track your location, install the [Owntracks app](https://owntracks.org/booklet/guide/apps/) or [Overland app](https://overland.p3k.app/) on your phone and configure it to send location updates to your Dawarich instance.
+
+Currently, the app only supports [HTTP mode](https://owntracks.org/booklet/tech/http/).
+
+### OwnTracks
+
+The url to send the location updates to is `http://<your-dawarich-instance>/api/v1/owntracks/points?api_key=YOUR_API_KEY`.
+
+### Overland
+
+The url to send the location updates to is `http://<your-dawarich-instance>/api/v1/overland/batches?api_key=YOUR_API_KEY`.
+
+Your API key can be found and/or generated in the user settings.
 
 To import your Google Maps Timeline data, download your location history from [Google Takeout](https://takeout.google.com/) and upload it to Dawarich.
 
@@ -21,7 +35,7 @@ To import your Google Maps Timeline data, download your location history from [G
 
 ### Location Tracking
 
-You can track your location using the Owntracks app.
+You can track your location using the Owntracks or Overland app.
 
 ### Location history
 
