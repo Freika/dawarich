@@ -3,7 +3,7 @@ class MapController < ApplicationController
   before_action :authenticate_user!
 
   def index
-    @points = Point.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at, end_at).order(timestamp: :asc)
+    @points = current_user.tracked_points.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at, end_at).order(timestamp: :asc)
 
     @countries_and_cities = CountriesAndCities.new(@points).call
     @coordinates =

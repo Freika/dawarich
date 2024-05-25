@@ -38,7 +38,7 @@ module ApplicationHelper
   end
 
   def countries_and_cities_stat(year)
-    data = Stat.year_cities_and_countries(year)
+    data = Stat.year_cities_and_countries(year, user)
     countries = data[:countries]
     cities = data[:cities]
 

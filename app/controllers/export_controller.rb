@@ -24,7 +24,7 @@ class ExportController < ApplicationController
   end
 
   def start_at
-    first_point_timestamp = Point.order(timestamp: :asc)&.first&.timestamp
+    first_point_timestamp = current_user.tracked_points.order(timestamp: :asc)&.first&.timestamp
 
     @start_at ||=
       if params[:start_at].nil? && first_point_timestamp.present?
@@ -37,7 +37,7 @@ class ExportController < ApplicationController
   end
 
   def end_at
-    last_point_timestamp = Point.order(timestamp: :desc)&.last&.timestamp
+    last_point_timestamp = current_user.tracked_points.order(timestamp: :desc)&.last&.timestamp
 
     @end_at ||=
       if params[:end_at].nil? && last_point_timestamp.present?

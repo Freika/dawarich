@@ -28,5 +28,9 @@ bundle exec rails db:create
 echo "PostgreSQL is ready. Running database migrations..."
 bundle exec rails db:prepare
 
+# Run data migrations
+echo "Running DATA migrations..."
+bundle exec rake data:migrate
+
 # run passed commands
 bundle exec ${@}

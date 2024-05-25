@@ -5,7 +5,7 @@ class Api::V1::Overland::BatchesController < ApplicationController
   before_action :authenticate_api_key
 
   def create
-    Overland::BatchCreatingJob.perform_later(batch_params)
+    Overland::BatchCreatingJob.perform_later(batch_params, current_api_user.id)
 
     render json: { result: 'ok' }, status: :created
   end

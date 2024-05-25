@@ -9,6 +9,7 @@ class User < ApplicationRecord
   has_many :imports, dependent: :destroy
   has_many :points, through: :imports
   has_many :stats, dependent: :destroy
+  has_many :tracked_points, class_name: 'Point', dependent: :destroy
 
   after_create :create_api_key
 

@@ -30,11 +30,12 @@ RSpec.describe '/points', type: :request do
   end
 
   describe 'DELETE /bulk_destroy' do
-    let(:point1) { create(:point) }
-    let(:point2) { create(:point) }
+    let(:user) { create(:user) }
+    let(:point1) { create(:point, user:) }
+    let(:point2) { create(:point, user:) }
 
     before do
-      sign_in create(:user)
+      sign_in user
     end
 
     it 'destroys the selected points' do

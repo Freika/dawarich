@@ -83,7 +83,7 @@
           <% if REVERSE_GEOCODING_ENABLED %>
             <div class="card-actions justify-end">
               <% cache [current_user, 'countries_and_cities_stat', year], skip_digest: true do %>
-                <%= countries_and_cities_stat(year) %>
+                <%= countries_and_cities_stat(year, current_user) %>
               <% end %>
             </div>
           <% end %>
