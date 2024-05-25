@@ -26,7 +26,8 @@
       class="w-full"
       data-controller="maps"
       data-coordinates="<%= @coordinates %>"
-      data-center="<%= MAP_CENTER %>">
+      data-center="<%= MAP_CENTER %>"
+      data-timezone="<%= Rails.configuration.time_zone %>">
       <div data-maps-target="container" class="h-[25rem] w-auto min-h-screen"></div>
     </div>
   </div>
