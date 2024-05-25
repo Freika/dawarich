@@ -6,6 +6,7 @@ Rails.application.routes.draw do
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
   mount Sidekiq::Web => '/sidekiq'
+
   get 'settings/theme', to: 'settings#theme'
   get 'export', to: 'export#index'
   get 'export/download', to: 'export#download'
@@ -32,10 +33,14 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      resources :points
+      resources :points, only: :create # TODO: Deprecate in 1.0
 
       namespace :overland do
         resources :batches, only: :create
+      end
+
+      namespace :owntracks do
+        resources :points, only: :create
       end
     end
   end
