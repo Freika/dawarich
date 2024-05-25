@@ -27,7 +27,7 @@ Rails.application.routes.draw do
   root to: 'home#index'
   devise_for :users
 
-  post 'settings/generate_api_key', to: 'devise/api_keys#create', as: :generate_api_key
+  post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
   get 'map', to: 'map#index'
 

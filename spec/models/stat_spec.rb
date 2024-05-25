@@ -117,7 +117,7 @@ RSpec.describe Stat, type: :model do
     end
 
     describe '#self.year_distance' do
-      subject { described_class.year_distance(year) }
+      subject { described_class.year_distance(year, user) }
 
       let(:user) { create(:user) }
       let(:expected_distance) do
