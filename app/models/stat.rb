@@ -27,8 +27,8 @@ class Stat < ApplicationRecord
     end
   end
 
-  def self.year_distance(year)
-    stats = where(year: year).order(:month)
+  def self.year_distance(year, user)
+    stats = where(year:, user:).order(:month)
 
     (1..12).to_a.map do |month|
       month_stat = stats.select { |stat| stat.month == month }.first

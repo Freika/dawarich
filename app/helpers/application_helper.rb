@@ -37,7 +37,7 @@ module ApplicationHelper
     %w[info success warning error accent secondary primary]
   end
 
-  def countries_and_cities_stat(year)
+  def countries_and_cities_stat(year, user)
     data = Stat.year_cities_and_countries(year, user)
     countries = data[:countries]
     cities = data[:cities]
@@ -45,8 +45,8 @@ module ApplicationHelper
     "#{countries} countries, #{cities} cities"
   end
 
-  def year_distance_stat_in_km(year)
-    Stat.year_distance(year).sum { _1[1] }
+  def year_distance_stat_in_km(year, user)
+    Stat.year_distance(year, user).sum { _1[1] }
   end
 
   def past?(year, month)

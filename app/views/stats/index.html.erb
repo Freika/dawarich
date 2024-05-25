@@ -77,7 +77,7 @@
           </h2>
           <p>
             <% cache [current_user, 'year_distance_stat_in_km', year], skip_digest: true do %>
-              <%= number_with_delimiter year_distance_stat_in_km(year) %>km
+              <%= number_with_delimiter year_distance_stat_in_km(year, current_user) %>km
               <% end %>
           </p>
           <% if REVERSE_GEOCODING_ENABLED %>
@@ -88,7 +88,7 @@
             </div>
           <% end %>
           <%= column_chart(
-            Stat.year_distance(year),
+            Stat.year_distance(year, current_user),
             height: '200px',
             suffix: ' km',
             xtitle: 'Days',
