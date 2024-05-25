@@ -18,7 +18,8 @@ class GoogleMaps::RecordsParser
       raw_data: data[:raw_data],
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
-      import_id: import.id
+      import_id: import.id,
+      user_id: import.user_id
     )
   end
 

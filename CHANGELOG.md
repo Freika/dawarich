@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Heatmap layer on the map to show the density of points
 
+---
+
 ## [0.4.0] — 2024-05-25
 
 **BREAKING CHANGES**:
