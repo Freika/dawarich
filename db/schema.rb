@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_05_18_095848) do
+ActiveRecord::Schema[7.1].define(version: 2024_05_25_110244) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -82,6 +82,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_05_18_095848) do
     t.string "country"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -92,6 +93,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_05_18_095848) do
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
+    t.index ["user_id"], name: "index_points_on_user_id"
   end
 
   create_table "stats", force: :cascade do |t|
@@ -125,5 +127,6 @@ ActiveRecord::Schema[7.1].define(version: 2024_05_18_095848) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "points", "users"
   add_foreign_key "stats", "users"
 end

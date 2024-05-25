@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe OwnTracks::ExportParser do
   describe '#call' do
-    subject(:parser) { described_class.new(import).call }
+    subject(:parser) { described_class.new(import, user.id).call }
 
     let(:user) { create(:user) }
     let(:import) { create(:import, user:, name: 'owntracks_export.json') }

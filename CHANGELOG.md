@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.4.0] — 2024-05-25
+
+**BREAKING CHANGES**:
+
+- `/api/v1/points` is still working, but will be **deprecated** in nearest future. Please use `/api/v1/owntracks/points` instead.
+- All existing points recorded directly to the database via Owntracks or Overland will be attached to the user with id 1.
+
+### Added
+
+- Each user now have an api key, which is required to make requests to the API. You can find your api key in your profile settings.
+- You can re-generate your api key in your profile settings.
+- In your user profile settings you can now see the instructions on how to use the API with your api key for both OwnTracks and Overland.
+- Added docs on how to use the API with your api key. Refer to `/api-docs` for more information.
+- `POST /api/v1/owntracks/points` endpoint.
+- Points are now being attached to a user directly, so you can only see your own points and no other users of your applications can see your points.
+
+### Changed
+
+- `/api/v1/overland/batches` endpoint now requires an api key to be passed in the url. You can find your api key in your profile settings.
+- All existing points recorded directly to the database will be attached to the user with id 1.
+- All stats and maps are now being calculated and rendered based on the user's points only.
+- Default `TIME_ZONE` environment variable is now set to 'UTC' in the `docker-compose.yml` file.
+
+### Fixed
+
+- Fixed a bug where marker on the map was rendering timestamp without considering the timezone.
+
+---
+
+
 ## [0.3.2] — 2024-05-23
 
 ### Added

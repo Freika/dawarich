@@ -37,24 +37,24 @@ module ApplicationHelper
     %w[info success warning error accent secondary primary]
   end
 
-  def countries_and_cities_stat(year)
-    data = Stat.year_cities_and_countries(year)
+  def countries_and_cities_stat(year, user)
+    data = Stat.year_cities_and_countries(year, user)
     countries = data[:countries]
     cities = data[:cities]
 
     "#{countries} countries, #{cities} cities"
   end
 
-  def year_distance_stat_in_km(year)
-    Stat.year_distance(year).sum { _1[1] }
+  def year_distance_stat_in_km(year, user)
+    Stat.year_distance(year, user).sum { _1[1] }
   end
 
   def past?(year, month)
     DateTime.new(year, month).past?
   end
 
-  def points_exist?(year, month)
-    Point.where(
+  def points_exist?(year, month, user)
+    user.tracked_points.where(
       timestamp: DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
     ).exists?
   end

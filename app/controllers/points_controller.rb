@@ -5,7 +5,8 @@ class PointsController < ApplicationController
 
   def index
     @points =
-      Point
+      current_user
+      .tracked_points
       .without_raw_data
       .where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
       .order(timestamp: :asc)
@@ -16,9 +17,9 @@ class PointsController < ApplicationController
   end
 
   def bulk_destroy
-    Point.where(id: params[:point_ids].compact).destroy_all
+    current_user.tracked_points.where(id: params[:point_ids].compact).destroy_all
 
-    redirect_to points_url, notice: "Points were successfully destroyed.", status: :see_other
+    redirect_to points_url, notice: 'Points were successfully destroyed.', status: :see_other
   end
 
   private

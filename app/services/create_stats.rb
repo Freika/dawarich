@@ -16,7 +16,7 @@ class CreateStats
           beginning_of_month_timestamp = DateTime.new(year, month).beginning_of_month.to_i
           end_of_month_timestamp = DateTime.new(year, month).end_of_month.to_i
 
-          points = points(beginning_of_month_timestamp, end_of_month_timestamp)
+          points = points(user, beginning_of_month_timestamp, end_of_month_timestamp)
           next if points.empty?
 
           stat = Stat.find_or_initialize_by(year:, month:, user:)
@@ -31,8 +31,9 @@ class CreateStats
 
   private
 
-  def points(beginning_of_month_timestamp, end_of_month_timestamp)
-    Point
+  def points(user, beginning_of_month_timestamp, end_of_month_timestamp)
+    user
+      .tracked_points
       .without_raw_data
       .where(timestamp: beginning_of_month_timestamp..end_of_month_timestamp)
       .order(:timestamp)

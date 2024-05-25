@@ -11,7 +11,7 @@ class Stat < ApplicationRecord
       end_of_day = day.end_of_day.to_i
 
       # We have to filter by user as well
-      points = Point.without_raw_data.where(timestamp: beginning_of_day..end_of_day)
+      points = user.tracked_points.without_raw_data.where(timestamp: beginning_of_day..end_of_day)
 
       data = { day: index, distance: 0 }
 
@@ -27,8 +27,8 @@ class Stat < ApplicationRecord
     end
   end
 
-  def self.year_distance(year)
-    stats = where(year: year).order(:month)
+  def self.year_distance(year, user)
+    stats = where(year:, user:).order(:month)
 
     (1..12).to_a.map do |month|
       month_stat = stats.select { |stat| stat.month == month }.first
@@ -40,8 +40,8 @@ class Stat < ApplicationRecord
     end
   end
 
-  def self.year_cities_and_countries(year)
-    points = Point.where(timestamp: DateTime.new(year).beginning_of_year..DateTime.new(year).end_of_year)
+  def self.year_cities_and_countries(year, user)
+    points = user.tracked_points.where(timestamp: DateTime.new(year).beginning_of_year..DateTime.new(year).end_of_year)
 
     data = CountriesAndCities.new(points).call
 

@@ -72,12 +72,26 @@ describe 'Batches API', type: :request do
         }
       }
 
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+
       response '201', 'Batch of points created' do
         let(:file_path) { 'spec/fixtures/files/overland/geodata.json' }
         let(:file) { File.open(file_path) }
         let(:json) { JSON.parse(file.read) }
         let(:params) { json }
         let(:locations) { params['locations'] }
+        let(:api_key) { create(:user).api_key }
+
+        run_test!
+      end
+
+      response '401', 'Unauthorized' do
+        let(:file_path) { 'spec/fixtures/files/overland/geodata.json' }
+        let(:file) { File.open(file_path) }
+        let(:json) { JSON.parse(file.read) }
+        let(:params) { json }
+        let(:locations) { params['locations'] }
+        let(:api_key) { nil }
 
         run_test!
       end

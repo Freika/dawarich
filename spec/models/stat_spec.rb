@@ -11,9 +11,10 @@ RSpec.describe Stat, type: :model do
 
   describe 'methods' do
     let(:year) { 2021 }
+    let(:user) { create(:user) }
 
     describe '.year_cities_and_countries' do
-      subject { described_class.year_cities_and_countries(year) }
+      subject { described_class.year_cities_and_countries(year, user) }
 
       let(:timestamp) { DateTime.new(year, 1, 1, 0, 0, 0) }
 
@@ -24,16 +25,16 @@ RSpec.describe Stat, type: :model do
       context 'when there are points' do
         let!(:points) do
           [
-            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 10.minutes),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.minutes),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 40.minutes),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 50.minutes),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 60.minutes),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 70.minutes),
-            create(:point, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 80.minutes),
-            create(:point, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 90.minutes)
+            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 10.minutes),
+            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.minutes),
+            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
+            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 40.minutes),
+            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 50.minutes),
+            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 60.minutes),
+            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 70.minutes),
+            create(:point, user:, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 80.minutes),
+            create(:point, user:, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 90.minutes)
           ]
         end
 
@@ -86,8 +87,8 @@ RSpec.describe Stat, type: :model do
 
       context 'when there are points' do
         let!(:points) do
-          create(:point, latitude: 1, longitude: 1, timestamp: DateTime.new(year, 1, 1, 1))
-          create(:point, latitude: 2, longitude: 2, timestamp: DateTime.new(year, 1, 1, 2))
+          create(:point, user:, latitude: 1, longitude: 1, timestamp: DateTime.new(year, 1, 1, 1))
+          create(:point, user:, latitude: 2, longitude: 2, timestamp: DateTime.new(year, 1, 1, 2))
         end
 
         before { expected_distance[0][1] = 157.23 }
@@ -116,7 +117,7 @@ RSpec.describe Stat, type: :model do
     end
 
     describe '#self.year_distance' do
-      subject { described_class.year_distance(year) }
+      subject { described_class.year_distance(year, user) }
 
       let(:user) { create(:user) }
       let(:expected_distance) do

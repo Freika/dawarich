@@ -96,15 +96,9 @@ export default class extends Controller {
   formatDate(timestamp) {
     let date = new Date(timestamp * 1000); // Multiply by 1000 because JavaScript works with milliseconds
 
-    // Extracting date components
-    let year = date.getFullYear();
-    let month = ('0' + (date.getMonth() + 1)).slice(-2); // Adding 1 because getMonth() returns zero-based month
-    let day = ('0' + date.getDate()).slice(-2);
-    let hours = ('0' + date.getHours()).slice(-2);
-    let minutes = ('0' + date.getMinutes()).slice(-2);
-    let seconds = ('0' + date.getSeconds()).slice(-2);
+    let timezone = this.element.dataset.timezone;
 
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    return date.toLocaleString('en-GB', { timeZone: timezone });
   }
 
   addTileLayer(map) {

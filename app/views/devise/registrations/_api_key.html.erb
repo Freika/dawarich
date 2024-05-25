@@ -2,8 +2,21 @@
   <p class='py-2'>Use this API key to authenticate your requests.</p>
   <code><%= current_user.api_key %></code>
   <p class='py-2'>
+    <p>Docs: <%= link_to "API documentation", '/api-docs', class: 'underline hover:no-underline' %></p>
+
     Usage example:
-    <p><code><%= api_v1_points_url(api_key: current_user.api_key) %></code></p>
+
+    <div role="tablist" class="tabs tabs-boxed">
+      <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="OwnTracks" />
+      <div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6">
+        <p><code><%= api_v1_owntracks_points_url(api_key: current_user.api_key) %></code></p>
+      </div>
+
+      <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="Overland" checked />
+      <div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6">
+        <p><code><%= api_v1_overland_batches_url(api_key: current_user.api_key) %></code></p>
+      </div>
+    </div>
   </p>
   <p class='py-2'>
     <%= link_to "Generate new API key", generate_api_key_path, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :post }, class: 'btn btn-primary' %>

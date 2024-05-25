@@ -96,6 +96,9 @@ GEM
       rexml
     crass (1.0.6)
     csv (3.3.0)
+    data_migrate (9.4.0)
+      activerecord (>= 6.1)
+      railties (>= 6.1)
     date (3.3.4)
     debug (1.9.2)
       irb (~> 1.10)
@@ -391,6 +394,7 @@ PLATFORMS
 DEPENDENCIES
   bootsnap
   chartkick
+  data_migrate
   debug
   devise
   dotenv-rails
