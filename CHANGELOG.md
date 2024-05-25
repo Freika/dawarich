@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.4.1] — 2024-05-25
+
+### Added
+
+- Heatmap layer on the map to show the density of points
+
 ## [0.4.0] — 2024-05-25
 
 **BREAKING CHANGES**:
@@ -33,7 +39,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fixed a bug where marker on the map was rendering timestamp without considering the timezone.
 
 ---
-
 
 ## [0.3.2] — 2024-05-23
 

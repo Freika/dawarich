@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import L, { circleMarker } from "leaflet"
+import "leaflet.heat"
 
 // Connects to data-controller="maps"
 export default class extends Controller {
@@ -17,16 +18,20 @@ export default class extends Controller {
 
     var markersArray = this.markersArray(markers)
     var markersLayer = L.layerGroup(markersArray)
+    var hearmapMarkers = markers.map(element => [element[0], element[1], 1]);
 
     var polylineCoordinates = markers.map(element => element.slice(0, 2));
     var polylineLayer = L.polyline(polylineCoordinates, { color: 'blue', opacity: 0.6, weight: 3 })
+    var heatmapLayer = L.heatLayer(hearmapMarkers, {radius: 25}).addTo(map);
 
     var controlsLayer = {
       "Points": markersLayer,
-      "Polyline": polylineLayer
+      "Polyline": polylineLayer,
+      "Heatmap": heatmapLayer
     }
 
     var layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(map);
+
 
     this.addTileLayer(map);
     // markersLayer.addTo(map);

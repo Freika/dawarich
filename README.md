@@ -39,7 +39,11 @@ You can track your location using the Owntracks or Overland app.
 
 ### Location history
 
-You can view your location history on a map.
+You can view your location history on a map. On the map you can enable/disable the following layers:
+
+- Heatmap
+- Points
+- Lines between points
 
 ### Statistics
 
