@@ -44,6 +44,7 @@ services:
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOST: localhost
+      TIME_ZONE: UTC
     depends_on:
       - dawarich_db
       - dawarich_redis
