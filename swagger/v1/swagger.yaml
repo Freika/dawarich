@@ -9,10 +9,18 @@ paths:
       summary: Creates a batch of points
       tags:
       - Batches
-      parameters: []
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
       responses:
         '201':
           description: Batch of points created
+        '401':
+          description: Unauthorized
       requestBody:
         content:
           application/json:
@@ -172,7 +180,7 @@ paths:
                   lat: 52.502397
                   lon: 13.356718
                   tid: Swagger
-                  tst: 1716488929
+                  tst: 1716633953
 servers:
 - url: http://{defaultHost}
   variables:

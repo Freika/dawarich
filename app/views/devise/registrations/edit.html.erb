@@ -2,7 +2,7 @@
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
       <h1 class="text-5xl font-bold">Edit your account!</h1>
-      <%#= render 'devise/registrations/api_key' %>
+      <%= render 'devise/registrations/api_key' %>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
       <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', html: { method: :put }) do |f| %>
