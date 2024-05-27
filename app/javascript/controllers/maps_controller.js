@@ -18,7 +18,7 @@ export default class extends Controller {
 
     var markersArray = this.markersArray(markers)
     var markersLayer = L.layerGroup(markersArray)
-    var hearmapMarkers = markers.map(element => [element[0], element[1], 1]);
+    var hearmapMarkers = markers.map(element => [element[0], element[1], 0.6]); // lat, lon, intensity
 
     var polylineCoordinates = markers.map(element => element.slice(0, 2));
     var polylineLayer = L.polyline(polylineCoordinates, { color: 'blue', opacity: 0.6, weight: 3 })
