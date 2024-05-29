@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Overland::BatchCreatingJob, type: :job do
@@ -17,6 +19,14 @@ RSpec.describe Overland::BatchCreatingJob, type: :job do
       perform
 
       expect(Point.last.user_id).to eq(user.id)
+    end
+
+    context 'when point already exists' do
+      it 'does not create a point' do
+        perform
+
+        expect { perform }.not_to(change { Point.count })
+      end
     end
   end
 end

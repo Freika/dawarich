@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.4.2] — 2024-05-29
+
+### Changed
+
+- Routes are now being split into separate one. If distance between two consecutive points is more than 500 meters, the route is split into two separate routes. This improves visibility of the routes on the map.
+- Background jobs concurrency is increased from 5 to 10 to speed up the processing of the points.
+
+### Fixed
+
+- Point data, accepted from OwnTracks and Overland, is now being checked for duplicates. If a point with the same timestamp and coordinates already exists in the database, it will not be saved.
+
+---
 ## [0.4.1] — 2024-05-25
 
 ### Added

@@ -20,9 +20,9 @@ RSpec.describe Owntracks::PointCreatingJob, type: :job do
     end
 
     context 'when point already exists' do
-      before { create(:point, latitude: 1.0, longitude: 1.0, timestamp: Time.now.to_i, user:) }
-
       it 'does not create a point' do
+        perform
+
         expect { perform }.not_to(change { Point.count })
       end
     end
