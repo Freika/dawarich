@@ -16,26 +16,66 @@ export default class extends Controller {
       layers: [this.osmMapLayer(), this.osmHotMapLayer()]
     }).setView([center[0], center[1]], 14);
 
-    var markersArray = this.markersArray(markers)
-    var markersLayer = L.layerGroup(markersArray)
-    var hearmapMarkers = markers.map(element => [element[0], element[1], 0.6]); // lat, lon, intensity
+    var markersArray = this.markersArray(markers);
+    var markersLayer = L.layerGroup(markersArray);
+    var heatmapMarkers = markers.map(element => [element[0], element[1], 0.3]); // lat, lon, intensity
 
-    var polylineCoordinates = markers.map(element => element.slice(0, 2));
-    var polylineLayer = L.polyline(polylineCoordinates, { color: 'blue', opacity: 0.6, weight: 3 })
-    var heatmapLayer = L.heatLayer(hearmapMarkers, {radius: 25}).addTo(map);
+    // Function to calculate distance between two lat-lng points using Haversine formula
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+      const toRad = x => x * Math.PI / 180;
+      const R = 6371; // Radius of the Earth in kilometers
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c * 1000; // Distance in meters
+    }
+
+    var splitPolylines = [];
+    var currentPolyline = [];
+
+    // Process markers and split polylines based on the distance
+    for (let i = 0, len = markers.length; i < len; i++) {
+      if (currentPolyline.length === 0) {
+        currentPolyline.push(markers[i].slice(0, 2));
+      } else {
+        var lastPoint = currentPolyline[currentPolyline.length - 1];
+        var currentPoint = markers[i].slice(0, 2);
+        var distance = haversineDistance(lastPoint[0], lastPoint[1], currentPoint[0], currentPoint[1]);
+
+        if (distance > 500) {
+          splitPolylines.push([...currentPolyline]); // Use spread operator to clone the array
+          currentPolyline = [currentPoint];
+        } else {
+          currentPolyline.push(currentPoint);
+        }
+      }
+    }
+    // Add the last polyline if it exists
+    if (currentPolyline.length > 0) {
+      splitPolylines.push(currentPolyline);
+    }
+
+    // Batch adding polylines to the map
+    var polylineLayers = splitPolylines.map(polylineCoordinates =>
+      L.polyline(polylineCoordinates, { color: 'blue', opacity: 0.6, weight: 3 })
+    );
+    var polylinesLayer = L.layerGroup(polylineLayers).addTo(map);
+
+    var heatmapLayer = L.heatLayer(heatmapMarkers, { radius: 20 }).addTo(map);
 
     var controlsLayer = {
       "Points": markersLayer,
-      "Polyline": polylineLayer,
+      "Polylines": L.layerGroup(polylinesLayer),
       "Heatmap": heatmapLayer
-    }
+    };
 
-    var layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(map);
-
+    L.control.layers(this.baseMaps(), controlsLayer).addTo(map);
 
     this.addTileLayer(map);
     // markersLayer.addTo(map);
-    polylineLayer.addTo(map);
     this.addLastMarker(map, markers);
   }
 
