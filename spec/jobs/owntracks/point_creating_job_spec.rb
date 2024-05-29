@@ -18,5 +18,13 @@ RSpec.describe Owntracks::PointCreatingJob, type: :job do
 
       expect(Point.last.user_id).to eq(user.id)
     end
+
+    context 'when point already exists' do
+      before { create(:point, latitude: 1.0, longitude: 1.0, timestamp: Time.now.to_i, user:) }
+
+      it 'does not create a point' do
+        expect { perform }.not_to(change { Point.count })
+      end
+    end
   end
 end
