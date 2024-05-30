@@ -43,25 +43,24 @@ export default class extends Controller {
 
       // Add mouseover event to highlight the polyline and show the popup
       polyline.on('mouseover', function(e) {
-          polyline.setStyle(highlightStyle);
-          var popup = L.popup()
-              .setLatLng(e.latlng)
-              .setContent(popupContent)
-              .openOn(map);
+        polyline.setStyle(highlightStyle);
+        var popup = L.popup()
+            .setLatLng(e.latlng)
+            .setContent(popupContent)
+            .openOn(map);
       });
 
       // Add mouseout event to revert the polyline style and close the popup
       polyline.on('mouseout', function(e) {
-          polyline.setStyle(originalStyle);
-          map.closePopup();
+        polyline.setStyle(originalStyle);
+        map.closePopup();
       });
-  }
-
+    }
 
     var splitPolylines = [];
     var currentPolyline = [];
 
-    // Process markers and split polylines based on the distance
+    // Process markers and split polylines based on the distance and time
     for (let i = 0, len = markers.length; i < len; i++) {
       if (currentPolyline.length === 0) {
         currentPolyline.push(markers[i]);
@@ -69,8 +68,9 @@ export default class extends Controller {
         var lastPoint = currentPolyline[currentPolyline.length - 1];
         var currentPoint = markers[i];
         var distance = haversineDistance(lastPoint[0], lastPoint[1], currentPoint[0], currentPoint[1]);
+        var timeDifference = (currentPoint[4] - lastPoint[4]) / 60; // Time difference in minutes
 
-        if (distance > 500) {
+        if (distance > 500 || timeDifference > 60) {
           splitPolylines.push([...currentPolyline]); // Use spread operator to clone the array
           currentPolyline = [currentPoint];
         } else {
@@ -92,12 +92,12 @@ export default class extends Controller {
       var polyline = L.polyline(latLngs, { color: 'blue', opacity: 0.6, weight: 3 });
 
       // Get the timestamps of the first and last points
-      var firstTimestamp = this.formatDate(polylineCoordinates[0][4]);
+      var firstTimestamp = this.formatDate(polylineCoordinates[0][4])
       var lastTimestamp = this.formatDate(polylineCoordinates[polylineCoordinates.length - 1][4])
-      var timeOnRoute = Math.round((polylineCoordinates[polylineCoordinates.length - 1][4] - polylineCoordinates[0][4]) / 60); // Time in minutes
+      var timeEnRoute = Math.round((polylineCoordinates[polylineCoordinates.length - 1][4] - polylineCoordinates[0][4]) / 60); // Time in minutes
 
       // Create the popup content
-      var popupContent = `Route started: ${firstTimestamp}<br>Route ended: ${lastTimestamp}<br>Time en route: ${timeOnRoute} minutes`;
+      var popupContent = `Route started: ${firstTimestamp}<br>Route ended: ${lastTimestamp}<br>Time en route: ${timeEnRoute} minutes`;
 
       addHighlightOnHover(polyline, map, popupContent);
 
@@ -105,12 +105,11 @@ export default class extends Controller {
     });
 
     var polylinesLayer = L.layerGroup(polylineLayers).addTo(map);
-
     var heatmapLayer = L.heatLayer(heatmapMarkers, { radius: 20 }).addTo(map);
 
     var controlsLayer = {
       "Points": markersLayer,
-      "Polylines": L.layerGroup(polylineLayers).addTo(map),
+      "Polylines": polylinesLayer,
       "Heatmap": heatmapLayer
     };
 
