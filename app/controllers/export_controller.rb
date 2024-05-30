@@ -26,26 +26,12 @@ class ExportController < ApplicationController
   def start_at
     first_point_timestamp = current_user.tracked_points.order(timestamp: :asc)&.first&.timestamp
 
-    @start_at ||=
-      if params[:start_at].nil? && first_point_timestamp.present?
-        first_point_timestamp
-      elsif params[:start_at].nil?
-        1.month.ago.to_i
-      else
-        Time.zone.parse(params[:start_at]).to_i
-      end
+    @start_at ||= first_point_timestamp || 1.month.ago.to_i
   end
 
   def end_at
-    last_point_timestamp = current_user.tracked_points.order(timestamp: :desc)&.last&.timestamp
+    last_point_timestamp = current_user.tracked_points.order(timestamp: :asc)&.last&.timestamp
 
-    @end_at ||=
-      if params[:end_at].nil? && last_point_timestamp.present?
-        last_point_timestamp
-      elsif params[:end_at].nil?
-        Time.zone.now.to_i
-      else
-        Time.zone.parse(params[:end_at]).to_i
-      end
+    @end_at ||= last_point_timestamp || Time.current.to_i
   end
 end

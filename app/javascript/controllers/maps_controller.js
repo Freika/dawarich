@@ -27,11 +27,36 @@ export default class extends Controller {
       const dLat = toRad(lat2 - lat1);
       const dLon = toRad(lon2 - lon1);
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c * 1000; // Distance in meters
     }
+
+    function addHighlightOnHover(polyline, map, popupContent) {
+      // Define the original and highlight styles
+      const originalStyle = { color: 'blue', opacity: 0.6, weight: 3 };
+      const highlightStyle = { color: 'yellow', opacity: 1, weight: 5 };
+
+      // Apply original style to the polyline initially
+      polyline.setStyle(originalStyle);
+
+      // Add mouseover event to highlight the polyline and show the popup
+      polyline.on('mouseover', function(e) {
+          polyline.setStyle(highlightStyle);
+          var popup = L.popup()
+              .setLatLng(e.latlng)
+              .setContent(popupContent)
+              .openOn(map);
+      });
+
+      // Add mouseout event to revert the polyline style and close the popup
+      polyline.on('mouseout', function(e) {
+          polyline.setStyle(originalStyle);
+          map.closePopup();
+      });
+  }
+
 
     var splitPolylines = [];
     var currentPolyline = [];
@@ -39,10 +64,10 @@ export default class extends Controller {
     // Process markers and split polylines based on the distance
     for (let i = 0, len = markers.length; i < len; i++) {
       if (currentPolyline.length === 0) {
-        currentPolyline.push(markers[i].slice(0, 2));
+        currentPolyline.push(markers[i]);
       } else {
         var lastPoint = currentPolyline[currentPolyline.length - 1];
-        var currentPoint = markers[i].slice(0, 2);
+        var currentPoint = markers[i];
         var distance = haversineDistance(lastPoint[0], lastPoint[1], currentPoint[0], currentPoint[1]);
 
         if (distance > 500) {
@@ -58,24 +83,39 @@ export default class extends Controller {
       splitPolylines.push(currentPolyline);
     }
 
-    // Batch adding polylines to the map
-    var polylineLayers = splitPolylines.map(polylineCoordinates =>
-      L.polyline(polylineCoordinates, { color: 'blue', opacity: 0.6, weight: 3 })
-    );
+    // Assuming each polylineCoordinates is an array of objects with lat, lng, and timestamp properties
+    var polylineLayers = splitPolylines.map(polylineCoordinates => {
+      // Extract lat-lng pairs for the polyline
+      var latLngs = polylineCoordinates.map(point => [point[0], point[1]]);
+
+      // Create a polyline with the given coordinates
+      var polyline = L.polyline(latLngs, { color: 'blue', opacity: 0.6, weight: 3 });
+
+      // Get the timestamps of the first and last points
+      var firstTimestamp = this.formatDate(polylineCoordinates[0][4]);
+      var lastTimestamp = this.formatDate(polylineCoordinates[polylineCoordinates.length - 1][4])
+
+      // Create the popup content
+      var popupContent = `Route started: ${firstTimestamp}<br>Route ended: ${lastTimestamp}`;
+
+      addHighlightOnHover(polyline, map, popupContent);
+
+      return polyline;
+    });
+
     var polylinesLayer = L.layerGroup(polylineLayers).addTo(map);
 
     var heatmapLayer = L.heatLayer(heatmapMarkers, { radius: 20 }).addTo(map);
 
     var controlsLayer = {
       "Points": markersLayer,
-      "Polylines": L.layerGroup(polylinesLayer),
+      "Polylines": L.layerGroup(polylineLayers).addTo(map),
       "Heatmap": heatmapLayer
     };
 
     L.control.layers(this.baseMaps(), controlsLayer).addTo(map);
 
     this.addTileLayer(map);
-    // markersLayer.addTo(map);
     this.addLastMarker(map, markers);
   }
 
@@ -153,20 +193,6 @@ export default class extends Controller {
     }).addTo(map);
   }
 
-  addMarkers(map, markers_data) {
-    var markers = []
-    for (var i = 0; i < markers_data.length; i++) {
-      var lat = markers_data[i][0];
-      var lon = markers_data[i][1];
-
-      var popupContent = this.popupContent(markers_data[i]);
-      var circleMarker = L.circleMarker([lat, lon], {radius: 4})
-
-      markers.push(circleMarker.bindPopup(popupContent).openPopup())
-    }
-
-    L.layerGroup(markers).addTo(map);
-  }
 
   addPolyline(map, markers) {
     var coordinates = markers.map(element => element.slice(0, 2));
