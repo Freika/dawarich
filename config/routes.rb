@@ -8,7 +8,6 @@ Rails.application.routes.draw do
   mount Sidekiq::Web => '/sidekiq'
 
   get 'settings/theme', to: 'settings#theme'
-  get 'export', to: 'export#index'
   get 'export/download', to: 'export#download'
 
   resources :imports

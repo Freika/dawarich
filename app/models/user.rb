@@ -61,14 +61,14 @@ class User < ApplicationRecord
   end
 
   def time_framed_points(start_at, end_at)
-    return points.without_raw_data if start_at.nil? && end_at.nil?
+    return tracked_points.without_raw_data if start_at.nil? && end_at.nil?
 
     if start_at && end_at
-      points.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
+      tracked_points.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
     elsif start_at
-      points.without_raw_data.where('timestamp >= ?', start_at)
+      tracked_points.without_raw_data.where('timestamp >= ?', start_at)
     elsif end_at
-      points.without_raw_data.where('timestamp <= ?', end_at)
+      tracked_points.without_raw_data.where('timestamp <= ?', end_at)
     end
   end
 end

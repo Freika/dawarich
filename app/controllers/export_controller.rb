@@ -3,11 +3,6 @@
 class ExportController < ApplicationController
   before_action :authenticate_user!
 
-  def index
-    @start_at = Time.zone.at(start_at)
-    @end_at = Time.zone.at(end_at)
-  end
-
   def download
     export = current_user.export_data(start_at:, end_at:)
 

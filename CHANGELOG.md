@@ -10,11 +10,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Now user can hover on route and see when it started, when it ended and how much time it took to travel
+- New buttons to quickly move to today's, yesterday's and 7 days data on the map
+- "Download JSON" button to points page
 
 ### Fixed
 
 - Timestamps in export form are now correctly assigned from the first and last points tracked by the user
 - Routes are now being split based both on distance and time. If the time between two consecutive points is more than 60 minutes, the route is split into two separate routes. This improves visibility of the routes on the map.
+
+### Changed
+
+- Removed "Your data" page as its function was replaced by "Download JSON" button on the points page
 
 ---
 

@@ -8,7 +8,7 @@ class PointsController < ApplicationController
       current_user
       .tracked_points
       .without_raw_data
-      .where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
+      .where(timestamp: start_at..end_at)
       .order(timestamp: :asc)
       .paginate(page: params[:page], per_page: 50)
 

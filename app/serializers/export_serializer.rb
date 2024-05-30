@@ -9,34 +9,38 @@ class ExportSerializer
   end
 
   def call
-    { user_email => { 'dawarich-export' => export_points } }.to_json
+    Oj.dump({ user_email => { 'dawarich-export' => export_points } })
   end
 
   private
 
   def export_points
-    points.map do |point|
-      {
-        lat:        point.latitude,
-        lon:        point.longitude,
-        bs:         battery_status(point),
-        batt:       point.battery,
-        p:          point.ping,
-        alt:        point.altitude,
-        acc:        point.accuracy,
-        vac:        point.vertical_accuracy,
-        vel:        point.velocity,
-        conn:       connection(point),
-        SSID:       point.ssid,
-        BSSID:      point.bssid,
-        m:          trigger(point),
-        tid:        point.tracker_id,
-        tst:        point.timestamp.to_i,
-        inrids:     point.inrids,
-        inregions:  point.in_regions,
-        topic:      point.topic
-      }
+    points.in_groups_of(1000, false).flat_map do |group|
+      group.map { |point| export_point(point) }
     end
+  end
+
+  def export_point(point)
+    {
+      lat:        point.latitude,
+      lon:        point.longitude,
+      bs:         battery_status(point),
+      batt:       point.battery,
+      p:          point.ping,
+      alt:        point.altitude,
+      acc:        point.accuracy,
+      vac:        point.vertical_accuracy,
+      vel:        point.velocity,
+      conn:       connection(point),
+      SSID:       point.ssid,
+      BSSID:      point.bssid,
+      m:          trigger(point),
+      tid:        point.tracker_id,
+      tst:        point.timestamp.to_i,
+      inrids:     point.inrids,
+      inregions:  point.in_regions,
+      topic:      point.topic
+    }
   end
 
   def battery_status(point)
