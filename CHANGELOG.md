@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.4.3] — 2024-05-30
+
+### Added
+
+- Now user can hover on route and see when it started, when it ended and how much time it took to travel
+
+### Fixed
+
+- Timestamps in export form are now correctly assigned from the first and last points tracked by the user
+
+---
+
 ## [0.4.2] — 2024-05-29
 
 ### Changed

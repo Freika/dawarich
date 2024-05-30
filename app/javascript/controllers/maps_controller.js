@@ -94,9 +94,10 @@ export default class extends Controller {
       // Get the timestamps of the first and last points
       var firstTimestamp = this.formatDate(polylineCoordinates[0][4]);
       var lastTimestamp = this.formatDate(polylineCoordinates[polylineCoordinates.length - 1][4])
+      var timeOnRoute = Math.round((polylineCoordinates[polylineCoordinates.length - 1][4] - polylineCoordinates[0][4]) / 60); // Time in minutes
 
       // Create the popup content
-      var popupContent = `Route started: ${firstTimestamp}<br>Route ended: ${lastTimestamp}`;
+      var popupContent = `Route started: ${firstTimestamp}<br>Route ended: ${lastTimestamp}<br>Time en route: ${timeOnRoute} minutes`;
 
       addHighlightOnHover(polyline, map, popupContent);
 
