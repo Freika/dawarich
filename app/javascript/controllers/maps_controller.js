@@ -65,15 +65,12 @@ export default class extends Controller {
 
       // Create markers for the start and end points
       const startMarker = L.marker([startPoint[0], startPoint[1]], { icon: startIcon }).bindPopup(`Start: ${firstTimestamp}`);
-
       const endMarker = L.marker([endPoint[0], endPoint[1]], { icon: finishIcon }).bindPopup(`
-        Start: ${firstTimestamp}<br>
-        End: ${lastTimestamp}<br>
-        Time on route: ${timeOnRoute} minutes<br>
-        Distance to previous route: ${Math.round(distanceToPrev)} meters<br>
-        Distance to next route: ${Math.round(distanceToNext)} meters<br>
-        Time from previous route: ${timeBetweenPrev} minutes<br>
-        Time to next route: ${timeBetweenNext} minutes
+        <b>Start:</b> ${firstTimestamp}<br>
+        <b>End:</b> ${lastTimestamp}<br>
+        <b>Duration:</b> ${timeOnRoute} min<br>
+        <b>Prev Route:</b> ${Math.round(distanceToPrev)} m, ${timeBetweenPrev} min away<br>
+        <b>Next Route:</b> ${Math.round(distanceToNext)} m, ${timeBetweenNext} min away<br>
       `);
 
       // Add mouseover event to highlight the polyline and show the start and end markers
@@ -85,13 +82,12 @@ export default class extends Controller {
 
       // Add mouseout event to revert the polyline style and remove the start and end markers
       polyline.on('mouseout', function(e) {
-          polyline.setStyle(originalStyle);
-          map.closePopup();
-          map.removeLayer(startMarker);
-          map.removeLayer(endMarker);
+        polyline.setStyle(originalStyle);
+        map.closePopup();
+        map.removeLayer(startMarker);
+        map.removeLayer(endMarker);
       });
-  }
-
+    }
 
     var splitPolylines = [];
     var currentPolyline = [];
