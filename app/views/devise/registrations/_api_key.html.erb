@@ -7,12 +7,12 @@
     Usage example:
 
     <div role="tablist" class="tabs tabs-boxed">
-      <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="OwnTracks" />
+      <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="OwnTracks" checked />
       <div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6">
         <p><code><%= api_v1_owntracks_points_url(api_key: current_user.api_key) %></code></p>
       </div>
 
-      <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="Overland" checked />
+      <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="Overland" />
       <div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6">
         <p><code><%= api_v1_overland_batches_url(api_key: current_user.api_key) %></code></p>
       </div>
