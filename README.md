@@ -8,8 +8,6 @@ You can find changelog [here](CHANGELOG.md).
 
 ## Usage
 
-
-
 To track your location, install the [Owntracks app](https://owntracks.org/booklet/guide/apps/) or [Overland app](https://overland.p3k.app/) on your phone and configure it to send location updates to your Dawarich instance.
 
 Currently, the app only supports [HTTP mode](https://owntracks.org/booklet/tech/http/).
@@ -30,6 +28,9 @@ To import your Google Maps Timeline data, download your location history from [G
 
 - [How to import Google Takeout to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Takeout-data)
 - [How to Import Google Semantic History to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Semantic-History-data)
+- [How to track your location to Dawarich with Overland](https://github.com/Freika/dawarich/wiki/How-to-track-your-location-to-Dawarich-with-Overland)
+- [How to track your location to Dawarich with OwnTracks](https://github.com/Freika/dawarich/wiki/How-to-track-your-location-to-Dawarich-with-OwnTracks)
+- [How to export your data from Dawarich](https://github.com/Freika/dawarich/wiki/How-to-export-your-data-from-Dawarich)
 
 ## Features
 
