@@ -38,6 +38,27 @@ export default class extends Controller {
       return new URLSearchParams(window.location.search).get(name);
     }
 
+    function minutesToDaysHoursMinutes(minutes) {
+      var days = Math.floor(minutes / (24 * 60));
+      var hours = Math.floor((minutes % (24 * 60)) / 60);
+      var minutes = minutes % 60;
+      var result = '';
+
+      if (days > 0) {
+        result += days + 'd ';
+      }
+
+      if (hours > 0) {
+        result += hours + 'h ';
+      }
+
+      if (minutes > 0) {
+        result += minutes + 'min';
+      }
+
+      return result;
+    }
+
     function addHighlightOnHover(polyline, map, startPoint, endPoint, prevPoint, nextPoint, timezone) {
       // Define the original and highlight styles
       const originalStyle = { color: 'blue', opacity: 0.6, weight: 3 };
@@ -49,7 +70,10 @@ export default class extends Controller {
       // Create the popup content for the route
       var firstTimestamp = new Date(startPoint[4] * 1000).toLocaleString('en-GB', { timeZone: timezone });
       var lastTimestamp = new Date(endPoint[4] * 1000).toLocaleString('en-GB', { timeZone: timezone });
-      var timeOnRoute = Math.round((endPoint[4] - startPoint[4]) / 60); // Time in minutes
+      // Make timeOnRoute look nice with split to days, hours and minutes
+
+      var minutes = Math.round((endPoint[4] - startPoint[4]) / 60);
+      var timeOnRoute = minutesToDaysHoursMinutes(minutes);
 
       // Calculate distances to previous and next points
       var distanceToPrev = prevPoint ? haversineDistance(prevPoint[0], prevPoint[1], startPoint[0], startPoint[1]) : 'N/A';
@@ -68,9 +92,9 @@ export default class extends Controller {
       const endMarker = L.marker([endPoint[0], endPoint[1]], { icon: finishIcon }).bindPopup(`
         <b>Start:</b> ${firstTimestamp}<br>
         <b>End:</b> ${lastTimestamp}<br>
-        <b>Duration:</b> ${timeOnRoute} min<br>
-        <b>Prev Route:</b> ${Math.round(distanceToPrev)} m, ${timeBetweenPrev} min away<br>
-        <b>Next Route:</b> ${Math.round(distanceToNext)} m, ${timeBetweenNext} min away<br>
+        <b>Duration:</b> ${timeOnRoute}<br>
+        <b>Prev Route:</b> ${Math.round(distanceToPrev)} m, ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
+        <b>Next Route:</b> ${Math.round(distanceToNext)} m, ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
       `);
 
       // Add mouseover event to highlight the polyline and show the start and end markers

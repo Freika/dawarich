@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.5.1] — 2024-06-01
+
+### Added
+
+### Changed
+
+- Change minutes to days and hours on route popup
+
+---
+
 ## [0.5.0] — 2024-05-31
 
 ### Added
@@ -19,6 +29,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Removed "Your data" page as its function was replaced by "Download JSON" button on the points page
 - Hovering over a route now also shows time and distance to next route as well as time and distance to previous route. This allows user to understand why routes might not be connected on the map.
 
+---
 
 ## [0.4.3] — 2024-05-30
 
