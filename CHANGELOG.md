@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Removed "Your data" page as its function was replaced by "Download JSON" button on the points page
 - Hovering over a route now also shows time and distance to next route as well as time and distance to previous route. This allows user to understand why routes might not be connected on the map.
 
+---
 
 ## [0.4.3] — 2024-05-30
 

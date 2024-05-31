@@ -8,5 +8,5 @@ class Import < ApplicationRecord
 
   include ImportUploader::Attachment(:raw)
 
-  enum source: { google_semantic_history: 0, owntracks: 1, google_records: 2 }
+  enum source: { google_semantic_history: 0, owntracks: 1, google_records: 2, gpx: 3 }
 end
