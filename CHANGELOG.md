@@ -9,21 +9,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Now user can hover on route and see when it started, when it ended and how much time it took to travel
 - New buttons to quickly move to today's, yesterday's and 7 days data on the map
 - "Download JSON" button to points page
 - For debugging purposes, now user can use `?meters_between_routes=500` and `?minutes_between_routes=60` query parameters to set the distance and time between routes to split them on the map. This is useful to understand why routes might not be connected on the map.
 - Added scale indicator to the map
 
-### Fixed
-
-- Timestamps in export form are now correctly assigned from the first and last points tracked by the user
-- Routes are now being split based both on distance and time. If the time between two consecutive points is more than 60 minutes, the route is split into two separate routes. This improves visibility of the routes on the map.
-
 ### Changed
 
 - Removed "Your data" page as its function was replaced by "Download JSON" button on the points page
 - Hovering over a route now also shows time and distance to next route as well as time and distance to previous route. This allows user to understand why routes might not be connected on the map.
+
+
+## [0.4.3] — 2024-05-30
+
+### Added
+
+- Now user can hover on a route and see when it started, when it ended and how much time it took to travel
+
+### Fixed
+
+- Timestamps in export form are now correctly assigned from the first and last points tracked by the user
+- Routes are now being split based both on distance and time. If the time between two consecutive points is more than 60 minutes, the route is split into two separate routes. This improves visibility of the routes on the map.
 
 ---
 
