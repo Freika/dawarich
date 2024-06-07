@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.5.1] — 2024-06-01
+## [0.5.1] — 2024-06-07
 
 ### Added
 
@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Change minutes to days and hours on route popup
+
+### Fixed
+
+- Improved speed of "Stats" page loading by removing unnecessary queries
 
 ---
 
