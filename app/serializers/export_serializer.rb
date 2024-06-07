@@ -9,7 +9,7 @@ class ExportSerializer
   end
 
   def call
-    Oj.dump({ user_email => { 'dawarich-export' => export_points } })
+    { user_email => { 'dawarich-export' => export_points } }.to_json
   end
 
   private

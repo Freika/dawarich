@@ -8,9 +8,7 @@ class CountriesAndCities
   def call
     grouped_records = group_points
     mapped_with_cities = map_with_cities(grouped_records)
-
     filtered_cities = filter_cities(mapped_with_cities)
-
     normalize_result(filtered_cities)
   end
 
@@ -50,7 +48,7 @@ class CountriesAndCities
       {
         country:,
         cities: cities.map do |city, data|
-          { city:, points: data[:points], timestamp: data[:last_timestamp], stayed_for: data[:stayed_for]}
+          { city:, points: data[:points], timestamp: data[:last_timestamp], stayed_for: data[:stayed_for] }
         end
       }
     end

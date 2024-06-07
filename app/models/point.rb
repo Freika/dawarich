@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Point < ApplicationRecord
-  # self.ignored_columns = %w[raw_data]
-
   belongs_to :import, optional: true
   belongs_to :user, optional: true
 
