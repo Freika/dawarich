@@ -68,6 +68,7 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       APPLICATION_HOST: localhost
+      BACKGROUND_PROCESSING_CONCURRENCY: 10
     depends_on:
       - dawarich_db
       - dawarich_redis

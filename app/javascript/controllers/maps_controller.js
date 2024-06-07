@@ -93,8 +93,8 @@ export default class extends Controller {
         <b>Start:</b> ${firstTimestamp}<br>
         <b>End:</b> ${lastTimestamp}<br>
         <b>Duration:</b> ${timeOnRoute}<br>
-        <b>Prev Route:</b> ${Math.round(distanceToPrev)} m, ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
-        <b>Next Route:</b> ${Math.round(distanceToNext)} m, ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
+        <b>Prev Route:</b> ${Math.round(distanceToPrev)}m and ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
+        <b>Next Route:</b> ${Math.round(distanceToNext)}m and ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
       `);
 
       // Add mouseover event to highlight the polyline and show the start and end markers

@@ -10,11 +10,11 @@ You can find changelog [here](CHANGELOG.md).
 
 To track your location, install the [Owntracks app](https://owntracks.org/booklet/guide/apps/) or [Overland app](https://overland.p3k.app/) on your phone and configure it to send location updates to your Dawarich instance.
 
-Currently, the app only supports [HTTP mode](https://owntracks.org/booklet/tech/http/).
-
 ### OwnTracks
 
 The url to send the location updates to is `http://<your-dawarich-instance>/api/v1/owntracks/points?api_key=YOUR_API_KEY`.
+
+Currently, the app only supports [HTTP mode](https://owntracks.org/booklet/tech/http/) of OwnTracks.
 
 ### Overland
 
