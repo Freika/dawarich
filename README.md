@@ -66,12 +66,13 @@ Copy the contents of the `docker-compose.yml` file to your server and run `docke
 
 ## Environment variables
 
-```
-MIN_MINUTES_SPENT_IN_CITY — minimum minutes between two points to consider them as visited the same city, e.g. `60`
-MAP_CENTER — default map center, e.g. `55.7558,37.6176`
-TIME_ZONE — time zone, e.g. `Europe/Berlin`
-APPLICATION_HOST — host of the application, e.g. `localhost` or `dawarich.example.com`
-```
+| ENV var name  | Description |
+| ------------- | ------------- |
+| MIN_MINUTES_SPENT_IN_CITY  | minimum minutes between two points to consider them as visited the same city, e.g. `60`  |
+| MAP_CENTER  | default map center, e.g. `55.7558,37.6176`  |
+| TIME_ZONE  | time zone, e.g. `Europe/Berlin`, full list is [here](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396)  |
+| APPLICATION_HOST  | host of the application, e.g. `localhost` or `dawarich.example.com`  |
+
 
 ## Screenshots
 
