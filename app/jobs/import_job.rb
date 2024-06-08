@@ -22,6 +22,7 @@ class ImportJob < ApplicationJob
     case source
     when 'google_semantic_history' then GoogleMaps::SemanticHistoryParser
     when 'google_records' then GoogleMaps::RecordsParser
+    when 'google_phone_takeout' then GoogleMaps::PhoneTakeoutParser
     when 'owntracks' then OwnTracks::ExportParser
     end
   end
