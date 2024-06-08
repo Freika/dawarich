@@ -72,6 +72,7 @@ Copy the contents of the `docker-compose.yml` file to your server and run `docke
 | MAP_CENTER  | default map center, e.g. `55.7558,37.6176`  |
 | TIME_ZONE  | time zone, e.g. `Europe/Berlin`, full list is [here](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396)  |
 | APPLICATION_HOST  | host of the application, e.g. `localhost` or `dawarich.example.com`  |
+| BACKGROUND_PROCESSING_CONCURRENCY (only for dawarich_sidekiq service)  | Number of simultaneously processed background jobs, default is 10  |
 
 
 ## Screenshots
