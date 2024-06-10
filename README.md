@@ -1,5 +1,13 @@
 # Dawarich
 
+## Screenshots
+
+![Map](screenshots/map.jpeg)
+
+![Stats](screenshots/stats.jpeg)
+
+![Import](screenshots/imports.jpeg)
+
 [Discord](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD)
 
 Dawarich is a self-hosted web application to replace Google Timeline (aka Google Location History). It allows you to import your location history from Google Maps Timeline and Owntracks, view it on a map and see some statistics, such as the number of countries and cities visited, and distance traveled.
@@ -74,14 +82,6 @@ Copy the contents of the `docker-compose.yml` file to your server and run `docke
 | APPLICATION_HOST  | host of the application, e.g. `localhost` or `dawarich.example.com`  |
 | BACKGROUND_PROCESSING_CONCURRENCY (only for dawarich_sidekiq service)  | Number of simultaneously processed background jobs, default is 10  |
 
-
-## Screenshots
-
-![Map](screenshots/map.jpeg)
-
-![Stats](screenshots/stats.jpeg)
-
-![Import](screenshots/imports.jpeg)
 
 ## Star History
 
