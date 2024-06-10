@@ -1,5 +1,5 @@
 ---
-:concurrency: <%= ENV.fetch("BACKGROUND_PROCESSING_CONCURRENCY", 100) %>
+:concurrency: <%= ENV.fetch("BACKGROUND_PROCESSING_CONCURRENCY", 10) %>
 :queues:
   - default
   - imports
