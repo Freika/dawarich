@@ -11,6 +11,8 @@ class RemovePointsWithoutCoordinates < ActiveRecord::Migration[7.1]
       .each(&:destroy)
 
     Rails.logger.info 'Points without coordinates removed.'
+
+    StatCreatingJob.perform_later(User.pluck(:id))
   end
 
   def down
