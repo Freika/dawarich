@@ -382,7 +382,7 @@ GEM
     websocket-driver (0.7.6)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
-    will_paginate (4.0.0)
+    will_paginate (4.0.1)
     zeitwerk (2.6.15)
 
 PLATFORMS
