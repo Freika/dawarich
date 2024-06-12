@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html data-theme="<%= app_theme %>">
   <head>
-    <title>DaWarIch</title>
+    <title><%= full_title(yield(:title)) %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>

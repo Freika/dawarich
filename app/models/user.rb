@@ -10,14 +10,9 @@ class User < ApplicationRecord
   has_many :points, through: :imports
   has_many :stats, dependent: :destroy
   has_many :tracked_points, class_name: 'Point', dependent: :destroy
+  has_many :exports, dependent: :destroy
 
   after_create :create_api_key
-
-  def export_data(start_at: nil, end_at: nil)
-    geopoints = time_framed_points(start_at, end_at)
-
-    ::ExportSerializer.new(geopoints, email).call
-  end
 
   def countries_visited
     stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact
@@ -58,17 +53,5 @@ class User < ApplicationRecord
     self.api_key = SecureRandom.hex(16)
 
     save
-  end
-
-  def time_framed_points(start_at, end_at)
-    return tracked_points.without_raw_data if start_at.nil? && end_at.nil?
-
-    if start_at && end_at
-      tracked_points.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
-    elsif start_at
-      tracked_points.without_raw_data.where('timestamp >= ?', start_at)
-    elsif end_at
-      tracked_points.without_raw_data.where('timestamp <= ?', end_at)
-    end
   end
 end

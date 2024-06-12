@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.6.0] — 2024-06-12
+
+### Added
+
+- Exports page to list existing exports download them or delete them
+
+### Changed
+
+- Exporting process now is done in the background, so user can close the browser tab and come back later to download the file. The status of the export can be checked on the Exports page.
+
+ℹ️ Deleting Export file will only delete the file, not the points in the database. ℹ️
+
+⚠️ BREAKING CHANGES: ⚠️
+
+Volume, exposed to the host machine for placing files to import was changed. See the changes below.
+
+Path for placing files to import was changed from `tmp/imports` to `public/imports`.
+
+```diff
+  ...
+
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
+-      - tmp:/var/app/tmp
++      - public:/var/app/public/imports
+
+  ...
+```
+
+```diff
+  ...
+
+volumes:
+  db_data:
+  gem_cache:
+  shared_data:
+-  tmp:
++  public:
+```
+
+---
+
 ## [0.5.3] — 2024-06-10
 
 ### Added

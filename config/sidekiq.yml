@@ -3,5 +3,6 @@
 :queues:
   - default
   - imports
+  - exports
   - stats
   - reverse_geocoding
