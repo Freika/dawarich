@@ -1,32 +1,47 @@
 <% content_for :title, "Exports" %>
 
 <div class="w-full">
-  <div class="flex justify-between items-center">
+  <div class="flex justify-between items-center mb-5">
     <h1 class="font-bold text-4xl">Exports</h1>
   </div>
 
-  <div id="imports" class="min-w-full">
-    <div class="overflow-x-auto">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @exports.each do |export| %>
+  <div id="exports" class="min-w-full">
+    <% if @exports.empty? %>
+      <div class="hero min-h-80 bg-base-200">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-5xl font-bold">Hello there!</h1>
+            <p class="py-6">
+              Here you'll find your exports, created on <%= link_to 'Points', points_url, class: 'link' %> page. But now there are none.
+            </p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
             <tr>
-              <td><%= export.name %></td>
-              <td><%= export.status %></td>
-              <td>
-                <%= link_to 'Download', export.url, class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
-                <%= link_to 'Delete', export, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            <% @exports.each do |export| %>
+              <tr>
+                <td><%= export.name %></td>
+                <td><%= export.status %></td>
+                <td>
+                  <% if export.completed? %>
+                    <%= link_to 'Download', export.url, class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
+                  <% end %>
+                  <%= link_to 'Delete', export, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
   </div>
 </div>

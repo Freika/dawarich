@@ -8,11 +8,24 @@
 
       <p class='mb-3'>Import takes a while to finish, so you might want to run it in <code>screen</code> session.</p>
 
-      <p>1. Upload your Records.json file to your server</p>
-      <p>2. Copy you Records.json to the <code>tmp</code> folder: <code>$ docker cp Records.json dawarich_app:/var/app/tmp/Records.json</code></p>
-      <p>3. Attach to the docker container: <code>$ docker exec -it dawarich_app sh</code></p>
-      <p>4. Run the rake task: <code>$ bundle exec rake import:big_file['tmp/Records.json','user@example.com']</code></p>
-      <p>5. Wait patiently for process to finish</p>
+      <p class='mt-5 mb-2'>1. Upload your Records.json file to your server</p>
+      <p class='mt-5 mb-2'>2. Copy you Records.json to the <code>tmp</code> folder:
+        <div class="mockup-code">
+          <pre data-prefix="$"><code>docker cp Records.json dawarich_app:/var/app/public/imports/Records.json</code></pre>
+        </div>
+      </p>
+      <p class='mt-5 mb-2'>3. Attach to the docker container:
+        <div class="mockup-code">
+          <pre data-prefix="$"><code>docker exec -it dawarich_app sh</code></pre>
+        </div>
+      </p>
+      <p class='mt-5 mb-2'>4. Run the rake task:
+        <div class="mockup-code">
+          <pre data-prefix="$"><code>bundle exec rake import:big_file['public/imports/Records.json','user@example.com']</code>
+          </pre>
+        </div>
+      </p>
+      <p class='mt-5 mb-2'>5. Wait patiently for process to finish</p>
 
       <p class='mt-3'>You can monitor progress in <a href="/sidekiq" class="underline">Sidekiq UI</a></p>
     </span>
