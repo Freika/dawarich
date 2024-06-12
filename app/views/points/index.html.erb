@@ -22,7 +22,7 @@
       </div>
       <div class="w-full md:w-2/6">
         <div class="flex flex-col space-y-2 text-center">
-          <%= link_to 'Download JSON', export_download_path(start_at: @start_at, end_at: @end_at), data: { turbo: false }, class: "px-4 py-2 bg-blue-500 text-white rounded-md" %>
+          <%= link_to 'Export points', exports_path(start_at: @start_at, end_at: @end_at), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points withing timeframe, selected between 'Start at' and 'End at' inputs", turbo_method: :post }, class: "px-4 py-2 bg-blue-500 text-white rounded-md" %>
         </div>
       </div>
     </div>
