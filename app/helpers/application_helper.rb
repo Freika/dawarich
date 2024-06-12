@@ -104,4 +104,9 @@ module ApplicationHelper
   def active_class?(link_path)
     'btn-active' if current_page?(link_path)
   end
+
+  def full_title(page_title = '')
+    base_title = 'Dawarich'
+    page_title.empty? ? base_title : "#{page_title} | #{base_title}"
+  end
 end

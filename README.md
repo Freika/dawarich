@@ -63,6 +63,8 @@ You can see the number of countries and cities visited, the distance traveled, a
 
 You can import your Google Maps Timeline data into Dawarich as well as Owntracks data.
 
+⚠️ **Note**: Import of huge Google Maps Timeline files may take a long time and consume a lot of memory. It also might temporarily consume a lot of disk space due to logs. Please make sure you have enough resources before starting the import. After import is completed, you can restart your docker container and logs will be removed.
+
 ## How to start the app locally
 
 `docker-compose up` to start the app. The app will be available at `http://localhost:3000`.

@@ -33,7 +33,6 @@ class ExportsController < ApplicationController
     @export = current_user.exports.find(params[:id])
   end
 
-  # Only allow a list of trusted parameters through.
   def export_params
     params.require(:export).permit(:name, :url, :status)
   end
