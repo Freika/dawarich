@@ -7,12 +7,12 @@ RSpec.describe Exports::Create do
     subject(:create_export) { described_class.new(export:, start_at:, end_at:).call }
 
     let(:user) { create(:user) }
-    let(:start_at) { DateTime.new(2021, 1, 1) }
-    let(:end_at) { DateTime.new(2021, 1, 2) }
+    let(:start_at) { DateTime.new(2021, 1, 1).to_s }
+    let(:end_at) { DateTime.new(2021, 1, 2).to_s }
     let(:export_name) { "#{start_at.to_date}_#{end_at.to_date}" }
     let(:export) { create(:export, user:, name: export_name, status: :created) }
     let(:export_content) { ExportSerializer.new(points, user.email).call }
-    let!(:points) { create_list(:point, 10, user:, timestamp: start_at.to_i) }
+    let!(:points) { create_list(:point, 10, user:, timestamp: start_at.to_datetime.to_i) }
 
     it 'writes the data to a file' do
       create_export

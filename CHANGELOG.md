@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.6.1] — 2024-06-14
+
+⚠️ IMPORTANT: ⚠️
+
+Please update your `docker-compose.yml` file to include the following changes:
+
+```diff
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
++     - public:/var/app/public
+```
+
+### Added
+
+- Added a line with public volume to sidekiq's docker-compose service to allow sidekiq process to write to the public folder
+
+### Fixed
+
+- Fixed a bug where the export file was not being created in the public folder
+
+---
+
 ## [0.6.0] — 2024-06-12
 
 ### Added
@@ -31,8 +56,8 @@ Path for placing files to import was changed from `tmp/imports` to `public/impor
     container_name: dawarich_app
     volumes:
       - gem_cache:/usr/local/bundle/gems
--      - tmp:/var/app/tmp
-+      - public:/var/app/public/imports
+-     - tmp:/var/app/tmp
++     - public:/var/app/public/imports
 
   ...
 ```
@@ -44,8 +69,8 @@ volumes:
   db_data:
   gem_cache:
   shared_data:
--  tmp:
-+  public:
+- tmp:
++ public:
 ```
 
 ---

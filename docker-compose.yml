@@ -53,6 +53,7 @@ services:
     container_name: dawarich_sidekiq
     volumes:
       - gem_cache:/usr/local/bundle/gems
+      - public:/var/app/public
     networks:
       - dawarich
     stdin_open: true

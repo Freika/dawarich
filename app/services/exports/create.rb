@@ -4,8 +4,8 @@ class Exports::Create
   def initialize(export:, start_at:, end_at:)
     @export = export
     @user = export.user
-    @start_at = start_at
-    @end_at = end_at
+    @start_at = start_at.to_datetime
+    @end_at = end_at.to_datetime
   end
 
   def call
