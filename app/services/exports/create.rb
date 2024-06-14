@@ -13,9 +13,9 @@ class Exports::Create
 
     pp "====Exporting data for #{user.email} from #{start_at} to #{end_at}"
 
-    points    = time_framed_points
+    points = time_framed_points
 
-    pp "====Exporting #{points.count} points"
+    pp "====Exporting #{points.size} points"
 
     data      = ::ExportSerializer.new(points, user.email).call
     file_path = Rails.root.join('public', 'exports', "#{export.name}.json")
