@@ -11,7 +11,12 @@ class Exports::Create
   def call
     export.update!(status: :processing)
 
-    points    = time_framed_points(start_at, end_at, user)
+    pp "====Exporting data for #{user.email} from #{start_at} to #{end_at}"
+
+    points    = time_framed_points
+
+    pp "====Exporting #{points.count} points"
+
     data      = ::ExportSerializer.new(points, user.email).call
     file_path = Rails.root.join('public', 'exports', "#{export.name}.json")
 
@@ -28,7 +33,10 @@ class Exports::Create
 
   attr_reader :user, :export, :start_at, :end_at
 
-  def time_framed_points(start_at, end_at, user)
-    user.tracked_points.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at.to_i, end_at.to_i)
+  def time_framed_points
+    user
+      .tracked_points
+      .without_raw_data
+      .where('timestamp >= ? AND timestamp <= ?', start_at.to_i, end_at.to_i)
   end
 end

@@ -29,6 +29,11 @@ Please update your `docker-compose.yml` file to include the following changes:
 - Fixed a bug where the export file was not being created in the public folder
 
 ---
+## [0.6.2] — 2024-06-14
+
+This is a debugging release. No changes were made to the application.
+
+---
 
 ## [0.6.0] — 2024-06-12
 
