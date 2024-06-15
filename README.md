@@ -15,6 +15,13 @@ Dawarich is a self-hosted web application to replace Google Timeline (aka Google
 
 You can find changelog [here](CHANGELOG.md).
 
+## Disclaimer
+⚠️ The project is under very active development.
+⚠️ Expect bugs and breaking changes.
+⚠️ Do not delete your original Google Maps Timeline data after importing it to Dawarich.
+⚠️ Export your data from Dawarich using built-in export functionality before updating to a new version.
+⚠️ Try to keep Dawarich up-to-date to have the latest features and bug fixes.
+
 ## Usage
 
 To track your location, install the [Owntracks app](https://owntracks.org/booklet/guide/apps/) or [Overland app](https://overland.p3k.app/) on your phone and configure it to send location updates to your Dawarich instance.
