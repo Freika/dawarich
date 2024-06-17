@@ -8,7 +8,7 @@
     <p><%= stat.distance %>km</p>
     <% if REVERSE_GEOCODING_ENABLED %>
       <div class="card-actions justify-end">
-        <%= stat.toponyms.count %> countries, <%= stat.toponyms.sum { _1['cities'].count } %> cities
+        <%= countries_and_cities_stat_for_month(stat) %>
       </div>
     <% end %>
     <% if stat.daily_distance %>

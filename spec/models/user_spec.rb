@@ -8,6 +8,7 @@ RSpec.describe User, type: :model do
     it { is_expected.to have_many(:points).through(:imports) }
     it { is_expected.to have_many(:stats) }
     it { is_expected.to have_many(:tracked_points).class_name('Point').dependent(:destroy) }
+    it { is_expected.to have_many(:exports).dependent(:destroy) }
   end
 
   describe 'callbacks' do
@@ -22,19 +23,6 @@ RSpec.describe User, type: :model do
 
   describe 'methods' do
     let(:user) { create(:user) }
-
-    xdescribe '#export_data' do
-      subject { user.export_data }
-
-      let(:import) { create(:import, user:) }
-      let(:point) { create(:point, import:) }
-
-      it 'returns json' do
-        expect(subject).to include(user.email)
-        expect(subject).to include('dawarich-export')
-        expect(subject).to include(point.attributes.except('raw_data', 'id', 'created_at', 'updated_at', 'country', 'city', 'import_id').to_json)
-      end
-    end
 
     describe '#countries_visited' do
       subject { user.countries_visited }

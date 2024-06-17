@@ -5,6 +5,118 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.6.1] — 2024-06-14
+
+⚠️ IMPORTANT: ⚠️
+
+Please update your `docker-compose.yml` file to include the following changes:
+
+```diff
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
++     - public:/var/app/public
+```
+
+### Added
+
+- Added a line with public volume to sidekiq's docker-compose service to allow sidekiq process to write to the public folder
+
+### Fixed
+
+- Fixed a bug where the export file was not being created in the public folder
+
+---
+## [0.6.2] — 2024-06-14
+
+This is a debugging release. No changes were made to the application.
+
+---
+
+## [0.6.0] — 2024-06-12
+
+### Added
+
+- Exports page to list existing exports download them or delete them
+
+### Changed
+
+- Exporting process now is done in the background, so user can close the browser tab and come back later to download the file. The status of the export can be checked on the Exports page.
+
+ℹ️ Deleting Export file will only delete the file, not the points in the database. ℹ️
+
+⚠️ BREAKING CHANGES: ⚠️
+
+Volume, exposed to the host machine for placing files to import was changed. See the changes below.
+
+Path for placing files to import was changed from `tmp/imports` to `public/imports`.
+
+```diff
+  ...
+
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
+-     - tmp:/var/app/tmp
++     - public:/var/app/public/imports
+
+  ...
+```
+
+```diff
+  ...
+
+volumes:
+  db_data:
+  gem_cache:
+  shared_data:
+- tmp:
++ public:
+```
+
+---
+
+## [0.5.3] — 2024-06-10
+
+### Added
+
+- A data migration to remove points with 0.0, 0.0 coordinates. This is necessary to prevent errors when calculating distance in Stats page.
+
+### Fixed
+
+- Reworked code responsible for importing "Records.json" file from Google Takeout. Now it is more reliable and faster, and should not throw as many errors as before.
+
+---
+
+## [0.5.2] — 2024-06-08
+
+### Added
+
+- Test version of google takeout importing service for exports from users' phones
+
+---
+
+## [0.5.1] — 2024-06-07
+
+### Added
+
+- Background jobs concurrency now can be set with `BACKGROUND_PROCESSING_CONCURRENCY` env variable in `docker-compose.yml` file. Default value is 10.
+- Hand-made favicon
+
+### Changed
+
+- Change minutes to days and hours on route popup
+
+### Fixed
+
+- Improved speed of "Stats" page loading by removing unnecessary queries
+
+---
+
 ## [0.5.0] — 2024-05-31
 
 ### Added

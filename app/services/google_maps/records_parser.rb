@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'redis_client'
 class GoogleMaps::RecordsParser
   attr_reader :import
 
@@ -10,6 +9,8 @@ class GoogleMaps::RecordsParser
 
   def call(json)
     data = parse_json(json)
+
+    return if Point.exists?(latitude: data[:latitude], longitude: data[:longitude], timestamp: data[:timestamp])
 
     Point.create(
       latitude: data[:latitude],
@@ -30,6 +31,8 @@ class GoogleMaps::RecordsParser
       latitude: json['latitudeE7'].to_f / 10**7,
       longitude: json['longitudeE7'].to_f / 10**7,
       timestamp: DateTime.parse(json['timestamp']).to_i,
+      altitude: json['altitude'],
+      velocity: json['velocity'],
       raw_data: json
     }
   end

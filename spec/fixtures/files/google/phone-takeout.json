@@ -1,0 +1,106 @@
+{
+  "semanticSegments": [
+    {
+      "startTime": "2019-04-03T08:00:00.000+02:00",
+      "endTime": "2019-04-03T10:00:00.000+02:00",
+      "timelinePath": [
+        {
+          "point": "50.0506312°, 14.3439906°",
+          "time": "2019-04-03T08:14:00.000+02:00"
+        },
+        {
+          "point": "50.0506312°, 14.3439906°",
+          "time": "2019-04-03T08:46:00.000+02:00"
+        }
+      ]
+    },
+    {
+      "startTime": "2019-04-03T08:13:57.000+02:00",
+      "endTime": "2019-04-03T20:10:18.000+02:00",
+      "startTimeTimezoneUtcOffsetMinutes": 120,
+      "endTimeTimezoneUtcOffsetMinutes": 120,
+      "visit": {
+        "hierarchyLevel": 0,
+        "probability": 0.8500000238418579,
+        "topCandidate": {
+          "placeId": "some random id",
+          "semanticType": "UNKNOWN",
+          "probability": 0.44970497488975525,
+          "placeLocation": {
+            "latLng": "50.0506312°, 14.3439906°"
+          }
+        }
+      }
+    }
+  ],
+  "rawSignals": [
+    {
+      "activityRecord": {
+        "probableActivities": [
+          {
+            "type": "STILL",
+            "confidence": 0.9599999785423279
+          },
+          {
+            "type": "IN_VEHICLE",
+            "confidence": 0.009999999776482582
+          },
+          {
+            "type": "ON_FOOT",
+            "confidence": 0.009999999776482582
+          },
+          {
+            "type": "WALKING",
+            "confidence": 0.009999999776482582
+          },
+          {
+            "type": "UNKNOWN",
+            "confidence": 0.009999999776482582
+          },
+          {
+            "type": "IN_ROAD_VEHICLE",
+            "confidence": 0.009999999776482582
+          },
+          {
+            "type": "IN_RAIL_VEHICLE",
+            "confidence": 0.009999999776482582
+          },
+          {
+            "type": "IN_ROAD_VEHICLE",
+            "confidence": 0.009999999776482582
+          }
+        ],
+        "timestamp": "2024-04-26T20:54:38.000+02:00"
+      }
+    },
+    {
+      "activityRecord": {
+        "probableActivities": [
+          {
+            "type": "STILL",
+            "confidence": 0.9900000095367432
+          },
+          {
+            "type": "UNKNOWN",
+            "confidence": 0.009999999776482582
+          }
+        ],
+        "timestamp": "2024-04-26T20:55:45.000+02:00"
+      }
+    }
+  ],
+  "userLocationProfile": {
+    "frequentPlaces": [
+      {
+        "placeId": "some random id",
+        "placeLocation": "50.0506312°, 14.3439906°",
+        "label": "WORK"
+      },
+      {
+        "placeId": "some random id",
+        "placeLocation": "50.0506312°, 14.3439906°",
+        "label": "HOME"
+      }
+    ]
+  }
+}

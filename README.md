@@ -1,20 +1,43 @@
 # Dawarich
 
-[Discord](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD)
+
+[Discord](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika)
+
+## Screenshots
+
+![Map](screenshots/map.jpeg)
+
+![Stats](screenshots/stats.jpeg)
+
+![Import](screenshots/imports.jpeg)
 
 Dawarich is a self-hosted web application to replace Google Timeline (aka Google Location History). It allows you to import your location history from Google Maps Timeline and Owntracks, view it on a map and see some statistics, such as the number of countries and cities visited, and distance traveled.
 
 You can find changelog [here](CHANGELOG.md).
 
+## Disclaimer
+
+⚠️ The project is under very active development.
+
+⚠️ Expect bugs and breaking changes.
+
+⚠️ Do not delete your original Google Maps
+Timeline data after importing it to Dawarich.
+
+⚠️ Export your data from Dawarich using built-in
+export functionality before updating to a new version.
+
+⚠️ Try to keep Dawarich up-to-date to have the latest features and bug fixes.
+
 ## Usage
 
 To track your location, install the [Owntracks app](https://owntracks.org/booklet/guide/apps/) or [Overland app](https://overland.p3k.app/) on your phone and configure it to send location updates to your Dawarich instance.
 
-Currently, the app only supports [HTTP mode](https://owntracks.org/booklet/tech/http/).
-
 ### OwnTracks
 
 The url to send the location updates to is `http://<your-dawarich-instance>/api/v1/owntracks/points?api_key=YOUR_API_KEY`.
+
+Currently, the app only supports [HTTP mode](https://owntracks.org/booklet/tech/http/) of OwnTracks.
 
 ### Overland
 
@@ -54,6 +77,8 @@ You can see the number of countries and cities visited, the distance traveled, a
 
 You can import your Google Maps Timeline data into Dawarich as well as Owntracks data.
 
+⚠️ **Note**: Import of huge Google Maps Timeline files may take a long time and consume a lot of memory. It also might temporarily consume a lot of disk space due to logs. Please make sure you have enough resources before starting the import. After import is completed, you can restart your docker container and logs will be removed.
+
 ## How to start the app locally
 
 `docker-compose up` to start the app. The app will be available at `http://localhost:3000`.
@@ -66,20 +91,14 @@ Copy the contents of the `docker-compose.yml` file to your server and run `docke
 
 ## Environment variables
 
-```
-MIN_MINUTES_SPENT_IN_CITY — minimum minutes between two points to consider them as visited the same city, e.g. `60`
-MAP_CENTER — default map center, e.g. `55.7558,37.6176`
-TIME_ZONE — time zone, e.g. `Europe/Berlin`
-APPLICATION_HOST — host of the application, e.g. `localhost` or `dawarich.example.com`
-```
+| ENV var name  | Description |
+| ------------- | ------------- |
+| MIN_MINUTES_SPENT_IN_CITY  | minimum minutes between two points to consider them as visited the same city, e.g. `60`  |
+| MAP_CENTER  | default map center, e.g. `[55.7522, 37.6156]`  |
+| TIME_ZONE  | time zone, e.g. `Europe/Berlin`, full list is [here](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396)  |
+| APPLICATION_HOST  | host of the application, e.g. `localhost` or `dawarich.example.com`  |
+| BACKGROUND_PROCESSING_CONCURRENCY (only for dawarich_sidekiq service)  | Number of simultaneously processed background jobs, default is 10  |
 
-## Screenshots
-
-![Map](screenshots/map.jpeg)
-
-![Stats](screenshots/stats.jpeg)
-
-![Import](screenshots/imports.jpeg)
 
 ## Star History
 

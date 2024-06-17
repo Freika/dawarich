@@ -1,3 +1,5 @@
+<% content_for :title, "Statistics for #{@year} year" %>
+
 <div class="w-full">
   <%= render partial: 'stats/year', locals: { year: @year, stats: @stats } %>
 </div>

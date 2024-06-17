@@ -11,6 +11,7 @@ Rails.application.routes.draw do
   get 'export/download', to: 'export#download'
 
   resources :imports
+  resources :exports, only: %i[index create destroy]
   resources :points, only: %i[index] do
     collection do
       delete :bulk_destroy
