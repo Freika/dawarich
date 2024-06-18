@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.6.1] — 2024-06-14
+## [0.6.4] — 2024-06-18
+
+### Added
+
+- A link to Dawarich's website in the footer. It ain't much, but it's honest work.
+
+### Fixed
+
+- Fixed version badge in the navbar. Now it will show the correct version of the application.
+
+### Changed
+
+- Default map center location was changed.
+
+---
+
+## [0.6.3] — 2024-06-14
 
 ⚠️ IMPORTANT: ⚠️
 
@@ -29,6 +45,7 @@ Please update your `docker-compose.yml` file to include the following changes:
 - Fixed a bug where the export file was not being created in the public folder
 
 ---
+
 ## [0.6.2] — 2024-06-14
 
 This is a debugging release. No changes were made to the application.

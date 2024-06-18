@@ -10,7 +10,7 @@ export default class extends Controller {
     console.log("Map controller connected")
     var markers = JSON.parse(this.element.dataset.coordinates)
     var center = markers[markers.length - 1] || JSON.parse(this.element.dataset.center)
-    var center = (center === undefined) ? [52.516667, 13.383333] : center;
+    var center = (center === undefined) ? [52.514568, 13.350111] : center;
     var timezone = this.element.dataset.timezone;
 
     var map = L.map(this.containerTarget, {
