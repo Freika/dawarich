@@ -59,7 +59,7 @@ RSpec.describe 'Imports', type: :request do
       end
 
       context 'when importing gpx data' do
-        let(:file) { fixture_file_upload('gpx/track.gpx', 'application/gpx+xml') }
+        let(:file) { fixture_file_upload('gpx/gpx_track_single_segment.gpx', 'application/gpx+xml') }
 
         it 'queues import job' do
           expect do

@@ -7,6 +7,14 @@ RSpec.describe Import, type: :model do
   end
 
   describe 'enums' do
-    it { is_expected.to define_enum_for(:source).with_values(google_semantic_history: 0, owntracks: 1, google_records: 2, google_phone_takeout: 3) }
+    it do
+      is_expected.to define_enum_for(:source).with_values(
+        google_semantic_history: 0,
+        owntracks: 1,
+        google_records: 2,
+        google_phone_takeout: 3,
+        gpx: 4
+      )
+    end
   end
 end

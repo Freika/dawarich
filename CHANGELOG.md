@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.0] — 2024-06-19
+
+## The GPX MVP Release
+
+This release introduces support for GPX files to be imported. Now you can import GPX files from your devices to Dawarich. The import process is the same as for other kinds of files, just select the GPX file instead and choose "gpx" as a source. Both single-segmented and multi-segmented GPX files are supported.
+
+⚠️ BREAKING CHANGES: ⚠️
+
+- `/api/v1/owntracks/points` endpoint is removed. Please use `/api/v1/points` endpoint to upload your points from OwnTracks mobile app instead.
+
+### Added
+
+- Support for GPX files to be imported.
+
+### Changed
+
+- Couple of unnecessary params were hidden from route popup and now can be shown using `?debug=true` query parameter. This is useful for debugging purposes.
+
+### Removed
+
+- `/exports/download` endpoint is removed. Now you can download your exports directly from the Exports page.
+- `/api/v1/owntracks/points` endpoint is removed.
+
+---
+
 ## [0.6.4] — 2024-06-18
 
 ### Added

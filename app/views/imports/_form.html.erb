@@ -11,12 +11,21 @@
     </div>
   <% end %>
 
-  <label class="form-control w-full max-w-xs my-5">
-    <div class="label">
+  <div class="form-control w-full max-w-xs">
+    <label class="label">
       <span class="label-text">Select source</span>
+    </label>
+    <div class="space-y-2">
+      <%= form.collection_radio_buttons :source, Import.sources.except('google_records'), :first, :first do |b| %>
+        <div class="form-control">
+          <label class="label cursor-pointer space-x-3">
+            <%= b.radio_button(class: "radio radio-primary") %>
+            <span class="label-text"><%= b.text.humanize %></span>
+          </label>
+        </div>
+      <% end %>
     </div>
-    <%= form.collection_radio_buttons :source, Import.sources.except('google_records'), :first, :first  %>
-  </label>
+  </div>
 
   <label class="form-control w-full max-w-xs my-5">
     <div class="label">
