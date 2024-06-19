@@ -23,7 +23,11 @@ class ImportsController < ApplicationController
         source: params[:import][:source]
       )
 
-      import.update(raw_data: JSON.parse(File.read(file)))
+      file = File.read(file)
+
+      raw_data = params[:import][:source] == 'gpx' ? Hash.from_xml(file) : JSON.parse(file)
+
+      import.update(raw_data:)
       import.id
     end
 
