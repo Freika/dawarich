@@ -13,7 +13,7 @@ This release introduces support for GPX files to be imported. Now you can import
 
 ⚠️ BREAKING CHANGES: ⚠️
 
-- `/api/v1/owntracks/points` endpoint is removed. Please use `/api/v1/points` endpoint to upload your points from OwnTracks mobile app instead.
+- `/api/v1/points` endpoint is removed. Please use `/api/v1/owntracks/points` endpoint to upload your points from OwnTracks mobile app instead.
 
 ### Added
 
@@ -26,7 +26,7 @@ This release introduces support for GPX files to be imported. Now you can import
 ### Removed
 
 - `/exports/download` endpoint is removed. Now you can download your exports directly from the Exports page.
-- `/api/v1/owntracks/points` endpoint is removed.
+- `/api/v1/points` endpoint is removed.
 
 ---
 
