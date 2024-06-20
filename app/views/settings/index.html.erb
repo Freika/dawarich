@@ -29,7 +29,7 @@
               <label class="modal-backdrop" for="meters_between_routes_info">Close</label>
             </div>
           <% end %>
-          <%= f.text_field :meters_between_routes, value: current_user.settings['meters_between_routes'], class: "input input-bordered" %>
+          <%= f.number_field :meters_between_routes, value: current_user.settings['meters_between_routes'], class: "input input-bordered" %>
         </div>
 
         <div class="form-control my-2">
@@ -54,7 +54,7 @@
               <label class="modal-backdrop" for="minutes_between_routes_info">Close</label>
             </div>
           <% end %>
-          <%= f.text_field :minutes_between_routes, value: current_user.settings['minutes_between_routes'], class: "input input-bordered" %>
+          <%= f.number_field :minutes_between_routes, value: current_user.settings['minutes_between_routes'], class: "input input-bordered" %>
         </div>
         <div class="form-control my-2">
           <%= f.submit "Update", class: "btn btn-primary" %>
