@@ -55,7 +55,8 @@
             <%= "#{current_user.email}" %>
           </summary>
           <ul class="p-2 bg-base-100 rounded-t-none z-10">
-            <li><%= link_to 'Settings', edit_user_registration_path %></li>
+            <li><%= link_to 'Account', edit_user_registration_path %></li>
+            <li><%= link_to 'Settings', settings_path %></li>
             <li><%= link_to 'Logout', destroy_user_session_path, method: :delete, data: { turbo_method: :delete } %></li>
           </ul>
         </details>

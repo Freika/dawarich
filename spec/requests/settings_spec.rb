@@ -68,4 +68,19 @@ RSpec.describe 'Settings', type: :request do
       end
     end
   end
+
+  describe 'PATCH /settings' do
+    let(:user) { create(:user) }
+    let(:params) { { settings: { 'meters_between_routes' => '1000', 'minutes_between_routes' => '10' } } }
+
+    before do
+      sign_in user
+    end
+
+    it 'updates the user settings' do
+      patch '/settings', params: params
+
+      expect(user.reload.settings).to eq(params[:settings])
+    end
+  end
 end
