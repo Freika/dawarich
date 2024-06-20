@@ -206,8 +206,8 @@ export default class extends Controller {
   createPolylinesLayer(markers, map, timezone) {
     const splitPolylines = [];
     let currentPolyline = [];
-    const distanceThresholdMeters = parseInt(this.getUrlParameter("meters_between_routes")) || 500;
-    const timeThresholdMinutes = parseInt(this.getUrlParameter("minutes_between_routes")) || 60;
+    const distanceThresholdMeters = parseInt(this.element.dataset.meters_between_routes) || 500;
+    const timeThresholdMinutes = parseInt(this.element.dataset.minutes_between_routes) || 60;
 
     for (let i = 0, len = markers.length; i < len; i++) {
       if (currentPolyline.length === 0) {

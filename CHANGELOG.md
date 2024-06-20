@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.1] — 2024-06-20
+
+In new Settings page you can now change the following settings:
+
+- Maximum distance between two points to consider them as one route
+- Maximum time between two points to consider them as one route
+
+### Added
+
+- New Settings page to change Dawarich settings.
+
+### Changed
+
+- Settings link in user menu now redirects to the new Settings page.
+- Old settings page is now available undeer Account link in user menu.
+
+---
 ## [0.7.0] — 2024-06-19
 
 ## The GPX MVP Release
