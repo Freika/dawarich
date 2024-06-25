@@ -31,6 +31,7 @@
 
 <% if REVERSE_GEOCODING_ENABLED && @countries_and_cities&.any? %>
   <hr class='my-5'>
+  <h2 class='text-lg font-semibold'>Countries and cities</h2>
   <% @countries_and_cities.each do |country| %>
     <% next if country[:cities].empty? %>
 
