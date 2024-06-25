@@ -2,7 +2,6 @@ import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import "leaflet.heat";
 
-// Connects to data-controller="maps"
 export default class extends Controller {
   static targets = ["container"];
 
@@ -24,11 +23,12 @@ export default class extends Controller {
 
     const polylinesLayer = this.createPolylinesLayer(markers, map, timezone);
     const heatmapLayer = L.heatLayer(heatmapMarkers, { radius: 20 }).addTo(map);
-
+    const fogOverlay = L.layerGroup();
     const controlsLayer = {
       Points: markersLayer,
       Polylines: polylinesLayer,
       Heatmap: heatmapLayer,
+      "Fog of War": fogOverlay
     };
 
     L.control
@@ -41,6 +41,54 @@ export default class extends Controller {
       .addTo(map);
 
     L.control.layers(this.baseMaps(), controlsLayer).addTo(map);
+
+    let fogEnabled = false;
+
+    // Toggle fog layer visibility
+    map.on('overlayadd', function(e) {
+      if (e.name === 'Fog of War') {
+        fogEnabled = true;
+        document.getElementById('fog').style.display = 'block';
+        updateFog(markers);
+      }
+    });
+
+    map.on('overlayremove', function(e) {
+      if (e.name === 'Fog of War') {
+        fogEnabled = false;
+        document.getElementById('fog').style.display = 'none';
+      }
+    });
+
+    // Update fog circles on zoom and move
+    map.on('zoomend moveend', function() {
+      if (fogEnabled) {
+        updateFog(markers);
+      }
+    });
+
+    function updateFog(markers) {
+      if (fogEnabled) {
+        var fog = document.getElementById('fog');
+        fog.innerHTML = ''; // Clear previous circles
+        markers.forEach(function(point) {
+          clearFog(point[0], point[1], 100); // Adjust the radius as needed
+        });
+      }
+    }
+
+    function clearFog(lat, lng, radius) {
+      var fog = document.getElementById('fog');
+      var point = map.latLngToContainerPoint([lat, lng]);
+      var size = radius * 2;
+      var circle = document.createElement('div');
+      circle.className = 'unfogged-circle';
+      circle.style.width = size + 'px';
+      circle.style.height = size + 'px';
+      circle.style.left = (point.x - radius) + 'px';
+      circle.style.top = (point.y - radius) + 'px';
+      fog.appendChild(circle);
+    }
 
     this.addTileLayer(map);
     this.addLastMarker(map, markers);
@@ -67,7 +115,7 @@ export default class extends Controller {
   baseMaps() {
     return {
       OpenStreetMap: this.osmMapLayer(),
-      "OpenStreetMap.HOT": this.osmHotMapLayer(),
+      "OpenStreetMap.HOT": this.osmHotMapLayer()
     };
   }
 
