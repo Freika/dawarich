@@ -9,6 +9,13 @@ class Visits::Calculate
     normalize_result(city_visits)
   end
 
+  def uniq_visits
+    # Only one visit per city per day
+    call.flat_map do |country|
+      { country: country[:country], cities: country[:cities].uniq { [_1[:city], Time.at(_1[:timestamp]).to_date] } }
+    end
+  end
+
   private
 
   attr_reader :points
