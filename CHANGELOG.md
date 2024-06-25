@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Calculation of city visits that are shown in right sidebar on Map page was reworked and now is more accurate.
 - Order of points on Points page is now descending by timestamp instead of ascending.
 
 ---
