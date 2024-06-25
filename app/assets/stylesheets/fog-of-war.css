@@ -9,7 +9,6 @@
   pointer-events: none;
   mix-blend-mode: multiply;
   z-index: 1000;
-  filter: blur(5px); /* Apply a blur effect */
 }
 
 .unfogged-circle {
@@ -18,5 +17,5 @@
   border-radius: 50%;
   background: white;
   mix-blend-mode: destination-out;
-  filter: blur(0px); /* Apply no blur to the circles */
+  filter: blur(3px); /* Apply no blur to the circles */
 }

@@ -46,7 +46,8 @@
       data-center="<%= MAP_CENTER %>"
       data-timezone="<%= Rails.configuration.time_zone %>"
       data-meters_between_routes="<%= current_user.settings['meters_between_routes'] %>"
-      data-minutes_between_routes="<%= current_user.settings['minutes_between_routes'] %>">
+      data-minutes_between_routes="<%= current_user.settings['minutes_between_routes'] %>"
+      data-fog_of_war_meters="<%= current_user.settings['fog_of_war_meters'] %>">
       <div data-maps-target="container" class="h-[25rem] w-auto min-h-screen">
         <div id="fog" class="fog"></div>
       </div>
