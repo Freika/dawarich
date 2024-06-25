@@ -7,7 +7,11 @@ Rails.application.routes.draw do
   mount Rswag::Ui::Engine => '/api-docs'
   mount Sidekiq::Web => '/sidekiq'
 
+  resources :settings, only: :index
+
+  patch 'settings', to: 'settings#update'
   get 'settings/theme', to: 'settings#theme'
+  post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
   resources :imports
   resources :exports, only: %i[index create destroy]
@@ -25,8 +29,6 @@ Rails.application.routes.draw do
 
   root to: 'home#index'
   devise_for :users
-
-  post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
   get 'map', to: 'map#index'
 
