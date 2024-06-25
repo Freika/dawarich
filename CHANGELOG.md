@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.0] — 2024-06-25
+
+### Added
+
+- New Settings page to change Dawarich settings.
+- New "Fog of War" toggle on the map controls.
+- New "Fog of War meters" field in Settings. This field allows you to set the radius in meters around the point to be shown on the map. The map outside of this radius will be covered with a fog of war.
+
+### Changed
+
+- Order of points on Points page is now descending by timestamp instead of ascending.
+
+---
+
 ## [0.7.1] — 2024-06-20
 
 In new Settings page you can now change the following settings:
@@ -22,6 +36,7 @@ In new Settings page you can now change the following settings:
 - Old settings page is now available undeer Account link in user menu.
 
 ---
+
 ## [0.7.0] — 2024-06-19
 
 ## The GPX MVP Release

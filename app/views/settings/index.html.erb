@@ -57,6 +57,30 @@
           <%= f.number_field :minutes_between_routes, value: current_user.settings['minutes_between_routes'], class: "input input-bordered" %>
         </div>
         <div class="form-control my-2">
+          <%= f.label :fog_of_war_meters do %>
+            Fog of War meters
+
+            <!-- The button to open modal -->
+            <label for="fog_of_war_meters_info" class="btn">?</label>
+
+            <!-- Put this part before </body> tag -->
+            <input type="checkbox" id="fog_of_war_meters_info" class="modal-toggle" />
+            <div class="modal" role="dialog">
+              <div class="modal-box">
+                <h3 class="text-lg font-bold">Fog of War meters</h3>
+                <p class="py-4">
+                  Value in meters.
+                </p>
+                <p class="py-4">
+                  Here you can set the radius of the "cleared" area around a point when Fog of War mode is enabled. The area around the point will be cleared, and the rest of the map will be covered with fog. The cleared area will be a circle with the point as the center and the radius as the value you set here.
+                </p>
+              </div>
+              <label class="modal-backdrop" for="fog_of_war_meters_info">Close</label>
+            </div>
+          <% end %>
+          <%= f.number_field :fog_of_war_meters, value: current_user.settings['fog_of_war_meters'], class: "input input-bordered" %>
+        </div>
+        <div class="form-control my-2">
           <%= f.submit "Update", class: "btn btn-primary" %>
         </div>
       <% end %>

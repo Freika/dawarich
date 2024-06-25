@@ -9,7 +9,7 @@ class PointsController < ApplicationController
       .tracked_points
       .without_raw_data
       .where(timestamp: start_at..end_at)
-      .order(timestamp: :asc)
+      .order(timestamp: :desc)
       .paginate(page: params[:page], per_page: 50)
 
     @start_at = Time.zone.at(start_at)
