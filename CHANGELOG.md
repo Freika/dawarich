@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.2] — 2024-06-25
+
+### Added
+
+- New Settings page to change Dawarich settings.
+
+### Changed
+
+- Calculation of city visits that are shown in right sidebar on Map page was reworked and now is more accurate.
+- Order of points on Points page is now descending by timestamp instead of ascending.
+
+---
+
 ## [0.7.1] — 2024-06-20
 
 In new Settings page you can now change the following settings:
@@ -22,6 +35,7 @@ In new Settings page you can now change the following settings:
 - Old settings page is now available undeer Account link in user menu.
 
 ---
+
 ## [0.7.0] — 2024-06-19
 
 ## The GPX MVP Release
