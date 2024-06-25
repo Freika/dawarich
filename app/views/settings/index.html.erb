@@ -1,0 +1,65 @@
+<% content_for :title, 'Settings' %>
+
+<div class="hero min-h-content bg-base-200">
+  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
+    <div class="text-center lg:text-left">
+      <h1 class="text-5xl font-bold">Edit your Dawarich settings!</h1>
+    </div>
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+      <%= form_for :settings, url: settings_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
+        <div class="form-control my-2">
+          <%= f.label :meters_between_routes do %>
+            Meters between routes
+
+            <!-- The button to open modal -->
+            <label for="meters_between_routes_info" class="btn">?</label>
+
+            <!-- Put this part before </body> tag -->
+            <input type="checkbox" id="meters_between_routes_info" class="modal-toggle" />
+            <div class="modal" role="dialog">
+              <div class="modal-box">
+                <h3 class="text-lg font-bold">Meters between routes</h3>
+                <p class="py-4">
+                  Value in meters.
+                </p>
+                <p class="py-4">
+                  Points on the map are connected by lines. This value is the maximum distance between two points to be connected by a line. If the distance between two points is greater than this value, they will not be connected, and the line will not be drawn. This allows to split the route into smaller segments, and to avoid drawing lines between two points that are far from each other.
+                </p>
+              </div>
+              <label class="modal-backdrop" for="meters_between_routes_info">Close</label>
+            </div>
+          <% end %>
+          <%= f.number_field :meters_between_routes, value: current_user.settings['meters_between_routes'], class: "input input-bordered" %>
+        </div>
+
+        <div class="form-control my-2">
+          <%= f.label :minutes_between_routes do %>
+            Minutes between routes
+
+            <!-- The button to open modal -->
+            <label for="minutes_between_routes_info" class="btn">?</label>
+
+            <!-- Put this part before </body> tag -->
+            <input type="checkbox" id="minutes_between_routes_info" class="modal-toggle" />
+            <div class="modal" role="dialog">
+              <div class="modal-box">
+                <h3 class="text-lg font-bold">Minutes between routes</h3>
+                <p class="py-4">
+                  Value in minutes.
+                </p>
+                <p class="py-4">
+                  Points on the map are connected by lines. This value is the maximum time between two points to be connected by a line. If the time between two points is greater than this value, they will not be connected. This allows to split the route into smaller segments, and to avoid drawing lines between two points that are far in time from each other.
+                </p>
+              </div>
+              <label class="modal-backdrop" for="minutes_between_routes_info">Close</label>
+            </div>
+          <% end %>
+          <%= f.number_field :minutes_between_routes, value: current_user.settings['minutes_between_routes'], class: "input input-bordered" %>
+        </div>
+        <div class="form-control my-2">
+          <%= f.submit "Update", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

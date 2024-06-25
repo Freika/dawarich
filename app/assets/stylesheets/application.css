@@ -13,3 +13,9 @@
  *= require_tree .
  *= require_self
  */
+
+.emoji-icon {
+  font-size: 36px; /* Adjust size as needed */
+  text-align: center;
+  line-height: 36px; /* Same as font-size for perfect centering */
+}

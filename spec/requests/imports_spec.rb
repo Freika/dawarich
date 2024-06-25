@@ -37,22 +37,43 @@ RSpec.describe 'Imports', type: :request do
   describe 'POST /imports' do
     context 'when user is logged in' do
       let(:user) { create(:user) }
-      let(:file) { fixture_file_upload('owntracks/export.json', 'application/json') }
 
       before { sign_in user }
 
-      it 'queues import job' do
-        expect do
-          post imports_path, params: { import: { source: 'owntracks', files: [file] } }
-        end.to have_enqueued_job(ImportJob).on_queue('imports').at_least(1).times
+      context 'when importing owntracks data' do
+        let(:file) { fixture_file_upload('owntracks/export.json', 'application/json') }
+
+        it 'queues import job' do
+          expect do
+            post imports_path, params: { import: { source: 'owntracks', files: [file] } }
+          end.to have_enqueued_job(ImportJob).on_queue('imports').at_least(1).times
+        end
+
+        it 'creates a new import' do
+          expect do
+            post imports_path, params: { import: { source: 'owntracks', files: [file] } }
+          end.to change(user.imports, :count).by(1)
+
+          expect(response).to redirect_to(imports_path)
+        end
       end
 
-      it 'creates a new import' do
-        expect do
-          post imports_path, params: { import: { source: 'owntracks', files: [file] } }
-        end.to change(user.imports, :count).by(1)
+      context 'when importing gpx data' do
+        let(:file) { fixture_file_upload('gpx/gpx_track_single_segment.gpx', 'application/gpx+xml') }
 
-        expect(response).to redirect_to(imports_path)
+        it 'queues import job' do
+          expect do
+            post imports_path, params: { import: { source: 'gpx', files: [file] } }
+          end.to have_enqueued_job(ImportJob).on_queue('imports').at_least(1).times
+        end
+
+        it 'creates a new import' do
+          expect do
+            post imports_path, params: { import: { source: 'gpx', files: [file] } }
+          end.to change(user.imports, :count).by(1)
+
+          expect(response).to redirect_to(imports_path)
+        end
       end
     end
   end

@@ -5,6 +5,220 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.2] — 2024-06-25
+
+### Added
+
+- New Settings page to change Dawarich settings.
+
+### Changed
+
+- Calculation of city visits that are shown in right sidebar on Map page was reworked and now is more accurate.
+- Order of points on Points page is now descending by timestamp instead of ascending.
+
+---
+
+## [0.7.1] — 2024-06-20
+
+In new Settings page you can now change the following settings:
+
+- Maximum distance between two points to consider them as one route
+- Maximum time between two points to consider them as one route
+
+### Added
+
+- New Settings page to change Dawarich settings.
+
+### Changed
+
+- Settings link in user menu now redirects to the new Settings page.
+- Old settings page is now available undeer Account link in user menu.
+
+---
+
+## [0.7.0] — 2024-06-19
+
+## The GPX MVP Release
+
+This release introduces support for GPX files to be imported. Now you can import GPX files from your devices to Dawarich. The import process is the same as for other kinds of files, just select the GPX file instead and choose "gpx" as a source. Both single-segmented and multi-segmented GPX files are supported.
+
+⚠️ BREAKING CHANGES: ⚠️
+
+- `/api/v1/points` endpoint is removed. Please use `/api/v1/owntracks/points` endpoint to upload your points from OwnTracks mobile app instead.
+
+### Added
+
+- Support for GPX files to be imported.
+
+### Changed
+
+- Couple of unnecessary params were hidden from route popup and now can be shown using `?debug=true` query parameter. This is useful for debugging purposes.
+
+### Removed
+
+- `/exports/download` endpoint is removed. Now you can download your exports directly from the Exports page.
+- `/api/v1/points` endpoint is removed.
+
+---
+
+## [0.6.4] — 2024-06-18
+
+### Added
+
+- A link to Dawarich's website in the footer. It ain't much, but it's honest work.
+
+### Fixed
+
+- Fixed version badge in the navbar. Now it will show the correct version of the application.
+
+### Changed
+
+- Default map center location was changed.
+
+---
+
+## [0.6.3] — 2024-06-14
+
+⚠️ IMPORTANT: ⚠️
+
+Please update your `docker-compose.yml` file to include the following changes:
+
+```diff
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
++     - public:/var/app/public
+```
+
+### Added
+
+- Added a line with public volume to sidekiq's docker-compose service to allow sidekiq process to write to the public folder
+
+### Fixed
+
+- Fixed a bug where the export file was not being created in the public folder
+
+---
+
+## [0.6.2] — 2024-06-14
+
+This is a debugging release. No changes were made to the application.
+
+---
+
+## [0.6.0] — 2024-06-12
+
+### Added
+
+- Exports page to list existing exports download them or delete them
+
+### Changed
+
+- Exporting process now is done in the background, so user can close the browser tab and come back later to download the file. The status of the export can be checked on the Exports page.
+
+ℹ️ Deleting Export file will only delete the file, not the points in the database. ℹ️
+
+⚠️ BREAKING CHANGES: ⚠️
+
+Volume, exposed to the host machine for placing files to import was changed. See the changes below.
+
+Path for placing files to import was changed from `tmp/imports` to `public/imports`.
+
+```diff
+  ...
+
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
+-     - tmp:/var/app/tmp
++     - public:/var/app/public/imports
+
+  ...
+```
+
+```diff
+  ...
+
+volumes:
+  db_data:
+  gem_cache:
+  shared_data:
+- tmp:
++ public:
+```
+
+---
+
+## [0.5.3] — 2024-06-10
+
+### Added
+
+- A data migration to remove points with 0.0, 0.0 coordinates. This is necessary to prevent errors when calculating distance in Stats page.
+
+### Fixed
+
+- Reworked code responsible for importing "Records.json" file from Google Takeout. Now it is more reliable and faster, and should not throw as many errors as before.
+
+---
+
+## [0.5.2] — 2024-06-08
+
+### Added
+
+- Test version of google takeout importing service for exports from users' phones
+
+---
+
+## [0.5.1] — 2024-06-07
+
+### Added
+
+- Background jobs concurrency now can be set with `BACKGROUND_PROCESSING_CONCURRENCY` env variable in `docker-compose.yml` file. Default value is 10.
+- Hand-made favicon
+
+### Changed
+
+- Change minutes to days and hours on route popup
+
+### Fixed
+
+- Improved speed of "Stats" page loading by removing unnecessary queries
+
+---
+
+## [0.5.0] — 2024-05-31
+
+### Added
+
+- New buttons to quickly move to today's, yesterday's and 7 days data on the map
+- "Download JSON" button to points page
+- For debugging purposes, now user can use `?meters_between_routes=500` and `?minutes_between_routes=60` query parameters to set the distance and time between routes to split them on the map. This is useful to understand why routes might not be connected on the map.
+- Added scale indicator to the map
+
+### Changed
+
+- Removed "Your data" page as its function was replaced by "Download JSON" button on the points page
+- Hovering over a route now also shows time and distance to next route as well as time and distance to previous route. This allows user to understand why routes might not be connected on the map.
+
+---
+
+## [0.4.3] — 2024-05-30
+
+### Added
+
+- Now user can hover on a route and see when it started, when it ended and how much time it took to travel
+
+### Fixed
+
+- Timestamps in export form are now correctly assigned from the first and last points tracked by the user
+- Routes are now being split based both on distance and time. If the time between two consecutive points is more than 60 minutes, the route is split into two separate routes. This improves visibility of the routes on the map.
+
+---
+
 ## [0.4.2] — 2024-05-29
 
 ### Changed

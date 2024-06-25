@@ -12,7 +12,7 @@ class ReverseGeocodingJob < ApplicationJob
     result = Geocoder.search([point.latitude, point.longitude])
     return if result.blank?
 
-    point.update(
+    point.update!(
       city: result.first.city,
       country: result.first.country
     )

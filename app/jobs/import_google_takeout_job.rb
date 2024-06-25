@@ -2,6 +2,7 @@
 
 class ImportGoogleTakeoutJob < ApplicationJob
   queue_as :imports
+  sidekiq_options retry: false
 
   def perform(import_id, json_string)
     import = Import.find(import_id)

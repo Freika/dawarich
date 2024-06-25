@@ -37,10 +37,23 @@ module ApplicationHelper
     %w[info success warning error accent secondary primary]
   end
 
-  def countries_and_cities_stat(year, user)
-    data = Stat.year_cities_and_countries(year, user)
-    countries = data[:countries]
-    cities = data[:cities]
+  def countries_and_cities_stat_for_year(year, stats)
+    data = { countries: [], cities: [] }
+
+    stats.select { _1.year == year }.each do
+      data[:countries] << _1.toponyms.flatten.map { |t| t['country'] }.uniq.compact
+      data[:cities] << _1.toponyms.flatten.flat_map { |t| t['cities'].map { |c| c['city'] } }.compact.uniq
+    end
+
+    data[:cities].flatten!.uniq!
+    data[:countries].flatten!.uniq!
+
+    "#{data[:countries].count} countries, #{data[:cities].count} cities"
+  end
+
+  def countries_and_cities_stat_for_month(stat)
+    countries = stat.toponyms.count { _1['country'] }
+    cities = stat.toponyms.sum { _1['cities'].count }
 
     "#{countries} countries, #{cities} cities"
   end
@@ -90,5 +103,10 @@ module ApplicationHelper
 
   def active_class?(link_path)
     'btn-active' if current_page?(link_path)
+  end
+
+  def full_title(page_title = '')
+    base_title = 'Dawarich'
+    page_title.empty? ? base_title : "#{page_title} | #{base_title}"
   end
 end
