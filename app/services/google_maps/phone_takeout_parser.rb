@@ -34,8 +34,7 @@ class GoogleMaps::PhoneTakeoutParser
         import_id: import.id,
         user_id:
       )
-    rescue
-      binding.pry
+
       points += 1
     end
 

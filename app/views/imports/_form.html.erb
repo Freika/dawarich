@@ -7,7 +7,7 @@
       <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
         <div class="form-control">
           <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, 0, class: "radio radio-primary" %>
+            <%= form.radio_button :source, :google_semantic_history, class: "radio radio-primary" %>
             <span class="label-text">Google Semantic History</span>
           </label>
           <p class="text-sm mt-2">JSON files from your Takeout/Location History/Semantic Location History/YEAR</p>
@@ -25,7 +25,7 @@
       <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
         <div class="form-control">
           <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, 3, class: "radio radio-primary" %>
+            <%= form.radio_button :source, :google_phone_takeout, class: "radio radio-primary" %>
             <span class="label-text">Google Phone Takeout</span>
           </label>
           <p class="text-sm mt-2">A JSON file you received after your request for Takeout from your mobile device</p>
@@ -34,7 +34,7 @@
       <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
         <div class="form-control">
           <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, 4, class: "radio radio-primary" %>
+            <%= form.radio_button :source, :gpx, class: "radio radio-primary" %>
             <span class="label-text">GPX</span>
           </label>
           <p class="text-sm mt-2">GPX track file</p>

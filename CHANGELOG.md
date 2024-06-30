@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Google Takeout geodata, taken from a [mobile devise](https://support.google.com/maps/thread/264641290/export-full-location-timeline-data-in-json-or-similar-format-in-the-new-version-of-timeline?hl=en), is now fully supported and can be imported to the Dawarich. The import process is the same as for other kinds of files, just select the JSON file and choose "Google Phone Takeout" as a source.
+
+### Fixed
+
+- Fixed a bug where an imported point was not being saved to the database if a point with the same timestamp and already existed in the database even if it was other user's point.
+
+---
+
+## [0.8.1] — 2024-06-30
+
+### Added
+
 - First user in the system can now create new users from the Settings page. This is useful for creating new users without the need to enable registrations. Default password for new users is `password`.
 
 ### Changed
