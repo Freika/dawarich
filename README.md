@@ -55,6 +55,8 @@ To import your Google Maps Timeline data, download your location history from [G
 - [How to track your location to Dawarich with OwnTracks](https://github.com/Freika/dawarich/wiki/How-to-track-your-location-to-Dawarich-with-OwnTracks)
 - [How to export your data from Dawarich](https://github.com/Freika/dawarich/wiki/How-to-export-your-data-from-Dawarich)
 
+More guides can be found in the [Wiki](https://github.com/Freika/dawarich/wiki#how-tos)
+
 ## Features
 
 ### Location Tracking
@@ -87,9 +89,9 @@ Press `Ctrl+C` to stop the app.
 
 ## How to install the app
 
-**[Docker](docs/Docker_install.md)**
+**[Docker](docs/How_to_install_Dawarich_using_Docker.md)**
 
-**[Synology](docs/Synology_install.md)**
+**[Synology](docs/How_to_install_Dawarich_on_Synology.md)**
 
 ## Environment variables
 
