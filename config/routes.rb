@@ -9,7 +9,7 @@ Rails.application.routes.draw do
 
   resources :settings, only: :index
   namespace :settings do
-    resources :users
+    resources :users, only: :create
   end
 
   patch 'settings', to: 'settings#update'
