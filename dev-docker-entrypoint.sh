@@ -32,5 +32,9 @@ bundle exec rails db:prepare
 echo "Running DATA migrations..."
 bundle exec rake data:migrate
 
+# Run seeds
+echo "Running seeds..."
+bundle exec rake db:seed
+
 # run passed commands
 bundle exec ${@}

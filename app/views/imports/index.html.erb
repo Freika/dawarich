@@ -21,12 +21,10 @@
     <% else %>
       <div class="overflow-x-auto">
         <table class="table">
-          <!-- head -->
           <thead>
             <tr>
               <th>Name</th>
-              <th>Processed</th>
-              <th>Doubles</th>
+              <th>Imported points</th>
               <th>Created at</th>
             </tr>
           </thead>
@@ -37,10 +35,8 @@
                   <%= link_to import.name, import, class: 'underline hover:no-underline' %> (<%= import.source %>)
                 </td>
                 <td>
-                  <%= "✅" if import.processed == import.raw_points %>
-                  <%= "#{import.processed}/#{import.raw_points}" %>
+                  <%= "#{number_with_delimiter import.points.size}" %>
                 </td>
-                <td><%= import.doubles %></td>
                 <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
               </tr>
             <% end %>
