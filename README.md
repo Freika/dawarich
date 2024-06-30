@@ -93,6 +93,13 @@ Press `Ctrl+C` to stop the app.
 
 **[Synology](docs/How_to_install_Dawarich_on_Synology.md)**
 
+### Default credentials
+
+- **Username**: `user@domain.com`
+- **Password**: `password`
+
+Feel free to change them both in the Account section.
+
 ## Environment variables
 
 | ENV var name                                                          | Description                                                                                                                |
