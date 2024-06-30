@@ -9,8 +9,8 @@ export default class extends Controller {
     console.log("Map controller connected");
 
     const markers = JSON.parse(this.element.dataset.coordinates);
-    let center = markers[markers.length - 1] || JSON.parse(this.element.dataset.center);
-    center = center === undefined ? [52.514568, 13.350111] : center;
+    // The default map center is Victory Column in Berlin
+    let center = markers[markers.length - 1] || [52.514568, 13.350111]
     const timezone = this.element.dataset.timezone;
     const clearFogRadius = this.element.dataset.fog_of_war_meters;
 

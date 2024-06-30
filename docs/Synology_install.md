@@ -64,11 +64,10 @@ If you don't yet have DNS server you can install [Synology DNS](https://www.syno
 1. Open /[Docker root folder](#docker-root-share)/[Dawarich root folder](#dawarich-root-folder)/.env file in any text editor. For example, you can use [Text editor](https://www.synology.com/en-global/dsm/packages/TextEditor) package or download it from **File station**, edit locally and upload it back, or get access by file share.
 2. Change `APPLICATION_HOST` value to your **Dawarich hostname** that you set in **Web station**. In example above **dawarich.my-syno.com**.
 3. Set your current `TIME_ZONE`. Full list [here](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396).
-4. Set `MAP_CENTER`. This is your default location. Open Google Maps, click to random point and copy coordinates from popup or address line.
-5. Optionally change `DATABASE_USERNAME`, `DATABASE_USERNAME`, `DATABASE_NAME`.
+4. Optionally change `DATABASE_USERNAME`, `DATABASE_USERNAME`, `DATABASE_NAME`.
 
-6. Click on name of your project.
-7. Open **YAML Configurations** tab.
+5. Click on name of your project.
+6. Open **YAML Configurations** tab.
 
 # Run
 1. Open  **Container Manager** -> **Projects** ->**dawarich**
@@ -109,7 +108,7 @@ services:
     working_dir: /app
     volumes:
       - ./app:/app
-    command: 
+    command:
       - /app/update.sh
 ```
 - Click **Next**, **Next**, **Done**
