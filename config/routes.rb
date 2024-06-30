@@ -8,6 +8,9 @@ Rails.application.routes.draw do
   mount Sidekiq::Web => '/sidekiq'
 
   resources :settings, only: :index
+  namespace :settings do
+    resources :users
+  end
 
   patch 'settings', to: 'settings#update'
   get 'settings/theme', to: 'settings#theme'
@@ -28,7 +31,13 @@ Rails.application.routes.draw do
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
 
   root to: 'home#index'
-  devise_for :users
+  devise_for :users, skip: [:registrations]
+  as :user do
+    get 'users/edit' => 'devise/registrations#edit', :as => 'edit_user_registration'
+    put 'users' => 'devise/registrations#update', :as => 'user_registration'
+  end
+
+  # And then modify the app/views/devise/shared/_links.erb
 
   get 'map', to: 'map#index'
 

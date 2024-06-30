@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe 'users', type: :request do
-  describe 'POST /create' do
+  # Skip this because user registration is disabled
+  xdescribe 'POST /create' do
     let(:user_params) do
       { user: FactoryBot.attributes_for(:user) }
     end
