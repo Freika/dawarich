@@ -44,6 +44,7 @@ class ImportsController < ApplicationController
 
   def destroy
     @import.destroy!
+
     redirect_to imports_url, notice: 'Import was successfully destroyed.', status: :see_other
   end
 

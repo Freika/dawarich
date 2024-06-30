@@ -14,7 +14,12 @@ class GoogleMaps::SemanticHistoryParser
     points = 0
 
     points_data.each do |point_data|
-      next if Point.exists?(timestamp: point_data[:timestamp])
+      next if Point.exists?(
+        timestamp: point_data[:timestamp],
+        latitude: point_data[:latitude],
+        longitude: point_data[:longitude],
+        user_id:
+      )
 
       Point.create(
         latitude: point_data[:latitude],

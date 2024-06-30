@@ -10,7 +10,12 @@ class GoogleMaps::RecordsParser
   def call(json)
     data = parse_json(json)
 
-    return if Point.exists?(latitude: data[:latitude], longitude: data[:longitude], timestamp: data[:timestamp])
+    return if Point.exists?(
+      latitude: data[:latitude],
+      longitude: data[:longitude],
+      timestamp: data[:timestamp],
+      user_id: import.user_id
+    )
 
     Point.create(
       latitude: data[:latitude],

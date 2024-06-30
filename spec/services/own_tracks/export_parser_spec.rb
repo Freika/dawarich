@@ -11,7 +11,7 @@ RSpec.describe OwnTracks::ExportParser do
 
     context 'when file exists' do
       it 'creates points' do
-        expect { parser }.to change { Point.count }.by(8)
+        expect { parser }.to change { Point.count }.by(9)
       end
     end
   end
