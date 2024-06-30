@@ -35,6 +35,91 @@
   ],
   "rawSignals": [
     {
+      "wifiScan": {
+        "deliveryTime": "2024-06-06T11:44:37.000+01:00",
+        "devicesRecords": [
+          {
+            "mac": 70474800562644,
+            "rawRssi": -76
+          },
+          {
+            "mac": 70474800562645,
+            "rawRssi": -77
+          },
+          {
+            "mac": 193560579751752,
+            "rawRssi": -50
+          },
+          {
+            "mac": 193560579686216,
+            "rawRssi": -48
+          },
+          {
+            "mac": 70474800544725,
+            "rawRssi": -81
+          },
+          {
+            "mac": 70474801247336,
+            "rawRssi": -70
+          },
+          {
+            "mac": 70474800544724,
+            "rawRssi": -82
+          },
+          {
+            "mac": 70474801247337,
+            "rawRssi": -70
+          },
+          {
+            "mac": 70474801258069,
+            "rawRssi": -79
+          },
+          {
+            "mac": 114621892967568,
+            "rawRssi": -88
+          },
+          {
+            "mac": 70474801256596,
+            "rawRssi": -78
+          },
+          {
+            "mac": 70474801256597,
+            "rawRssi": -81
+          },
+          {
+            "mac": 70474801244137,
+            "rawRssi": -83
+          },
+          {
+            "mac": 70474801244136,
+            "rawRssi": -82
+          },
+          {
+            "mac": 70474801258068,
+            "rawRssi": -79
+          },
+          {
+            "mac": 70474801247316,
+            "rawRssi": -56
+          },
+          {
+            "mac": 70474801247317,
+            "rawRssi": -57
+          }
+        ]
+      }
+    },
+    {
+      "position": {
+        "LatLng": "48.833657°, 2.256223°",
+        "accuracyMeters": 13,
+        "altitudeMeters": 90.70000457763672,
+        "source": "WIFI",
+        "timestamp": "2024-06-06T11:44:37.000+01:00",
+        "speedMetersPerSecond": 0.07095485180616379
+      }
+    },
+    {
       "activityRecord": {
         "probableActivities": [
           {

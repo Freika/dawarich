@@ -15,7 +15,12 @@ class OwnTracks::ExportParser
     points = 0
 
     points_data.each do |point_data|
-      next if Point.exists?(timestamp: point_data[:timestamp], tracker_id: point_data[:tracker_id])
+      next if Point.exists?(
+        timestamp: point_data[:timestamp],
+        latitude: point_data[:latitude],
+        longitude: point_data[:longitude],
+        user_id:
+      )
 
       Point.create(
         latitude: point_data[:latitude],

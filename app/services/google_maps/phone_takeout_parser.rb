@@ -13,20 +13,29 @@ class GoogleMaps::PhoneTakeoutParser
 
     points = 0
 
-    points_data.each do |point_data|
-      next if Point.exists?(timestamp: point_data[:timestamp])
+    points_data.compact.each do |point_data|
+      next if Point.exists?(
+        timestamp: point_data[:timestamp],
+        latitude: point_data[:latitude],
+        longitude: point_data[:longitude],
+        user_id:
+      )
 
       Point.create(
         latitude: point_data[:latitude],
         longitude: point_data[:longitude],
         timestamp: point_data[:timestamp],
         raw_data: point_data[:raw_data],
+        accuracy: point_data[:accuracy],
+        altitude: point_data[:altitude],
+        velocity: point_data[:velocity],
         topic: 'Google Maps Phone Timeline Export',
         tracker_id: 'google-maps-phone-timeline-export',
         import_id: import.id,
         user_id:
       )
-
+    rescue
+      binding.pry
       points += 1
     end
 
@@ -39,7 +48,7 @@ class GoogleMaps::PhoneTakeoutParser
   private
 
   def parse_json
-    import.raw_data['semanticSegments'].flat_map do |segment|
+    semantic_segments = import.raw_data['semanticSegments'].flat_map do |segment|
       if segment.key?('timelinePath')
         segment['timelinePath'].map do |point|
           lat, lon = parse_coordinates(point['point'])
@@ -52,8 +61,32 @@ class GoogleMaps::PhoneTakeoutParser
         timestamp = DateTime.parse(segment['startTime']).to_i
 
         point_hash(lat, lon, timestamp, segment)
+      else # activities
+        # Some activities don't have start latLng
+        next if segment.dig('activity', 'start', 'latLng').nil?
+
+        start_lat, start_lon = parse_coordinates(segment['activity']['start']['latLng'])
+        start_timestamp = DateTime.parse(segment['startTime']).to_i
+        end_lat, end_lon = parse_coordinates(segment['activity']['end']['latLng'])
+        end_timestamp = DateTime.parse(segment['endTime']).to_i
+
+        [
+          point_hash(start_lat, start_lon, start_timestamp, segment),
+          point_hash(end_lat, end_lon, end_timestamp, segment)
+        ]
       end
     end
+
+    raw_signals = import.raw_data['rawSignals'].flat_map do |segment|
+      next unless segment.dig('position', 'LatLng')
+
+      lat, lon = parse_coordinates(segment['position']['LatLng'])
+      timestamp = DateTime.parse(segment['position']['timestamp']).to_i
+
+      point_hash(lat, lon, timestamp, segment)
+    end
+
+    semantic_segments + raw_signals
   end
 
   def parse_coordinates(coordinates)
@@ -65,7 +98,10 @@ class GoogleMaps::PhoneTakeoutParser
       latitude: lat.to_f,
       longitude: lon.to_f,
       timestamp:,
-      raw_data:
+      raw_data:,
+      accuracy: raw_data['accuracyMeters'],
+      altitude: raw_data['altitudeMeters'],
+      velocitu: raw_data['speedMetersPerSecond']
     }
   end
 end

@@ -10,7 +10,7 @@ RSpec.describe ImportJob, type: :job do
     let(:import) { create(:import, user:, name: 'owntracks_export.json') }
 
     it 'creates points' do
-      expect { perform }.to change { Point.count }.by(8)
+      expect { perform }.to change { Point.count }.by(9)
     end
 
     it 'calls StatCreatingJob' do
