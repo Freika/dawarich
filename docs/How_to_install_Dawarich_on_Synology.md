@@ -1,3 +1,5 @@
+# How to install Dawarich on Synology using Docker
+
 # Preparation
 
 ## Container manager
@@ -109,7 +111,7 @@ services:
     working_dir: /app
     volumes:
       - ./app:/app
-    command: 
+    command:
       - /app/update.sh
 ```
 - Click **Next**, **Next**, **Done**
