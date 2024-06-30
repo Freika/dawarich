@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.1] — 2024-06-30
+
+### Added
+
+- First user in the system can now create new users from the Settings page. This is useful for creating new users without the need to enable registrations. Default password for new users is `password`.
+
+### Changed
+
+- Registrations are now disabled by default. On the initial setup, a default user with email `user@domain.com` and password `password` is created. You can change the password in the Settings page.
+- On the Imports page, now you can see the real number of points imported. Previously, this number might have not reflect the real number of points imported.
+
+---
+
 ## [0.8.0] — 2024-06-25
 
 ### Added
