@@ -8,6 +8,12 @@
     <% if params[:action] == 'show' %>
       <div class="mt-2">
         <%= notification.content %>
+
+        <% if notification.error? %>
+          <div class="mt-2">
+            Please, when reporting a bug to <a href="https://github.com/Freika/dawarich/issues" class="link hover:no-underline text-blue-600">Github Issues</a>, don't forget to include logs from <code>dawarich_app</code> and <code>dawarich_sidekiq</code> docker containers. Thank you!
+          </div>
+        <% end %>
       </div>
     <% end %>
   </div>
