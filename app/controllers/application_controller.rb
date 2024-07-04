@@ -3,7 +3,15 @@
 class ApplicationController < ActionController::Base
   include Pundit::Authorization
 
+  before_action :unread_notifications
+
   protected
+
+  def unread_notifications
+    return [] unless current_user
+
+    @unread_notifications ||= Notification.where(user: current_user).unread
+  end
 
   def authenticate_api_key
     return head :unauthorized unless current_api_user

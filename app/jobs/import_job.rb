@@ -13,7 +13,21 @@ class ImportJob < ApplicationJob
       raw_points: result[:raw_points], doubles: result[:doubles], processed: result[:processed]
     )
 
+    Notifications::Create.new(
+      user:,
+      kind: :info,
+      title: 'Import finished',
+      content: "Import \"#{import.name}\" successfully finished."
+    ).call
+
     StatCreatingJob.perform_later(user_id)
+  rescue StandardError => e
+    Notifications::Create.new(
+      user:,
+      kind: :error,
+      title: 'Import failed',
+      content: "Import \"#{import.name}\" failed: #{e.message}"
+    ).call
   end
 
   private

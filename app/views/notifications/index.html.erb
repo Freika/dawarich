@@ -1,0 +1,17 @@
+<% content_for :title, "Notifications" %>
+<div class="flex flex-col items-center w-full">
+  <div class="text-center mb-6">
+    <h1 class="font-bold text-4xl mb-4">Notifications</h1>
+    <div class="flex items-center justify-center mb-4">
+      <%= link_to "Mark all as read", mark_notifications_as_read_path, method: :post, data: { turbo_method: :post }, class: "btn btn-sm btn-primary" %>
+    </div>
+    <div class="mb-4">
+      <%= will_paginate @notifications %>
+    </div>
+  </div>
+  <div id="notifications" class="w-full max-w-2xl">
+    <% @notifications.each do |notification| %>
+      <%= render notification %>
+    <% end %>
+  </div>
+</div>

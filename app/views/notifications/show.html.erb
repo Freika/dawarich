@@ -1,0 +1,12 @@
+<div class="mx-auto md:w-2/3 w-full flex">
+  <div class="mx-auto">
+    <%= render @notification %>
+
+    <div class='my-5'>
+      <%= link_to "Back to notifications", notifications_path, class: "btn btn-small" %>
+      <div class="inline-block ml-2">
+        <%= button_to "Destroy this notification", @notification, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-small btn-warning" %>
+      </div>
+    </div>
+  </div>
+</div>
