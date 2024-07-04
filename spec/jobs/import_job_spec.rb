@@ -18,5 +18,23 @@ RSpec.describe ImportJob, type: :job do
 
       perform
     end
+
+    it 'creates a notification' do
+      expect { perform }.to change { Notification.count }.by(1)
+    end
+
+    context 'when there is an error' do
+      before do
+        allow_any_instance_of(OwnTracks::ExportParser).to receive(:call).and_raise(StandardError)
+      end
+
+      it 'does not create points' do
+        expect { perform }.not_to(change { Point.count })
+      end
+
+      it 'creates a notification' do
+        expect { perform }.to change { Notification.count }.by(1)
+      end
+    end
   end
 end

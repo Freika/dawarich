@@ -3,8 +3,7 @@
 class Owntracks::PointCreatingJob < ApplicationJob
   queue_as :default
 
-  # TODO: after deprecation of old endpoint, make user_id required
-  def perform(point_params, user_id = nil)
+  def perform(point_params, user_id)
     parsed_params = OwnTracks::Params.new(point_params).call
 
     return if point_exists?(parsed_params, user_id)

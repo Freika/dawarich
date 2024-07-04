@@ -1,0 +1,12 @@
+<% content_for :title, "Notifications" %>
+<div class="w-full">
+  <div class="flex justify-between items-center">
+    <h1 class="font-bold text-4xl">Notifications</h1>
+  </div>
+
+  <div id="notifications" class="min-w-full">
+    <% @notifications.each do |notification| %>
+      <%= render notification %>
+    <% end %>
+  </div>
+</div>

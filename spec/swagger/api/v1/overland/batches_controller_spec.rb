@@ -2,7 +2,7 @@
 
 require 'swagger_helper'
 
-describe 'Batches API', type: :request do
+describe 'Overland Batches API', type: :request do
   path '/api/v1/overland/batches' do
     post 'Creates a batch of points' do
       request_body_example value: {

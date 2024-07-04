@@ -30,6 +30,24 @@ RSpec.describe CreateStats do
 
         expect(Stat.last.distance).to eq(563)
       end
+
+      it 'created notifications' do
+        expect { create_stats }.to change { Notification.count }.by(1)
+      end
+
+      context 'when there is an error' do
+        before do
+          allow(Stat).to receive(:find_or_initialize_by).and_raise(StandardError)
+        end
+
+        it 'does not create stats' do
+          expect { create_stats }.not_to(change { Stat.count })
+        end
+
+        it 'created notifications' do
+          expect { create_stats }.to change { Notification.count }.by(1)
+        end
+      end
     end
   end
 end

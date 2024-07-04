@@ -23,6 +23,7 @@ Rails.application.routes.draw do
       delete :bulk_destroy
     end
   end
+  resources :notifications, only: %i[index show destroy]
   resources :stats, only: :index do
     collection do
       post :update

@@ -26,6 +26,10 @@ class CreateStats
           stat.save
         end
       end
+
+      Notifications::Create.new(user:, kind: :info, title: 'Stats updated', content: 'Stats updated').call
+    rescue StandardError => e
+      Notifications::Create.new(user:, kind: :error, title: 'Stats update failed', content: e.message).call
     end
   end
 

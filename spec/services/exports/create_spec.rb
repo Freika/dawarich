@@ -28,6 +28,16 @@ RSpec.describe Exports::Create do
       expect(export.reload.url).to eq("exports/#{export.name}.json")
     end
 
+    it 'updates the export status to completed' do
+      create_export
+
+      expect(export.reload.completed?).to be_truthy
+    end
+
+    it 'creates a notification' do
+      expect { create_export }.to change { Notification.count }.by(1)
+    end
+
     context 'when an error occurs' do
       before do
         allow(File).to receive(:open).and_raise(StandardError)
@@ -37,6 +47,16 @@ RSpec.describe Exports::Create do
         create_export
 
         expect(export.reload.failed?).to be_truthy
+      end
+
+      it 'logs the error' do
+        expect(Rails.logger).to receive(:error).with('====Export failed to create: StandardError')
+
+        create_export
+      end
+
+      it 'creates a notification' do
+        expect { create_export }.to change { Notification.count }.by(1)
       end
     end
   end

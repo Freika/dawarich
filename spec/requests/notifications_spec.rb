@@ -1,0 +1,60 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe '/notifications', type: :request do
+  before do
+    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
+      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
+  end
+
+  context 'when user is not logged in' do
+    it 'redirects to the login page' do
+      get notifications_url
+
+      expect(response).to redirect_to(new_user_session_url)
+    end
+  end
+
+  context 'when user is logged in' do
+    let(:user) { create(:user) }
+
+    before do
+      sign_in user
+    end
+
+    describe 'GET /index' do
+      it 'renders a successful response' do
+        get notifications_url
+
+        expect(response).to be_successful
+      end
+    end
+
+    describe 'GET /show' do
+      let(:notification) { create(:notification, user:) }
+
+      it 'renders a successful response' do
+        get notification_url(notification)
+
+        expect(response).to be_successful
+      end
+    end
+
+    describe 'DELETE /destroy' do
+      let!(:notification) { create(:notification, user:) }
+
+      it 'destroys the requested notification' do
+        expect do
+          delete notification_url(notification)
+        end.to change(Notification, :count).by(-1)
+      end
+
+      it 'redirects to the notifications list' do
+        delete notification_url(notification)
+
+        expect(response).to redirect_to(notifications_url)
+      end
+    end
+  end
+end

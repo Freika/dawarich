@@ -23,8 +23,22 @@ class Exports::Create
     File.open(file_path, 'w') { |file| file.write(data) }
 
     export.update!(status: :completed, url: "exports/#{export.name}.json")
+
+    Notifications::Create.new(
+      user:,
+      kind: :info,
+      title: 'Export finished',
+      content: "Export \"#{export.name}\" successfully finished."
+    ).call
   rescue StandardError => e
     Rails.logger.error("====Export failed to create: #{e.message}")
+
+    Notifications::Create.new(
+      user:,
+      kind: :error,
+      title: 'Export failed',
+      content: "Export \"#{export.name}\" failed: #{e.message}"
+    ).call
 
     export.update!(status: :failed)
   end

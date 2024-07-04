@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.8.1] — 2024-06-30
+## [0.8.3] — 2024-07-03
+
+### Added
+
+- Notifications system. Now you will receive a notification when an import or export is finished, when stats update is completed and if any error occurs during any of these processes. Notifications are displayed in the top right corner of the screen and are stored in the database. You can see all your notifications on the Notifications page.
+- Swagger API docs for /api/v1/owntracks/points You can find the API docs at `/api-docs`.
+
+---
+
+## [0.8.2] — 2024-06-30
 
 ### Added
 
