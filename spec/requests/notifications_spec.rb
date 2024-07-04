@@ -56,5 +56,21 @@ RSpec.describe '/notifications', type: :request do
         expect(response).to redirect_to(notifications_url)
       end
     end
+
+    describe 'POST /mark_as_read' do
+      let!(:notification) { create(:notification, user:, read_at: nil) }
+
+      it 'marks all notifications as read' do
+        post mark_notifications_as_read_url
+
+        expect(notification.reload.read_at).to be_present
+      end
+
+      it 'redirects to the notifications list' do
+        post mark_notifications_as_read_url
+
+        expect(response).to redirect_to(notifications_url)
+      end
+    end
   end
 end
