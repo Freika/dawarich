@@ -5,10 +5,17 @@ class NotificationsController < ApplicationController
   before_action :set_notification, only: %i[show destroy]
 
   def index
-    @notifications = current_user.notifications.paginate(page: params[:page], per_page: 25)
+    @notifications =
+      current_user.notifications.order(created_at: :desc).paginate(page: params[:page], per_page: 20)
   end
 
   def show; end
+
+  def mark_as_read
+    current_user.notifications.unread.update_all(read_at: Time.zone.now)
+
+    redirect_to notifications_url, notice: 'All notifications marked as read.', status: :see_other
+  end
 
   def destroy
     @notification.destroy!

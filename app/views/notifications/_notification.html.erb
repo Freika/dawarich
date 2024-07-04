@@ -1,17 +1,16 @@
-<div role="<%= notification.kind %>" class="<%= notification.kind %> shadow-lg" id="<%= dom_id notification %>">
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    class="stroke-info h-6 w-6 shrink-0">
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
-      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-  </svg>
-  <div>
-    <h3 class="font-bold"><%= link_to notification.title, notification, class: 'link hover:no-underline' %></h3>
-    <div class="text-s"><%= time_ago_in_words notification.created_at %> ago</div>
+<div role="<%= notification.kind %>" class="<%= notification.kind %> shadow-lg p-5 flex justify-between items-center mb-4 rounded-lg bg-neutral" id="<%= dom_id notification %>">
+  <div class="flex-1">
+    <h3 class="font-bold text-xl">
+      <%= link_to notification.title, notification, class: 'link hover:no-underline text-blue-600' %>
+    </h3>
+    <div class="text-sm text-gray-500"><%= time_ago_in_words notification.created_at %> ago</div>
+
+    <% if params[:action] == 'show' %>
+      <div class="mt-2">
+        <%= notification.content %>
+      </div>
+    <% end %>
+  </div>
+  <div class="badge badge-<%= notification.kind %> gap-2">
   </div>
 </div>

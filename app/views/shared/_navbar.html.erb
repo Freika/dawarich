@@ -66,17 +66,17 @@
               <span class="badge badge-xs badge-primary"></span>
             <% end %>
           </div>
-          <ul tabindex="0" class="dropdown-content z-100 menu p-2 shadow-lg bg-base-100 rounded-box min-w-52">
+          <ul tabindex="0" class="dropdown-content z-10 menu p-2 shadow-lg bg-base-100 rounded-box min-w-52">
             <% if @unread_notifications.any? %>
               <li><%= link_to 'See all', notifications_path %></li>
               <div class="divider p-0 m-0"></div>
             <% end %>
             <% @unread_notifications.first(10).each do |notification| %>
               <li>
-                <a>
+                <%= link_to notification do %>
                   <%= notification.title %>
-                  <span class="badge badge-xs justify-self-end badge-<%= notification.kind %>"></span>
-                </a>
+                  <div class="badge badge-xs justify-self-end badge-<%= notification.kind %>"></div>
+                <% end %>
               </li>
             <% end %>
           </ul>
