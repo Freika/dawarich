@@ -1,10 +1,14 @@
 ## Setting up reverse proxy
+
+### Environment Variable
 To make Darawich work with a reverse proxy, you need to ensure the APPLICATION_HOST environment variable is set to the domain name that the reverse proxy will use.
 For example, if your Darawich instance is supposed to be on the domain name timeline.mydomain.com, then set the environment variable to "timeline.mydomain.com".
 Make sure to exclude "http://" or "https://" from the environment variable. The webpage will not work if you do include http:// or https:// in the variable.
 
 At the time of writing this, the way to set the environment variable is to edit the docker-compose.yml file. Find all APPLICATION_HOST entries in the docker-compose.yml file and change them from "localhost" to your domain name.
 For a synology install, refer to **[Synology Install Tutorial](docs/How_to_install_Dawarich_on_Synology.md)**. In this page it is explained how to set the APPLICATION_HOST environment variable.
+
+### Virtual Host
 
 Now that the app works with a domain name, the server needs to be setup to use a reverse proxy. Usually this is done by setting it up in the virtual host configuration.
 
