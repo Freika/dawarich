@@ -36,3 +36,40 @@ server {
 }
 
 ```
+
+### Apache2
+
+For Apache2, you might need to enable some modules. Start by entering the following commands so the example configuration below works without any problems.
+
+```
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+sudo a2enmod headers
+```
+
+With the above commands entered, the configuration below should work properly.
+
+```
+<VirtualHost *:80>
+    ServerName example.com
+
+    ProxyRequests Off
+    ProxyPreserveHost On
+
+    <Proxy *>
+        Require all granted
+    </Proxy>
+
+    Header always set X-Real-IP %{REMOTE_ADDR}s
+    Header always set X-Forwarded-For %{REMOTE_ADDR}s
+    Header always set X-Forwarded-Proto https
+    Header always set X-Forwarded-Server %{SERVER_NAME}s
+    Header always set Host %{HTTP_HOST}s
+
+    ProxyPass / http://127.0.0.1:3000/
+    ProxyPassReverse / http://127.0.0.1:3000/
+
+</VirtualHost>
+```
+
+Please note that the above configurations are just examples and that they contain the minimum configuration needed to make the reverse proxy work properly. Feel free to adjust the configuration to your own needs.
