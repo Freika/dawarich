@@ -44,7 +44,9 @@ services:
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOST: localhost
+      APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
+      APPLICATION_PROTOCOL: http
     depends_on:
       - dawarich_db
       - dawarich_redis
@@ -69,7 +71,9 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       APPLICATION_HOST: localhost
+      APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
+      APPLICATION_PROTOCOL: http
     depends_on:
       - dawarich_db
       - dawarich_redis

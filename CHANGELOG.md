@@ -5,12 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.4] — 2024-07-08
+
+
+
+### Added
+
+- Support for multiple hosts. Now you can specify the host of the application by setting the `APPLICATION_HOSTS` (note plural form) environment variable in the `docker-compose.yml` file. Example:
+
+```yaml
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    environment:
+      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1"
+```
+
+Note, there should be no protocol prefixes in the `APPLICATION_HOSTS` variable, only the hostnames.
+
+⚠️ It would also be better to migrate your current `APPLICATION_HOST` to `APPLICATION_HOSTS` to avoid any issues in the future, as `APPLICATION_HOST` will be deprecated in the nearest future. ⚠️
+
+- Support for HTTPS. Now you can specify the protocol of the application by setting the `APPLICATION_PROTOCOL` environment variable in the `docker-compose.yml` file. Default value is `http` Example:
+
+```yaml
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    environment:
+      APPLICATION_PROTOCOL: "https"
+```
+
+### Fixed
+
+- Support for a `location-history.json` file from Google Takeout. It turned out, this file could contain not only an object with location data history, but also an array of objets with location data history. Now Dawarich can handle both cases and import the data correctly.
+
+
+---
+
 ## [0.8.3] — 2024-07-03
 
 ### Added
 
 - Notifications system. Now you will receive a notification when an import or export is finished, when stats update is completed and if any error occurs during any of these processes. Notifications are displayed in the top right corner of the screen and are stored in the database. You can see all your notifications on the Notifications page.
-- Swagger API docs for /api/v1/owntracks/points You can find the API docs at `/api-docs`.
+- Swagger API docs for `/api/v1/owntracks/points`. You can find the API docs at `/api-docs`.
 
 ---
 
