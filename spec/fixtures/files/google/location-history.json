@@ -1,0 +1,89 @@
+[
+  {
+    "endTime" : "2023-08-27T17:04:26.999-05:00",
+    "startTime" : "2023-08-27T15:48:56.000-05:00",
+    "visit" : {
+      "hierarchyLevel" : "0",
+      "topCandidate" : {
+        "probability" : "0.785181",
+        "semanticType" : "Unknown",
+        "placeID" : "ChIJxxP_Qwb2aIYRTwDNDLkUmD0",
+        "placeLocation" : "geo:27.720022,-97.347951"
+      },
+      "probability" : "0.710000"
+    }
+  },
+  {
+    "endTime" : "2023-08-27T22:00:00.000Z",
+    "startTime" : "2023-08-27T20:00:00.000Z",
+    "timelinePath" : [
+      {
+        "point" : "geo:27.720007,-97.348044",
+        "durationMinutesOffsetFromStartTime" : "49"
+      }
+    ]
+  },
+  {
+    "endTime" : "2023-09-02T23:25:59.000-06:00",
+    "startTime" : "2023-08-27T14:48:56.000-06:00",
+    "timelineMemory" : {
+      "destinations" : [
+        {
+          "identifier" : "ChIJs9KSYYBfaIYRj5AOiZNQ0a4"
+        },
+        {
+          "identifier" : "ChIJw6lCfj2sZ4YRl6q2LNNyojk"
+        },
+        {
+          "identifier" : "ChIJA89FstRIAYcRr9I2aBzR89A"
+        },
+        {
+          "identifier" : "ChIJtWVg4r5DFIcRr0zkOeDPEfY"
+        }
+      ],
+      "distanceFromOriginKms" : "1594"
+    }
+  },
+  {
+    "endTime" : "2023-08-28T00:00:00.000Z",
+    "startTime" : "2023-08-27T22:00:00.000Z",
+    "timelinePath" : [
+      {
+        "point" : "geo:27.701123,-97.362988",
+        "durationMinutesOffsetFromStartTime" : "4"
+      },
+      {
+        "point" : "geo:27.701123,-97.362988",
+        "durationMinutesOffsetFromStartTime" : "4"
+      },
+      {
+        "point" : "geo:27.687173,-97.363743",
+        "durationMinutesOffsetFromStartTime" : "7"
+      },
+      {
+        "point" : "geo:27.686129,-97.381865",
+        "durationMinutesOffsetFromStartTime" : "10"
+      },
+      {
+        "point" : "geo:27.686129,-97.381865",
+        "durationMinutesOffsetFromStartTime" : "10"
+      },
+      {
+        "point" : "geo:27.686129,-97.381865",
+        "durationMinutesOffsetFromStartTime" : "108"
+      },
+      {
+        "point" : "geo:27.696576,-97.376949",
+        "durationMinutesOffsetFromStartTime" : "109"
+      },
+      {
+        "point" : "geo:27.709617,-97.375988",
+        "durationMinutesOffsetFromStartTime" : "112"
+      },
+      {
+        "point" : "geo:27.709617,-97.375988",
+        "durationMinutesOffsetFromStartTime" : "112"
+      }
+    ]
+  }
+]
