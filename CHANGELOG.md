@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.8.4] — 2024-07-08
+## [0.8.6] — 2024-07-08
+
+### Added
+
+- Guide on how to setup a reverse proxy for Dawarich in the `docs/how_to_setup_reverse_proxy.md` file. This guide explains how to set up a reverse proxy for Dawarich using Nginx and Apache2.
+
+---
+
+## [0.8.5] — 2024-07-08
 
 ### Fixed
 

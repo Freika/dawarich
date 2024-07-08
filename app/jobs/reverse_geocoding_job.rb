@@ -12,9 +12,8 @@ class ReverseGeocodingJob < ApplicationJob
     result = Geocoder.search([point.latitude, point.longitude])
     return if result.blank?
 
-    point.update!(
-      city: result.first.city,
-      country: result.first.country
-    )
+    point.update!(city: result.first.city, country: result.first.country)
+  rescue ActiveRecord::RecordNotFound => e
+    Rails.logger.error("Point with id #{point_id} not found: #{e.message}")
   end
 end
