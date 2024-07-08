@@ -26,6 +26,17 @@
         "battery_state": "charging",
         "battery_level": 0.89
       }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "wifi": "",
+        "timestamp": "2024-07-07T17:46:39Z",
+        "device_id": "iphone",
+        "battery_state": "unplugged",
+        "battery_level": 0.55,
+        "action": "will_terminate"
+      }
     }
   ]
 }

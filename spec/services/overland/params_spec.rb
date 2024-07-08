@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Overland::Params do
   describe '#call' do
+    # This file contains one valid point and one invalid point w/out coordinates
     let(:file_path) { 'spec/fixtures/files/overland/geodata.json' }
     let(:file) { File.open(file_path) }
     let(:json) { JSON.parse(file.read) }
@@ -47,6 +50,9 @@ RSpec.describe Overland::Params do
     it 'returns a hash with the correct values' do
       expect(params[0]).to eq(expected_json)
     end
+
+    it 'returns the correct number of points' do
+      expect(params.size).to eq(1)
+    end
   end
 end
-

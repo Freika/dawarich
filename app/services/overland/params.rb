@@ -10,6 +10,8 @@ class Overland::Params
 
   def call
     points.map do |point|
+      next if point[:geometry].nil? || point.dig(:properties, :timestamp).nil?
+
       {
         latitude:           point[:geometry][:coordinates][1],
         longitude:          point[:geometry][:coordinates][0],
@@ -24,7 +26,7 @@ class Overland::Params
         vertical_accuracy:  point[:properties][:vertical_accuracy],
         raw_data:           point
       }
-    end
+    end.compact
   end
 
   private
