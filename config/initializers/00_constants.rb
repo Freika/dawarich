@@ -1,5 +1,4 @@
 # frozen_string_literal: true
 
 MIN_MINUTES_SPENT_IN_CITY = ENV.fetch('MIN_MINUTES_SPENT_IN_CITY', 60).to_i
-MAP_CENTER = ENV.fetch('MAP_CENTER', '[55.7522, 37.6156]')
 REVERSE_GEOCODING_ENABLED = ENV.fetch('REVERSE_GEOCODING_ENABLED', 'true') == 'true'
