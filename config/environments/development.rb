@@ -78,7 +78,7 @@ Rails.application.configure do
   config.action_mailer.default_url_options = { host: ENV.fetch('APPLICATION_HOST', 'localhost'), port: 3000 }
   config.hosts << ENV.fetch('APPLICATION_HOST', 'localhost')
 
-  hosts = ENV.fetch("APPLICATION_HOSTS", ['localhost'])
+  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost')
   config.hosts.concat(hosts.split(',')) if hosts.present?
 
   config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'

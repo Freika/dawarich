@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.8.4] — 2024-07-08
 
-
-
 ### Added
 
 - Support for multiple hosts. Now you can specify the host of the application by setting the `APPLICATION_HOSTS` (note plural form) environment variable in the `docker-compose.yml` file. Example:
