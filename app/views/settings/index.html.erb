@@ -1,10 +1,7 @@
 <% content_for :title, 'Settings' %>
 
-<div class="min-h-content bg-base-200 w-full">
-  <div role="tablist" class="tabs tabs-lifted tabs-lg">
-    <%= link_to 'Main', settings_path, role: 'tab', class: "tab #{active_tab?(settings_path)}" %>
-    <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab #{active_tab?(settings_background_jobs_path)}" %>
-  </div>
+<div class="min-h-content w-full">
+  <%= render 'settings/navigation' %>
 
   <div class="flex flex-col lg:flex-row w-full my-10 space-x-4">
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5 mx-5">

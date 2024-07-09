@@ -1,0 +1,4 @@
+<div role="tablist" class="tabs tabs-lifted tabs-lg">
+  <%= link_to 'Main', settings_path, role: 'tab', class: "tab #{active_tab?(settings_path)}" %>
+  <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab #{active_tab?(settings_background_jobs_path)}" %>
+</div>

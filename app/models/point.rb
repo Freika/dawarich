@@ -14,6 +14,9 @@ class Point < ApplicationRecord
   }, _suffix: true
   enum connection: { mobile: 0, wifi: 1, offline: 2 }, _suffix: true
 
+  scope :reverse_geocoded, -> { where.not(city: nil, country: nil) }
+  scope :not_reverse_geocoded, -> { where(city: nil, country: nil) }
+
   after_create :async_reverse_geocode
 
   def self.without_raw_data
@@ -23,8 +26,6 @@ class Point < ApplicationRecord
   def recorded_at
     Time.zone.at(timestamp)
   end
-
-  private
 
   def async_reverse_geocode
     return unless REVERSE_GEOCODING_ENABLED
