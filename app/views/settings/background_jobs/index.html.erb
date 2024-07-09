@@ -1,0 +1,18 @@
+<% content_for :title, "Background jobs" %>
+<div class="w-full">
+  <div class="flex justify-between items-center">
+    <h1 class="font-bold text-4xl">Background jobs</h1>
+  </div>
+
+  <div id="settings_background_jobs" class="min-w-full">
+    <% @queues.each do |queue| %>
+      <div class="card shadow-2xl bg-base-100 p-5 my-5">
+        <h2 class="text-2xl font-bold"><%= queue.name %></h2>
+        <div class="flex justify-between items-center">
+          <p class="text-lg">Jobs in queue: <%= queue.size %></p>
+          <a href="<%= 'settings_background_jobs_clear_queue_path(queue)' %>" class="btn btn-primary">Clear queue</a>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

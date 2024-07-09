@@ -1,0 +1,2 @@
+module Settings::BackgroundJobsHelper
+end

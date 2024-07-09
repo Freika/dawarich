@@ -23,10 +23,4 @@ class Settings::UsersController < ApplicationController
   def user_params
     params.require(:user).permit(:email)
   end
-
-  def authenticate_first_user!
-    return if current_user == User.first
-
-    redirect_to settings_users_url, notice: 'You are not authorized to perform this action.', status: :unauthorized
-  end
 end

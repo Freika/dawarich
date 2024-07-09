@@ -13,6 +13,12 @@ class ApplicationController < ActionController::Base
     @unread_notifications ||= Notification.where(user: current_user).unread
   end
 
+  def authenticate_first_user!
+    return if current_user == User.first
+
+    redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :unauthorized
+  end
+
   def authenticate_api_key
     return head :unauthorized unless current_api_user
 

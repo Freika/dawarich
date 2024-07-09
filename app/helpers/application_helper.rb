@@ -109,4 +109,8 @@ module ApplicationHelper
     base_title = 'Dawarich'
     page_title.empty? ? base_title : "#{page_title} | #{base_title}"
   end
+
+  def active_tab?(link_path)
+    'tab-active' if current_page?(link_path)
+  end
 end
