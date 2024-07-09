@@ -82,4 +82,9 @@ Rails.application.configure do
   config.hosts.concat(hosts.split(',')) if hosts.present?
 
   config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'
+
+  # Direct logs to STDOUT
+  config.logger = Logger.new($stdout)
+  config.lograge.enabled = true
+  config.lograge.formatter = Lograge::Formatters::Json.new
 end

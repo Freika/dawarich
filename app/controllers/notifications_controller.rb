@@ -9,7 +9,9 @@ class NotificationsController < ApplicationController
       current_user.notifications.order(created_at: :desc).paginate(page: params[:page], per_page: 20)
   end
 
-  def show; end
+  def show
+    @notification.update!(read_at: Time.zone.now) unless @notification.read_at?
+  end
 
   def mark_as_read
     current_user.notifications.unread.update_all(read_at: Time.zone.now)
