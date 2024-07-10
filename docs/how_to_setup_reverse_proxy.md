@@ -142,7 +142,7 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: <YOUR FQDN HERE (ex. dawarich.example.com)>
+      APPLICATION_HOSTS: <YOUR FQDN HERE (ex. dawarich.example.com)>
       TIME_ZONE: America/New_York
     depends_on:
       - dawarich_db
@@ -167,7 +167,7 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      APPLICATION_HOST: <YOUR FQDN HERE (ex. dawarich.example.com)>
+      APPLICATION_HOSTS: <YOUR FQDN HERE (ex. dawarich.example.com)>
     depends_on:
       - dawarich_db
       - dawarich_redis
