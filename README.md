@@ -51,7 +51,8 @@ To import your Google Maps Timeline data, download your location history from [G
 
 - [How to set up reverse proxy](docs/how_to_setup_reverse_proxy.md)
 - [How to import Google Takeout to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Takeout-data)
-- [How to Import Google Semantic History to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Semantic-History-data)
+- [How to import Google Semantic History to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Semantic-History-data)
+- [How to import Google Maps Timeline Data to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Maps-Timeline-data)
 - [How to track your location to Dawarich with Overland](https://github.com/Freika/dawarich/wiki/How-to-track-your-location-to-Dawarich-with-Overland)
 - [How to track your location to Dawarich with OwnTracks](https://github.com/Freika/dawarich/wiki/How-to-track-your-location-to-Dawarich-with-OwnTracks)
 - [How to export your data from Dawarich](https://github.com/Freika/dawarich/wiki/How-to-export-your-data-from-Dawarich)
