@@ -77,7 +77,8 @@ RSpec.describe User, type: :model do
           user:,
           toponyms: [
             { 'cities' => [], 'country' => nil },
-            { 'cities' => [{ 'city' => 'Berlin', 'points' => 64, 'timestamp' => 1710446806, 'stayed_for' => 8772 }], 'country' => 'Germany' }
+            { 'cities' => [{ 'city' => 'Berlin', 'points' => 64, 'timestamp' => 1_710_446_806, 'stayed_for' => 8772 }],
+'country' => 'Germany' }
           ]
         )
       end
@@ -91,7 +92,10 @@ RSpec.describe User, type: :model do
       subject { user.total_reverse_geocoded }
 
       let(:import) { create(:import, user:) }
-      let!(:point) { create(:point, country: 'Country', city: 'City', import:) }
+      let!(:reverse_geocoded_point) do
+        create(:point, country: 'Country', city: 'City', geodata: { some: 'data' }, import:)
+      end
+      let!(:not_reverse_geocoded_point) { create(:point, country: 'Country', city: 'City', import:) }
 
       it 'returns number of reverse geocoded points' do
         expect(subject).to eq(1)

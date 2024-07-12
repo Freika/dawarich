@@ -25,5 +25,6 @@ FactoryBot.define do
     import_id { '' }
     city { nil }
     country { nil }
+    user
   end
 end

@@ -1,0 +1,58 @@
+<% content_for :title, "Background jobs" %>
+
+<div class="min-h-content w-full">
+  <%= render 'settings/navigation' %>
+
+  <div class="flex justify-between items-center mt-5">
+    <h1 class="font-bold text-4xl">Background jobs</h1>
+  </div>
+
+  <div role="alert" class="alert m-5">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      class="stroke-info h-6 w-6 shrink-0">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <span>Spamming many new jobs at once is a bad idea. Let them work or clear the queue beforehand.</span>
+  </div>
+
+  <div class='flex'>
+    <div class="card bg-base-300 w-96 shadow-xl m-5">
+      <div class="card-body">
+        <h2 class="card-title">Start Reverse Geocoding</h2>
+        <p>This job will re-run reverse geocoding process for all the points in your database. Might take a few days or even weeks based on the amount of points you have!</p>
+        <div class="card-actions justify-end">
+          <%= link_to 'Start Job', settings_background_jobs_path(job_name: 'start_reverse_geocoding'), method: :post, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'btn btn-primary' %>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-300 w-96 shadow-xl m-5">
+      <div class="card-body">
+        <h2 class="card-title">Continue Reverse Geocoding</h2>
+        <p>This job will process reverse geocoding for all points that don't have geocoding data yet.</p>
+        <div class="card-actions justify-end">
+          <%= link_to 'Start Job', settings_background_jobs_path(job_name: 'continue_reverse_geocoding'), method: :post, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'btn btn-primary' %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings_background_jobs" class="min-w-full">
+    <% @queues.each do |queue| %>
+      <div class="card shadow-2xl bg-base-300 p-5 m-5">
+        <h2 class="text-2xl font-bold"><%= queue.name %></h2>
+        <div class="flex justify-between items-center">
+          <p class="text-lg">Jobs in queue: <%= queue.size %></p>
+          <%= link_to 'Clear queue', settings_background_job_path(queue.name), method: :delete, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :delete }, class: 'btn btn-primary' %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
