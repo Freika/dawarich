@@ -18,6 +18,43 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Point reference to a user is no longer optional. It should not cause any problems, but if you see any issues, please let me know.
+- ⚠️ Calculation of total reverse geocoded points was changed. ⚠️ Previously, the reverse geocoding process was recording only country and city for each point. Now, it records all the data that was received from the reverse geocoding service. This means that the total number of reverse geocoded points will be different from the previous one. It is recommended to restart the reverse geocoding process to get this data for all your existing points. Below you can find an example of what kind of data is being saved to your Dawarich database:
+
+```json
+{
+  "place_id": 127850637,
+  "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+  "osm_type": "way",
+  "osm_id": 718035022,
+  "lat": "52.51450815",
+  "lon": "13.350110811262352",
+  "class": "historic",
+  "type": "monument",
+  "place_rank": 30,
+  "importance": 0.4155071896625501,
+  "addresstype": "historic",
+  "name": "Victory Column",
+  "display_name": "Victory Column, Großer Stern, Botschaftsviertel, Tiergarten, Mitte, Berlin, 10785, Germany",
+  "address": {
+    "historic": "Victory Column",
+    "road": "Großer Stern",
+    "neighbourhood": "Botschaftsviertel",
+    "suburb": "Tiergarten",
+    "borough": "Mitte",
+    "city": "Berlin",
+    "ISO3166-2-lvl4": "DE-BE",
+    "postcode": "10785",
+    "country": "Germany",
+    "country_code": "de"
+  },
+  "boundingbox": [
+    "52.5142449",
+    "52.5147775",
+    "13.3496725",
+    "13.3505485"
+  ]
+}
+```
 
 ## [0.8.7] — 2024-07-09
 
