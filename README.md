@@ -86,8 +86,6 @@ You can import your existing location history from:
 - Your own GPX files
 - Your photos' EXIF data
 
-⚠️ **Note**: Import of huge Google Maps Timeline files may take a long time and consume a lot of memory. It also might temporarily consume a lot of disk space due to logs. Please make sure you have enough resources before starting the import. After import is completed, you can restart your docker container and logs will be removed.
-
 ## How to start the app locally
 
 `docker-compose up` to start the app. The app will be available at `http://localhost:3000`.
@@ -113,7 +111,7 @@ Feel free to change them both in the Account section.
 |-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
 | MIN_MINUTES_SPENT_IN_CITY                                             | minimum minutes between two points to consider them as visited the same city, e.g. `60`                                    |
 | TIME_ZONE                                                             | time zone, e.g. `Europe/Berlin`, full list is [here](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396) |
-| APPLICATION_HOST                                                      | host of the application, e.g. `localhost` or `dawarich.example.com`                                                        |
+| APPLICATION_HOSTS                                                     | list of host of the application, e.g. `localhost,dawarich.example.com`                                                        |
 | BACKGROUND_PROCESSING_CONCURRENCY (only for dawarich_sidekiq service) | Number of simultaneously processed background jobs, default is 10                                                          |
 
 ## Star History
