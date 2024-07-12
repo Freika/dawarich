@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.1] — 2024-07-12
+
+### Fixed
+
+- Fixed a bug where total reverse geocoded points were calculated based on number of *imported* points that are reverse geocoded, not on the number of *total* reverse geocoded points.
+
+---
+
 ## [0.9.0] — 2024-07-12
 
 ### Added
@@ -55,6 +63,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   ]
 }
 ```
+
+---
 
 ## [0.8.7] — 2024-07-09
 

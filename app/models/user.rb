@@ -45,7 +45,7 @@ class User < ApplicationRecord
   end
 
   def total_reverse_geocoded
-    points.select(:id).where.not(geodata: {}).count
+    tracked_points.select(:id).where.not(geodata: {}).count
   end
 
   private
