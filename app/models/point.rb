@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 class Point < ApplicationRecord
+  reverse_geocoded_by :latitude, :longitude
+
   belongs_to :import, optional: true
-  belongs_to :user, optional: true
+  belongs_to :user
 
   validates :latitude, :longitude, :timestamp, presence: true
 

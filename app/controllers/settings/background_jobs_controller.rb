@@ -8,22 +8,12 @@ class Settings::BackgroundJobsController < ApplicationController
     @queues = Sidekiq::Queue.all
   end
 
-  def show; end
-
-  def new
-  end
-
-  def edit; end
-
   def create
     EnqueueReverseGeocodingJob.perform_later(params[:job_name], current_user.id)
 
     flash.now[:notice] = 'Job was successfully created.'
 
     redirect_to settings_background_jobs_path, notice: 'Job was successfully created.'
-  end
-
-  def update
   end
 
   def destroy

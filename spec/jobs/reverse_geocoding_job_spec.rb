@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe ReverseGeocodingJob, type: :job do
@@ -17,44 +19,27 @@ RSpec.describe ReverseGeocodingJob, type: :job do
         expect { perform }.not_to(change { point.reload.city })
       end
 
-      it 'does not call Geocoder' do
+      it 'does not call ReverseGeocoding::FetchData' do
+        allow(ReverseGeocoding::FetchData).to receive(:new).and_call_original
+
         perform
 
-        expect(Geocoder).not_to have_received(:search)
+        expect(ReverseGeocoding::FetchData).not_to have_received(:new)
       end
     end
 
     context 'when REVERSE_GEOCODING_ENABLED is true' do
       before { stub_const('REVERSE_GEOCODING_ENABLED', true) }
 
-      it 'updates point with city and country' do
-        expect { perform }.to change { point.reload.city }.from(nil)
-      end
+      let(:stubbed_geocoder) { OpenStruct.new(data: { city: 'City', country: 'Country' }) }
 
       it 'calls Geocoder' do
+        allow(Geocoder).to receive(:search).and_return([stubbed_geocoder])
+        allow(ReverseGeocoding::FetchData).to receive(:new).and_call_original
+
         perform
 
-        expect(Geocoder).to have_received(:search).with([point.latitude, point.longitude])
-      end
-
-      context 'when point has city and country' do
-        let(:point) { create(:point, city: 'City', country: 'Country') }
-
-        before do
-          allow(Geocoder).to receive(:search).and_return(
-            [double(city: 'Another city', country: 'Some country')]
-          )
-        end
-
-        it 'does not update point' do
-          expect { perform }.not_to change { point.reload.city }
-        end
-
-        it 'does not call Geocoder' do
-          perform
-
-          expect(Geocoder).not_to have_received(:search)
-        end
+        expect(ReverseGeocoding::FetchData).to have_received(:new).with(point.id)
       end
     end
   end
