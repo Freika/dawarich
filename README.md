@@ -114,6 +114,7 @@ Feel free to change them both in the Account section.
 | TIME_ZONE                                                             | time zone, e.g. `Europe/Berlin`, full list is [here](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396) |
 | APPLICATION_HOSTS                                                     | list of host of the application, e.g. `localhost,dawarich.example.com`                                                        |
 | BACKGROUND_PROCESSING_CONCURRENCY (only for dawarich_sidekiq service) | Number of simultaneously processed background jobs, default is 10                                                          |
+| REVERSE_GEOCODING_ENABLED | `true` or `false`, this env var allows you to disable reverse geocoding feature entirely                                                          |
 
 ## Star History
 

@@ -46,8 +46,6 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      resources :points, only: :create # TODO: Deprecate in 1.0
-
       namespace :overland do
         resources :batches, only: :create
       end
