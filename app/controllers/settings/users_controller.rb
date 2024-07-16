@@ -2,7 +2,7 @@
 
 class Settings::UsersController < ApplicationController
   before_action :authenticate_user!
-  before_action :authenticate_first_user!
+  before_action :authenticate_admin!
 
   def create
     @user = User.new(
@@ -12,7 +12,8 @@ class Settings::UsersController < ApplicationController
     )
 
     if @user.save
-      redirect_to settings_url, notice: "User was successfully created, email is #{@user.email}, password is \"password\"."
+      redirect_to settings_url,
+                  notice: "User was successfully created, email is #{@user.email}, password is \"password\"."
     else
       redirect_to settings_url, notice: 'User could not be created.', status: :unprocessable_entity
     end

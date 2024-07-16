@@ -91,11 +91,10 @@ RSpec.describe User, type: :model do
     describe '#total_reverse_geocoded' do
       subject { user.total_reverse_geocoded }
 
-      let(:import) { create(:import, user:) }
       let!(:reverse_geocoded_point) do
-        create(:point, country: 'Country', city: 'City', geodata: { some: 'data' }, import:)
+        create(:point, country: 'Country', city: 'City', geodata: { some: 'data' }, user:)
       end
-      let!(:not_reverse_geocoded_point) { create(:point, country: 'Country', city: 'City', import:) }
+      let!(:not_reverse_geocoded_point) { create(:point, country: 'Country', city: 'City', user:) }
 
       it 'returns number of reverse geocoded points' do
         expect(subject).to eq(1)

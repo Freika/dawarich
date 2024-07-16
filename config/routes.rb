@@ -5,7 +5,9 @@ require 'sidekiq/web'
 Rails.application.routes.draw do
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
-  mount Sidekiq::Web => '/sidekiq'
+  authenticate :user, ->(u) { u.admin? } do
+    mount Sidekiq::Web => '/sidekiq'
+  end
 
   resources :settings, only: :index
   namespace :settings do

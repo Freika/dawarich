@@ -13,8 +13,8 @@ class ApplicationController < ActionController::Base
     @unread_notifications ||= Notification.where(user: current_user).unread
   end
 
-  def authenticate_first_user!
-    return if current_user == User.first
+  def authenticate_admin!
+    return if current_user.admin?
 
     redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :unauthorized
   end
