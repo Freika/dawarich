@@ -10,7 +10,7 @@ export default class extends Controller {
 
     const markers = JSON.parse(this.element.dataset.coordinates);
     // The default map center is Victory Column in Berlin
-    let center = markers[markers.length - 1] || [52.514568, 13.350111]
+    let center = markers[markers.length - 1] || [52.514568, 13.350111];
     const timezone = this.element.dataset.timezone;
     const clearFogRadius = this.element.dataset.fog_of_war_meters;
 
@@ -29,7 +29,7 @@ export default class extends Controller {
       Points: markersLayer,
       Polylines: polylinesLayer,
       Heatmap: heatmapLayer,
-      "Fog of War": fogOverlay
+      "Fog of War": fogOverlay,
     };
 
     L.control
@@ -49,7 +49,7 @@ export default class extends Controller {
     document.getElementById('fog').style.display = 'none';
 
     // Toggle fog layer visibility
-    map.on('overlayadd', function(e) {
+    map.on('overlayadd', function (e) {
       if (e.name === 'Fog of War') {
         fogEnabled = true;
         document.getElementById('fog').style.display = 'block';
@@ -57,7 +57,7 @@ export default class extends Controller {
       }
     });
 
-    map.on('overlayremove', function(e) {
+    map.on('overlayremove', function (e) {
       if (e.name === 'Fog of War') {
         fogEnabled = false;
         document.getElementById('fog').style.display = 'none';
@@ -65,7 +65,7 @@ export default class extends Controller {
     });
 
     // Update fog circles on zoom and move
-    map.on('zoomend moveend', function() {
+    map.on('zoomend moveend', function () {
       if (fogEnabled) {
         updateFog(markers, clearFogRadius);
       }
@@ -75,7 +75,7 @@ export default class extends Controller {
       if (fogEnabled) {
         var fog = document.getElementById('fog');
         fog.innerHTML = ''; // Clear previous circles
-        markers.forEach(function(point) {
+        markers.forEach(function (point) {
           const radiusInPixels = metersToPixels(map, clearFogRadius);
           clearFog(point[0], point[1], radiusInPixels);
         });
@@ -135,7 +135,7 @@ export default class extends Controller {
   baseMaps() {
     return {
       OpenStreetMap: this.osmMapLayer(),
-      "OpenStreetMap.HOT": this.osmHotMapLayer()
+      "OpenStreetMap.HOT": this.osmHotMapLayer(),
     };
   }
 
@@ -257,17 +257,37 @@ export default class extends Controller {
     const startMarker = L.marker([startPoint[0], startPoint[1]], { icon: startIcon }).bindPopup(`Start: ${firstTimestamp}`);
     const endMarker = L.marker([endPoint[0], endPoint[1]], { icon: finishIcon }).bindPopup(popupContent);
 
-    polyline.on("mouseover", function () {
+    let hoverPopup = null;
+
+    polyline.on("mouseover", function (e) {
       polyline.setStyle(highlightStyle);
       startMarker.addTo(map);
-      endMarker.addTo(map).openPopup();
+      endMarker.addTo(map);
+
+      const latLng = e.latlng;
+      if (hoverPopup) {
+        map.closePopup(hoverPopup);
+      }
+      hoverPopup = L.popup()
+        .setLatLng(latLng)
+        .setContent(popupContent)
+        .openOn(map);
     });
 
     polyline.on("mouseout", function () {
       polyline.setStyle(originalStyle);
-      map.closePopup();
+      map.closePopup(hoverPopup);
       map.removeLayer(startMarker);
       map.removeLayer(endMarker);
+    });
+
+    polyline.on("click", function () {
+      map.fitBounds(polyline.getBounds());
+    });
+
+    // Close the popup when clicking elsewhere on the map
+    map.on("click", function () {
+      map.closePopup(hoverPopup);
     });
   }
 

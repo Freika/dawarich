@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.2] — 2024-07-19
+
+### Fixed
+
+- Hover over a route does not move map anymore and shows the route tooltip where user hovers over the route, not at the end of the route. Click on route now will move the map to include the whole route.
+
+---
+
 ## [0.9.1] — 2024-07-12
 
 ### Fixed
