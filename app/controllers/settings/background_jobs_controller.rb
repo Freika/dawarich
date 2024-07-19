@@ -2,7 +2,7 @@
 
 class Settings::BackgroundJobsController < ApplicationController
   before_action :authenticate_user!
-  before_action :authenticate_first_user!
+  before_action :authenticate_admin!
 
   def index
     @queues = Sidekiq::Queue.all

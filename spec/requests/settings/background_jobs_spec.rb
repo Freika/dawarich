@@ -17,52 +17,61 @@ RSpec.describe '/settings/background_jobs', type: :request do
   end
 
   context 'when user is authenticated' do
-    let(:user) { create(:user) }
+    before { sign_in create(:user) }
 
-    before do
-      sign_in user
-    end
-
-    describe 'GET /index' do
-      it 'renders a successful response' do
+    context 'when user is not an admin' do
+      it 'redirects to root page' do
         get settings_background_jobs_url
 
-        expect(response).to be_successful
+        expect(response).to redirect_to(root_url)
+        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
       end
     end
 
-    describe 'POST /create' do
-      let(:params) { { job_name: 'start_reverse_geocoding' } }
+    context 'when user is an admin' do
+      before { sign_in create(:user, :admin) }
 
-      context 'with valid parameters' do
-        it 'enqueues a new job' do
-          expect do
-            post settings_background_jobs_url, params:
-          end.to have_enqueued_job(EnqueueReverseGeocodingJob)
+      describe 'GET /index' do
+        it 'renders a successful response' do
+          get settings_background_jobs_url
+
+          expect(response).to be_successful
+        end
+      end
+
+      describe 'POST /create' do
+        let(:params) { { job_name: 'start_reverse_geocoding' } }
+
+        context 'with valid parameters' do
+          it 'enqueues a new job' do
+            expect do
+              post settings_background_jobs_url, params:
+            end.to have_enqueued_job(EnqueueReverseGeocodingJob)
+          end
+
+          it 'redirects to the created settings_background_job' do
+            post(settings_background_jobs_url, params:)
+
+            expect(response).to redirect_to(settings_background_jobs_url)
+          end
+        end
+      end
+
+      describe 'DELETE /destroy' do
+        it 'clears the Sidekiq queue' do
+          queue = instance_double(Sidekiq::Queue)
+          allow(Sidekiq::Queue).to receive(:new).and_return(queue)
+
+          expect(queue).to receive(:clear)
+
+          delete settings_background_job_url('queue_name')
         end
 
-        it 'redirects to the created settings_background_job' do
-          post(settings_background_jobs_url, params:)
+        it 'redirects to the settings_background_jobs list' do
+          delete settings_background_job_url('queue_name')
 
           expect(response).to redirect_to(settings_background_jobs_url)
         end
-      end
-    end
-
-    describe 'DELETE /destroy' do
-      it 'clears the Sidekiq queue' do
-        queue = instance_double(Sidekiq::Queue)
-        allow(Sidekiq::Queue).to receive(:new).and_return(queue)
-
-        expect(queue).to receive(:clear)
-
-        delete settings_background_job_url('queue_name')
-      end
-
-      it 'redirects to the settings_background_jobs list' do
-        delete settings_background_job_url('queue_name')
-
-        expect(response).to redirect_to(settings_background_jobs_url)
       end
     end
   end
