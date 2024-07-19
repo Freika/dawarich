@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
+
+## [0.9.3] — 2024-07-19
+
+### Added
+
+- Admin flag to the database.
+
+### Fixed
+
+- Route hover distance is now being rendered in kilometers, not in meters, if route distance is more than 1 km.
+
+---
+
 ## [0.9.2] — 2024-07-19
 
 ### Fixed
