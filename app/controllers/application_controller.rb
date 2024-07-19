@@ -16,7 +16,7 @@ class ApplicationController < ActionController::Base
   def authenticate_admin!
     return if current_user.admin?
 
-    redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :unauthorized
+    redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :see_other
   end
 
   def authenticate_api_key

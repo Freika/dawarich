@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Admin flag to the database.
+- Admin flag to the database. Now not only the first user in the system can create new users, but also users with the admin flag set to true. This will make easier introduction of more admin functions in the future.
 
 ### Fixed
 
