@@ -85,6 +85,9 @@
           <details>
             <summary>
               <%= "#{current_user.email}" %>
+              <% if current_user.admin? %>
+                <span class='tooltip tooltip-bottom' data-tip="You're an admin, Harry!">⭐️</span>
+              <% end %>
             </summary>
             <ul class="p-2 bg-base-100 rounded-t-none z-10">
               <li><%= link_to 'Account', edit_user_registration_path %></li>
