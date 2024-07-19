@@ -244,7 +244,7 @@ export default class extends Controller {
       <b>Start:</b> ${firstTimestamp}<br>
       <b>End:</b> ${lastTimestamp}<br>
       <b>Duration:</b> ${timeOnRoute}<br>
-      <b>Distance:</b> ${Math.round(distance)}m<br>
+      <b>Distance:</b> ${this.formatDistance(distance)}<br>
     `;
 
     if (isDebugMode) {
@@ -314,5 +314,13 @@ export default class extends Controller {
         return polyline;
       })
     ).addTo(map);
+  }
+
+  formatDistance(distance) {
+    if (distance >= 1000) {
+      return (distance / 1000).toFixed(2) + ' km';
+    } else {
+      return distance.toFixed(0) + ' meters';
+    }
   }
 }
