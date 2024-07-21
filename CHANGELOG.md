@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.9.4] — 2024-07-21
 
+### Added
+
+- A popup being shown when user clicks on a point now contains a link to delete the point. This is useful if you want to delete a point that was imported by mistake or you just want to clean up your data.
+
 ### Fixed
 
 - Added `public/imports` and `public/exports` folders to git to prevent errors when exporting data

@@ -4,12 +4,13 @@ class MapController < ApplicationController
   before_action :authenticate_user!
 
   def index
-    @points = current_user.tracked_points.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at, end_at).order(timestamp: :asc)
+    @points = current_user.tracked_points.without_raw_data.where('timestamp >= ? AND timestamp <= ?', start_at,
+                                                                 end_at).order(timestamp: :asc)
 
     @countries_and_cities = CountriesAndCities.new(@points).call
     @coordinates =
       @points.pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id)
-             .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7] }
+             .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s] }
     @distance = distance
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)

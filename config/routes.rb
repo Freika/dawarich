@@ -54,6 +54,8 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      resources :points, only: %i[destroy]
+
       namespace :overland do
         resources :batches, only: :create
       end
