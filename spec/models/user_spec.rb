@@ -11,6 +11,7 @@ RSpec.describe User, type: :model do
     it { is_expected.to have_many(:exports).dependent(:destroy) }
     it { is_expected.to have_many(:notifications).dependent(:destroy) }
     it { is_expected.to have_many(:areas).dependent(:destroy) }
+    it { is_expected.to have_many(:visits).dependent(:destroy) }
   end
 
   describe 'callbacks' do

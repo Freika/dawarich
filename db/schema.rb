@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_07_21_165313) do
+ActiveRecord::Schema[7.1].define(version: 2024_07_21_183116) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -121,6 +121,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_21_165313) do
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.jsonb "geodata", default: {}, null: false
+    t.bigint "visit_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -133,6 +134,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_21_165313) do
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
     t.index ["user_id"], name: "index_points_on_user_id"
+    t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
   create_table "stats", force: :cascade do |t|
@@ -166,10 +168,22 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_21_165313) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  create_table "visits", force: :cascade do |t|
+    t.bigint "area_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["area_id"], name: "index_visits_on_area_id"
+    t.index ["user_id"], name: "index_visits_on_user_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "points", "users"
+  add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
+  add_foreign_key "visits", "areas"
+  add_foreign_key "visits", "users"
 end

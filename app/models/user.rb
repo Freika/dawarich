@@ -13,6 +13,7 @@ class User < ApplicationRecord
   has_many :exports, dependent: :destroy
   has_many :notifications, dependent: :destroy
   has_many :areas, dependent: :destroy
+  has_many :visits, dependent: :destroy
 
   after_create :create_api_key
 
