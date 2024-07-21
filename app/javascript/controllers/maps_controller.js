@@ -44,6 +44,15 @@ export default class extends Controller {
       Areas: this.areasLayer // Add the areas layer to the controls
     };
 
+    L.control
+      .scale({
+        position: "bottomright",
+        metric: true,
+        imperial: false,
+        maxWidth: 120,
+      })
+      .addTo(this.map);
+
     L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
     // Fetch and draw areas when the map is loaded
@@ -384,17 +393,33 @@ export default class extends Controller {
     const center = layer.getLatLng();
 
     const formHtml = `
-      <form id="circle-form">
-        <label for="circle-name">Name:</label>
-        <input type="text" id="circle-name" name="area[name]" required>
-        <input type="hidden" name="area[latitude]" value="${center.lat}">
-        <input type="hidden" name="area[longitude]" value="${center.lng}">
-        <input type="hidden" name="area[radius]" value="${radius}">
-        <button type="submit">Save</button>
-      </form>
+      <div class="card w-96 max-w-sm bg-content-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">New Area</h2>
+          <form id="circle-form">
+            <div class="form-control">
+              <label for="circle-name" class="label">
+                <span class="label-text">Name</span>
+              </label>
+              <input type="text" id="circle-name" name="area[name]" class="input input-bordered input-ghost focus:input-ghost w-full max-w-xs" required>
+            </div>
+            <input type="hidden" name="area[latitude]" value="${center.lat}">
+            <input type="hidden" name="area[longitude]" value="${center.lng}">
+            <input type="hidden" name="area[radius]" value="${radius}">
+            <div class="card-actions justify-end mt-4">
+              <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
     `;
 
-    layer.bindPopup(formHtml).openPopup();
+    layer.bindPopup(
+      formHtml, {
+        maxWidth: "auto",
+        minWidth: 300
+      }
+     ).openPopup();
 
     layer.on('popupopen', () => {
       const form = document.getElementById('circle-form');
