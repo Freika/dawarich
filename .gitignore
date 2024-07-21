@@ -26,8 +26,12 @@
 !/tmp/storage/.keep
 
 /public/assets
-/public/exports
-/public/imports
+
+# We need directories for import and export files, but not the files themselves.
+/public/exports/*
+!/public/exports/.keep
+/public/imports/*
+!/public/imports/.keep
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key

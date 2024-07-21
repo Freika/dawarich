@@ -1,6 +1,14 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import "leaflet.heat";
+import { formatDistance } from "../maps/helpers";
+import { getUrlParameter } from "../maps/helpers";
+import { minutesToDaysHoursMinutes } from "../maps/helpers";
+import { formatDate } from "../maps/helpers";
+import { haversineDistance } from "../maps/helpers";
+import { osmMapLayer } from "../maps/layers";
+import { osmHotMapLayer } from "../maps/layers";
+import { addTileLayer } from "../maps/layers";
 
 export default class extends Controller {
   static targets = ["container"];
@@ -15,7 +23,7 @@ export default class extends Controller {
     const clearFogRadius = this.element.dataset.fog_of_war_meters;
 
     const map = L.map(this.containerTarget, {
-      layers: [this.osmMapLayer(), this.osmHotMapLayer()],
+      layers: [osmMapLayer(), osmHotMapLayer()],
     }).setView([center[0], center[1]], 14);
 
     const markersArray = this.createMarkersArray(markers);
@@ -41,7 +49,7 @@ export default class extends Controller {
       })
       .addTo(map);
 
-    const layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(map);
+    L.control.layers(this.baseMaps(), controlsLayer).addTo(map);
 
     let fogEnabled = false;
 
@@ -110,7 +118,7 @@ export default class extends Controller {
       fog.appendChild(circle);
     }
 
-    this.addTileLayer(map);
+    addTileLayer(map);
     this.addLastMarker(map, markers);
   }
 
@@ -118,24 +126,10 @@ export default class extends Controller {
     this.map.remove();
   }
 
-  osmMapLayer() {
-    return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "© OpenStreetMap",
-    });
-  }
-
-  osmHotMapLayer() {
-    return L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "© OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team hosted by OpenStreetMap France",
-    });
-  }
-
   baseMaps() {
     return {
-      OpenStreetMap: this.osmMapLayer(),
-      "OpenStreetMap.HOT": this.osmHotMapLayer(),
+      OpenStreetMap: osmMapLayer(),
+      "OpenStreetMap.HOT": osmHotMapLayer(),
     };
   }
 
@@ -148,8 +142,9 @@ export default class extends Controller {
   }
 
   createPopupContent(marker) {
+    const timezone = this.element.dataset.timezone;
     return `
-      <b>Timestamp:</b> ${this.formatDate(marker[4])}<br>
+      <b>Timestamp:</b> ${formatDate(marker[4], timezone)}<br>
       <b>Latitude:</b> ${marker[0]}<br>
       <b>Longitude:</b> ${marker[1]}<br>
       <b>Altitude:</b> ${marker[3]}m<br>
@@ -158,62 +153,11 @@ export default class extends Controller {
     `;
   }
 
-  formatDate(timestamp) {
-    const date = new Date(timestamp * 1000);
-    const timezone = this.element.dataset.timezone;
-    return date.toLocaleString("en-GB", { timeZone: timezone });
-  }
-
-  addTileLayer(map) {
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>",
-    }).addTo(map);
-  }
-
   addLastMarker(map, markers) {
     if (markers.length > 0) {
       const lastMarker = markers[markers.length - 1].slice(0, 2);
       L.marker(lastMarker).addTo(map);
     }
-  }
-
-  haversineDistance(lat1, lon1, lat2, lon2) {
-    const toRad = (x) => (x * Math.PI) / 180;
-    const R = 6371; // Radius of the Earth in kilometers
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c * 1000; // Distance in meters
-  }
-
-  minutesToDaysHoursMinutes(minutes) {
-    const days = Math.floor(minutes / (24 * 60));
-    const hours = Math.floor((minutes % (24 * 60)) / 60);
-    minutes = minutes % 60;
-    let result = "";
-
-    if (days > 0) {
-      result += `${days}d `;
-    }
-
-    if (hours > 0) {
-      result += `${hours}h `;
-    }
-
-    if (minutes > 0) {
-      result += `${minutes}min`;
-    }
-
-    return result;
-  }
-
-  getUrlParameter(name) {
-    return new URLSearchParams(window.location.search).get(name);
   }
 
   addHighlightOnHover(polyline, map, startPoint, endPoint, prevPoint, nextPoint, timezone) {
@@ -226,11 +170,11 @@ export default class extends Controller {
     const lastTimestamp = new Date(endPoint[4] * 1000).toLocaleString("en-GB", { timeZone: timezone });
 
     const minutes = Math.round((endPoint[4] - startPoint[4]) / 60);
-    const timeOnRoute = this.minutesToDaysHoursMinutes(minutes);
-    const distance = this.haversineDistance(startPoint[0], startPoint[1], endPoint[0], endPoint[1]);
+    const timeOnRoute = minutesToDaysHoursMinutes(minutes);
+    const distance = haversineDistance(startPoint[0], startPoint[1], endPoint[0], endPoint[1]);
 
-    const distanceToPrev = prevPoint ? this.haversineDistance(prevPoint[0], prevPoint[1], startPoint[0], startPoint[1]) : "N/A";
-    const distanceToNext = nextPoint ? this.haversineDistance(endPoint[0], endPoint[1], nextPoint[0], nextPoint[1]) : "N/A";
+    const distanceToPrev = prevPoint ? haversineDistance(prevPoint[0], prevPoint[1], startPoint[0], startPoint[1]) : "N/A";
+    const distanceToNext = nextPoint ? haversineDistance(endPoint[0], endPoint[1], nextPoint[0], nextPoint[1]) : "N/A";
 
     const timeBetweenPrev = prevPoint ? Math.round((startPoint[4] - prevPoint[4]) / 60) : "N/A";
     const timeBetweenNext = nextPoint ? Math.round((nextPoint[4] - endPoint[4]) / 60) : "N/A";
@@ -238,19 +182,19 @@ export default class extends Controller {
     const startIcon = L.divIcon({ html: "🚥", className: "emoji-icon" });
     const finishIcon = L.divIcon({ html: "🏁", className: "emoji-icon" });
 
-    const isDebugMode = this.getUrlParameter("debug") === "true";
+    const isDebugMode = getUrlParameter("debug") === "true";
 
     let popupContent = `
       <b>Start:</b> ${firstTimestamp}<br>
       <b>End:</b> ${lastTimestamp}<br>
       <b>Duration:</b> ${timeOnRoute}<br>
-      <b>Distance:</b> ${this.formatDistance(distance)}<br>
+      <b>Distance:</b> ${formatDistance(distance)}<br>
     `;
 
     if (isDebugMode) {
       popupContent += `
-        <b>Prev Route:</b> ${Math.round(distanceToPrev)}m and ${this.minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
-        <b>Next Route:</b> ${Math.round(distanceToNext)}m and ${this.minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
+        <b>Prev Route:</b> ${Math.round(distanceToPrev)}m and ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
+        <b>Next Route:</b> ${Math.round(distanceToNext)}m and ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
       `;
     }
 
@@ -303,7 +247,7 @@ export default class extends Controller {
       } else {
         const lastPoint = currentPolyline[currentPolyline.length - 1];
         const currentPoint = markers[i];
-        const distance = this.haversineDistance(lastPoint[0], lastPoint[1], currentPoint[0], currentPoint[1]);
+        const distance = haversineDistance(lastPoint[0], lastPoint[1], currentPoint[0], currentPoint[1]);
         const timeDifference = (currentPoint[4] - lastPoint[4]) / 60;
 
         if (distance > distanceThresholdMeters || timeDifference > timeThresholdMinutes) {
@@ -334,13 +278,5 @@ export default class extends Controller {
         return polyline;
       })
     ).addTo(map);
-  }
-
-  formatDistance(distance) {
-    if (distance >= 1000) {
-      return (distance / 1000).toFixed(2) + ' km';
-    } else {
-      return distance.toFixed(0) + ' meters';
-    }
   }
 }

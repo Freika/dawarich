@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [0.9.4] — 2024-07-21
+
+### Fixed
+
+- Added `public/imports` and `public/exports` folders to git to prevent errors when exporting data
+
+### Changed
+
+- Some code from `maps_controller.js` was extracted into separate files
+
+---
+
 
 ## [0.9.3] — 2024-07-19
 
