@@ -9,6 +9,7 @@ import { haversineDistance } from "../maps/helpers";
 import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
 import { addTileLayer } from "../maps/layers";
+import "leaflet-draw";
 
 export default class extends Controller {
   static targets = ["container"];
@@ -33,24 +34,20 @@ export default class extends Controller {
     this.polylinesLayer = this.createPolylinesLayer(this.markers, this.map, this.timezone);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
+    this.areasLayer = L.layerGroup(); // Initialize areas layer
 
     const controlsLayer = {
       Points: this.markersLayer,
       Polylines: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
+      Areas: this.areasLayer // Add the areas layer to the controls
     };
 
-    L.control
-      .scale({
-        position: "bottomright",
-        metric: true,
-        imperial: false,
-        maxWidth: 120,
-      })
-      .addTo(this.map);
-
     L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+
+    // Fetch and draw areas when the map is loaded
+    this.fetchAndDrawAreas();
 
     let fogEnabled = false;
 
@@ -83,6 +80,22 @@ export default class extends Controller {
     addTileLayer(this.map);
     this.addLastMarker(this.map, this.markers);
     this.addEventListeners();
+
+    // Initialize Leaflet.draw
+    this.initializeDrawControl();
+
+    // Add event listeners to toggle draw controls
+    this.map.on('overlayadd', (e) => {
+      if (e.name === 'Areas') {
+        this.map.addControl(this.drawControl);
+      }
+    });
+
+    this.map.on('overlayremove', (e) => {
+      if (e.name === 'Areas') {
+        this.map.removeControl(this.drawControl);
+      }
+    });
   }
 
   disconnect() {
@@ -329,5 +342,194 @@ export default class extends Controller {
         return polyline;
       })
     ).addTo(map);
+  }
+
+  initializeDrawControl() {
+    // Initialize the FeatureGroup to store editable layers
+    this.drawnItems = new L.FeatureGroup();
+    this.map.addLayer(this.drawnItems);
+
+    // Initialize the draw control and pass it the FeatureGroup of editable layers
+    this.drawControl = new L.Control.Draw({
+      draw: {
+        polyline: false,
+        polygon: false,
+        rectangle: false,
+        marker: false,
+        circlemarker: false,
+        circle: {
+          shapeOptions: {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.5,
+          },
+        },
+      },
+    });
+
+    // Handle circle creation
+    this.map.on(L.Draw.Event.CREATED, (event) => {
+      const layer = event.layer;
+
+      if (event.layerType === 'circle') {
+        this.handleCircleCreated(layer);
+      }
+
+      this.drawnItems.addLayer(layer);
+    });
+  }
+
+  handleCircleCreated(layer) {
+    const radius = layer.getRadius();
+    const center = layer.getLatLng();
+
+    const formHtml = `
+      <form id="circle-form">
+        <label for="circle-name">Name:</label>
+        <input type="text" id="circle-name" name="area[name]" required>
+        <input type="hidden" name="area[latitude]" value="${center.lat}">
+        <input type="hidden" name="area[longitude]" value="${center.lng}">
+        <input type="hidden" name="area[radius]" value="${radius}">
+        <button type="submit">Save</button>
+      </form>
+    `;
+
+    layer.bindPopup(formHtml).openPopup();
+
+    layer.on('popupopen', () => {
+      const form = document.getElementById('circle-form');
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.saveCircle(new FormData(form), layer);
+      });
+    });
+
+    // Add the layer to the areas layer group
+    this.areasLayer.addLayer(layer);
+  }
+
+  saveCircle(formData, layer) {
+    const data = {};
+    formData.forEach((value, key) => {
+      const keys = key.split('[').map(k => k.replace(']', ''));
+      if (keys.length > 1) {
+        if (!data[keys[0]]) data[keys[0]] = {};
+        data[keys[0]][keys[1]] = value;
+      } else {
+        data[keys[0]] = value;
+      }
+    });
+
+    fetch('/api/v1/areas', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify(data)
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Circle saved:', data);
+      layer.closePopup();
+      layer.bindPopup(`
+        Name: ${data.name}<br>
+        Radius: ${Math.round(data.radius)} meters<br>
+        <a href="#" data-id="${marker[6]}" class="delete-area">[Delete]</a>
+      `).openPopup();
+
+      // Add event listener for the delete button
+      layer.on('popupopen', () => {
+        document.querySelector('.delete-area').addEventListener('click', () => {
+          this.deleteArea(data.id, layer);
+        });
+      });
+    })
+    .catch(error => {
+      console.error('There was a problem with the save request:', error);
+    });
+  }
+
+  deleteArea(id, layer) {
+    fetch(`/api/v1/areas/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Area deleted:', data);
+      this.areasLayer.removeLayer(layer); // Remove the layer from the areas layer group
+    })
+    .catch(error => {
+      console.error('There was a problem with the delete request:', error);
+    });
+  }
+
+  fetchAndDrawAreas() {
+    fetch('/api/v1/areas', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Fetched areas:', data); // Debugging line to check response
+
+      data.forEach(area => {
+        // Log each area to verify the structure
+        console.log('Area:', area);
+
+        // Check if necessary fields are present
+        if (area.latitude && area.longitude && area.radius && area.name && area.id) {
+          const layer = L.circle([area.latitude, area.longitude], {
+            radius: area.radius,
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.5
+          }).bindPopup(`
+            Name: ${area.name}<br>
+            Radius: ${Math.round(area.radius)} meters<br>
+            <a href="#" data-id="${area.id}" class="delete-area">[Delete]</a>
+          `);
+
+          this.areasLayer.addLayer(layer); // Add to areas layer group
+          console.log('Added layer to areasLayer:', layer); // Debugging line to confirm addition
+
+          // Add event listener for the delete button
+          layer.on('popupopen', () => {
+            document.querySelector('.delete-area').addEventListener('click', (e) => {
+              e.preventDefault();
+              if (confirm('Are you sure you want to delete this area?')) {
+                this.deleteArea(area.id, layer);
+              }
+            });
+          });
+        } else {
+          console.error('Area missing required fields:', area);
+        }
+      });
+    })
+    .catch(error => {
+      console.error('There was a problem with the fetch request:', error);
+    });
   }
 }

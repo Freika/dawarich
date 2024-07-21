@@ -12,6 +12,7 @@ class User < ApplicationRecord
   has_many :tracked_points, class_name: 'Point', dependent: :destroy
   has_many :exports, dependent: :destroy
   has_many :notifications, dependent: :destroy
+  has_many :areas, dependent: :destroy
 
   after_create :create_api_key
 
