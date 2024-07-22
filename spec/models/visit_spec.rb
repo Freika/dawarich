@@ -1,5 +1,15 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Visit, type: :model do
-  pending "add some examples to (or delete) #{__FILE__}"
+  describe 'associations' do
+    it { is_expected.to belong_to(:area) }
+    it { is_expected.to belong_to(:user) }
+    it { is_expected.to have_many(:points).dependent(:nullify) }
+  end
+
+  describe 'factory' do
+    it { expect(build(:visit)).to be_valid }
+  end
 end
