@@ -81,6 +81,66 @@
           <%= f.number_field :fog_of_war_meters, value: current_user.settings['fog_of_war_meters'], class: "input input-bordered" %>
         </div>
         <div class="form-control my-2">
+          <%= f.label :time_threshold_minutes do %>
+            Visit time threshold
+
+            <!-- The button to open modal -->
+            <label for="time_threshold_minutes_info" class="btn">?</label>
+
+            <!-- Put this part before </body> tag -->
+            <input type="checkbox" id="time_threshold_minutes_info" class="modal-toggle" />
+            <div class="modal" role="dialog">
+              <div class="modal-box">
+                <h3 class="text-lg font-bold">Visit time threshold</h3>
+                <p class="py-4">
+                  Value in minutes.
+                </p>
+                <p class="py-4">
+                  This value is the threshold, based on which a visit is calculated. If the time between two consequent points is greater than this value, the visit is considered a new visit. If the time between two points is less than this value, the visit is considered as a continuation of the previous visit.
+                </p>
+                <p class="py-4">
+                  For example, if you set this value to 30 minutes, and you have four points with a time difference of 20 minutes between them, they will be considered as one visit. If the time difference between two first points is 20 minutes, and between third and fourth point is 40 minutes, the visit will be split into two visits.
+                </p>
+                <p class="py-4">
+                  Default value is 30 minutes.
+                </p>
+              </div>
+              <label class="modal-backdrop" for="time_threshold_minutes_info">Close</label>
+            </div>
+          <% end %>
+          <%= f.number_field :time_threshold_minutes, value: current_user.settings['time_threshold_minutes'], class: "input input-bordered" %>
+        </div>
+        <div class="form-control my-2">
+          <%= f.label :merge_threshold_minutes do %>
+            Merge time threshold
+
+            <!-- The button to open modal -->
+            <label for="merge_threshold_minutes_info" class="btn">?</label>
+
+            <!-- Put this part before </body> tag -->
+            <input type="checkbox" id="merge_threshold_minutes_info" class="modal-toggle" />
+            <div class="modal" role="dialog">
+              <div class="modal-box">
+                <h3 class="text-lg font-bold">Merge threshold</h3>
+                <p class="py-4">
+                  Value in minutes.
+                </p>
+                <p class="py-4">
+                  This value is the threshold, based on which two visits are merged into one. If the time between two consequent visits is less than this value, the visits are merged into one visit. If the time between two visits is greater than this value, the visits are considered as separate visits.
+                </p>
+                <p class="py-4">
+                  For example, if you set this value to 30 minutes, and you have two visits with a time difference of 20 minutes between them, they will be merged into one visit. If the time difference between two visits is 40 minutes, the visits will be considered as separate visits.
+                </p>
+                <p class="py-4">
+                  Default value is 15 minutes.
+                </p>
+              </div>
+              <label class="modal-backdrop" for="merge_threshold_minutes_info">Close</label>
+            </div>
+          <% end %>
+          <%= f.number_field :merge_threshold_minutes, value: current_user.settings['merge_threshold_minutes'], class: "input input-bordered" %>
+        </div>
+        <div class="form-control my-2">
           <%= f.submit "Update", class: "btn btn-primary" %>
         </div>
       <% end %>

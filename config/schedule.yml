@@ -4,3 +4,8 @@ stat_creating_job:
   cron: "0 */6 * * *"
   class: "StatCreatingJob"
   queue: default
+
+area_visits_calculation_scheduling_job:
+  cron: "0 * * * *" # every hour
+  class: "AreaVisitsCalculationSchedulingJob"
+  queue: default

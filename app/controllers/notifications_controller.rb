@@ -6,7 +6,7 @@ class NotificationsController < ApplicationController
 
   def index
     @notifications =
-      current_user.notifications.order(created_at: :desc).paginate(page: params[:page], per_page: 20)
+      current_user.notifications.order(created_at: :desc).page(params[:page]).per(20)
   end
 
   def show
