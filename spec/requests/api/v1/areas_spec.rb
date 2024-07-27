@@ -15,7 +15,7 @@ RSpec.describe '/api/v1/areas', type: :request do
   describe 'POST /create' do
     context 'with valid parameters' do
       let(:valid_attributes) do
-        attributes_for(:area).merge(user_id: user.id)
+        attributes_for(:area)
       end
 
       it 'creates a new Area' do
@@ -33,7 +33,7 @@ RSpec.describe '/api/v1/areas', type: :request do
 
     context 'with invalid parameters' do
       let(:invalid_attributes) do
-        attributes_for(:area, name: nil).merge(user_id: user.id)
+        attributes_for(:area, name: nil)
       end
 
       it 'does not create a new Area' do
