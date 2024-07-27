@@ -58,7 +58,7 @@ class Areas::Visits::Create
     Rails.logger.info("Visit from #{time_range}, Points: #{visit_points.size}")
 
     ActiveRecord::Base.transaction do
-      visit = find_visit(area.id, visit_points.first.timestamp)
+      visit = find_or_initialize_visit(area.id, visit_points.first.timestamp)
 
       visit.tap do |v|
         v.name = "#{area.name}, #{time_range}"
@@ -73,7 +73,7 @@ class Areas::Visits::Create
     end
   end
 
-  def find_visit(area_id, timestamp)
+  def find_or_initialize_visit(area_id, timestamp)
     Visit.find_or_initialize_by(
       area_id:,
       user_id: user.id,

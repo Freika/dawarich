@@ -29,8 +29,11 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          ruby-version: '3.2.3'
           bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
 
       - name: Run tests
         env:
@@ -45,6 +48,7 @@ jobs:
           name: screenshots
           path: ${{ github.workspace }}/tmp/capybara
           if-no-files-found: ignore
+
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
