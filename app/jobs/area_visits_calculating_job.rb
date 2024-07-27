@@ -7,6 +7,6 @@ class AreaVisitsCalculatingJob < ApplicationJob
     user = User.find(user_id)
     areas = user.areas
 
-    Visits::Areas::Calculate(user, areas).call
+    Areas::Visits::Create(user, areas).call
   end
 end

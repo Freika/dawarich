@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class VisitsController < ApplicationController
-  before_action
+  before_action :authenticate_user!
   before_action :set_visit, only: %i[update]
 
   def index

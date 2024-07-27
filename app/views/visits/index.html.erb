@@ -5,52 +5,65 @@
     <h1 class="font-bold text-4xl">Visits</h1>
   </div>
 
-  <div class="flex justify-center my-5">
-    <div class='flex'>
-      <%= paginate @visits %>
+  <% if @visits.empty? %>
+    <div class="hero min-h-80 bg-base-200">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h1 class="text-5xl font-bold">Hello there!</h1>
+          <p class="py-6">
+            Here you'll find your visits, but now there are none. Create some areas on your map and pretty soon you'll see visit suggestions on this page!
+          </p>
+        </div>
+      </div>
     </div>
-  </div>
+  <% else %>
+    <div class="flex justify-center my-5">
+      <div class='flex'>
+        <%= paginate @visits %>
+      </div>
+    </div>
 
-  <ul class="timeline timeline-snap-icon max-md:timeline-compact timeline-vertical">
-    <% @visits.each.with_index do |date, index| %>
-      <li>
-        <div class="timeline-middle">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="<%= date[:visits].all?(&:confirmed?) ? 'green' : 'currentColor' %>"
-            class="h-5 w-5">
-            <path
-              fill-rule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-              clip-rule="evenodd" />
-          </svg>
-        </div>
-        <div class="<%= index.odd? ? 'timeline-start' : 'timeline-end' %> mb-10 md:text-end">
-          <time class="font-mono italic"><%= date[:date].strftime('%A, %d %B %Y') %></time>
-          <% date[:visits].each do |visit| %>
-            <div class="group relative">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-lg font-black <%= 'underline decoration-dotted' if visit.pending? %>">
-                    <%= visit.area.name %>
-                  </div>
+    <ul class="timeline timeline-snap-icon max-md:timeline-compact timeline-vertical">
+      <% @visits.each.with_index do |date, index| %>
+        <li>
+          <div class="timeline-middle">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="<%= date[:visits].all?(&:confirmed?) ? 'green' : 'currentColor' %>"
+              class="h-5 w-5">
+              <path
+                fill-rule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="<%= index.odd? ? 'timeline-start' : 'timeline-end' %> mb-10 md:text-end">
+            <time class="font-mono italic"><%= date[:date].strftime('%A, %d %B %Y') %></time>
+            <% date[:visits].each do |visit| %>
+              <div class="group relative">
+                <div class="flex items-center justify-between">
                   <div>
-                    <%= "#{visit.started_at.strftime('%H:%M')} - #{visit.ended_at.strftime('%H:%M')}" %>
+                    <div class="text-lg font-black <%= 'underline decoration-dotted' if visit.pending? %>">
+                      <%= visit.area.name %>
+                    </div>
+                    <div>
+                      <%= "#{visit.started_at.strftime('%H:%M')} - #{visit.ended_at.strftime('%H:%M')}" %>
+                    </div>
                   </div>
+                  <% if visit.pending? %>
+                    <div class="opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center ml-4">
+                      <%= button_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-success mr-1' %>
+                      <%= button_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-error' %>
+                    </div>
+                  <% end %>
                 </div>
-                <% if visit.pending? %>
-                  <div class="opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center ml-4">
-                    <%= button_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-success mr-1' %>
-                    <%= button_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-error' %>
-                  </div>
-                <% end %>
               </div>
-            </div>
-          <% end %>
-        </div>
-        <hr />
-      </li>
-    <% end %>
-  </ul>
+            <% end %>
+          </div>
+          <hr />
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
 </div>
