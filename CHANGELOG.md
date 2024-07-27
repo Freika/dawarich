@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## [0.9.5] — 2024-07-26
+## [0.9.5] — 2024-07-27
 
 ### Added
 
@@ -15,12 +15,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visits page. This page will show you all your visits, calculated based on the areas you've created. You can see the date and time of the visit, the area you've visited, and the duration of the visit.
 - A possibility to confirm or decline a visit. When you create an area, the visit is not calculated immediately. You need to confirm or decline the visit. You can do this on the Visits page. Click on the visit, then click on the "Confirm" or "Decline" button. If you confirm the visit, it will be added to your timeline. If you decline the visit, it will be removed from your timeline.
 - Settings for visit calculation. You can set the minimum time spent in the area to consider it as a visit. This setting can be found in the Settings page.
-- [x] Swagger doc for Areas endpoint
-- [ ] Atomicity for visits creation
+- POST `/api/v1/areas` and GET `/api/v1/areas` endpoints. You can now create and list your areas via the API.
+
+⚠️ Visits functionality is still in beta. If you find any issues, please let me know. ⚠️
 
 ### Fixed
 
 - A route popup now correctly shows distance made in the route, not the distance between first and last points in the route.
+
 ---
 
 ## [0.9.4] — 2024-07-21
