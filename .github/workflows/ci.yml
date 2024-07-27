@@ -55,7 +55,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/1
         run: |
           bin/rails db:setup
-          bin/rails spec
+          bin/rails spec || (cat log/test.log && exit 1)
 
       - name: Keep screenshots from failed system tests
         uses: actions/upload-artifact@v4
