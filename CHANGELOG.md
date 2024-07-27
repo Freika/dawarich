@@ -10,7 +10,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Name of backgroun job to calculate visits
+- Call to the background job to calculate visits
+
+---
+
+## [0.9.7] — 2024-07-27
+
+### Fixed
+
+- Name of background job to calculate visits
 
 ---
 
