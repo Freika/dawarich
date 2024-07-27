@@ -2,7 +2,7 @@
 
 class VisitsController < ApplicationController
   before_action
-  before_action :set_visit, only: %i[edit update destroy]
+  before_action :set_visit, only: %i[update]
 
   def index
     visits = current_user
@@ -16,19 +16,12 @@ class VisitsController < ApplicationController
     @visits = Kaminari.paginate_array(visits).page(params[:page]).per(10)
   end
 
-  def edit; end
-
   def update
     if @visit.update(visit_params)
       redirect_to visits_url, notice: 'Visit was successfully updated.', status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
-  end
-
-  def destroy
-    @visit.destroy!
-    redirect_to visits_url, notice: 'Visit was successfully destroyed.', status: :see_other
   end
 
   private

@@ -137,8 +137,6 @@ GEM
       csv (>= 3.0.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
-    groupdate (6.4.0)
-      activesupport (>= 6.1)
     hashdiff (1.1.0)
     i18n (1.14.5)
       concurrent-ruby (~> 1.0)
@@ -425,7 +423,6 @@ DEPENDENCIES
   ffaker
   foreman
   geocoder
-  groupdate
   importmap-rails
   kaminari
   lograge
