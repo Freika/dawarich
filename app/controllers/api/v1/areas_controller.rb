@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::AreasController < ApplicationController
+  skip_forgery_protection
   before_action :authenticate_api_key
   before_action :set_area, only: %i[update destroy]
 

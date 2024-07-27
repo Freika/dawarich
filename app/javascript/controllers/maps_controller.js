@@ -57,7 +57,7 @@ export default class extends Controller {
     L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
     // Fetch and draw areas when the map is loaded
-    this.fetchAndDrawAreas();
+    this.fetchAndDrawAreas(this.apiKey);
 
     let fogEnabled = false;
 
@@ -431,7 +431,7 @@ export default class extends Controller {
       const form = document.getElementById('circle-form');
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        this.saveCircle(new FormData(form), layer);
+        this.saveCircle(new FormData(form), layer, this.apiKey);
       });
     });
 
@@ -451,7 +451,7 @@ export default class extends Controller {
       }
     });
 
-    fetch(`"/api/v1/areas?api_key=${apiKey}"`, {
+    fetch(`/api/v1/areas?api_key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json'},
       body: JSON.stringify(data)
@@ -483,8 +483,8 @@ export default class extends Controller {
     });
   }
 
-  deleteArea(id, layer) {
-    fetch(`/api/v1/areas/${id}`, {
+  deleteArea(id, layer, apiKey) {
+    fetch(`/api/v1/areas/${id}?api_key=${apiKey}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -506,8 +506,8 @@ export default class extends Controller {
     });
   }
 
-  fetchAndDrawAreas() {
-    fetch('/api/v1/areas', {
+  fetchAndDrawAreas(apiKey) {
+    fetch(`/api/v1/areas?api_key=${apiKey}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -547,7 +547,7 @@ export default class extends Controller {
             document.querySelector('.delete-area').addEventListener('click', (e) => {
               e.preventDefault();
               if (confirm('Are you sure you want to delete this area?')) {
-                this.deleteArea(area.id, layer);
+                this.deleteArea(area.id, layer, this.apiKey);
               }
             });
           });
