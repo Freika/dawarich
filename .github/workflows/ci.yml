@@ -1,4 +1,5 @@
 name: CI
+# Not functional at the moment
 
 on:
   pull_request:
