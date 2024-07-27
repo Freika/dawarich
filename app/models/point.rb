@@ -4,6 +4,7 @@ class Point < ApplicationRecord
   reverse_geocoded_by :latitude, :longitude
 
   belongs_to :import, optional: true
+  belongs_to :visit, optional: true
   belongs_to :user
 
   validates :latitude, :longitude, :timestamp, presence: true

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_07_13_103051) do
+ActiveRecord::Schema[7.1].define(version: 2024_07_21_183116) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -42,7 +42,15 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_13_103051) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
-  create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
+  create_table "areas", force: :cascade do |t|
+    t.string "name", null: false
+    t.bigint "user_id", null: false
+    t.decimal "longitude", precision: 10, scale: 6, null: false
+    t.decimal "latitude", precision: 10, scale: 6, null: false
+    t.integer "radius", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_areas_on_user_id"
   end
 
   create_table "exports", force: :cascade do |t|
@@ -110,6 +118,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_13_103051) do
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.jsonb "geodata", default: {}, null: false
+    t.bigint "visit_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -122,6 +131,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_13_103051) do
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
     t.index ["user_id"], name: "index_points_on_user_id"
+    t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
   create_table "stats", force: :cascade do |t|
@@ -149,15 +159,33 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_13_103051) do
     t.datetime "updated_at", null: false
     t.string "api_key", default: "", null: false
     t.string "theme", default: "dark", null: false
-    t.jsonb "settings", default: {"fog_of_war_meters"=>"200", "meters_between_routes"=>"1000", "minutes_between_routes"=>"60"}
+    t.jsonb "settings", default: {"fog_of_war_meters"=>"100", "meters_between_routes"=>"1000", "minutes_between_routes"=>"60"}
     t.boolean "admin", default: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  create_table "visits", force: :cascade do |t|
+    t.bigint "area_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at", null: false
+    t.integer "duration", null: false
+    t.string "name", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["area_id"], name: "index_visits_on_area_id"
+    t.index ["user_id"], name: "index_visits_on_user_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "areas", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "points", "users"
+  add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
+  add_foreign_key "visits", "areas"
+  add_foreign_key "visits", "users"
 end

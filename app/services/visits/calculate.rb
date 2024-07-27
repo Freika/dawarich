@@ -5,7 +5,7 @@ class Visits::Calculate
     @points = points
   end
 
-  def call
+  def city_visits
     normalize_result(city_visits)
   end
 

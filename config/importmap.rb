@@ -16,3 +16,4 @@ pin 'leaflet-providers' # @2.0.0
 pin 'chartkick', to: 'chartkick.js'
 pin 'Chart.bundle', to: 'Chart.bundle.js'
 pin 'leaflet.heat' # @0.2.0
+pin "leaflet-draw" # @1.0.4

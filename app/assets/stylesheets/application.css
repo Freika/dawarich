@@ -19,3 +19,7 @@
   text-align: center;
   line-height: 36px; /* Same as font-size for perfect centering */
 }
+
+.timeline-box {
+  overflow: visible !important;
+}

@@ -6,7 +6,7 @@
       <%= link_to "Mark all as read", mark_notifications_as_read_path, method: :post, data: { turbo_method: :post }, class: "btn btn-sm btn-primary" %>
     </div>
     <div class="mb-4">
-      <%= will_paginate @notifications %>
+      <%= paginate @notifications %>
     </div>
   </div>
   <div id="notifications" class="w-full max-w-2xl">

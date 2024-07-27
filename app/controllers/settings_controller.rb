@@ -30,7 +30,8 @@ class SettingsController < ApplicationController
 
   def settings_params
     params.require(:settings).permit(
-      :meters_between_routes, :minutes_between_routes, :fog_of_war_meters
+      :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
+      :time_threshold_minutes, :merge_threshold_minutes
     )
   end
 end

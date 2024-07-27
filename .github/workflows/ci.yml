@@ -1,53 +1,72 @@
-# .github/workflows/ruby.yml
-name: Ruby
+name: CI
+# Not functional at the moment
 
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-
-env:
-  POSTGRES_DB: postgres
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: password
 
 jobs:
-  tests:
-    name: Tests
+  test:
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:12
+        image: postgres
         env:
-          POSTGRES_PASSWORD: password
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
 
-      - name: Setup Ruby
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable curl libjemalloc2 libvips postgresql-client libpq-dev
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.2.3
+          ruby-version: '3.2.3'
           bundler-cache: true
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && sudo apt-get -yqq install libpq-dev
-          bundle install --jobs 4 --retry 3
-      - name: Run Tests
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'  # Use the appropriate Node.js version
+
+      - name: Install Node.js dependencies
+        run: npm install
+
+      - name: Install Ruby dependencies
+        run: bundle install
+
+      - name: Run tests
         env:
           RAILS_ENV: test
-          PGHOST: localhost
-          DISABLE_SPRING: 1
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432
+          REDIS_URL: redis://localhost:6379/1
         run: |
-          cp config/database.ci.yml config/database.yml
-          bundle exec rails db:schema:load
-          bundle exec rspec --format progress
+          bin/rails db:setup
+          bin/rails spec || (cat log/test.log && exit 1)
+
+      - name: Keep screenshots from failed system tests
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: screenshots
+          path: ${{ github.workspace }}/tmp/capybara
+          if-no-files-found: ignore
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
