@@ -25,7 +25,9 @@ RSpec.describe '/settings/users', type: :request do
     end
 
     context 'when user is an admin' do
-      before { sign_in create(:user, :admin) }
+      let!(:admin) { create(:user, :admin) }
+
+      before { sign_in admin }
 
       describe 'POST /create' do
         context 'with valid parameters' do
