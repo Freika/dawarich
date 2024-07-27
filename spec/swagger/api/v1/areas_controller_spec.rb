@@ -1,0 +1,67 @@
+# frozen_string_literal: true
+
+require 'swagger_helper'
+
+describe 'Areas API', type: :request do
+  path '/api/v1/areas' do
+    post 'Creates an area' do
+      request_body_example value: {
+        'name': 'Home',
+        'latitude': 40.7128,
+        'longitude': -74.0060,
+        'radius': 100
+      }
+      tags 'Areas'
+      consumes 'application/json'
+      parameter name: :area, in: :body, schema: {
+        type: :object,
+        properties: {
+          name:       { type: :string },
+          latitude:   { type: :number },
+          longitude:  { type: :number },
+          radius:     { type: :number }
+        },
+        required: %w[name latitude longitude radius]
+      }
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      response '201', 'area created' do
+        let(:area) { { name: 'Home', latitude: 40.7128, longitude: -74.0060, radius: 100 } }
+        let(:api_key) { create(:user).api_key }
+
+        run_test!
+      end
+      response '422', 'invalid request' do
+        let(:area) { { name: 'Home', latitude: 40.7128, longitude: -74.0060 } }
+        let(:api_key) { create(:user).api_key }
+
+        run_test!
+      end
+    end
+
+    get 'Retrieves all areas' do
+      tags 'Areas'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      response '200', 'areas found' do
+        schema type: :array,
+               items: {
+                 type: :object,
+                 properties: {
+                   id:        { type: :integer },
+                   name:      { type: :string },
+                   latitude:  { type: :number },
+                   longitude: { type: :number },
+                   radius:    { type: :number }
+                 },
+                 required: %w[id name latitude longitude radius]
+               }
+
+        let(:user) { create(:user) }
+        let(:areas) { create_list(:area, 3, user:) }
+        let(:api_key) { user.api_key }
+
+        run_test!
+      end
+    end
+  end
+end

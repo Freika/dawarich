@@ -1,7 +1,7 @@
 <div id="<%= dom_id stat %>" class="card w-full bg-base-200 shadow-xl">
   <div class="card-body">
     <h2 class="card-title">
-      <%= link_to map_url(month_timespan(stat)), class: "underline hover:no-underline text-#{header_colors.sample}" do %>
+      <%= link_to map_url(timespan(stat.month, stat.year)), class: "underline hover:no-underline text-#{header_colors.sample}" do %>
         <%= "#{Date::MONTHNAMES[stat.month]} of #{stat.year}" %>
       <% end %>
     </h2>

@@ -4,6 +4,87 @@ info:
   title: API V1
   version: v1
 paths:
+  "/api/v1/areas":
+    post:
+      summary: Creates an area
+      tags:
+      - Areas
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: area created
+        '422':
+          description: invalid request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+                radius:
+                  type: number
+              required:
+              - name
+              - latitude
+              - longitude
+              - radius
+            examples:
+              '0':
+                summary: Creates an area
+                value:
+                  name: Home
+                  latitude: 40.7128
+                  longitude: -74.006
+                  radius: 100
+    get:
+      summary: Retrieves all areas
+      tags:
+      - Areas
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: areas found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    radius:
+                      type: number
+                  required:
+                  - id
+                  - name
+                  - latitude
+                  - longitude
+                  - radius
   "/api/v1/overland/batches":
     post:
       summary: Creates a batch of points

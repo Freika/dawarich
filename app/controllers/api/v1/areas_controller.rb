@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
 class Api::V1::AreasController < ApplicationController
-  before_action :authenticate_user!
+  before_action :authenticate_api_key
   before_action :set_area, only: %i[update destroy]
 
   def index
-    @areas = current_user.areas
+    @areas = current_api_user.areas
 
     render json: @areas, status: :ok
   end
 
   def create
-    @area = current_user.areas.build(area_params)
+    @area = current_api_user.areas.build(area_params)
 
     if @area.save
       render json: @area, status: :created
@@ -37,7 +37,7 @@ class Api::V1::AreasController < ApplicationController
   private
 
   def set_area
-    @area = current_user.areas.find(params[:id])
+    @area = current_api_user.areas.find(params[:id])
   end
 
   def area_params

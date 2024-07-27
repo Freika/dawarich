@@ -73,6 +73,7 @@ class Visits::Group
         previous_visit = visit
       else
         time_difference = (visit.start_time - previous_visit.end_time) / 60.0
+
         if time_difference <= @merge_threshold_minutes
           merge_visit(previous_visit, visit)
         else

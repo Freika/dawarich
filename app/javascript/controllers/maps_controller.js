@@ -17,6 +17,7 @@ export default class extends Controller {
   connect() {
     console.log("Map controller connected");
 
+    this.apiKey = this.element.dataset.api_key;
     this.markers = JSON.parse(this.element.dataset.coordinates);
     this.timezone = this.element.dataset.timezone;
     this.clearFogRadius = this.element.dataset.fog_of_war_meters;
@@ -233,24 +234,26 @@ export default class extends Controller {
     fog.appendChild(circle);
   }
 
-  addHighlightOnHover(polyline, map, startPoint, endPoint, prevPoint, nextPoint, timezone) {
+  addHighlightOnHover(polyline, map, polylineCoordinates, timezone) {
     const originalStyle = { color: "blue", opacity: 0.6, weight: 3 };
     const highlightStyle = { color: "yellow", opacity: 1, weight: 5 };
 
     polyline.setStyle(originalStyle);
+
+    const startPoint = polylineCoordinates[0];
+    const endPoint = polylineCoordinates[polylineCoordinates.length - 1];
 
     const firstTimestamp = new Date(startPoint[4] * 1000).toLocaleString("en-GB", { timeZone: timezone });
     const lastTimestamp = new Date(endPoint[4] * 1000).toLocaleString("en-GB", { timeZone: timezone });
 
     const minutes = Math.round((endPoint[4] - startPoint[4]) / 60);
     const timeOnRoute = minutesToDaysHoursMinutes(minutes);
-    const distance = haversineDistance(startPoint[0], startPoint[1], endPoint[0], endPoint[1]);
 
-    const distanceToPrev = prevPoint ? haversineDistance(prevPoint[0], prevPoint[1], startPoint[0], startPoint[1]) : "N/A";
-    const distanceToNext = nextPoint ? haversineDistance(endPoint[0], endPoint[1], nextPoint[0], nextPoint[1]) : "N/A";
-
-    const timeBetweenPrev = prevPoint ? Math.round((startPoint[4] - prevPoint[4]) / 60) : "N/A";
-    const timeBetweenNext = nextPoint ? Math.round((nextPoint[4] - endPoint[4]) / 60) : "N/A";
+    const totalDistance = polylineCoordinates.reduce((acc, curr, index, arr) => {
+      if (index === 0) return acc;
+      const dist = haversineDistance(arr[index - 1][0], arr[index - 1][1], curr[0], curr[1]);
+      return acc + dist;
+    }, 0);
 
     const startIcon = L.divIcon({ html: "🚥", className: "emoji-icon" });
     const finishIcon = L.divIcon({ html: "🏁", className: "emoji-icon" });
@@ -261,10 +264,18 @@ export default class extends Controller {
       <b>Start:</b> ${firstTimestamp}<br>
       <b>End:</b> ${lastTimestamp}<br>
       <b>Duration:</b> ${timeOnRoute}<br>
-      <b>Distance:</b> ${formatDistance(distance)}<br>
+      <b>Total Distance:</b> ${formatDistance(totalDistance)}<br>
     `;
 
     if (isDebugMode) {
+      const prevPoint = polylineCoordinates[0];
+      const nextPoint = polylineCoordinates[polylineCoordinates.length - 1];
+      const distanceToPrev = haversineDistance(prevPoint[0], prevPoint[1], startPoint[0], startPoint[1]);
+      const distanceToNext = haversineDistance(endPoint[0], endPoint[1], nextPoint[0], nextPoint[1]);
+
+      const timeBetweenPrev = Math.round((startPoint[4] - prevPoint[4]) / 60);
+      const timeBetweenNext = Math.round((endPoint[4] - nextPoint[4]) / 60);
+
       popupContent += `
         <b>Prev Route:</b> ${Math.round(distanceToPrev)}m and ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
         <b>Next Route:</b> ${Math.round(distanceToNext)}m and ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
@@ -341,12 +352,7 @@ export default class extends Controller {
         const latLngs = polylineCoordinates.map((point) => [point[0], point[1]]);
         const polyline = L.polyline(latLngs, { color: "blue", opacity: 0.6, weight: 3 });
 
-        const startPoint = polylineCoordinates[0];
-        const endPoint = polylineCoordinates[polylineCoordinates.length - 1];
-        const prevPoint = index > 0 ? splitPolylines[index - 1][splitPolylines[index - 1].length - 1] : null;
-        const nextPoint = index < splitPolylines.length - 1 ? splitPolylines[index + 1][0] : null;
-
-        this.addHighlightOnHover(polyline, map, startPoint, endPoint, prevPoint, nextPoint, timezone);
+        this.addHighlightOnHover(polyline, map, polylineCoordinates, timezone);
 
         return polyline;
       })
@@ -433,7 +439,7 @@ export default class extends Controller {
     this.areasLayer.addLayer(layer);
   }
 
-  saveCircle(formData, layer) {
+  saveCircle(formData, layer, apiKey) {
     const data = {};
     formData.forEach((value, key) => {
       const keys = key.split('[').map(k => k.replace(']', ''));
@@ -445,12 +451,9 @@ export default class extends Controller {
       }
     });
 
-    fetch('/api/v1/areas', {
+    fetch(`"/api/v1/areas?api_key=${apiKey}"`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      },
+      headers: { 'Content-Type': 'application/json'},
       body: JSON.stringify(data)
     })
     .then(response => {

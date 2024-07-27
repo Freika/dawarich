@@ -1,11 +1,15 @@
 <div class="w-full">
   <% content_for :title, "Visits" %>
 
-  <div class="flex justify-between items-center">
+  <div class="flex justify-center my-5">
     <h1 class="font-bold text-4xl">Visits</h1>
   </div>
 
-  <%= paginate @visits %>
+  <div class="flex justify-center my-5">
+    <div class='flex'>
+      <%= paginate @visits %>
+    </div>
+  </div>
 
   <ul class="timeline timeline-snap-icon max-md:timeline-compact timeline-vertical">
     <% @visits.each.with_index do |date, index| %>
