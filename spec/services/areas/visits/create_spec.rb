@@ -96,6 +96,14 @@ RSpec.describe Areas::Visits::Create do
           expect(work_visit.points).to match_array([work_point1, work_point2, work_point3])
         end
       end
+
+      context 'running twice' do
+        it 'does not create duplicate visits' do
+          create_visits
+
+          expect { create_visits }.not_to(change { Visit.count })
+        end
+      end
     end
   end
 end
