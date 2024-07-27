@@ -32,7 +32,15 @@ jobs:
           ruby-version: '3.2.3'
           bundler-cache: true
 
-      - name: Install dependencies
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'  # Use the appropriate Node.js version
+
+      - name: Install Node.js dependencies
+        run: npm install
+
+      - name: Install Ruby dependencies
         run: bundle install
 
       - name: Run tests
