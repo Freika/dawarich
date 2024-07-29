@@ -50,6 +50,10 @@ end
 group :development do
   gem 'foreman'
   gem 'rubocop-rails', require: false
+
+  gem 'opentelemetry-exporter-otlp'
+  gem 'opentelemetry-instrumentation-all'
+  gem 'opentelemetry-sdk'
 end
 
 # Use Redis for Action Cable

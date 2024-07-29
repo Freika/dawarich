@@ -1,5 +1,10 @@
-# Load the Rails application.
-require_relative "application"
+# frozen_string_literal: true
 
-# Initialize the Rails application.
+require 'opentelemetry/sdk'
+require_relative 'application'
+
+OpenTelemetry::SDK.configure do |c|
+  c.use_all
+end
+
 Rails.application.initialize!
