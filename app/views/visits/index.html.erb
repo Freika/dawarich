@@ -1,8 +1,13 @@
 <div class="w-full">
   <% content_for :title, "Visits" %>
 
-  <div class="flex justify-center my-5">
+  <div class="flex justify-between my-5">
     <h1 class="font-bold text-4xl">Visits</h1>
+    <div class="flex items-center">
+      <span class="mr-2">Order by:</span>
+      <%= link_to 'Newest', visits_path(order_by: :desc), class: 'btn btn-xs btn-primary mx-1' %>
+      <%= link_to 'Oldest', visits_path(order_by: :asc), class: 'btn btn-xs btn-primary mx-1' %>
+    </div>
   </div>
 
   <% if @visits.empty? %>

@@ -42,6 +42,7 @@
     <div
       class="w-full"
       data-api_key="<%= current_user.api_key %>"
+      data-route_opacity="<%= current_user.settings['route_opacity'] %>"
       data-controller="maps"
       data-coordinates="<%= @coordinates %>"
       data-timezone="<%= Rails.configuration.time_zone %>"

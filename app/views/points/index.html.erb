@@ -35,7 +35,16 @@
   <div id="points" class="min-w-full">
     <div data-controller='checkbox-select-all'>
       <%= form_with url: bulk_destroy_points_path, method: :delete, id: :bulk_destroy_form do |f| %>
-        <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" } %>
+
+        <div class="flex justify-between my-5">
+          <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" } %>
+          <div class="flex justify-end">
+            <span class="mr-2">Order by:</span>
+            <%= link_to 'Newest', points_path(order_by: :desc), class: 'btn btn-xs btn-primary mx-1' %>
+            <%= link_to 'Oldest', points_path(order_by: :asc), class: 'btn btn-xs btn-primary mx-1' %>
+          </div>
+        </div>
+
         <table class='table'>
           <thead>
             <tr>

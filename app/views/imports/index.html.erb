@@ -19,6 +19,11 @@
         </div>
       </div>
     <% else %>
+      <div class="flex justify-center my-5">
+        <div class='flex'>
+          <%= paginate @imports %>
+        </div>
+      </div>
       <div class="overflow-x-auto">
         <table class="table">
           <thead>

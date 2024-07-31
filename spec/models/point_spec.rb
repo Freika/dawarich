@@ -33,4 +33,22 @@ RSpec.describe Point, type: :model do
       end
     end
   end
+
+  describe 'methods' do
+    describe '#recorded_at' do
+      let(:point) { create(:point, timestamp: 1_554_317_696) }
+
+      it 'returns recorded at time' do
+        expect(point.recorded_at).to eq(Time.zone.at(1_554_317_696))
+      end
+    end
+
+    describe '#async_reverse_geocode' do
+      let(:point) { build(:point) }
+
+      it 'enqueues ReverseGeocodeJob' do
+        expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
+      end
+    end
+  end
 end

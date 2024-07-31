@@ -4,12 +4,14 @@ class PointsController < ApplicationController
   before_action :authenticate_user!
 
   def index
+    order_by = params[:order_by] || 'desc'
+
     @points =
       current_user
       .tracked_points
       .without_raw_data
       .where(timestamp: start_at..end_at)
-      .order(timestamp: :desc)
+      .order(timestamp: order_by)
       .page(params[:page])
       .per(50)
 

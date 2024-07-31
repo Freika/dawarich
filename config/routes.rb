@@ -56,7 +56,7 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resources :areas, only: %i[index create update destroy]
-      resources :points, only: %i[destroy]
+      resources :points, only: %i[index destroy]
 
       namespace :overland do
         resources :batches, only: :create
