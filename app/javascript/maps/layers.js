@@ -1,9 +1,9 @@
 
-export function osmMapLayer() {
+export function osmMapLayer(map) {
   return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
-    attribution: "© OpenStreetMap",
-  });
+    attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>",
+  }).addTo(map);
 }
 
 export function osmHotMapLayer() {
@@ -11,11 +11,4 @@ export function osmHotMapLayer() {
     maxZoom: 19,
     attribution: "© OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team hosted by OpenStreetMap France",
   });
-}
-
-export function addTileLayer(map) {
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>",
-  }).addTo(map);
 }

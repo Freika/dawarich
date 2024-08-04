@@ -8,7 +8,6 @@ import { formatDate } from "../maps/helpers";
 import { haversineDistance } from "../maps/helpers";
 import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
-import { addTileLayer } from "../maps/layers";
 import "leaflet-draw";
 
 export default class extends Controller {
@@ -21,18 +20,17 @@ export default class extends Controller {
     this.markers = JSON.parse(this.element.dataset.coordinates);
     this.timezone = this.element.dataset.timezone;
     this.clearFogRadius = this.element.dataset.fog_of_war_meters;
+    this.routeOpacity = parseInt(this.element.dataset.route_opacity) / 100 || 0.6;
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
-    this.map = L.map(this.containerTarget, {
-      layers: [osmMapLayer(), osmHotMapLayer()],
-    }).setView([this.center[0], this.center[1]], 14);
+    this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
     this.markersArray = this.createMarkersArray(this.markers);
     this.markersLayer = L.layerGroup(this.markersArray);
-    this.heatmapMarkers = this.markers.map((element) => [element[0], element[1], 0.3]);
+    this.heatmapMarkers = this.markers.map((element) => [element[0], element[1], 0.2]);
 
-    this.polylinesLayer = this.createPolylinesLayer(this.markers, this.map, this.timezone);
+    this.polylinesLayer = this.createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
@@ -87,7 +85,6 @@ export default class extends Controller {
       }
     });
 
-    addTileLayer(this.map);
     this.addLastMarker(this.map, this.markers);
     this.addEventListeners();
 
@@ -114,7 +111,7 @@ export default class extends Controller {
 
   baseMaps() {
     return {
-      OpenStreetMap: osmMapLayer(),
+      OpenStreetMap: osmMapLayer(this.map),
       "OpenStreetMap.HOT": osmHotMapLayer(),
     };
   }
@@ -147,18 +144,17 @@ export default class extends Controller {
         const pointId = event.target.getAttribute('data-id');
 
         if (confirm('Are you sure you want to delete this point?')) {
-          this.deletePoint(pointId);
+          this.deletePoint(pointId, this.apiKey);
         }
       }
     });
   }
 
-  deletePoint(id) {
-    fetch(`/api/v1/points/${id}`, {
+  deletePoint(id, apiKey) {
+    fetch(`/api/v1/points/${id}?api_key=${apiKey}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
       }
     })
     .then(response => {
@@ -234,8 +230,8 @@ export default class extends Controller {
     fog.appendChild(circle);
   }
 
-  addHighlightOnHover(polyline, map, polylineCoordinates, timezone) {
-    const originalStyle = { color: "blue", opacity: 0.6, weight: 3 };
+  addHighlightOnHover(polyline, map, polylineCoordinates, timezone, routeOpacity) {
+    const originalStyle = { color: "blue", opacity: routeOpacity, weight: 3 };
     const highlightStyle = { color: "yellow", opacity: 1, weight: 5 };
 
     polyline.setStyle(originalStyle);
@@ -319,7 +315,7 @@ export default class extends Controller {
     });
   }
 
-  createPolylinesLayer(markers, map, timezone) {
+  createPolylinesLayer(markers, map, timezone, routeOpacity) {
     const splitPolylines = [];
     let currentPolyline = [];
     const distanceThresholdMeters = parseInt(this.element.dataset.meters_between_routes) || 500;
@@ -348,11 +344,11 @@ export default class extends Controller {
     }
 
     return L.layerGroup(
-      splitPolylines.map((polylineCoordinates, index) => {
+      splitPolylines.map((polylineCoordinates) => {
         const latLngs = polylineCoordinates.map((point) => [point[0], point[1]]);
         const polyline = L.polyline(latLngs, { color: "blue", opacity: 0.6, weight: 3 });
 
-        this.addHighlightOnHover(polyline, map, polylineCoordinates, timezone);
+        this.addHighlightOnHover(polyline, map, polylineCoordinates, timezone, routeOpacity);
 
         return polyline;
       })
@@ -487,8 +483,7 @@ export default class extends Controller {
     fetch(`/api/v1/areas/${id}?api_key=${apiKey}`, {
       method: 'DELETE',
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        'Content-Type': 'application/json'
       }
     })
     .then(response => {
