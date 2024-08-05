@@ -15,7 +15,7 @@ RSpec.describe Jobs::Create do
         described_class.new(job_name, user.id).call
 
         points.each do |point|
-          expect(ReverseGeocodingJob).to have_received(:perform_later).with(point.id)
+          expect(ReverseGeocodingJob).to have_received(:perform_later).with(point.class.to_s, point.id)
         end
       end
     end
@@ -33,7 +33,7 @@ RSpec.describe Jobs::Create do
         described_class.new(job_name, user.id).call
 
         points_without_address.each do |point|
-          expect(ReverseGeocodingJob).to have_received(:perform_later).with(point.id)
+          expect(ReverseGeocodingJob).to have_received(:perform_later).with(point.class.to_s, point.id)
         end
       end
     end

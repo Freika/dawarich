@@ -6,14 +6,16 @@ class VisitsController < ApplicationController
 
   def index
     order_by = params[:order_by] || 'asc'
+    status   = params[:status]   || 'confirmed'
 
     visits = current_user
              .visits
-             .where(status: :pending)
-             .or(current_user.visits.where(status: :confirmed))
+             .where(status:)
              .order(started_at: order_by)
              .group_by { |visit| visit.started_at.to_date }
              .map { |k, v| { date: k, visits: v } }
+
+    @suggested_visits_count = current_user.visits.suggested.count
 
     @visits = Kaminari.paginate_array(visits).page(params[:page]).per(10)
   end

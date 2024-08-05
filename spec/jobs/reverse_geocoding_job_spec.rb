@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe ReverseGeocodingJob, type: :job do
   describe '#perform' do
-    subject(:perform) { described_class.new.perform(point.id) }
+    subject(:perform) { described_class.new.perform('Point', point.id) }
 
     let(:point) { create(:point) }
 
@@ -19,12 +19,12 @@ RSpec.describe ReverseGeocodingJob, type: :job do
         expect { perform }.not_to(change { point.reload.city })
       end
 
-      it 'does not call ReverseGeocoding::FetchData' do
-        allow(ReverseGeocoding::FetchData).to receive(:new).and_call_original
+      it 'does not call ReverseGeocoding::Points::FetchData' do
+        allow(ReverseGeocoding::Points::FetchData).to receive(:new).and_call_original
 
         perform
 
-        expect(ReverseGeocoding::FetchData).not_to have_received(:new)
+        expect(ReverseGeocoding::Points::FetchData).not_to have_received(:new)
       end
     end
 
@@ -35,11 +35,11 @@ RSpec.describe ReverseGeocodingJob, type: :job do
 
       it 'calls Geocoder' do
         allow(Geocoder).to receive(:search).and_return([stubbed_geocoder])
-        allow(ReverseGeocoding::FetchData).to receive(:new).and_call_original
+        allow(ReverseGeocoding::Points::FetchData).to receive(:new).and_call_original
 
         perform
 
-        expect(ReverseGeocoding::FetchData).to have_received(:new).with(point.id)
+        expect(ReverseGeocoding::Points::FetchData).to have_received(:new).with(point.id)
       end
     end
   end

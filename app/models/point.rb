@@ -33,6 +33,6 @@ class Point < ApplicationRecord
   def async_reverse_geocode
     return unless REVERSE_GEOCODING_ENABLED
 
-    ReverseGeocodingJob.perform_later(id)
+    ReverseGeocodingJob.perform_later(self.class.to_s, id)
   end
 end

@@ -7,5 +7,11 @@ class Visit < ApplicationRecord
 
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
 
-  enum status: { pending: 0, confirmed: 1, declined: 2 }
+  enum status: { suggested: 0, confirmed: 1, declined: 2 }
+
+  delegate :name, to: :area, prefix: true
+
+  def coordinates
+    points.pluck(:latitude, :longitude).map { [_1[0].to_f, _1[1].to_f] }
+  end
 end
