@@ -135,9 +135,19 @@ GEM
     geocoder (1.8.3)
       base64 (>= 0.1.0)
       csv (>= 3.0.0)
+    geokit (1.14.0)
+    geokit-rails (2.5.0)
+      geokit (~> 1.5)
+      rails (>= 3.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
+    google_places (2.0.0)
+      httparty (>= 0.13.1)
     hashdiff (1.1.0)
+    httparty (0.22.0)
+      csv
+      mini_mime (>= 1.0.0)
+      multi_xml (>= 0.5.2)
     i18n (1.14.5)
       concurrent-ruby (~> 1.0)
     importmap-rails (2.0.1)
@@ -182,6 +192,8 @@ GEM
     mini_mime (1.1.5)
     minitest (5.24.1)
     msgpack (1.7.2)
+    multi_xml (0.7.1)
+      bigdecimal (~> 3.1)
     mutex_m (0.2.0)
     net-imap (0.4.12)
       date
@@ -423,6 +435,9 @@ DEPENDENCIES
   ffaker
   foreman
   geocoder
+  geokit
+  geokit-rails
+  google_places
   importmap-rails
   kaminari
   lograge

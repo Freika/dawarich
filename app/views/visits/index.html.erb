@@ -3,6 +3,19 @@
 
   <div class="flex justify-between my-5">
     <h1 class="font-bold text-4xl">Visits</h1>
+    <div role="tablist" class="tabs tabs-boxed">
+      <%= link_to 'Confirmed', visits_path(status: :confirmed), role: 'tab',
+          class: "tab #{active_tab?(visits_path(status: :confirmed))}" %>
+      <%= link_to visits_path(status: :suggested), role: 'tab',
+          class: "tab #{active_tab?(visits_path(status: :suggested))}" do %>
+          Suggested
+          <% if @suggested_visits_count.positive? %>
+            <span class="badge badge-sm badge-primary mx-1"><%= @suggested_visits_count %></span>
+          <% end %>
+      <% end %>
+      <%= link_to 'Declined', visits_path(status: :declined), role: 'tab',
+          class: "tab #{active_tab?(visits_path(status: :declined))}" %>
+    </div>
     <div class="flex items-center">
       <span class="mr-2">Order by:</span>
       <%= link_to 'Newest', visits_path(order_by: :desc), class: 'btn btn-xs btn-primary mx-1' %>
@@ -16,7 +29,7 @@
         <div class="max-w-md">
           <h1 class="text-5xl font-bold">Hello there!</h1>
           <p class="py-6">
-            Here you'll find your visits, but now there are none. Create some areas on your map and pretty soon you'll see visit suggestions on this page!
+            Here you'll find your <%= params[:status] %> visits, but now there are none. Create some areas on your map and pretty soon you'll see visit suggestions on this page!
           </p>
         </div>
       </div>
@@ -49,19 +62,49 @@
               <div class="group relative">
                 <div class="flex items-center justify-between">
                   <div>
-                    <div class="text-lg font-black <%= 'underline decoration-dotted' if visit.pending? %>">
+                    <div class="text-lg font-black <%= 'underline decoration-dotted' if visit.suggested? %>">
                       <%= visit.area.name %>
                     </div>
                     <div>
                       <%= "#{visit.started_at.strftime('%H:%M')} - #{visit.ended_at.strftime('%H:%M')}" %>
                     </div>
                   </div>
-                  <% if visit.pending? %>
-                    <div class="opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center ml-4">
-                      <%= button_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-success mr-1' %>
-                      <%= button_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-error' %>
+                  <div class="opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center ml-4">
+                    <% if visit.suggested? %>
+                      <%= button_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-success' %>
+                      <%= button_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-error mx-1' %>
+                    <% end %>
+                    <!-- The button to open modal -->
+                    <label for="visit_details_popup_<%= visit.id %>" class='btn btn-xs btn-info'>Map</label>
+
+                    <!-- Put this part before </body> tag -->
+                    <input type="checkbox" id="visit_details_popup_<%= visit.id %>" class="modal-toggle" />
+                    <div class="modal" role="dialog">
+                      <div class="modal-box w-10/12">
+                        <h3 class="text-lg font-bold">
+                          <%= visit.area_name %>, <%= visit.started_at.strftime('%d.%m.%Y') %>, <%= visit.started_at.strftime('%H:%M') %> - <%= visit.ended_at.strftime('%H:%M') %>
+                        </h3>
+                        <div class="flex justify-between my-5">
+                          <div><a class='link'><</a> Cafe, Sterndamm 86D <a class='link'>></a>, <%= visit.points.count %></div>
+                          <div class='flex'>
+                            <%= button_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-success' %>
+                            <%= button_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-error mx-1' %>
+                          </div>
+                        </div>
+                        <div class='w-full h-[25rem]'
+                          data-controller="visit-modal-map"
+                          data-coordinates="<%= visit.coordinates %>"
+                          data-radius="<%= visit.area.radius %>"
+                          data-center="<%= visit.area.center %>"
+                          >
+                          <div data-visit-modal-map-target="container" class="h-[25rem] w-auto h-96">
+                          </div>
+                        </div>
+
+                      </div>
+                      <label class="modal-backdrop" for="visit_details_popup_<%= visit.id %>">Close</label>
                     </div>
-                  <% end %>
+                  </div>
                 </div>
               </div>
             <% end %>

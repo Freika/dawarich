@@ -1,11 +1,16 @@
 # config/schedule.yml
 
 stat_creating_job:
-  cron: "0 */6 * * *"
+  cron: "0 */6 * * *" # every 6 hours
   class: "StatCreatingJob"
   queue: default
 
 area_visits_calculation_scheduling_job:
-  cron: "0 * * * *" # every hour
+  cron: "0 0 * * *" # every day at 0:00
   class: "AreaVisitsCalculationSchedulingJob"
+  queue: default
+
+visit_suggesting_job:
+  cron: "0 1 * * *" # every day at 1:00
+  class: "VisitSuggestingJob"
   queue: default

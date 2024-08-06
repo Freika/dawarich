@@ -64,7 +64,7 @@ class Areas::Visits::Create
         v.name = "#{area.name}, #{time_range}"
         v.ended_at = Time.zone.at(visit_points.last.timestamp)
         v.duration = (visit_points.last.timestamp - visit_points.first.timestamp) / 60
-        v.status = :pending
+        v.status = :suggested
       end
 
       visit.save!

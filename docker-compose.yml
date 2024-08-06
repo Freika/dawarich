@@ -47,6 +47,7 @@ services:
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
+      GOOGLE_PLACES_API_KEY: ''
     logging:
       driver: "json-file"
       options:
@@ -79,6 +80,7 @@ services:
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
+      GOOGLE_PLACES_API_KEY: ''
     logging:
       driver: "json-file"
       options:

@@ -5,4 +5,6 @@ class Area < ApplicationRecord
   has_many :visits, dependent: :destroy
 
   validates :name, :latitude, :longitude, :radius, presence: true
+
+  def center = [latitude.to_f, longitude.to_f]
 end

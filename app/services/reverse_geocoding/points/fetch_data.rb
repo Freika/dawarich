@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class ReverseGeocoding::FetchData
+class ReverseGeocoding::Points::FetchData
   attr_reader :point
 
   def initialize(point_id)

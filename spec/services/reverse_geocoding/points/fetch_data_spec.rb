@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe ReverseGeocoding::FetchData do
+RSpec.describe ReverseGeocoding::Points::FetchData do
   subject(:fetch_data) { described_class.new(point.id).call }
 
   let(:point) { create(:point) }

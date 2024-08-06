@@ -8,6 +8,6 @@ FactoryBot.define do
     ended_at { Time.zone.now + 1.hour }
     duration { 1.hour }
     name { 'Visit' }
-    status { 'pending' }
+    status { 'suggested' }
   end
 end

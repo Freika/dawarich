@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_07_21_183116) do
+ActiveRecord::Schema[7.1].define(version: 2024_08_05_150111) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -53,6 +53,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_21_183116) do
     t.index ["user_id"], name: "index_areas_on_user_id"
   end
 
+  create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
+  end
+
   create_table "exports", force: :cascade do |t|
     t.string "name", null: false
     t.string "url"
@@ -88,6 +91,19 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_21_183116) do
     t.datetime "updated_at", null: false
     t.index ["kind"], name: "index_notifications_on_kind"
     t.index ["user_id"], name: "index_notifications_on_user_id"
+  end
+
+  create_table "places", force: :cascade do |t|
+    t.string "name", null: false
+    t.decimal "longitude", precision: 10, scale: 6, null: false
+    t.decimal "latitude", precision: 10, scale: 6, null: false
+    t.string "city"
+    t.string "country"
+    t.integer "source", default: 0
+    t.jsonb "geodata", default: {}, null: false
+    t.datetime "reverse_geocoded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "points", force: :cascade do |t|
