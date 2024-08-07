@@ -1,11 +1,11 @@
 FROM ruby:3.2.3-alpine
 
-ENV APP_PATH /var/app
-ENV BUNDLE_VERSION 2.5.9
-ENV BUNDLE_PATH /usr/local/bundle/gems
-ENV TMP_PATH /tmp/
-ENV RAILS_LOG_TO_STDOUT true
-ENV RAILS_PORT 3000
+ENV APP_PATH=/var/app
+ENV BUNDLE_VERSION=2.5.9
+ENV BUNDLE_PATH=/usr/local/bundle/gems
+ENV TMP_PATH=/tmp/
+ENV RAILS_LOG_TO_STDOUT=true
+ENV RAILS_PORT=3000
 
 # Copy entrypoint scripts and grant execution permissions
 COPY ./dev-docker-entrypoint.sh /usr/local/bin/dev-entrypoint.sh

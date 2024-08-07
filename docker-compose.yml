@@ -1,4 +1,3 @@
-version: '3'
 networks:
   dawarich:
 services:
@@ -45,7 +44,7 @@ services:
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
-      TIME_ZONE: Europe/London
+      TIME_ZONE: Europe/Amsterdam
       APPLICATION_PROTOCOL: http
     logging:
       driver: "json-file"
