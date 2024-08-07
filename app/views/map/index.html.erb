@@ -23,17 +23,17 @@
         </div>
         <div class="w-full md:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Today", map_path(start_at: Time.current.beginning_of_day, end_at: Time.current.end_of_day), class: "px-4 py-2 bg-gray-500 text-white rounded-md" %>
-          </div>
-        </div>
-        <div class="w-full md:w-2/12">
-          <div class="flex flex-col space-y-2 text-center">
             <%= link_to "Yesterday", map_path(start_at: Date.yesterday.beginning_of_day, end_at: Date.yesterday.end_of_day), class: "px-4 py-2 bg-gray-500 text-white rounded-md" %>
           </div>
         </div>
         <div class="w-full md:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
             <%= link_to "Last 7 days", map_path(start_at: 1.week.ago.beginning_of_day, end_at: Time.current.end_of_day), class: "px-4 py-2 bg-gray-500 text-white rounded-md" %>
+          </div>
+        </div>
+        <div class="w-full md:w-2/12">
+          <div class="flex flex-col space-y-2 text-center">
+            <%= link_to "Last month", map_path(start_at: 1.month.ago.beginning_of_day, end_at: Time.current.end_of_day), class: "px-4 py-2 bg-gray-500 text-white rounded-md" %>
           </div>
         </div>
       </div>
