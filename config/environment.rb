@@ -1,5 +1,8 @@
-# Load the Rails application.
-require_relative "application"
+# frozen_string_literal: true
 
-# Initialize the Rails application.
+require 'opentelemetry/sdk' if ENV['SIGNOZ_MONITORING_ENABLED'] == 'true'
+require_relative 'application'
+
+OpenTelemetry::SDK.configure(&:use_all) if ENV['SIGNOZ_MONITORING_ENABLED'] == 'true'
+
 Rails.application.initialize!

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Added OpenTelemetry to the application to collect metrics and traces via [Signoz](https://signoz.io/docs/instrumentation/ruby-on-rails/)
 
 ## [0.9.9] — 2024-07-30
 
