@@ -85,6 +85,27 @@ paths:
                   - latitude
                   - longitude
                   - radius
+  "/api/v1/areas/{id}":
+    delete:
+      summary: Deletes an area
+      tags:
+      - Areas
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        description: Area ID
+        schema:
+          type: string
+      responses:
+        '200':
+          description: area deleted
   "/api/v1/overland/batches":
     post:
       summary: Creates a batch of points
@@ -283,6 +304,117 @@ paths:
                   isorcv: '2024-02-03T13:00:03Z'
                   isotst: '2024-02-03T13:00:03Z'
                   disptst: '2024-02-03 13:00:03'
+  "/api/v1/points":
+    get:
+      summary: Retrieves all points
+      tags:
+      - Points
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        description: Start date (i.e. 2024-02-03T13:00:03Z or 2024-02-03)
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        description: End date (i.e. 2024-02-03T13:00:03Z or 2024-02-03)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: points found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    battery_status:
+                      type: number
+                    ping:
+                      type: number
+                    battery:
+                      type: number
+                    tracker_id:
+                      type: string
+                    topic:
+                      type: string
+                    altitude:
+                      type: number
+                    longitude:
+                      type: number
+                    velocity:
+                      type: number
+                    trigger:
+                      type: string
+                    bssid:
+                      type: string
+                    ssid:
+                      type: string
+                    connection:
+                      type: string
+                    vertical_accuracy:
+                      type: number
+                    accuracy:
+                      type: number
+                    timestamp:
+                      type: number
+                    latitude:
+                      type: number
+                    mode:
+                      type: number
+                    inrids:
+                      type: array
+                    in_regions:
+                      type: array
+                    raw_data:
+                      type: string
+                    import_id:
+                      type: string
+                    city:
+                      type: string
+                    country:
+                      type: string
+                    created_at:
+                      type: string
+                    updated_at:
+                      type: string
+                    user_id:
+                      type: integer
+                    geodata:
+                      type: string
+                    visit_id:
+                      type: string
+  "/api/v1/points/{id}":
+    delete:
+      summary: Deletes a point
+      tags:
+      - Points
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        description: Point ID
+        schema:
+          type: string
+      responses:
+        '200':
+          description: point deleted
 servers:
 - url: http://{defaultHost}
   variables:

@@ -6,7 +6,30 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## [0.9.7] — 2024-07-27
+## [0.9.9] — 2024-07-30
+
+### Added
+
+- Pagination to exports page
+- Pagination to imports page
+- GET `/api/v1/points` endpoint to get all points for the user with swagger docs
+- DELETE `/api/v1/points/:id` endpoint to delete a single point for the user with swagger docs
+- DELETE `/api/v1/areas/:id` swagger docs
+- User can now change route opacity in settings
+- Points on the Points page can now be ordered by oldest or newest points
+- Visits on the Visits page can now be ordered by oldest or newest visits
+
+### Changed
+
+- Point deletion is now being done using an api key instead of CSRF token
+
+### Fixed
+
+- OpenStreetMap layer is now being selected by default in map controls
+
+---
+
+## [0.9.8] — 2024-07-27
 
 ### Fixed
 

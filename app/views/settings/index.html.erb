@@ -67,7 +67,7 @@
             <input type="checkbox" id="fog_of_war_meters_info" class="modal-toggle" />
             <div class="modal" role="dialog">
               <div class="modal-box">
-                <h3 class="text-lg font-bold">Fog of War meters</h3>
+                <h3 class="text-lg font-bold">Fog of War</h3>
                 <p class="py-4">
                   Value in meters.
                 </p>
@@ -139,6 +139,30 @@
             </div>
           <% end %>
           <%= f.number_field :merge_threshold_minutes, value: current_user.settings['merge_threshold_minutes'], class: "input input-bordered" %>
+        </div>
+        <div class="form-control my-2">
+          <%= f.label :route_opacity do %>
+            Route opacity percent
+
+            <!-- The button to open modal -->
+            <label for="route_opacity_info" class="btn">?</label>
+
+            <!-- Put this part before </body> tag -->
+            <input type="checkbox" id="route_opacity_info" class="modal-toggle" />
+            <div class="modal" role="dialog">
+              <div class="modal-box">
+                <h3 class="text-lg font-bold">Route opacity</h3>
+                <p class="py-4">
+                  Value in percent.
+                </p>
+                <p class="py-4">
+                  This value is the opacity of the route on the map. The value is in percent, and it can be set from 0 to 100. The default value is 100, which means that the route is fully visible. If you set the value to 0, the route will be invisible.
+                </p>
+              </div>
+              <label class="modal-backdrop" for="route_opacity_info">Close</label>
+            </div>
+          <% end %>
+          <%= f.number_field :route_opacity, value: current_user.settings['route_opacity'], class: "input input-bordered" %>
         </div>
         <div class="form-control my-2">
           <%= f.submit "Update", class: "btn btn-primary" %>

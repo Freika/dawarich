@@ -1,7 +1,7 @@
 <% content_for :title, "Exports" %>
 
 <div class="w-full">
-  <div class="flex justify-between items-center mb-5">
+  <div class="flex justify-center my-5">
     <h1 class="font-bold text-4xl">Exports</h1>
   </div>
 
@@ -18,6 +18,11 @@
         </div>
       </div>
     <% else %>
+      <div class="flex justify-center my-5">
+        <div class='flex'>
+          <%= paginate @exports %>
+        </div>
+      </div>
       <div class="overflow-x-auto">
         <table class="table">
           <thead>

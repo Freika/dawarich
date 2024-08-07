@@ -25,13 +25,13 @@ describe 'Areas API', type: :request do
       }
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
       response '201', 'area created' do
-        let(:area) { { name: 'Home', latitude: 40.7128, longitude: -74.0060, radius: 100 } }
+        let(:area)    { { name: 'Home', latitude: 40.7128, longitude: -74.0060, radius: 100 } }
         let(:api_key) { create(:user).api_key }
 
         run_test!
       end
       response '422', 'invalid request' do
-        let(:area) { { name: 'Home', latitude: 40.7128, longitude: -74.0060 } }
+        let(:area)    { { name: 'Home', latitude: 40.7128, longitude: -74.0060 } }
         let(:api_key) { create(:user).api_key }
 
         run_test!
@@ -56,9 +56,27 @@ describe 'Areas API', type: :request do
                  required: %w[id name latitude longitude radius]
                }
 
-        let(:user) { create(:user) }
-        let(:areas) { create_list(:area, 3, user:) }
+        let(:user)    { create(:user) }
+        let(:areas)   { create_list(:area, 3, user:) }
         let(:api_key) { user.api_key }
+
+        run_test!
+      end
+    end
+  end
+
+  path '/api/v1/areas/{id}' do
+    delete 'Deletes an area' do
+      tags 'Areas'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      parameter name: :id, in: :path, type: :string, required: true, description: 'Area ID'
+
+      response '200', 'area deleted' do
+        let(:user)    { create(:user) }
+        let(:area)    { create(:area, user:) }
+        let(:api_key) { user.api_key }
+        let(:id)      { area.id }
 
         run_test!
       end

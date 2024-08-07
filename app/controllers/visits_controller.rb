@@ -5,11 +5,13 @@ class VisitsController < ApplicationController
   before_action :set_visit, only: %i[update]
 
   def index
+    order_by = params[:order_by] || 'asc'
+
     visits = current_user
              .visits
              .where(status: :pending)
              .or(current_user.visits.where(status: :confirmed))
-             .order(started_at: :asc)
+             .order(started_at: order_by)
              .group_by { |visit| visit.started_at.to_date }
              .map { |k, v| { date: k, visits: v } }
 
