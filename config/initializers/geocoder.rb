@@ -2,7 +2,7 @@
 
 config = {
   # geocoding service request timeout, in seconds (default 3):
-  # timeout: 5,
+  timeout: 10,
 
   # set default units to kilometers:
   units: :km,
@@ -12,12 +12,13 @@ config = {
   cache_options: {
     expiration: 1.day # Defaults to `nil`
     # prefix: "another_key:" # Defaults to `geocoder:`
-  }
+  },
+  always_raise: :all
 }
 
-if ENV['GOOGLE_PLACES_API_KEY'].present?
+if GOOGLE_PLACES_API_KEY.present?
   config[:lookup] = :google
-  config[:api_key] = ENV['GOOGLE_PLACES_API_KEY']
+  config[:api_key] = GOOGLE_PLACES_API_KEY
 end
 
 Geocoder.configure(config)

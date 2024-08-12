@@ -1,48 +1,112 @@
 # frozen_string_literal: true
 
 class Visits::Suggest
-  def initialize(start_at: nil, end_at: nil)
-    start_at ||= Date.new(2024, 7, 15).to_datetime.beginning_of_day.to_i
-    end_at ||= Date.new(2024, 7, 19).to_datetime.end_of_day.to_i
-    @points = Point.order(timestamp: :asc).where(timestamp: start_at..end_at)
+  attr_reader :points, :user, :start_at, :end_at
+
+  def initialize(user, start_at:, end_at:)
+    @start_at = start_at.to_i
+    @end_at = end_at.to_i
+    @points = user.tracked_points.order(timestamp: :asc).where(timestamp: start_at..end_at)
+    @user = user
   end
 
   def call
-    points_by_day = @points.group_by { |point| point_date(point) }
+    prepared_visits = Visits::Prepare.new(points).call
 
-    result = {}
+    visited_places = create_places(prepared_visits)
+    visits = create_visits(visited_places)
 
-    points_by_day.each do |day, day_points|
-      day_points.sort_by!(&:timestamp)
+    create_visits_notification(user)
 
-      grouped_points = Visits::GroupPoints.new(day_points).group_points_by_radius
-      day_result     = prepare_day_result(grouped_points)
-      result[day]    = day_result
-    end
+    return unless reverse_geocoding_enabled?
 
-    result
+    reverse_geocode(visits)
   end
 
   private
 
-  def point_date(point) = Time.zone.at(point.timestamp).to_date.to_s
+  def create_places(prepared_visits)
+    prepared_visits.flat_map do |date|
+      date[:visits] = handle_visits(date[:visits])
 
-  def calculate_radius(center_point, group)
-    max_distance = group.map { |point| center_point.distance_to(point) }.max
-
-    (max_distance / 10.0).ceil * 10
+      date
+    end
   end
 
-  def prepare_day_result(grouped_points)
-    result = {}
+  def create_visits(visited_places)
+    visited_places.flat_map do |date|
+      date[:visits].map do |visit_data|
+        ActiveRecord::Base.transaction do
+          search_params = {
+            user_id:    user.id,
+            duration:   visit_data[:duration],
+            started_at: Time.zone.at(visit_data[:points].first.timestamp),
+            ended_at:   Time.zone.at(visit_data[:points].last.timestamp)
+          }
 
-    grouped_points.each do |group|
-      center_point = group.first
-      radius = calculate_radius(center_point, group)
-      key = "#{center_point.latitude},#{center_point.longitude},#{radius}m,#{group.size}"
-      result[key] = group.count
+          if visit_data[:area].present?
+            search_params[:area_id] = visit_data[:area].id
+          elsif visit_data[:place].present?
+            search_params[:place_id] = visit_data[:place].id
+          end
+
+          visit = Visit.find_or_initialize_by(search_params)
+          visit.name = visit_data[:place]&.name || visit_data[:area]&.name if visit.name.blank?
+          visit.save!
+
+          visit_data[:points].each { |point| point.update!(visit_id: visit.id) }
+
+          visit
+        end
+      end
     end
+  end
 
-    result
+  def reverse_geocode(places)
+    places.each(&:async_reverse_geocode)
+  end
+
+  def reverse_geocoding_enabled?
+    ::REVERSE_GEOCODING_ENABLED && ::GOOGLE_PLACES_API_KEY.present?
+  end
+
+  def create_visits_notification(user)
+    content = <<~CONTENT
+      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them in the <%= link_to 'Visits', visits_path %> section.
+    CONTENT
+
+    user.notifications.create!(
+      kind: :info,
+      title: 'New visits suggested',
+      content:
+    )
+  end
+
+  def create_place(visit)
+    place = Place.find_or_initialize_by(
+      latitude: visit[:latitude],
+      longitude: visit[:longitude]
+    )
+
+    place.name = Place::DEFAULT_NAME
+    place.source = Place.sources[:manual]
+
+    place.save!
+
+    place
+  end
+
+  def handle_visits(visits)
+    visits.map do |visit|
+      area = Area.near([visit[:latitude], visit[:longitude]], 0.100).first
+
+      if area.present?
+        visit.merge(area:)
+      else
+        place = create_place(visit)
+
+        visit.merge(place:)
+      end
+    end
   end
 end

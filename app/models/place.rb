@@ -1,17 +1,25 @@
 # frozen_string_literal: true
 
 class Place < ApplicationRecord
+  DEFAULT_NAME = 'Suggested place'
+  reverse_geocoded_by :latitude, :longitude
+
   validates :name, :longitude, :latitude, presence: true
 
+  has_many :visits, dependent: :destroy
+  has_many :place_visits, dependent: :destroy
+  has_many :suggested_visits, through: :place_visits, source: :visit
+
   enum source: { manual: 0, google_places: 1 }
-
-  after_commit :async_reverse_geocode, on: :create
-
-  private
 
   def async_reverse_geocode
     return unless REVERSE_GEOCODING_ENABLED
 
+    # If place is successfully reverse geocoded, try to add it to corresponding visits as suggested
     ReverseGeocodingJob.perform_later(self.class.to_s, id)
+  end
+
+  def reverse_geocoded?
+    geodata.present?
   end
 end

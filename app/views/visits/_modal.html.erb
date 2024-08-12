@@ -1,0 +1,40 @@
+<!-- Put this part before </body> tag -->
+<input type="checkbox" id="visit_details_popup_<%= visit.id %>" class="modal-toggle" />
+<div class="modal" role="dialog">
+  <div class="modal-box w-10/12 max-w-5xl">
+    <h3 class="text-lg font-bold">
+      <span data-visit-name="<%= visit.id %>">
+        <%= render 'visits/name', visit: visit %>
+      </span>,
+      <%= visit.started_at.strftime('%d.%m.%Y') %>,
+      <%= visit.started_at.strftime('%H:%M') %> -
+      <%= visit.ended_at.strftime('%H:%M') %>
+    </h3>
+
+    <div class="flex justify-between my-5">
+      <div>
+        <div class='w-full'
+             data-api_key="<%= current_user.api_key %>"
+             data-controller="visit-modal-places"
+             data-id="<%= visit.id %>">
+          <% if visit.suggested_places.any? %>
+            <%= select_tag :place_id, options_for_select(visit.suggested_places.map { |place| [place.name, place.id] }, visit.suggested_places.first.id), class: 'w-full', data: { action: 'change->visit-modal-places#selectPlace' } %>
+          <% end %>
+        </div>
+      </div>
+      <div class='flex'>
+        <%= render 'visits/buttons', visit: visit %>
+      </div>
+    </div>
+
+    <div class='w-full h-[25rem]'
+         data-controller="visit-modal-map"
+         data-coordinates="<%= visit.coordinates %>"
+         data-radius="<%= visit.default_radius %>"
+         data-center="<%= visit.center %>">
+      <div data-visit-modal-map-target="container" class="h-[25rem] w-auto h-96"></div>
+    </div>
+
+  </div>
+  <label class="modal-backdrop" for="visit_details_popup_<%= visit.id %>">Close</label>
+</div>

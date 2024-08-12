@@ -20,7 +20,8 @@ class ImportJob < ApplicationJob
       content: "Import \"#{import.name}\" successfully finished."
     ).call
 
-    StatCreatingJob.perform_later(user_id)
+    schedule_stats_creating(user_id)
+    schedule_visit_suggesting(user_id, import)
   rescue StandardError => e
     Notifications::Create.new(
       user:,
@@ -40,5 +41,17 @@ class ImportJob < ApplicationJob
     when 'owntracks'                then OwnTracks::ExportParser
     when 'gpx'                      then Gpx::TrackParser
     end
+  end
+
+  def schedule_stats_creating(user_id)
+    StatCreatingJob.perform_later(user_id)
+  end
+
+  def schedule_visit_suggesting(user_id, import)
+    points = import.points.order(:timestamp)
+    start_at = Time.zone.at(points.first.timestamp)
+    end_at = Time.zone.at(points.last.timestamp)
+
+    VisitSuggestingJob.perform_later(user_ids: [user_id], start_at:, end_at:)
   end
 end

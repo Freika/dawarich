@@ -59,54 +59,7 @@
           <div class="<%= index.odd? ? 'timeline-start' : 'timeline-end' %> mb-10 md:text-end">
             <time class="font-mono italic"><%= date[:date].strftime('%A, %d %B %Y') %></time>
             <% date[:visits].each do |visit| %>
-              <div class="group relative">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <div class="text-lg font-black <%= 'underline decoration-dotted' if visit.suggested? %>">
-                      <%= visit.area.name %>
-                    </div>
-                    <div>
-                      <%= "#{visit.started_at.strftime('%H:%M')} - #{visit.ended_at.strftime('%H:%M')}" %>
-                    </div>
-                  </div>
-                  <div class="opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center ml-4">
-                    <% if visit.suggested? %>
-                      <%= button_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-success' %>
-                      <%= button_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-error mx-1' %>
-                    <% end %>
-                    <!-- The button to open modal -->
-                    <label for="visit_details_popup_<%= visit.id %>" class='btn btn-xs btn-info'>Map</label>
-
-                    <!-- Put this part before </body> tag -->
-                    <input type="checkbox" id="visit_details_popup_<%= visit.id %>" class="modal-toggle" />
-                    <div class="modal" role="dialog">
-                      <div class="modal-box w-10/12">
-                        <h3 class="text-lg font-bold">
-                          <%= visit.area_name %>, <%= visit.started_at.strftime('%d.%m.%Y') %>, <%= visit.started_at.strftime('%H:%M') %> - <%= visit.ended_at.strftime('%H:%M') %>
-                        </h3>
-                        <div class="flex justify-between my-5">
-                          <div><a class='link'><</a> Cafe, Sterndamm 86D <a class='link'>></a>, <%= visit.points.count %></div>
-                          <div class='flex'>
-                            <%= button_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-success' %>
-                            <%= button_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo: false }, class: 'btn btn-xs btn-error mx-1' %>
-                          </div>
-                        </div>
-                        <div class='w-full h-[25rem]'
-                          data-controller="visit-modal-map"
-                          data-coordinates="<%= visit.coordinates %>"
-                          data-radius="<%= visit.area.radius %>"
-                          data-center="<%= visit.area.center %>"
-                          >
-                          <div data-visit-modal-map-target="container" class="h-[25rem] w-auto h-96">
-                          </div>
-                        </div>
-
-                      </div>
-                      <label class="modal-backdrop" for="visit_details_popup_<%= visit.id %>">Close</label>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <%= render partial: 'visit', locals: { visit: visit } %>
             <% end %>
           </div>
           <hr />

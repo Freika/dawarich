@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_08_05_150111) do
+ActiveRecord::Schema[7.1].define(version: 2024_08_08_121027) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -91,6 +91,15 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_05_150111) do
     t.datetime "updated_at", null: false
     t.index ["kind"], name: "index_notifications_on_kind"
     t.index ["user_id"], name: "index_notifications_on_user_id"
+  end
+
+  create_table "place_visits", force: :cascade do |t|
+    t.bigint "place_id", null: false
+    t.bigint "visit_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id"], name: "index_place_visits_on_place_id"
+    t.index ["visit_id"], name: "index_place_visits_on_visit_id"
   end
 
   create_table "places", force: :cascade do |t|
@@ -182,7 +191,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_05_150111) do
   end
 
   create_table "visits", force: :cascade do |t|
-    t.bigint "area_id", null: false
+    t.bigint "area_id"
     t.bigint "user_id", null: false
     t.datetime "started_at", null: false
     t.datetime "ended_at", null: false
@@ -191,7 +200,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_05_150111) do
     t.integer "status", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "place_id"
     t.index ["area_id"], name: "index_visits_on_area_id"
+    t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
@@ -199,9 +210,12 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_05_150111) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
   add_foreign_key "notifications", "users"
+  add_foreign_key "place_visits", "places"
+  add_foreign_key "place_visits", "visits"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
   add_foreign_key "visits", "areas"
+  add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
 end

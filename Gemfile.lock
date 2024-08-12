@@ -135,10 +135,6 @@ GEM
     geocoder (1.8.3)
       base64 (>= 0.1.0)
       csv (>= 3.0.0)
-    geokit (1.14.0)
-    geokit-rails (2.5.0)
-      geokit (~> 1.5)
-      rails (>= 3.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
     google_places (2.0.0)
@@ -435,8 +431,6 @@ DEPENDENCIES
   ffaker
   foreman
   geocoder
-  geokit
-  geokit-rails
   google_places
   importmap-rails
   kaminari
