@@ -19,6 +19,8 @@ class Point < ApplicationRecord
 
   scope :reverse_geocoded, -> { where.not(city: nil, country: nil) }
   scope :not_reverse_geocoded, -> { where(city: nil, country: nil) }
+  scope :visited, -> { where.not(visit_id: nil) }
+  scope :not_visited, -> { where(visit_id: nil) }
 
   after_create :async_reverse_geocode
 

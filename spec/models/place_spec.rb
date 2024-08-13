@@ -16,7 +16,7 @@ RSpec.describe Place, type: :model do
   end
 
   describe 'enums' do
-    it { is_expected.to define_enum_for(:source).with_values(%i[manual google_places]) }
+    it { is_expected.to define_enum_for(:source).with_values(%i[manual photon]) }
   end
 
   describe 'methods' do

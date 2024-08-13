@@ -107,10 +107,10 @@ RSpec.describe '/visits', type: :request do
         expect(visit.reload.status).to eq('declined')
       end
 
-      it 'redirects to the visit index page' do
+      it 'redirects to the visits index page' do
         patch visit_url(visit), params: { visit: { status: :confirmed } }
 
-        expect(response).to redirect_to(visits_url)
+        expect(response).to redirect_to(visits_url(status: :suggested))
       end
     end
   end

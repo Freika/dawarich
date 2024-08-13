@@ -22,7 +22,7 @@ class VisitsController < ApplicationController
 
   def update
     if @visit.update(visit_params)
-      redirect_to visits_url, notice: 'Visit was successfully updated.', status: :see_other
+      redirect_back(fallback_location: visits_path(status: :suggested))
     else
       render :edit, status: :unprocessable_entity
     end

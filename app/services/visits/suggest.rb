@@ -6,7 +6,7 @@ class Visits::Suggest
   def initialize(user, start_at:, end_at:)
     @start_at = start_at.to_i
     @end_at = end_at.to_i
-    @points = user.tracked_points.order(timestamp: :asc).where(timestamp: start_at..end_at)
+    @points = user.tracked_points.not_visited.order(timestamp: :asc).where(timestamp: start_at..end_at)
     @user = user
   end
 
@@ -18,9 +18,9 @@ class Visits::Suggest
 
     create_visits_notification(user)
 
-    return unless reverse_geocoding_enabled?
+    nil unless reverse_geocoding_enabled?
 
-    reverse_geocode(visits)
+    # reverse_geocode(visits)
   end
 
   private
@@ -40,8 +40,7 @@ class Visits::Suggest
           search_params = {
             user_id:    user.id,
             duration:   visit_data[:duration],
-            started_at: Time.zone.at(visit_data[:points].first.timestamp),
-            ended_at:   Time.zone.at(visit_data[:points].last.timestamp)
+            started_at: Time.zone.at(visit_data[:points].first.timestamp)
           }
 
           if visit_data[:area].present?
@@ -52,6 +51,7 @@ class Visits::Suggest
 
           visit = Visit.find_or_initialize_by(search_params)
           visit.name = visit_data[:place]&.name || visit_data[:area]&.name if visit.name.blank?
+          visit.ended_at = Time.zone.at(visit_data[:points].last.timestamp)
           visit.save!
 
           visit_data[:points].each { |point| point.update!(visit_id: visit.id) }
@@ -62,12 +62,12 @@ class Visits::Suggest
     end
   end
 
-  def reverse_geocode(places)
-    places.each(&:async_reverse_geocode)
+  def reverse_geocode(visits)
+    visits.each(&:async_reverse_geocode)
   end
 
   def reverse_geocoding_enabled?
-    ::REVERSE_GEOCODING_ENABLED && ::GOOGLE_PLACES_API_KEY.present?
+    ::REVERSE_GEOCODING_ENABLED && ::PHOTON_API_HOST.present?
   end
 
   def create_visits_notification(user)
@@ -84,8 +84,8 @@ class Visits::Suggest
 
   def create_place(visit)
     place = Place.find_or_initialize_by(
-      latitude: visit[:latitude],
-      longitude: visit[:longitude]
+      latitude: visit[:latitude].to_f.round(5),
+      longitude: visit[:longitude].to_f.round(5)
     )
 
     place.name = Place::DEFAULT_NAME

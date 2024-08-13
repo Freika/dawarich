@@ -13,12 +13,11 @@ config = {
     expiration: 1.day # Defaults to `nil`
     # prefix: "another_key:" # Defaults to `geocoder:`
   },
-  always_raise: :all
-}
+  always_raise: :all,
 
-if GOOGLE_PLACES_API_KEY.present?
-  config[:lookup] = :google
-  config[:api_key] = GOOGLE_PLACES_API_KEY
-end
+  use_https: false,
+  lookup: :photon,
+  photon: { host: 'photon.chibi.rodeo' }
+}
 
 Geocoder.configure(config)

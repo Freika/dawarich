@@ -26,7 +26,7 @@ class Visit < ApplicationRecord
 
     radius = points.map { Geocoder::Calculations.distance_between(center, [_1.latitude, _1.longitude]) }.max
 
-    radius >= 15 ? radius : 15
+    radius && radius >= 15 ? radius : 15
   end
 
   def center

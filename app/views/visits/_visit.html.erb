@@ -4,7 +4,7 @@
       <%= render 'visits/name', visit: visit %>
       <div><%= "#{visit.started_at.strftime('%H:%M')} - #{visit.ended_at.strftime('%H:%M')}" %></div>
     </div>
-    <div class="opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center ml-4">
+    <div class="opacity-0 transition-opacity duration-200 group-hover:opacity-100 flex items-center ml-4">
       <%= render 'visits/buttons', visit: visit if visit.suggested? %>
       <!-- The button to open modal -->
       <label for="visit_details_popup_<%= visit.id %>" class='btn btn-xs btn-info'>Map</label>
