@@ -8,9 +8,11 @@ RSpec.describe AreaVisitsCalculationSchedulingJob, type: :job do
     let(:user) { create(:user) }
 
     it 'calls the AreaVisitsCalculationService' do
-      expect(AreaVisitsCalculatingJob).to receive(:perform_later).with(user.id).and_call_original
+      Sidekiq::Testing.inline! do
+        expect(AreaVisitsCalculatingJob).to receive(:perform_later).with(user.id).and_call_original
 
-      described_class.new.perform
+        described_class.new.perform
+      end
     end
   end
 end

@@ -27,9 +27,9 @@ RSpec.describe '/settings/users', type: :request do
     context 'when user is an admin' do
       let!(:admin) { create(:user, :admin) }
 
-      before { sign_in admin }
-
       describe 'POST /create' do
+        before { sign_in admin }
+
         context 'with valid parameters' do
           it 'creates a new User' do
             expect do
