@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.11] — 2024-08-14
+
+### Fixed
+
+- A bug where an attempt to import a Google's Records.json file was failing due to wrong object being passed to a background worker
+
 ## [0.9.10] — 2024-08-14
 
 ### Added

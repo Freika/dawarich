@@ -23,7 +23,7 @@ class Tasks::Imports::GoogleRecords
   private
 
   def create_import
-    @user.imports.create(name: @file_path, source: :google_records)
+    @user.imports.create(name: @file_path, source: :google_records).id
   end
 
   def read_file
