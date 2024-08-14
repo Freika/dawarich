@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
-Geocoder.configure(
-  # geocoding service request timeout, in seconds (default 3):
-  # timeout: 5,
-
-  # set default units to kilometers:
+settings = {
+  timeout: 5,
   units: :km,
-
-  # caching (see Caching section below for details):
   cache: Redis.new,
+  always_raise: :all,
   cache_options: {
-    expiration: 1.day # Defaults to `nil`
-    # prefix: "another_key:" # Defaults to `geocoder:`
+    expiration: 1.day
   }
-)
+}
+
+if defined?(PHOTON_API_HOST)
+  settings[:lookup] = :photon
+  settings[:photon] = { host: PHOTON_API_HOST }
+end
+
+Geocoder.configure(settings)
