@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- PHOTON_API_HOST env variable to set the host of the Photon API. It will will allow you to use your own Photon API instance instead of the default one.
+- PHOTON_API_HOST env variable to set the host of the Photon API. It will allow you to use your own Photon API instance instead of the default one.
 
 ## [0.9.9] — 2024-07-30
 
