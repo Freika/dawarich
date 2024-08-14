@@ -11,22 +11,22 @@ class OwnTracks::Params
     {
       latitude:           params[:lat],
       longitude:          params[:lon],
-      battery_status:     battery_status,
       battery:            params[:batt],
       ping:               params[:p],
       altitude:           params[:alt],
       accuracy:           params[:acc],
       vertical_accuracy:  params[:vac],
       velocity:           params[:vel],
-      connection:         connection,
       ssid:               params[:SSID],
       bssid:              params[:BSSID],
-      trigger:            trigger,
       tracker_id:         params[:tid],
       timestamp:          params[:tst].to_i,
       inrids:             params[:inrids],
       in_regions:         params[:inregions],
       topic:              params[:topic],
+      battery_status:,
+      connection:,
+      trigger:,
       raw_data:           params.deep_stringify_keys
     }
   end
