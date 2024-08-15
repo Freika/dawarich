@@ -22,16 +22,12 @@ class OwnTracks::ExportParser
         user_id:
       )
 
-      Point.create(
-        latitude: point_data[:latitude],
-        longitude: point_data[:longitude],
-        timestamp: point_data[:timestamp],
-        raw_data: point_data[:raw_data],
-        topic: point_data[:topic],
-        tracker_id: point_data[:tracker_id],
-        import_id: import.id,
-        user_id:
-      )
+      point = Point.new(point_data).tap do |p|
+        p.user_id = user_id
+        p.import_id = import.id
+      end
+
+      point.save
 
       points += 1
     end
