@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.12] — 2024-08-15
+
+### Fixed
+
+- Owntracks points are now being saved to the database with the full attributes
+- Existing owntracks points also filled with missing data
+- Definition of "reverse geocoded points" is now correctly based on the number of points that have full reverse geocoding data instead of the number of points that have only country and city
+
 ## [0.9.11] — 2024-08-14
 
 ### Fixed

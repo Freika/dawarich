@@ -36,18 +36,18 @@ class OwnTracks::Params
   def battery_status
     return 'unknown' if params[:bs].nil?
 
-    case params[:bs]
-    when 'u' then 'unplugged'
-    when 'c' then 'charging'
-    when 'f' then 'full'
+    case params[:bs].to_i
+    when 1 then 'unplugged'
+    when 2 then 'charging'
+    when 3 then 'full'
     else 'unknown'
     end
   end
 
   def trigger
-    return 'unknown' if params[:m].nil?
+    return 'unknown' if params[:t].nil?
 
-    case params[:m]
+    case params[:t]
     when 'p' then 'background_event'
     when 'c' then 'circular_region_event'
     when 'b' then 'beacon_event'

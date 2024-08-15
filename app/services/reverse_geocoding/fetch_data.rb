@@ -21,6 +21,6 @@ class ReverseGeocoding::FetchData
   private
 
   def reverse_geocoded?
-    point.city.present? && point.country.present? || point.geodata.present?
+    point.geodata.present?
   end
 end

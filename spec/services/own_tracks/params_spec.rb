@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe OwnTracks::Params do
@@ -15,7 +17,7 @@ RSpec.describe OwnTracks::Params do
       {
         latitude: 40.7128,
         longitude: -74.006,
-        battery_status: 'unknown',
+        battery_status: 'charging',
         battery: 85,
         ping: nil,
         altitude: 41,
@@ -25,9 +27,9 @@ RSpec.describe OwnTracks::Params do
         connection: 'wifi',
         ssid: 'Home Wifi',
         bssid: 'b0:f2:8:45:94:33',
-        trigger: 'unknown',
+        trigger: 'background_event',
         tracker_id: 'RO',
-        timestamp: 1706965203,
+        timestamp: 1_706_965_203,
         inrids: ['5f1d1b'],
         in_regions: ['home'],
         topic: 'owntracks/test/iPhone 12 Pro',
@@ -46,7 +48,7 @@ RSpec.describe OwnTracks::Params do
           't' => 'p',
           'conn' => 'w',
           'm' => 1,
-          'tst' => 1706965203,
+          'tst' => 1_706_965_203,
           'alt' => 41,
           '_type' => 'location',
           'tid' => 'RO',
@@ -64,7 +66,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when battery status is unplugged' do
-      let(:raw_point_params) { super().merge(bs: 'u') }
+      let(:raw_point_params) { super().merge(bs: 1) }
 
       it 'returns parsed params' do
         expect(params[:battery_status]).to eq('unplugged')
@@ -72,7 +74,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when battery status is charging' do
-      let(:raw_point_params) { super().merge(bs: 'c') }
+      let(:raw_point_params) { super().merge(bs: 2) }
 
       it 'returns parsed params' do
         expect(params[:battery_status]).to eq('charging')
@@ -80,7 +82,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when battery status is full' do
-      let(:raw_point_params) { super().merge(bs: 'f') }
+      let(:raw_point_params) { super().merge(bs: 3) }
 
       it 'returns parsed params' do
         expect(params[:battery_status]).to eq('full')
@@ -96,7 +98,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when trigger is circular_region_event' do
-      let(:raw_point_params) { super().merge(m: 'c') }
+      let(:raw_point_params) { super().merge(t: 'c') }
 
       it 'returns parsed params' do
         expect(params[:trigger]).to eq('circular_region_event')
@@ -104,7 +106,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when trigger is beacon_event' do
-      let(:raw_point_params) { super().merge(m: 'b') }
+      let(:raw_point_params) { super().merge(t: 'b') }
 
       it 'returns parsed params' do
         expect(params[:trigger]).to eq('beacon_event')
@@ -112,7 +114,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when trigger is report_location_message_event' do
-      let(:raw_point_params) { super().merge(m: 'r') }
+      let(:raw_point_params) { super().merge(t: 'r') }
 
       it 'returns parsed params' do
         expect(params[:trigger]).to eq('report_location_message_event')
@@ -120,7 +122,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when trigger is manual_event' do
-      let(:raw_point_params) { super().merge(m: 'u') }
+      let(:raw_point_params) { super().merge(t: 'u') }
 
       it 'returns parsed params' do
         expect(params[:trigger]).to eq('manual_event')
@@ -128,7 +130,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when trigger is timer_based_event' do
-      let(:raw_point_params) { super().merge(m: 't') }
+      let(:raw_point_params) { super().merge(t: 't') }
 
       it 'returns parsed params' do
         expect(params[:trigger]).to eq('timer_based_event')
@@ -136,7 +138,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when trigger is settings_monitoring_event' do
-      let(:raw_point_params) { super().merge(m: 'v') }
+      let(:raw_point_params) { super().merge(t: 'v') }
 
       it 'returns parsed params' do
         expect(params[:trigger]).to eq('settings_monitoring_event')
@@ -184,7 +186,7 @@ RSpec.describe OwnTracks::Params do
     end
 
     context 'when trigger is unknown' do
-      let(:raw_point_params) { super().merge(m: 'unknown') }
+      before { raw_point_params[:t] = 'unknown' }
 
       it 'returns parsed params' do
         expect(params[:trigger]).to eq('unknown')
