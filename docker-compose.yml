@@ -9,6 +9,7 @@ services:
       - dawarich
     volumes:
       - shared_data:/var/shared/redis
+    restart: always
   dawarich_db:
     image: postgres:14.2-alpine
     container_name: dawarich_db
@@ -20,6 +21,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+    restart: always
   dawarich_app:
     image: freikin/dawarich:latest
     container_name: dawarich_app
