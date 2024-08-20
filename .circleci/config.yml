@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   ruby: circleci/ruby@2.1.1
+  browser-tools: circleci/browser-tools@1.2.3
 
 jobs:
   test:
@@ -32,6 +33,8 @@ jobs:
       - run:
           name: Run RSpec tests
           command: bundle exec rspec
+      - store_artifacts:
+          path: coverage
 
 workflows:
   rspec:
