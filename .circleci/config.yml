@@ -9,7 +9,7 @@ jobs:
       - image: cimg/ruby:3.2.3
         environment:
           RAILS_ENV: test
-      - image: circleci/postgres:14.2
+      - image: circleci/postgres:14.0
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database
