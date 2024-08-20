@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.0] — 2024-08-20
+
+### Added
+
+- The `api/v1/stats` endpoint to get stats for the user with swagger docs
+
+See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api-docs`) for more information.
+
 ## [0.9.12] — 2024-08-15
 
 ### Fixed
