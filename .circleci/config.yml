@@ -1,0 +1,42 @@
+version: 2.1
+
+orbs:
+  ruby: circleci/ruby@2.1.1
+  browser-tools: circleci/browser-tools@1.2.3
+
+jobs:
+  test:
+    docker:
+      - image: cimg/ruby:3.2.3
+        environment:
+          RAILS_ENV: test
+      - image: circleci/postgres:13.3
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test_database
+          POSTGRES_PASSWORD: mysecretpassword
+      - image: redis:7.0
+
+    steps:
+      - checkout
+      - run:
+          name: Install Bundler
+          command: gem install bundler
+      - run:
+          name: Bundle Install
+          command: bundle install --jobs=4 --retry=3
+      - run:
+          name: Database Setup
+          command: |
+            bundle exec rails db:create
+            bundle exec rails db:schema:load
+      - run:
+          name: Run RSpec tests
+          command: bundle exec rspec
+      - store_artifacts:
+          path: coverage
+
+workflows:
+  rspec:
+    jobs:
+      - test

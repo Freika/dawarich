@@ -42,7 +42,7 @@ end
 group :test do
   gem 'fakeredis'
   gem 'shoulda-matchers'
-  gem 'simplecov'
+  gem 'simplecov', require: false
   gem 'super_diff'
   gem 'webmock'
 end
