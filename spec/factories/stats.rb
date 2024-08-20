@@ -5,6 +5,7 @@ FactoryBot.define do
     year { 1 }
     month { 1 }
     distance { 1 }
+    user
     toponyms do
       [
         {

@@ -17,8 +17,8 @@ class Point < ApplicationRecord
   }, _suffix: true
   enum connection: { mobile: 0, wifi: 1, offline: 2 }, _suffix: true
 
-  scope :reverse_geocoded, -> { where.not(city: nil, country: nil) }
-  scope :not_reverse_geocoded, -> { where(city: nil, country: nil) }
+  scope :reverse_geocoded, -> { where.not(geodata: {}) }
+  scope :not_reverse_geocoded, -> { where(geodata: {}) }
 
   after_create :async_reverse_geocode
 
