@@ -32,11 +32,11 @@ RSpec.describe ReverseGeocoding::FetchData do
     end
 
     context 'when point has city and country' do
-      let(:point) { create(:point, city: 'City', country: 'Country') }
+      let(:point) { create(:point, :with_geodata) }
 
       before do
         allow(Geocoder).to receive(:search).and_return(
-          [double(city: 'Another city', country: 'Some country')]
+          [double(geodata: { 'address' => 'Address' }, city: 'City', country: 'Country')]
         )
       end
 
