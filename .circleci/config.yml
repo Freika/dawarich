@@ -4,7 +4,7 @@ orbs:
   ruby: circleci/ruby@2.1.1
 
 jobs:
-  build:
+  test:
     docker:
       - image: cimg/ruby:3.2.3
         environment:
@@ -34,6 +34,6 @@ jobs:
           command: bundle exec rspec
 
 workflows:
-  sample:
+  rspec:
     jobs:
-      - build
+      - test
