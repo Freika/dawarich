@@ -11,7 +11,7 @@ describe 'Stats API', type: :request do
       response '200', 'stats found' do
         schema type: :object,
                properties: {
-                 totalDistanceKm:              { type: :number },
+                 totalDistanceKm:             { type: :number },
                 totalPointsTracked:           { type: :number },
                 totalReverseGeocodedPoints:   { type: :number },
                 totalCountriesVisited:        { type: :number },
