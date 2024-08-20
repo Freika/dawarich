@@ -15,7 +15,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database
           POSTGRES_PASSWORD: mysecretpassword
-      - image: redis:7.0 # Add Redis service
+      - image: redis:7.0
 
     steps:
       - checkout
