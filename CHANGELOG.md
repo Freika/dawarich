@@ -11,6 +11,35 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The `api/v1/stats` endpoint to get stats for the user with swagger docs
 
+### Fixed
+
+- Redis and DB containers are now being automatically restarted if they fail. Update your `docker-compose.yml` if necessary
+
+```diff
+  services:
+  dawarich_redis:
+    image: redis:7.0-alpine
+    command: redis-server
+    networks:
+      - dawarich
+    volumes:
+      - shared_data:/var/shared/redis
++   restart: always
+  dawarich_db:
+    image: postgres:14.2-alpine
+    container_name: dawarich_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - shared_data:/var/shared
+    networks:
+      - dawarich
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
++   restart: always
+```
+
+
 See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api-docs`) for more information.
 
 ## [0.9.12] — 2024-08-15
