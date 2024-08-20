@@ -13,6 +13,7 @@ jobs:
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database
+          POSTGRES_PASSWORD: mysecretpassword
 
     steps:
       - checkout
