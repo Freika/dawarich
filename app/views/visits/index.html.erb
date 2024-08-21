@@ -50,7 +50,7 @@
                 <div class="flex items-center justify-between">
                   <div>
                     <div class="text-lg font-black <%= 'underline decoration-dotted' if visit.pending? %>">
-                      <%= visit.area.name %>
+                      <%= visit&.area&.name %>
                     </div>
                     <div>
                       <%= "#{visit.started_at.strftime('%H:%M')} - #{visit.ended_at.strftime('%H:%M')}" %>

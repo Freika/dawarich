@@ -1,0 +1,24 @@
+[
+  [
+    {
+      "assets": [
+        {
+          "exifInfo": {
+            "dateTimeOriginal": "2022-12-31T23:17:06.170Z",
+            "latitude": 52.0000,
+            "longitude": 13.0000
+          }
+        },
+        {
+          "exifInfo": {
+            "dateTimeOriginal": "2022-12-31T23:21:53.140Z",
+            "latitude": 52.0000,
+            "longitude": 13.0000
+          }
+        }
+      ],
+      "title": "1 year ago",
+      "yearsAgo": 1
+    }
+  ]
+]

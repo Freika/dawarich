@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Import, type: :model do
@@ -13,7 +15,8 @@ RSpec.describe Import, type: :model do
         owntracks: 1,
         google_records: 2,
         google_phone_takeout: 3,
-        gpx: 4
+        gpx: 4,
+        immich_api: 5
       )
     end
   end

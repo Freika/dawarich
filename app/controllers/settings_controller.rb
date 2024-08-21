@@ -3,8 +3,7 @@
 class SettingsController < ApplicationController
   before_action :authenticate_user!
 
-  def index
-  end
+  def index; end
 
   def update
     current_user.update(settings: settings_params)
@@ -31,7 +30,8 @@ class SettingsController < ApplicationController
   def settings_params
     params.require(:settings).permit(
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
-      :time_threshold_minutes, :merge_threshold_minutes, :route_opacity
+      :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
+      :immich_url, :immich_api_key
     )
   end
 end
