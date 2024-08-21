@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.11.1] — 2024-08-21
+
+### Changed
+
+- `/api/v1/points` endpoint now returns 100 points by default. You can specify the number of points to return by passing the `per_page` query parameter. Example: `/api/v1/points?per_page=50` will return 50 points. Also, `page` query parameter is now available to paginate the results. Example: `/api/v1/points?per_page=50&page=2` will return the second page of 50 points.
+
 ## [0.11.0] — 2024-08-21
 
 ### Added

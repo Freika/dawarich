@@ -8,7 +8,12 @@ class Api::V1::PointsController < ApplicationController
     start_at = params[:start_at]&.to_datetime&.to_i
     end_at = params[:end_at]&.to_datetime&.to_i || Time.zone.now.to_i
 
-    points = current_api_user.tracked_points.where(timestamp: start_at..end_at)
+    points = current_api_user
+             .tracked_points
+             .where(timestamp: start_at..end_at)
+             .order(:timestamp)
+             .page(params[:page])
+             .per(params[:per_page] || 100)
 
     render json: points
   end
