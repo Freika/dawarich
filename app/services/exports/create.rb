@@ -37,7 +37,7 @@ class Exports::Create
       user:,
       kind: :error,
       title: 'Export failed',
-      content: "Export \"#{export.name}\" failed: #{e.message}"
+      content: "Export \"#{export.name}\" failed: #{e.message}, stacktrace: #{e.backtrace.join("\n")}"
     ).call
 
     export.update!(status: :failed)

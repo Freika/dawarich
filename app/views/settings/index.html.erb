@@ -165,6 +165,14 @@
           <%= f.number_field :route_opacity, value: current_user.settings['route_opacity'], class: "input input-bordered" %>
         </div>
         <div class="form-control my-2">
+          <%= f.label :immich_url %>
+          <%= f.text_field :immich_url, value: current_user.settings['immich_url'], class: "input input-bordered", placeholder: 'http://192.168.0.1:2283' %>
+        </div>
+        <div class="form-control my-2">
+          <%= f.label :immich_api_key %>
+          <%= f.text_field :immich_api_key, value: current_user.settings['immich_api_key'], class: "input input-bordered", placeholder: 'xxxxxxxxxxxxxx' %>
+        </div>
+        <div class="form-control my-2">
           <%= f.submit "Update", class: "btn btn-primary" %>
         </div>
       <% end %>

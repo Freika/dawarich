@@ -26,19 +26,21 @@ class ImportJob < ApplicationJob
       user:,
       kind: :error,
       title: 'Import failed',
-      content: "Import \"#{import.name}\" failed: #{e.message}"
+      content: "Import \"#{import.name}\" failed: #{e.message}, stacktrace: #{e.backtrace.join("\n")}"
     ).call
   end
 
   private
 
   def parser(source)
+    # Bad classes naming by the way, they are not parsers, they are point creators
     case source
     when 'google_semantic_history'  then GoogleMaps::SemanticHistoryParser
     when 'google_records'           then GoogleMaps::RecordsParser
     when 'google_phone_takeout'     then GoogleMaps::PhoneTakeoutParser
     when 'owntracks'                then OwnTracks::ExportParser
     when 'gpx'                      then Gpx::TrackParser
+    when 'immich_api'               then Immich::ImportParser
     end
   end
 end

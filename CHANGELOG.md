@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.11.0] — 2024-08-21
+
+### Added
+
+- A user can now trigger the import of their geodata from Immich to Dawarich by clicking the "Import Immich data" button in the Imports page.
+- A user can now provide a url and an api key for their Immich instance and then trigger the import of their geodata from Immich to Dawarich. This can be done in the Settings page.
+
+### Changed
+
+- Table columns on the Exports page were reordered to make it more user-friendly.
+- Exports are now being named with this pattern: "export_from_dd.mm.yyyy_to_dd.mm.yyyy.json" where "dd.mm.yyyy" is the date range of the export.
+- Notification about any error now will include the stacktrace.
+
 ## [0.10.0] — 2024-08-20
 
 ### Added

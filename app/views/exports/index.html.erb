@@ -28,15 +28,16 @@
           <thead>
             <tr>
               <th>Name</th>
+              <th>Created at</th>
               <th>Status</th>
               <th>Actions</th>
-              <th>Created at</th>
             </tr>
           </thead>
           <tbody>
             <% @exports.each do |export| %>
               <tr>
                 <td><%= export.name %></td>
+                <td><%= export.created_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
                 <td><%= export.status %></td>
                 <td>
                   <% if export.completed? %>
@@ -44,7 +45,6 @@
                   <% end %>
                   <%= link_to 'Delete', export, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
                 </td>
-                <td><%= export.created_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
               </tr>
             <% end %>
           </tbody>

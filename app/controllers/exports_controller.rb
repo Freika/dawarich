@@ -9,7 +9,7 @@ class ExportsController < ApplicationController
   end
 
   def create
-    export_name = "#{params[:start_at].to_date}_#{params[:end_at].to_date}"
+    export_name = "export_from_#{params[:start_at].to_date}_to_#{params[:end_at].to_date}"
     export = current_user.exports.create(name: export_name, status: :created)
 
     ExportJob.perform_later(export.id, params[:start_at], params[:end_at])

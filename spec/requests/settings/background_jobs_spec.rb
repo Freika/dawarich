@@ -46,7 +46,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
           it 'enqueues a new job' do
             expect do
               post settings_background_jobs_url, params:
-            end.to have_enqueued_job(EnqueueReverseGeocodingJob)
+            end.to have_enqueued_job(EnqueueBackgroundJob)
           end
 
           it 'redirects to the created settings_background_job' do
