@@ -46,7 +46,7 @@
                   <%= link_to import.name, import, class: 'underline hover:no-underline' %> (<%= import.source %>)
                 </td>
                 <td>
-                  <%= "#{number_with_delimiter import.points.size}" %>
+                  <%= "#{number_with_delimiter import.points_count}" %>
                 </td>
                 <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
               </tr>
