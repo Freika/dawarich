@@ -13,21 +13,11 @@ class ImportJob < ApplicationJob
       raw_points: result[:raw_points], doubles: result[:doubles], processed: result[:processed]
     )
 
-    Notifications::Create.new(
-      user:,
-      kind: :info,
-      title: 'Import finished',
-      content: "Import \"#{import.name}\" successfully finished."
-    ).call
+    create_import_finished_notification(import, user)
 
     StatCreatingJob.perform_later(user_id)
   rescue StandardError => e
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: 'Import failed',
-      content: "Import \"#{import.name}\" failed: #{e.message}, stacktrace: #{e.backtrace.join("\n")}"
-    ).call
+    create_import_failed_notification(import, user, e)
   end
 
   private
@@ -42,5 +32,23 @@ class ImportJob < ApplicationJob
     when 'gpx'                      then Gpx::TrackParser
     when 'immich_api'               then Immich::ImportParser
     end
+  end
+
+  def create_import_finished_notification(import, user)
+    Notifications::Create.new(
+      user:,
+      kind: :info,
+      title: 'Import finished',
+      content: "Import \"#{import.name}\" successfully finished."
+    ).call
+  end
+
+  def create_import_failed_notification(import, user, error)
+    Notifications::Create.new(
+      user:,
+      kind: :error,
+      title: 'Import failed',
+      content: "Import \"#{import.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+    ).call
   end
 end

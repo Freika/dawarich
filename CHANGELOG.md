@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.11.2] — 2024-08-22
+
+### Changed
+
+### Fixed
+
+- Dawarich export was failing when attempted to be imported back to Dawarich.
+- Imports page with a lot of imports should now load faster.
+
+
 ## [0.11.1] — 2024-08-21
 
 ### Changed

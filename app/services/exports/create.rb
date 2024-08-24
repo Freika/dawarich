@@ -11,11 +11,11 @@ class Exports::Create
   def call
     export.update!(status: :processing)
 
-    pp "====Exporting data for #{user.email} from #{start_at} to #{end_at}"
+    Rails.logger.debug "====Exporting data for #{user.email} from #{start_at} to #{end_at}"
 
     points = time_framed_points
 
-    pp "====Exporting #{points.size} points"
+    Rails.logger.debug "====Exporting #{points.size} points"
 
     data      = ::ExportSerializer.new(points, user.email).call
     file_path = Rails.root.join('public', 'exports', "#{export.name}.json")
@@ -24,21 +24,11 @@ class Exports::Create
 
     export.update!(status: :completed, url: "exports/#{export.name}.json")
 
-    Notifications::Create.new(
-      user:,
-      kind: :info,
-      title: 'Export finished',
-      content: "Export \"#{export.name}\" successfully finished."
-    ).call
+    create_export_finished_notification
   rescue StandardError => e
     Rails.logger.error("====Export failed to create: #{e.message}")
 
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: 'Export failed',
-      content: "Export \"#{export.name}\" failed: #{e.message}, stacktrace: #{e.backtrace.join("\n")}"
-    ).call
+    create_failed_export_notification(e)
 
     export.update!(status: :failed)
   end
@@ -50,7 +40,24 @@ class Exports::Create
   def time_framed_points
     user
       .tracked_points
-      .without_raw_data
       .where('timestamp >= ? AND timestamp <= ?', start_at.to_i, end_at.to_i)
+  end
+
+  def create_export_finished_notification
+    Notifications::Create.new(
+      user:,
+      kind: :info,
+      title: 'Export finished',
+      content: "Export \"#{export.name}\" successfully finished."
+    ).call
+  end
+
+  def create_failed_export_notification(error)
+    Notifications::Create.new(
+      user:,
+      kind: :error,
+      title: 'Export failed',
+      content: "Export \"#{export.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+    ).call
   end
 end

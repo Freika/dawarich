@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_08_08_121027) do
+ActiveRecord::Schema[7.1].define(version: 2024_08_22_092405) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -77,6 +77,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_08_121027) do
     t.integer "doubles", default: 0
     t.integer "processed", default: 0
     t.jsonb "raw_data"
+    t.integer "points_count", default: 0
     t.index ["source"], name: "index_imports_on_source"
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
@@ -92,6 +93,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_08_121027) do
     t.index ["kind"], name: "index_notifications_on_kind"
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
+
 
   create_table "points", force: :cascade do |t|
     t.integer "battery_status"

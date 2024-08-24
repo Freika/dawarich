@@ -3,7 +3,7 @@
 class Point < ApplicationRecord
   reverse_geocoded_by :latitude, :longitude
 
-  belongs_to :import, optional: true
+  belongs_to :import, optional: true, counter_cache: true
   belongs_to :visit, optional: true
   belongs_to :user
 
@@ -15,7 +15,7 @@ class Point < ApplicationRecord
     report_location_message_event: 4, manual_event: 5, timer_based_event: 6,
     settings_monitoring_event: 7
   }, _suffix: true
-  enum connection: { mobile: 0, wifi: 1, offline: 2 }, _suffix: true
+  enum connection: { mobile: 0, wifi: 1, offline: 2, unknown: 4 }, _suffix: true
 
   scope :reverse_geocoded, -> { where.not(geodata: {}) }
   scope :not_reverse_geocoded, -> { where(geodata: {}) }
