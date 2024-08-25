@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.12.0] — 2024-08-25
 
-The visit suggestion release.
+### The visit suggestion release
 
 1. With this release deployment, data migration will work, starting visits suggestion process for all users.
 2. After initial visit suggestion process, new suggestions will be calculated every 24 hours, based on points for last 24 hours.
