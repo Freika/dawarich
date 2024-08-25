@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :place_visit do
-    place { nil }
-    visit { nil }
+    place
+    visit
   end
 end

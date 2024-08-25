@@ -30,14 +30,13 @@ class Visit < ApplicationRecord
   end
 
   def center
-    area.present? ? [area.latitude, area.longitude] : [place.latitude, place.longitude]
+    area.present? ? area.to_coordinates : place.to_coordinates
   end
 
   def async_reverse_geocode
     return unless REVERSE_GEOCODING_ENABLED
     return if place.blank?
 
-    # If place is successfully reverse geocoded, try to add it to corresponding visits as suggested
     ReverseGeocodingJob.perform_later('place', place_id)
   end
 end

@@ -29,7 +29,7 @@ class Visits::Prepare
   def calculate_radius(center_point, group)
     max_distance = group.map { |point| center_point.distance_to(point) }.max
 
-    (max_distance / 10.0).ceil * 10
+    max_distance.to_f.ceil
   end
 
   def prepare_day_result(grouped_points)

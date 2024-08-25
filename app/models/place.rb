@@ -15,7 +15,6 @@ class Place < ApplicationRecord
   def async_reverse_geocode
     return unless REVERSE_GEOCODING_ENABLED
 
-    # If place is successfully reverse geocoded, try to add it to corresponding visits as suggested
     ReverseGeocodingJob.perform_later(self.class.to_s, id)
   end
 

@@ -24,7 +24,7 @@ RSpec.describe Visits::Group do
           build(:point, latitude: 0.00007, longitude: 0.00007, timestamp: 1.day.ago + 35.minutes),
           build(:point, latitude: 0.00008, longitude: 0.00008, timestamp: 1.day.ago + 40.minutes),
           build(:point, latitude: 0.00009, longitude: 0.00009, timestamp: 1.day.ago + 45.minutes),
-          build(:point, latitude: 0.0001, longitude: 0.0001, timestamp: 1.day.ago + 50.minutes),
+          build(:point, latitude: 0.0001,  longitude: 0.0001,  timestamp: 1.day.ago + 50.minutes),
           build(:point, latitude: 0.00011, longitude: 0.00011, timestamp: 1.day.ago + 55.minutes),
           build(:point, latitude: 0.00011, longitude: 0.00011, timestamp: 1.day.ago + 95.minutes),
           build(:point, latitude: 0.00011, longitude: 0.00011, timestamp: 1.day.ago + 100.minutes),
