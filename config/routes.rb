@@ -27,6 +27,7 @@ Rails.application.routes.draw do
 
   resources :imports
   resources :visits, only: %i[index update]
+  resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
   resources :points, only: %i[index] do
     collection do

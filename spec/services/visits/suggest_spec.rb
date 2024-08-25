@@ -42,8 +42,8 @@ RSpec.describe Visits::Suggest do
       expect { subject }.to change(Notification, :count).by(1)
     end
 
-    it 'does not reverse geocodes visits' do
-      expect_any_instance_of(Visit).to_not receive(:async_reverse_geocode).and_call_original
+    it 'reverse geocodes visits' do
+      expect_any_instance_of(Visit).to receive(:async_reverse_geocode).and_call_original
 
       subject
     end

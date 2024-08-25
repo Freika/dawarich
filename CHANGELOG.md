@@ -22,7 +22,7 @@ The visit suggestion release.
   - [x] Make it look acceptable
 - [ ] Make visits suggestion an idempotent process
 - [ ] Places management: if visit is detected at a place with a name, suggest this name as a visit name
-  - [ ] Separate page for places management
+  - [x] Separate page for places management
 
 
 ### Added

@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::VisitsController < ApplicationController
-  skip_forgery_protection
-  before_action :authenticate_api_key
-
+class Api::V1::VisitsController < ApiController
   def update
     visit = current_api_user.visits.find(params[:id])
     visit = update_visit(visit)
@@ -23,7 +20,7 @@ class Api::V1::VisitsController < ApplicationController
       visit.name = visit.place.name if visit_params[:place_id].present?
     end
 
-    visit.save
+    visit.save!
 
     visit
   end

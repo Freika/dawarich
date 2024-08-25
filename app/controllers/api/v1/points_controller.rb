@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::PointsController < ApplicationController
-  skip_forgery_protection
-  before_action :authenticate_api_key
-
+class Api::V1::PointsController < ApiController
   def index
     start_at = params[:start_at]&.to_datetime&.to_i
     end_at = params[:end_at]&.to_datetime&.to_i || Time.zone.now.to_i

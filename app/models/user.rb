@@ -6,14 +6,15 @@ class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable
 
-  has_many :imports, dependent: :destroy
-  has_many :points, through: :imports
-  has_many :stats, dependent: :destroy
   has_many :tracked_points, class_name: 'Point', dependent: :destroy
-  has_many :exports, dependent: :destroy
-  has_many :notifications, dependent: :destroy
-  has_many :areas, dependent: :destroy
-  has_many :visits, dependent: :destroy
+  has_many :imports,        dependent: :destroy
+  has_many :stats,          dependent: :destroy
+  has_many :exports,        dependent: :destroy
+  has_many :notifications,  dependent: :destroy
+  has_many :areas,          dependent: :destroy
+  has_many :visits,         dependent: :destroy
+  has_many :points, through: :imports
+  has_many :places, through: :visits
 
   after_create :create_api_key
 

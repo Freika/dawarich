@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::Overland::BatchesController < ApplicationController
-  skip_forgery_protection
-  before_action :authenticate_api_key
-
+class Api::V1::Overland::BatchesController < ApiController
   def create
     Overland::BatchCreatingJob.perform_later(batch_params, current_api_user.id)
 
