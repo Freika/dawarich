@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 The visit suggestion release.
 
 1. With this release deployment, data migration will work, starting visits suggestion process for all users.
-2. After initial visit suggestion process, new suggestions will be calculated every 24 hours, based on points for last 7 days.
-3. If you have enabled reverse geocoding and provided Photon Api Host, Dawarich will try to reverse geocode your visit and suggest specific places you might have visited, such as cafes, restaurants, parks, etc. If reverse geocoding is not enabled, or Photon Api Host is not provided, Dawarich will not try to suggest places but you'll be able to rename the visit yourself.
+2. After initial visit suggestion process, new suggestions will be calculated every 24 hours, based on points for last 24 hours.
+3. If you have enabled reverse geocoding and (optionally) provided Photon Api Host, Dawarich will try to reverse geocode your visit and suggest specific places you might have visited, such as cafes, restaurants, parks, etc. If reverse geocoding is not enabled, or Photon Api Host is not provided, Dawarich will not try to suggest places but you'll be able to rename the visit yourself.
 4. You can confirm or decline the visit suggestion. If you confirm the visit, it will be added to your timeline. If you decline the visit, it will be removed from your timeline. You'll be able to see all your confirmed, declined and suggested visits on the Visits page.
 
 - [x] Get places from Google Places API based on visit coordinates
@@ -21,6 +21,8 @@ The visit suggestion release.
 - [x] Add a possibility to rename the visit
   - [x] Make it look acceptable
 - [ ] Make visits suggestion an idempotent process
+- [ ] Places management: if visit is detected at a place with a name, suggest this name as a visit name
+  - [ ] Separate page for places management
 
 
 ### Added

@@ -20,7 +20,7 @@ class Visits::Suggest
 
     nil unless reverse_geocoding_enabled?
 
-    # reverse_geocode(visits)
+    reverse_geocode(visits)
   end
 
   private
