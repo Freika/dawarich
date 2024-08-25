@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.12.1] — 2024-08-25
+
+### Fixed
+
+- Fixed a bug that prevented data migration from working correctly
+
 ## [0.12.0] — 2024-08-25
 
 ### The visit suggestion release
@@ -226,7 +232,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ### Added
 
-- Background jobs page. You can find it in Settings -> Backgroun Jobs.
+- Background jobs page. You can find it in Settings -> Background Jobs.
 - Queue clearing buttons. You can clear all jobs in the queue.
 - Reverse geocoding restart button. You can restart the reverse geocoding process for all of your points.
 - Reverse geocoding continue button. Click on this button will start reverse geocoding process only for points that were not processed yet.
@@ -349,7 +355,7 @@ Note, there should be no protocol prefixes in the `APPLICATION_HOSTS` variable, 
 
 ### Fixed
 
-- Support for a `location-history.json` file from Google Takeout. It turned out, this file could contain not only an object with location data history, but also an array of objets with location data history. Now Dawarich can handle both cases and import the data correctly.
+- Support for a `location-history.json` file from Google Takeout. It turned out, this file could contain not only an object with location data history, but also an array of objects with location data history. Now Dawarich can handle both cases and import the data correctly.
 
 
 ---
