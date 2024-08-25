@@ -137,8 +137,6 @@ GEM
       csv (>= 3.0.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
-    google_places (2.0.0)
-      httparty (>= 0.13.1)
     hashdiff (1.1.0)
     httparty (0.22.0)
       csv
@@ -433,7 +431,6 @@ DEPENDENCIES
   ffaker
   foreman
   geocoder
-  google_places
   httparty
   importmap-rails
   kaminari
