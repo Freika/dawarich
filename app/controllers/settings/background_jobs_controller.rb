@@ -9,7 +9,7 @@ class Settings::BackgroundJobsController < ApplicationController
   end
 
   def create
-    EnqueueReverseGeocodingJob.perform_later(params[:job_name], current_user.id)
+    EnqueueBackgroundJob.perform_later(params[:job_name], current_user.id)
 
     flash.now[:notice] = 'Job was successfully created.'
 

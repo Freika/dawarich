@@ -9,7 +9,7 @@ gem 'chartkick'
 gem 'data_migrate'
 gem 'devise'
 gem 'geocoder'
-gem 'google_places'
+gem 'httparty'
 gem 'importmap-rails'
 gem 'kaminari'
 gem 'lograge'
@@ -43,7 +43,7 @@ end
 group :test do
   gem 'fakeredis'
   gem 'shoulda-matchers'
-  gem 'simplecov'
+  gem 'simplecov', require: false
   gem 'super_diff'
   gem 'webmock'
 end

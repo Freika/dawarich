@@ -1,7 +1,9 @@
 # Dawarich
 
 
-[![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika)
+[![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika) | [0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4](https://etherscan.io/address/0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4)
+
+[![CircleCI](https://circleci.com/gh/Freika/dawarich.svg?style=svg)](https://app.circleci.com/pipelines/github/Freika/dawarich)
 
 ## Screenshots
 
@@ -50,14 +52,14 @@ To import your Google Maps Timeline data, download your location history from [G
 ## How-to's
 
 - [How to set up reverse proxy](docs/how_to_setup_reverse_proxy.md)
-- [How to import Google Takeout to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Takeout-data)
-- [How to import Google Semantic History to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Semantic-History-data)
-- [How to import Google Maps Timeline Data to Dawarich](https://github.com/Freika/dawarich/wiki/How-to-import-your-Google-Maps-Timeline-data)
-- [How to track your location to Dawarich with Overland](https://github.com/Freika/dawarich/wiki/How-to-track-your-location-to-Dawarich-with-Overland)
-- [How to track your location to Dawarich with OwnTracks](https://github.com/Freika/dawarich/wiki/How-to-track-your-location-to-Dawarich-with-OwnTracks)
-- [How to export your data from Dawarich](https://github.com/Freika/dawarich/wiki/How-to-export-your-data-from-Dawarich)
+- [How to import Google Takeout to Dawarich](https://dawarich.app/docs/tutorials/import-existing-data#sources-of-data)
+- [How to import Google Semantic History to Dawarich](https://dawarich.app/docs/tutorials/import-existing-data#semantic-location-history)
+- [How to import Google Maps Timeline Data to Dawarich](https://dawarich.app/docs/tutorials/import-existing-data#recordsjson)
+- [How to track your location to Dawarich with Overland](https://dawarich.app/docs/tutorials/track-your-location#overland)
+- [How to track your location to Dawarich with OwnTracks](https://dawarich.app/docs/tutorials/track-your-location#owntracks)
+- [How to export your data from Dawarich](https://dawarich.app/docs/tutorials/export-your-data)
 
-More guides can be found in the [Wiki](https://github.com/Freika/dawarich/wiki#how-tos)
+More guides can be found in the [Docs](https://dawarich.app/docs/intro)
 
 ## Features
 

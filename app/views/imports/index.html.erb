@@ -1,9 +1,15 @@
 <% content_for :title, 'Imports' %>
 
 <div class="w-full">
-  <div class="flex justify-between items-center">
+  <div class="flex justify-between items-center mb-3">
     <h1 class="font-bold text-4xl">Imports</h1>
     <%= link_to "New import", new_import_path, class: "rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium" %>
+
+    <% if current_user.settings['immich_url'] && current_user.settings['immich_api_key'] %>
+      <%= link_to 'Import Immich data', settings_background_jobs_path(job_name: 'start_immich_import'), method: :post, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium' %>
+    <% else %>
+      <a href='' class="rounded-lg py-3 px-5 bg-blue-900 text-gray block font-medium tooltip cursor-not-allowed" data-tip="You need to provide your Immich instance data in the Settings">Import Immich data</a>
+    <% end %>
   </div>
 
   <div id="imports" class="min-w-full">
@@ -40,7 +46,7 @@
                   <%= link_to import.name, import, class: 'underline hover:no-underline' %> (<%= import.source %>)
                 </td>
                 <td>
-                  <%= "#{number_with_delimiter import.points.size}" %>
+                  <%= "#{number_with_delimiter import.points_count}" %>
                 </td>
                 <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
               </tr>

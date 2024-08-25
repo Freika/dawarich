@@ -8,6 +8,7 @@ abort('The Rails environment is running in production mode!') if Rails.env.produ
 require 'rspec/rails'
 require 'rswag/specs'
 require 'sidekiq/testing'
+require 'super_diff/rspec-rails'
 
 require 'rake'
 

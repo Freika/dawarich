@@ -26,5 +26,29 @@ FactoryBot.define do
     city { nil }
     country { nil }
     user
+
+    trait :with_geodata do
+      geodata do
+        {
+          'type' => 'Feature',
+          'geometry' => { 'type' => 'Point', 'coordinates' => [37.6177036, 55.755847] },
+          'properties' => {
+            'city' => 'Moscow',
+            'name' => 'Kilometre zero',
+            'type' => 'house',
+            'state' => 'Moscow',
+            'osm_id' => 583_204_619,
+            'street' => 'Манежная площадь',
+            'country' => 'Russia',
+            'osm_key' => 'tourism',
+            'district' => 'Tverskoy',
+            'osm_type' => 'N',
+            'postcode' => '103265',
+            'osm_value' => 'attraction',
+            'countrycode' => 'RU'
+          }
+        }
+      end
+    end
   end
 end

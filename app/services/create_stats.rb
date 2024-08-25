@@ -29,7 +29,12 @@ class CreateStats
 
       Notifications::Create.new(user:, kind: :info, title: 'Stats updated', content: 'Stats updated').call
     rescue StandardError => e
-      Notifications::Create.new(user:, kind: :error, title: 'Stats update failed', content: e.message).call
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: 'Stats update failed',
+        content: "#{e.message}, stacktrace: #{e.backtrace.join("\n")}"
+      ).call
     end
   end
 

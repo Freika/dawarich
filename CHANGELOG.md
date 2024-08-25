@@ -30,6 +30,93 @@ The visit suggestion release.
 - Visits suggestion functionality. Read more on that in the release description
 - Tabs to the Visits page to allow user to switch between confirmed, declined and suggested visits
 
+## [0.11.2] — 2024-08-22
+
+### Changed
+
+### Fixed
+
+- Dawarich export was failing when attempted to be imported back to Dawarich.
+- Imports page with a lot of imports should now load faster.
+
+
+## [0.11.1] — 2024-08-21
+
+### Changed
+
+- `/api/v1/points` endpoint now returns 100 points by default. You can specify the number of points to return by passing the `per_page` query parameter. Example: `/api/v1/points?per_page=50` will return 50 points. Also, `page` query parameter is now available to paginate the results. Example: `/api/v1/points?per_page=50&page=2` will return the second page of 50 points.
+
+## [0.11.0] — 2024-08-21
+
+### Added
+
+- A user can now trigger the import of their geodata from Immich to Dawarich by clicking the "Import Immich data" button in the Imports page.
+- A user can now provide a url and an api key for their Immich instance and then trigger the import of their geodata from Immich to Dawarich. This can be done in the Settings page.
+
+### Changed
+
+- Table columns on the Exports page were reordered to make it more user-friendly.
+- Exports are now being named with this pattern: "export_from_dd.mm.yyyy_to_dd.mm.yyyy.json" where "dd.mm.yyyy" is the date range of the export.
+- Notification about any error now will include the stacktrace.
+
+## [0.10.0] — 2024-08-20
+
+### Added
+
+- The `api/v1/stats` endpoint to get stats for the user with swagger docs
+
+### Fixed
+
+- Redis and DB containers are now being automatically restarted if they fail. Update your `docker-compose.yml` if necessary
+
+```diff
+  services:
+  dawarich_redis:
+    image: redis:7.0-alpine
+    command: redis-server
+    networks:
+      - dawarich
+    volumes:
+      - shared_data:/var/shared/redis
++   restart: always
+  dawarich_db:
+    image: postgres:14.2-alpine
+    container_name: dawarich_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - shared_data:/var/shared
+    networks:
+      - dawarich
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
++   restart: always
+```
+
+
+See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api-docs`) for more information.
+
+## [0.9.12] — 2024-08-15
+
+### Fixed
+
+- Owntracks points are now being saved to the database with the full attributes
+- Existing owntracks points also filled with missing data
+- Definition of "reverse geocoded points" is now correctly based on the number of points that have full reverse geocoding data instead of the number of points that have only country and city
+- Fixed a bug in gpx importing scipt ([thanks, bluemax!](https://github.com/Freika/dawarich/pull/126))
+
+## [0.9.11] — 2024-08-14
+
+### Fixed
+
+- A bug where an attempt to import a Google's Records.json file was failing due to wrong object being passed to a background worker
+
+## [0.9.10] — 2024-08-14
+
+### Added
+
+- PHOTON_API_HOST env variable to set the host of the Photon API. It will allow you to use your own Photon API instance instead of the default one.
+
 ## [0.9.9] — 2024-07-30
 
 ### Added

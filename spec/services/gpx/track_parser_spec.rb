@@ -15,6 +15,7 @@ RSpec.describe Gpx::TrackParser do
       context 'when file has a single segment' do
         it 'creates points' do
           expect { parser }.to change { Point.count }.by(301)
+          expect(parser).to eq({ doubles: 4, points: 301, processed: 305, raw_points: 305 })
         end
       end
 
@@ -23,7 +24,17 @@ RSpec.describe Gpx::TrackParser do
 
         it 'creates points' do
           expect { parser }.to change { Point.count }.by(558)
+          expect(parser).to eq({ doubles: 0, points: 558, processed: 558, raw_points: 558 })
         end
+      end
+    end
+
+    context 'when file has multiple tracks' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/gpx_track_multiple_tracks.gpx') }
+
+      it 'creates points' do
+        expect { parser }.to change { Point.count }.by(407)
+        expect(parser).to eq({ doubles: 0, points: 407, processed: 407, raw_points: 407 })
       end
     end
   end

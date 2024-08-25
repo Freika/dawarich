@@ -415,6 +415,89 @@ paths:
       responses:
         '200':
           description: point deleted
+  "/api/v1/stats":
+    get:
+      summary: Retrieves all stats
+      tags:
+      - Stats
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: stats found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalDistanceKm:
+                    type: number
+                  totalPointsTracked:
+                    type: number
+                  totalReverseGeocodedPoints:
+                    type: number
+                  totalCountriesVisited:
+                    type: number
+                  totalCitiesVisited:
+                    type: number
+                  yearlyStats:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        year:
+                          type: integer
+                        totalDistanceKm:
+                          type: number
+                        totalCountriesVisited:
+                          type: number
+                        totalCitiesVisited:
+                          type: number
+                        monthlyDistanceKm:
+                          type: object
+                          properties:
+                            january:
+                              type: number
+                            february:
+                              type: number
+                            march:
+                              type: number
+                            april:
+                              type: number
+                            may:
+                              type: number
+                            june:
+                              type: number
+                            july:
+                              type: number
+                            august:
+                              type: number
+                            september:
+                              type: number
+                            october:
+                              type: number
+                            november:
+                              type: number
+                            december:
+                              type: number
+                      required:
+                      - year
+                      - totalDistanceKm
+                      - totalCountriesVisited
+                      - totalCitiesVisited
+                      - monthlyDistanceKm
+                required:
+                - totalDistanceKm
+                - totalPointsTracked
+                - totalReverseGeocodedPoints
+                - totalCountriesVisited
+                - totalCitiesVisited
+                - yearlyStats
 servers:
 - url: http://{defaultHost}
   variables:
