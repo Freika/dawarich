@@ -19,6 +19,8 @@ class Point < ApplicationRecord
 
   scope :reverse_geocoded, -> { where.not(geodata: {}) }
   scope :not_reverse_geocoded, -> { where(geodata: {}) }
+  scope :visited, -> { where.not(visit_id: nil) }
+  scope :not_visited, -> { where(visit_id: nil) }
 
   after_create :async_reverse_geocode
 
@@ -33,6 +35,6 @@ class Point < ApplicationRecord
   def async_reverse_geocode
     return unless REVERSE_GEOCODING_ENABLED
 
-    ReverseGeocodingJob.perform_later(id)
+    ReverseGeocodingJob.perform_later(self.class.to_s, id)
   end
 end

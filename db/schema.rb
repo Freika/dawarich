@@ -94,6 +94,27 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_22_092405) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "place_visits", force: :cascade do |t|
+    t.bigint "place_id", null: false
+    t.bigint "visit_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id"], name: "index_place_visits_on_place_id"
+    t.index ["visit_id"], name: "index_place_visits_on_visit_id"
+  end
+
+  create_table "places", force: :cascade do |t|
+    t.string "name", null: false
+    t.decimal "longitude", precision: 10, scale: 6, null: false
+    t.decimal "latitude", precision: 10, scale: 6, null: false
+    t.string "city"
+    t.string "country"
+    t.integer "source", default: 0
+    t.jsonb "geodata", default: {}, null: false
+    t.datetime "reverse_geocoded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
 
   create_table "points", force: :cascade do |t|
     t.integer "battery_status"
@@ -171,7 +192,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_22_092405) do
   end
 
   create_table "visits", force: :cascade do |t|
-    t.bigint "area_id", null: false
+    t.bigint "area_id"
     t.bigint "user_id", null: false
     t.datetime "started_at", null: false
     t.datetime "ended_at", null: false
@@ -180,7 +201,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_22_092405) do
     t.integer "status", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "place_id"
     t.index ["area_id"], name: "index_visits_on_area_id"
+    t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
@@ -188,9 +211,12 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_22_092405) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
   add_foreign_key "notifications", "users"
+  add_foreign_key "place_visits", "places"
+  add_foreign_key "place_visits", "visits"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
   add_foreign_key "visits", "areas"
+  add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
 end

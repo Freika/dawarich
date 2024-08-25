@@ -2,6 +2,7 @@
 
 class Jobs::Create
   class InvalidJobName < StandardError; end
+
   attr_reader :job_name, :user
 
   def initialize(job_name, user_id)

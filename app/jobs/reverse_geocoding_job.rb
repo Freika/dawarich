@@ -3,9 +3,15 @@
 class ReverseGeocodingJob < ApplicationJob
   queue_as :reverse_geocoding
 
-  def perform(point_id)
+  def perform(klass, id)
     return unless REVERSE_GEOCODING_ENABLED
 
-    ReverseGeocoding::FetchData.new(point_id).call
+    data_fetcher(klass, id).call
+  end
+
+  private
+
+  def data_fetcher(klass, id)
+    "ReverseGeocoding::#{klass.pluralize.camelize}::FetchData".constantize.new(id)
   end
 end

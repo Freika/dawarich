@@ -27,6 +27,7 @@ Rails.application.routes.draw do
 
   resources :imports
   resources :visits, only: %i[index update]
+  resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
   resources :points, only: %i[index] do
     collection do
@@ -57,6 +58,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       resources :areas, only: %i[index create update destroy]
       resources :points, only: %i[index destroy]
+      resources :visits, only: %i[update]
       resources :stats, only: :index
 
       namespace :overland do

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.12.0] — 2024-08-25
+
+### The visit suggestion release
+
+1. With this release deployment, data migration will work, starting visits suggestion process for all users.
+2. After initial visit suggestion process, new suggestions will be calculated every 24 hours, based on points for last 24 hours.
+3. If you have enabled reverse geocoding and (optionally) provided Photon Api Host, Dawarich will try to reverse geocode your visit and suggest specific places you might have visited, such as cafes, restaurants, parks, etc. If reverse geocoding is not enabled, or Photon Api Host is not provided, Dawarich will not try to suggest places but you'll be able to rename the visit yourself.
+4. You can confirm or decline the visit suggestion. If you confirm the visit, it will be added to your timeline. If you decline the visit, it will be removed from your timeline. You'll be able to see all your confirmed, declined and suggested visits on the Visits page.
+
+
+### Added
+
+- A "Map" button to each visit on the Visits page to allow user to see the visit on the map
+- Visits suggestion functionality. Read more on that in the release description
+- Click on the visit name allows user to rename the visit
+- Tabs to the Visits page to allow user to switch between confirmed, declined and suggested visits
+- Places page to see and delete places suggested by Dawarich's visit suggestion process
+- Importing a file will now trigger the visit suggestion process for the user
+
 ## [0.11.2] — 2024-08-22
 
 ### Changed

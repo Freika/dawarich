@@ -18,14 +18,4 @@ class ApplicationController < ActionController::Base
 
     redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :see_other
   end
-
-  def authenticate_api_key
-    return head :unauthorized unless current_api_user
-
-    true
-  end
-
-  def current_api_user
-    @current_api_user ||= User.find_by(api_key: params[:api_key])
-  end
 end

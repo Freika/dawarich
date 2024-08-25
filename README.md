@@ -117,6 +117,7 @@ Feel free to change them both in the Account section.
 | APPLICATION_HOSTS                                                     | list of host of the application, e.g. `localhost,dawarich.example.com`                                                        |
 | BACKGROUND_PROCESSING_CONCURRENCY (only for dawarich_sidekiq service) | Number of simultaneously processed background jobs, default is 10                                                          |
 | REVERSE_GEOCODING_ENABLED | `true` or `false`, this env var allows you to disable reverse geocoding feature entirely                                                          |
+| PHOTON_API_HOST | Photon reverse geocoding api host. Useful, if you're running your own Photon instance                                                          |
 
 ## Star History
 

@@ -46,8 +46,11 @@ RSpec.describe Point, type: :model do
     describe '#async_reverse_geocode' do
       let(:point) { build(:point) }
 
-      it 'enqueues ReverseGeocodeJob' do
+      it 'enqueues ReverseGeocodeJob with correct arguments' do
+        point.save
+
         expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
+          .with('Point', point.id)
       end
     end
   end

@@ -1,0 +1,52 @@
+<% content_for :title, "Places" %>
+
+<div class="w-full">
+  <div class="flex justify-center my-5">
+    <h1 class="font-bold text-4xl">Places</h1>
+  </div>
+
+  <div id="places" class="min-w-full">
+    <% if @places.empty? %>
+      <div class="hero min-h-80 bg-base-200">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-5xl font-bold">Hello there!</h1>
+            <p class="py-6">
+              Here you'll find your places, created by Visits suggestion process. But now there are none.
+            </p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="flex justify-center my-5">
+        <div class='flex'>
+          <%= paginate @places %>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Created at</th>
+              <th>Coordinates</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @places.each do |place| %>
+              <tr>
+                <td><%= place.name %></td>
+                <td><%= place.created_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
+                <td><%= place.to_coordinates.map(&:to_f) %></td>
+                <td>
+                  <%= link_to 'Delete', place, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>

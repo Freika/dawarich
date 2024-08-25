@@ -15,7 +15,8 @@ class ImportJob < ApplicationJob
 
     create_import_finished_notification(import, user)
 
-    StatCreatingJob.perform_later(user_id)
+    schedule_stats_creating(user_id)
+    schedule_visit_suggesting(user_id, import)
   rescue StandardError => e
     create_import_failed_notification(import, user, e)
   end
@@ -32,6 +33,18 @@ class ImportJob < ApplicationJob
     when 'gpx'                      then Gpx::TrackParser
     when 'immich_api'               then Immich::ImportParser
     end
+  end
+
+  def schedule_stats_creating(user_id)
+    StatCreatingJob.perform_later(user_id)
+  end
+
+  def schedule_visit_suggesting(user_id, import)
+    points = import.points.order(:timestamp)
+    start_at = Time.zone.at(points.first.timestamp)
+    end_at = Time.zone.at(points.last.timestamp)
+
+    VisitSuggestingJob.perform_later(user_ids: [user_id], start_at:, end_at:)
   end
 
   def create_import_finished_notification(import, user)
