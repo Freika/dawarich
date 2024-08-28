@@ -12,8 +12,8 @@ describe 'Points API', type: :request do
                 description: 'Start date (i.e. 2024-02-03T13:00:03Z or 2024-02-03)'
       parameter name: :end_at, in: :query, type: :string,
                 description: 'End date (i.e. 2024-02-03T13:00:03Z or 2024-02-03)'
-      parameter name: :page, in: :query, type: :integer, description: 'Page number'
-      parameter name: :per_page, in: :query, type: :integer, description: 'Number of points per page'
+      parameter name: :page, in: :query, type: :integer, required: false, description: 'Page number'
+      parameter name: :per_page, in: :query, type: :integer, required: false, description: 'Number of points per page'
       response '200', 'points found' do
         schema type: :array,
                items: {

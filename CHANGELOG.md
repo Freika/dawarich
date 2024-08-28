@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map settings moved to the map itself and are available in the top right corner of the map under the gear icon.
 
+
 ## [0.12.1] — 2024-08-25
 
 ### Fixed

@@ -326,6 +326,18 @@ paths:
         description: End date (i.e. 2024-02-03T13:00:03Z or 2024-02-03)
         schema:
           type: string
+      - name: page
+        in: query
+        required: false
+        description: Page number
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: Number of points per page
+        schema:
+          type: integer
       responses:
         '200':
           description: points found
