@@ -50,15 +50,15 @@ class CreateStats
   end
 
   def distance(points)
-    km = 0
+    distance = 0
 
     points.each_cons(2) do
-      km += Geocoder::Calculations.distance_between(
-        [_1.latitude, _1.longitude], [_2.latitude, _2.longitude], units: :km
+      distance += Geocoder::Calculations.distance_between(
+        [_1.latitude, _1.longitude], [_2.latitude, _2.longitude], units: DISTANCE_UNIT.to_sym
       )
     end
 
-    km
+    distance
   end
 
   def toponyms(points)

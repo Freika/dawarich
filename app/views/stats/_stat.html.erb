@@ -5,7 +5,7 @@
         <%= "#{Date::MONTHNAMES[stat.month]} of #{stat.year}" %>
       <% end %>
     </h2>
-    <p><%= stat.distance %>km</p>
+    <p><%= stat.distance %><%= DISTANCE_UNIT %></p>
     <% if REVERSE_GEOCODING_ENABLED %>
       <div class="card-actions justify-end">
         <%= countries_and_cities_stat_for_month(stat) %>
@@ -15,7 +15,7 @@
       <%= column_chart(
         stat.daily_distance,
         height: '100px',
-        suffix: ' km',
+        suffix: " #{DISTANCE_UNIT}",
         xtitle: 'Days',
         ytitle: 'Distance'
       ) %>
