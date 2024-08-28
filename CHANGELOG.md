@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.12.2] — 2024-08-28
+
+### Added
+
+- `PATCH /api/v1/settings` endpoint to update user settings with swagger docs
+- `GET /api/v1/settings` endpoint to get user settings with swagger docs
+
+### Changed
+
+- Map settings moved to the map itself and are available in the top right corner of the map under the gear icon.
+
 ## [0.12.1] — 2024-08-25
 
 ### Fixed

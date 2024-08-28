@@ -42,13 +42,10 @@
     <div
       class="w-full"
       data-api_key="<%= current_user.api_key %>"
-      data-route_opacity="<%= current_user.settings['route_opacity'] %>"
+      data-user_settings=<%= current_user.settings.to_json %>
       data-controller="maps"
       data-coordinates="<%= @coordinates %>"
-      data-timezone="<%= Rails.configuration.time_zone %>"
-      data-meters_between_routes="<%= current_user.settings['meters_between_routes'] %>"
-      data-minutes_between_routes="<%= current_user.settings['minutes_between_routes'] %>"
-      data-fog_of_war_meters="<%= current_user.settings['fog_of_war_meters'] %>">
+      data-timezone="<%= Rails.configuration.time_zone %>">
       <div data-maps-target="container" class="h-[25rem] w-auto min-h-screen">
         <div id="fog" class="fog"></div>
       </div>
@@ -60,4 +57,4 @@
   <%= render 'shared/right_sidebar' %>
 </div>
 
-
+<%= render 'map/settings_modals' %>

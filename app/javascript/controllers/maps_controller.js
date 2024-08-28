@@ -19,8 +19,9 @@ export default class extends Controller {
     this.apiKey = this.element.dataset.api_key;
     this.markers = JSON.parse(this.element.dataset.coordinates);
     this.timezone = this.element.dataset.timezone;
-    this.clearFogRadius = this.element.dataset.fog_of_war_meters;
-    this.routeOpacity = parseInt(this.element.dataset.route_opacity) / 100 || 0.6;
+    this.userSettings = JSON.parse(this.element.dataset.user_settings);
+    this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
+    this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -103,6 +104,8 @@ export default class extends Controller {
         this.map.removeControl(this.drawControl);
       }
     });
+
+    this.addSettingsButton();
   }
 
   disconnect() {
@@ -318,8 +321,8 @@ export default class extends Controller {
   createPolylinesLayer(markers, map, timezone, routeOpacity) {
     const splitPolylines = [];
     let currentPolyline = [];
-    const distanceThresholdMeters = parseInt(this.element.dataset.meters_between_routes) || 500;
-    const timeThresholdMinutes = parseInt(this.element.dataset.minutes_between_routes) || 60;
+    const distanceThresholdMeters = parseInt(this.userSettings.meters_between_routes) || 500;
+    const timeThresholdMinutes = parseInt(this.userSettings.minutes_between_routes) || 60;
 
     for (let i = 0, len = markers.length; i < len; i++) {
       if (currentPolyline.length === 0) {
@@ -515,12 +518,7 @@ export default class extends Controller {
       return response.json();
     })
     .then(data => {
-      console.log('Fetched areas:', data); // Debugging line to check response
-
       data.forEach(area => {
-        // Log each area to verify the structure
-        console.log('Area:', area);
-
         // Check if necessary fields are present
         if (area.latitude && area.longitude && area.radius && area.name && area.id) {
           const layer = L.circle([area.latitude, area.longitude], {
@@ -535,7 +533,6 @@ export default class extends Controller {
           `);
 
           this.areasLayer.addLayer(layer); // Add to areas layer group
-          console.log('Added layer to areasLayer:', layer); // Debugging line to confirm addition
 
           // Add event listener for the delete button
           layer.on('popupopen', () => {
@@ -555,4 +552,385 @@ export default class extends Controller {
       console.error('There was a problem with the fetch request:', error);
     });
   }
+
+  addSettingsButton() {
+    // Define the custom control
+    const SettingsControl = L.Control.extend({
+      onAdd: (map) => {
+        const button = L.DomUtil.create('button', 'map-settings-button');
+        button.innerHTML = '⚙️'; // Gear icon
+
+        // Style the button
+        button.style.backgroundColor = 'white';
+        button.style.width = '48px';
+        button.style.height = '48px';
+        button.style.border = 'none';
+        button.style.borderRadius = '50%';
+        button.style.cursor = 'pointer';
+        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+
+        // Disable map interactions when clicking the button
+        L.DomEvent.disableClickPropagation(button);
+
+        // Toggle settings menu on button click
+        L.DomEvent.on(button, 'click', () => {
+          this.toggleSettingsMenu();
+        });
+
+        return button;
+      },
+
+      onRemove: (map) => {
+        // hide settings menu
+      }
+    });
+
+    // Add the control to the map
+    this.map.addControl(new SettingsControl({ position: 'topright' }));
+  }
+
+  toggleSettingsMenu() {
+    // If the settings panel already exists, just show/hide it
+    if (this.settingsPanel) {
+      if (this.settingsPanel._map) {
+        this.map.removeControl(this.settingsPanel);
+      } else {
+        this.map.addControl(this.settingsPanel);
+      }
+      return;
+    }
+
+    // Create the settings panel for the first time
+    this.settingsPanel = L.control({ position: 'topright' });
+
+    this.settingsPanel.onAdd = () => {
+      const div = L.DomUtil.create('div', 'leaflet-settings-panel');
+
+      // Form HTML
+      div.innerHTML = `
+        <form id="settings-form" class="w-48">
+          <label for="route-opacity">Route Opacity</label>
+          <div class="join">
+            <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="0" max="1" step="0.1" value="${this.routeOpacity}">
+            <label for="route_opacity_info" class="btn-xs join-item ">?</label>
+
+          </div>
+
+          <label for="fog_of_war_meters">Fog of War radius</label>
+          <div class="join">
+            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="fog_of_war_meters" name="fog_of_war_meters" min="5" max="100" step="1" value="${this.clearFogRadius}">
+            <label for="fog_of_war_meters_info" class="btn-xs join-item">?</label>
+          </div>
+
+
+          <label for="meters_between_routes">Meters between routes</label>
+          <div class="join">
+            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="meters_between_routes" name="meters_between_routes" step="1" value="${this.userSettings.meters_between_routes}">
+            <label for="meters_between_routes_info" class="btn-xs join-item">?</label>
+          </div>
+
+
+          <label for="minutes_between_routes">Minutes between routes</label>
+          <div class="join">
+            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="minutes_between_routes" name="minutes_between_routes" step="1" value="${this.userSettings.minutes_between_routes}">
+            <label for="minutes_between_routes_info" class="btn-xs join-item">?</label>
+          </div>
+
+
+          <label for="time_threshold_minutes">Time threshold minutes</label>
+          <div class="join">
+            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="time_threshold_minutes" name="time_threshold_minutes" step="1" value="${this.userSettings.time_threshold_minutes}">
+            <label for="time_threshold_minutes_info" class="btn-xs join-item">?</label>
+          </div>
+
+
+          <label for="merge_threshold_minutes">Merge threshold minutes</label>
+          <div class="join">
+            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="merge_threshold_minutes" name="merge_threshold_minutes" step="1" value="${this.userSettings.merge_threshold_minutes}">
+            <label for="merge_threshold_minutes_info" class="btn-xs join-item">?</label>
+          </div>
+
+
+
+          <button type="submit">Update</button>
+        </form>
+      `;
+
+      // Style the panel
+      div.style.backgroundColor = 'white';
+      div.style.padding = '10px';
+      div.style.border = '1px solid #ccc';
+      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+
+      // Prevent map interactions when interacting with the form
+      L.DomEvent.disableClickPropagation(div);
+
+      // Add event listener to the form submission
+      div.querySelector('#settings-form').addEventListener(
+        'submit', this.updateSettings.bind(this)
+      );
+
+      return div;
+    };
+
+    this.map.addControl(this.settingsPanel);
+  }
+
+  updateSettings(event) {
+    event.preventDefault();
+
+    fetch(`/api/v1/settings?api_key=${this.apiKey}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        settings: {
+          route_opacity: event.target.route_opacity.value,
+          fog_of_war_meters: event.target.fog_of_war_meters.value,
+          meters_between_routes: event.target.meters_between_routes.value,
+          minutes_between_routes: event.target.minutes_between_routes.value,
+          time_threshold_minutes: event.target.time_threshold_minutes.value,
+          merge_threshold_minutes: event.target.merge_threshold_minutes.value,
+        },
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === 'success') {
+          this.showFlashMessage('notice', data.message);
+          this.updateMapWithNewSettings(data.settings);
+        } else {
+          this.showFlashMessage('error', data.message);
+        }
+      });
+  }
+
+  showFlashMessage(type, message) {
+    // Create the outer flash container div
+    const flashDiv = document.createElement('div');
+    flashDiv.setAttribute('data-controller', 'removals');
+    flashDiv.className = `flex items-center fixed top-5 right-5 ${this.classesForFlash(type)} py-3 px-5 rounded-lg`;
+
+    // Create the message div
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'mr-4';
+    messageDiv.innerText = message;
+
+    // Create the close button
+    const closeButton = document.createElement('button');
+    closeButton.setAttribute('type', 'button');
+    closeButton.setAttribute('data-action', 'click->removals#remove');
+
+    // Create the SVG icon for the close button
+    const closeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    closeIcon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    closeIcon.setAttribute('class', 'h-6 w-6');
+    closeIcon.setAttribute('fill', 'none');
+    closeIcon.setAttribute('viewBox', '0 0 24 24');
+    closeIcon.setAttribute('stroke', 'currentColor');
+
+    const closeIconPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    closeIconPath.setAttribute('stroke-linecap', 'round');
+    closeIconPath.setAttribute('stroke-linejoin', 'round');
+    closeIconPath.setAttribute('stroke-width', '2');
+    closeIconPath.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+
+    // Append the path to the SVG
+    closeIcon.appendChild(closeIconPath);
+    // Append the SVG to the close button
+    closeButton.appendChild(closeIcon);
+
+    // Append the message and close button to the flash div
+    flashDiv.appendChild(messageDiv);
+    flashDiv.appendChild(closeButton);
+
+    // Append the flash message to the body or a specific flash container
+    document.body.appendChild(flashDiv);
+
+    // Optional: Automatically remove the flash message after 5 seconds
+    setTimeout(() => {
+      flashDiv.remove();
+    }, 5000);
+  }
+
+  // Helper function to get flash classes based on type
+  classesForFlash(type) {
+    switch (type) {
+      case 'error':
+        return 'bg-red-100 text-red-700 border-red-300';
+      case 'notice':
+        return 'bg-blue-100 text-blue-700 border-blue-300';
+      default:
+        return 'bg-blue-100 text-blue-700 border-blue-300';
+    }
+  }
+
+  updateMapWithNewSettings(newSettings) {
+    const currentLayerStates = this.getLayerControlStates();
+
+    // Update local state with new settings
+    this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
+    this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
+
+    // Preserve existing layer instances if they exist
+    const preserveLayers = {
+      Points: this.markersLayer,
+      Polylines: this.polylinesLayer,
+      Heatmap: this.heatmapLayer,
+      "Fog of War": this.fogOverlay,
+      Areas: this.areasLayer,
+    };
+
+    // Clear all layers except base layers
+    this.map.eachLayer((layer) => {
+      if (!(layer instanceof L.TileLayer)) {
+        this.map.removeLayer(layer);
+      }
+    });
+
+    // Recreate layers only if they don't exist
+    this.markersLayer = preserveLayers.Points || L.layerGroup(this.createMarkersArray(this.markers));
+    this.polylinesLayer = preserveLayers.Polylines || this.createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity);
+    this.heatmapLayer = preserveLayers.Heatmap || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
+    this.fogOverlay = preserveLayers["Fog of War"] || L.layerGroup();
+    this.areasLayer = preserveLayers.Areas || L.layerGroup();
+
+    const controlsLayer = {
+      Points: this.markersLayer,
+      Polylines: this.polylinesLayer,
+      Heatmap: this.heatmapLayer,
+      "Fog of War": this.fogOverlay,
+      Areas: this.areasLayer,
+    };
+
+    // Remove old control and add the new one
+    if (this.layerControl) {
+      this.map.removeControl(this.layerControl);
+    }
+    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+
+    // Redraw areas
+    this.fetchAndDrawAreas(this.apiKey);
+
+    let fogEnabled = false;
+    document.getElementById('fog').style.display = 'none';
+
+    this.map.on('overlayadd', (e) => {
+      if (e.name === 'Fog of War') {
+        fogEnabled = true;
+        document.getElementById('fog').style.display = 'block';
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
+    });
+
+    this.map.on('overlayremove', (e) => {
+      if (e.name === 'Fog of War') {
+        fogEnabled = false;
+        document.getElementById('fog').style.display = 'none';
+      }
+    });
+
+    this.map.on('zoomend moveend', () => {
+      if (fogEnabled) {
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
+    });
+
+    this.addLastMarker(this.map, this.markers);
+    this.addEventListeners();
+    this.initializeDrawControl();
+    this.updatePolylinesOpacity(this.routeOpacity);
+
+    this.map.on('overlayadd', (e) => {
+      if (e.name === 'Areas') {
+        this.map.addControl(this.drawControl);
+      }
+    });
+
+    this.map.on('overlayremove', (e) => {
+      if (e.name === 'Areas') {
+        this.map.removeControl(this.drawControl);
+      }
+    });
+
+    this.addSettingsButton();
+
+    this.applyLayerControlStates(currentLayerStates);
+  }
+
+  getLayerControlStates() {
+    const controls = {};
+
+    this.map.eachLayer((layer) => {
+      const layerName = this.getLayerName(layer);
+      console.log('Layer name:', layerName, 'Layer details:', layer);
+      if (layerName) {
+        controls[layerName] = this.map.hasLayer(layer);
+      }
+    });
+
+    console.log('Current layer states:', controls);
+    return controls;
+  }
+
+  getLayerName(layer) {
+    const controlLayers = {
+      Points: this.markersLayer,
+      Polylines: this.polylinesLayer,
+      Heatmap: this.heatmapLayer,
+      "Fog of War": this.fogOverlay,
+      Areas: this.areasLayer,
+    };
+
+    for (const [name, val] of Object.entries(controlLayers)) {
+      if (val && val.hasLayer && layer && val.hasLayer(layer)) // Check if the group layer contains the current layer
+        return name;
+    }
+
+    // Direct instance matching
+    for (const [name, val] of Object.entries(controlLayers)) {
+      if (val === layer) return name;
+    }
+
+    return undefined; // Indicate no matching layer name found
+  }
+
+
+  applyLayerControlStates(states) {
+    const layerControl = {
+      Points: this.markersLayer,
+      Polylines: this.polylinesLayer,
+      Heatmap: this.heatmapLayer,
+      "Fog of War": this.fogOverlay,
+      Areas: this.areasLayer,
+    };
+
+    for (const [name, isVisible] of Object.entries(states)) {
+      const layer = layerControl[name];
+      console.log(`Applying layer state: ${name}, visible: ${isVisible}`);
+      if (isVisible) {
+        if (!this.map.hasLayer(layer)) {
+          console.log(`Adding layer: ${name}`);
+          this.map.addLayer(layer);
+        }
+      } else {
+        if (this.map.hasLayer(layer)) {
+          console.log(`Removing layer: ${name}`);
+          this.map.removeLayer(layer);
+        }
+      }
+    }
+
+    // Ensure the layer control reflects the current state
+    this.layerControl.remove();
+    this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
+  }
+
+  updatePolylinesOpacity(opacity) {
+    this.polylinesLayer.eachLayer((layer) => {
+      if (layer instanceof L.Polyline) {
+        layer.setStyle({ opacity: opacity });
+      }
+    });
+  }
+
 }

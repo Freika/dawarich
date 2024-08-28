@@ -23,3 +23,37 @@
 .timeline-box {
   overflow: visible !important;
 }
+
+/* Style for the settings panel */
+.leaflet-settings-panel {
+  background-color: white;
+  padding: 10px;
+  border: 1px solid #ccc;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-settings-panel label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.leaflet-settings-panel input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.leaflet-settings-panel button {
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.leaflet-settings-panel button:hover {
+  background-color: #0056b3;
+}

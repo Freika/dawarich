@@ -56,10 +56,13 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      resources :areas, only: %i[index create update destroy]
-      resources :points, only: %i[index destroy]
-      resources :visits, only: %i[update]
-      resources :stats, only: :index
+      patch 'settings', to: 'settings#update'
+      get   'settings', to: 'settings#index'
+
+      resources :areas,     only: %i[index create update destroy]
+      resources :points,    only: %i[index destroy]
+      resources :visits,    only: %i[update]
+      resources :stats,     only: :index
 
       namespace :overland do
         resources :batches, only: :create
