@@ -1,0 +1,97 @@
+<!-- Put this part before </body> tag -->
+<input type="checkbox" id="route_opacity_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Route opacity</h3>
+    <p class="py-4">
+      Value in percent.
+    </p>
+    <p class="py-4">
+      This value is the opacity of the route on the map. The value is in percent, and it can be set from 0 to 100. The default value is 100, which means that the route is fully visible. If you set the value to 0, the route will be invisible.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="route_opacity_info">Close</label>
+</div>
+
+<input type="checkbox" id="fog_of_war_meters_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Fog of War</h3>
+    <p class="py-4">
+      Value in meters.
+    </p>
+    <p class="py-4">
+      Here you can set the radius of the "cleared" area around a point when Fog of War mode is enabled. The area around the point will be cleared, and the rest of the map will be covered with fog. The cleared area will be a circle with the point as the center and the radius as the value you set here.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="fog_of_war_meters_info">Close</label>
+</div>
+
+<input type="checkbox" id="meters_between_routes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Meters between routes</h3>
+    <p class="py-4">
+      Value in meters.
+    </p>
+    <p class="py-4">
+      Points on the map are connected by lines. This value is the maximum distance between two points to be connected by a line. If the distance between two points is greater than this value, they will not be connected, and the line will not be drawn. This allows to split the route into smaller segments, and to avoid drawing lines between two points that are far from each other.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="meters_between_routes_info">Close</label>
+</div>
+
+
+<input type="checkbox" id="minutes_between_routes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Minutes between routes</h3>
+    <p class="py-4">
+      Value in minutes.
+    </p>
+    <p class="py-4">
+      Points on the map are connected by lines. This value is the maximum time between two points to be connected by a line. If the time between two points is greater than this value, they will not be connected. This allows to split the route into smaller segments, and to avoid drawing lines between two points that are far in time from each other.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="minutes_between_routes_info">Close</label>
+</div>
+
+<input type="checkbox" id="time_threshold_minutes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Visit time threshold</h3>
+    <p class="py-4">
+      Value in minutes.
+    </p>
+    <p class="py-4">
+      This value is the threshold, based on which a visit is calculated. If the time between two consequent points is greater than this value, the visit is considered a new visit. If the time between two points is less than this value, the visit is considered as a continuation of the previous visit.
+    </p>
+    <p class="py-4">
+      For example, if you set this value to 30 minutes, and you have four points with a time difference of 20 minutes between them, they will be considered as one visit. If the time difference between two first points is 20 minutes, and between third and fourth point is 40 minutes, the visit will be split into two visits.
+    </p>
+    <p class="py-4">
+      Default value is 30 minutes.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="time_threshold_minutes_info">Close</label>
+</div>
+
+<input type="checkbox" id="merge_threshold_minutes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Merge threshold</h3>
+    <p class="py-4">
+      Value in minutes.
+    </p>
+    <p class="py-4">
+      This value is the threshold, based on which two visits are merged into one. If the time between two consequent visits is less than this value, the visits are merged into one visit. If the time between two visits is greater than this value, the visits are considered as separate visits.
+    </p>
+    <p class="py-4">
+      For example, if you set this value to 30 minutes, and you have two visits with a time difference of 20 minutes between them, they will be merged into one visit. If the time difference between two visits is 40 minutes, the visits will be considered as separate visits.
+    </p>
+    <p class="py-4">
+      Default value is 15 minutes.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="merge_threshold_minutes_info">Close</label>
+</div>

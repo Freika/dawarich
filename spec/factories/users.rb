@@ -8,6 +8,17 @@ FactoryBot.define do
 
     password { SecureRandom.hex(8) }
 
+    settings do
+      {
+        route_opacity: '0.5',
+        meters_between_routes: '100',
+        minutes_between_routes: '100',
+        fog_of_war_meters: '100',
+        time_threshold_minutes: '100',
+        merge_threshold_minutes: '100'
+      }
+    end
+
     trait :admin do
       admin { true }
     end
