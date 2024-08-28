@@ -13,6 +13,9 @@ import "leaflet-draw";
 export default class extends Controller {
   static targets = ["container"];
 
+  settingsButtonAdded = false;
+  layerControl = null;
+
   connect() {
     console.log("Map controller connected");
 
@@ -36,6 +39,10 @@ export default class extends Controller {
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
 
+    if (!this.settingsButtonAdded) {
+      this.addSettingsButton();
+    }
+
     const controlsLayer = {
       Points: this.markersLayer,
       Polylines: this.polylinesLayer,
@@ -53,7 +60,7 @@ export default class extends Controller {
       })
       .addTo(this.map);
 
-    L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
     // Fetch and draw areas when the map is loaded
     this.fetchAndDrawAreas(this.apiKey);
@@ -104,8 +111,6 @@ export default class extends Controller {
         this.map.removeControl(this.drawControl);
       }
     });
-
-    this.addSettingsButton();
   }
 
   disconnect() {
@@ -553,6 +558,9 @@ export default class extends Controller {
   }
 
   addSettingsButton() {
+    if (this.settingsButtonAdded) return;
+
+    console.log('Adding settings button');
     // Define the custom control
     const SettingsControl = L.Control.extend({
       onAdd: (map) => {
@@ -561,10 +569,9 @@ export default class extends Controller {
 
         // Style the button
         button.style.backgroundColor = 'white';
-        button.style.width = '48px';
-        button.style.height = '48px';
+        button.style.width = '32px';
+        button.style.height = '32px';
         button.style.border = 'none';
-        button.style.borderRadius = '50%';
         button.style.cursor = 'pointer';
         button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
 
@@ -581,7 +588,8 @@ export default class extends Controller {
     });
 
     // Add the control to the map
-    this.map.addControl(new SettingsControl({ position: 'topright' }));
+    this.map.addControl(new SettingsControl({ position: 'topleft' }));
+    this.settingsButtonAdded = true;
   }
 
   toggleSettingsMenu() {
@@ -596,7 +604,7 @@ export default class extends Controller {
     }
 
     // Create the settings panel for the first time
-    this.settingsPanel = L.control({ position: 'topright' });
+    this.settingsPanel = L.control({ position: 'topleft' });
 
     this.settingsPanel.onAdd = () => {
       const div = L.DomUtil.create('div', 'leaflet-settings-panel');
@@ -768,11 +776,11 @@ export default class extends Controller {
 
     // Preserve existing layer instances if they exist
     const preserveLayers = {
-      Points: this.markersLayer,
-      Polylines: this.polylinesLayer,
-      Heatmap: this.heatmapLayer,
+      Points:       this.markersLayer,
+      Polylines:    this.polylinesLayer,
+      Heatmap:      this.heatmapLayer,
       "Fog of War": this.fogOverlay,
-      Areas: this.areasLayer,
+      Areas:        this.areasLayer,
     };
 
     // Clear all layers except base layers
@@ -783,25 +791,11 @@ export default class extends Controller {
     });
 
     // Recreate layers only if they don't exist
-    this.markersLayer = preserveLayers.Points || L.layerGroup(this.createMarkersArray(this.markers));
-    this.polylinesLayer = preserveLayers.Polylines || this.createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity);
-    this.heatmapLayer = preserveLayers.Heatmap || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
-    this.fogOverlay = preserveLayers["Fog of War"] || L.layerGroup();
-    this.areasLayer = preserveLayers.Areas || L.layerGroup();
-
-    const controlsLayer = {
-      Points: this.markersLayer,
-      Polylines: this.polylinesLayer,
-      Heatmap: this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
-      Areas: this.areasLayer,
-    };
-
-    // Remove old control and add the new one
-    if (this.layerControl) {
-      this.map.removeControl(this.layerControl);
-    }
-    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+    this.markersLayer = preserveLayers.Points       || L.layerGroup(this.createMarkersArray(this.markers));
+    this.polylinesLayer = preserveLayers.Polylines  || this.createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity);
+    this.heatmapLayer = preserveLayers.Heatmap      || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
+    this.fogOverlay = preserveLayers["Fog of War"]  || L.layerGroup();
+    this.areasLayer = preserveLayers.Areas          || L.layerGroup();
 
     // Redraw areas
     this.fetchAndDrawAreas(this.apiKey);
@@ -846,8 +840,6 @@ export default class extends Controller {
         this.map.removeControl(this.drawControl);
       }
     });
-
-    this.addSettingsButton();
 
     this.applyLayerControlStates(currentLayerStates);
   }
@@ -909,7 +901,7 @@ export default class extends Controller {
     }
 
     // Ensure the layer control reflects the current state
-    this.layerControl.remove();
+    this.map.removeControl(this.layerControl);
     this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
   }
 
