@@ -462,7 +462,6 @@ export default class extends Controller {
       return response.json();
     })
     .then(data => {
-      console.log('Circle saved:', data);
       layer.closePopup();
       layer.bindPopup(`
         Name: ${data.name}<br>
@@ -578,10 +577,6 @@ export default class extends Controller {
         });
 
         return button;
-      },
-
-      onRemove: (map) => {
-        // hide settings menu
       }
     });
 
@@ -862,13 +857,12 @@ export default class extends Controller {
 
     this.map.eachLayer((layer) => {
       const layerName = this.getLayerName(layer);
-      console.log('Layer name:', layerName, 'Layer details:', layer);
+
       if (layerName) {
         controls[layerName] = this.map.hasLayer(layer);
       }
     });
 
-    console.log('Current layer states:', controls);
     return controls;
   }
 
@@ -906,17 +900,11 @@ export default class extends Controller {
 
     for (const [name, isVisible] of Object.entries(states)) {
       const layer = layerControl[name];
-      console.log(`Applying layer state: ${name}, visible: ${isVisible}`);
-      if (isVisible) {
-        if (!this.map.hasLayer(layer)) {
-          console.log(`Adding layer: ${name}`);
-          this.map.addLayer(layer);
-        }
-      } else {
-        if (this.map.hasLayer(layer)) {
-          console.log(`Removing layer: ${name}`);
-          this.map.removeLayer(layer);
-        }
+
+      if (isVisible && !this.map.hasLayer(layer)) {
+        this.map.addLayer(layer);
+      } else if (this.map.hasLayer(layer)) {
+        this.map.removeLayer(layer);
       }
     }
 
