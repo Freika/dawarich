@@ -25,6 +25,7 @@ export default class extends Controller {
     this.userSettings = JSON.parse(this.element.dataset.user_settings);
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
+    this.distanceUnit = this.userSettings.distance_unit || "km";
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -134,6 +135,13 @@ export default class extends Controller {
 
   createPopupContent(marker) {
     const timezone = this.element.dataset.timezone;
+    if (this.distanceUnit === "mi") {
+      // convert marker[5] from km/h to mph
+      marker[5] = marker[5] * 0.621371;
+      // convert marker[3] from meters to feet
+      marker[3] = marker[3] * 3.28084;
+    }
+
     return `
       <b>Timestamp:</b> ${formatDate(marker[4], timezone)}<br>
       <b>Latitude:</b> ${marker[0]}<br>
@@ -268,7 +276,7 @@ export default class extends Controller {
       <b>Start:</b> ${firstTimestamp}<br>
       <b>End:</b> ${lastTimestamp}<br>
       <b>Duration:</b> ${timeOnRoute}<br>
-      <b>Total Distance:</b> ${formatDistance(totalDistance)}<br>
+      <b>Total Distance:</b> ${formatDistance(totalDistance, this.distanceUnit)}<br>
     `;
 
     if (isDebugMode) {
