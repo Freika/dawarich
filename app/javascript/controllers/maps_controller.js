@@ -25,7 +25,7 @@ export default class extends Controller {
     this.userSettings = JSON.parse(this.element.dataset.user_settings);
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
-    this.distanceUnit = this.userSettings.distance_unit || "km";
+    this.distanceUnit = this.element.dataset.distance_unit || "km";
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -278,7 +278,7 @@ export default class extends Controller {
       <b>Duration:</b> ${timeOnRoute}<br>
       <b>Total Distance:</b> ${formatDistance(totalDistance, this.distanceUnit)}<br>
     `;
-
+console.log(this.distanceUnit);
     if (isDebugMode) {
       const prevPoint = polylineCoordinates[0];
       const nextPoint = polylineCoordinates[polylineCoordinates.length - 1];

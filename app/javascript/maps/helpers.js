@@ -1,28 +1,30 @@
 // javascript/maps/helpers.js
 export function formatDistance(distance, unit = 'km') {
+  let smallUnit, bigUnit;
+
   if (unit === 'mi') {
-    distance *= 0.621371; // Convert to miles
-    var smallUnit = 'ft';
-    var bigUnit = 'mi';
+    distance *= 0.621371; // Convert km to miles
+    smallUnit = 'ft';
+    bigUnit = 'mi';
 
-    // If the distance is less than 1 mi, return it in feet
-    // else return it in miles
-    if (distance < 621) {
-      distance *= 5280;
-
+    // If the distance is less than 1 mile, return it in feet
+    if (distance < 1) {
+      distance *= 5280; // Convert miles to feet
       return `${distance.toFixed(2)} ${smallUnit}`;
+    } else {
+      return `${distance.toFixed(2)} ${bigUnit}`;
     }
   } else {
-    var smallUnit = 'm';
-    var bigUnit = 'km';
-  }
+    smallUnit = 'm';
+    bigUnit = 'km';
 
-  // If the distance is less than 1 km/mi, return it in meters/feet
-
-  if (distance < 1000) {
-    return `${distance.toFixed(2)} ${smallUnit}`;
-  } else {
-    return `${(distance / 1000).toFixed(2)} ${bigUnit}`;
+    // If the distance is less than 1 km, return it in meters
+    if (distance < 1) {
+      distance *= 1000; // Convert km to meters
+      return `${distance.toFixed(2)} ${smallUnit}`;
+    } else {
+      return `${distance.toFixed(2)} ${bigUnit}`;
+    }
   }
 }
 
