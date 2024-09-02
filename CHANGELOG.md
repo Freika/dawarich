@@ -36,6 +36,10 @@ Example of a valid point in GeoJSON format:
 
 - Default exporting format is now GeoJSON instead of Owntracks-like JSON. This will allow you to use the exported data in other applications that support GeoJSON format.
 
+### Fixed
+
+- Fixed a bug where the confirmation alert was shown more than once when deleting a point.
+
 
 ## [0.12.3] — 2024-09-02
 
