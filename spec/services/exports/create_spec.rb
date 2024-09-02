@@ -18,7 +18,7 @@ RSpec.describe Exports::Create do
     it 'writes the data to a file' do
       create_export
 
-      file_path = Rails.root.join('spec/fixtures/files/geojson/export.json')
+      file_path = Rails.root.join('spec/fixtures/files/geojson/export_same_points.json')
 
       expect(File.read(file_path)).to eq(export_content)
     end
