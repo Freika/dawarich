@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 class Exports::Create
-  def initialize(export:, start_at:, end_at:, format: :json)
-    @export = export
-    @user = export.user
-    @start_at = start_at.to_datetime
-    @end_at = end_at.to_datetime
-    @format = format
+  def initialize(export:, start_at:, end_at:, file_format: :json)
+    @export       = export
+    @user         = export.user
+    @start_at     = start_at.to_datetime
+    @end_at       = end_at.to_datetime
+    @file_format  = file_format
   end
 
   def call
@@ -28,7 +28,7 @@ class Exports::Create
 
   private
 
-  attr_reader :user, :export, :start_at, :end_at, :format
+  attr_reader :user, :export, :start_at, :end_at, :file_format
 
   def time_framed_points
     user
@@ -55,10 +55,10 @@ class Exports::Create
   end
 
   def points_data(points)
-    case format.to_sym
+    case file_format.to_sym
     when :json then process_geojson_export(points)
     when :gpx then process_gpx_export(points)
-    else raise ArgumentError, "Unsupported format: #{format}"
+    else raise ArgumentError, "Unsupported file format: #{file_format}"
     end
   end
 
@@ -71,7 +71,7 @@ class Exports::Create
   end
 
   def create_export_file(data)
-    file_path = Rails.root.join('public', 'exports', "#{export.name}.#{format}")
+    file_path = Rails.root.join('public', 'exports', "#{export.name}.#{file_format}")
 
     File.open(file_path, 'w') { |file| file.write(data) }
   end

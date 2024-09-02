@@ -4,9 +4,9 @@ require 'rails_helper'
 
 RSpec.describe Exports::Create do
   describe '#call' do
-    subject(:create_export) { described_class.new(export:, start_at:, end_at:, format:).call }
+    subject(:create_export) { described_class.new(export:, start_at:, end_at:, file_format:).call }
 
-    let(:format)          { :json }
+    let(:file_format)     { :json }
     let(:user)            { create(:user) }
     let(:start_at)        { DateTime.new(2021, 1, 1).to_s }
     let(:end_at)          { DateTime.new(2021, 1, 2).to_s }

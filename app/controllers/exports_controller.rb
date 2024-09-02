@@ -12,7 +12,7 @@ class ExportsController < ApplicationController
     export_name = "export_from_#{params[:start_at].to_date}_to_#{params[:end_at].to_date}"
     export = current_user.exports.create(name: export_name, status: :created)
 
-    ExportJob.perform_later(export.id, params[:start_at], params[:end_at], format: params[:file_format])
+    ExportJob.perform_later(export.id, params[:start_at], params[:end_at], file_format: params[:file_format])
 
     redirect_to exports_url, notice: 'Export was successfully initiated. Please wait until it\'s finished.'
   rescue StandardError => e
