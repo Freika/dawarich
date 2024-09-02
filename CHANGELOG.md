@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.0] — 2024-09-02
+
+### Added
+
+- Resource limits to docke-compose.yml file to prevent server overload. Feel free to adjust the limits to your needs.
+
+```yml
+deploy:
+  resources:
+    limits:
+      cpus: '0.50'    # Limit CPU usage to 50% of one core
+      memory: '2G'    # Limit memory usage to 2GB
+```
+
+### Fixed
+
+- Importing geodata from Immich will now not throw an error in the end of the process
+
+
 ## [0.12.2] — 2024-08-28
 
 ### Added

@@ -13,12 +13,15 @@ class Immich::ImportGeodata
     raise ArgumentError, 'Immich API key is missing' if immich_api_key.blank?
     raise ArgumentError, 'Immich URL is missing'     if user.settings['immich_url'].blank?
 
-    immich_data       = retrieve_immich_data
+    immich_data = retrieve_immich_data
+    file = File.open('tmp/imports/immich_data.json', 'w')
+    file.write(immich_data)
+    file.close
     immich_data_json  = parse_immich_data(immich_data)
     file_name         = file_name(immich_data_json)
     import            = user.imports.find_or_initialize_by(name: file_name, source: :immich_api)
 
-    create_import_failed_notification and return unless import.new_record?
+    create_import_failed_notification(import.name) and return unless import.new_record?
 
     import.raw_data = immich_data_json
     import.save!
@@ -84,12 +87,12 @@ class Immich::ImportGeodata
     Rails.logger.debug 'No data found'
   end
 
-  def create_import_failed_notification
+  def create_import_failed_notification(import_name)
     Notifications::Create.new(
       user:,
       kind: :info,
       title: 'Import was not created',
-      content: 'Import with the same name already exists. If you want to proceed, delete the existing import and try again.'
+      content: "Import with the same name (#{import_name}) already exists. If you want to proceed, delete the existing import and try again."
     ).call
   end
 
