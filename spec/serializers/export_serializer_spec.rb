@@ -30,7 +30,8 @@ RSpec.describe ExportSerializer do
               tst: points.first.timestamp.to_i,
               inrids: points.first.inrids,
               inregions: points.first.in_regions,
-              topic: points.first.topic
+              topic: points.first.topic,
+              raw_data: points.first.raw_data
             },
             {
               lat: points.second.latitude,
@@ -50,7 +51,8 @@ RSpec.describe ExportSerializer do
               tst: points.second.timestamp.to_i,
               inrids: points.second.inrids,
               inregions: points.second.in_regions,
-              topic: points.second.topic
+              topic: points.second.topic,
+              raw_data: points.second.raw_data
             }
           ]
         }

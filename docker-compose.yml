@@ -57,6 +57,11 @@ services:
     depends_on:
       - dawarich_db
       - dawarich_redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'    # Limit CPU usage to 50% of one core
+          memory: '2G'    # Limit memory usage to 2GB
   dawarich_sidekiq:
     image: freikin/dawarich:latest
     container_name: dawarich_sidekiq
@@ -90,6 +95,11 @@ services:
       - dawarich_db
       - dawarich_redis
       - dawarich_app
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'    # Limit CPU usage to 50% of one core
+          memory: '2G'    # Limit memory usage to 2GB
 
 volumes:
   db_data:
