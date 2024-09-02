@@ -55,7 +55,7 @@ class Exports::Create
   end
 
   def points_data(points)
-    case format
+    case format.to_sym
     when :json then process_geojson_export(points)
     when :gpx then process_gpx_export(points)
     else raise ArgumentError, "Unsupported format: #{format}"
