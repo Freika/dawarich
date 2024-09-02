@@ -96,7 +96,7 @@ GEM
       rexml
     crass (1.0.6)
     csv (3.3.0)
-    data_migrate (9.4.0)
+    data_migrate (9.4.2)
       activerecord (>= 6.1)
       railties (>= 6.1)
     date (3.3.4)
@@ -392,7 +392,7 @@ GEM
       railties (>= 7.0.0)
     tailwindcss-rails (2.7.3-x86_64-linux)
       railties (>= 7.0.0)
-    thor (1.3.1)
+    thor (1.3.2)
     timeout (0.4.1)
     turbo-rails (2.0.6)
       actionpack (>= 6.0.0)
@@ -411,7 +411,7 @@ GEM
     websocket-driver (0.7.6)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
-    zeitwerk (2.6.17)
+    zeitwerk (2.6.18)
 
 PLATFORMS
   aarch64-linux
