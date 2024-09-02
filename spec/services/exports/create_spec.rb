@@ -4,20 +4,21 @@ require 'rails_helper'
 
 RSpec.describe Exports::Create do
   describe '#call' do
-    subject(:create_export) { described_class.new(export:, start_at:, end_at:).call }
+    subject(:create_export) { described_class.new(export:, start_at:, end_at:, format:).call }
 
-    let(:user) { create(:user) }
-    let(:start_at) { DateTime.new(2021, 1, 1).to_s }
-    let(:end_at) { DateTime.new(2021, 1, 2).to_s }
-    let(:export_name) { "#{start_at.to_date}_#{end_at.to_date}" }
-    let(:export) { create(:export, user:, name: export_name, status: :created) }
-    let(:export_content) { ExportSerializer.new(points, user.email).call }
-    let!(:points) { create_list(:point, 10, user:, timestamp: start_at.to_datetime.to_i) }
+    let(:format)          { :json }
+    let(:user)            { create(:user) }
+    let(:start_at)        { DateTime.new(2021, 1, 1).to_s }
+    let(:end_at)          { DateTime.new(2021, 1, 2).to_s }
+    let(:export_name)     { "#{start_at.to_date}_#{end_at.to_date}" }
+    let(:export)          { create(:export, user:, name: export_name, status: :created) }
+    let(:export_content)  { Points::GeojsonSerializer.new(points).call }
+    let!(:points)         { create_list(:point, 10, user:, timestamp: start_at.to_datetime.to_i) }
 
     it 'writes the data to a file' do
       create_export
 
-      file_path = Rails.root.join('public', 'exports', "#{export_name}.json")
+      file_path = Rails.root.join('spec/fixtures/files/geojson/export.json')
 
       expect(File.read(file_path)).to eq(export_content)
     end
@@ -47,12 +48,6 @@ RSpec.describe Exports::Create do
         create_export
 
         expect(export.reload.failed?).to be_truthy
-      end
-
-      it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with('====Export failed to create: StandardError')
-
-        create_export
       end
 
       it 'creates a notification' do

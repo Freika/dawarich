@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [UNRELEASED] — 2024-08-28
+
+### Added
+
+- GeoJSON format is now available for exporting data.
+- GPX format is now available for exporting data.
+
+### Changed
+
+- Default exporting format is now GeoJSON instead of Owntracks-like JSON. This will allow you to use the exported data in other applications that support GeoJSON format.
+
+### TODO
+
+- [ ] Importing GeoJSON
+
+
 ## [0.12.2] — 2024-08-28
 
 ### Added

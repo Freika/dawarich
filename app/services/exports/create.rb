@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Exports::Create
-  def initialize(export:, start_at:, end_at:, format: :geojson)
+  def initialize(export:, start_at:, end_at:, format: :json)
     @export = export
     @user = export.user
     @start_at = start_at.to_datetime
@@ -12,29 +12,15 @@ class Exports::Create
   def call
     export.update!(status: :processing)
 
-    Rails.logger.debug "====Exporting data for #{user.email} from #{start_at} to #{end_at}"
-
     points = time_framed_points
+    data   = points_data(points)
 
-    Rails.logger.debug "====Exporting #{points.size} points"
-
-    data =
-      case format
-      when :geojson then process_geojson_export(points)
-      when :gpx     then process_gpx_export(points)
-      else raise ArgumentError, "Unsupported format: #{format}"
-      end
-
-    file_path = Rails.root.join('public', 'exports', "#{export.name}.#{format}")
-
-    File.open(file_path, 'w') { |file| file.write(data) }
+    create_export_file(data)
 
     export.update!(status: :completed, url: "exports/#{export.name}.#{format}")
 
     create_export_finished_notification
   rescue StandardError => e
-    Rails.logger.error("====Export failed to create: #{e.message}")
-
     create_failed_export_notification(e)
 
     export.update!(status: :failed)
@@ -68,10 +54,25 @@ class Exports::Create
     ).call
   end
 
+  def points_data(points)
+    case format
+    when :json then process_geojson_export(points)
+    when :gpx then process_gpx_export(points)
+    else raise ArgumentError, "Unsupported format: #{format}"
+    end
+  end
+
   def process_geojson_export(points)
     Points::GeojsonSerializer.new(points).call
   end
 
   def process_gpx_export(points)
+    Points::GpxSerializer.new(points).call
+  end
+
+  def create_export_file(data)
+    file_path = Rails.root.join('public', 'exports', "#{export.name}.#{format}")
+
+    File.open(file_path, 'w') { |file| file.write(data) }
   end
 end

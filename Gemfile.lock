@@ -137,6 +137,9 @@ GEM
       csv (>= 3.0.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
+    gpx (1.1.1)
+      nokogiri (~> 1.7)
+      rake
     hashdiff (1.1.0)
     httparty (0.22.0)
       csv
@@ -433,6 +436,7 @@ DEPENDENCIES
   ffaker
   foreman
   geocoder
+  gpx
   httparty
   importmap-rails
   kaminari
