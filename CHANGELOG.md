@@ -18,6 +18,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Default exporting format is now GeoJSON instead of Owntracks-like JSON. This will allow you to use the exported data in other applications that support GeoJSON format.
 
 
+## [0.12.3] — 2024-09-02
+
+### Added
+
+- Resource limits to docke-compose.yml file to prevent server overload. Feel free to adjust the limits to your needs.
+
+```yml
+deploy:
+  resources:
+    limits:
+      cpus: '0.50'    # Limit CPU usage to 50% of one core
+      memory: '2G'    # Limit memory usage to 2GB
+```
+
+### Fixed
+
+- Importing geodata from Immich will now not throw an error in the end of the process
+
+### Changed
+
+- A notification about an existing import with the same name will now show the import name
+- Export file now also will contain `raw_dat` field for each point. This field contains the original data that was imported to the application.
+
+
 ## [0.12.2] — 2024-08-28
 
 ### Added
