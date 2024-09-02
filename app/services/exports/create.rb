@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 class Exports::Create
-  def initialize(export:, start_at:, end_at:)
+  def initialize(export:, start_at:, end_at:, format: :json)
     @export = export
     @user = export.user
     @start_at = start_at.to_datetime
     @end_at = end_at.to_datetime
+    @format = format
   end
 
   def call
@@ -18,11 +19,11 @@ class Exports::Create
     Rails.logger.debug "====Exporting #{points.size} points"
 
     data      = ::ExportSerializer.new(points, user.email).call
-    file_path = Rails.root.join('public', 'exports', "#{export.name}.json")
+    file_path = Rails.root.join('public', 'exports', "#{export.name}.#{format}")
 
     File.open(file_path, 'w') { |file| file.write(data) }
 
-    export.update!(status: :completed, url: "exports/#{export.name}.json")
+    export.update!(status: :completed, url: "exports/#{export.name}.#{format}")
 
     create_export_finished_notification
   rescue StandardError => e
@@ -35,7 +36,7 @@ class Exports::Create
 
   private
 
-  attr_reader :user, :export, :start_at, :end_at
+  attr_reader :user, :export, :start_at, :end_at, :format
 
   def time_framed_points
     user
@@ -59,5 +60,11 @@ class Exports::Create
       title: 'Export failed',
       content: "Export \"#{export.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
     ).call
+  end
+
+  def process_json_export(points)
+  end
+
+  def process_gpx_export(points)
   end
 end
