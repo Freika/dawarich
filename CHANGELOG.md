@@ -26,6 +26,7 @@ deploy:
 ### Changed
 
 - A notification about an existing import with the same name will now show the import name
+- Export file now also will contain `raw_dat` field for each point. This field contains the original data that was imported to the application.
 
 
 ## [0.12.2] — 2024-08-28
