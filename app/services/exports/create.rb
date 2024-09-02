@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Exports::Create
-  def initialize(export:, start_at:, end_at:, format: :json)
+  def initialize(export:, start_at:, end_at:, format: :geojson)
     @export = export
     @user = export.user
     @start_at = start_at.to_datetime
@@ -18,7 +18,13 @@ class Exports::Create
 
     Rails.logger.debug "====Exporting #{points.size} points"
 
-    data      = ::ExportSerializer.new(points, user.email).call
+    data =
+      case format
+      when :geojson then process_geojson_export(points)
+      when :gpx     then process_gpx_export(points)
+      else raise ArgumentError, "Unsupported format: #{format}"
+      end
+
     file_path = Rails.root.join('public', 'exports', "#{export.name}.#{format}")
 
     File.open(file_path, 'w') { |file| file.write(data) }
@@ -62,7 +68,8 @@ class Exports::Create
     ).call
   end
 
-  def process_json_export(points)
+  def process_geojson_export(points)
+    Points::GeojsonSerializer.new(points).call
   end
 
   def process_gpx_export(points)
