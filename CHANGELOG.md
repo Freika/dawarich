@@ -23,6 +23,10 @@ deploy:
 
 - Importing geodata from Immich will now not throw an error in the end of the process
 
+### Changed
+
+- A notification about an existing import with the same name will now show the import name
+
 
 ## [0.12.2] — 2024-08-28
 

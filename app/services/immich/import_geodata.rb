@@ -14,9 +14,6 @@ class Immich::ImportGeodata
     raise ArgumentError, 'Immich URL is missing'     if user.settings['immich_url'].blank?
 
     immich_data = retrieve_immich_data
-    file = File.open('tmp/imports/immich_data.json', 'w')
-    file.write(immich_data)
-    file.close
     immich_data_json  = parse_immich_data(immich_data)
     file_name         = file_name(immich_data_json)
     import            = user.imports.find_or_initialize_by(name: file_name, source: :immich_api)
