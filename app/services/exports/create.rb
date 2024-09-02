@@ -13,11 +13,12 @@ class Exports::Create
     export.update!(status: :processing)
 
     points = time_framed_points
-    data   = points_data(points)
+
+    data = points_data(points)
 
     create_export_file(data)
 
-    export.update!(status: :completed, url: "exports/#{export.name}.#{format}")
+    export.update!(status: :completed, url: "exports/#{export.name}.#{file_format}")
 
     create_export_finished_notification
   rescue StandardError => e
