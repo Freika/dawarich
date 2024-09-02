@@ -32,6 +32,7 @@ class ImportJob < ApplicationJob
     when 'owntracks'                then OwnTracks::ExportParser
     when 'gpx'                      then Gpx::TrackParser
     when 'immich_api'               then Immich::ImportParser
+    when 'geojson'                  then Geojson::ImportParser
     end
   end
 
