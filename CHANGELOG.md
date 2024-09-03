@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.0] — 2024-09-03
+
+⚠️ BREAKING CHANGES: ⚠️
+
+Default exporting format is now GeoJSON instead of Owntracks-like JSON. This will allow you to use the exported data in other applications that support GeoJSON format. It's also important to highlight, that GeoJSON format does not describe a way to store any time-related data. Dawarich relies on the `timestamp` field in the GeoJSON format to determine the time of the point. The value of the `timestamp` field should be a Unix timestamp in seconds. If you import GeoJSON data that does not have a `timestamp` field, the point will not be imported.
+
+Example of a valid point in GeoJSON format:
+
+```json
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [13.350110811262352, 52.51450815]
+  },
+  "properties": {
+    "timestamp": 1725310036
+  }
+}
+```
+
+### Added
+
+- GeoJSON format is now available for exporting data.
+- GPX format is now available for exporting data.
+- Importing GeoJSON is now available.
+
+### Changed
+
+- Default exporting format is now GeoJSON instead of Owntracks-like JSON. This will allow you to use the exported data in other applications that support GeoJSON format.
+
+### Fixed
+
+- Fixed a bug where the confirmation alert was shown more than once when deleting a point.
+
+
 ## [0.12.3] — 2024-09-02
 
 ### Added
