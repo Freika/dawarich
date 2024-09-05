@@ -389,7 +389,6 @@ GEM
     tailwindcss-rails (2.7.3-x86_64-linux)
       railties (>= 7.0.0)
     thor (1.3.2)
-    timecop (0.9.10)
     timeout (0.4.1)
     turbo-rails (2.0.6)
       actionpack (>= 6.0.0)
@@ -458,7 +457,6 @@ DEPENDENCIES
   stimulus-rails
   super_diff
   tailwindcss-rails
-  timecop
   turbo-rails
   tzinfo-data
   webmock

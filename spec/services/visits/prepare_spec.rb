@@ -27,26 +27,22 @@ RSpec.describe Visits::Prepare do
     subject { described_class.new(points).call }
 
     it 'returns correct visits' do
-      freezed_time = Time.current
-
-      Timecop.freeze(freezed_time) do
-        expect(subject).to eq [
-          {
-            date: 1.day.ago.to_date.to_s,
-            visits: [
-              {
-                latitude: 0.0,
-                longitude: 0.0,
-                radius: 10,
-                points:,
-                duration: 105,
-                started_at: 1.day.ago.to_s,
-                ended_at: (1.day.ago + 105.minutes).to_s
-              }
-            ]
-          }
-        ]
-      end
+      expect(subject).to eq [
+        {
+          date: 1.day.ago.to_date.to_s,
+          visits: [
+            {
+              latitude: 0.0,
+              longitude: 0.0,
+              radius: 10,
+              points:,
+              duration: 105,
+              started_at: 1.day.ago.to_s,
+              ended_at: (1.day.ago + 105.minutes).to_s
+            }
+          ]
+        }
+      ]
     end
   end
 end

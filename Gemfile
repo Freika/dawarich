@@ -47,7 +47,6 @@ group :test do
   gem 'shoulda-matchers'
   gem 'simplecov', require: false
   gem 'super_diff'
-  gem 'timecop'
   gem 'webmock'
 end
 
