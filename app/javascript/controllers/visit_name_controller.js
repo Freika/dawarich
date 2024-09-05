@@ -1,7 +1,6 @@
-// app/javascript/controllers/visit_name_controller.js
-
 import { Controller } from "@hotwired/stimulus";
 
+// This controller is used to handle the updating of visit names on the Visits page
 export default class extends Controller {
   static targets = ["name", "input"];
 

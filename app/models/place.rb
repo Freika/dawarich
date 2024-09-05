@@ -10,7 +10,7 @@ class Place < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, through: :place_visits, source: :visit
 
-  enum source: { manual: 0, photon: 1 }
+  enum :source, { manual: 0, photon: 1 }
 
   def async_reverse_geocode
     return unless REVERSE_GEOCODING_ENABLED

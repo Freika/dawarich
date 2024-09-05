@@ -2,12 +2,13 @@ import { Controller } from "@hotwired/stimulus"
 import L, { latLng } from "leaflet";
 import { osmMapLayer } from "../maps/layers";
 
-// Connects to data-controller="visit-modal-map"
+// This controller is used to display a map of all coordinates for a visit
+// on the "Map" modal of a visit on the Visits page
+
 export default class extends Controller {
   static targets = ["container"];
 
   connect() {
-    console.log("Visits maps controller connected");
     this.coordinates = JSON.parse(this.element.dataset.coordinates);
     this.center = JSON.parse(this.element.dataset.center);
     this.radius = this.element.dataset.radius;

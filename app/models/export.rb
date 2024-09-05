@@ -3,7 +3,7 @@
 class Export < ApplicationRecord
   belongs_to :user
 
-  enum status: { created: 0, processing: 1, completed: 2, failed: 3 }
+  enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
 
   validates :name, presence: true
 

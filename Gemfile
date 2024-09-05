@@ -3,7 +3,8 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '3.2.3'
+ruby File.read('.ruby-version').strip
+
 gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'data_migrate'
@@ -46,6 +47,7 @@ group :test do
   gem 'shoulda-matchers'
   gem 'simplecov', require: false
   gem 'super_diff'
+  gem 'timecop'
   gem 'webmock'
 end
 

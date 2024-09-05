@@ -5,7 +5,7 @@ class Notification < ApplicationRecord
 
   validates :title, :content, :kind, presence: true
 
-  enum kind: { info: 0, warning: 1, error: 2 }
+  enum :kind, { info: 0, warning: 1, error: 2 }
 
   scope :unread, -> { where(read_at: nil) }
 end
