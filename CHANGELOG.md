@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Ruby version updated to 3.3.5
+- Ruby version updated to 3.3.4
 - Visits suggestion process now will try to merge consecutive visits to the same place into one visit.
 
 
