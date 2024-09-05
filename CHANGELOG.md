@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - GeoJSON import now correctly imports files with FeatureCollection as a root object
 
+### Changed
+
+- The Points page now have number of points found for provided date range
 
 ## [0.13.1] — 2024-09-05
 
