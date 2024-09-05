@@ -7,7 +7,7 @@ orbs:
 jobs:
   test:
     docker:
-      - image: circleci/ruby:3.3.5
+      - image: circleci/ruby:3.3
         environment:
           RAILS_ENV: test
       - image: circleci/postgres:13.3
