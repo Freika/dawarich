@@ -7,7 +7,7 @@ describe 'Health API', type: :request do
     get 'Retrieves application status' do
       tags 'Health'
       produces 'application/json'
-      response '200', 'areas found' do
+      response '200', 'Healthy' do
         run_test!
       end
     end
