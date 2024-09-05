@@ -11,8 +11,6 @@ class Immich::ImportParser
 
   def call
     json.each { |point| create_point(point) }
-
-    { raw_points: 0, points: 0, doubles: 0, processed: 0 }
   end
 
   def create_point(point)

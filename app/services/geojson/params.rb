@@ -11,37 +11,63 @@ class Geojson::Params
     case json['type']
     when 'Feature' then process_feature(json)
     when 'FeatureCollection' then process_feature_collection(json)
-    end
+    end.flatten
   end
 
   private
 
   def process_feature(json)
-    json['features'].map do |point|
-      next if point[:geometry].nil? || point.dig(:properties, :timestamp).nil?
-
-      build_point(point)
-    end.compact
+    case json[:geometry][:type]
+    when 'Point'
+      build_point(json)
+    when 'LineString'
+      build_line(json)
+    when 'MultiLineString'
+      build_multi_line(json)
+    end
   end
 
   def process_feature_collection(json)
     json['features'].map { |feature| process_feature(feature) }
   end
 
-  def build_point(point)
+  def build_point(feature)
     {
-      latitude:           point[:geometry][:coordinates][1],
-      longitude:          point[:geometry][:coordinates][0],
-      battery_status:     point[:properties][:battery_state],
-      battery:            battery_level(point[:properties][:battery_level]),
-      timestamp:          timestamp(point),
-      altitude:           altitude(point),
-      velocity:           point[:properties][:speed],
-      tracker_id:         point[:properties][:device_id],
-      ssid:               point[:properties][:wifi],
-      accuracy:           point[:properties][:horizontal_accuracy],
-      vertical_accuracy:  point[:properties][:vertical_accuracy],
-      raw_data:           point
+      latitude:           feature[:geometry][:coordinates][1],
+      longitude:          feature[:geometry][:coordinates][0],
+      battery_status:     feature[:properties][:battery_state],
+      battery:            battery_level(feature[:properties][:battery_level]),
+      timestamp:          timestamp(feature),
+      altitude:           altitude(feature),
+      velocity:           feature[:properties][:speed],
+      tracker_id:         feature[:properties][:device_id],
+      ssid:               feature[:properties][:wifi],
+      accuracy:           feature[:properties][:horizontal_accuracy],
+      vertical_accuracy:  feature[:properties][:vertical_accuracy],
+      raw_data:           feature
+    }
+  end
+
+  def build_line(feature)
+    feature[:geometry][:coordinates].map do |point|
+      build_line_point(feature, point)
+    end
+  end
+
+  def build_multi_line(feature)
+    feature[:geometry][:coordinates].map do |line|
+      line.map do |point|
+        build_line_point(feature, point)
+      end
+    end
+  end
+
+  def build_line_point(feature, point)
+    {
+      latitude:  point[1],
+      longitude: point[0],
+      timestamp: timestamp(point),
+      raw_data:  point
     }
   end
 
@@ -51,13 +77,14 @@ class Geojson::Params
     value.positive? ? value : nil
   end
 
-  def altitude(point)
-    point.dig(:properties, :altitude) || point.dig(:geometry, :coordinates, 2)
+  def altitude(feature)
+    feature.dig(:properties, :altitude) || feature.dig(:geometry, :coordinates, 2)
   end
 
-  def timestamp(point)
-    value = point.dig(:properties, :timestamp) || point.dig(:geometry, :coordinates, 3)
+  def timestamp(feature)
+    return Time.zone.at(feature[3]) if feature.is_a?(Array)
 
+    value = feature.dig(:properties, :timestamp) || feature.dig(:geometry, :coordinates, 3)
     Time.zone.at(value)
   end
 end
