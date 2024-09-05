@@ -1,8 +1,8 @@
 version: 2.1
 
 orbs:
-  ruby: cimg/ruby@2.1.1
-  browser-tools: cimg/browser-tools@1.2.3
+  ruby: cimg/ruby@2.1.4
+  browser-tools: cimg/browser-tools@1.4.8
 
 jobs:
   test:
