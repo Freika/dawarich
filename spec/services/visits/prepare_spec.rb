@@ -36,7 +36,9 @@ RSpec.describe Visits::Prepare do
               longitude: 0.0,
               radius: 10,
               points:,
-              duration: 105
+              duration: 105,
+              started_at: 1.day.ago.to_s,
+              ended_at: (1.day.ago + 105.minutes).to_s
             }
           ]
         }

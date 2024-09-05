@@ -5,7 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.1] — 2024-09-05
+
+### Added
+
+- `GET /api/v1/health` endpoint to check the health of the application with swagger docs
+
+### Changed
+
+- Ruby version updated to 3.3.4
+- Visits suggestion process now will try to merge consecutive visits to the same place into one visit.
+
+
 ## [0.13.0] — 2024-09-03
+
+The GPX and GeoJSON export release
 
 ⚠️ BREAKING CHANGES: ⚠️
 
