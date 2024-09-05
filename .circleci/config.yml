@@ -7,10 +7,10 @@ orbs:
 jobs:
   test:
     docker:
-      - image: cimg/ruby:3.3.5
+      - image: circleci/ruby:3.3.5
         environment:
           RAILS_ENV: test
-      - image: cimg/postgres:13.3
+      - image: circleci/postgres:13.3
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database
