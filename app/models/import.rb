@@ -12,4 +12,8 @@ class Import < ApplicationRecord
     google_semantic_history: 0, owntracks: 1, google_records: 2,
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6
   }
+
+  def process!
+    Imports::Create.new(user, self).call
+  end
 end

@@ -17,6 +17,8 @@ class PointsController < ApplicationController
 
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
+
+    @points_number = @points.except(:limit, :offset).size
   end
 
   def bulk_destroy

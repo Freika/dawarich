@@ -113,7 +113,7 @@ paths:
       - Health
       responses:
         '200':
-          description: areas found
+          description: Healthy
   "/api/v1/overland/batches":
     post:
       summary: Creates a batch of points

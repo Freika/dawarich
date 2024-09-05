@@ -11,8 +11,6 @@ class GoogleMaps::PhoneTakeoutParser
   def call
     points_data = parse_json
 
-    points = 0
-
     points_data.compact.each do |point_data|
       next if Point.exists?(
         timestamp:  point_data[:timestamp],
@@ -34,14 +32,7 @@ class GoogleMaps::PhoneTakeoutParser
         tracker_id: 'google-maps-phone-timeline-export',
         user_id:
       )
-
-      points += 1
     end
-
-    doubles = points_data.size - points
-    processed = points + doubles
-
-    { raw_points: points_data.size, points:, doubles:, processed: }
   end
 
   private
@@ -58,7 +49,9 @@ class GoogleMaps::PhoneTakeoutParser
     if import.raw_data.is_a?(Array)
       raw_array = parse_raw_array(import.raw_data)
     else
-      semantic_segments = parse_semantic_segments(import.raw_data['semanticSegments']) if import.raw_data['semanticSegments']
+      if import.raw_data['semanticSegments']
+        semantic_segments = parse_semantic_segments(import.raw_data['semanticSegments'])
+      end
       raw_signals = parse_raw_signals(import.raw_data['rawSignals']) if import.raw_data['rawSignals']
     end
 
