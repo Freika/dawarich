@@ -36,6 +36,11 @@ It's recommended to update your stats manually after changing the `DISTANCE_UNIT
 +     DISTANCE_UNIT: "mi"
 ```
 
+### Changed
+
+- Default time range on the map is now 1 day instead of 1 month. It will help you with performance issues if you have a lot of points in the database.
+
+
 ## [0.13.2] — 2024-09-06
 
 ### Fixed
