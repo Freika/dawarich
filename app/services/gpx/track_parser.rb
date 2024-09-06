@@ -13,32 +13,23 @@ class Gpx::TrackParser
     tracks = json['gpx']['trk']
     tracks_arr = tracks.is_a?(Array) ? tracks : [tracks]
 
-    tracks_arr
-      .map { parse_track(_1) }
-      .flatten
-      .reduce { |result, points| result.merge(points) { _2 + _3 } }
+    tracks_arr.map { parse_track(_1) }.flatten
   end
 
   private
 
   def parse_track(track)
     segments = track['trkseg']
-    segments_arr = segments.is_a?(Array) ? segments : [segments]
+    segments_array = segments.is_a?(Array) ? segments : [segments]
 
-    segments_arr.map do |segment|
-      trackpoints = segment['trkpt']
-
-      points = trackpoints.reduce(0) { _1 + create_point(_2) }
-      doubles = trackpoints.size - points
-      processed = points + doubles
-
-      { raw_points: trackpoints.size, points:, doubles:, processed: }
+    segments_array.map do |segment|
+      segment['trkpt'].each { create_point(_1) }
     end
   end
 
   def create_point(point)
-    return 0 if point['lat'].blank? || point['lon'].blank? || point['time'].blank?
-    return 0 if point_exists?(point)
+    return if point['lat'].blank? || point['lon'].blank? || point['time'].blank?
+    return if point_exists?(point)
 
     Point.create(
       latitude:   point['lat'].to_d,
@@ -49,8 +40,6 @@ class Gpx::TrackParser
       raw_data: point,
       user_id:
     )
-
-    1
   end
 
   def point_exists?(point)

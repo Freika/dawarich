@@ -153,8 +153,12 @@ export default class extends Controller {
     `;
   }
 
+  removeEventListeners() {
+    document.removeEventListener('click', this.handleDeleteClick);
+  }
+
   addEventListeners() {
-    document.addEventListener('click', (event) => {
+    this.handleDeleteClick = (event) => {
       if (event.target && event.target.classList.contains('delete-point')) {
         event.preventDefault();
         const pointId = event.target.getAttribute('data-id');
@@ -163,7 +167,11 @@ export default class extends Controller {
           this.deletePoint(pointId, this.apiKey);
         }
       }
-    });
+    };
+
+    // Ensure only one listener is attached by removing any existing ones first
+    this.removeEventListeners();
+    document.addEventListener('click', this.handleDeleteClick);
   }
 
   deletePoint(id, apiKey) {

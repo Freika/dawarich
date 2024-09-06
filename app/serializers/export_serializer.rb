@@ -39,7 +39,8 @@ class ExportSerializer
       tst:        point.timestamp.to_i,
       inrids:     point.inrids,
       inregions:  point.in_regions,
-      topic:      point.topic
+      topic:      point.topic,
+      raw_data:   point.raw_data
     }
   end
 

@@ -106,6 +106,14 @@ paths:
       responses:
         '200':
           description: area deleted
+  "/api/v1/health":
+    get:
+      summary: Retrieves application status
+      tags:
+      - Health
+      responses:
+        '200':
+          description: Healthy
   "/api/v1/overland/batches":
     post:
       summary: Creates a batch of points

@@ -1,16 +1,16 @@
 version: 2.1
 
 orbs:
-  ruby: circleci/ruby@2.1.1
-  browser-tools: circleci/browser-tools@1.2.3
+  ruby: circleci/ruby@2.1.4
+  browser-tools: circleci/browser-tools@1.4.8
 
 jobs:
   test:
     docker:
-      - image: cimg/ruby:3.2.3
+      - image: cimg/ruby:3.3
         environment:
           RAILS_ENV: test
-      - image: circleci/postgres:13.3
+      - image: cimg/postgres:13.3
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database

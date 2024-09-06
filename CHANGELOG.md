@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.13.3] — 2024-09-6
+## [0.13.3] — 2024-09-06
 
 ### Added
 
@@ -14,6 +14,111 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 It's recommended to update your stats manually after changing the `DISTANCE_UNIT` environment variable. You can do this by clicking the "Update stats" button on the Stats page.
 
 ⚠️IMPORTANT⚠️: All settings are still should be provided in meters. All calculations though will be converted to feets and miles if `DISTANCE_UNIT` is set to `mi`.
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    environment:
+      APPLICATION_HOST: "localhost"
+      APPLICATION_PROTOCOL: "http"
+      APPLICATION_PORT: "3000"
+      TIME_ZONE: "UTC"
++     DISTANCE_UNIT: "mi"
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    environment:
+      APPLICATION_HOST: "localhost"
+      APPLICATION_PROTOCOL: "http"
+      APPLICATION_PORT: "3000"
+      TIME_ZONE: "UTC"
++     DISTANCE_UNIT: "mi"
+```
+
+## [0.13.2] — 2024-09-06
+
+### Fixed
+
+- GeoJSON import now correctly imports files with FeatureCollection as a root object
+
+### Changed
+
+- The Points page now have number of points found for provided date range
+
+## [0.13.1] — 2024-09-05
+
+### Added
+
+- `GET /api/v1/health` endpoint to check the health of the application with swagger docs
+
+### Changed
+
+- Ruby version updated to 3.3.4
+- Visits suggestion process now will try to merge consecutive visits to the same place into one visit.
+
+
+## [0.13.0] — 2024-09-03
+
+The GPX and GeoJSON export release
+
+⚠️ BREAKING CHANGES: ⚠️
+
+Default exporting format is now GeoJSON instead of Owntracks-like JSON. This will allow you to use the exported data in other applications that support GeoJSON format. It's also important to highlight, that GeoJSON format does not describe a way to store any time-related data. Dawarich relies on the `timestamp` field in the GeoJSON format to determine the time of the point. The value of the `timestamp` field should be a Unix timestamp in seconds. If you import GeoJSON data that does not have a `timestamp` field, the point will not be imported.
+
+Example of a valid point in GeoJSON format:
+
+```json
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [13.350110811262352, 52.51450815]
+  },
+  "properties": {
+    "timestamp": 1725310036
+  }
+}
+```
+
+### Added
+
+- GeoJSON format is now available for exporting data.
+- GPX format is now available for exporting data.
+- Importing GeoJSON is now available.
+
+### Changed
+
+- Default exporting format is now GeoJSON instead of Owntracks-like JSON. This will allow you to use the exported data in other applications that support GeoJSON format.
+
+### Fixed
+
+- Fixed a bug where the confirmation alert was shown more than once when deleting a point.
+
+
+## [0.12.3] — 2024-09-02
+
+### Added
+
+- Resource limits to docke-compose.yml file to prevent server overload. Feel free to adjust the limits to your needs.
+
+```yml
+deploy:
+  resources:
+    limits:
+      cpus: '0.50'    # Limit CPU usage to 50% of one core
+      memory: '2G'    # Limit memory usage to 2GB
+```
+
+### Fixed
+
+- Importing geodata from Immich will now not throw an error in the end of the process
+
+### Changed
+
+- A notification about an existing import with the same name will now show the import name
+- Export file now also will contain `raw_dat` field for each point. This field contains the original data that was imported to the application.
+
 
 ## [0.12.2] — 2024-08-28
 
