@@ -20,7 +20,7 @@ class MapController < ApplicationController
   private
 
   def start_at
-    return 1.month.ago.beginning_of_day.to_i if params[:start_at].nil?
+    return Time.zone.today.beginning_of_day.to_i if params[:start_at].nil?
 
     Time.zone.parse(params[:start_at]).to_i
   end
