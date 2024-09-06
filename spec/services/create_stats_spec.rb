@@ -21,31 +21,65 @@ RSpec.describe CreateStats do
       let!(:point2) { create(:point, user:, import:, latitude: 1, longitude: 2) }
       let!(:point3) { create(:point, user:, import:, latitude: 3, longitude: 4) }
 
-      it 'creates stats' do
-        expect { create_stats }.to change { Stat.count }.by(1)
-      end
-
-      it 'calculates distance' do
-        create_stats
-
-        expect(Stat.last.distance).to eq(563)
-      end
-
-      it 'created notifications' do
-        expect { create_stats }.to change { Notification.count }.by(1)
-      end
-
-      context 'when there is an error' do
-        before do
-          allow(Stat).to receive(:find_or_initialize_by).and_raise(StandardError)
+      context 'when units are kilometers' do
+        it 'creates stats' do
+          expect { create_stats }.to change { Stat.count }.by(1)
         end
 
-        it 'does not create stats' do
-          expect { create_stats }.not_to(change { Stat.count })
+        it 'calculates distance' do
+          create_stats
+
+          expect(Stat.last.distance).to eq(563)
         end
 
         it 'created notifications' do
           expect { create_stats }.to change { Notification.count }.by(1)
+        end
+
+        context 'when there is an error' do
+          before do
+            allow(Stat).to receive(:find_or_initialize_by).and_raise(StandardError)
+          end
+
+          it 'does not create stats' do
+            expect { create_stats }.not_to(change { Stat.count })
+          end
+
+          it 'created notifications' do
+            expect { create_stats }.to change { Notification.count }.by(1)
+          end
+        end
+      end
+
+      context 'when units are miles' do
+        before { stub_const('DISTANCE_UNIT', 'mi') }
+
+        it 'creates stats' do
+          expect { create_stats }.to change { Stat.count }.by(1)
+        end
+
+        it 'calculates distance' do
+          create_stats
+
+          expect(Stat.last.distance).to eq(349)
+        end
+
+        it 'created notifications' do
+          expect { create_stats }.to change { Notification.count }.by(1)
+        end
+
+        context 'when there is an error' do
+          before do
+            allow(Stat).to receive(:find_or_initialize_by).and_raise(StandardError)
+          end
+
+          it 'does not create stats' do
+            expect { create_stats }.not_to(change { Stat.count })
+          end
+
+          it 'created notifications' do
+            expect { create_stats }.to change { Notification.count }.by(1)
+          end
         end
       end
     end

@@ -35,7 +35,8 @@ class User < ApplicationRecord
       .compact
   end
 
-  def total_km
+  def total_distance
+    # In km or miles, depending on the application settings (DISTANCE_UNIT)
     stats.sum(:distance)
   end
 

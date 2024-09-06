@@ -50,8 +50,8 @@ RSpec.describe User, type: :model do
       end
     end
 
-    describe '#total_km' do
-      subject { user.total_km }
+    describe '#total_distance' do
+      subject { user.total_distance }
 
       let!(:stat1) { create(:stat, user:, distance: 10) }
       let!(:stat2) { create(:stat, user:, distance: 20) }

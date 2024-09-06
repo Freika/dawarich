@@ -41,9 +41,10 @@
 
     <div
       class="w-full"
+      data-controller="maps"
+      data-distance_unit="<%= DISTANCE_UNIT %>"
       data-api_key="<%= current_user.api_key %>"
       data-user_settings=<%= current_user.settings.to_json %>
-      data-controller="maps"
       data-coordinates="<%= @coordinates %>"
       data-timezone="<%= Rails.configuration.time_zone %>">
       <div data-maps-target="container" class="h-[25rem] w-auto min-h-screen">

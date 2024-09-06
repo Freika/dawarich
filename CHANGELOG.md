@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.3] — 2024-09-06
+
+### Added
+
+- Support for miles. To switch to miles, provide `DISTANCE_UNIT` environment variable with value `mi` in the `docker-compose.yml` file. Default value is `km`.
+
+It's recommended to update your stats manually after changing the `DISTANCE_UNIT` environment variable. You can do this by clicking the "Update stats" button on the Stats page.
+
+⚠️IMPORTANT⚠️: All settings are still should be provided in meters. All calculations though will be converted to feets and miles if `DISTANCE_UNIT` is set to `mi`.
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    environment:
+      APPLICATION_HOST: "localhost"
+      APPLICATION_PROTOCOL: "http"
+      APPLICATION_PORT: "3000"
+      TIME_ZONE: "UTC"
++     DISTANCE_UNIT: "mi"
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    environment:
+      APPLICATION_HOST: "localhost"
+      APPLICATION_PROTOCOL: "http"
+      APPLICATION_PORT: "3000"
+      TIME_ZONE: "UTC"
++     DISTANCE_UNIT: "mi"
+```
+
 ## [0.13.2] — 2024-09-06
 
 ### Fixed
