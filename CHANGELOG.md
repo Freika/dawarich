@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.4] — 2024-09-06
+
+### Fixed
+
+- Fixed a bug preventing the application from starting, when there is no users in the database but a data migration tries to update one.
+
+
 ## [0.13.3] — 2024-09-06
 
 ### Added
