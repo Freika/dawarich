@@ -1,7 +1,8 @@
 # Dawarich
 
 
-[![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika) | [0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4](https://etherscan.io/address/0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4)
+[![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika)
+Donate using crypto: [0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4](https://etherscan.io/address/0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4)
 
 [![CircleCI](https://circleci.com/gh/Freika/dawarich.svg?style=svg)](https://app.circleci.com/pipelines/github/Freika/dawarich)
 
@@ -74,6 +75,12 @@ You can view your location history on a map. On the map you can enable/disable t
 - Heatmap
 - Points
 - Lines between points
+- Fog of War
+- Areas
+
+### Visits (beta)
+
+Dawarich can suggest places you've visited and allow you to confirm or reject them.
 
 ### Statistics
 
@@ -86,8 +93,14 @@ You can import your existing location history from:
 - Google Maps Timeline
 - OwnTracks
 - Strava
+- Immich
 - Your own GPX files
+- Your own GeoJSON files
 - Your photos' EXIF data
+
+### Export
+
+You can export your data to GeoJSON or GPX format.
 
 ## How to start the app locally
 
@@ -97,9 +110,9 @@ Press `Ctrl+C` to stop the app.
 
 ## How to install the app
 
-**[Docker](docs/How_to_install_Dawarich_using_Docker.md)**
+**[Docker](https://dawarich.app/docs/intro#setup-your-dawarich-instance)**
 
-**[Synology](docs/How_to_install_Dawarich_on_Synology.md)**
+**[Synology](https://dawarich.app/docs/tutorials/platforms/synology)**
 
 ### Default credentials
 
@@ -110,14 +123,7 @@ Feel free to change them both in the Account section.
 
 ## Environment variables
 
-| ENV var name                                                          | Description                                                                                                                |
-|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| MIN_MINUTES_SPENT_IN_CITY                                             | minimum minutes between two points to consider them as visited the same city, e.g. `60`                                    |
-| TIME_ZONE                                                             | time zone, e.g. `Europe/Berlin`, full list is [here](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396) |
-| APPLICATION_HOSTS                                                     | list of host of the application, e.g. `localhost,dawarich.example.com`                                                        |
-| BACKGROUND_PROCESSING_CONCURRENCY (only for dawarich_sidekiq service) | Number of simultaneously processed background jobs, default is 10                                                          |
-| REVERSE_GEOCODING_ENABLED | `true` or `false`, this env var allows you to disable reverse geocoding feature entirely                                                          |
-| PHOTON_API_HOST | Photon reverse geocoding api host. Useful, if you're running your own Photon instance                                                          |
+See the docs on the [website](https://dawarich.app/docs/environment-variables-and-settings)
 
 ## Star History
 

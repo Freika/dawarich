@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.5] — 2024-09-08
+
+### Changed
+
+- Default value for `RAILS_MAX_THREADS` was changed to 10.
+
+
 ## [0.13.4] — 2024-09-06
 
 ### Fixed
