@@ -7,14 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.13.5] — 2024-09-08
 
+### Added
+
+- Links to view import points on the map and on the Points page on the Imports page.
+
+### Fixed
+
+- The Imports page now loading faster.
+
 ### Changed
 
 - Default value for `RAILS_MAX_THREADS` was changed to 10.
 - Visit suggestions background job was moved to its own low priority queue to prevent it from blocking other jobs.
 
-### Fixed
-
-- The Imports page now loading faster.
 
 ## [0.13.4] — 2024-09-06
 

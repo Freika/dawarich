@@ -44,6 +44,10 @@
               <tr>
                 <td>
                   <%= link_to import.name, import, class: 'underline hover:no-underline' %> (<%= import.source %>)
+                  &nbsp
+                  <%= link_to '🗺️', map_path(import_id: import.id) %>
+                  &nbsp
+                  <%= link_to '📋', points_path(import_id: import.id) %>
                 </td>
                 <td>
                   <%= "#{number_with_delimiter import.points_count}" %>
