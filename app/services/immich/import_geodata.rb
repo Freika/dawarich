@@ -36,7 +36,7 @@ class Immich::ImportGeodata
 
   def retrieve_immich_data
     1970.upto(Date.today.year).flat_map do |year|
-      (1..12).flat_map do |month_number|
+      (1..12).map do |month_number|
         url = "#{immich_api_base_url}/timeline/bucket?size=MONTH&timeBucket=#{year}-#{month_number}-01"
 
         JSON.parse(HTTParty.get(url, headers:).body)
