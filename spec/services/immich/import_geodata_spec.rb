@@ -10,22 +10,13 @@ RSpec.describe Immich::ImportGeodata do
       create(:user, settings: { 'immich_url' => 'http://immich.app', 'immich_api_key' => '123456' })
     end
     let(:immich_data) do
-      [
-        {
-          "exifInfo": {
-            "dateTimeOriginal": '2022-12-31T23:17:06.170Z',
-            "latitude": 52.0000,
-            "longitude": 13.0000
-          }
-        },
-        {
-          "exifInfo": {
-            "dateTimeOriginal": '2022-12-31T23:21:53.140Z',
-            "latitude": 52.0000,
-            "longitude": 13.0000
-          }
+      {
+        "exifInfo": {
+          "dateTimeOriginal": '2022-12-31T23:21:53.140Z',
+          "latitude": 52.0000,
+          "longitude": 13.0000
         }
-      ].to_json
+      }.to_json
     end
 
     context 'when user has immich_url and immich_api_key' do
