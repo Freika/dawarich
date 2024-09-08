@@ -8,4 +8,8 @@ class Notification < ApplicationRecord
   enum :kind, { info: 0, warning: 1, error: 2 }
 
   scope :unread, -> { where(read_at: nil) }
+
+  def read?
+    read_at.present?
+  end
 end

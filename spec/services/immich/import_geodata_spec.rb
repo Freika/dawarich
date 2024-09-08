@@ -10,35 +10,20 @@ RSpec.describe Immich::ImportGeodata do
       create(:user, settings: { 'immich_url' => 'http://immich.app', 'immich_api_key' => '123456' })
     end
     let(:immich_data) do
-      [
-        {
-          "assets": [
-            {
-              "exifInfo": {
-                "dateTimeOriginal": '2022-12-31T23:17:06.170Z',
-                "latitude": 52.0000,
-                "longitude": 13.0000
-              }
-            },
-            {
-              "exifInfo": {
-                "dateTimeOriginal": '2022-12-31T23:21:53.140Z',
-                "latitude": 52.0000,
-                "longitude": 13.0000
-              }
-            }
-          ],
-          "title": '1 year ago',
-          "yearsAgo": 1
+      {
+        "exifInfo": {
+          "dateTimeOriginal": '2022-12-31T23:21:53.140Z',
+          "latitude": 52.0000,
+          "longitude": 13.0000
         }
-      ].to_json
+      }.to_json
     end
 
     context 'when user has immich_url and immich_api_key' do
       before do
         stub_request(
           :any,
-          %r{http://immich\.app/api/assets/memory-lane\?day=(1[0-9]|2[0-9]|3[01]|[1-9])&month=(1[0-2]|[1-9])}
+          %r{http://immich\.app/api/timeline/bucket\?size=MONTH&timeBucket=(19[7-9][0-9]|20[0-9]{2})-(0?[1-9]|1[0-2])-(0?[1-9]|[12][0-9]|3[01])}
         ).to_return(status: 200, body: immich_data, headers: {})
       end
 

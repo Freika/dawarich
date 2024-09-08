@@ -6,9 +6,7 @@ class PointsController < ApplicationController
   def index
     order_by = params[:order_by] || 'desc'
 
-    @points =
-      current_user
-      .tracked_points
+    @points = points
       .without_raw_data
       .where(timestamp: start_at..end_at)
       .order(timestamp: order_by)
@@ -19,6 +17,7 @@ class PointsController < ApplicationController
     @end_at = Time.zone.at(end_at)
 
     @points_number = @points.except(:limit, :offset).size
+    @imports = current_user.imports.order(created_at: :desc)
   end
 
   def bulk_destroy
@@ -43,5 +42,17 @@ class PointsController < ApplicationController
     return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
 
     Time.zone.parse(params[:end_at]).to_i
+  end
+
+  def points
+    params[:import_id] ? points_from_import : points_from_user
+  end
+
+  def points_from_import
+    current_user.imports.find(params[:import_id]).points
+  end
+
+  def points_from_user
+    current_user.tracked_points
   end
 end

@@ -106,4 +106,10 @@ module ApplicationHelper
   def active_tab?(link_path)
     'tab-active' if current_page?(link_path)
   end
+
+  def notification_link_color(notification)
+    return 'text-gray-600' if notification.read?
+
+    'text-blue-600'
+  end
 end

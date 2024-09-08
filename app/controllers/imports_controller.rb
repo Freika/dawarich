@@ -5,7 +5,12 @@ class ImportsController < ApplicationController
   before_action :set_import, only: %i[show destroy]
 
   def index
-    @imports = current_user.imports.order(created_at: :desc).page(params[:page])
+    @imports =
+      current_user
+      .imports
+      .select(:id, :name, :source, :created_at, :points_count)
+      .order(created_at: :desc)
+      .page(params[:page])
   end
 
   def show; end
