@@ -13,7 +13,7 @@ class Immich::ImportGeodata
     raise ArgumentError, 'Immich API key is missing' if immich_api_key.blank?
     raise ArgumentError, 'Immich URL is missing'     if user.settings['immich_url'].blank?
 
-    immich_data = retrieve_immich_data
+    immich_data       = retrieve_immich_data
     immich_data_json  = parse_immich_data(immich_data)
     file_name         = file_name(immich_data_json)
     import            = user.imports.find_or_initialize_by(name: file_name, source: :immich_api)
@@ -35,9 +35,9 @@ class Immich::ImportGeodata
   end
 
   def retrieve_immich_data
-    (1..12).flat_map do |month_number|
-      (1..31).map do |day|
-        url = "#{immich_api_base_url}/assets/memory-lane?day=#{day}&month=#{month_number}"
+    1970.upto(Date.today.year).flat_map do |year|
+      (1..12).flat_map do |month_number|
+        url = "#{immich_api_base_url}/timeline/bucket?size=MONTH&timeBucket=#{year}-#{month_number}-01"
 
         JSON.parse(HTTParty.get(url, headers:).body)
       end
@@ -51,25 +51,18 @@ class Immich::ImportGeodata
   end
 
   def parse_immich_data(immich_data)
-    geodata = []
+    geodata = immich_data.map do |asset|
+      log_no_data and next if asset_invalid?(asset)
+      next unless valid?(asset)
 
-    immich_data.each do |memory_lane|
-      log_no_data and next if memory_lane_invalid?(memory_lane)
-
-      assets = extract_assets(memory_lane)
-
-      assets.each { |asset| geodata << extract_geodata(asset) if valid?(asset) }
+      extract_geodata(asset)
     end
 
-    geodata.sort_by { |data| data[:timestamp] }
+    geodata.compact.sort_by { |data| data[:timestamp] }
   end
 
-  def memory_lane_invalid?(memory_lane)
-    memory_lane.is_a?(Hash) && memory_lane['statusCode'] == 404
-  end
-
-  def extract_assets(memory_lane)
-    memory_lane.flat_map { |lane| lane['assets'] }.compact
+  def asset_invalid?(bucket)
+    bucket.is_a?(Hash) && bucket['statusCode'] == 404
   end
 
   def extract_geodata(asset)

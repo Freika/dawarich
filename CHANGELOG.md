@@ -10,7 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Default value for `RAILS_MAX_THREADS` was changed to 10.
+- Visit suggestions background job was moved to its own low priority queue to prevent it from blocking other jobs.
 
+### Fixed
+
+- The Imports page now loading faster.
 
 ## [0.13.4] — 2024-09-06
 

@@ -31,7 +31,7 @@ class Areas::Visits::Create
 
   def area_points(area)
     area_radius =
-      if DISTANCE_UNIT.to_sym == :km
+      if ::DISTANCE_UNIT.to_sym == :km
         area.radius / 1000.0
       else
         area.radius / 1609.344
