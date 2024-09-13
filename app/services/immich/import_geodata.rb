@@ -44,15 +44,8 @@ class Immich::ImportGeodata
     end
   end
 
-  def valid?(asset)
-    asset.dig('exifInfo', 'latitude') &&
-      asset.dig('exifInfo', 'longitude') &&
-      asset.dig('exifInfo', 'dateTimeOriginal')
-  end
-
   def parse_immich_data(immich_data)
-    geodata = immich_data.map do |asset|
-      log_no_data and next if asset_invalid?(asset)
+    geodata = immich_data.flatten.map do |asset|
       next unless valid?(asset)
 
       extract_geodata(asset)
@@ -61,8 +54,10 @@ class Immich::ImportGeodata
     geodata.compact.sort_by { |data| data[:timestamp] }
   end
 
-  def asset_invalid?(bucket)
-    bucket.is_a?(Hash) && bucket['statusCode'] == 404
+  def valid?(asset)
+    asset.dig('exifInfo', 'latitude') &&
+      asset.dig('exifInfo', 'longitude') &&
+      asset.dig('exifInfo', 'dateTimeOriginal')
   end
 
   def extract_geodata(asset)
