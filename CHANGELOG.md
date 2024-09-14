@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - `GET /api/v1/points` response now will include `X-Total-Pages` and `X-Current-Page` headers to make it easier to work with the endpoint
+- The Pages point now shows total number of points found for provided date range
 
 
 ## [0.13.6] — 2024-09-13
