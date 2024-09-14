@@ -12,6 +12,9 @@ class Api::V1::PointsController < ApiController
              .page(params[:page])
              .per(params[:per_page] || 100)
 
+    response.set_header('X-Current-Page', points.current_page)
+    response.set_header('X-Total-Pages', points.total_pages)
+
     render json: points
   end
 
