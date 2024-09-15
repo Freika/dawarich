@@ -16,7 +16,6 @@ class PointsController < ApplicationController
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
 
-    @points_number = @points.except(:limit, :offset).size
     @imports = current_user.imports.order(created_at: :desc)
   end
 
