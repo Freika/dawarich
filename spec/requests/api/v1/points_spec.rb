@@ -38,8 +38,8 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
       expect(response).to have_http_status(:ok)
 
-      expect(response.headers['X-Current-Page']).to eq(2)
-      expect(response.headers['X-Total-Pages']).to eq(15)
+      expect(response.headers['X-Current-Page']).to eq('2')
+      expect(response.headers['X-Total-Pages']).to eq('15')
     end
   end
 end
