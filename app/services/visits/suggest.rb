@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Visits::Suggest
+  include Rails.application.routes.url_helpers
+
   attr_reader :points, :user, :start_at, :end_at
 
   def initialize(user, start_at:, end_at:)
@@ -72,7 +74,7 @@ class Visits::Suggest
 
   def create_visits_notification(user)
     content = <<~CONTENT
-      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them in the <%= link_to 'Visits', visits_path %> section.
+      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them on the <a href="#{visits_path}" class="link">Visits</a> page.
     CONTENT
 
     user.notifications.create!(

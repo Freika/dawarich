@@ -7,7 +7,7 @@
 
     <% if params[:action] == 'show' %>
       <div class="mt-2">
-        <%= notification.content %>
+        <%= notification.content.html_safe %>
 
         <% if notification.error? %>
           <div class="mt-2">
