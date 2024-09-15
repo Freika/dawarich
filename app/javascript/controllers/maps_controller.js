@@ -8,6 +8,23 @@ import { formatDate } from "../maps/helpers";
 import { haversineDistance } from "../maps/helpers";
 import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
+import { OPNVMapLayer } from "../maps/layers";
+import { openTopoMapLayer } from "../maps/layers";
+import { stadiaAlidadeSmoothMapLayer } from "../maps/layers";
+import { stadiaAlidadeSmoothDarkMapLayer } from "../maps/layers";
+import { stadiaAlidadeSatelliteMapLayer } from "../maps/layers";
+import { stadiaOsmBrightMapLayer } from "../maps/layers";
+import { stadiaOutdoorMapLayer } from "../maps/layers";
+import { stadiaStamenTonerMapLayer } from "../maps/layers";
+import { stadiaStamenTonerBackgroundMapLayer } from "../maps/layers";
+import { stadiaStamenTonerLiteMapLayer } from "../maps/layers";
+import { stadiaStamenWatercolorMapLayer } from "../maps/layers";
+import { stadiaStamenTerrainMapLayer } from "../maps/layers";
+import { cyclOsmMapLayer } from "../maps/layers";
+import { esriWorldStreetMapLayer } from "../maps/layers";
+import { esriWorldTopoMapLayer } from "../maps/layers";
+import { esriWorldImageryMapLayer } from "../maps/layers";
+import { esriWorldGrayCanvasMapLayer } from "../maps/layers";
 import "leaflet-draw";
 
 export default class extends Controller {
@@ -119,9 +136,28 @@ export default class extends Controller {
   }
 
   baseMaps() {
+    let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
+
     return {
-      OpenStreetMap: osmMapLayer(this.map),
-      "OpenStreetMap.HOT": osmHotMapLayer(),
+      OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
+      "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
+      OPNV: OPNVMapLayer(this.map, selectedLayerName),
+      openTopo: openTopoMapLayer(this.map, selectedLayerName),
+      stadiaAlidadeSmooth: stadiaAlidadeSmoothMapLayer(this.map, selectedLayerName),
+      stadiaAlidadeSmoothDark: stadiaAlidadeSmoothDarkMapLayer(this.map, selectedLayerName),
+      stadiaAlidadeSatellite: stadiaAlidadeSatelliteMapLayer(this.map, selectedLayerName),
+      stadiaOsmBright: stadiaOsmBrightMapLayer(this.map, selectedLayerName),
+      stadiaOutdoor: stadiaOutdoorMapLayer(this.map, selectedLayerName),
+      stadiaStamenToner: stadiaStamenTonerMapLayer(this.map, selectedLayerName),
+      stadiaStamenTonerBackground: stadiaStamenTonerBackgroundMapLayer(this.map, selectedLayerName),
+      stadiaStamenTonerLite: stadiaStamenTonerLiteMapLayer(this.map, selectedLayerName),
+      stadiaStamenWatercolor: stadiaStamenWatercolorMapLayer(this.map, selectedLayerName),
+      stadiaStamenTerrain: stadiaStamenTerrainMapLayer(this.map, selectedLayerName),
+      cyclOsm: cyclOsmMapLayer(this.map, selectedLayerName),
+      esriWorldStreet: esriWorldStreetMapLayer(this.map, selectedLayerName),
+      esriWorldTopo: esriWorldTopoMapLayer(this.map, selectedLayerName),
+      esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
+      esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
     };
   }
 
@@ -172,6 +208,32 @@ export default class extends Controller {
     // Ensure only one listener is attached by removing any existing ones first
     this.removeEventListeners();
     document.addEventListener('click', this.handleDeleteClick);
+
+    // Add an event listener for base layer change in Leaflet
+    this.map.on('baselayerchange', (event) => {
+      const selectedLayerName = event.name;
+      this.updatePreferredBaseLayer(selectedLayerName);
+    });
+  }
+
+  updatePreferredBaseLayer(selectedLayerName) {
+    fetch(`/api/v1/settings?api_key=${this.apiKey}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        settings: {
+          preferred_map_layer: selectedLayerName
+        },
+      }),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.status === 'success') {
+        this.showFlashMessage('notice', `Preferred map layer updated to: ${selectedLayerName}`);
+      } else {
+        this.showFlashMessage('error', data.message);
+      }
+    });
   }
 
   deletePoint(id, apiKey) {

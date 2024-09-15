@@ -30,7 +30,8 @@ class Api::V1::SettingsController < ApiController
   def settings_params
     params.require(:settings).permit(
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
-      :time_threshold_minutes, :merge_threshold_minutes, :route_opacity
+      :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
+      :preferred_map_layer
     )
   end
 end
