@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.7] — 2024-09-15
+
+### Added
+
+- `GET /api/v1/points` response now will include `X-Total-Pages` and `X-Current-Page` headers to make it easier to work with the endpoint
+- The Pages point now shows total number of points found for provided date range
+
+
 ## [0.13.6] — 2024-09-13
 
 ### Fixed

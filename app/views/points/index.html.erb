@@ -49,8 +49,8 @@
 
         <div class="flex justify-between my-5">
           <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" } %>
-          <div class="flex justify-center">
-            <%= @points_number %> points found
+          <div>
+            <%= page_entries_info @points, entry_name: 'point' %>
           </div>
           <div class="flex justify-end">
             <span class="mr-2">Order by:</span>

@@ -32,5 +32,14 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
       expect(json_response.size).to eq(10)
     end
+
+    it 'returns a list of points with pagination headers' do
+      get api_v1_points_url(api_key: user.api_key, page: 2, per_page: 10)
+
+      expect(response).to have_http_status(:ok)
+
+      expect(response.headers['X-Current-Page']).to eq('2')
+      expect(response.headers['X-Total-Pages']).to eq('15')
+    end
   end
 end
