@@ -34,6 +34,13 @@ export functionality before updating to a new version.
 
 ## Usage
 
+Following sources of live data are supported:
+
+- [Overland](https://dawarich.app/docs/tutorials/track-your-location#overland)
+- [OwnTracks](https://dawarich.app/docs/tutorials/track-your-location#owntracks)
+- [GPSLogger](https://dawarich.app/docs/tutorials/track-your-location#gps-logger)
+- [Home Assistant](https://dawarich.app/docs/tutorials/track-your-location#homeassistant)
+
 To track your location, install the [Owntracks app](https://owntracks.org/booklet/guide/apps/) or [Overland app](https://overland.p3k.app/) on your phone and configure it to send location updates to your Dawarich instance.
 
 ### OwnTracks
