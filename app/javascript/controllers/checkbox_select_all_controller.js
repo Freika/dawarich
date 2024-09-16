@@ -12,10 +12,8 @@ export default class extends Controller {
   toggleChildren() {
     if (this.parentTarget.checked) {
       this.childTargets.map(x => x.checked = true)
-      console.log('toggleChildrenChecked')
     } else {
       this.childTargets.map(x => x.checked = false)
-      console.log('toggleChildrenUNChecked')
     }
   }
 

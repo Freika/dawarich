@@ -1,7 +1,7 @@
 // Yeah I know it should be DRY but this is me doing a KISS at 21:00 on a Sunday night
 
 export function osmMapLayer(map, selectedLayerName) {
-  let layerName = 'osm';
+  let layerName = 'OpenStreetMap';
 
   let layer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -16,7 +16,7 @@ export function osmMapLayer(map, selectedLayerName) {
 }
 
 export function osmHotMapLayer(map, selectedLayerName) {
-  let layerName = 'osmHot';
+  let layerName = "OpenStreetMap.HOT";
   let layer = L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "© OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team hosted by OpenStreetMap France",

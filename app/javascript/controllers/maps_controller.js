@@ -137,7 +137,7 @@ export default class extends Controller {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-
+console.log(selectedLayerName);
     return {
       OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
       "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
@@ -250,9 +250,6 @@ export default class extends Controller {
       return response.json();
     })
     .then(data => {
-      console.log('Point deleted:', data);
-
-      // Remove the marker from the map
       this.removeMarker(id);
     })
     .catch(error => {
@@ -348,7 +345,7 @@ export default class extends Controller {
       <b>Duration:</b> ${timeOnRoute}<br>
       <b>Total Distance:</b> ${formatDistance(totalDistance, this.distanceUnit)}<br>
     `;
-console.log(this.distanceUnit);
+
     if (isDebugMode) {
       const prevPoint = polylineCoordinates[0];
       const nextPoint = polylineCoordinates[polylineCoordinates.length - 1];
@@ -578,7 +575,6 @@ console.log(this.distanceUnit);
       return response.json();
     })
     .then(data => {
-      console.log('Area deleted:', data);
       this.areasLayer.removeLayer(layer); // Remove the layer from the areas layer group
     })
     .catch(error => {
@@ -638,7 +634,6 @@ console.log(this.distanceUnit);
   addSettingsButton() {
     if (this.settingsButtonAdded) return;
 
-    console.log('Adding settings button');
     // Define the custom control
     const SettingsControl = L.Control.extend({
       onAdd: (map) => {
