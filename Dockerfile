@@ -1,18 +1,11 @@
 FROM ruby:3.3.4-alpine
 
-ENV APP_PATH /var/app
-ENV BUNDLE_VERSION 2.5.9
-ENV BUNDLE_PATH /usr/local/bundle/gems
-ENV TMP_PATH /tmp/
-ENV RAILS_LOG_TO_STDOUT true
-ENV RAILS_PORT 3000
-
-# Copy entrypoint scripts and grant execution permissions
-COPY ./dev-docker-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
-RUN chmod +x /usr/local/bin/dev-entrypoint.sh
-
-# Copy application files to workdir
-COPY . $APP_PATH
+ENV APP_PATH=/var/app
+ENV BUNDLE_VERSION=2.5.9
+ENV BUNDLE_PATH=/usr/local/bundle/gems
+ENV TMP_PATH=/tmp/
+ENV RAILS_LOG_TO_STDOUT=true
+ENV RAILS_PORT=3000
 
 # Install dependencies for application
 RUN apk -U add --no-cache \
@@ -39,13 +32,17 @@ RUN gem install bundler --version "$BUNDLE_VERSION" \
 # Navigate to app directory
 WORKDIR $APP_PATH
 
-COPY Gemfile Gemfile.lock ./
+COPY Gemfile Gemfile.lock vendor .ruby-version ./
 
 # Install missing gems
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle install --jobs 20 --retry 5
 
 COPY . ./
+
+# Copy entrypoint scripts and grant execution permissions
+COPY ./dev-docker-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
+RUN chmod +x /usr/local/bin/dev-entrypoint.sh
 
 EXPOSE $RAILS_PORT
 
