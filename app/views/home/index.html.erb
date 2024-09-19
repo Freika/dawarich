@@ -3,8 +3,10 @@
     <div class="hero h-fit bg-base-200 py-20" style="background-image: url(<%= '/images/bg-image.jpg' %>);">
       <div class="hero-content text-center">
         <div class="max-w-md">
-          <h1 class="text-5xl font-bold">Dawarich</h1>
-          <p class="py-6 text-3xl">The only Dawarich you'll ever need.</p>
+          <h1 class="text-5xl font-bold">
+            <a href="https://dawarich.app" class='link'>Dawarich</a>
+          </h1>
+          <p class="py-6 text-3xl">The only location history tracker you'll ever need.</p>
 
           <%#= link_to 'Sign up', new_user_registration_path, class: "rounded-lg py-3 px-5 my-3 bg-blue-600 text-white block font-medium" %>
           <%= link_to 'Sign in', new_user_session_path, class: "rounded-lg py-3 px-5 bg-neutral text-neutral-content block font-medium" %>
@@ -15,23 +17,27 @@
   <div class="grid grid-cols-3 gap-4 m-auto justify-center">
     <div class="card w-96 bg-base-100 justify-self-center shadow-xl">
       <div class="card-body">
-        <h2 class="card-title mx-auto">Feature #1</h2>
-        <p class='text-center'>Lorem ipsum dolor sit amet consectetur adipisicing elit. Et nesciunt fugiat esse, vero culpa illum molestias aut, pariatur ullam animi vel cum tenetur blanditiis, ratione nostrum quidem facilis a harum.</p>
+        <h2 class="card-title mx-auto">Location history visualisation</h2>
+        <p class='text-center'>Effortlessly import your location history from Google Maps Timeline and Owntracks. View your journeys on an interactive map, complete with customizable layers like heatmaps, points, and connecting lines to visualize your travels.</p>
       </div>
     </div>
 
     <div class="card w-96 bg-base-100 justify-self-center shadow-xl">
       <div class="card-body">
-        <h2 class="card-title mx-auto">Feature #2</h2>
-        <p class='text-center'>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Nihil natus deserunt deleniti velit expedita, explicabo voluptatem blanditiis laboriosam id at eveniet eius officiis rerum, beatae maiores non inventore iste voluptate?</p>
+        <h2 class="card-title mx-auto">Comprehensive Travel Statistics</h2>
+        <p class='text-center'>Gain insights into your travel patterns with detailed statistics. Track the number of countries and cities visited and total distance traveled. Split your data by years and months for a clear overview of your journeys.</p>
       </div>
     </div>
 
     <div class="card w-96 bg-base-100 justify-self-center shadow-xl">
       <div class="card-body">
-        <h2 class="card-title mx-auto">Feature #3</h2>
-        <p class='text-center'>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Enim ullam porro eaque! Ea praesentium deserunt magni voluptatum maxime veritatis! Obcaecati ipsa ipsum adipisci quae corporis odit blanditiis placeat culpa tempora.</p>
+        <h2 class="card-title mx-auto">Self-Hosted and Private</h2>
+        <p class='text-center'>Maintain complete control over your data with our self-hosted solution. Dawarich ensures your location history remains private and secure, giving you peace of mind while enjoying the full functionality of a robust tracking system.</p>
       </div>
     </div>
+  </div>
+
+  <div class='text-center my-10'>
+    Find more on <a href="https://dawarich.app" class='link'>the website</a>, or check out the <a href="https://github.com/Freika/dawarich" class='link'>source code</a> on GitHub.
   </div>
 </div>
