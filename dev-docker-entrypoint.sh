@@ -7,11 +7,18 @@ set -e
 
 echo "Environment: $RAILS_ENV"
 
+# set env var defaults
+DATABASE_HOST=${DATABASE_HOST:-"dawarich_db"}
+DATABASE_PORT=${DATABASE_PORT:-5432}
+DATABASE_USERNAME=${DATABASE_USERNAME:-"postgres"}
+DATABASE_PASSWORD=${DATABASE_PASSWORD:-"password"}
+DATABASE_NAME=${DATABASE_NAME:-"dawarich_development"}
+
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
 
 # Wait for the database to be ready
-until nc -zv $DATABASE_HOST 5432; do
+until nc -zv $DATABASE_HOST ${DATABASE_PORT:-5432}; do
   echo "Waiting for PostgreSQL to be ready..."
   sleep 1
 done
@@ -21,8 +28,12 @@ gem update --system 3.5.7
 gem install bundler --version '2.5.9'
 
 # Create the database
-echo "Creating database $DATABASE_NAME..."
-bundle exec rails db:create
+if [ "$(psql "postgres://$DATABASE_USERNAME:$DATABASE_PASSWORD@$DATABASE_HOST:$DATABASE_PORT" -XtAc "SELECT 1 FROM pg_database WHERE datname='$DATABASE_NAME'")" = '1' ]; then
+  echo "Database $DATABASE_NAME already exists, skipping creation..."
+else
+  echo "Creating database $DATABASE_NAME..."
+  bundle exec rails db:create
+fi
 
 # Run database migrations
 echo "PostgreSQL is ready. Running database migrations..."

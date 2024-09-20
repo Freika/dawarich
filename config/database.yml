@@ -11,13 +11,13 @@ default: &default
 
 development:
   <<: *default
-  database: dawarich_development
+  database: <%= ENV['DATABASE_NAME'] || 'dawarich_development' %>
 
 test:
   <<: *default
-  database: dawarich_test
+  database: <%= ENV['DATABASE_NAME'] || 'dawarich_test' %>
 
 production:
   <<: *default
-  database: dawarich_production
+  database: <%= ENV['DATABASE_NAME'] || 'dawarich_production' %>
   url: <%= ENV['DATABASE_URL'] %>
