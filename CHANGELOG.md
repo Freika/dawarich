@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.14.3] — 2024-09-21
+
+### Fixed
+
+- Optimize order of the dockerfiles to leverage layer caching by @JoeyEamigh
+- Add support for alternate postgres ports and db names in docker by @JoeyEamigh
+
+
 ## [0.14.1] — 2024-09-16
 
 ### Fixed
