@@ -5,12 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.14.4] - 2024-09-24
+
+### Fixed
+
+- GPX export now has time and elevation elements for each point
+
+### Changed
+
+- `GET /api/v1/points` will no longer return `raw_data` attribute for each point as it's a bit too much
+
+### Added
+
+- "Slim" version of `GET /api/v1/points`: pass optional param `?slim=true` to it and it will return only latitude, longitude and timestamp
+
+
 # [0.14.3] — 2024-09-21
 
 ### Fixed
 
 - Optimize order of the dockerfiles to leverage layer caching by @JoeyEamigh
 - Add support for alternate postgres ports and db names in docker by @JoeyEamigh
+- Creating exports directory if it doesn't exist by @tetebueno
 
 
 ## [0.14.1] — 2024-09-16

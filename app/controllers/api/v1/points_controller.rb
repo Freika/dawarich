@@ -11,11 +11,13 @@ class Api::V1::PointsController < ApiController
              .order(:timestamp)
              .page(params[:page])
              .per(params[:per_page] || 100)
+    
+    serialized_points = points.map { |point| point_serializer.new(point).call }
 
     response.set_header('X-Current-Page', points.current_page.to_s)
     response.set_header('X-Total-Pages', points.total_pages.to_s)
 
-    render json: points
+    render json: serialized_points
   end
 
   def destroy
@@ -23,5 +25,11 @@ class Api::V1::PointsController < ApiController
     point.destroy
 
     render json: { message: 'Point deleted successfully' }
+  end
+
+  private
+
+  def point_serializer
+    params[:slim] ? SlimPointSerializer : PointSerializer
   end
 end

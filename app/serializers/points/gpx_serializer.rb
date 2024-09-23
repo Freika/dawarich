@@ -6,9 +6,18 @@ class Points::GpxSerializer
   end
 
   def call
-    geojson_data = Points::GeojsonSerializer.new(points).call
+    gpx = GPX::GPXFile.new
 
-    GPX::GeoJSON.convert_to_gpx(geojson_data:)
+    points.each do |point|
+      gpx.waypoints << GPX::Waypoint.new(
+        lat: point.latitude.to_f,
+        lon: point.longitude.to_f,
+        time: point.recorded_at.strftime('%FT%R:%SZ'),
+        ele: point.altitude.to_f
+      )
+    end
+
+    gpx
   end
 
   private
