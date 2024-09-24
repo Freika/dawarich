@@ -8,11 +8,26 @@ Make sure to exclude "http://" or "https://" from the environment variable. тЪая
 At the time of writing this, the way to set the environment variable is to edit the docker-compose.yml file. Find all APPLICATION_HOSTS entries in the docker-compose.yml file and make sure to include your domain name. Example:
 
 ```yaml
-  dawarich_app:
+dawarich_app:
     image: freikin/dawarich:latest
     container_name: dawarich_app
+    ...
     environment:
-      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1"
+      ...
+      APPLICATION_HOST: "yourhost.com" <-- Edit this
+      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
+```
+
+```yaml
+dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    ...
+    environment:
+      ...
+      APPLICATION_HOST: "yourhost.com" <-- Edit this
+      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
+      ...
 ```
 
 For a Synology install, refer to **[Synology Install Tutorial](How_to_install_Dawarich_on_Synology.md)**. In this page, it is explained how to set the APPLICATION_HOSTS environment variable.
@@ -24,7 +39,7 @@ Now that the app works with a domain name, the server needs to be set up to use 
 Below are examples of reverse proxy configurations.
 
 ### Nginx
-```
+```nginx
 server {
 
 	listen 80;
@@ -58,7 +73,7 @@ sudo a2enmod headers
 
 With the above commands entered, the configuration below should work properly.
 
-```
+```apache
 <VirtualHost *:80>
     ServerName example.com
 
@@ -95,7 +110,7 @@ docker network create dawarich
 ```
 
 Adjust the following part of your Dawarich docker-compose.yaml, so that the web app is exposed to your new network and the backend Dawarich network:
-```
+```yaml
 networks:
   dawarich:
   frontend:
@@ -105,7 +120,7 @@ services:
 ```
 
 Lastly, edit your Caddy config as needed:
-```
+```caddy
 {
 	http_port 80
 	https_port 443
