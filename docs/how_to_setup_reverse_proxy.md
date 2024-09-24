@@ -14,7 +14,7 @@ dawarich_app:
     ...
     environment:
       ...
-      APPLICATION_HOST: "yourhost.com" <-- Edit this
+      APPLICATION_HOST: "yourhost.com" <------------------------------ Edit this
       APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
 ```
 
@@ -25,7 +25,7 @@ dawarich_sidekiq:
     ...
     environment:
       ...
-      APPLICATION_HOST: "yourhost.com" <-- Edit this
+      APPLICATION_HOST: "yourhost.com" <------------------------------ Edit this
       APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
       ...
 ```
