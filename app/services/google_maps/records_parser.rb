@@ -35,10 +35,25 @@ class GoogleMaps::RecordsParser
     {
       latitude: json['latitudeE7'].to_f / 10**7,
       longitude: json['longitudeE7'].to_f / 10**7,
-      timestamp: DateTime.parse(json['timestamp']).to_i,
+      timestamp: parse_timestamp(json['timestamp'] || json['timestampMs']),
       altitude: json['altitude'],
       velocity: json['velocity'],
       raw_data: json
     }
+  end
+
+  def parse_timestamp(timestamp)
+    begin
+      # if the timestamp is in ISO 8601 format, try to parse it
+      DateTime.parse(timestamp).to_time.to_i
+    rescue
+      if timestamp.to_s.length > 10
+        # If the timestamp is in milliseconds, convert to seconds
+        timestamp.to_i / 1000
+      else
+        # If the timestamp is in seconds, return it without change
+        timestamp.to_i
+      end
+    end
   end
 end
