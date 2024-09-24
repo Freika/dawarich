@@ -81,6 +81,7 @@ For Apache2, you might need to enable some modules. Start by entering the follow
 sudo a2enmod proxy
 sudo a2enmod proxy_http
 sudo a2enmod headers
+sudo a2enmod deflate
 ```
 
 With the above commands entered, the configuration below should work properly.
