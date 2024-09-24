@@ -24,7 +24,7 @@ Now that the app works with a domain name, the server needs to be set up to use 
 Below are examples of reverse proxy configurations.
 
 ### Nginx
-```
+```nginx
 server {
 
 	listen 80;
@@ -58,7 +58,7 @@ sudo a2enmod headers
 
 With the above commands entered, the configuration below should work properly.
 
-```
+```apache
 <VirtualHost *:80>
     ServerName example.com
 
@@ -95,7 +95,7 @@ docker network create dawarich
 ```
 
 Adjust the following part of your Dawarich docker-compose.yaml, so that the web app is exposed to your new network and the backend Dawarich network:
-```
+```yaml
 networks:
   dawarich:
   frontend:
@@ -105,7 +105,7 @@ services:
 ```
 
 Lastly, edit your Caddy config as needed:
-```
+```caddy
 {
 	http_port 80
 	https_port 443
