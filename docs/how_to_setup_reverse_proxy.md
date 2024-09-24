@@ -87,23 +87,26 @@ With the above commands entered, the configuration below should work properly.
 
 ```apache
 <VirtualHost *:80>
-    ServerName example.com
-
-    ProxyRequests Off
-    ProxyPreserveHost On
-
-    <Proxy *>
-        Require all granted
-    </Proxy>
-
-    Header always set X-Real-IP %{REMOTE_ADDR}s
-    Header always set X-Forwarded-For %{REMOTE_ADDR}s
-    Header always set X-Forwarded-Proto https
-    Header always set X-Forwarded-Server %{SERVER_NAME}s
-    Header always set Host %{HTTP_HOST}s
-
-    ProxyPass / http://127.0.0.1:3000/
-    ProxyPassReverse / http://127.0.0.1:3000/
+	ServerName example.com
+	
+	ProxyRequests Off
+	ProxyPreserveHost On
+	
+	<Proxy *>
+		Require all granted
+	</Proxy>
+	
+	Header always set X-Real-IP %{REMOTE_ADDR}s
+	Header always set X-Forwarded-For %{REMOTE_ADDR}s
+	Header always set X-Forwarded-Proto https
+	Header always set X-Forwarded-Server %{SERVER_NAME}s
+	Header always set Host %{HTTP_HOST}s
+	
+	SetOutputFilter DEFLATE
+	AddOutputFilterByType DEFLATE application/json
+	
+	ProxyPass / http://127.0.0.1:3000/
+	ProxyPassReverse / http://127.0.0.1:3000/
 
 </VirtualHost>
 ```
