@@ -113,6 +113,12 @@ Lastly, edit your Caddy config as needed:
 
 <YOUR FQDN HERE (ex. dawarich.example.com)> {
 	reverse_proxy dawarich_app:3000
+
+	encode gzip {
+		match {
+			content_type application/json
+		}
+	}
 }
 ```
 
