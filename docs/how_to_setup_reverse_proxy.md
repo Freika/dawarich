@@ -94,84 +94,14 @@ Second, create a Docker network for Dawarich to use as the backend network:
 docker network create dawarich
 ```
 
-Adjust your Dawarich docker-compose.yaml so that the web app is exposed to your new network and the backend Dawarich network:
+Adjust the following part of your Dawarich docker-compose.yaml, so that the web app is exposed to your new network and the backend Dawarich network:
 ```
-version: '3'
 networks:
   dawarich:
   frontend:
     external: true
 services:
-  dawarich_redis:
-    image: redis:7.0-alpine
-    command: redis-server
-    networks:
-      - dawarich
-    volumes:
-      - ./dawarich/redis:/var/shared/redis
-  dawarich_db:
-    image: postgres:14.2-alpine
-    container_name: dawarich_db
-    volumes:
-      - ./dawarich/db:/var/lib/postgresql/data
-      - ./dawarich/shared:/var/shared
-    networks:
-      - dawarich
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-  dawarich_app:
-    image: freikin/dawarich:latest
-    container_name: dawarich_app
-    volumes:
-      - ./dawarich/gems:/usr/local/bundle/gems
-      - ./dawarich/public:/var/app/public
-    networks:
-      - dawarich
-      - frontend
-    stdin_open: true
-    tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['bin/dev']
-    restart: on-failure
-    environment:
-      RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
-      MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOSTS: <YOUR FQDN HERE (ex. dawarich.example.com)>
-      TIME_ZONE: America/New_York
-    depends_on:
-      - dawarich_db
-      - dawarich_redis
-  dawarich_sidekiq:
-    image: freikin/dawarich:latest
-    container_name: dawarich_sidekiq
-    volumes:
-      - ./dawarich/gems:/usr/local/bundle/gems
-      - ./dawarich/public:/var/app/public
-    networks:
-      - dawarich
-    stdin_open: true
-    tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['sidekiq']
-    restart: on-failure
-    environment:
-      RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
-      APPLICATION_HOSTS: <YOUR FQDN HERE (ex. dawarich.example.com)>
-    depends_on:
-      - dawarich_db
-      - dawarich_redis
-      - dawarich_app
+  ...
 ```
 
 Lastly, edit your Caddy config as needed:
