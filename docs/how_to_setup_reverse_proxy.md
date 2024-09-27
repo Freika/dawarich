@@ -46,17 +46,34 @@ server {
 	listen [::]:80;
 	server_name example.com;
 
-	gzip on;
-	gzip_disable "msie6";
-
-	gzip_vary on;
-	gzip_proxied any;
-	gzip_comp_level 6;
-	gzip_buffers 16 8k;
-	gzip_http_version 1.1;
-	gzip_min_length 256;
-	gzip_types
-	application/json;
+	brotli on;
+	brotli_comp_level 6;
+	brotli_types 
+		text/css
+		text/plain
+		text/xml
+		text/x-component
+		text/javascript
+		application/x-javascript
+		application/javascript
+		application/json
+		application/manifest+json
+		application/vnd.api+json
+		application/xml
+		application/xhtml+xml
+		application/rss+xml
+		application/atom+xml
+		application/vnd.ms-fontobject
+		application/x-font-ttf
+		application/x-font-opentype
+		application/x-font-truetype
+		image/svg+xml
+		image/x-icon
+		image/vnd.microsoft.icon
+		font/ttf
+		font/eot
+		font/otf
+		font/opentype;
 
 	location / {
 		proxy_set_header X-Real-IP $remote_addr;
