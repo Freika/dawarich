@@ -160,7 +160,7 @@ Lastly, edit your Caddy config as needed:
 	https_port 443
 }
 
-<YOUR FQDN HERE (ex. dawarich.example.com)> {
+timeline.example.com {
 	reverse_proxy dawarich_app:3000
 
 	encode brotli {
@@ -171,8 +171,7 @@ Lastly, edit your Caddy config as needed:
 }
 
 ```
-
-At your FQDN, do not include < >
+timeline.example.com is an example, use your own (sub) domain.
 
 ---
 
