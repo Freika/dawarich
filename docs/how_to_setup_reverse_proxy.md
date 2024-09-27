@@ -81,7 +81,7 @@ For Apache2, you might need to enable some modules. Start by entering the follow
 sudo a2enmod proxy
 sudo a2enmod proxy_http
 sudo a2enmod headers
-sudo a2enmod deflate
+sudo a2enmod brotli
 ```
 
 With the above commands entered, the configuration below should work properly.
@@ -103,8 +103,9 @@ With the above commands entered, the configuration below should work properly.
 	Header always set X-Forwarded-Server %{SERVER_NAME}s
 	Header always set Host %{HTTP_HOST}s
 	
-	SetOutputFilter DEFLATE
-	AddOutputFilterByType DEFLATE application/json
+	SetOutputFilter BROTLI
+	AddOutputFilterByType BROTLI_COMPRESS text/css text/plain text/xml text/javascript application/javascript application/json application/manifest+json application/vnd.api+json application/xml application/xhtml+xml application/rss+xml application/atom+xml application/vnd.ms-fontobject application/x-font-ttf application/x-font-opentype application/x-font-truetype image/svg+xml image/x-icon image/vnd.microsoft.icon font/ttf font/eot font/otf font/opentype
+	BrotliCompressionQuality 6
 	
 	ProxyPass / http://127.0.0.1:3000/
 	ProxyPassReverse / http://127.0.0.1:3000/
