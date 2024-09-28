@@ -57,165 +57,165 @@ export function openTopoMapLayer(map, selectedLayerName) {
   }
 }
 
-export function stadiaAlidadeSmoothMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaAlidadeSmooth';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'png'
-  });
+// export function stadiaAlidadeSmoothMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaAlidadeSmooth';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 20,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'png'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaAlidadeSmoothDarkMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaAlidadeSmoothDark';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'png'
-  });
+// export function stadiaAlidadeSmoothDarkMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaAlidadeSmoothDark';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 20,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'png'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaAlidadeSatelliteMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaAlidadeSatellite';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 20,
-    attribution: '&copy; CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data) | &copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'jpg'
-  });
+// export function stadiaAlidadeSatelliteMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaAlidadeSatellite';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 20,
+//     attribution: '&copy; CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data) | &copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'jpg'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaOsmBrightMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaOsmBright';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'png'
-  });
+// export function stadiaOsmBrightMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaOsmBright';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 20,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'png'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaOutdoorMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaOutdoor';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'png'
-  });
+// export function stadiaOutdoorMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaOutdoor';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 20,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'png'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaStamenTonerMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaStamenToner';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'png'
-  });
+// export function stadiaStamenTonerMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaStamenToner';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 20,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'png'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaStamenTonerBackgroundMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaStamenTonerBackground';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_background/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'png'
-  });
+// export function stadiaStamenTonerBackgroundMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaStamenTonerBackground';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_background/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 20,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'png'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaStamenTonerLiteMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaStamenTonerLite';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'png'
-  });
+// export function stadiaStamenTonerLiteMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaStamenTonerLite';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 20,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'png'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaStamenWatercolorMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaStamenWatercolor';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.{ext}', {
-    minZoom: 1,
-    maxZoom: 16,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'jpg'
-  });
+// export function stadiaStamenWatercolorMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaStamenWatercolor';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.{ext}', {
+//     minZoom: 1,
+//     maxZoom: 16,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'jpg'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
-export function stadiaStamenTerrainMapLayer(map, selectedLayerName) {
-  let layerName = 'stadiaStamenTerrain';
-  let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.{ext}', {
-    minZoom: 0,
-    maxZoom: 18,
-    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    ext: 'png'
-  });
+// export function stadiaStamenTerrainMapLayer(map, selectedLayerName) {
+//   let layerName = 'stadiaStamenTerrain';
+//   let layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.{ext}', {
+//     minZoom: 0,
+//     maxZoom: 18,
+//     attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+//     ext: 'png'
+//   });
 
-  if (selectedLayerName === layerName) {
-    return layer.addTo(map);
-  } else {
-    return layer;
-  }
-}
+//   if (selectedLayerName === layerName) {
+//     return layer.addTo(map);
+//   } else {
+//     return layer;
+//   }
+// }
 
 export function cyclOsmMapLayer(map, selectedLayerName) {
   let layerName = 'cyclOsm';
