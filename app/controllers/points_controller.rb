@@ -4,14 +4,12 @@ class PointsController < ApplicationController
   before_action :authenticate_user!
 
   def index
-    order_by = params[:order_by] || 'desc'
-
     @points = points
-      .without_raw_data
-      .where(timestamp: start_at..end_at)
-      .order(timestamp: order_by)
-      .page(params[:page])
-      .per(50)
+              .without_raw_data
+              .where(timestamp: start_at..end_at)
+              .order(timestamp: order_by)
+              .page(params[:page])
+              .per(50)
 
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
@@ -22,7 +20,9 @@ class PointsController < ApplicationController
   def bulk_destroy
     current_user.tracked_points.where(id: params[:point_ids].compact).destroy_all
 
-    redirect_to points_url, notice: 'Points were successfully destroyed.', status: :see_other
+    redirect_to points_url(params.slice(:start_at, :end_at, :order_by, :import_id)),
+                notice: 'Points were successfully destroyed.',
+                status: :see_other
   end
 
   private
@@ -53,5 +53,9 @@ class PointsController < ApplicationController
 
   def points_from_user
     current_user.tracked_points
+  end
+
+  def order_by
+    params[:order_by] || 'desc'
   end
 end

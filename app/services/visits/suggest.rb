@@ -20,7 +20,7 @@ class Visits::Suggest
 
     create_visits_notification(user)
 
-    nil unless reverse_geocoding_enabled?
+    return nil unless reverse_geocoding_enabled?
 
     reverse_geocode(visits)
   end

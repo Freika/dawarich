@@ -23,7 +23,7 @@ RSpec.describe Points::GpxSerializer do
         point = points[index]
         expect(waypoint.lat).to eq(point.latitude)
         expect(waypoint.lon).to eq(point.longitude)
-        expect(waypoint.time).to eq(point.recorded_at.strftime('%FT%R:%SZ'))
+        expect(waypoint.time).to eq(point.recorded_at)
       end
     end
   end
