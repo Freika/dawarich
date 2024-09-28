@@ -20,7 +20,7 @@ class PointsController < ApplicationController
   def bulk_destroy
     current_user.tracked_points.where(id: params[:point_ids].compact).destroy_all
 
-    redirect_to points_url(params.slice(:start_at, :end_at, :order_by, :import_id)),
+    redirect_to points_url(preserved_params),
                 notice: 'Points were successfully destroyed.',
                 status: :see_other
   end
@@ -57,5 +57,9 @@ class PointsController < ApplicationController
 
   def order_by
     params[:order_by] || 'desc'
+  end
+
+  def preserved_params
+    params.to_enum.to_h.with_indifferent_access.slice(:start_at, :end_at, :order_by, :import_id)
   end
 end
