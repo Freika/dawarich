@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - GPX export now finishes correctly and does not throw an error in the end
-- Deleting points from the Points page now preserves `start_at` and `end_at` values for the routes
+- Deleting points from the Points page now preserves `start_at` and `end_at` values for the routes. #261
+- Visits map now being rendered correctly in the Visits page. #262
 
 ### Changed
 
