@@ -58,7 +58,7 @@ class Exports::Create
   def points_data(points)
     case file_format.to_sym
     when :json then process_geojson_export(points)
-    when :gpx then process_gpx_export(points)
+    when :gpx  then process_gpx_export(points)
     else raise ArgumentError, "Unsupported file format: #{file_format}"
     end
   end
@@ -75,6 +75,7 @@ class Exports::Create
     dir_path = Rails.root.join('public', 'exports')
     Dir.mkdir(dir_path) unless Dir.exist?(dir_path)
     file_path = dir_path.join("#{export.name}.#{file_format}")
+
     File.open(file_path, 'w') { |file| file.write(data) }
   end
 end

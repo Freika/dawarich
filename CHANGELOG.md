@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.14.5] - 2024-09-28
+
+### Fixed
+
+- GPX export now finishes correctly and does not throw an error in the end
+
+### Changed
+
+- Map layers from Stadia were disabled for now due to necessary API key
+
 # [0.14.4] - 2024-09-24
 
 ### Fixed
