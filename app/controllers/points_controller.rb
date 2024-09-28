@@ -44,14 +44,14 @@ class PointsController < ApplicationController
   end
 
   def points
-    params[:import_id] ? points_from_import : points_from_user
+    params[:import_id].present? ? import_points : user_points
   end
 
-  def points_from_import
+  def import_points
     current_user.imports.find(params[:import_id]).points
   end
 
-  def points_from_user
+  def user_points
     current_user.tracked_points
   end
 

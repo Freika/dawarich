@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Deleting points from the Points page now preserves `start_at` and `end_at` values for the routes. #261
 - Visits map now being rendered correctly in the Visits page. #262
 - Fixed issue with timezones for negative UTC offsets. #194, #122
+- Point page is no longer reloads losing provided timestamps when searching for points on Points page. #283
 
 ### Changed
 
