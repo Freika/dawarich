@@ -11,7 +11,7 @@ class Api::V1::PointsController < ApiController
              .order(:timestamp)
              .page(params[:page])
              .per(params[:per_page] || 100)
-    
+
     serialized_points = points.map { |point| point_serializer.new(point).call }
 
     response.set_header('X-Current-Page', points.current_page.to_s)
@@ -30,6 +30,6 @@ class Api::V1::PointsController < ApiController
   private
 
   def point_serializer
-    params[:slim] ? SlimPointSerializer : PointSerializer
+    params[:slim] == 'true' ? SlimPointSerializer : PointSerializer
   end
 end
