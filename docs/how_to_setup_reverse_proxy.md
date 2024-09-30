@@ -8,11 +8,26 @@ Make sure to exclude "http://" or "https://" from the environment variable. тЪая
 At the time of writing this, the way to set the environment variable is to edit the docker-compose.yml file. Find all APPLICATION_HOSTS entries in the docker-compose.yml file and make sure to include your domain name. Example:
 
 ```yaml
-  dawarich_app:
+dawarich_app:
     image: freikin/dawarich:latest
     container_name: dawarich_app
+    ...
     environment:
-      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1"
+      ...
+      APPLICATION_HOST: "yourhost.com" <------------------------------ Edit this
+      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
+```
+
+```yaml
+dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    ...
+    environment:
+      ...
+      APPLICATION_HOST: "yourhost.com" <------------------------------ Edit this
+      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
+      ...
 ```
 
 For a Synology install, refer to **[Synology Install Tutorial](How_to_install_Dawarich_on_Synology.md)**. In this page, it is explained how to set the APPLICATION_HOSTS environment variable.
@@ -24,12 +39,41 @@ Now that the app works with a domain name, the server needs to be set up to use 
 Below are examples of reverse proxy configurations.
 
 ### Nginx
-```
+```nginx
 server {
 
 	listen 80;
 	listen [::]:80;
 	server_name example.com;
+
+	brotli on;
+	brotli_comp_level 6;
+	brotli_types 
+		text/css
+		text/plain
+		text/xml
+		text/x-component
+		text/javascript
+		application/x-javascript
+		application/javascript
+		application/json
+		application/manifest+json
+		application/vnd.api+json
+		application/xml
+		application/xhtml+xml
+		application/rss+xml
+		application/atom+xml
+		application/vnd.ms-fontobject
+		application/x-font-ttf
+		application/x-font-opentype
+		application/x-font-truetype
+		image/svg+xml
+		image/x-icon
+		image/vnd.microsoft.icon
+		font/ttf
+		font/eot
+		font/otf
+		font/opentype;
 
 	location / {
 		proxy_set_header X-Real-IP $remote_addr;
@@ -54,29 +98,34 @@ For Apache2, you might need to enable some modules. Start by entering the follow
 sudo a2enmod proxy
 sudo a2enmod proxy_http
 sudo a2enmod headers
+sudo a2enmod brotli
 ```
 
 With the above commands entered, the configuration below should work properly.
 
-```
+```apache
 <VirtualHost *:80>
-    ServerName example.com
-
-    ProxyRequests Off
-    ProxyPreserveHost On
-
-    <Proxy *>
-        Require all granted
-    </Proxy>
-
-    Header always set X-Real-IP %{REMOTE_ADDR}s
-    Header always set X-Forwarded-For %{REMOTE_ADDR}s
-    Header always set X-Forwarded-Proto https
-    Header always set X-Forwarded-Server %{SERVER_NAME}s
-    Header always set Host %{HTTP_HOST}s
-
-    ProxyPass / http://127.0.0.1:3000/
-    ProxyPassReverse / http://127.0.0.1:3000/
+	ServerName example.com
+	
+	ProxyRequests Off
+	ProxyPreserveHost On
+	
+	<Proxy *>
+		Require all granted
+	</Proxy>
+	
+	Header always set X-Real-IP %{REMOTE_ADDR}s
+	Header always set X-Forwarded-For %{REMOTE_ADDR}s
+	Header always set X-Forwarded-Proto https
+	Header always set X-Forwarded-Server %{SERVER_NAME}s
+	Header always set Host %{HTTP_HOST}s
+	
+	SetOutputFilter BROTLI
+	AddOutputFilterByType BROTLI_COMPRESS text/css text/plain text/xml text/javascript application/javascript application/json application/manifest+json application/vnd.api+json application/xml application/xhtml+xml application/rss+xml application/atom+xml application/vnd.ms-fontobject application/x-font-ttf application/x-font-opentype application/x-font-truetype image/svg+xml image/x-icon image/vnd.microsoft.icon font/ttf font/eot font/otf font/opentype
+	BrotliCompressionQuality 6
+	
+	ProxyPass / http://127.0.0.1:3000/
+	ProxyPassReverse / http://127.0.0.1:3000/
 
 </VirtualHost>
 ```
@@ -94,97 +143,35 @@ Second, create a Docker network for Dawarich to use as the backend network:
 docker network create dawarich
 ```
 
-Adjust your Dawarich docker-compose.yaml so that the web app is exposed to your new network and the backend Dawarich network:
-```
-version: '3'
+Adjust the following part of your Dawarich docker-compose.yaml, so that the web app is exposed to your new network and the backend Dawarich network:
+```yaml
 networks:
   dawarich:
   frontend:
     external: true
 services:
-  dawarich_redis:
-    image: redis:7.0-alpine
-    command: redis-server
-    networks:
-      - dawarich
-    volumes:
-      - ./dawarich/redis:/var/shared/redis
-  dawarich_db:
-    image: postgres:14.2-alpine
-    container_name: dawarich_db
-    volumes:
-      - ./dawarich/db:/var/lib/postgresql/data
-      - ./dawarich/shared:/var/shared
-    networks:
-      - dawarich
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-  dawarich_app:
-    image: freikin/dawarich:latest
-    container_name: dawarich_app
-    volumes:
-      - ./dawarich/gems:/usr/local/bundle/gems
-      - ./dawarich/public:/var/app/public
-    networks:
-      - dawarich
-      - frontend
-    stdin_open: true
-    tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['bin/dev']
-    restart: on-failure
-    environment:
-      RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
-      MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOSTS: <YOUR FQDN HERE (ex. dawarich.example.com)>
-      TIME_ZONE: America/New_York
-    depends_on:
-      - dawarich_db
-      - dawarich_redis
-  dawarich_sidekiq:
-    image: freikin/dawarich:latest
-    container_name: dawarich_sidekiq
-    volumes:
-      - ./dawarich/gems:/usr/local/bundle/gems
-      - ./dawarich/public:/var/app/public
-    networks:
-      - dawarich
-    stdin_open: true
-    tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['sidekiq']
-    restart: on-failure
-    environment:
-      RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
-      APPLICATION_HOSTS: <YOUR FQDN HERE (ex. dawarich.example.com)>
-    depends_on:
-      - dawarich_db
-      - dawarich_redis
-      - dawarich_app
+  ...
 ```
 
 Lastly, edit your Caddy config as needed:
-```
+```caddy
 {
 	http_port 80
 	https_port 443
 }
 
-<YOUR FQDN HERE (ex. dawarich.example.com)> {
+timeline.example.com {
 	reverse_proxy dawarich_app:3000
+
+	encode brotli {
+		match {
+			content_type text/css text/plain text/xml text/x-component text/javascript application/x-javascript application/javascript application/json application/manifest+json application/vnd.api+json application/xml application/xhtml+xml application/rss+xml application/atom+xml application/vnd.ms-fontobject application/x-font-ttf application/x-font-opentype application/x-font-truetype image/svg+xml image/x-icon image/vnd.microsoft.icon font/ttf font/eot font/otf font/opentype
+		}
+	}
 }
+
 ```
+timeline.example.com is an example, use your own (sub) domain.
 
 ---
 

@@ -27,6 +27,11 @@ FactoryBot.define do
     country         { nil }
     user
 
+    trait :with_known_location do
+      latitude  { 55.755826 }
+      longitude { 37.6173 }
+    end
+
     trait :with_geodata do
       geodata do
         {

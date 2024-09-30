@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.14.6] - 2024-29-30
+
+### Fixed
+
+- Points imported from Google Location History (mobile devise) now have correct timestamps
+
+### Changed
+
+- `GET /api/v1/points?slim=true` now returns `id` attribute for each point
+
+# [0.14.5] - 2024-09-28
+
+### Fixed
+
+- GPX export now finishes correctly and does not throw an error in the end
+- Deleting points from the Points page now preserves `start_at` and `end_at` values for the routes. #261
+- Visits map now being rendered correctly in the Visits page. #262
+- Fixed issue with timezones for negative UTC offsets. #194, #122
+- Point page is no longer reloads losing provided timestamps when searching for points on Points page. #283
+
+### Changed
+
+- Map layers from Stadia were disabled for now due to necessary API key
+
 # [0.14.4] - 2024-09-24
 
 ### Fixed
