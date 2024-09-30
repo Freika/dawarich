@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Points imported from Google Location History (mobile devise) now have correct timestamps
 
+### Changed
+
+- `GET /api/v1/points?slim=true` now returns `id` attribute for each point
+
 # [0.14.5] - 2024-09-28
 
 ### Fixed
