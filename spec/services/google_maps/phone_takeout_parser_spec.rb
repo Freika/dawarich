@@ -29,6 +29,18 @@ RSpec.describe GoogleMaps::PhoneTakeoutParser do
         it 'creates points' do
           expect { parser }.to change { Point.count }.by(8)
         end
+
+        it 'creates points with correct data' do
+          parser
+
+          expect(Point.all[6].latitude).to eq(27.696576.to_d)
+          expect(Point.all[6].longitude).to eq(-97.376949.to_d)
+          expect(Point.all[6].timestamp).to eq(1_693_180_140)
+
+          expect(Point.last.latitude).to eq(27.709617.to_d)
+          expect(Point.last.longitude).to eq(-97.375988.to_d)
+          expect(Point.last.timestamp).to eq(1_693_180_320)
+        end
       end
     end
   end

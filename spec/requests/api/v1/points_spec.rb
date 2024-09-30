@@ -46,13 +46,13 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
     context 'when slim version of points is requested' do
       it 'renders a successful response' do
-        get api_v1_points_url(api_key: user.api_key, slim: true)
+        get api_v1_points_url(api_key: user.api_key, slim: 'true')
 
         expect(response).to be_successful
       end
 
       it 'returns a list of points' do
-        get api_v1_points_url(api_key: user.api_key, slim: true)
+        get api_v1_points_url(api_key: user.api_key, slim: 'true')
 
         expect(response).to have_http_status(:ok)
 
@@ -62,7 +62,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
 
       it 'returns a list of points with pagination' do
-        get api_v1_points_url(api_key: user.api_key, slim: true, page: 2, per_page: 10)
+        get api_v1_points_url(api_key: user.api_key, slim: 'true', page: 2, per_page: 10)
 
         expect(response).to have_http_status(:ok)
 
@@ -72,7 +72,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
 
       it 'returns a list of points with pagination headers' do
-        get api_v1_points_url(api_key: user.api_key, slim: true, page: 2, per_page: 10)
+        get api_v1_points_url(api_key: user.api_key, slim: 'true', page: 2, per_page: 10)
 
         expect(response).to have_http_status(:ok)
 
@@ -81,7 +81,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
 
       it 'returns a list of points with slim attributes' do
-        get api_v1_points_url(api_key: user.api_key, slim: true)
+        get api_v1_points_url(api_key: user.api_key, slim: 'true')
 
         expect(response).to have_http_status(:ok)
 

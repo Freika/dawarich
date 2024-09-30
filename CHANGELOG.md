@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.14.6] - 2024-29-30
+
+### Fixed
+
+- Points imported from Google Location History (mobile devise) now have correct timestamps
+
+### Changed
+
+- `GET /api/v1/points?slim=true` now returns `id` attribute for each point
+
 # [0.14.5] - 2024-09-28
 
 ### Fixed
