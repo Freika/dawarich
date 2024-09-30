@@ -74,7 +74,7 @@ class GoogleMaps::PhoneTakeoutParser
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
       altitude: raw_data['altitudeMeters'],
-      velocitu: raw_data['speedMetersPerSecond']
+      velocity: raw_data['speedMetersPerSecond']
     }
   end
 
@@ -103,7 +103,9 @@ class GoogleMaps::PhoneTakeoutParser
       lat, lon = parse_coordinates(point['point'])
       start_time = DateTime.parse(data_point['startTime'])
       offset = point['durationMinutesOffsetFromStartTime']
-      timestamp = offset.nil? ? start_time.to_i : start_time + point['durationMinutesOffsetFromStartTime'].to_i
+
+      timestamp = start_time
+      timestamp += offset.to_i.minutes if offset.present?
 
       point_hash(lat, lon, timestamp, data_point)
     end
