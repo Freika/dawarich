@@ -354,10 +354,12 @@ console.log(selectedLayerName);
 
       const timeBetweenPrev = Math.round((startPoint[4] - prevPoint[4]) / 60);
       const timeBetweenNext = Math.round((endPoint[4] - nextPoint[4]) / 60);
+      const pointsNumber = polylineCoordinates.length;
 
       popupContent += `
         <b>Prev Route:</b> ${Math.round(distanceToPrev)}m and ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
         <b>Next Route:</b> ${Math.round(distanceToNext)}m and ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
+        <b>Points:</b> ${pointsNumber}<br>
       `;
     }
 
