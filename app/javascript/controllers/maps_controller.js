@@ -10,16 +10,16 @@ import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
 import { OPNVMapLayer } from "../maps/layers";
 import { openTopoMapLayer } from "../maps/layers";
-import { stadiaAlidadeSmoothMapLayer } from "../maps/layers";
-import { stadiaAlidadeSmoothDarkMapLayer } from "../maps/layers";
-import { stadiaAlidadeSatelliteMapLayer } from "../maps/layers";
-import { stadiaOsmBrightMapLayer } from "../maps/layers";
-import { stadiaOutdoorMapLayer } from "../maps/layers";
-import { stadiaStamenTonerMapLayer } from "../maps/layers";
-import { stadiaStamenTonerBackgroundMapLayer } from "../maps/layers";
-import { stadiaStamenTonerLiteMapLayer } from "../maps/layers";
-import { stadiaStamenWatercolorMapLayer } from "../maps/layers";
-import { stadiaStamenTerrainMapLayer } from "../maps/layers";
+// import { stadiaAlidadeSmoothMapLayer } from "../maps/layers";
+// import { stadiaAlidadeSmoothDarkMapLayer } from "../maps/layers";
+// import { stadiaAlidadeSatelliteMapLayer } from "../maps/layers";
+// import { stadiaOsmBrightMapLayer } from "../maps/layers";
+// import { stadiaOutdoorMapLayer } from "../maps/layers";
+// import { stadiaStamenTonerMapLayer } from "../maps/layers";
+// import { stadiaStamenTonerBackgroundMapLayer } from "../maps/layers";
+// import { stadiaStamenTonerLiteMapLayer } from "../maps/layers";
+// import { stadiaStamenWatercolorMapLayer } from "../maps/layers";
+// import { stadiaStamenTerrainMapLayer } from "../maps/layers";
 import { cyclOsmMapLayer } from "../maps/layers";
 import { esriWorldStreetMapLayer } from "../maps/layers";
 import { esriWorldTopoMapLayer } from "../maps/layers";
@@ -143,16 +143,16 @@ console.log(selectedLayerName);
       "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
       OPNV: OPNVMapLayer(this.map, selectedLayerName),
       openTopo: openTopoMapLayer(this.map, selectedLayerName),
-      stadiaAlidadeSmooth: stadiaAlidadeSmoothMapLayer(this.map, selectedLayerName),
-      stadiaAlidadeSmoothDark: stadiaAlidadeSmoothDarkMapLayer(this.map, selectedLayerName),
-      stadiaAlidadeSatellite: stadiaAlidadeSatelliteMapLayer(this.map, selectedLayerName),
-      stadiaOsmBright: stadiaOsmBrightMapLayer(this.map, selectedLayerName),
-      stadiaOutdoor: stadiaOutdoorMapLayer(this.map, selectedLayerName),
-      stadiaStamenToner: stadiaStamenTonerMapLayer(this.map, selectedLayerName),
-      stadiaStamenTonerBackground: stadiaStamenTonerBackgroundMapLayer(this.map, selectedLayerName),
-      stadiaStamenTonerLite: stadiaStamenTonerLiteMapLayer(this.map, selectedLayerName),
-      stadiaStamenWatercolor: stadiaStamenWatercolorMapLayer(this.map, selectedLayerName),
-      stadiaStamenTerrain: stadiaStamenTerrainMapLayer(this.map, selectedLayerName),
+      // stadiaAlidadeSmooth: stadiaAlidadeSmoothMapLayer(this.map, selectedLayerName),
+      // stadiaAlidadeSmoothDark: stadiaAlidadeSmoothDarkMapLayer(this.map, selectedLayerName),
+      // stadiaAlidadeSatellite: stadiaAlidadeSatelliteMapLayer(this.map, selectedLayerName),
+      // stadiaOsmBright: stadiaOsmBrightMapLayer(this.map, selectedLayerName),
+      // stadiaOutdoor: stadiaOutdoorMapLayer(this.map, selectedLayerName),
+      // stadiaStamenToner: stadiaStamenTonerMapLayer(this.map, selectedLayerName),
+      // stadiaStamenTonerBackground: stadiaStamenTonerBackgroundMapLayer(this.map, selectedLayerName),
+      // stadiaStamenTonerLite: stadiaStamenTonerLiteMapLayer(this.map, selectedLayerName),
+      // stadiaStamenWatercolor: stadiaStamenWatercolorMapLayer(this.map, selectedLayerName),
+      // stadiaStamenTerrain: stadiaStamenTerrainMapLayer(this.map, selectedLayerName),
       cyclOsm: cyclOsmMapLayer(this.map, selectedLayerName),
       esriWorldStreet: esriWorldStreetMapLayer(this.map, selectedLayerName),
       esriWorldTopo: esriWorldTopoMapLayer(this.map, selectedLayerName),

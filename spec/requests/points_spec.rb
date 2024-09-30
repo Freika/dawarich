@@ -56,5 +56,12 @@ RSpec.describe '/points', type: :request do
 
       expect(response).to redirect_to(points_url)
     end
+
+    it 'preserves the start_at and end_at parameters' do
+      delete bulk_destroy_points_url,
+             params: { point_ids: [point1.id, point2.id], start_at: '2021-01-01', end_at: '2021-01-02' }
+
+      expect(response).to redirect_to(points_url(start_at: '2021-01-01', end_at: '2021-01-02'))
+    end
   end
 end

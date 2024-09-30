@@ -14,7 +14,7 @@ export default class extends Controller {
     this.radius = this.element.dataset.radius;
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 17);
 
-    osmMapLayer(this.map),
+    osmMapLayer(this.map, "OpenStreetMap")
     this.addMarkers();
 
     L.circle([this.center[0], this.center[1]], {

@@ -12,7 +12,7 @@ class Points::GpxSerializer
       gpx.waypoints << GPX::Waypoint.new(
         lat: point.latitude.to_f,
         lon: point.longitude.to_f,
-        time: point.recorded_at.strftime('%FT%R:%SZ'),
+        time: point.recorded_at,
         ele: point.altitude.to_f
       )
     end

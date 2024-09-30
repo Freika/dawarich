@@ -14,7 +14,7 @@
 
 #### **Did you fix whitespace, format code, or make a purely cosmetic patch?**
 
-Changes that are cosmetic in nature and do not add anything substantial to the stability, functionality, or testability of Dawarich will generally not be accepted.
+Changes that are cosmetic in nature and do not add anything substantial to the stability, functionality, or testability of Dawarich will generally not be accepted. Same goes for chore changes, like updating dependencies, fixing typos, etc.
 
 #### **Do you intend to add a new feature or change an existing one?**
 

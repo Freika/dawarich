@@ -13,14 +13,16 @@ RSpec.describe Exports::Create do
     let(:export_name)     { "#{start_at.to_date}_#{end_at.to_date}" }
     let(:export)          { create(:export, user:, name: export_name, status: :created) }
     let(:export_content)  { Points::GeojsonSerializer.new(points).call }
-    let!(:points)         { create_list(:point, 10, user:, timestamp: start_at.to_datetime.to_i) }
+    let!(:points) do
+      create_list(:point, 10, :with_known_location, user:, timestamp: start_at.to_datetime.to_i)
+    end
 
     it 'writes the data to a file' do
       create_export
 
       file_path = Rails.root.join('spec/fixtures/files/geojson/export_same_points.json')
 
-      expect(File.read(file_path)).to eq(export_content)
+      expect(File.read(file_path).strip).to eq(export_content)
     end
 
     it 'updates the export url' do
