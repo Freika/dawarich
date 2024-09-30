@@ -11,14 +11,14 @@ module ApplicationHelper
   end
 
   def year_timespan(year)
-    start_at = Time.utc(year).in_time_zone(Time.zone).beginning_of_year.strftime('%Y-%m-%dT%H:%M')
-    end_at = Time.utc(year).in_time_zone(Time.zone).end_of_year.strftime('%Y-%m-%dT%H:%M')
+    start_at = Time.new(year).beginning_of_year.strftime('%Y-%m-%dT%H:%M')
+    end_at = Time.new(year).end_of_year.strftime('%Y-%m-%dT%H:%M')
 
     { start_at:, end_at: }
   end
 
   def timespan(month, year)
-    month = DateTime.new(year, month).in_time_zone(Time.zone)
+    month = DateTime.new(year, month)
     start_at = month.beginning_of_month.to_time.strftime('%Y-%m-%dT%H:%M')
     end_at = month.end_of_month.to_time.strftime('%Y-%m-%dT%H:%M')
 

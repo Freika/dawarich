@@ -1,7 +1,7 @@
 <% content_for :title, 'Points' %>
 
 <div class="w-full">
-  <%= form_with url: points_path(import_id: params[:import_id]), method: :get do |f| %>
+  <%= form_with url: points_path(import_id: params[:import_id]), data: { turbo_method: :get }, method: :get do |f| %>
     <div class="flex flex-col md:flex-row md:space-x-4 md:items-end">
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2">
@@ -28,12 +28,12 @@
       </div>
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2 text-center">
-          <%= link_to 'Export as GeoJSON', exports_path(start_at: @start_at, end_at: @end_at, file_format: :json), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points withing timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "px-4 py-2 bg-green-500 text-white rounded-md join-item" %>
+          <%= link_to 'Export as GeoJSON', exports_path(start_at: @start_at, end_at: @end_at, file_format: :json), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "px-4 py-2 bg-green-500 text-white rounded-md join-item" %>
         </div>
       </div>
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2 text-center">
-          <%= link_to 'Export as GPX', exports_path(start_at: @start_at, end_at: @end_at, file_format: :gpx), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points withing timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "px-4 py-2 bg-green-500 text-white rounded-md join-item" %>
+          <%= link_to 'Export as GPX', exports_path(start_at: @start_at, end_at: @end_at, file_format: :gpx), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "px-4 py-2 bg-green-500 text-white rounded-md join-item" %>
         </div>
       </div>
     </div>

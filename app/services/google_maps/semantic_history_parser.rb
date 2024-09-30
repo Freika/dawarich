@@ -57,15 +57,15 @@ class GoogleMaps::SemanticHistoryParser
           }
         end
       elsif timeline_object['placeVisit'].present?
-        if timeline_object['placeVisit']['location']['latitudeE7'].present? &&
-           timeline_object['placeVisit']['location']['longitudeE7'].present?
+        if timeline_object.dig('placeVisit', 'location', 'latitudeE7').present? &&
+           timeline_object.dig('placeVisit', 'location', 'longitudeE7').present?
           {
             latitude: timeline_object['placeVisit']['location']['latitudeE7'].to_f / 10**7,
             longitude: timeline_object['placeVisit']['location']['longitudeE7'].to_f / 10**7,
             timestamp: Timestamps::parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
-        elsif timeline_object['placeVisit']['otherCandidateLocations'].any?
+        elsif timeline_object.dig('placeVisit', 'otherCandidateLocations')&.any?
           point = timeline_object['placeVisit']['otherCandidateLocations'][0]
 
           next unless point['latitudeE7'].present? && point['longitudeE7'].present?

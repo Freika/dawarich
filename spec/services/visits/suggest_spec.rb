@@ -10,21 +10,21 @@ RSpec.describe Visits::Suggest do
 
     let!(:points) do
       [
-        create(:point, user:, timestamp: start_at),
-        create(:point, user:, timestamp: start_at + 5.minutes),
-        create(:point, user:, timestamp: start_at + 10.minutes),
-        create(:point, user:, timestamp: start_at + 15.minutes),
-        create(:point, user:, timestamp: start_at + 20.minutes),
-        create(:point, user:, timestamp: start_at + 25.minutes),
-        create(:point, user:, timestamp: start_at + 30.minutes),
-        create(:point, user:, timestamp: start_at + 35.minutes),
-        create(:point, user:, timestamp: start_at + 40.minutes),
-        create(:point, user:, timestamp: start_at + 45.minutes),
-        create(:point, user:, timestamp: start_at + 50.minutes),
-        create(:point, user:, timestamp: start_at + 55.minutes),
-        create(:point, user:, timestamp: start_at + 95.minutes),
-        create(:point, user:, timestamp: start_at + 100.minutes),
-        create(:point, user:, timestamp: start_at + 105.minutes)
+        create(:point, :with_known_location, user:, timestamp: start_at),
+        create(:point, :with_known_location, user:, timestamp: start_at + 5.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 10.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 15.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 20.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 25.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 30.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 35.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 40.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 45.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 50.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 55.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 95.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 100.minutes),
+        create(:point, :with_known_location, user:, timestamp: start_at + 105.minutes)
       ]
     end
 
