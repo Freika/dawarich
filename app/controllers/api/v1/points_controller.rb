@@ -31,6 +31,6 @@ class Api::V1::PointsController < ApiController
   private
 
   def point_serializer
-    params[:slim] == 'true' ? SlimPointSerializer : PointSerializer
+    params[:slim] == 'true' ? Api::SlimPointSerializer : Api::PointSerializer
   end
 end
