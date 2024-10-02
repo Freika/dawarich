@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Now you can use http protocol for the Photon API host if you don't have SSL certificate for it
 - For stats, total distance per month might have been not equal to the sum of distances per day. Now it's fixed and values are equal
+- Mobile view of the map looks better now
 
 
 ### Changed
