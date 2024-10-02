@@ -37,14 +37,14 @@ RSpec.describe '/exports', type: :request do
     before { sign_in user }
 
     context 'with valid parameters' do
-      let(:points) { create_list(:point, 10, user: user, timestamp: 1.day.ago) }
+      let(:points) { create_list(:point, 10, user:, timestamp: 1.day.ago) }
 
       it 'creates a new Export' do
-        expect { post exports_url, params: params }.to change(Export, :count).by(1)
+        expect { post exports_url, params: }.to change(Export, :count).by(1)
       end
 
       it 'redirects to the exports index page' do
-        post exports_url, params: params
+        post(exports_url, params:)
 
         expect(response).to redirect_to(exports_url)
       end
@@ -52,7 +52,7 @@ RSpec.describe '/exports', type: :request do
       it 'enqeuues a job to process the export' do
         ActiveJob::Base.queue_adapter = :test
 
-        expect { post exports_url, params: params }.to have_enqueued_job(ExportJob)
+        expect { post exports_url, params: }.to have_enqueued_job(ExportJob)
       end
     end
 
@@ -60,11 +60,11 @@ RSpec.describe '/exports', type: :request do
       let(:params) { { start_at: nil, end_at: nil } }
 
       it 'does not create a new Export' do
-        expect { post exports_url, params: params }.to change(Export, :count).by(0)
+        expect { post exports_url, params: }.to change(Export, :count).by(0)
       end
 
       it 'renders a response with 422 status (i.e. to display the "new" template)' do
-        post exports_url, params: params
+        post(exports_url, params:)
 
         expect(response).to have_http_status(:unprocessable_entity)
       end
