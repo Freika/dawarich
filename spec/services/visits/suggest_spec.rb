@@ -42,12 +42,6 @@ RSpec.describe Visits::Suggest do
       expect { subject }.to change(Notification, :count).by(1)
     end
 
-    it 'reverse geocodes visits' do
-      expect_any_instance_of(Visit).to receive(:async_reverse_geocode).and_call_original
-
-      subject
-    end
-
     context 'when reverse geocoding is enabled' do
       before do
         stub_const('REVERSE_GEOCODING_ENABLED', true)
@@ -56,6 +50,18 @@ RSpec.describe Visits::Suggest do
 
       it 'reverse geocodes visits' do
         expect_any_instance_of(Visit).to receive(:async_reverse_geocode).and_call_original
+
+        subject
+      end
+    end
+
+    context 'when reverse geocoding is disabled' do
+      before do
+        stub_const('REVERSE_GEOCODING_ENABLED', false)
+      end
+
+      it 'does not reverse geocode visits' do
+        expect_any_instance_of(Visit).not_to receive(:async_reverse_geocode)
 
         subject
       end
