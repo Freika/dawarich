@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Now you can use http protocol for the Photon API host if you don't have SSL certificate for it
+- For stats, total distance per month might have been not equal to the sum of distances per day. Now it's fixed and values are equal
+
+### Added
+
+- `GET /api/v1/points` can now accept optional `?order=asc` query parameter to return points in ascending order by timestamp. `?order=desc` is still available to return points in descending order by timestamp.
 
 # [0.14.6] - 2024-29-30
 
