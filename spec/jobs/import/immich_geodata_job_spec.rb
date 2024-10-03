@@ -2,14 +2,14 @@
 
 require 'rails_helper'
 
-RSpec.describe ImportImmichGeodataJob, type: :job do
+RSpec.describe Import::ImmichGeodataJob, type: :job do
   describe '#perform' do
     let(:user) { create(:user) }
 
     it 'calls Immich::ImportGeodata' do
       expect_any_instance_of(Immich::ImportGeodata).to receive(:call)
 
-      ImportImmichGeodataJob.perform_now(user.id)
+      Import::ImmichGeodataJob.perform_now(user.id)
     end
   end
 end

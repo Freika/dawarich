@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class ImportImmichGeodataJob < ApplicationJob
+class Import::ImmichGeodataJob < ApplicationJob
   queue_as :imports
 
   def perform(user_id)

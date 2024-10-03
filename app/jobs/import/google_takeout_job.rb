@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class ImportGoogleTakeoutJob < ApplicationJob
+class Import::GoogleTakeoutJob < ApplicationJob
   queue_as :imports
   sidekiq_options retry: false
 
