@@ -24,16 +24,23 @@
 /tmp/storage/*
 !/tmp/storage/
 !/tmp/storage/.keep
+/tmp/imports/*
+!/tmp/imports/
+!/tmp/imports/watched/
+!/tmp/imports/watched/.keep
+!/tmp/imports/watched/put-your-files-here.txt
+
 
 /public/assets
 
-# We need directories for import and export files, but not the files themselves.
+# Ignore all files under /public/exports except the .keep file
 /public/exports/*
 !/public/exports/.keep
+!/public/exports/
+
+# Ignore all files under /public/imports, but keep .keep files and the watched directory
 /public/imports/*
 !/public/imports/.keep
-!/public/imports/watched/.keep
-!/public/imports/watched/put-your-files-here.txt
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
