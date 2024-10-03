@@ -1,5 +1,13 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Import::WatcherJob, type: :job do
-  pending "add some examples to (or delete) #{__FILE__}"
+  describe '#perform' do
+    it 'calls Imports::Watcher' do
+      expect_any_instance_of(Imports::Watcher).to receive(:call)
+
+      described_class.perform_now
+    end
+  end
 end

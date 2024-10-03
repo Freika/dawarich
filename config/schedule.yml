@@ -1,21 +1,21 @@
 # config/schedule.yml
 
 stat_creating_job:
-  cron: "0 */6 * * *" # every 6 hours
+  cron: "0 */6 * * *" # every 6 hour
   class: "StatCreatingJob"
-  queue: default
+  queue: stats
 
 area_visits_calculation_scheduling_job:
   cron: "0 0 * * *" # every day at 0:00
   class: "AreaVisitsCalculationSchedulingJob"
-  queue: default
+  queue: visit_suggesting
 
 visit_suggesting_job:
   cron: "0 1 * * *" # every day at 1:00
   class: "VisitSuggestingJob"
-  queue: default
+  queue: visit_suggesting
 
 watcher_job:
   cron: "0 */1 * * *" # every 1 hour
   class: "Import::WatcherJob"
-  queue: default
+  queue: imports

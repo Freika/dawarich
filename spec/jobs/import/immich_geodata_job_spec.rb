@@ -9,7 +9,7 @@ RSpec.describe Import::ImmichGeodataJob, type: :job do
     it 'calls Immich::ImportGeodata' do
       expect_any_instance_of(Immich::ImportGeodata).to receive(:call)
 
-      Import::ImmichGeodataJob.perform_now(user.id)
+      described_class.perform_now(user.id)
     end
   end
 end

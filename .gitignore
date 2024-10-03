@@ -26,6 +26,7 @@
 !/tmp/storage/.keep
 /tmp/imports/*
 !/tmp/imports/
+/tmp/imports/watched/*
 !/tmp/imports/watched/
 !/tmp/imports/watched/.keep
 !/tmp/imports/watched/put-your-files-here.txt
