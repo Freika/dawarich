@@ -2,6 +2,7 @@
 
 class AreaVisitsCalculatingJob < ApplicationJob
   queue_as :default
+  sidekiq_options retry: false
 
   def perform(user_id)
     user = User.find(user_id)
