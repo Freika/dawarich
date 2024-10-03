@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.15.0 - 2024-10-03
 
+## The Watcher release
+
+The /public/imporst/watched/ directory is watched by Dawarich. Any files you put in this directory will be imported into the database. The name of the file must start with an email of the user you want to import the file for. The email must be followed by an underscore symbol (_) and the name of the file.
+
+For example, if you want to import a file for the user with the email address "email@dawarich.app", you would name the file "email@dawarich.app_2024-05-01_2024-05-31.gpx". The file will be imported into the database and the user will receive a notification in the app.
+
+Both GeoJSON and GPX files are supported.
+
+
 ### Added
 
 - You can now put your GPX and GeoJSON files to `tmp/imports/watched` directory and Dawarich will automatically import them. This is useful if you have a service that can put files to the directory automatically. The directory is being watched every 60 minutes for new files.
