@@ -8,7 +8,7 @@ class Imports::Watcher
   def call
     %w[*.gpx *.json].each do |pattern|
       Dir[WATCHED_DIR_PATH.join(pattern)].each do |file_path|
-        # valid file_path example: "email@dawarich.app_2024-01-01-2024-01-31.json"
+        # valid file_name example: "email@dawarich.app_2024-01-01-2024-01-31.json"
         file_name = File.basename(file_path)
 
         user = find_user(file_name)

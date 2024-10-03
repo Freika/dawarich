@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Monkey patch for Geocoder to support http along with https for Photon API host was removed becausee it was breaking the reverse geocoding process. Now you can use only https for the Photon API host. This might be changed in the future
+- Disable retries for some background jobs
 
 ### Fixed
 
