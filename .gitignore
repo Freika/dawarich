@@ -32,6 +32,8 @@
 !/public/exports/.keep
 /public/imports/*
 !/public/imports/.keep
+!/public/imports/watched/.keep
+!/public/imports/watched/put-your-files-here.txt
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
