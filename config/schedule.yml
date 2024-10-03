@@ -14,3 +14,8 @@ visit_suggesting_job:
   cron: "0 1 * * *" # every day at 1:00
   class: "VisitSuggestingJob"
   queue: default
+
+watcher_job:
+  cron: "0 */1 * * *" # every 1 hour
+  class: "Import::WatcherJob"
+  queue: default
