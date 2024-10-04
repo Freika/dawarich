@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.1 - 2024-10-04
+
+### Added
+
+- `linux/arm/v7` is added to the list of supported architectures to support Raspberry Pi 4 and other ARMv7 devices
+
 # 0.15.0 - 2024-10-03
 
 ## The Watcher release
