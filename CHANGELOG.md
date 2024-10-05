@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.3 - 2024-10-05
+
+### Changed
+
+- Watcher now looks into `/tmp/imports/watched/USER@EMAIL.TLD` directory instead of `/tmp/imports/watched/` to allow using arbitrary file names for imports
+
 # 0.15.1 - 2024-10-04
 
 ### Added

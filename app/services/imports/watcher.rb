@@ -6,31 +6,52 @@ class Imports::Watcher
   WATCHED_DIR_PATH = Rails.root.join('tmp/imports/watched')
 
   def call
-    %w[*.gpx *.json].each do |pattern|
-      Dir[WATCHED_DIR_PATH.join(pattern)].each do |file_path|
-        # valid file_name example: "email@dawarich.app_2024-01-01-2024-01-31.json"
-        file_name = File.basename(file_path)
+    user_directories.each do |user_email|
+      user = User.find_by(email: user_email)
+      next unless user
 
-        user = find_user(file_name)
-        next unless user
+      user_directory_path = File.join(WATCHED_DIR_PATH, user_email)
+      file_names = file_names(user_directory_path)
 
-        import = find_or_initialize_import(user, file_name)
-
-        next if import.persisted?
-
-        import_id = set_import_attributes(import, file_path, file_name)
-
-        ImportJob.perform_later(user.id, import_id)
+      file_names.each do |file_name|
+        process_file(user, user_directory_path, file_name)
       end
     end
   end
 
   private
 
+  def user_directories
+    Dir.entries(WATCHED_DIR_PATH).select do |entry|
+      path = File.join(WATCHED_DIR_PATH, entry)
+      File.directory?(path) && !['.', '..'].include?(entry)
+    end
+  end
+
   def find_user(file_name)
     email = file_name.split('_').first
 
     User.find_by(email:)
+  end
+
+  def file_names(directory_path)
+    Dir.entries(directory_path).select do |file|
+      ['.gpx', '.json'].include?(File.extname(file))
+    end
+  end
+
+  def process_file(user, directory_path, file_name)
+    file_path = File.join(directory_path, file_name)
+    import = Import.find_or_initialize_by(user:, name: file_name)
+
+    return if import.persisted?
+
+    import.source = source(file_name)
+    import.raw_data = raw_data(file_path, import.source)
+
+    import.save!
+
+    ImportJob.perform_later(user.id, import.id)
   end
 
   def find_or_initialize_import(user, file_name)
@@ -61,6 +82,6 @@ class Imports::Watcher
   def raw_data(file_path, source)
     file = File.read(file_path)
 
-    source == :gpx ? Hash.from_xml(file) : JSON.parse(file)
+    source.to_sym == :gpx ? Hash.from_xml(file) : JSON.parse(file)
   end
 end
