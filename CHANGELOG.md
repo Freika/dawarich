@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.15.3 - 2024-10-05
 
+To expose the watcher functionality to the user, a new directory `/tmp/imports/watched/` was created. Add new volume to the `docker-compose.yml` file to expose this directory to the host machine.
+
+```diff
+  ...
+
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
+      - public:/var/app/public
++     - watched:/var/app/tmp/watched
+
+  ...
+
+  dawarich_sidekiq:
+      image: freikin/dawarich:latest
+      container_name: dawarich_sidekiq
+      volumes:
+        - gem_cache:/usr/local/bundle/gems
+        - public:/var/app/public
++       - watched:/var/app/tmp/watched
+
+    ...
+```
+
 ### Changed
 
 - Watcher now looks into `/tmp/imports/watched/USER@EMAIL.TLD` directory instead of `/tmp/imports/watched/` to allow using arbitrary file names for imports
