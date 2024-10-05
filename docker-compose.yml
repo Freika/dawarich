@@ -1,112 +1,158 @@
 networks:
   dawarich:
+
+
+volumes:
+  dawarich-app-cache:
+    name: dawarich-app-cache
+  dawarich-sidekiq-cache:
+    name: dawarich-sidekiq-cache
+  dawarich-public:
+    name: dawarich-public
+  dawarich-keydb:
+    name: dawarich-keydb
+  dawarich-shared:
+    name: dawarich-shared
+  watched:
+    name: dawarich-watched
+
 services:
-  dawarich_redis:
-    image: redis:7.0-alpine
-    command: redis-server
-    networks:
-      - dawarich
-    volumes:
-      - shared_data:/var/shared/redis
-    restart: always
-  dawarich_db:
-    image: postgres:14.2-alpine
-    container_name: dawarich_db
-    volumes:
-      - db_data:/var/lib/postgresql/data
-      - shared_data:/var/shared
-    networks:
-      - dawarich
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-    restart: always
-  dawarich_app:
-    image: freikin/dawarich:latest
-    container_name: dawarich_app
-    volumes:
-      - gem_cache:/usr/local/bundle/gems
-      - public:/var/app/public
-      - watched:/var/app/tmp/imports/watched
+  app:
+    container_name: dawarich
+    image: freikin/dawarich:0.15.3
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      keydb:
+        condition: service_healthy
     networks:
       - dawarich
     ports:
       - 3000:3000
-    stdin_open: true
-    tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['bin/dev']
-    restart: on-failure
     environment:
+      TIME_ZONE: Europe/Stockholm
       RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
+      REDIS_URL: redis://keydb:6379/0
+      DATABASE_HOST: db
       DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: dawarich
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
-      TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "5"
-    depends_on:
-      - dawarich_db
-      - dawarich_redis
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'    # Limit CPU usage to 50% of one core
-          memory: '2G'    # Limit memory usage to 2GB
-  dawarich_sidekiq:
-    image: freikin/dawarich:latest
-    container_name: dawarich_sidekiq
-    volumes:
-      - gem_cache:/usr/local/bundle/gems
-      - public:/var/app/public
-      - watched:/var/app/tmp/imports/watched
-    networks:
-      - dawarich
     stdin_open: true
     tty: true
     entrypoint: dev-entrypoint.sh
-    command: ['sidekiq']
-    restart: on-failure
+    command: [ 'bin/dev' ]
+    volumes:
+      - dawarich-app-cache:/usr/local/bundle/gems
+      - dawarich-public:/var/app/dawarich_public
+      - watched:/var/app/tmp/imports/watched
+    healthcheck:
+      test: "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1"
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50' # Limit CPU usage to 50% of one core
+          memory: '2G' # Limit memory usage to 2GB
+
+  sidekiq:
+    container_name: dawarich_sidekiq
+    hostname: sidekiq
+    image: freikin/dawarich:0.15.3
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      keydb:
+        condition: service_healthy
+    networks:
+      - dawarich
     environment:
       RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
+      REDIS_URL: redis://keydb:6379/0
+      DATABASE_HOST: db
       DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
+      DATABASE_PASSWORD: postgres
       DATABASE_NAME: dawarich_development
       APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
+    stdin_open: true
+    tty: true
+    entrypoint: dev-entrypoint.sh
+    command: [ 'sidekiq' ]
+    volumes:
+      - dawarich-sidekiq-cache:/usr/local/bundle/gems
+      - dawarich-public:/var/app/dawarich_public
+      - watched:/var/app/tmp/imports/watched
     logging:
       driver: "json-file"
       options:
         max-size: "100m"
         max-file: "5"
-    depends_on:
-      - dawarich_db
-      - dawarich_redis
-      - dawarich_app
     deploy:
       resources:
         limits:
-          cpus: '0.50'    # Limit CPU usage to 50% of one core
-          memory: '2G'    # Limit memory usage to 2GB
+          cpus: '0.50' # Limit CPU usage to 50% of one core
+          memory: '2G' # Limit memory usage to 2GB
 
-volumes:
-  db_data:
-  gem_cache:
-  shared_data:
-  public:
-  watched:
+  keydb:
+    container_name: dawarich-keydb
+    image: eqalpha/keydb:x86_64_v6.3.4
+    restart: unless-stopped
+    networks:
+      - dawarich
+    environment:
+      - TZ=Europe/Berlin
+      - PUID=1000
+      - PGID=1000
+    command: keydb-server /etc/keydb/keydb.conf --appendonly yes --server-threads 4 --active-replica no
+    volumes:
+      - dawarich-keydb:/data
+      - dawarich-shared:/var/shared/redis
+    healthcheck:
+      test: [ "CMD", "keydb-cli", "ping" ]
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  db:
+    container_name: dawarich-db
+    hostname: db
+
+    image: postgres:16.4-alpine3.20
+    restart: unless-stopped
+    networks:
+      - dawarich
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: eJH3YZsVc2s6byhFwpEny
+      POSTGRES_DATABASE: dawarich
+
+    volumes:
+      - ./db:/var/lib/postgresql/data
+      - dawarich-shared:/var/shared
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -q -d $${POSTGRES_DATABASE} -U $${POSTGRES_USER} -h localhost" ]
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    ports:
+      - 5555:5432
