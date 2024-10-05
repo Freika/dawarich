@@ -29,7 +29,7 @@
 /tmp/imports/watched/*
 !/tmp/imports/watched/
 !/tmp/imports/watched/.keep
-!/tmp/imports/watched/put-your-files-here.txt
+!/tmp/imports/watched/put-your-directory-here.txt
 
 
 /public/assets

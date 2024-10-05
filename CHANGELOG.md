@@ -31,6 +31,13 @@ To expose the watcher functionality to the user, a new directory `/tmp/imports/w
 +       - watched:/var/app/tmp/watched
 
     ...
+
+volumes:
+  db_data:
+  gem_cache:
+  shared_data:
+  public:
++ watched:
 ```
 
 ### Changed

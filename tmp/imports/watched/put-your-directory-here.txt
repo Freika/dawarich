@@ -1,0 +1,4 @@
+The /tmp/imports/watched/USER@EMAIL.TLD directory is watched by Dawarich. Any files you put in this directory under a directory names with the email of the user you want to import the file for will be imported into the database.
+
+For example, if you want to import a file for the user with the email address "email@dawarich.app", you would place the file in the directory /tmp/imports/watched/email@dawarich.app. The file you place in this directory should be a GeoJSON or GPX file that contains the data you want to import. Dawarich automatically scans directories for new files every 60 minutes, on 0 minute of every hour, so you should see the file imported into the database within 1 hour of placing it in the directory.
+

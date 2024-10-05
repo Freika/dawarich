@@ -27,7 +27,7 @@ services:
     volumes:
       - gem_cache:/usr/local/bundle/gems
       - public:/var/app/public
-      - watched:/var/app/tmp/watched
+      - watched:/var/app/tmp/imports/watched
     networks:
       - dawarich
     ports:
@@ -69,7 +69,7 @@ services:
     volumes:
       - gem_cache:/usr/local/bundle/gems
       - public:/var/app/public
-      - watched:/var/app/tmp/watched
+      - watched:/var/app/tmp/imports/watched
     networks:
       - dawarich
     stdin_open: true
@@ -109,3 +109,4 @@ volumes:
   gem_cache:
   shared_data:
   public:
+  watched:
