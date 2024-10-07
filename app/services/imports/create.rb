@@ -40,6 +40,10 @@ class Imports::Create
 
   def schedule_visit_suggesting(user_id, import)
     points = import.points.order(:timestamp)
+
+    # Return early if there are no points
+    return unless points.exists?
+
     start_at = Time.zone.at(points.first.timestamp)
     end_at = Time.zone.at(points.last.timestamp)
 
