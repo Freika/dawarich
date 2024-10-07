@@ -346,6 +346,12 @@ paths:
         description: Number of points per page
         schema:
           type: integer
+      - name: order
+        in: query
+        required: false
+        description: Order of points, valid values are `asc` or `desc`
+        schema:
+          type: string
       responses:
         '200':
           description: points found

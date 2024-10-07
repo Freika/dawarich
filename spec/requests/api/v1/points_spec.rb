@@ -88,8 +88,30 @@ RSpec.describe 'Api::V1::Points', type: :request do
         json_response = JSON.parse(response.body)
 
         json_response.each do |point|
-          expect(point.keys).to eq(%w[latitude longitude timestamp])
+          expect(point.keys).to eq(%w[id latitude longitude timestamp])
         end
+      end
+    end
+
+    context 'when order param is provided' do
+      it 'returns points in ascending order' do
+        get api_v1_points_url(api_key: user.api_key, order: 'asc')
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+
+        expect(json_response.first['timestamp']).to be < json_response.last['timestamp']
+      end
+
+      it 'returns points in descending order' do
+        get api_v1_points_url(api_key: user.api_key, order: 'desc')
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+
+        expect(json_response.first['timestamp']).to be > json_response.last['timestamp']
       end
     end
   end

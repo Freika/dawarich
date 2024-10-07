@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.3 - 2024-10-05
+
+To expose the watcher functionality to the user, a new directory `/tmp/imports/watched/` was created. Add new volume to the `docker-compose.yml` file to expose this directory to the host machine.
+
+```diff
+  ...
+
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - gem_cache:/usr/local/bundle/gems
+      - public:/var/app/public
++     - watched:/var/app/tmp/watched
+
+  ...
+
+  dawarich_sidekiq:
+      image: freikin/dawarich:latest
+      container_name: dawarich_sidekiq
+      volumes:
+        - gem_cache:/usr/local/bundle/gems
+        - public:/var/app/public
++       - watched:/var/app/tmp/watched
+
+    ...
+
+volumes:
+  db_data:
+  gem_cache:
+  shared_data:
+  public:
++ watched:
+```
+
+### Changed
+
+- Watcher now looks into `/tmp/imports/watched/USER@EMAIL.TLD` directory instead of `/tmp/imports/watched/` to allow using arbitrary file names for imports
+
+# 0.15.1 - 2024-10-04
+
+### Added
+
+- `linux/arm/v7` is added to the list of supported architectures to support Raspberry Pi 4 and other ARMv7 devices
+
+# 0.15.0 - 2024-10-03
+
+## The Watcher release
+
+The /public/imporst/watched/ directory is watched by Dawarich. Any files you put in this directory will be imported into the database. The name of the file must start with an email of the user you want to import the file for. The email must be followed by an underscore symbol (_) and the name of the file.
+
+For example, if you want to import a file for the user with the email address "email@dawarich.app", you would name the file "email@dawarich.app_2024-05-01_2024-05-31.gpx". The file will be imported into the database and the user will receive a notification in the app.
+
+Both GeoJSON and GPX files are supported.
+
+
+### Added
+
+- You can now put your GPX and GeoJSON files to `tmp/imports/watched` directory and Dawarich will automatically import them. This is useful if you have a service that can put files to the directory automatically. The directory is being watched every 60 minutes for new files.
+
+### Changed
+
+- Monkey patch for Geocoder to support http along with https for Photon API host was removed becausee it was breaking the reverse geocoding process. Now you can use only https for the Photon API host. This might be changed in the future
+- Disable retries for some background jobs
+
+### Fixed
+
+- Stats update is now being correctly triggered every 6 hours
+
+# [0.14.7] - 2024-10-01
+
+### Fixed
+
+- Now you can use http protocol for the Photon API host if you don't have SSL certificate for it
+- For stats, total distance per month might have been not equal to the sum of distances per day. Now it's fixed and values are equal
+- Mobile view of the map looks better now
+
+
+### Changed
+
+- `GET /api/v1/points` can now accept optional `?order=asc` query parameter to return points in ascending order by timestamp. `?order=desc` is still available to return points in descending order by timestamp
+- `GET /api/v1/points` now returns `id` attribute for each point
+
 # [0.14.6] - 2024-29-30
 
 ### Fixed

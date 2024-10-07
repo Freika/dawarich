@@ -41,22 +41,15 @@ class CreateStats
     return if points.empty?
 
     stat = Stat.find_or_initialize_by(year:, month:, user:)
-    stat.distance = distance(points)
+    distance_by_day = stat.distance_by_day
+    stat.daily_distance = distance_by_day
+    stat.distance = distance(distance_by_day)
     stat.toponyms = toponyms(points)
-    stat.daily_distance = stat.distance_by_day
     stat.save
   end
 
-  def distance(points)
-    distance = 0
-
-    points.each_cons(2) do
-      distance += Geocoder::Calculations.distance_between(
-        [_1.latitude, _1.longitude], [_2.latitude, _2.longitude], units: DISTANCE_UNIT.to_sym
-      )
-    end
-
-    distance
+  def distance(distance_by_day)
+    distance_by_day.sum { |d| d[1] }
   end
 
   def toponyms(points)

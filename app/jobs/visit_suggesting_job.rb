@@ -2,6 +2,7 @@
 
 class VisitSuggestingJob < ApplicationJob
   queue_as :visit_suggesting
+  sidekiq_options retry: false
 
   def perform(user_ids: [], start_at: 1.day.ago, end_at: Time.current)
     users = user_ids.any? ? User.where(id: user_ids) : User.all

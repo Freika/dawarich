@@ -5,9 +5,9 @@ class MapController < ApplicationController
 
   def index
     @points = points
-      .without_raw_data
-      .where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
-      .order(timestamp: :asc)
+              .without_raw_data
+              .where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
+              .order(timestamp: :asc)
 
     @countries_and_cities = CountriesAndCities.new(@points).call
     @coordinates =
@@ -38,7 +38,7 @@ class MapController < ApplicationController
 
     @coordinates.each_cons(2) do
       @distance += Geocoder::Calculations.distance_between(
-        [_1[0], _1[1]], [_2[0], _2[1]], units: DISTANCE_UNIT.to_sym
+        [_1[0], _1[1]], [_2[0], _2[1]], units: DISTANCE_UNIT
       )
     end
 
