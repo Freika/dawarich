@@ -72,8 +72,9 @@ class Exports::Create
   end
 
   def create_export_file(data)
-    dir_path = Rails.root.join('public', 'exports')
+    dir_path = Rails.root.join('public/exports')
     Dir.mkdir(dir_path) unless Dir.exist?(dir_path)
+
     file_path = dir_path.join("#{export.name}.#{file_format}")
 
     File.open(file_path, 'w') { |file| file.write(data) }

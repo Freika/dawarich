@@ -22,6 +22,8 @@ RSpec.describe CreateStats do
       let!(:point3) { create(:point, user:, import:, latitude: 3, longitude: 4) }
 
       context 'when units are kilometers' do
+        before { stub_const('DISTANCE_UNIT', :km) }
+
         it 'creates stats' do
           expect { create_stats }.to change { Stat.count }.by(1)
         end
@@ -29,7 +31,7 @@ RSpec.describe CreateStats do
         it 'calculates distance' do
           create_stats
 
-          expect(Stat.last.distance).to eq(563)
+          expect(user.stats.last.distance).to eq(563)
         end
 
         it 'created notifications' do
@@ -52,7 +54,7 @@ RSpec.describe CreateStats do
       end
 
       context 'when units are miles' do
-        before { stub_const('DISTANCE_UNIT', 'mi') }
+        before { stub_const('DISTANCE_UNIT', :mi) }
 
         it 'creates stats' do
           expect { create_stats }.to change { Stat.count }.by(1)
@@ -61,7 +63,7 @@ RSpec.describe CreateStats do
         it 'calculates distance' do
           create_stats
 
-          expect(Stat.last.distance).to eq(349)
+          expect(user.stats.last.distance).to eq(349)
         end
 
         it 'created notifications' do

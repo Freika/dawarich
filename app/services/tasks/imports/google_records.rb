@@ -32,7 +32,7 @@ class Tasks::Imports::GoogleRecords
 
   def schedule_import_jobs(json_data, import_id)
     json_data['locations'].each do |json|
-      ImportGoogleTakeoutJob.perform_later(import_id, json.to_json)
+      Import::GoogleTakeoutJob.perform_later(import_id, json.to_json)
     end
   end
 

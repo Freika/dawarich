@@ -10,9 +10,10 @@ RSpec.describe 'Map', type: :request do
 
   describe 'GET /index' do
     context 'when user signed in' do
-      before do
-        sign_in create(:user)
-      end
+      let(:user) { create(:user) }
+      let(:points) { create_list(:point, 10, user:, timestamp: 1.day.ago) }
+
+      before { sign_in user }
 
       it 'returns http success' do
         get map_path
@@ -22,7 +23,7 @@ RSpec.describe 'Map', type: :request do
     end
 
     context 'when user not signed in' do
-      it 'returns http success' do
+      it 'returns redirects to sign in page' do
         get map_path
 
         expect(response).to have_http_status(302)
