@@ -54,7 +54,7 @@ RSpec.describe GoogleMaps::RecordsParser do
       it 'parses ISO 8601 timestamp correctly' do
         expect { parser }.to change(Point, :count).by(1)
         created_point = Point.last
-        expect(created_point.timestamp).to eq(DateTime.parse(time.iso8601).to_i)
+        expect(created_point.timestamp).to eq(time.to_i)
       end
     end
 
