@@ -35,7 +35,7 @@ class GoogleMaps::RecordsParser
     {
       latitude: json['latitudeE7'].to_f / 10**7,
       longitude: json['longitudeE7'].to_f / 10**7,
-      timestamp: DateTime.parse(json['timestamp']).to_i,
+      timestamp: Timestamps::parse_timestamp(json['timestamp'] || json['timestampMs']),
       altitude: json['altitude'],
       velocity: json['velocity'],
       raw_data: json
