@@ -15,7 +15,7 @@ FactoryBot.define do
     connection      { 1 }
     vertical_accuracy { 1 }
     accuracy        { 1 }
-    timestamp       { 1.year.ago.to_i }
+    timestamp       { DateTime.new(2024, 5, 1).to_i + rand(1_000).minutes }
     latitude        { FFaker::Geolocation.lat }
     mode            { 1 }
     inrids          { 'MyString' }

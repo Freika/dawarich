@@ -17,7 +17,7 @@ class Stat < ApplicationRecord
 
       points.each_cons(2) do |point1, point2|
         distance = Geocoder::Calculations.distance_between(
-          [point1.latitude, point1.longitude], [point2.latitude, point2.longitude]
+          point1.to_coordinates, point2.to_coordinates, units: ::DISTANCE_UNIT
         )
 
         data[:distance] += distance

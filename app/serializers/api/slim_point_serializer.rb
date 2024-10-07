@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class SlimPointSerializer
+class Api::SlimPointSerializer
   def initialize(point)
     @point = point
   end

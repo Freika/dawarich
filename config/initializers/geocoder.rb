@@ -2,7 +2,7 @@
 
 settings = {
   timeout: 5,
-  units: DISTANCE_UNIT.to_sym,
+  units: DISTANCE_UNIT,
   cache: Redis.new,
   always_raise: :all,
   cache_options: {

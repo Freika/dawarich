@@ -3,12 +3,13 @@
 class Api::V1::PointsController < ApiController
   def index
     start_at = params[:start_at]&.to_datetime&.to_i
-    end_at = params[:end_at]&.to_datetime&.to_i || Time.zone.now.to_i
+    end_at   = params[:end_at]&.to_datetime&.to_i || Time.zone.now.to_i
+    order    = params[:order] || 'desc'
 
     points = current_api_user
              .tracked_points
              .where(timestamp: start_at..end_at)
-             .order(:timestamp)
+             .order(timestamp: order)
              .page(params[:page])
              .per(params[:per_page] || 100)
 
@@ -30,6 +31,6 @@ class Api::V1::PointsController < ApiController
   private
 
   def point_serializer
-    params[:slim] == 'true' ? SlimPointSerializer : PointSerializer
+    params[:slim] == 'true' ? Api::SlimPointSerializer : Api::PointSerializer
   end
 end
