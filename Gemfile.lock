@@ -319,7 +319,7 @@ GEM
       json-schema (>= 2.2, < 6.0)
       railties (>= 5.2, < 8.0)
       rspec-core (>= 2.14)
-    rswag-ui (2.14.0)
+    rswag-ui (2.15.0)
       actionpack (>= 5.2, < 8.0)
       railties (>= 5.2, < 8.0)
     rubocop (1.66.1)
