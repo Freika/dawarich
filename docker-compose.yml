@@ -9,6 +9,12 @@ services:
     volumes:
       - shared_data:/var/shared/redis
     restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
   dawarich_db:
     image: postgres:14.2-alpine
     container_name: dawarich_db
@@ -21,6 +27,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
   dawarich_app:
     image: freikin/dawarich:latest
     container_name: dawarich_app
@@ -55,9 +67,19 @@ services:
       options:
         max-size: "100m"
         max-file: "5"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
     depends_on:
-      - dawarich_db
-      - dawarich_redis
+      db:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_healthy
+        restart: true
     deploy:
       resources:
         limits:
@@ -94,10 +116,22 @@ services:
       options:
         max-size: "100m"
         max-file: "5"
+    healthcheck:
+      test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep $(hostname)" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
     depends_on:
-      - dawarich_db
-      - dawarich_redis
-      - dawarich_app
+      db:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_healthy
+        restart: true
+      app:
+        condition: service_healthy
+        restart: true
     deploy:
       resources:
         limits:
