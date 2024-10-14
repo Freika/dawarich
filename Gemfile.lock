@@ -92,7 +92,7 @@ GEM
       rexml
     crass (1.0.6)
     csv (3.3.0)
-    data_migrate (11.0.0)
+    data_migrate (11.1.0)
       activerecord (>= 6.1)
       railties (>= 6.1)
     date (3.3.4)
@@ -240,7 +240,7 @@ GEM
       activesupport (>= 3.0.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (3.1.7)
+    rack (3.1.8)
     rack-session (2.0.0)
       rack (>= 3.0.0)
     rack-test (2.1.0)
@@ -407,7 +407,7 @@ GEM
     websocket-driver (0.7.6)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
-    zeitwerk (2.6.18)
+    zeitwerk (2.7.0)
 
 PLATFORMS
   aarch64-linux
