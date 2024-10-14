@@ -74,10 +74,10 @@ services:
       start_period: 30s
       timeout: 10s
     depends_on:
-      db:
+      dawarich_db:
         condition: service_healthy
         restart: true
-      redis:
+      dawarich_redis:
         condition: service_healthy
         restart: true
     deploy:
@@ -123,13 +123,13 @@ services:
       start_period: 30s
       timeout: 10s
     depends_on:
-      db:
+      dawarich_db:
         condition: service_healthy
         restart: true
-      redis:
+      dawarich_redis:
         condition: service_healthy
         restart: true
-      app:
+      dawarich_app:
         condition: service_healthy
         restart: true
     deploy:
