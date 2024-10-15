@@ -7,7 +7,7 @@ RSpec.describe OwnTracks::Params do
     subject(:params) { described_class.new(raw_point_params).call }
 
     let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
-    let(:file) { File.open(file_path) }
+    let(:file) { File.read(file_path) }
     let(:json) { OwnTracks::RecParser.new(file).call }
     let(:raw_point_params) { json.first }
 

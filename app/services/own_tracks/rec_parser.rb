@@ -4,7 +4,7 @@ class OwnTracks::RecParser
   attr_reader :file
 
   def initialize(file)
-    @file = file.read
+    @file = file
   end
 
   def call

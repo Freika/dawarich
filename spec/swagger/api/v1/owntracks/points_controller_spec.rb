@@ -24,7 +24,7 @@ describe 'OwnTracks Points API', type: :request do
         't': 'p',
         'conn': 'w',
         'm': 1,
-        'tst': 1706965203,
+        'tst': 1_706_965_203,
         'alt': 41,
         '_type': 'location',
         'tid': 'RO',
@@ -70,9 +70,9 @@ describe 'OwnTracks Points API', type: :request do
 
       response '200', 'Point created' do
         let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
-        let(:file) { File.open(file_path) }
-        let(:json) { JSON.parse(file.read) }
-        let(:point) { json['test']['iphone-12-pro'].first }
+        let(:file) { File.read(file_path) }
+        let(:json) { OwnTracks::RecParser.new(file).call }
+        let(:point) { json.first }
         let(:api_key) { create(:user).api_key }
 
         run_test!
@@ -80,9 +80,9 @@ describe 'OwnTracks Points API', type: :request do
 
       response '401', 'Unauthorized' do
         let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
-        let(:file) { File.open(file_path) }
-        let(:json) { JSON.parse(file.read) }
-        let(:point) { json['test']['iphone-12-pro'].first }
+        let(:file) { File.read(file_path) }
+        let(:json) { OwnTracks::RecParser.new(file).call }
+        let(:point) { json.first }
         let(:api_key) { nil }
 
         run_test!
