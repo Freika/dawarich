@@ -33,7 +33,7 @@ class ImportsController < ApplicationController
       raw_data =
         case params[:import][:source]
         when 'gpx' then Hash.from_xml(file)
-        when 'owntracks' then file
+        when 'owntracks' then OwnTracks::RecParser.new(file).call
         else JSON.parse(file)
         end
 
