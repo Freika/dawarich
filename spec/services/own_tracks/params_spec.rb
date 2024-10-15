@@ -6,7 +6,7 @@ RSpec.describe OwnTracks::Params do
   describe '#call' do
     subject(:params) { described_class.new(raw_point_params).call }
 
-    let(:file_path) { 'spec/fixtures/files/owntracks/export.json' }
+    let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
     let(:file) { File.open(file_path) }
     let(:json) { JSON.parse(file.read) }
     let(:user) { json.keys.first }

@@ -30,7 +30,12 @@ class ImportsController < ApplicationController
 
       file = File.read(file)
 
-      raw_data = params[:import][:source] == 'gpx' ? Hash.from_xml(file) : JSON.parse(file)
+      raw_data =
+        case params[:import][:source]
+        when 'gpx' then Hash.from_xml(file)
+        when 'owntracks' then file
+        else JSON.parse(file)
+        end
 
       import.update(raw_data:)
       import.id

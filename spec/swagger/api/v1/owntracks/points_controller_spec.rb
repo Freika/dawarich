@@ -69,7 +69,7 @@ describe 'OwnTracks Points API', type: :request do
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 
       response '200', 'Point created' do
-        let(:file_path) { 'spec/fixtures/files/owntracks/export.json' }
+        let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
         let(:file) { File.open(file_path) }
         let(:json) { JSON.parse(file.read) }
         let(:point) { json['test']['iphone-12-pro'].first }
@@ -79,7 +79,7 @@ describe 'OwnTracks Points API', type: :request do
       end
 
       response '401', 'Unauthorized' do
-        let(:file_path) { 'spec/fixtures/files/owntracks/export.json' }
+        let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
         let(:file) { File.open(file_path) }
         let(:json) { JSON.parse(file.read) }
         let(:point) { json['test']['iphone-12-pro'].first }
