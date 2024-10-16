@@ -48,6 +48,13 @@ export default class extends Controller {
 
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
+    // Set the maximum bounds to prevent infinite scroll
+    var southWest = L.latLng(-90, -180);
+    var northEast = L.latLng(90, 180);
+    var bounds = L.latLngBounds(southWest, northEast);
+
+    this.map.setMaxBounds(bounds);
+
     this.markersArray = this.createMarkersArray(this.markers);
     this.markersLayer = L.layerGroup(this.markersArray);
     this.heatmapMarkers = this.markers.map((element) => [element[0], element[1], 0.2]);

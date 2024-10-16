@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.5 - 2024-10-16
+
+### Changed
+
+- The Map page now by default uses timeframe based on last point tracked instead of the today's points. If there are no points, the map will use the today's timeframe.
+- The map on the Map page can no longer be infinitely scrolled horizontally. #299
+
 # 0.15.4 - 2024-10-15
 
 ### Changed

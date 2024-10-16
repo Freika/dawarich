@@ -4,10 +4,7 @@ class MapController < ApplicationController
   before_action :authenticate_user!
 
   def index
-    @points = points
-              .without_raw_data
-              .where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
-              .order(timestamp: :asc)
+    @points = points.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
 
     @countries_and_cities = CountriesAndCities.new(@points).call
     @coordinates =
@@ -22,15 +19,17 @@ class MapController < ApplicationController
   private
 
   def start_at
-    return Time.zone.today.beginning_of_day.to_i if params[:start_at].nil?
+    return Time.zone.parse(params[:start_at]).to_i if params[:start_at].present?
+    return Time.zone.at(points.last.timestamp).beginning_of_day.to_i if points.any?
 
-    Time.zone.parse(params[:start_at]).to_i
+    Time.zone.today.beginning_of_day.to_i
   end
 
   def end_at
-    return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
+    return Time.zone.parse(params[:end_at]).to_i if params[:end_at].present?
+    return Time.zone.at(points.last.timestamp).end_of_day.to_i if points.any?
 
-    Time.zone.parse(params[:end_at]).to_i
+    Time.zone.today.end_of_day.to_i
   end
 
   def distance
@@ -50,10 +49,10 @@ class MapController < ApplicationController
   end
 
   def points_from_import
-    current_user.imports.find(params[:import_id]).points
+    current_user.imports.find(params[:import_id]).points.without_raw_data.order(timestamp: :asc)
   end
 
   def points_from_user
-    current_user.tracked_points
+    current_user.tracked_points.without_raw_data.order(timestamp: :asc)
   end
 end
