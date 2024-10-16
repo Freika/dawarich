@@ -9,7 +9,7 @@ gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'data_migrate'
 gem 'devise'
-gem 'geocoder'
+gem 'geocoder', git: 'https://github.com/alexreisner/geocoder.git', ref: '04ee293'
 gem 'gpx'
 gem 'httparty'
 gem 'importmap-rails'

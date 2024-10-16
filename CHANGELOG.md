@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.15.4 - 2024-10-15
 
+### Changed
+
+- Use static version of `geocoder` library that supports http and https for Photon API host. This is a temporary solution until the change is available in a stable release.
+
 ### Added
 
 - Owntracks' .rec files now can be imported to Dawarich. The import process is the same as for other kinds of files, just select the .rec file and choose "owntracks" as a source.
