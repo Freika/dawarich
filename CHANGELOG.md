@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.4 - 2024-10-15
+
+### Added
+
+- Owntracks' .rec files now can be imported to Dawarich. The import process is the same as for other kinds of files, just select the .rec file and choose "owntracks" as a source.
+
+### Removed
+
+- Owntracks' .json files are no longer supported for import as Owntracks itself does not export to this format anymore.
+
 # 0.15.3 - 2024-10-05
 
 To expose the watcher functionality to the user, a new directory `/tmp/imports/watched/` was created. Add new volume to the `docker-compose.yml` file to expose this directory to the host machine.

@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
 class OwnTracks::ExportParser
-  attr_reader :import, :json, :user_id
+  attr_reader :import, :data, :user_id
 
   def initialize(import, user_id)
     @import = import
-    @json = import.raw_data
+    @data = import.raw_data
     @user_id = user_id
   end
 
   def call
-    points_data = parse_json
+    points_data = parse_data
 
     points_data.each do |point_data|
       next if Point.exists?(
@@ -31,15 +31,9 @@ class OwnTracks::ExportParser
 
   private
 
-  def parse_json
-    points = []
+  def parse_data
+    json = OwnTracks::RecParser.new(data).call
 
-    json.each_key do |user|
-      json[user].each_key do |devise|
-        json[user][devise].each { |point| points << OwnTracks::Params.new(point).call }
-      end
-    end
-
-    points
+    json.map { |point| OwnTracks::Params.new(point).call }
   end
 end

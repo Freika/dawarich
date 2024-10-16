@@ -41,7 +41,7 @@ RSpec.describe 'Imports', type: :request do
       before { sign_in user }
 
       context 'when importing owntracks data' do
-        let(:file) { fixture_file_upload('owntracks/export.json', 'application/json') }
+        let(:file) { fixture_file_upload('owntracks/2024-03.rec', 'text/plain') }
 
         it 'queues import job' do
           expect do
