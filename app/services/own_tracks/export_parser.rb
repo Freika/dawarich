@@ -32,10 +32,8 @@ class OwnTracks::ExportParser
   private
 
   def parse_data
-    data.split("\n").map do |line|
-      OwnTracks::Params.new(
-        JSON.parse(line.split("\t*                 \t")[1])
-      ).call
-    end
+    json = OwnTracks::RecParser.new(data).call
+
+    json.map { |point| OwnTracks::Params.new(point).call }
   end
 end
