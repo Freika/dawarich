@@ -68,7 +68,7 @@ Simply install one of the supported apps on your device and configure it to send
 
 ## 🔧 How to Install Dawarich
 
-- **[Docker Setup](https://dawarich.app /docs/intro#setup-your-dawarich-instance)**
+- **[Docker Setup](https://dawarich.app/docs/intro#setup-your-dawarich-instance)**
 - **[Synology](https://dawarich.app/docs/tutorials/platforms/synology)**
 
 🆕 **Default Credentials**
