@@ -44,7 +44,7 @@ class GoogleMaps::SemanticHistoryParser
             {
               latitude: waypoint['latE7'].to_f / 10**7,
               longitude: waypoint['lngE7'].to_f / 10**7,
-              timestamp: DateTime.parse(timeline_object['activitySegment']['duration']['startTimestamp']).to_i,
+              timestamp: Timestamps::parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
               raw_data: timeline_object
             }
           end
@@ -52,7 +52,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: timeline_object['activitySegment']['startLocation']['latitudeE7'].to_f / 10**7,
             longitude: timeline_object['activitySegment']['startLocation']['longitudeE7'].to_f / 10**7,
-            timestamp: DateTime.parse(timeline_object['activitySegment']['duration']['startTimestamp']),
+            timestamp: Timestamps::parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         end
@@ -62,7 +62,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: timeline_object['placeVisit']['location']['latitudeE7'].to_f / 10**7,
             longitude: timeline_object['placeVisit']['location']['longitudeE7'].to_f / 10**7,
-            timestamp: DateTime.parse(timeline_object['placeVisit']['duration']['startTimestamp']),
+            timestamp: Timestamps::parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         elsif timeline_object.dig('placeVisit', 'otherCandidateLocations')&.any?
@@ -73,7 +73,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: point['latitudeE7'].to_f / 10**7,
             longitude: point['longitudeE7'].to_f / 10**7,
-            timestamp: DateTime.parse(timeline_object['placeVisit']['duration']['startTimestamp']),
+            timestamp: Timestamps::parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         else
