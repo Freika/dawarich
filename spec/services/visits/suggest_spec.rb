@@ -5,8 +5,8 @@ require 'rails_helper'
 RSpec.describe Visits::Suggest do
   describe '#call' do
     let!(:user) { create(:user) }
-    let(:start_at) { 1.week.ago }
-    let(:end_at) { Time.current }
+    let(:start_at) { Time.new(2020, 1, 1, 0, 0, 0) }
+    let(:end_at) { Time.new(2020, 1, 1, 2, 0, 0) }
 
     let!(:points) do
       [

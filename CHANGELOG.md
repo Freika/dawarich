@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.7 - 2024-10-19
+
+### Fixed
+
+- A bug where "RuntimeError: failed to get urandom" was being raised upon importing attempt on Synology.
+
 # 0.15.6 - 2024-10-19
 
 ### Fixed
