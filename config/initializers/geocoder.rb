@@ -5,6 +5,7 @@ settings = {
   units: DISTANCE_UNIT,
   cache: Redis.new,
   always_raise: :all,
+  use_https: PHOTON_API_USE_HTTPS,
   cache_options: {
     expiration: 1.day
   }
