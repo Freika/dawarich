@@ -62,6 +62,8 @@ services:
       TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
+      PHOTON_API_HOST: photon.komoot.io
+      PHOTON_API_USE_HTTPS: true
     logging:
       driver: "json-file"
       options:
@@ -111,6 +113,8 @@ services:
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
+      PHOTON_API_HOST: photon.komoot.io
+      PHOTON_API_USE_HTTPS: true
     logging:
       driver: "json-file"
       options:

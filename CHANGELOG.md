@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.15.5 - 2024-10-16
 
+### Fixed
+
+- Fixed a bug where Google Takeout import was failing due to unsupported date format with milliseconds in the file.
+- Fixed a bug that prevented using the Photon API host with http protocol. Now you can use both http and https protocols for the Photon API host. You now need to explicitly provide `PHOTON_API_USE_HTTPS` to be `true` or `false` depending on what protocol you want to use.
+
 ### Changed
 
 - The Map page now by default uses timeframe based on last point tracked instead of the today's points. If there are no points, the map will use the today's timeframe.
