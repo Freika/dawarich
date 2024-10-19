@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.6 - 2024-10-19
+
+### Fixed
+
+- Import of Owntracks' .rec files now correctly imports points. Previously, the import was failing due to incorrect parsing of the file.
+
 # 0.15.5 - 2024-10-16
 
 ### Fixed

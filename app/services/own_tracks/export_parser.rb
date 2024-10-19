@@ -10,7 +10,7 @@ class OwnTracks::ExportParser
   end
 
   def call
-    points_data = parse_data
+    points_data = data.map { |point| OwnTracks::Params.new(point).call }
 
     points_data.each do |point_data|
       next if Point.exists?(
@@ -27,13 +27,5 @@ class OwnTracks::ExportParser
 
       point.save
     end
-  end
-
-  private
-
-  def parse_data
-    json = OwnTracks::RecParser.new(data).call
-
-    json.map { |point| OwnTracks::Params.new(point).call }
   end
 end

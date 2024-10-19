@@ -5,6 +5,6 @@ FactoryBot.define do
     user
     name { 'APRIL_2013.json' }
     source { Import.sources[:owntracks] }
-    raw_data { File.read('spec/fixtures/files/owntracks/2024-03.rec') }
+    raw_data { OwnTracks::RecParser.new(File.read('spec/fixtures/files/owntracks/2024-03.rec')).call }
   end
 end
