@@ -12,7 +12,7 @@ settings = {
 
 if defined?(PHOTON_API_HOST)
   settings[:lookup] = :photon
-  settings[:photon] = { host: PHOTON_API_HOST }
+  settings[:photon] = { use_https: PHOTON_API_USE_HTTPS, host: PHOTON_API_HOST }
 end
 
 Geocoder.configure(settings)
