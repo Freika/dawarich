@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Fixed a bug where Google Takeout import was failing due to unsupported date format with milliseconds in the file.
-- Fixed a bug that prevented using the Photon API host with http protocol. Now you can use both http and https protocols for the Photon API host. You now need to explicitly provide `PHOTON_API_USE_HTTPS` to be `true` or `false` depending on what protocol you want to use.
+- Fixed a bug that prevented using the Photon API host with http protocol. Now you can use both http and https protocols for the Photon API host. You now need to explicitly provide `PHOTON_API_USE_HTTPS` to be `true` or `false` depending on what protocol you want to use. [Example](https://github.com/Freika/dawarich/blob/master/docker-compose.yml#L116-L117) is in the `docker-compose.yml` file.
 
 ### Changed
 
