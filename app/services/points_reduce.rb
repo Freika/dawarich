@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 class PointsReduce
+  # 1. On the route popup, the user can click on a button to simplify the route.
+  # 2. Request to the server to simplify the route.
+  # 3. Server returns simplified route.
+  # 4. Render the simplified route on the map.
+  # 5. If the user is happy with the simplified route, they can save it.
+  # 6. Request to the server to save the simplified route. This is a destructive action and erases unnecessary points.
+
   DISTANCE_THRESHOLD = 50 # meters
   TIME_THRESHOLD = 10 # seconds
 

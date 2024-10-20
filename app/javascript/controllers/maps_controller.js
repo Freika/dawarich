@@ -186,12 +186,12 @@ console.log(selectedLayerName);
     }
 
     return `
-      <b>Timestamp:</b> ${formatDate(marker[4], timezone)}<br>
-      <b>Latitude:</b> ${marker[0]}<br>
-      <b>Longitude:</b> ${marker[1]}<br>
-      <b>Altitude:</b> ${marker[3]}m<br>
-      <b>Velocity:</b> ${marker[5]}km/h<br>
-      <b>Battery:</b> ${marker[2]}%<br>
+      <strong>Timestamp:</strong> ${formatDate(marker[4], timezone)}<br>
+      <strong>Latitude:</strong> ${marker[0]}<br>
+      <strong>Longitude:</strong> ${marker[1]}<br>
+      <strong>Altitude:</strong> ${marker[3]}m<br>
+      <strong>Velocity:</strong> ${marker[5]}km/h<br>
+      <strong>Battery:</strong> ${marker[2]}%<br>
       <a href="#" data-id="${marker[6]}" class="delete-point">[Delete]</a>
     `;
   }
@@ -347,10 +347,10 @@ console.log(selectedLayerName);
     const isDebugMode = getUrlParameter("debug") === "true";
 
     let popupContent = `
-      <b>Start:</b> ${firstTimestamp}<br>
-      <b>End:</b> ${lastTimestamp}<br>
-      <b>Duration:</b> ${timeOnRoute}<br>
-      <b>Total Distance:</b> ${formatDistance(totalDistance, this.distanceUnit)}<br>
+      <strong>Start:</strong> ${firstTimestamp}<br>
+      <strong>End:</strong> ${lastTimestamp}<br>
+      <strong>Duration:</strong> ${timeOnRoute}<br>
+      <strong>Total Distance:</strong> ${formatDistance(totalDistance, this.distanceUnit)}<br>
     `;
 
     if (isDebugMode) {
@@ -364,9 +364,9 @@ console.log(selectedLayerName);
       const pointsNumber = polylineCoordinates.length;
 
       popupContent += `
-        <b>Prev Route:</b> ${Math.round(distanceToPrev)}m and ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
-        <b>Next Route:</b> ${Math.round(distanceToNext)}m and ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
-        <b>Points:</b> ${pointsNumber}<br>
+        <strong>Prev Route:</strong> ${Math.round(distanceToPrev)}m and ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
+        <strong>Next Route:</strong> ${Math.round(distanceToNext)}m and ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
+        <strong>Points:</strong> ${pointsNumber}<br>
       `;
     }
 
