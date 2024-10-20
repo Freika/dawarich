@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.16.0 - 2024-10-19
+
+### Added
+
+- User can now select between "Raw" and "Simplified" mode in the map controls. "Simplified" mode will show less points, improving the map performance. "Raw" mode will show all points.
+
 # 0.15.7 - 2024-10-19
 
 ### Fixed

@@ -59,6 +59,7 @@ export function formatDate(timestamp, timezone) {
 }
 
 export function haversineDistance(lat1, lon1, lat2, lon2, unit = 'km') {
+  // Haversine formula to calculate the distance between two points
   const toRad = (x) => (x * Math.PI) / 180;
   const R_km = 6371; // Radius of the Earth in kilometers
   const R_miles = 3959; // Radius of the Earth in miles
@@ -74,5 +75,64 @@ export function haversineDistance(lat1, lon1, lat2, lon2, unit = 'km') {
     return R_miles * c; // Distance in miles
   } else {
     return R_km * c; // Distance in kilometers
+  }
+}
+
+export function showFlashMessage(type, message) {
+  // Create the outer flash container div
+  const flashDiv = document.createElement('div');
+  flashDiv.setAttribute('data-controller', 'removals');
+  flashDiv.className = `flex items-center fixed top-5 right-5 ${classesForFlash(type)} py-3 px-5 rounded-lg`;
+
+  // Create the message div
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'mr-4';
+  messageDiv.innerText = message;
+
+  // Create the close button
+  const closeButton = document.createElement('button');
+  closeButton.setAttribute('type', 'button');
+  closeButton.setAttribute('data-action', 'click->removals#remove');
+
+  // Create the SVG icon for the close button
+  const closeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  closeIcon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  closeIcon.setAttribute('class', 'h-6 w-6');
+  closeIcon.setAttribute('fill', 'none');
+  closeIcon.setAttribute('viewBox', '0 0 24 24');
+  closeIcon.setAttribute('stroke', 'currentColor');
+
+  const closeIconPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  closeIconPath.setAttribute('stroke-linecap', 'round');
+  closeIconPath.setAttribute('stroke-linejoin', 'round');
+  closeIconPath.setAttribute('stroke-width', '2');
+  closeIconPath.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+
+  // Append the path to the SVG
+  closeIcon.appendChild(closeIconPath);
+  // Append the SVG to the close button
+  closeButton.appendChild(closeIcon);
+
+  // Append the message and close button to the flash div
+  flashDiv.appendChild(messageDiv);
+  flashDiv.appendChild(closeButton);
+
+  // Append the flash message to the body or a specific flash container
+  document.body.appendChild(flashDiv);
+
+  // Optional: Automatically remove the flash message after 5 seconds
+  setTimeout(() => {
+    flashDiv.remove();
+  }, 5000);
+}
+
+function classesForFlash(type) {
+  switch (type) {
+    case 'error':
+      return 'bg-red-100 text-red-700 border-red-300';
+    case 'notice':
+      return 'bg-blue-100 text-blue-700 border-blue-300';
+    default:
+      return 'bg-blue-100 text-blue-700 border-blue-300';
   }
 }
