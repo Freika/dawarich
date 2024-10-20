@@ -410,19 +410,14 @@ export default class extends Controller {
             <label for="merge_threshold_minutes_info" class="btn-xs join-item">?</label>
           </div>
 
-          <label for="points_rendering_mode">Points rendering mode</label>
-          <div class="join">
-            <div>
-              <input type="radio" id="raw" name="points_rendering_mode" value="raw" checked />
-              <label for="raw">Raw</label>
-            </div>
 
-            <div>
-              <input type="radio" id="simplified" name="points_rendering_mode" value="simplified" />
-              <label for="simplified">Simplified</label>
-            </div>
-            <label for="points_rendering_mode_info" class="btn-xs join-item">?</label>
-          </div>
+          <label for="points_rendering_mode">Points rendering mode</label>
+          <input type="radio" id="raw" name="points_rendering_mode" class='radio w-16' value="raw" ${this.pointsRenderingModeChecked('raw')} />
+          <label for="raw">Raw</label>
+
+          <input type="radio" id="simplified" name="points_rendering_mode" class='radio w-16' value="simplified" ${this.pointsRenderingModeChecked('simplified')}/>
+          <label for="simplified">Simplified</label>
+          <label for="points_rendering_mode_info" class="btn-xs join-item">?</label>
 
           <button type="submit">Update</button>
         </form>
@@ -446,6 +441,14 @@ export default class extends Controller {
     };
 
     this.map.addControl(this.settingsPanel);
+  }
+
+  pointsRenderingModeChecked(value) {
+    if (value === this.pointsRenderingMode) {
+      return 'checked';
+    } else {
+      return '';
+    }
   }
 
   updateSettings(event) {
