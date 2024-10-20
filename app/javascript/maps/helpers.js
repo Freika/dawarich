@@ -59,6 +59,7 @@ export function formatDate(timestamp, timezone) {
 }
 
 export function haversineDistance(lat1, lon1, lat2, lon2, unit = 'km') {
+  // Haversine formula to calculate the distance between two points
   const toRad = (x) => (x * Math.PI) / 180;
   const R_km = 6371; // Radius of the Earth in kilometers
   const R_miles = 3959; // Radius of the Earth in miles

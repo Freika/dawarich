@@ -1,25 +1,19 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import "leaflet.heat";
-import { formatDistance } from "../maps/helpers";
-import { getUrlParameter } from "../maps/helpers";
-import { minutesToDaysHoursMinutes } from "../maps/helpers";
-import { formatDate } from "../maps/helpers";
-import { haversineDistance } from "../maps/helpers";
+
+import { createMarkersArray } from "../maps/markers";
+
+import { createPolylinesLayer } from "../maps/polylines";
+import { updatePolylinesOpacity } from "../maps/polylines";
+
+import { fetchAndDrawAreas } from "../maps/areas";
+import { handleAreaCreated } from "../maps/areas";
+
 import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
 import { OPNVMapLayer } from "../maps/layers";
 import { openTopoMapLayer } from "../maps/layers";
-// import { stadiaAlidadeSmoothMapLayer } from "../maps/layers";
-// import { stadiaAlidadeSmoothDarkMapLayer } from "../maps/layers";
-// import { stadiaAlidadeSatelliteMapLayer } from "../maps/layers";
-// import { stadiaOsmBrightMapLayer } from "../maps/layers";
-// import { stadiaOutdoorMapLayer } from "../maps/layers";
-// import { stadiaStamenTonerMapLayer } from "../maps/layers";
-// import { stadiaStamenTonerBackgroundMapLayer } from "../maps/layers";
-// import { stadiaStamenTonerLiteMapLayer } from "../maps/layers";
-// import { stadiaStamenWatercolorMapLayer } from "../maps/layers";
-// import { stadiaStamenTerrainMapLayer } from "../maps/layers";
 import { cyclOsmMapLayer } from "../maps/layers";
 import { esriWorldStreetMapLayer } from "../maps/layers";
 import { esriWorldTopoMapLayer } from "../maps/layers";
@@ -43,6 +37,7 @@ export default class extends Controller {
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.element.dataset.distance_unit || "km";
+    this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -55,11 +50,11 @@ export default class extends Controller {
 
     this.map.setMaxBounds(bounds);
 
-    this.markersArray = this.createMarkersArray(this.markers);
+    this.markersArray = createMarkersArray(this.markers, this.userSettings);
     this.markersLayer = L.layerGroup(this.markersArray);
-    this.heatmapMarkers = this.markers.map((element) => [element[0], element[1], 0.2]);
+    this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
 
-    this.polylinesLayer = this.createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity);
+    this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
@@ -88,7 +83,7 @@ export default class extends Controller {
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
     // Fetch and draw areas when the map is loaded
-    this.fetchAndDrawAreas(this.apiKey);
+    fetchAndDrawAreas(this.areasLayer, this.apiKey);
 
     let fogEnabled = false;
 
@@ -144,56 +139,18 @@ export default class extends Controller {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-console.log(selectedLayerName);
+
     return {
       OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
       "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
       OPNV: OPNVMapLayer(this.map, selectedLayerName),
       openTopo: openTopoMapLayer(this.map, selectedLayerName),
-      // stadiaAlidadeSmooth: stadiaAlidadeSmoothMapLayer(this.map, selectedLayerName),
-      // stadiaAlidadeSmoothDark: stadiaAlidadeSmoothDarkMapLayer(this.map, selectedLayerName),
-      // stadiaAlidadeSatellite: stadiaAlidadeSatelliteMapLayer(this.map, selectedLayerName),
-      // stadiaOsmBright: stadiaOsmBrightMapLayer(this.map, selectedLayerName),
-      // stadiaOutdoor: stadiaOutdoorMapLayer(this.map, selectedLayerName),
-      // stadiaStamenToner: stadiaStamenTonerMapLayer(this.map, selectedLayerName),
-      // stadiaStamenTonerBackground: stadiaStamenTonerBackgroundMapLayer(this.map, selectedLayerName),
-      // stadiaStamenTonerLite: stadiaStamenTonerLiteMapLayer(this.map, selectedLayerName),
-      // stadiaStamenWatercolor: stadiaStamenWatercolorMapLayer(this.map, selectedLayerName),
-      // stadiaStamenTerrain: stadiaStamenTerrainMapLayer(this.map, selectedLayerName),
       cyclOsm: cyclOsmMapLayer(this.map, selectedLayerName),
       esriWorldStreet: esriWorldStreetMapLayer(this.map, selectedLayerName),
       esriWorldTopo: esriWorldTopoMapLayer(this.map, selectedLayerName),
       esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
       esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
     };
-  }
-
-  createMarkersArray(markersData) {
-    return markersData.map((marker) => {
-      const [lat, lon] = marker;
-      const popupContent = this.createPopupContent(marker);
-      return L.circleMarker([lat, lon], { radius: 4 }).bindPopup(popupContent);
-    });
-  }
-
-  createPopupContent(marker) {
-    const timezone = this.element.dataset.timezone;
-    if (this.distanceUnit === "mi") {
-      // convert marker[5] from km/h to mph
-      marker[5] = marker[5] * 0.621371;
-      // convert marker[3] from meters to feet
-      marker[3] = marker[3] * 3.28084;
-    }
-
-    return `
-      <strong>Timestamp:</strong> ${formatDate(marker[4], timezone)}<br>
-      <strong>Latitude:</strong> ${marker[0]}<br>
-      <strong>Longitude:</strong> ${marker[1]}<br>
-      <strong>Altitude:</strong> ${marker[3]}m<br>
-      <strong>Velocity:</strong> ${marker[5]}km/h<br>
-      <strong>Battery:</strong> ${marker[2]}%<br>
-      <a href="#" data-id="${marker[6]}" class="delete-point">[Delete]</a>
-    `;
   }
 
   removeEventListeners() {
@@ -320,133 +277,6 @@ console.log(selectedLayerName);
     fog.appendChild(circle);
   }
 
-  addHighlightOnHover(polyline, map, polylineCoordinates, timezone, routeOpacity) {
-    const originalStyle = { color: "blue", opacity: routeOpacity, weight: 3 };
-    const highlightStyle = { color: "yellow", opacity: 1, weight: 5 };
-
-    polyline.setStyle(originalStyle);
-
-    const startPoint = polylineCoordinates[0];
-    const endPoint = polylineCoordinates[polylineCoordinates.length - 1];
-
-    const firstTimestamp = new Date(startPoint[4] * 1000).toLocaleString("en-GB", { timeZone: timezone });
-    const lastTimestamp = new Date(endPoint[4] * 1000).toLocaleString("en-GB", { timeZone: timezone });
-
-    const minutes = Math.round((endPoint[4] - startPoint[4]) / 60);
-    const timeOnRoute = minutesToDaysHoursMinutes(minutes);
-
-    const totalDistance = polylineCoordinates.reduce((acc, curr, index, arr) => {
-      if (index === 0) return acc;
-      const dist = haversineDistance(arr[index - 1][0], arr[index - 1][1], curr[0], curr[1]);
-      return acc + dist;
-    }, 0);
-
-    const startIcon = L.divIcon({ html: "🚥", className: "emoji-icon" });
-    const finishIcon = L.divIcon({ html: "🏁", className: "emoji-icon" });
-
-    const isDebugMode = getUrlParameter("debug") === "true";
-
-    let popupContent = `
-      <strong>Start:</strong> ${firstTimestamp}<br>
-      <strong>End:</strong> ${lastTimestamp}<br>
-      <strong>Duration:</strong> ${timeOnRoute}<br>
-      <strong>Total Distance:</strong> ${formatDistance(totalDistance, this.distanceUnit)}<br>
-    `;
-
-    if (isDebugMode) {
-      const prevPoint = polylineCoordinates[0];
-      const nextPoint = polylineCoordinates[polylineCoordinates.length - 1];
-      const distanceToPrev = haversineDistance(prevPoint[0], prevPoint[1], startPoint[0], startPoint[1]);
-      const distanceToNext = haversineDistance(endPoint[0], endPoint[1], nextPoint[0], nextPoint[1]);
-
-      const timeBetweenPrev = Math.round((startPoint[4] - prevPoint[4]) / 60);
-      const timeBetweenNext = Math.round((endPoint[4] - nextPoint[4]) / 60);
-      const pointsNumber = polylineCoordinates.length;
-
-      popupContent += `
-        <strong>Prev Route:</strong> ${Math.round(distanceToPrev)}m and ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
-        <strong>Next Route:</strong> ${Math.round(distanceToNext)}m and ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
-        <strong>Points:</strong> ${pointsNumber}<br>
-      `;
-    }
-
-    const startMarker = L.marker([startPoint[0], startPoint[1]], { icon: startIcon }).bindPopup(`Start: ${firstTimestamp}`);
-    const endMarker = L.marker([endPoint[0], endPoint[1]], { icon: finishIcon }).bindPopup(popupContent);
-
-    let hoverPopup = null;
-
-    polyline.on("mouseover", function (e) {
-      polyline.setStyle(highlightStyle);
-      startMarker.addTo(map);
-      endMarker.addTo(map);
-
-      const latLng = e.latlng;
-      if (hoverPopup) {
-        map.closePopup(hoverPopup);
-      }
-      hoverPopup = L.popup()
-        .setLatLng(latLng)
-        .setContent(popupContent)
-        .openOn(map);
-    });
-
-    polyline.on("mouseout", function () {
-      polyline.setStyle(originalStyle);
-      map.closePopup(hoverPopup);
-      map.removeLayer(startMarker);
-      map.removeLayer(endMarker);
-    });
-
-    polyline.on("click", function () {
-      map.fitBounds(polyline.getBounds());
-    });
-
-    // Close the popup when clicking elsewhere on the map
-    map.on("click", function () {
-      map.closePopup(hoverPopup);
-    });
-  }
-
-  createPolylinesLayer(markers, map, timezone, routeOpacity) {
-    const splitPolylines = [];
-    let currentPolyline = [];
-    const distanceThresholdMeters = parseInt(this.userSettings.meters_between_routes) || 500;
-    const timeThresholdMinutes = parseInt(this.userSettings.minutes_between_routes) || 60;
-
-    for (let i = 0, len = markers.length; i < len; i++) {
-      if (currentPolyline.length === 0) {
-        currentPolyline.push(markers[i]);
-      } else {
-        const lastPoint = currentPolyline[currentPolyline.length - 1];
-        const currentPoint = markers[i];
-        const distance = haversineDistance(lastPoint[0], lastPoint[1], currentPoint[0], currentPoint[1]);
-        const timeDifference = (currentPoint[4] - lastPoint[4]) / 60;
-
-        if (distance > distanceThresholdMeters || timeDifference > timeThresholdMinutes) {
-          splitPolylines.push([...currentPolyline]);
-          currentPolyline = [currentPoint];
-        } else {
-          currentPolyline.push(currentPoint);
-        }
-      }
-    }
-
-    if (currentPolyline.length > 0) {
-      splitPolylines.push(currentPolyline);
-    }
-
-    return L.layerGroup(
-      splitPolylines.map((polylineCoordinates) => {
-        const latLngs = polylineCoordinates.map((point) => [point[0], point[1]]);
-        const polyline = L.polyline(latLngs, { color: "blue", opacity: 0.6, weight: 3 });
-
-        this.addHighlightOnHover(polyline, map, polylineCoordinates, timezone, routeOpacity);
-
-        return polyline;
-      })
-    ).addTo(map);
-  }
-
   initializeDrawControl() {
     // Initialize the FeatureGroup to store editable layers
     this.drawnItems = new L.FeatureGroup();
@@ -475,168 +305,10 @@ console.log(selectedLayerName);
       const layer = event.layer;
 
       if (event.layerType === 'circle') {
-        this.handleCircleCreated(layer);
+        handleAreaCreated(this.areasLayer, layer, this.apiKey);
       }
 
       this.drawnItems.addLayer(layer);
-    });
-  }
-
-  handleCircleCreated(layer) {
-    const radius = layer.getRadius();
-    const center = layer.getLatLng();
-
-    const formHtml = `
-      <div class="card w-96 max-w-sm bg-content-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title">New Area</h2>
-          <form id="circle-form">
-            <div class="form-control">
-              <label for="circle-name" class="label">
-                <span class="label-text">Name</span>
-              </label>
-              <input type="text" id="circle-name" name="area[name]" class="input input-bordered input-ghost focus:input-ghost w-full max-w-xs" required>
-            </div>
-            <input type="hidden" name="area[latitude]" value="${center.lat}">
-            <input type="hidden" name="area[longitude]" value="${center.lng}">
-            <input type="hidden" name="area[radius]" value="${radius}">
-            <div class="card-actions justify-end mt-4">
-              <button type="submit" class="btn btn-primary">Save</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    `;
-
-    layer.bindPopup(
-      formHtml, {
-        maxWidth: "auto",
-        minWidth: 300
-      }
-     ).openPopup();
-
-    layer.on('popupopen', () => {
-      const form = document.getElementById('circle-form');
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        this.saveCircle(new FormData(form), layer, this.apiKey);
-      });
-    });
-
-    // Add the layer to the areas layer group
-    this.areasLayer.addLayer(layer);
-  }
-
-  saveCircle(formData, layer, apiKey) {
-    const data = {};
-    formData.forEach((value, key) => {
-      const keys = key.split('[').map(k => k.replace(']', ''));
-      if (keys.length > 1) {
-        if (!data[keys[0]]) data[keys[0]] = {};
-        data[keys[0]][keys[1]] = value;
-      } else {
-        data[keys[0]] = value;
-      }
-    });
-
-    fetch(`/api/v1/areas?api_key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json'},
-      body: JSON.stringify(data)
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    })
-    .then(data => {
-      layer.closePopup();
-      layer.bindPopup(`
-        Name: ${data.name}<br>
-        Radius: ${Math.round(data.radius)} meters<br>
-        <a href="#" data-id="${marker[6]}" class="delete-area">[Delete]</a>
-      `).openPopup();
-
-      // Add event listener for the delete button
-      layer.on('popupopen', () => {
-        document.querySelector('.delete-area').addEventListener('click', () => {
-          this.deleteArea(data.id, layer);
-        });
-      });
-    })
-    .catch(error => {
-      console.error('There was a problem with the save request:', error);
-    });
-  }
-
-  deleteArea(id, layer, apiKey) {
-    fetch(`/api/v1/areas/${id}?api_key=${apiKey}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    })
-    .then(data => {
-      this.areasLayer.removeLayer(layer); // Remove the layer from the areas layer group
-    })
-    .catch(error => {
-      console.error('There was a problem with the delete request:', error);
-    });
-  }
-
-  fetchAndDrawAreas(apiKey) {
-    fetch(`/api/v1/areas?api_key=${apiKey}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    })
-    .then(data => {
-      data.forEach(area => {
-        // Check if necessary fields are present
-        if (area.latitude && area.longitude && area.radius && area.name && area.id) {
-          const layer = L.circle([area.latitude, area.longitude], {
-            radius: area.radius,
-            color: 'red',
-            fillColor: '#f03',
-            fillOpacity: 0.5
-          }).bindPopup(`
-            Name: ${area.name}<br>
-            Radius: ${Math.round(area.radius)} meters<br>
-            <a href="#" data-id="${area.id}" class="delete-area">[Delete]</a>
-          `);
-
-          this.areasLayer.addLayer(layer); // Add to areas layer group
-
-          // Add event listener for the delete button
-          layer.on('popupopen', () => {
-            document.querySelector('.delete-area').addEventListener('click', (e) => {
-              e.preventDefault();
-              if (confirm('Are you sure you want to delete this area?')) {
-                this.deleteArea(area.id, layer, this.apiKey);
-              }
-            });
-          });
-        } else {
-          console.error('Area missing required fields:', area);
-        }
-      });
-    })
-    .catch(error => {
-      console.error('There was a problem with the fetch request:', error);
     });
   }
 
@@ -735,7 +407,19 @@ console.log(selectedLayerName);
             <label for="merge_threshold_minutes_info" class="btn-xs join-item">?</label>
           </div>
 
+          <label for="points_rendering_mode">Points rendering mode</label>
+          <div class="join">
+            <div>
+              <input type="radio" id="raw" name="points_rendering_mode" value="raw" checked />
+              <label for="raw">Raw</label>
+            </div>
 
+            <div>
+              <input type="radio" id="simplified" name="points_rendering_mode" value="simplified" />
+              <label for="simplified">Simplified</label>
+            </div>
+            <label for="points_rendering_mode_info" class="btn-xs join-item">?</label>
+          </div>
 
           <button type="submit">Update</button>
         </form>
@@ -775,6 +459,7 @@ console.log(selectedLayerName);
           minutes_between_routes: event.target.minutes_between_routes.value,
           time_threshold_minutes: event.target.time_threshold_minutes.value,
           merge_threshold_minutes: event.target.merge_threshold_minutes.value,
+          points_rendering_mode: event.target.points_rendering_mode.value
         },
       }),
     })
@@ -873,14 +558,14 @@ console.log(selectedLayerName);
     });
 
     // Recreate layers only if they don't exist
-    this.markersLayer = preserveLayers.Points       || L.layerGroup(this.createMarkersArray(this.markers));
-    this.polylinesLayer = preserveLayers.Polylines  || this.createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity);
+    this.markersLayer = preserveLayers.Points       || L.layerGroup(createMarkersArray(this.markers, newSettings));
+    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings);
     this.heatmapLayer = preserveLayers.Heatmap      || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
     this.fogOverlay = preserveLayers["Fog of War"]  || L.layerGroup();
     this.areasLayer = preserveLayers.Areas          || L.layerGroup();
 
     // Redraw areas
-    this.fetchAndDrawAreas(this.apiKey);
+    fetchAndDrawAreas(this.areasLayer, this.apiKey);
 
     let fogEnabled = false;
     document.getElementById('fog').style.display = 'none';
@@ -909,7 +594,7 @@ console.log(selectedLayerName);
     this.addLastMarker(this.map, this.markers);
     this.addEventListeners();
     this.initializeDrawControl();
-    this.updatePolylinesOpacity(this.routeOpacity);
+    updatePolylinesOpacity(this.polylinesLayer, this.routeOpacity);
 
     this.map.on('overlayadd', (e) => {
       if (e.name === 'Areas') {
@@ -986,13 +671,4 @@ console.log(selectedLayerName);
     this.map.removeControl(this.layerControl);
     this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
   }
-
-  updatePolylinesOpacity(opacity) {
-    this.polylinesLayer.eachLayer((layer) => {
-      if (layer instanceof L.Polyline) {
-        layer.setStyle({ opacity: opacity });
-      }
-    });
-  }
-
 }
