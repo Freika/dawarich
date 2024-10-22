@@ -95,3 +95,20 @@
   </div>
   <label class="modal-backdrop" for="merge_threshold_minutes_info">Close</label>
 </div>
+
+<input type="checkbox" id="points_rendering_mode_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Points rendering mode</h3>
+    <p class="py-4">
+      To improve map performance, you can set the rendering mode for points to "Simplified".
+    </p>
+    <p class="py-4">
+      In this mode, the points that are closer to each other than 20 seconds or 50 meters are not being rendered. This can significantly improve the performance of the map, especially if you have a lot of points on the map.
+    </p>
+    <p class="py-4">
+      The "Raw" mode will render all points on the map, regardless of the distance in space and time between them.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="points_rendering_mode_info">Close</label>
+</div>
