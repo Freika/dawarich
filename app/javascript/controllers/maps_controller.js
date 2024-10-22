@@ -411,13 +411,19 @@ export default class extends Controller {
           </div>
 
 
-          <label for="points_rendering_mode">Points rendering mode</label>
-          <input type="radio" id="raw" name="points_rendering_mode" class='radio w-16' value="raw" ${this.pointsRenderingModeChecked('raw')} />
-          <label for="raw">Raw</label>
+          <label for="points_rendering_mode">
+            Points rendering mode
+            <label for="points_rendering_mode_info" class="btn-xs join-item inline">?</label>
+          </label>
+          <label for="raw">
+            <input type="radio" id="raw" name="points_rendering_mode" class='w-4' style="width: 20px;" value="raw" ${this.pointsRenderingModeChecked('raw')} />
+            Raw
+          </label>
 
-          <input type="radio" id="simplified" name="points_rendering_mode" class='radio w-16' value="simplified" ${this.pointsRenderingModeChecked('simplified')}/>
-          <label for="simplified">Simplified</label>
-          <label for="points_rendering_mode_info" class="btn-xs join-item">?</label>
+          <label for="simplified">
+            <input type="radio" id="simplified" name="points_rendering_mode" class='w-4' style="width: 20px;" value="simplified" ${this.pointsRenderingModeChecked('simplified')}/>
+            Simplified
+          </label>
 
           <button type="submit">Update</button>
         </form>
