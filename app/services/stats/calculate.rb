@@ -8,17 +8,12 @@ class Stats::Calculate
   end
 
   def call
-    # 1. Get all points for given user and time period
     points = points(start_timestamp, end_timestamp)
-
-    # 2. Split points by months
     points_by_month = points.group_by_month(&:recorded_at)
 
-    # 3. Calculate stats for each month
     points_by_month.each do |month, month_points|
       update_month_stats(month_points, month.year, month.month)
     end
-    # 4. Save stats
   rescue StandardError => e
     create_stats_update_failed_notification(user, e)
   end
