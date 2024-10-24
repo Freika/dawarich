@@ -1,8 +1,8 @@
 # config/schedule.yml
 
-stat_creating_job:
+bulk_stats_calculating_job:
   cron: "0 */6 * * *" # every 6 hour
-  class: "StatCreatingJob"
+  class: "BulkStatsCalculatingJob"
   queue: stats
 
 area_visits_calculation_scheduling_job:

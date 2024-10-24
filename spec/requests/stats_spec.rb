@@ -54,8 +54,8 @@ RSpec.describe '/stats', type: :request do
     describe 'POST /update' do
       let(:stat) { create(:stat, user:, year: 2024) }
 
-      it 'enqueues StatCreatingJob' do
-        expect { post stats_url(stat.year) }.to have_enqueued_job(StatCreatingJob)
+      it 'enqueues Stats::CalculatingJob' do
+        expect { post stats_url(stat.year) }.to have_enqueued_job(Stats::CalculatingJob)
       end
     end
   end

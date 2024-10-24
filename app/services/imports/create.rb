@@ -35,7 +35,7 @@ class Imports::Create
   end
 
   def schedule_stats_creating(user_id)
-    StatCreatingJob.perform_later(user_id)
+    Stats::CalculatingJob.perform_later(user_id)
   end
 
   def schedule_visit_suggesting(user_id, import)
