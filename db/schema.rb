@@ -53,9 +53,6 @@ ActiveRecord::Schema[7.2].define(version: 2024_08_22_092405) do
     t.index ["user_id"], name: "index_areas_on_user_id"
   end
 
-  create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
-  end
-
   create_table "exports", force: :cascade do |t|
     t.string "name", null: false
     t.string "url"

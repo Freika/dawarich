@@ -35,7 +35,10 @@ class Imports::Create
   end
 
   def schedule_stats_creating(user_id)
-    StatCreatingJob.perform_later(user_id)
+    start_at = import.points.order(:timestamp).first.recorded_at
+    end_at = import.points.order(:timestamp).last.recorded_at
+
+    Stats::CalculatingJob.perform_later(user_id, start_at:, end_at:)
   end
 
   def schedule_visit_suggesting(user_id, import)

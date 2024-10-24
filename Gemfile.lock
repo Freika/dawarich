@@ -142,6 +142,8 @@ GEM
     gpx (1.2.0)
       nokogiri (~> 1.7)
       rake
+    groupdate (6.5.1)
+      activesupport (>= 7)
     hashdiff (1.1.1)
     httparty (0.22.0)
       csv
@@ -433,6 +435,7 @@ DEPENDENCIES
   foreman
   geocoder!
   gpx
+  groupdate
   httparty
   importmap-rails
   kaminari

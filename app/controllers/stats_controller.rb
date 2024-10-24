@@ -13,7 +13,7 @@ class StatsController < ApplicationController
   end
 
   def update
-    StatCreatingJob.perform_later(current_user.id)
+    Stats::CalculatingJob.perform_later(current_user.id)
 
     redirect_to stats_path, notice: 'Stats are being updated', status: :see_other
   end
