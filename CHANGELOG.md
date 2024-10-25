@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.10 - 2024-10-25
+
+### Fixed
+
+- Data migration that prevented the application from starting.
+
 # 0.15.9 - 2024-10-24
 
 ### Fixed
