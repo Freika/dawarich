@@ -128,8 +128,8 @@ GEM
       tzinfo
     factory_bot (6.5.0)
       activesupport (>= 5.0.0)
-    factory_bot_rails (6.4.3)
-      factory_bot (~> 6.4)
+    factory_bot_rails (6.4.4)
+      factory_bot (~> 6.5)
       railties (>= 5.0.0)
     fakeredis (0.1.4)
     ffaker (2.23.0)
@@ -181,7 +181,7 @@ GEM
       activesupport (>= 4)
       railties (>= 4)
       request_store (~> 1.0)
-    loofah (2.22.0)
+    loofah (2.23.1)
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
     mail (2.8.1)
@@ -412,7 +412,7 @@ GEM
     websocket-driver (0.7.6)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
-    zeitwerk (2.7.0)
+    zeitwerk (2.7.1)
 
 PLATFORMS
   aarch64-linux
