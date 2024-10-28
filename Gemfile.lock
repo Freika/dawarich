@@ -354,8 +354,7 @@ GEM
     shrine (3.6.0)
       content_disposition (~> 1.0)
       down (~> 5.1)
-    sidekiq (7.3.2)
-      concurrent-ruby (< 2)
+    sidekiq (7.3.4)
       connection_pool (>= 2.3.0)
       logger
       rack (>= 2.2.4)
