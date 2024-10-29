@@ -17,13 +17,12 @@
     <%= link_to 'DaWarIch', root_path, class: 'btn btn-ghost normal-case text-xl'%>
     <div class="badge mx-4 <%= 'badge-outline' if new_version_available? %>">
       <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
-        <span class="hidden sm:inline"><%= app_version %></span>
-        <span class="ml-1 align-middle">!</span>
-
         <% if new_version_available? %>
           <span class="tooltip tooltip-bottom" data-tip="New version available! Check out Github releases!">
-            &nbsp;
+            <span class="hidden sm:inline"><%= app_version %>&nbsp;!</span>
           </span>
+        <% else %>
+          <span class="hidden sm:inline"><%= app_version %></span>
         <% end %>
       </a>
     </div>

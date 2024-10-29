@@ -11,8 +11,8 @@ module ApplicationHelper
   end
 
   def year_timespan(year)
-    start_at = Time.new(year).beginning_of_year.strftime('%Y-%m-%dT%H:%M')
-    end_at = Time.new(year).end_of_year.strftime('%Y-%m-%dT%H:%M')
+    start_at = DateTime.new(year).beginning_of_year.strftime('%Y-%m-%dT%H:%M')
+    end_at = DateTime.new(year).end_of_year.strftime('%Y-%m-%dT%H:%M')
 
     { start_at:, end_at: }
   end
@@ -66,9 +66,7 @@ module ApplicationHelper
   end
 
   def new_version_available?
-    Rails.cache.fetch('dawarich/app-version-check', expires_in: 1.day) do
-      CheckAppVersion.new.call
-    end
+    CheckAppVersion.new.call
   end
 
   def app_version

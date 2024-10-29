@@ -19,3 +19,8 @@ watcher_job:
   cron: "0 */1 * * *" # every 1 hour
   class: "Import::WatcherJob"
   queue: imports
+
+app_version_checking_job:
+  cron: "0 */6 * * *" # every 6 hours
+  class: "AppVersionCheckingJob"
+  queue: default
