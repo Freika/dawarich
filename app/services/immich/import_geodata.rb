@@ -13,7 +13,12 @@ class Immich::ImportGeodata
     raise ArgumentError, 'Immich API key is missing' if immich_api_key.blank?
     raise ArgumentError, 'Immich URL is missing'     if user.settings['immich_url'].blank?
 
-    immich_data       = retrieve_immich_data
+    immich_data = retrieve_immich_data
+
+    log_no_data and return if immich_data.empty?
+
+    write_raw_data(immich_data)
+
     immich_data_json  = parse_immich_data(immich_data)
     file_name         = file_name(immich_data_json)
     import            = user.imports.find_or_initialize_by(name: file_name, source: :immich_api)
@@ -35,7 +40,7 @@ class Immich::ImportGeodata
   end
 
   def retrieve_immich_data
-    1970.upto(Date.today.year).flat_map do |year|
+    1970.upto(Time.zone.today.year).flat_map do |year|
       (1..12).map do |month_number|
         url = "#{immich_api_base_url}/timeline/bucket?size=MONTH&timeBucket=#{year}-#{month_number}-01"
 
@@ -70,6 +75,12 @@ class Immich::ImportGeodata
 
   def log_no_data
     Rails.logger.debug 'No data found'
+  end
+
+  def write_raw_data(immich_data)
+    File.open("tmp/imports/immich_raw_data_#{Time.current}_#{user.email}.json", 'w') do |file|
+      file.write(immich_data.to_json)
+    end
   end
 
   def create_import_failed_notification(import_name)

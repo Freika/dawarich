@@ -121,7 +121,7 @@ services:
         max-size: "100m"
         max-file: "5"
     healthcheck:
-      test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep $(hostname)" ]
+      test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep ${HOSTNAME}" ]
       interval: 10s
       retries: 5
       start_period: 30s

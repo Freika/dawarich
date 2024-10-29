@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.15.11 - 2024-10-29
+
+### Added
+
+- Importing Immich data on the Imports page now will trigger an attempt to write raw json file with the data from Immich to `tmp/imports/immich_raw_data_CURRENT_TIME_USER_EMAIL.json` file. This is useful to debug the problem with the import if it fails. #270
+
+### Changed
+
+- Hostname definition for Sidekiq healtcheck to solve #344. See the diff:
+
+```diff
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    healthcheck:
+-     test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep $(hostname)" ]
++     test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep ${HOSTNAME}" ]
+```
+
 # 0.15.10 - 2024-10-25
 
 ### Fixed
