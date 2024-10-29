@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- The instruction to import `Records.json` from Google Takeout now mentions `tmp/imports` directory instead of `public/imports`. #326
 - Hostname definition for Sidekiq healtcheck to solve #344. See the diff:
 
 ```diff

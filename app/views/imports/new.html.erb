@@ -13,7 +13,7 @@
       <p class='mt-5 mb-2'>1. Upload your Records.json file to your server</p>
       <p class='mt-5 mb-2'>2. Copy you Records.json to the <code>tmp</code> folder:
         <div class="mockup-code">
-          <pre data-prefix="$"><code>docker cp Records.json dawarich_app:/var/app/public/imports/Records.json</code></pre>
+          <pre data-prefix="$"><code>docker cp Records.json dawarich_app:/var/app/tmp/imports/Records.json</code></pre>
         </div>
       </p>
       <p class='mt-5 mb-2'>3. Attach to the docker container:
@@ -23,7 +23,7 @@
       </p>
       <p class='mt-5 mb-2'>4. Run the rake task:
         <div class="mockup-code">
-          <pre data-prefix="$"><code>bundle exec rake import:big_file['public/imports/Records.json','user@example.com']</code>
+          <pre data-prefix="$"><code>bundle exec rake import:big_file['tmp/imports/Records.json','user@example.com']</code>
           </pre>
         </div>
       </p>
