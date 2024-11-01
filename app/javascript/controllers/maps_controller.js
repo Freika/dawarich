@@ -154,6 +154,7 @@ export default class extends Controller {
       }
     })
 
+    // the JSON is 23MB, so it's better to fetch it asynchronously or cache or use local copy
     const response = await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
     const worldData = await response.json()
 
