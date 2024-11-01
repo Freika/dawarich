@@ -21,6 +21,7 @@ import { esriWorldStreetMapLayer } from "../maps/layers";
 import { esriWorldTopoMapLayer } from "../maps/layers";
 import { esriWorldImageryMapLayer } from "../maps/layers";
 import { esriWorldGrayCanvasMapLayer } from "../maps/layers";
+import { countryCodesMap } from "../maps/country_codes";
 
 import "leaflet-draw";
 
@@ -41,6 +42,7 @@ export default class extends Controller {
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.element.dataset.distance_unit || "km";
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
+    this.countryCodesMap = countryCodesMap();
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -61,6 +63,7 @@ export default class extends Controller {
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
+    this.setupScratchLayer(this.countryCodesMap);
 
     if (!this.settingsButtonAdded) {
       this.addSettingsButton();
@@ -71,6 +74,7 @@ export default class extends Controller {
       Polylines: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
+      "Scratch map": this.scratchLayer,
       Areas: this.areasLayer // Add the areas layer to the controls
     };
 
@@ -138,6 +142,68 @@ export default class extends Controller {
 
   disconnect() {
     this.map.remove();
+  }
+
+  async setupScratchLayer(countryCodesMap) {
+    this.scratchLayer = L.geoJSON(null, {
+      style: {
+        fillColor: '#FFD700',
+        fillOpacity: 0.3,
+        color: '#FFA500',
+        weight: 1
+      }
+    })
+
+    try {
+      // Up-to-date version can be found on Github:
+      // https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson
+      const response = await fetch('/countries.geojson', {
+        headers: {
+          'Accept': 'application/geo+json,application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const worldData = await response.json();
+
+      const visitedCountries = this.getVisitedCountries(countryCodesMap)
+      const filteredFeatures = worldData.features.filter(feature =>
+        visitedCountries.includes(feature.properties.ISO_A2)
+      )
+
+      this.scratchLayer.addData({
+        type: 'FeatureCollection',
+        features: filteredFeatures
+      })
+    } catch (error) {
+      console.error('Error loading GeoJSON:', error);
+    }
+  }
+
+
+  getVisitedCountries(countryCodesMap) {
+    if (!this.markers) return [];
+
+    return [...new Set(
+      this.markers
+        .filter(marker => marker[7]) // Ensure country exists
+        .map(marker => {
+          // Convert country name to ISO code, or return the original if not found
+          return countryCodesMap[marker[7]] || marker[7];
+        })
+    )];
+  }
+
+  // Optional: Add methods to handle user interactions
+  toggleScratchLayer() {
+    if (this.map.hasLayer(this.scratchLayer)) {
+      this.map.removeLayer(this.scratchLayer)
+    } else {
+      this.scratchLayer.addTo(this.map)
+    }
   }
 
   baseMaps() {
