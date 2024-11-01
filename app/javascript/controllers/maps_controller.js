@@ -152,7 +152,7 @@ export default class extends Controller {
         color: '#FFA500',
         weight: 1
       }
-    }).addTo(this.map)
+    })
 
     const response = await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
     const worldData = await response.json()
