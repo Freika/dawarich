@@ -21,6 +21,7 @@ import { esriWorldStreetMapLayer } from "../maps/layers";
 import { esriWorldTopoMapLayer } from "../maps/layers";
 import { esriWorldImageryMapLayer } from "../maps/layers";
 import { esriWorldGrayCanvasMapLayer } from "../maps/layers";
+import { countryCodesMap } from "../maps/country_codes";
 
 import "leaflet-draw";
 
@@ -41,35 +42,7 @@ export default class extends Controller {
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.element.dataset.distance_unit || "km";
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
-
-    this.countryCodeMap = {
-      'Russia': 'RU',
-      'Germany': 'DE',
-      'United States': 'US',
-      'United Kingdom': 'GB',
-      'France': 'FR',
-      'Italy': 'IT',
-      'Spain': 'ES',
-      'Canada': 'CA',
-      'Australia': 'AU',
-      'Japan': 'JP',
-      'China': 'CN',
-      'Brazil': 'BR',
-      'India': 'IN',
-      'Mexico': 'MX',
-      'South Africa': 'ZA',
-      'South Korea': 'KR',
-      'Netherlands': 'NL',
-      'Switzerland': 'CH',
-      'Sweden': 'SE',
-      'Norway': 'NO',
-      'Denmark': 'DK',
-      'Poland': 'PL',
-      'Greece': 'GR',
-      'Portugal': 'PT',
-      'Ireland': 'IE',
-      // Add more countries as needed
-    };
+    this.countryCodesMap = countryCodesMap();
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -90,7 +63,7 @@ export default class extends Controller {
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
-    this.setupScratchLayer();
+    this.setupScratchLayer(this.countryCodesMap);
 
     if (!this.settingsButtonAdded) {
       this.addSettingsButton();
@@ -171,8 +144,7 @@ export default class extends Controller {
     this.map.remove();
   }
 
-
-  async setupScratchLayer() {
+  async setupScratchLayer(countryCodesMap) {
     this.scratchLayer = L.geoJSON(null, {
       style: {
         fillColor: '#FFD700',
@@ -185,7 +157,7 @@ export default class extends Controller {
     const response = await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
     const worldData = await response.json()
 
-    const visitedCountries = this.getVisitedCountries()
+    const visitedCountries = this.getVisitedCountries(countryCodesMap)
     const filteredFeatures = worldData.features.filter(feature =>
       visitedCountries.includes(feature.properties.ISO_A2)
     )
@@ -196,7 +168,7 @@ export default class extends Controller {
     })
   }
 
-  getVisitedCountries() {
+  getVisitedCountries(countryCodesMap) {
     if (!this.markers) return [];
 
     return [...new Set(
@@ -204,7 +176,7 @@ export default class extends Controller {
         .filter(marker => marker[7]) // Ensure country exists
         .map(marker => {
           // Convert country name to ISO code, or return the original if not found
-          return this.countryCodeMap[marker[7]] || marker[7];
+          return countryCodesMap[marker[7]] || marker[7];
         })
     )];
   }
