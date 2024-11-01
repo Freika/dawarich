@@ -154,20 +154,35 @@ export default class extends Controller {
       }
     })
 
-    // the JSON is 23MB, so it's better to fetch it asynchronously or cache or use local copy
-    const response = await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
-    const worldData = await response.json()
+    try {
+      // Up-to-date version can be found on Github:
+      // https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson
+      const response = await fetch('/countries.geojson', {
+        headers: {
+          'Accept': 'application/geo+json,application/json'
+        }
+      });
 
-    const visitedCountries = this.getVisitedCountries(countryCodesMap)
-    const filteredFeatures = worldData.features.filter(feature =>
-      visitedCountries.includes(feature.properties.ISO_A2)
-    )
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    this.scratchLayer.addData({
-      type: 'FeatureCollection',
-      features: filteredFeatures
-    })
+      const worldData = await response.json();
+
+      const visitedCountries = this.getVisitedCountries(countryCodesMap)
+      const filteredFeatures = worldData.features.filter(feature =>
+        visitedCountries.includes(feature.properties.ISO_A2)
+      )
+
+      this.scratchLayer.addData({
+        type: 'FeatureCollection',
+        features: filteredFeatures
+      })
+    } catch (error) {
+      console.error('Error loading GeoJSON:', error);
+    }
   }
+
 
   getVisitedCountries(countryCodesMap) {
     if (!this.markers) return [];
