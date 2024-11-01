@@ -5,12 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.15.13 - 2024-11-01
-
-### Changed
-
-- Enable serving static files from the `public` directory in development mode.
-
 # 0.15.12 - 2024-11-01
 
 ### Added
