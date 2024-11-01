@@ -6,6 +6,7 @@ export function createMarkersArray(markersData, userSettings) {
   } else {
     return markersData.map((marker) => {
       const [lat, lon] = marker;
+      const country = marker[7];
       const popupContent = createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit);
       return L.circleMarker([lat, lon], { radius: 4 }).bindPopup(popupContent);
     });
