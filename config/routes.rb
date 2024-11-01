@@ -72,6 +72,10 @@ Rails.application.routes.draw do
       namespace :owntracks do
         resources :points, only: :create
       end
+
+      namespace :countries do
+        resources :borders, only: :index
+      end
     end
   end
 end

@@ -157,7 +157,7 @@ export default class extends Controller {
     try {
       // Up-to-date version can be found on Github:
       // https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson
-      const response = await fetch('/countries.geojson', {
+      const response = await fetch('/api/v1/countries/borders.json', {
         headers: {
           'Accept': 'application/geo+json,application/json'
         }
