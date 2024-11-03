@@ -166,14 +166,7 @@ export default class extends Controller {
     // Add the new point to the markers array
     this.markers.push(newPoint);
 
-    // Create a new marker for the point
-    const markerOptions = {
-      ...this.userSettings,  // Pass any relevant settings
-      id: newPoint[6],       // Assuming index 6 contains the point ID
-      timestamp: newPoint[4] // Assuming index 2 contains the timestamp
-    };
-
-    const newMarker = this.createMarker(newPoint, markerOptions);
+    const newMarker = L.marker([newPoint[0], newPoint[1]])
     this.markersArray.push(newMarker);
 
     // Update the markers layer
@@ -195,7 +188,7 @@ export default class extends Controller {
     );
 
     // Pan map to new location
-    this.map.setView([newPoint[0], newPoint[1]], 14);
+    this.map.setView([newPoint[0], newPoint[1]], 16);
 
     // Update fog of war if enabled
     if (this.map.hasLayer(this.fogOverlay)) {
@@ -210,48 +203,6 @@ export default class extends Controller {
     });
 
     this.addLastMarker(this.map, this.markers);
-
-    this.openNewMarkerPopup(newPoint);
-  }
-
-  openNewMarkerPopup(point) {
-    // Create a temporary marker just for displaying the timestamp
-    const timestamp = formatDate(point[4], this.timezone);
-
-    const tempMarker = L.marker([point[0], point[1]]);
-    const popupContent = `
-      <div>
-        <p><strong>${timestamp}</strong></p>
-      </div>
-    `;
-
-    tempMarker
-      .bindPopup(popupContent)
-      .addTo(this.map)
-      .openPopup();
-
-      // Remove the temporary marker after 5 seconds
-    setTimeout(() => {
-      this.map.removeLayer(tempMarker);
-    }, 300);
-  }
-
-
-  createMarker(point, options) {
-    const marker = L.marker([point[0], point[1]]);
-
-    // Add popup content based on point data
-    const popupContent = `
-      <div>
-        <p>Time: ${new Date(point[2]).toLocaleString()}</p>
-        ${point[3] ? `<p>Address: ${point[3]}</p>` : ''}
-        ${point[7] ? `<p>Country: ${point[7]}</p>` : ''}
-        <a href="#" class="delete-point" data-id="${point[6]}">Delete</a>
-      </div>
-    `;
-
-    marker.bindPopup(popupContent);
-    return marker;
   }
 
   async setupScratchLayer(countryCodesMap) {
@@ -292,7 +243,6 @@ export default class extends Controller {
       console.error('Error loading GeoJSON:', error);
     }
   }
-
 
   getVisitedCountries(countryCodesMap) {
     if (!this.markers) return [];
