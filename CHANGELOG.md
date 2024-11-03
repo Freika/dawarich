@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.16.0 - 2024-11-03
+
+## The Websockets release
+
+### Added
+
+- New notifications are now being indicated with a blue-ish dot in the top right corner of the screen. Clicking on the bell icon will show you all your notifications.
+- New points on the map will now be shown in real-time. No need to reload the map to see new points.
+
 # 0.15.13 - 2024-11-01
 
 ### Added

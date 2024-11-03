@@ -12,6 +12,7 @@ import { fetchAndDrawAreas } from "../maps/areas";
 import { handleAreaCreated } from "../maps/areas";
 
 import { showFlashMessage } from "../maps/helpers";
+import { formatDate } from "../maps/helpers";
 
 import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
@@ -150,6 +151,9 @@ export default class extends Controller {
   setupSubscription() {
     consumer.subscriptions.create("PointsChannel", {
       received: (data) => {
+        // TODO:
+        // Only append the point if its timestamp is within current
+        // timespan
         this.appendPoint(data);
       }
     });
@@ -157,7 +161,6 @@ export default class extends Controller {
 
   appendPoint(data) {
     // Parse the received point data
-    console.log(data)
     const newPoint = data;
 
     // Add the new point to the markers array
@@ -205,8 +208,34 @@ export default class extends Controller {
         this.map.removeLayer(layer);
       }
     });
+
     this.addLastMarker(this.map, this.markers);
+
+    this.openNewMarkerPopup(newPoint);
   }
+
+  openNewMarkerPopup(point) {
+    // Create a temporary marker just for displaying the timestamp
+    const timestamp = formatDate(point[4], this.timezone);
+
+    const tempMarker = L.marker([point[0], point[1]]);
+    const popupContent = `
+      <div>
+        <p><strong>${timestamp}</strong></p>
+      </div>
+    `;
+
+    tempMarker
+      .bindPopup(popupContent)
+      .addTo(this.map)
+      .openPopup();
+
+      // Remove the temporary marker after 5 seconds
+    setTimeout(() => {
+      this.map.removeLayer(tempMarker);
+    }, 300);
+  }
+
 
   createMarker(point, options) {
     const marker = L.marker([point[0], point[1]]);
