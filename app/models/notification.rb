@@ -21,11 +21,11 @@ class Notification < ApplicationRecord
     NotificationsChannel.broadcast_to(
       user,
       {
-        id: id,
-        title: title,
-        content: content,
-        kind: kind,
-        timestamp: Time.current.to_i
+        # id: id,
+        # title: title,
+        # content: content,
+        # kind: kind,
+        # timestamp: Time.current.to_i
       }
     )
   end

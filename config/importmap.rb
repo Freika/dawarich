@@ -20,3 +20,4 @@ pin 'leaflet-draw' # @1.0.4
 pin '@rails/actioncable', to: 'actioncable.esm.js'
 pin_all_from 'app/javascript/channels', under: 'channels'
 pin 'notifications_channel', to: 'channels/notifications_channel.js'
+pin 'points_channel', to: 'channels/points_channel.js'

@@ -23,6 +23,7 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
 
   after_create :async_reverse_geocode
+  after_create_commit :broadcast_coordinates
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
@@ -36,5 +37,23 @@ class Point < ApplicationRecord
     return unless REVERSE_GEOCODING_ENABLED
 
     ReverseGeocodingJob.perform_later(self.class.to_s, id)
+  end
+
+  private
+
+  def broadcast_coordinates
+    PointsChannel.broadcast_to(
+      user,
+      [
+        latitude.to_f,
+        longitude.to_f,
+        battery.to_s,
+        altitude.to_s,
+        timestamp.to_s,
+        velocity.to_s,
+        id.to_s,
+        country.to_s
+      ]
+    )
   end
 end

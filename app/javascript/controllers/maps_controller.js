@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import "leaflet.heat";
+import consumer from "../channels/consumer";  // Add this import
 
 import { createMarkersArray } from "../maps/markers";
 
@@ -138,10 +139,90 @@ export default class extends Controller {
         this.map.removeControl(this.drawControl);
       }
     });
+
+    this.setupSubscription();  // Add this line
   }
 
   disconnect() {
     this.map.remove();
+  }
+
+  setupSubscription() {
+    consumer.subscriptions.create("PointsChannel", {
+      received: (data) => {
+        this.appendPoint(data);
+      }
+    });
+  }
+
+  appendPoint(data) {
+    // Parse the received point data
+    console.log(data)
+    const newPoint = data;
+
+    // Add the new point to the markers array
+    this.markers.push(newPoint);
+
+    // Create a new marker for the point
+    const markerOptions = {
+      ...this.userSettings,  // Pass any relevant settings
+      id: newPoint[6],       // Assuming index 6 contains the point ID
+      timestamp: newPoint[4] // Assuming index 2 contains the timestamp
+    };
+
+    const newMarker = this.createMarker(newPoint, markerOptions);
+    this.markersArray.push(newMarker);
+
+    // Update the markers layer
+    this.markersLayer.clearLayers();
+    this.markersLayer.addLayer(L.layerGroup(this.markersArray));
+
+    // Update heatmap
+    this.heatmapMarkers.push([newPoint[0], newPoint[1], 0.2]);
+    this.heatmapLayer.setLatLngs(this.heatmapMarkers);
+
+    // Update polylines
+    this.polylinesLayer.clearLayers();
+    this.polylinesLayer = createPolylinesLayer(
+      this.markers,
+      this.map,
+      this.timezone,
+      this.routeOpacity,
+      this.userSettings
+    );
+
+    // Pan map to new location
+    this.map.setView([newPoint[0], newPoint[1]], 14);
+
+    // Update fog of war if enabled
+    if (this.map.hasLayer(this.fogOverlay)) {
+      this.updateFog(this.markers, this.clearFogRadius);
+    }
+
+    // Update the last marker
+    this.map.eachLayer((layer) => {
+      if (layer instanceof L.Marker && !layer._popup) {
+        this.map.removeLayer(layer);
+      }
+    });
+    this.addLastMarker(this.map, this.markers);
+  }
+
+  createMarker(point, options) {
+    const marker = L.marker([point[0], point[1]]);
+
+    // Add popup content based on point data
+    const popupContent = `
+      <div>
+        <p>Time: ${new Date(point[2]).toLocaleString()}</p>
+        ${point[3] ? `<p>Address: ${point[3]}</p>` : ''}
+        ${point[7] ? `<p>Country: ${point[7]}</p>` : ''}
+        <a href="#" class="delete-point" data-id="${point[6]}">Delete</a>
+      </div>
+    `;
+
+    marker.bindPopup(popupContent);
+    return marker;
   }
 
   async setupScratchLayer(countryCodesMap) {
