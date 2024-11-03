@@ -2,46 +2,73 @@ import { Controller } from "@hotwired/stimulus"
 import consumer from "../channels/consumer"
 
 export default class extends Controller {
-  static targets = ["container"]
+  static targets = ["badge"]
   static values = { userId: Number }
 
+  initialize() {
+    this.subscription = null
+  }
+
   connect() {
-    console.log("Controller connecting...")
-    // Ensure we clean up any existing subscription
+    console.log("[Stimulus] Notifications controller connecting...")
+
+    // Clean up any existing subscription
     if (this.subscription) {
-      console.log("Cleaning up existing subscription")
+      console.log("[Stimulus] Cleaning up existing subscription")
       this.subscription.unsubscribe()
+      this.subscription = null
     }
 
-    this.subscription = consumer.subscriptions.create("NotificationsChannel", {
-      connected: () => {
-        console.log("Connected to NotificationsChannel", this.subscription)
-      },
-      disconnected: () => {
-        console.log("Disconnected from NotificationsChannel")
-      },
-      received: (data) => {
-        console.log("Received notification:", data, "Subscription:", this.subscription)
-        this.displayNotification(data)
-      }
-    })
+    // Create new subscription
+    this.createSubscription()
   }
 
   disconnect() {
-    console.log("Controller disconnecting...")
+    console.log("[Stimulus] Notifications controller disconnecting...")
     if (this.subscription) {
       this.subscription.unsubscribe()
       this.subscription = null
     }
   }
 
-  displayNotification(data) {
-    console.log("Notification received:", data) // For debugging
-    const notification = document.createElement("div")
-    notification.classList.add("notification", `notification-${data.kind}`)
-    notification.innerHTML = `<strong>${data.title}</strong>: ${data.content}`
+  createSubscription() {
+    console.log("[Stimulus] Creating new notification subscription")
+    this.subscription = consumer.subscriptions.create("NotificationsChannel", {
+      connected: () => {
+        console.log("[WebSocket] Connected to NotificationsChannel")
+      },
+      disconnected: () => {
+        console.log("[WebSocket] Disconnected from NotificationsChannel")
+      },
+      received: (data) => {
+        console.log("[WebSocket] Received notification:", data)
+        this.animateBadge()
+      }
+    })
+  }
 
-    this.containerTarget.appendChild(notification)
-    setTimeout(() => notification.remove(), 5000) // Auto-hide after 5 seconds
+  animateBadge() {
+    let badge = this.hasBadgeTarget ? this.badgeTarget : null
+
+    if (!badge) {
+      badge = document.createElement("span")
+      badge.className = "badge badge-xs badge-primary absolute top-0 right-0"
+      badge.setAttribute("data-notifications-target", "badge")
+      this.element.querySelector('.btn').appendChild(badge)
+    }
+
+    // Create ping effect div if it doesn't exist
+    let pingEffect = badge.querySelector('.ping-effect')
+    if (!pingEffect) {
+      pingEffect = document.createElement("span")
+      pingEffect.className = "ping-effect absolute inline-flex h-full w-full rounded-full animate-ping bg-primary opacity-75"
+      badge.appendChild(pingEffect)
+    } else {
+      // Reset animation
+      pingEffect.remove()
+      requestAnimationFrame(() => {
+        badge.appendChild(pingEffect)
+      })
+    }
   }
 }

@@ -21,9 +21,6 @@
     <div class='container mx-auto'>
       <%= render 'shared/navbar' %>
       <%= render 'shared/flash' %>
-      <div data-controller="notifications" data-notifications-user-id-value="<%= current_user.id %>">
-        <div data-notifications-target="container" class="notifications-container"></div>
-      </div>
       <div class="flex flex-row gap-5 w-full px-5">
         <%= yield %>
       </div>

@@ -18,13 +18,14 @@ class Notification < ApplicationRecord
   private
 
   def broadcast_notification
-    Rails.logger.debug "Broadcasting notification to #{user.id}"
     NotificationsChannel.broadcast_to(
       user,
       {
+        id: id,
         title: title,
         content: content,
-        kind: kind
+        kind: kind,
+        timestamp: Time.current.to_i
       }
     )
   end
