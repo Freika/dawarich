@@ -12,7 +12,7 @@ class Immich::ImportParser
   end
 
   def call
-    json.each { |point| create_point(point) }
+    json.each.with_index(1) { |point, index| create_point(point, index) }
   end
 
   def create_point(point)
@@ -28,7 +28,7 @@ class Immich::ImportParser
       user_id:
     )
 
-    1
+    broadcast_import_progress(import, index)
   end
 
   def point_exists?(point, timestamp)
