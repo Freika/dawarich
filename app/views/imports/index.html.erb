@@ -39,18 +39,23 @@
               <th>Created at</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            data-controller="imports"
+            data-imports-target="index"
+            data-user-id="<%= current_user.id %>"
+          >
             <% @imports.each do |import| %>
-              <tr>
+              <tr data-import-id="<%= import.id %>" id="import-<%= import.id %>">
                 <td>
-                  <%= link_to import.name, import, class: 'underline hover:no-underline' %> (<%= import.source %>)
-                  &nbsp
+                  <%= link_to import.name, import, class: 'underline hover:no-underline' %>
+                  (<%= import.source %>)
+                  &nbsp;
                   <%= link_to '🗺️', map_path(import_id: import.id) %>
-                  &nbsp
+                  &nbsp;
                   <%= link_to '📋', points_path(import_id: import.id) %>
                 </td>
-                <td>
-                  <%= "#{number_with_delimiter import.points_count}" %>
+                <td data-points-count>
+                  <%= number_with_delimiter import.points_count %>
                 </td>
                 <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
               </tr>

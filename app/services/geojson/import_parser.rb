@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Geojson::ImportParser
+  include Imports::Broadcaster
+
   attr_reader :import, :json, :user_id
 
   def initialize(import, user_id)
@@ -12,10 +14,12 @@ class Geojson::ImportParser
   def call
     data = Geojson::Params.new(json).call
 
-    data.each do |point|
+    data.each.with_index(1) do |point, index|
       next if point_exists?(point, user_id)
 
       Point.create!(point.merge(user_id:, import_id: import.id))
+
+      broadcast_import_progress(import, index)
     end
   end
 
