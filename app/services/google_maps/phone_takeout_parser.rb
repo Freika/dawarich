@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class GoogleMaps::PhoneTakeoutParser
+  include Imports::Broadcaster
+
   attr_reader :import, :user_id
 
   def initialize(import, user_id)
@@ -11,7 +13,7 @@ class GoogleMaps::PhoneTakeoutParser
   def call
     points_data = parse_json
 
-    points_data.compact.each do |point_data|
+    points_data.compact.each.with_index(1) do |point_data, index|
       next if Point.exists?(
         timestamp:  point_data[:timestamp],
         latitude:   point_data[:latitude],
@@ -32,6 +34,8 @@ class GoogleMaps::PhoneTakeoutParser
         tracker_id: 'google-maps-phone-timeline-export',
         user_id:
       )
+
+      broadcast_import_progress(import, index)
     end
   end
 

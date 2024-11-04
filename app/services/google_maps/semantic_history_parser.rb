@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class GoogleMaps::SemanticHistoryParser
+  include Imports::Broadcaster
+
   attr_reader :import, :user_id
 
   def initialize(import, user_id)
@@ -11,7 +13,7 @@ class GoogleMaps::SemanticHistoryParser
   def call
     points_data = parse_json
 
-    points_data.each do |point_data|
+    points_data.each.with_index(1) do |point_data, index|
       next if Point.exists?(
         timestamp: point_data[:timestamp],
         latitude: point_data[:latitude],
@@ -29,6 +31,8 @@ class GoogleMaps::SemanticHistoryParser
         import_id: import.id,
         user_id:
       )
+
+      broadcast_import_progress(import, index)
     end
   end
 
@@ -44,7 +48,7 @@ class GoogleMaps::SemanticHistoryParser
             {
               latitude: waypoint['latE7'].to_f / 10**7,
               longitude: waypoint['lngE7'].to_f / 10**7,
-              timestamp: Timestamps::parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
+              timestamp: Timestamps.parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
               raw_data: timeline_object
             }
           end
@@ -52,7 +56,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: timeline_object['activitySegment']['startLocation']['latitudeE7'].to_f / 10**7,
             longitude: timeline_object['activitySegment']['startLocation']['longitudeE7'].to_f / 10**7,
-            timestamp: Timestamps::parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
+            timestamp: Timestamps.parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         end
@@ -62,7 +66,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: timeline_object['placeVisit']['location']['latitudeE7'].to_f / 10**7,
             longitude: timeline_object['placeVisit']['location']['longitudeE7'].to_f / 10**7,
-            timestamp: Timestamps::parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
+            timestamp: Timestamps.parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         elsif timeline_object.dig('placeVisit', 'otherCandidateLocations')&.any?
@@ -73,7 +77,7 @@ class GoogleMaps::SemanticHistoryParser
           {
             latitude: point['latitudeE7'].to_f / 10**7,
             longitude: point['longitudeE7'].to_f / 10**7,
-            timestamp: Timestamps::parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
+            timestamp: Timestamps.parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
             raw_data: timeline_object
           }
         else

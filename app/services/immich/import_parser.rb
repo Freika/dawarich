@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Immich::ImportParser
+  include Imports::Broadcaster
+
   attr_reader :import, :json, :user_id
 
   def initialize(import, user_id)
