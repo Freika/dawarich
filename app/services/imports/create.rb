@@ -25,7 +25,6 @@ class Imports::Create
     # Bad classes naming by the way, they are not parsers, they are point creators
     case source
     when 'google_semantic_history'  then GoogleMaps::SemanticHistoryParser
-    when 'google_records'           then GoogleMaps::RecordsParser
     when 'google_phone_takeout'     then GoogleMaps::PhoneTakeoutParser
     when 'owntracks'                then OwnTracks::ExportParser
     when 'gpx'                      then Gpx::TrackParser
