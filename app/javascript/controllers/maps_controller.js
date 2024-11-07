@@ -558,7 +558,7 @@ export default class extends Controller {
           <label for="live_map_enabled">
             Live Map
             <label for="live_map_enabled_info" class="btn-xs join-item inline">?</label>
-            <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class='w-4' style="width: 20px;" value="false" ${this.liveMapEnabledChecked()} />
+            <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class='w-4' style="width: 20px;" value="false" ${this.liveMapEnabledChecked(true)} />
           </label>
 
           <button type="submit">Update</button>
@@ -594,7 +594,7 @@ export default class extends Controller {
   }
 
   liveMapEnabledChecked(value) {
-    if (value === this.pointsRenderingMode) {
+    if (value === this.liveMapEnabled) {
       return 'checked';
     } else {
       return '';
@@ -625,6 +625,10 @@ export default class extends Controller {
         if (data.status === 'success') {
           showFlashMessage('notice', data.message);
           this.updateMapWithNewSettings(data.settings);
+
+          if (data.settings.live_map_enabled) {
+            this.setupSubscription();
+          }
         } else {
           showFlashMessage('error', data.message);
         }
