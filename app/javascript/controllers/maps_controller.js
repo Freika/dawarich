@@ -44,6 +44,7 @@ export default class extends Controller {
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.element.dataset.distance_unit || "km";
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
+    this.liveMapEnabled = this.userSettings.liveMapEnabled || false;
     this.countryCodesMap = countryCodesMap();
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
@@ -551,6 +552,12 @@ export default class extends Controller {
             Simplified
           </label>
 
+          <label for="live_map_enabled">
+            Live Map
+            <label for="live_map_enabled_info" class="btn-xs join-item inline">?</label>
+            <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class='w-4' style="width: 20px;" value="false" ${this.liveMapEnabledChecked()} />
+          </label>
+
           <button type="submit">Update</button>
         </form>
       `;
@@ -583,6 +590,14 @@ export default class extends Controller {
     }
   }
 
+  liveMapEnabledChecked(value) {
+    if (value === this.pointsRenderingMode) {
+      return 'checked';
+    } else {
+      return '';
+    }
+  }
+
   updateSettings(event) {
     event.preventDefault();
 
@@ -597,7 +612,8 @@ export default class extends Controller {
           minutes_between_routes: event.target.minutes_between_routes.value,
           time_threshold_minutes: event.target.time_threshold_minutes.value,
           merge_threshold_minutes: event.target.merge_threshold_minutes.value,
-          points_rendering_mode: event.target.points_rendering_mode.value
+          points_rendering_mode: event.target.points_rendering_mode.value,
+          live_map_enabled: event.target.live_map_enabled.checked
         },
       }),
     })

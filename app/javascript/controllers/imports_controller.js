@@ -5,6 +5,11 @@ export default class extends Controller {
   static targets = ["index"];
 
   connect() {
+    if (!this.hasIndexTarget) {
+      console.log("No index target found, skipping subscription")
+      return
+    }
+
     console.log("Imports controller connected", {
       hasIndexTarget: this.hasIndexTarget,
       element: this.element,

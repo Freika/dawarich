@@ -31,7 +31,7 @@ class Api::V1::SettingsController < ApiController
     params.require(:settings).permit(
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
-      :preferred_map_layer, :points_rendering_mode
+      :preferred_map_layer, :points_rendering_mode, :live_map_enabled
     )
   end
 end

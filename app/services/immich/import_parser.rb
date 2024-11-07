@@ -15,7 +15,7 @@ class Immich::ImportParser
     json.each.with_index(1) { |point, index| create_point(point, index) }
   end
 
-  def create_point(point)
+  def create_point(point, index)
     return 0 if point['latitude'].blank? || point['longitude'].blank? || point['timestamp'].blank?
     return 0 if point_exists?(point, point['timestamp'])
 
