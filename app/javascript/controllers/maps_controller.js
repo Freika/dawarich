@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import "leaflet.heat";
+import consumer from "../channels/consumer";
 
 import { createMarkersArray } from "../maps/markers";
 
@@ -42,6 +43,7 @@ export default class extends Controller {
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.element.dataset.distance_unit || "km";
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
+    this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
@@ -82,7 +84,7 @@ export default class extends Controller {
       .scale({
         position: "bottomright",
         metric: true,
-        imperial: false,
+        imperial: true,
         maxWidth: 120,
       })
       .addTo(this.map);
@@ -138,10 +140,73 @@ export default class extends Controller {
         this.map.removeControl(this.drawControl);
       }
     });
+
+    if (this.liveMapEnabled) {
+      this.setupSubscription();
+    }
   }
 
   disconnect() {
     this.map.remove();
+  }
+
+  setupSubscription() {
+    consumer.subscriptions.create("PointsChannel", {
+      received: (data) => {
+        // TODO:
+        // Only append the point if its timestamp is within current
+        // timespan
+        if (this.map && this.map._loaded) {
+          this.appendPoint(data);
+        }
+      }
+    });
+  }
+
+  appendPoint(data) {
+    // Parse the received point data
+    const newPoint = data;
+
+    // Add the new point to the markers array
+    this.markers.push(newPoint);
+
+    const newMarker = L.marker([newPoint[0], newPoint[1]])
+    this.markersArray.push(newMarker);
+
+    // Update the markers layer
+    this.markersLayer.clearLayers();
+    this.markersLayer.addLayer(L.layerGroup(this.markersArray));
+
+    // Update heatmap
+    this.heatmapMarkers.push([newPoint[0], newPoint[1], 0.2]);
+    this.heatmapLayer.setLatLngs(this.heatmapMarkers);
+
+    // Update polylines
+    this.polylinesLayer.clearLayers();
+    this.polylinesLayer = createPolylinesLayer(
+      this.markers,
+      this.map,
+      this.timezone,
+      this.routeOpacity,
+      this.userSettings
+    );
+
+    // Pan map to new location
+    this.map.setView([newPoint[0], newPoint[1]], 16);
+
+    // Update fog of war if enabled
+    if (this.map.hasLayer(this.fogOverlay)) {
+      this.updateFog(this.markers, this.clearFogRadius);
+    }
+
+    // Update the last marker
+    this.map.eachLayer((layer) => {
+      if (layer instanceof L.Marker && !layer._popup) {
+        this.map.removeLayer(layer);
+      }
+    });
+
+    this.addLastMarker(this.map, this.markers);
   }
 
   async setupScratchLayer(countryCodesMap) {
@@ -182,7 +247,6 @@ export default class extends Controller {
       console.error('Error loading GeoJSON:', error);
     }
   }
-
 
   getVisitedCountries(countryCodesMap) {
     if (!this.markers) return [];
@@ -491,6 +555,12 @@ export default class extends Controller {
             Simplified
           </label>
 
+          <label for="live_map_enabled">
+            Live Map
+            <label for="live_map_enabled_info" class="btn-xs join-item inline">?</label>
+            <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class='w-4' style="width: 20px;" value="false" ${this.liveMapEnabledChecked(true)} />
+          </label>
+
           <button type="submit">Update</button>
         </form>
       `;
@@ -523,6 +593,14 @@ export default class extends Controller {
     }
   }
 
+  liveMapEnabledChecked(value) {
+    if (value === this.liveMapEnabled) {
+      return 'checked';
+    } else {
+      return '';
+    }
+  }
+
   updateSettings(event) {
     event.preventDefault();
 
@@ -537,7 +615,8 @@ export default class extends Controller {
           minutes_between_routes: event.target.minutes_between_routes.value,
           time_threshold_minutes: event.target.time_threshold_minutes.value,
           merge_threshold_minutes: event.target.merge_threshold_minutes.value,
-          points_rendering_mode: event.target.points_rendering_mode.value
+          points_rendering_mode: event.target.points_rendering_mode.value,
+          live_map_enabled: event.target.live_map_enabled.checked
         },
       }),
     })
@@ -546,6 +625,10 @@ export default class extends Controller {
         if (data.status === 'success') {
           showFlashMessage('notice', data.message);
           this.updateMapWithNewSettings(data.settings);
+
+          if (data.settings.live_map_enabled) {
+            this.setupSubscription();
+          }
         } else {
           showFlashMessage('error', data.message);
         }

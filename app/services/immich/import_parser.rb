@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Immich::ImportParser
+  include Imports::Broadcaster
+
   attr_reader :import, :json, :user_id
 
   def initialize(import, user_id)
@@ -10,10 +12,10 @@ class Immich::ImportParser
   end
 
   def call
-    json.each { |point| create_point(point) }
+    json.each.with_index(1) { |point, index| create_point(point, index) }
   end
 
-  def create_point(point)
+  def create_point(point, index)
     return 0 if point['latitude'].blank? || point['longitude'].blank? || point['timestamp'].blank?
     return 0 if point_exists?(point, point['timestamp'])
 
@@ -26,7 +28,7 @@ class Immich::ImportParser
       user_id:
     )
 
-    1
+    broadcast_import_progress(import, index)
   end
 
   def point_exists?(point, timestamp)

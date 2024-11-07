@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class OwnTracks::ExportParser
+  include Imports::Broadcaster
+
   attr_reader :import, :data, :user_id
 
   def initialize(import, user_id)
@@ -12,7 +14,7 @@ class OwnTracks::ExportParser
   def call
     points_data = data.map { |point| OwnTracks::Params.new(point).call }
 
-    points_data.each do |point_data|
+    points_data.each.with_index(1) do |point_data, index|
       next if Point.exists?(
         timestamp: point_data[:timestamp],
         latitude: point_data[:latitude],
@@ -26,6 +28,8 @@ class OwnTracks::ExportParser
       end
 
       point.save
+
+      broadcast_import_progress(import, index)
     end
   end
 end

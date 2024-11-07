@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Gpx::TrackParser
+  include Imports::Broadcaster
+
   attr_reader :import, :json, :user_id
 
   def initialize(import, user_id)
@@ -13,7 +15,9 @@ class Gpx::TrackParser
     tracks = json['gpx']['trk']
     tracks_arr = tracks.is_a?(Array) ? tracks : [tracks]
 
-    tracks_arr.map { parse_track(_1) }.flatten
+    tracks_arr.map { parse_track(_1) }.flatten.each.with_index(1) do |point, index|
+      create_point(point, index)
+    end
   end
 
   private
@@ -22,12 +26,10 @@ class Gpx::TrackParser
     segments = track['trkseg']
     segments_array = segments.is_a?(Array) ? segments : [segments]
 
-    segments_array.map do |segment|
-      segment['trkpt'].each { create_point(_1) }
-    end
+    segments_array.map { |segment| segment['trkpt'] }
   end
 
-  def create_point(point)
+  def create_point(point, index)
     return if point['lat'].blank? || point['lon'].blank? || point['time'].blank?
     return if point_exists?(point)
 
@@ -40,6 +42,8 @@ class Gpx::TrackParser
       raw_data: point,
       user_id:
     )
+
+    broadcast_import_progress(import, index)
   end
 
   def point_exists?(point)
