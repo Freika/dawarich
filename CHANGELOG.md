@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- New notifications are now being indicated with a blue-ish dot in the top right corner of the screen. Clicking on the bell icon will show you all your notifications.
+- New notifications are now being indicated with a blue-ish dot in the top right corner of the screen. Hovering over the bell icon will show you last 10 notifications.
 - New points on the map will now be shown in real-time. No need to reload the map to see new points.
 - User can now enable or disable Live Mode in the map controls. When Live Mode is enabled, the map will automatically scroll to the new points as they are being added to the map.
 
