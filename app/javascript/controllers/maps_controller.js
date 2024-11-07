@@ -12,7 +12,6 @@ import { fetchAndDrawAreas } from "../maps/areas";
 import { handleAreaCreated } from "../maps/areas";
 
 import { showFlashMessage } from "../maps/helpers";
-import { formatDate } from "../maps/helpers";
 
 import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
@@ -44,7 +43,7 @@ export default class extends Controller {
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.element.dataset.distance_unit || "km";
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
-    this.liveMapEnabled = this.userSettings.liveMapEnabled || false;
+    this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
@@ -85,7 +84,7 @@ export default class extends Controller {
       .scale({
         position: "bottomright",
         metric: true,
-        imperial: false,
+        imperial: true,
         maxWidth: 120,
       })
       .addTo(this.map);
@@ -142,7 +141,9 @@ export default class extends Controller {
       }
     });
 
-    this.setupSubscription();  // Add this line
+    if (this.liveMapEnabled) {
+      this.setupSubscription();
+    }
   }
 
   disconnect() {
@@ -155,7 +156,9 @@ export default class extends Controller {
         // TODO:
         // Only append the point if its timestamp is within current
         // timespan
-        this.appendPoint(data);
+        if (this.map && this.map._loaded) {
+          this.appendPoint(data);
+        }
       }
     });
   }

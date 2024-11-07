@@ -10,11 +10,11 @@ export default class extends Controller {
   }
 
   connect() {
-    console.log("[Stimulus] Notifications controller connecting...")
+    // console.log("[Stimulus] Notifications controller connecting...")
 
     // Clean up any existing subscription
     if (this.subscription) {
-      console.log("[Stimulus] Cleaning up existing subscription")
+      // console.log("[Stimulus] Cleaning up existing subscription")
       this.subscription.unsubscribe()
       this.subscription = null
     }
@@ -24,7 +24,7 @@ export default class extends Controller {
   }
 
   disconnect() {
-    console.log("[Stimulus] Notifications controller disconnecting...")
+    // console.log("[Stimulus] Notifications controller disconnecting...")
     if (this.subscription) {
       this.subscription.unsubscribe()
       this.subscription = null
@@ -32,16 +32,16 @@ export default class extends Controller {
   }
 
   createSubscription() {
-    console.log("[Stimulus] Creating new notification subscription")
+    // console.log("[Stimulus] Creating new notification subscription")
     this.subscription = consumer.subscriptions.create("NotificationsChannel", {
       connected: () => {
-        console.log("[WebSocket] Connected to NotificationsChannel")
+        // console.log("[WebSocket] Connected to NotificationsChannel")
       },
       disconnected: () => {
-        console.log("[WebSocket] Disconnected from NotificationsChannel")
+        // console.log("[WebSocket] Disconnected from NotificationsChannel")
       },
       received: (data) => {
-        console.log("[WebSocket] Received notification:", data)
+        // console.log("[WebSocket] Received notification:", data)
         this.animateBadge()
       }
     })
