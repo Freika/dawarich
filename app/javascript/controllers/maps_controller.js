@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import "leaflet.heat";
-import consumer from "../channels/consumer";  // Add this import
+import consumer from "../channels/consumer";
 
 import { createMarkersArray } from "../maps/markers";
 

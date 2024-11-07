@@ -9,7 +9,7 @@ class Notification < ApplicationRecord
 
   enum :kind, { info: 0, warning: 1, error: 2 }
 
-  scope :unread, -> { where(read_at: nil) }
+  scope :unread, -> { where(read_at: nil).order(created_at: :desc) }
 
   def read?
     read_at.present?
@@ -19,13 +19,10 @@ class Notification < ApplicationRecord
 
   def broadcast_notification
     NotificationsChannel.broadcast_to(
-      user,
-      {
-        # id: id,
-        # title: title,
-        # content: content,
-        # kind: kind,
-        # timestamp: Time.current.to_i
+      user, {
+        title: title,
+        id: id,
+        kind: kind
       }
     )
   end

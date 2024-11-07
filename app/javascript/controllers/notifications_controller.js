@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import consumer from "../channels/consumer"
 
 export default class extends Controller {
-  static targets = ["badge"]
+  static targets = ["badge", "list"]
   static values = { userId: Number }
 
   initialize() {
@@ -43,6 +43,7 @@ export default class extends Controller {
       received: (data) => {
         // console.log("[WebSocket] Received notification:", data)
         this.animateBadge()
+        this.prependNotification(data)
       }
     })
   }
@@ -70,5 +71,35 @@ export default class extends Controller {
         badge.appendChild(pingEffect)
       })
     }
+  }
+
+  prependNotification(notification) {
+    const li = this.createNotificationListItem(notification)
+    const divider = this.listTarget.querySelector(".divider")
+    if (divider) {
+      divider.parentNode.insertBefore(li, divider.nextSibling)
+    } else {
+      this.listTarget.prepend(li)
+    }
+
+    // Update the badge count
+    this.updateBadge()
+  }
+
+  createNotificationListItem(notification) {
+    const li = document.createElement("li")
+    li.innerHTML = `
+      <a href="/notifications/${notification.id}">
+        ${notification.title}
+        <div class="badge badge-xs justify-self-end badge-${notification.kind}"></div>
+      </a>
+    `
+    return li
+  }
+
+  updateBadge() {
+    const badgeCount = this.listTarget.children.length
+    this.badgeTarget.textContent = badgeCount
+    this.badgeTarget.classList.toggle("hidden", badgeCount === 0)
   }
 }
