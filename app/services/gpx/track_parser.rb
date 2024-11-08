@@ -39,6 +39,7 @@ class Gpx::TrackParser
       altitude:   point['ele'].to_i,
       timestamp:  Time.parse(point['time']).to_i,
       import_id:  import.id,
+      velocity:   speed(point),
       raw_data: point,
       user_id:
     )
@@ -53,5 +54,11 @@ class Gpx::TrackParser
       timestamp:  Time.parse(point['time']).to_i,
       user_id:
     )
+  end
+
+  def speed(point)
+    return if point['extensions'].blank?
+
+    point.dig('extensions', 'speed').to_f || point.dig('extensions', 'TrackPointExtension', 'speed').to_f
   end
 end
