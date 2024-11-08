@@ -34,7 +34,8 @@ class Exports::Create
   def time_framed_points
     user
       .tracked_points
-      .where('timestamp >= ? AND timestamp <= ?', start_at.to_i, end_at.to_i)
+      .where(timestamp: start_at.to_i..end_at.to_i)
+      .order(timestamp: :asc)
   end
 
   def create_export_finished_notification
@@ -68,7 +69,7 @@ class Exports::Create
   end
 
   def process_gpx_export(points)
-    Points::GpxSerializer.new(points).call
+    Points::GpxSerializer.new(points, export.name).call
   end
 
   def create_export_file(data)
