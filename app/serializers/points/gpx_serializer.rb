@@ -24,7 +24,10 @@ class Points::GpxSerializer
       )
     end
 
-    gpx_file.to_s.sub('<gpx', '<gpx xmlns="http://www.topografix.com/GPX/1/1"')
+    GPX::GPXFile.new(
+      name: "dawarich_#{name}",
+      gpx_data: gpx_file.to_s.sub('<gpx', '<gpx xmlns="http://www.topografix.com/GPX/1/1"')
+    )
   end
 
   private
