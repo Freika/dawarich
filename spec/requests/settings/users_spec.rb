@@ -40,7 +40,7 @@ RSpec.describe '/settings/users', type: :request do
           it 'redirects to the created settings_user' do
             post settings_users_url, params: { user: valid_attributes }
 
-            expect(response).to redirect_to(settings_url)
+            expect(response).to redirect_to(settings_users_url)
             expect(flash[:notice]).to eq("User was successfully created, email is #{valid_attributes[:email]}, password is \"password\".")
           end
         end
