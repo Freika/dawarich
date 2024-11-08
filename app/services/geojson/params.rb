@@ -39,10 +39,10 @@ class Geojson::Params
       battery:            battery_level(feature[:properties][:battery_level]),
       timestamp:          timestamp(feature),
       altitude:           altitude(feature),
-      velocity:           feature[:properties][:speed],
+      velocity:           speed(feature),
       tracker_id:         feature[:properties][:device_id],
       ssid:               feature[:properties][:wifi],
-      accuracy:           feature[:properties][:horizontal_accuracy],
+      accuracy:           accuracy(feature),
       vertical_accuracy:  feature[:properties][:vertical_accuracy],
       raw_data:           feature
     }
@@ -50,19 +50,19 @@ class Geojson::Params
 
   def build_line(feature)
     feature[:geometry][:coordinates].map do |point|
-      build_line_point(feature, point)
+      build_line_point(point)
     end
   end
 
   def build_multi_line(feature)
     feature[:geometry][:coordinates].map do |line|
       line.map do |point|
-        build_line_point(feature, point)
+        build_line_point(point)
       end
     end
   end
 
-  def build_line_point(feature, point)
+  def build_line_point(point)
     {
       latitude:  point[1],
       longitude: point[0],
@@ -84,7 +84,23 @@ class Geojson::Params
   def timestamp(feature)
     return Time.zone.at(feature[3]) if feature.is_a?(Array)
 
-    value = feature.dig(:properties, :timestamp) || feature.dig(:geometry, :coordinates, 3)
-    Time.zone.at(value)
+    value = feature.dig(:properties, :timestamp) ||
+            feature.dig(:geometry, :coordinates, 3)
+
+    return Time.zone.at(value.to_i) if value.is_a?(Numeric)
+
+    ### GPSLogger for Android case ###
+    time = feature.dig(:properties, :time)
+
+    Time.zone.parse(time).to_i if time.present?
+    ### /GPSLogger for Android case ###
+  end
+
+  def speed(feature)
+    feature.dig(:properties, :speed).to_f.round(1)
+  end
+
+  def accuracy(feature)
+    feature.dig(:properties, :accuracy) || feature.dig(:properties, :horizontal_accuracy)
   end
 end
