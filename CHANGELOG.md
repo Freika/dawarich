@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Speed is now being recorded into points when a GPX file is being imported. Previously, the speed was not being recorded.
 - GeoJSON file from GPSLogger now can be imported to Dawarich. Previously, the import was failing due to incorrect parsing of the file.
 
+### Changed
+
+- The Vists suggestion job is disabled. It will be re-enabled in the future with a new approach to the visit suggestion process.
+
 # 0.16.0 - 2024-11-07
 
 ## The Websockets release
