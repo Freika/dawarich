@@ -20,19 +20,5 @@
         </div>
       <% end %>
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
-      <h2 class="text-2xl font-bold">Create a new user!</h1>
-      <%= form_for :user, url: settings_users_path, method: :post, data: { turbo_method: :post, turbo: false } do |f| %>
-        <div class="form-control">
-          <%= f.label :email do %>
-            Email
-          <% end %>
-          <%= f.email_field :email, value: '', class: "input input-bordered" %>
-        </div>
-        <div class="form-control mt-5">
-          <%= f.submit "Create", class: "btn btn-primary" %>
-        </div>
-      <% end %>
-    </div>
   </div>
 </div>
