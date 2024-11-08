@@ -59,6 +59,8 @@ class Gpx::TrackParser
   def speed(point)
     return if point['extensions'].blank?
 
-    point.dig('extensions', 'speed').to_f || point.dig('extensions', 'TrackPointExtension', 'speed').to_f
+    (
+      point.dig('extensions', 'speed') || point.dig('extensions', 'TrackPointExtension', 'speed')
+    ).to_f.round(1)
   end
 end

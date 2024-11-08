@@ -60,5 +60,19 @@ RSpec.describe Gpx::TrackParser do
         expect(Point.first.velocity).to eq('2.9')
       end
     end
+
+    context 'when file exported from Garmin' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/garmin_example.gpx') }
+
+      it 'creates points with correct data' do
+        parser
+
+        expect(Point.first.latitude).to eq(10.758321.to_d)
+        expect(Point.first.longitude).to eq(106.642344.to_d)
+        expect(Point.first.altitude).to eq(17)
+        expect(Point.first.timestamp).to eq(1_730_626_211)
+        expect(Point.first.velocity).to eq('2.8')
+      end
+    end
   end
 end

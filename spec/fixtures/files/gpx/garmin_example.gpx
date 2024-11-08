@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="GPSLogger 131 - http://gpslogger.mendhak.com/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd
+                      http://www.garmin.com/xmlschemas/TrackPointExtension/v2 https://www8.garmin.com/xmlschemas/TrackPointExtensionv2.xsd
+                      ">
+  <metadata>
+    <time>2024-11-03T16:30:11.331+07:00</time>
+  </metadata>
+  <trk>
+    <name>20241103</name>
+    <trkseg>
+      <trkpt lat="10.758321212464024" lon="106.64234449272531">
+        <ele>17.634344400269068</ele>
+        <time>2024-11-03T16:30:11.331+07:00</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:speed>2.8</gpxtpx:speed>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+        <geoidheight>-1.6</geoidheight>
+        <src>gps</src>
+        <sat>3</sat>
+        <hdop>1.9</hdop>
+        <vdop>8.6</vdop>
+        <pdop>8.8</pdop>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
