@@ -1,6 +1,6 @@
 development:
   adapter: redis
-  url: redis://localhost:6379/1
+  url: <%= ENV['REDIS_URL'] %>
 
 test:
   adapter: test
