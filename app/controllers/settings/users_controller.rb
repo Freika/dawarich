@@ -25,13 +25,12 @@ class Settings::UsersController < ApplicationController
   def create
     @user = User.new(
       email: user_params[:email],
-      password: 'password',
-      password_confirmation: 'password'
+      password: user_params[:password],
+      password_confirmation: user_params[:password]
     )
 
     if @user.save
-      redirect_to settings_users_url,
-                  notice: "User was successfully created, email is #{@user.email}, password is \"password\"."
+      redirect_to settings_users_url, notice: 'User was successfully created'
     else
       redirect_to settings_users_url, notice: 'User could not be created.', status: :unprocessable_entity
     end
@@ -50,6 +49,6 @@ class Settings::UsersController < ApplicationController
   private
 
   def user_params
-    params.require(:user).permit(:email)
+    params.require(:user).permit(:email, :password)
   end
 end
