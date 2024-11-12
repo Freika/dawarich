@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Admins can now provide custom password for new users and update passwords for existing users on the Users page.
 
+### Fixed
+
+- Exported files will now always have an extension when downloaded. Previously, the extension was missing in case of GPX export.
+
 # 0.16.3 - 2024-11-10
 
 ### Fixed
