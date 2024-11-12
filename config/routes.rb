@@ -19,7 +19,7 @@ Rails.application.routes.draw do
   resources :settings, only: :index
   namespace :settings do
     resources :background_jobs, only: %i[index create destroy]
-    resources :users, only: :create
+    resources :users, only: %i[index create destroy edit update]
   end
 
   patch 'settings', to: 'settings#update'

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.16.4 - 2024-11-12
+
+### Added
+
+- Admins can now see all users in the system on the Users page. The path is `/settings/users`.
+
+### Changed
+
+- Admins can now provide custom password for new users and update passwords for existing users on the Users page.
+
 # 0.16.3 - 2024-11-10
 
 ### Fixed

@@ -1,0 +1,28 @@
+<% content_for :title, 'Editing user' %>
+
+<div class="min-h-content w-full">
+  <%= render 'settings/navigation' %>
+
+  <div class="flex w-full my-10 space-x-4">
+    <div class="overflow-x-auto w-4/12 mx-auto">
+      <h1 class="text-2xl font-bold">Editing user</h1>
+      <%= form_for @user, url: settings_user_path(@user), method: :put, data: { turbo_method: :put, turbo: false } do |f| %>
+        <div class="form-control">
+          <%= f.label :email do %>
+            Email
+          <% end %>
+          <%= f.email_field :email, value: @user.email, class: "input input-bordered" %>
+        </div>
+        <div class="form-control">
+          <%= f.label :password do %>
+            Password
+          <% end %>
+          <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: "input input-bordered" %>
+        </div>
+        <div class="form-control mt-5">
+          <%= f.submit "Update", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
