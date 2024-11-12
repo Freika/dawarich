@@ -45,7 +45,7 @@
 
   <div id="points" class="min-w-full">
     <div data-controller='checkbox-select-all'>
-      <%= form_with url: bulk_destroy_points_path, method: :delete, id: :bulk_destroy_form do |f| %>
+      <%= form_with url: bulk_destroy_points_path(params.permit!), method: :delete, id: :bulk_destroy_form do |f| %>
 
         <div class="flex justify-between my-5">
           <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" } %>
@@ -54,8 +54,8 @@
           </div>
           <div class="flex justify-end">
             <span class="mr-2">Order by:</span>
-            <%= link_to 'Newest', points_path(order_by: :desc, import_id: params[:import_id]), class: 'btn btn-xs btn-primary mx-1' %>
-            <%= link_to 'Oldest', points_path(order_by: :asc, import_id: params[:import_id]), class: 'btn btn-xs btn-primary mx-1' %>
+            <%= link_to 'Newest', points_path(order_by: :desc, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]), class: 'btn btn-xs btn-primary mx-1' %>
+            <%= link_to 'Oldest', points_path(order_by: :asc, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]), class: 'btn btn-xs btn-primary mx-1' %>
           </div>
         </div>
 

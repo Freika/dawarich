@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Exported files will now always have an extension when downloaded. Previously, the extension was missing in case of GPX export.
+- Deleting and sorting points on the Points page will now preserve filtering and sorting params when points are deleted or sorted. Previously, the page was being reloaded and filtering and sorting params were lost.
 
 # 0.16.3 - 2024-11-10
 
