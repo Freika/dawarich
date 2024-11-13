@@ -109,11 +109,6 @@ spec:
               value: development
             - name: REDIS_URL
               value: redis://redis-master.redis.svc.cluster.local:6379/10
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: redis-password
-                  key: redis-password
             - name: DATABASE_HOST
               value: postgres-postgresql.db.svc.cluster.local
             - name: DATABASE_PORT
