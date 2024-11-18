@@ -5,7 +5,7 @@ class Immich::ImportGeodata
 
   def initialize(user)
     @user = user
-    @immich_api_base_url = "#{user.settings['immich_url']}/api"
+    @immich_api_base_url = "#{user.settings['immich_url']}/api/search/metadata"
     @immich_api_key = user.settings['immich_api_key']
   end
 
@@ -40,7 +40,6 @@ class Immich::ImportGeodata
   end
 
   def retrieve_immich_data
-    url = "#{immich_api_base_url}/search/metadata"
     page = 1
     data = []
     max_pages = 1000 # Prevent infinite loop
@@ -48,7 +47,7 @@ class Immich::ImportGeodata
     while page <= max_pages
       Rails.logger.debug "Retrieving next page: #{page}"
       body = request_body(page)
-      response = JSON.parse(HTTParty.post(url, headers: headers, body: body).body)
+      response = JSON.parse(HTTParty.post(immich_api_base_url, headers: headers, body: body).body)
 
       items = response.dig('assets', 'items')
       Rails.logger.debug "#{items.size} items found"
