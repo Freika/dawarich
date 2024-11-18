@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.16.5 - 2024-11-18
+
+### Changed
+
+- Dawarich now uses `POST /api/search/metadata` endpoint to get geodata from Immich.
+
 # 0.16.4 - 2024-11-12
 
 ### Added
