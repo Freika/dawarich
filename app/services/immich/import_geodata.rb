@@ -5,7 +5,7 @@ class Immich::ImportGeodata
 
   def initialize(user)
     @user = user
-    @immich_api_base_url = "#{user.settings['immich_url']}/api"
+    @immich_api_base_url = "#{user.settings['immich_url']}/api/search/metadata"
     @immich_api_key = user.settings['immich_api_key']
   end
 
@@ -40,17 +40,44 @@ class Immich::ImportGeodata
   end
 
   def retrieve_immich_data
-    1970.upto(Time.zone.today.year).flat_map do |year|
-      (1..12).map do |month_number|
-        url = "#{immich_api_base_url}/timeline/bucket?size=MONTH&timeBucket=#{year}-#{month_number}-01"
+    page = 1
+    data = []
+    max_pages = 1000 # Prevent infinite loop
 
-        JSON.parse(HTTParty.get(url, headers:).body)
-      end
+    while page <= max_pages
+      Rails.logger.debug "Retrieving next page: #{page}"
+      body = request_body(page)
+      response = JSON.parse(HTTParty.post(immich_api_base_url, headers: headers, body: body).body)
+
+      items = response.dig('assets', 'items')
+      Rails.logger.debug "#{items.size} items found"
+
+      break if items.empty?
+
+      data << items
+
+      Rails.logger.debug "next_page: #{response.dig('assets', 'nextPage')}"
+
+      page += 1
+
+      Rails.logger.debug "#{data.flatten.size} data size"
     end
+
+    data.flatten
+  end
+
+  def request_body(page)
+    {
+      createdAfter: '1970-01-01',
+      size: 1000,
+      page: page,
+      order: 'asc',
+      withExif: true
+    }
   end
 
   def parse_immich_data(immich_data)
-    geodata = immich_data.flatten.map do |asset|
+    geodata = immich_data.map do |asset|
       next unless valid?(asset)
 
       extract_geodata(asset)
