@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.16.7 - 2024-11-20
+
+### Changed
+
+- Prometheus exporter is now bound to 0.0.0.0 instead of localhost
+- `PROMETHEUS_EXPORTER_HOST` and `PROMETHEUS_EXPORTER_PORT` env vars were added to the `docker-compose.yml` file to allow you to set the host and port for the Prometheus exporter. They should be added to both `dawarich_app` and `dawarich_sidekiq` services Example:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    environment:
+      ...
+      PROMETHEUS_EXPORTER_ENABLED: "true"
++     PROMETHEUS_EXPORTER_HOST: 0.0.0.0
++     PROMETHEUS_EXPORTER_PORT: "9394"
+
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    environment:
+      ...
+      PROMETHEUS_EXPORTER_ENABLED: "true"
++     PROMETHEUS_EXPORTER_HOST: dawarich_app
++     PROMETHEUS_EXPORTER_PORT: "9394"
+```
+
 # 0.16.6 - 2024-11-20
 
 ### Added
