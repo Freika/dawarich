@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.16.8 - 2024-11-20
+
+### Changed
+
+- Default number of Puma workers is now 2 instead of 1. This should improve the performance of the application. If you have a lot of users, you might want to increase the number of workers. You can do this by setting the `WEB_CONCURRENCY` env var in your `docker-compose.yml` file. Example:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    environment:
+      ...
+      WEB_CONCURRENCY: "2"
+```
+
 # 0.16.7 - 2024-11-20
 
 ### Changed

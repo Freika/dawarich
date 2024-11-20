@@ -3,9 +3,9 @@
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'] }
 
-  require 'prometheus_exporter/instrumentation'
-
   if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
+    require 'prometheus_exporter/instrumentation'
+
     config.server_middleware do |chain|
       chain.add PrometheusExporter::Instrumentation::Sidekiq
     end
