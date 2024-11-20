@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.16.6 - 2024-11-20
+
+### Added
+
+- Dawarich now can export metrics to Prometheus. You can find the metrics at `your.host:9394/metrics` endpoint. The metrics are being exported in the Prometheus format and can be scraped by Prometheus server. To enable exporting, set the `PROMETHEUS_EXPORTER_ENABLED` env var in your docker-compose.yml to `true`. Example:
+
+```yaml
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    environment:
+      ...
+      PROMETHEUS_EXPORTER_ENABLED: "true"
+```
+
 # 0.16.5 - 2024-11-18
 
 ### Changed

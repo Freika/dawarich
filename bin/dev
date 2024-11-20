@@ -6,4 +6,10 @@ then
   gem install foreman
 fi
 
-foreman start -f Procfile.dev
+if [ "$PROMETHEUS_EXPORTER_ENABLED" = "true" ]; then
+  echo "Starting Foreman with Procfile.prometheus.dev..."
+  foreman start -f Procfile.prometheus.dev
+else
+  echo "Starting Foreman with Procfile.dev..."
+  foreman start -f Procfile.dev
+fi
