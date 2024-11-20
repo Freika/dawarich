@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'prometheus_exporter/instrumentation'
-
 # Puma can serve each request in a thread from an internal thread pool.
 # The `threads` method setting takes two numbers: a minimum and maximum.
 # Any libraries that use thread pools should be configured to match
@@ -49,4 +47,9 @@ plugin :tmp_restart
 # Prometheus exporter
 #
 # optional check, avoids spinning up and down threads per worker
-PrometheusExporter::Instrumentation::Puma.start unless PrometheusExporter::Instrumentation::Puma.started?
+
+if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
+  require 'prometheus_exporter/instrumentation'
+
+  PrometheusExporter::Instrumentation::Puma.start unless PrometheusExporter::Instrumentation::Puma.started?
+end
