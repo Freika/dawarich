@@ -66,7 +66,7 @@ services:
       DISTANCE_UNIT: km
       PHOTON_API_HOST: photon.komoot.io
       PHOTON_API_USE_HTTPS: true
-      PROMETHEUS_EXPORTER_ENABLED: true
+      PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
     logging:
