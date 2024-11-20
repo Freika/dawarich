@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.16.6 - 2024-11-20
+
+### Added
+
+- Dawarich now exports metrics to Prometheus. You can find the metrics at `/metrics` endpoint. The metrics are being exported in the Prometheus format and can be scraped by Prometheus server. You can find an example of how to scrape the metrics in the `docker-compose.yml` file in the repository.
+
 # 0.16.5 - 2024-11-18
 
 ### Changed

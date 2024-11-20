@@ -6,7 +6,6 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 ruby File.read('.ruby-version').strip
 
 gem 'bootsnap', require: false
-gem 'prometheus_exporter'
 gem 'chartkick'
 gem 'data_migrate'
 gem 'devise'
@@ -19,6 +18,7 @@ gem 'kaminari'
 gem 'lograge'
 gem 'oj'
 gem 'pg'
+gem 'prometheus_exporter'
 gem 'puma'
 gem 'pundit'
 gem 'rails'
