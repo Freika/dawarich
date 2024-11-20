@@ -77,7 +77,7 @@ services:
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'" ]
       interval: 10s
-      retries: 5
+      retries: 30
       start_period: 30s
       timeout: 10s
     depends_on:
@@ -131,7 +131,7 @@ services:
     healthcheck:
       test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep $${HOSTNAME}" ]
       interval: 10s
-      retries: 5
+      retries: 30
       start_period: 30s
       timeout: 10s
     depends_on:
