@@ -6,6 +6,7 @@ settings = {
   cache: Redis.new,
   always_raise: :all,
   use_https: PHOTON_API_USE_HTTPS,
+  http_headers: { 'User-Agent' => "Dawarich #{APP_VERSION} (https://dawarich.app)" },
   cache_options: {
     expiration: 1.day
   }

@@ -5,11 +5,10 @@ class CheckAppVersion
 
   def initialize
     @repo_url = 'https://api.github.com/repos/Freika/dawarich/tags'
-    @app_version = File.read('.app_version').strip
   end
 
   def call
-    latest_version != @app_version
+    latest_version != APP_VERSION
   rescue StandardError
     false
   end
