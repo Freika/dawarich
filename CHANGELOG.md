@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Rate limit for the Photon API is now 1 request per second.
+- Rate limit for the Photon API is now 1 request per second. If you host your own Photon API instance, reverse geocoding requests will not be limited.
 - Requests to the Photon API are now have User-Agent header set to "Dawarich #{APP_VERSION} (https://dawarich.app)"
 
 # 0.16.8 - 2024-11-20
