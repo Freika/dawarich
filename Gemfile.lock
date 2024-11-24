@@ -370,6 +370,8 @@ GEM
       fugit (~> 1.8, >= 1.11.1)
       globalid (>= 1.0.1)
       sidekiq (>= 6.5.0)
+    sidekiq-limit_fetch (4.4.1)
+      sidekiq (>= 6)
     simplecov (0.22.0)
       docile (~> 1.1)
       simplecov-html (~> 0.11)
@@ -465,6 +467,7 @@ DEPENDENCIES
   shrine (~> 3.6)
   sidekiq
   sidekiq-cron
+  sidekiq-limit_fetch
   simplecov
   sprockets-rails
   stimulus-rails
