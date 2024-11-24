@@ -69,10 +69,6 @@ module ApplicationHelper
     CheckAppVersion.new.call
   end
 
-  def app_version
-    File.read('.app_version').strip
-  end
-
   def app_theme
     current_user&.theme == 'light' ? 'light' : 'dark'
   end

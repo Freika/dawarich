@@ -19,10 +19,10 @@
       <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
         <% if new_version_available? %>
           <span class="tooltip tooltip-bottom" data-tip="New version available! Check out Github releases!">
-            <span class="hidden sm:inline"><%= app_version %>&nbsp;!</span>
+            <span class="hidden sm:inline"><%= APP_VERSION %>&nbsp;!</span>
           </span>
         <% else %>
-          <span class="hidden sm:inline"><%= app_version %></span>
+          <span class="hidden sm:inline"><%= APP_VERSION %></span>
         <% end %>
       </a>
     </div>

@@ -6,6 +6,8 @@ class ReverseGeocodingJob < ApplicationJob
   def perform(klass, id)
     return unless REVERSE_GEOCODING_ENABLED
 
+    sleep 1 if PHOTON_API_HOST == 'photon.komoot.io'
+
     data_fetcher(klass, id).call
   end
 
