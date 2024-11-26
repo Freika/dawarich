@@ -1,0 +1,171 @@
+networks:
+  dawarich:
+
+
+volumes:
+  dawarich-app-cache:
+    name: dawarich-app-cache
+  dawarich-sidekiq-cache:
+    name: dawarich-sidekiq-cache
+  dawarich-public:
+    name: dawarich-public
+  dawarich-keydb:
+    name: dawarich-keydb
+  dawarich-shared:
+    name: dawarich-shared
+  watched:
+    name: dawarich-watched
+
+services:
+  app:
+    container_name: dawarich
+    image: freikin/dawarich:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      keydb:
+        condition: service_healthy
+        restart: true
+    networks:
+      - dawarich
+    ports:
+      - 3000:3000
+    environment:
+      TIME_ZONE: Europe/London
+      RAILS_ENV: development
+      REDIS_URL: redis://keydb:6379/0
+      DATABASE_HOST: db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: dawarich_development
+      MIN_MINUTES_SPENT_IN_CITY: 60
+      APPLICATION_HOST: localhost
+      APPLICATION_HOSTS: localhost
+      APPLICATION_PROTOCOL: http
+      DISTANCE_UNIT: km
+      PHOTON_API_HOST: photon.komoot.io
+      PHOTON_API_USE_HTTPS: true
+    stdin_open: true
+    tty: true
+    entrypoint: dev-entrypoint.sh
+    command: [ 'bin/dev' ]
+    volumes:
+      - dawarich-app-cache:/usr/local/bundle/gems
+      - dawarich-public:/var/app/dawarich_public
+      - watched:/var/app/tmp/imports/watched
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'" ]
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50' # Limit CPU usage to 50% of one core
+          memory: '2G' # Limit memory usage to 2GB
+
+  sidekiq:
+    container_name: dawarich_sidekiq
+    hostname: sidekiq
+    image: freikin/dawarich:latest
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+        restart: true
+      db:
+        condition: service_healthy
+        restart: true
+      keydb:
+        condition: service_healthy
+        restart: true
+    networks:
+      - dawarich
+    environment:
+      RAILS_ENV: development
+      REDIS_URL: redis://keydb:6379/0
+      DATABASE_HOST: db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: dawarich_development
+      APPLICATION_HOST: localhost
+      APPLICATION_HOSTS: localhost
+      BACKGROUND_PROCESSING_CONCURRENCY: 10
+      APPLICATION_PROTOCOL: http
+      DISTANCE_UNIT: km
+      PHOTON_API_HOST: photon.komoot.io
+      PHOTON_API_USE_HTTPS: true
+    stdin_open: true
+    tty: true
+    entrypoint: dev-entrypoint.sh
+    command: [ 'sidekiq' ]
+    volumes:
+      - dawarich-sidekiq-cache:/usr/local/bundle/gems
+      - dawarich-public:/var/app/dawarich_public
+      - watched:/var/app/tmp/imports/watched
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    healthcheck:
+      test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep $${HOSTNAME}" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50' # Limit CPU usage to 50% of one core
+          memory: '2G' # Limit memory usage to 2GB
+
+  keydb:
+    container_name: dawarich-keydb
+    image: eqalpha/keydb:x86_64_v6.3.4
+    restart: unless-stopped
+    networks:
+      - dawarich
+    environment:
+      - TZ=Europe/London
+      - PUID=1000
+      - PGID=1000
+    command: keydb-server /etc/keydb/keydb.conf --appendonly yes --server-threads 4 --active-replica no
+    volumes:
+      - dawarich-keydb:/data
+      - dawarich-shared:/var/shared/redis
+    healthcheck:
+      test: [ "CMD", "keydb-cli", "ping" ]
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  db:
+    container_name: dawarich-db
+    hostname: db
+    image: postgres:16.4-alpine3.20
+    restart: unless-stopped
+    networks:
+      - dawarich
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: eJH3YZsVc2s6byhFwpEny
+      POSTGRES_DATABASE: dawarich
+    volumes:
+      - ./db:/var/lib/postgresql/data
+      - dawarich-shared:/var/shared
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -q -d $${POSTGRES_DATABASE} -U $${POSTGRES_USER} -h localhost" ]
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 3
