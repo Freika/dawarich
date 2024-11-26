@@ -880,11 +880,25 @@ export default class extends Controller {
       { icon }
     );
 
+    const startOfDay = new Date(photo.localDateTime);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(photo.localDateTime);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const queryParams = {
+      takenAfter: startOfDay.toISOString(),
+      takenBefore: endOfDay.toISOString()
+    };
+    const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
+    const immich_photo_link = `${this.userSettings.immich_url}/search?query=${encodedQuery}`;
     const popupContent = `
       <div class="max-w-xs">
-        <img src="${thumbnailUrl}"
-             class="w-8 h-8 mb-2 rounded"
-             alt="${photo.originalFileName}">
+        <a href="${immich_photo_link}" target="_blank">
+          <img src="${thumbnailUrl}"
+              class="w-8 h-8 mb-2 rounded"
+              alt="${photo.originalFileName}">
+        </a>
         <h3 class="font-bold">${photo.originalFileName}</h3>
         <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
         <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>

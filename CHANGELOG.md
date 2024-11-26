@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.17.0 - 2024-11-26
+
+### Added
+
+- If you have provided your Immich instance URL and API key, the map will now show photos from your Immich instance when Photos layer is enabled.
+- `GET /api/v1/photos` endpoint added to get photos from Immich.
+- `GET /api/v1/photos/:id/thumbnail.jpg` endpoint added to get photo thumbnail from Immich.
+
 # 0.16.9 - 2024-11-24
 
 ### Changed
