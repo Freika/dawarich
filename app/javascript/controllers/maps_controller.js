@@ -782,7 +782,10 @@ export default class extends Controller {
     this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
   }
 
-  async fetchAndDisplayPhotos(startDate, endDate) {
+  async fetchAndDisplayPhotos(startDate, endDate, retryCount = 0) {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 3000; // 3 seconds
+
     try {
       const params = new URLSearchParams({
         api_key: this.apiKey,
@@ -796,46 +799,57 @@ export default class extends Controller {
       }
 
       const photos = await response.json();
-
-      // Clear existing photo markers
       this.photoMarkers.clearLayers();
 
-      // Create markers for each photo with coordinates
-      photos.forEach(photo => {
-        if (photo.exifInfo?.latitude && photo.exifInfo?.longitude) {
-          const marker = L.marker([photo.exifInfo.latitude, photo.exifInfo.longitude], {
-            icon: L.divIcon({
-              className: 'photo-marker',
-              html: `<div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span class="text-white text-xs">📷</span>
-                    </div>`,
-              iconSize: [24, 24]
-            })
-          });
+      photos.forEach(photo => this.createPhotoMarker(photo));
 
-          // Add popup with photo information
-          const popupContent = `
-            <div class="max-w-xs">
-              <h3 class="font-bold">${photo.originalFileName}</h3>
-              <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
-              <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
-              ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
-            </div>
-          `;
-          marker.bindPopup(popupContent);
-
-          this.photoMarkers.addLayer(marker);
-        }
-      });
-
-      // Add the layer group to the map if it's not already added
       if (!this.map.hasLayer(this.photoMarkers)) {
         this.photoMarkers.addTo(this.map);
       }
 
     } catch (error) {
       console.error('Error fetching photos:', error);
-      showFlashMessage('error', 'Failed to fetch photos');
+
+      if (retryCount < MAX_RETRIES) {
+        console.log(`Retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        setTimeout(() => {
+          this.fetchAndDisplayPhotos(startDate, endDate, retryCount + 1);
+        }, RETRY_DELAY);
+      } else {
+        showFlashMessage('error', 'Failed to fetch photos after multiple attempts');
+      }
     }
+  }
+
+  createPhotoMarker(photo) {
+    if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
+
+    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}`;
+
+    const icon = L.divIcon({
+      className: 'photo-marker',
+      html: `<img src="${thumbnailUrl}" style="width: 48px; height: 48px;">`,
+      iconSize: [48, 48]
+    });
+
+    const marker = L.marker(
+      [photo.exifInfo.latitude, photo.exifInfo.longitude],
+      { icon }
+    );
+
+    const popupContent = `
+      <div class="max-w-xs">
+        <img src="${thumbnailUrl}"
+             class="w-8 h-8 mb-2 rounded"
+             alt="${photo.originalFileName}">
+        <h3 class="font-bold">${photo.originalFileName}</h3>
+        <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
+        <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
+        ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
+      </div>
+    `;
+    marker.bindPopup(popupContent);
+
+    this.photoMarkers.addLayer(marker);
   }
 }

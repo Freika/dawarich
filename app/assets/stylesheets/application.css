@@ -64,4 +64,11 @@
   justify-content: center;
   background: transparent;
   border: none;
+  border-radius: 50%;
+}
+
+.photo-marker img {
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
 }
