@@ -894,9 +894,11 @@ export default class extends Controller {
     const immich_photo_link = `${this.userSettings.immich_url}/search?query=${encodedQuery}`;
     const popupContent = `
       <div class="max-w-xs">
-        <a href="${immich_photo_link}" target="_blank">
+        <a href="${immich_photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
+   onmouseout="this.firstElementChild.style.boxShadow = '';">
           <img src="${thumbnailUrl}"
               class="w-8 h-8 mb-2 rounded"
+              style="transition: box-shadow 0.3s ease;"
               alt="${photo.originalFileName}">
         </a>
         <h3 class="font-bold">${photo.originalFileName}</h3>
