@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.17.0 - 2024-11-26
 
+## The Immich Photos release
+
+With this release, Dawarich can now show photos from your Immich instance on the map.
+
+To enable this feature, you need to provide your Immich instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).
+
+An important note to add here is that photos are heavy and hence generate a lot of traffic. The response from Immich for specific dates is being cached in Redis for 1 day, and that may lead to Redis taking a lot more space than previously. But since the cache is being expired after 24 hours, you'll get your space back pretty soon.
+
+The other thing worth mentioning is how Dawarich gets data from Immich. It goes like this:
+
+1. When you click on the "Photos" layer, Dawarich will make a request to `GET /api/v1/photos` endpoint to get photos for the selected timeframe.
+2. This endpoint will make a request to `POST /search/metadata` endpoint of your Immich instance to get photos for the selected timeframe.
+3. The response from Immich is being cached in Redis for 1 day.
+4. Dawarich's frontend will make a request to `GET /api/v1/photos/:id/thumbnail.jpg` endpoint to get photo thumbnail from Immich. The number of requests to this endpoint will depend on how many photos you have in the selected timeframe.
+5. For each photo, Dawarich's frontend will make a request to `GET /api/v1/photos/:id/thumbnail.jpg` endpoint to get photo thumbnail from Immich. This thumbnail request is also cached in Redis for 1 day.
+
+
 ### Added
 
 - If you have provided your Immich instance URL and API key, the map will now show photos from your Immich instance when Photos layer is enabled.
