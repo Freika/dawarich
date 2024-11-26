@@ -57,3 +57,11 @@
 .leaflet-settings-panel button:hover {
   background-color: #0056b3;
 }
+
+.photo-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+}

@@ -65,6 +65,8 @@ export default class extends Controller {
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
+    this.photoMarkers = L.layerGroup();
+
     this.setupScratchLayer(this.countryCodesMap);
 
     if (!this.settingsButtonAdded) {
@@ -77,7 +79,8 @@ export default class extends Controller {
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer,
-      Areas: this.areasLayer // Add the areas layer to the controls
+      Areas: this.areasLayer,
+      Photos: this.photoMarkers
     };
 
     L.control
@@ -132,6 +135,13 @@ export default class extends Controller {
     this.map.on('overlayadd', (e) => {
       if (e.name === 'Areas') {
         this.map.addControl(this.drawControl);
+      }
+      if (e.name === 'Photos') {
+        // Extract dates from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const startDate = urlParams.get('start_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        const endDate = urlParams.get('end_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        this.fetchAndDisplayPhotos(startDate, endDate);
       }
     });
 
@@ -770,5 +780,62 @@ export default class extends Controller {
     // Ensure the layer control reflects the current state
     this.map.removeControl(this.layerControl);
     this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
+  }
+
+  async fetchAndDisplayPhotos(startDate, endDate) {
+    try {
+      const params = new URLSearchParams({
+        api_key: this.apiKey,
+        start_date: startDate,
+        end_date: endDate
+      });
+
+      const response = await fetch(`/api/v1/photos?${params}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const photos = await response.json();
+
+      // Clear existing photo markers
+      this.photoMarkers.clearLayers();
+
+      // Create markers for each photo with coordinates
+      photos.forEach(photo => {
+        if (photo.exifInfo?.latitude && photo.exifInfo?.longitude) {
+          const marker = L.marker([photo.exifInfo.latitude, photo.exifInfo.longitude], {
+            icon: L.divIcon({
+              className: 'photo-marker',
+              html: `<div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span class="text-white text-xs">📷</span>
+                    </div>`,
+              iconSize: [24, 24]
+            })
+          });
+
+          // Add popup with photo information
+          const popupContent = `
+            <div class="max-w-xs">
+              <h3 class="font-bold">${photo.originalFileName}</h3>
+              <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
+              <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
+              ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
+            </div>
+          `;
+          marker.bindPopup(popupContent);
+
+          this.photoMarkers.addLayer(marker);
+        }
+      });
+
+      // Add the layer group to the map if it's not already added
+      if (!this.map.hasLayer(this.photoMarkers)) {
+        this.photoMarkers.addTo(this.map);
+      }
+
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+      showFlashMessage('error', 'Failed to fetch photos');
+    }
   }
 }

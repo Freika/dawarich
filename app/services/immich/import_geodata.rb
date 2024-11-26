@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 class Immich::ImportGeodata
-  attr_reader :user, :immich_api_base_url, :immich_api_key
+  attr_reader :user, :start_date, :end_date
 
-  def initialize(user)
+  def initialize(user, end_date:, start_date: '1970-01-01')
     @user = user
-    @immich_api_base_url = "#{user.settings['immich_url']}/api/search/metadata"
-    @immich_api_key = user.settings['immich_api_key']
+    @start_date = start_date
+    @end_date = end_date
   end
 
   def call
@@ -17,8 +17,6 @@ class Immich::ImportGeodata
 
     log_no_data and return if immich_data.empty?
 
-    write_raw_data(immich_data)
-
     immich_data_json  = parse_immich_data(immich_data)
     file_name         = file_name(immich_data_json)
     import            = user.imports.find_or_initialize_by(name: file_name, source: :immich_api)
@@ -27,53 +25,14 @@ class Immich::ImportGeodata
 
     import.raw_data = immich_data_json
     import.save!
+
     ImportJob.perform_later(user.id, import.id)
   end
 
   private
 
-  def headers
-    {
-      'x-api-key' => immich_api_key,
-      'accept' => 'application/json'
-    }
-  end
-
   def retrieve_immich_data
-    page = 1
-    data = []
-    max_pages = 1000 # Prevent infinite loop
-
-    while page <= max_pages
-      Rails.logger.debug "Retrieving next page: #{page}"
-      body = request_body(page)
-      response = JSON.parse(HTTParty.post(immich_api_base_url, headers: headers, body: body).body)
-
-      items = response.dig('assets', 'items')
-      Rails.logger.debug "#{items.size} items found"
-
-      break if items.empty?
-
-      data << items
-
-      Rails.logger.debug "next_page: #{response.dig('assets', 'nextPage')}"
-
-      page += 1
-
-      Rails.logger.debug "#{data.flatten.size} data size"
-    end
-
-    data.flatten
-  end
-
-  def request_body(page)
-    {
-      createdAfter: '1970-01-01',
-      size: 1000,
-      page: page,
-      order: 'asc',
-      withExif: true
-    }
+    Immich::RequestPhotos.new(user, start_date:, end_date:).call
   end
 
   def parse_immich_data(immich_data)
@@ -101,13 +60,7 @@ class Immich::ImportGeodata
   end
 
   def log_no_data
-    Rails.logger.debug 'No data found'
-  end
-
-  def write_raw_data(immich_data)
-    File.open("tmp/imports/immich_raw_data_#{Time.current}_#{user.email}.json", 'w') do |file|
-      file.write(immich_data.to_json)
-    end
+    Rails.logger.info 'No data found'
   end
 
   def create_import_failed_notification(import_name)

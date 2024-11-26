@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Immich::ImportGeodata do
+RSpec.describe Immich::RequestPhotos do
   describe '#call' do
     subject(:service) { described_class.new(user).call }
 
@@ -77,34 +77,34 @@ RSpec.describe Immich::ImportGeodata do
       }.to_json
     end
 
-    before do
-      stub_request(
-        :any,
-        'http://immich.app/api/search/metadata'
-      ).to_return(status: 200, body: immich_data, headers: {})
+    context 'when user has immich_url and immich_api_key' do
+      before do
+        stub_request(
+          :any,
+          'http://immich.app/api/search/metadata'
+        ).to_return(status: 200, body: immich_data, headers: {})
+      end
     end
 
-    it 'creates import' do
-      expect { service }.to change { Import.count }.by(1)
-    end
-
-    it 'enqueues ImportJob' do
-      expect(ImportJob).to receive(:perform_later)
-
-      service
-    end
-
-    context 'when import already exists' do
-      before { service }
-
-      it 'does not create new import' do
-        expect { service }.not_to(change { Import.count })
+    context 'when user has no immich_url' do
+      before do
+        user.settings['immich_url'] = nil
+        user.save
       end
 
-      it 'does not enqueue ImportJob' do
-        expect(ImportJob).to_not receive(:perform_later)
+      it 'raises ArgumentError' do
+        expect { service }.to raise_error(ArgumentError, 'Immich URL is missing')
+      end
+    end
 
-        service
+    context 'when user has no immich_api_key' do
+      before do
+        user.settings['immich_api_key'] = nil
+        user.save
+      end
+
+      it 'raises ArgumentError' do
+        expect { service }.to raise_error(ArgumentError, 'Immich API key is missing')
       end
     end
   end
