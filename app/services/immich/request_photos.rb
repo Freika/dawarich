@@ -12,7 +12,9 @@ class Immich::RequestPhotos
   end
 
   def call
-    retrieve_immich_data
+    data = retrieve_immich_data
+
+    time_framed_data(data)
   end
 
   private
@@ -20,11 +22,14 @@ class Immich::RequestPhotos
   def retrieve_immich_data
     page = 1
     data = []
-    max_pages = 100_000 # Prevent infinite loop
+    max_pages = 10_000 # Prevent infinite loop
 
     while page <= max_pages
-      body = request_body(page)
-      response = JSON.parse(HTTParty.post(immich_api_base_url, headers: headers, body: body).body)
+      response = JSON.parse(
+        HTTParty.post(
+          immich_api_base_url, headers: headers, body: request_body(page)
+        ).body
+      )
 
       items = response.dig('assets', 'items')
 
@@ -57,5 +62,12 @@ class Immich::RequestPhotos
     return body unless end_date
 
     body.merge(createdBefore: end_date)
+  end
+
+  def time_framed_data(data)
+    data.select do |photo|
+      photo['localDateTime'] >= start_date &&
+        (end_date.nil? || photo['localDateTime'] <= end_date)
+    end
   end
 end

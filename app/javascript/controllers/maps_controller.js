@@ -786,6 +786,18 @@ export default class extends Controller {
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 3000; // 3 seconds
 
+    // Create loading control
+    const LoadingControl = L.Control.extend({
+      onAdd: (map) => {
+        const container = L.DomUtil.create('div', 'leaflet-loading-control');
+        container.innerHTML = '<div class="loading-spinner"></div>';
+        return container;
+      }
+    });
+
+    const loadingControl = new LoadingControl({ position: 'topleft' });
+    this.map.addControl(loadingControl);
+
     try {
       const params = new URLSearchParams({
         api_key: this.apiKey,
@@ -801,14 +813,42 @@ export default class extends Controller {
       const photos = await response.json();
       this.photoMarkers.clearLayers();
 
-      photos.forEach(photo => this.createPhotoMarker(photo));
+      // Create a promise for each photo to track when it's fully loaded
+      const photoLoadPromises = photos.map(photo => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}`;
+
+          img.onload = () => {
+            this.createPhotoMarker(photo);
+            resolve();
+          };
+
+          img.onerror = () => {
+            console.error(`Failed to load photo ${photo.id}`);
+            resolve(); // Resolve anyway to not block other photos
+          };
+
+          img.src = thumbnailUrl;
+        });
+      });
+
+      // Wait for all photos to be loaded and rendered
+      await Promise.all(photoLoadPromises);
 
       if (!this.map.hasLayer(this.photoMarkers)) {
         this.photoMarkers.addTo(this.map);
       }
 
+      // Show checkmark for 1 second before removing
+      const loadingSpinner = document.querySelector('.loading-spinner');
+      loadingSpinner.classList.add('done');
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
     } catch (error) {
       console.error('Error fetching photos:', error);
+      showFlashMessage('error', 'Failed to fetch photos');
 
       if (retryCount < MAX_RETRIES) {
         console.log(`Retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
@@ -818,6 +858,9 @@ export default class extends Controller {
       } else {
         showFlashMessage('error', 'Failed to fetch photos after multiple attempts');
       }
+    } finally {
+      // Remove loading control after the delay
+      this.map.removeControl(loadingControl);
     }
   }
 

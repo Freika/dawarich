@@ -72,3 +72,38 @@
   width: 48px;
   height: 48px;
 }
+
+.leaflet-loading-control {
+  padding: 5px;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+  margin: 10px;
+  width: 32px;
+  height: 32px;
+  background: white;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  color: gray;
+}
+
+.loading-spinner::before {
+  content: '🔵';
+  font-size: 18px;
+  animation: spinner 1s linear infinite;
+}
+
+.loading-spinner.done::before {
+  content: '✅';
+  animation: none;
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
