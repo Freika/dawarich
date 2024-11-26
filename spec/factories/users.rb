@@ -22,5 +22,14 @@ FactoryBot.define do
     trait :admin do
       admin { true }
     end
+
+    trait :with_immich_credentials do
+      settings do
+        {
+          immich_url: 'https://immich.example.com',
+          immich_api_key: '1234567890'
+        }
+      end
+    end
   end
 end

@@ -65,6 +65,8 @@ export default class extends Controller {
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
+    this.photoMarkers = L.layerGroup();
+
     this.setupScratchLayer(this.countryCodesMap);
 
     if (!this.settingsButtonAdded) {
@@ -77,7 +79,8 @@ export default class extends Controller {
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer,
-      Areas: this.areasLayer // Add the areas layer to the controls
+      Areas: this.areasLayer,
+      Photos: this.photoMarkers
     };
 
     L.control
@@ -132,6 +135,13 @@ export default class extends Controller {
     this.map.on('overlayadd', (e) => {
       if (e.name === 'Areas') {
         this.map.addControl(this.drawControl);
+      }
+      if (e.name === 'Photos') {
+        // Extract dates from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const startDate = urlParams.get('start_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        const endDate = urlParams.get('end_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        this.fetchAndDisplayPhotos(startDate, endDate);
       }
     });
 
@@ -770,5 +780,135 @@ export default class extends Controller {
     // Ensure the layer control reflects the current state
     this.map.removeControl(this.layerControl);
     this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
+  }
+
+  async fetchAndDisplayPhotos(startDate, endDate, retryCount = 0) {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 3000; // 3 seconds
+
+    // Create loading control
+    const LoadingControl = L.Control.extend({
+      onAdd: (map) => {
+        const container = L.DomUtil.create('div', 'leaflet-loading-control');
+        container.innerHTML = '<div class="loading-spinner"></div>';
+        return container;
+      }
+    });
+
+    const loadingControl = new LoadingControl({ position: 'topleft' });
+    this.map.addControl(loadingControl);
+
+    try {
+      const params = new URLSearchParams({
+        api_key: this.apiKey,
+        start_date: startDate,
+        end_date: endDate
+      });
+
+      const response = await fetch(`/api/v1/photos?${params}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const photos = await response.json();
+      this.photoMarkers.clearLayers();
+
+      // Create a promise for each photo to track when it's fully loaded
+      const photoLoadPromises = photos.map(photo => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}`;
+
+          img.onload = () => {
+            this.createPhotoMarker(photo);
+            resolve();
+          };
+
+          img.onerror = () => {
+            console.error(`Failed to load photo ${photo.id}`);
+            resolve(); // Resolve anyway to not block other photos
+          };
+
+          img.src = thumbnailUrl;
+        });
+      });
+
+      // Wait for all photos to be loaded and rendered
+      await Promise.all(photoLoadPromises);
+
+      if (!this.map.hasLayer(this.photoMarkers)) {
+        this.photoMarkers.addTo(this.map);
+      }
+
+      // Show checkmark for 1 second before removing
+      const loadingSpinner = document.querySelector('.loading-spinner');
+      loadingSpinner.classList.add('done');
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+      showFlashMessage('error', 'Failed to fetch photos');
+
+      if (retryCount < MAX_RETRIES) {
+        console.log(`Retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        setTimeout(() => {
+          this.fetchAndDisplayPhotos(startDate, endDate, retryCount + 1);
+        }, RETRY_DELAY);
+      } else {
+        showFlashMessage('error', 'Failed to fetch photos after multiple attempts');
+      }
+    } finally {
+      // Remove loading control after the delay
+      this.map.removeControl(loadingControl);
+    }
+  }
+
+  createPhotoMarker(photo) {
+    if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
+
+    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}`;
+
+    const icon = L.divIcon({
+      className: 'photo-marker',
+      html: `<img src="${thumbnailUrl}" style="width: 48px; height: 48px;">`,
+      iconSize: [48, 48]
+    });
+
+    const marker = L.marker(
+      [photo.exifInfo.latitude, photo.exifInfo.longitude],
+      { icon }
+    );
+
+    const startOfDay = new Date(photo.localDateTime);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(photo.localDateTime);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const queryParams = {
+      takenAfter: startOfDay.toISOString(),
+      takenBefore: endOfDay.toISOString()
+    };
+    const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
+    const immich_photo_link = `${this.userSettings.immich_url}/search?query=${encodedQuery}`;
+    const popupContent = `
+      <div class="max-w-xs">
+        <a href="${immich_photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
+   onmouseout="this.firstElementChild.style.boxShadow = '';">
+          <img src="${thumbnailUrl}"
+              class="w-8 h-8 mb-2 rounded"
+              style="transition: box-shadow 0.3s ease;"
+              alt="${photo.originalFileName}">
+        </a>
+        <h3 class="font-bold">${photo.originalFileName}</h3>
+        <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
+        <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
+        ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
+      </div>
+    `;
+    marker.bindPopup(popupContent);
+
+    this.photoMarkers.addLayer(marker);
   }
 }

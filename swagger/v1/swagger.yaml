@@ -312,6 +312,294 @@ paths:
                   isorcv: '2024-02-03T13:00:03Z'
                   isotst: '2024-02-03T13:00:03Z'
                   disptst: '2024-02-03 13:00:03'
+  "/api/v1/photos":
+    get:
+      summary: Lists photos
+      tags:
+      - Photos
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: start_date
+        in: query
+        required: true
+        description: Start date in ISO8601 format, e.g. 2024-01-01
+        schema:
+          type: string
+      - name: end_date
+        in: query
+        required: true
+        description: End date in ISO8601 format, e.g. 2024-01-02
+        schema:
+          type: string
+      responses:
+        '200':
+          description: photos found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    deviceAssetId:
+                      type: string
+                    ownerId:
+                      type: string
+                    type:
+                      type: string
+                    originalPath:
+                      type: string
+                    originalFileName:
+                      type: string
+                    originalMimeType:
+                      type: string
+                    thumbhash:
+                      type: string
+                    fileCreatedAt:
+                      type: string
+                      format: date-time
+                    fileModifiedAt:
+                      type: string
+                      format: date-time
+                    localDateTime:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+                    isFavorite:
+                      type: boolean
+                    isArchived:
+                      type: boolean
+                    isTrashed:
+                      type: boolean
+                    duration:
+                      type: string
+                    exifInfo:
+                      type: object
+                      properties:
+                        make:
+                          type: string
+                        model:
+                          type: string
+                        exifImageWidth:
+                          type: integer
+                        exifImageHeight:
+                          type: integer
+                        fileSizeInByte:
+                          type: integer
+                        orientation:
+                          type: string
+                        dateTimeOriginal:
+                          type: string
+                          format: date-time
+                        modifyDate:
+                          type: string
+                          format: date-time
+                        timeZone:
+                          type: string
+                        lensModel:
+                          type: string
+                        fNumber:
+                          type: number
+                          format: float
+                        focalLength:
+                          type: number
+                          format: float
+                        iso:
+                          type: integer
+                        exposureTime:
+                          type: string
+                        latitude:
+                          type: number
+                          format: float
+                        longitude:
+                          type: number
+                          format: float
+                        city:
+                          type: string
+                        state:
+                          type: string
+                        country:
+                          type: string
+                        description:
+                          type: string
+                        projectionType:
+                          type:
+                          - string
+                          - 'null'
+                        rating:
+                          type:
+                          - integer
+                          - 'null'
+                    checksum:
+                      type: string
+                    isOffline:
+                      type: boolean
+                    hasMetadata:
+                      type: boolean
+                    duplicateId:
+                      type: string
+                    resized:
+                      type: boolean
+                  required:
+                  - id
+                  - deviceAssetId
+                  - ownerId
+                  - type
+                  - originalPath
+                  - originalFileName
+                  - originalMimeType
+                  - thumbhash
+                  - fileCreatedAt
+                  - fileModifiedAt
+                  - localDateTime
+                  - updatedAt
+                  - isFavorite
+                  - isArchived
+                  - isTrashed
+                  - duration
+                  - exifInfo
+                  - checksum
+                  - isOffline
+                  - hasMetadata
+                  - duplicateId
+                  - resized
+  "/api/v1/photos/{id}/thumbnail":
+    get:
+      summary: Retrieves a photo
+      tags:
+      - Photos
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: api_key
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: photo found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  deviceAssetId:
+                    type: string
+                  ownerId:
+                    type: string
+                  type:
+                    type: string
+                  originalPath:
+                    type: string
+                  originalFileName:
+                    type: string
+                  originalMimeType:
+                    type: string
+                  thumbhash:
+                    type: string
+                  fileCreatedAt:
+                    type: string
+                    format: date-time
+                  fileModifiedAt:
+                    type: string
+                    format: date-time
+                  localDateTime:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  isFavorite:
+                    type: boolean
+                  isArchived:
+                    type: boolean
+                  isTrashed:
+                    type: boolean
+                  duration:
+                    type: string
+                  exifInfo:
+                    type: object
+                    properties:
+                      make:
+                        type: string
+                      model:
+                        type: string
+                      exifImageWidth:
+                        type: integer
+                      exifImageHeight:
+                        type: integer
+                      fileSizeInByte:
+                        type: integer
+                      orientation:
+                        type: string
+                      dateTimeOriginal:
+                        type: string
+                        format: date-time
+                      modifyDate:
+                        type: string
+                        format: date-time
+                      timeZone:
+                        type: string
+                      lensModel:
+                        type: string
+                      fNumber:
+                        type: number
+                        format: float
+                      focalLength:
+                        type: number
+                        format: float
+                      iso:
+                        type: integer
+                      exposureTime:
+                        type: string
+                      latitude:
+                        type: number
+                        format: float
+                      longitude:
+                        type: number
+                        format: float
+                      city:
+                        type: string
+                      state:
+                        type: string
+                      country:
+                        type: string
+                      description:
+                        type: string
+                      projectionType:
+                        type:
+                        - string
+                        - 'null'
+                      rating:
+                        type:
+                        - integer
+                        - 'null'
+                  checksum:
+                    type: string
+                  isOffline:
+                    type: boolean
+                  hasMetadata:
+                    type: boolean
+                  duplicateId:
+                    type: string
+                  resized:
+                    type: boolean
+        '404':
+          description: photo not found
   "/api/v1/points":
     get:
       summary: Retrieves all points
