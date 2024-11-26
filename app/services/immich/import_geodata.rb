@@ -3,16 +3,13 @@
 class Immich::ImportGeodata
   attr_reader :user, :start_date, :end_date
 
-  def initialize(user, end_date:, start_date: '1970-01-01')
+  def initialize(user, start_date: '1970-01-01', end_date: nil)
     @user = user
     @start_date = start_date
     @end_date = end_date
   end
 
   def call
-    raise ArgumentError, 'Immich API key is missing' if immich_api_key.blank?
-    raise ArgumentError, 'Immich URL is missing'     if user.settings['immich_url'].blank?
-
     immich_data = retrieve_immich_data
 
     log_no_data and return if immich_data.empty?

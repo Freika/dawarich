@@ -79,7 +79,7 @@ Rails.application.routes.draw do
         resources :borders, only: :index
       end
 
-      resources :photos do
+      resources :photos, only: %i[index] do
         member do
           get 'thumbnail', constraints: { id: %r{[^/]+} }
         end

@@ -32,7 +32,6 @@ class Api::V1::PhotosController < ApiController
         status: :ok
       )
     else
-      Rails.logger.error "Failed to fetch thumbnail: #{response.code} - #{response.body}"
       render json: { error: 'Failed to fetch thumbnail' }, status: response.code
     end
   end

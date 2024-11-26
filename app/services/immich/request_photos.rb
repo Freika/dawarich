@@ -12,6 +12,9 @@ class Immich::RequestPhotos
   end
 
   def call
+    raise ArgumentError, 'Immich API key is missing' if immich_api_key.blank?
+    raise ArgumentError, 'Immich URL is missing'     if user.settings['immich_url'].blank?
+
     data = retrieve_immich_data
 
     time_framed_data(data)
