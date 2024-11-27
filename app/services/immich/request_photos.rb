@@ -36,7 +36,13 @@ class Immich::RequestPhotos
 
       items = response.dig('assets', 'items')
 
-      break if items.empty?
+      if items.blank?
+        Rails.logger.debug('==== IMMICH RESPONSE WITH NO ITEMS ====')
+        Rails.logger.debug(response)
+        Rails.logger.debug('==== IMMICH RESPONSE WITH NO ITEMS ====')
+
+        break
+      end
 
       data << items
 
