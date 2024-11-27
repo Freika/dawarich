@@ -106,4 +106,8 @@ module ApplicationHelper
 
     'text-blue-600'
   end
+
+  def human_date(date)
+    date.strftime('%e %B %Y')
+  end
 end

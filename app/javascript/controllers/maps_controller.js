@@ -12,6 +12,7 @@ import { fetchAndDrawAreas } from "../maps/areas";
 import { handleAreaCreated } from "../maps/areas";
 
 import { showFlashMessage } from "../maps/helpers";
+import { fetchAndDisplayPhotos } from '../maps/helpers';
 
 import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
@@ -83,14 +84,13 @@ export default class extends Controller {
       Photos: this.photoMarkers
     };
 
-    L.control
-      .scale({
-        position: "bottomright",
-        metric: true,
-        imperial: true,
-        maxWidth: 120,
-      })
-      .addTo(this.map);
+    // Add scale control to bottom right
+    L.control.scale({
+      position: 'bottomright',
+      imperial: this.distanceUnit === 'mi',
+      metric: this.distanceUnit === 'km',
+      maxWidth: 120
+    }).addTo(this.map)
 
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
@@ -132,16 +132,22 @@ export default class extends Controller {
     this.initializeDrawControl();
 
     // Add event listeners to toggle draw controls
-    this.map.on('overlayadd', (e) => {
+    this.map.on('overlayadd', async (e) => {
       if (e.name === 'Areas') {
         this.map.addControl(this.drawControl);
       }
       if (e.name === 'Photos') {
-        // Extract dates from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const startDate = urlParams.get('start_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
         const endDate = urlParams.get('end_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
-        this.fetchAndDisplayPhotos(startDate, endDate);
+        await fetchAndDisplayPhotos({
+          map: this.map,
+          photoMarkers: this.photoMarkers,
+          apiKey: this.apiKey,
+          startDate: startDate,
+          endDate: endDate,
+          userSettings: this.userSettings
+        });
       }
     });
 
@@ -782,87 +788,87 @@ export default class extends Controller {
     this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
   }
 
-  async fetchAndDisplayPhotos(startDate, endDate, retryCount = 0) {
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 3000; // 3 seconds
+  // async fetchAndDisplayPhotos(startDate, endDate, retryCount = 0) {
+  //   const MAX_RETRIES = 3;
+  //   const RETRY_DELAY = 3000; // 3 seconds
 
-    // Create loading control
-    const LoadingControl = L.Control.extend({
-      onAdd: (map) => {
-        const container = L.DomUtil.create('div', 'leaflet-loading-control');
-        container.innerHTML = '<div class="loading-spinner"></div>';
-        return container;
-      }
-    });
+  //   // Create loading control
+  //   const LoadingControl = L.Control.extend({
+  //     onAdd: (map) => {
+  //       const container = L.DomUtil.create('div', 'leaflet-loading-control');
+  //       container.innerHTML = '<div class="loading-spinner"></div>';
+  //       return container;
+  //     }
+  //   });
 
-    const loadingControl = new LoadingControl({ position: 'topleft' });
-    this.map.addControl(loadingControl);
+  //   const loadingControl = new LoadingControl({ position: 'topleft' });
+  //   this.map.addControl(loadingControl);
 
-    try {
-      const params = new URLSearchParams({
-        api_key: this.apiKey,
-        start_date: startDate,
-        end_date: endDate
-      });
+  //   try {
+  //     const params = new URLSearchParams({
+  //       api_key: this.apiKey,
+  //       start_date: startDate,
+  //       end_date: endDate
+  //     });
 
-      const response = await fetch(`/api/v1/photos?${params}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+  //     const response = await fetch(`/api/v1/photos?${params}`);
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP error! status: ${response.status}`);
+  //     }
 
-      const photos = await response.json();
-      this.photoMarkers.clearLayers();
+  //     const photos = await response.json();
+  //     this.photoMarkers.clearLayers();
 
-      // Create a promise for each photo to track when it's fully loaded
-      const photoLoadPromises = photos.map(photo => {
-        return new Promise((resolve) => {
-          const img = new Image();
-          const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}`;
+  //     // Create a promise for each photo to track when it's fully loaded
+  //     const photoLoadPromises = photos.map(photo => {
+  //       return new Promise((resolve) => {
+  //         const img = new Image();
+  //         const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}`;
 
-          img.onload = () => {
-            this.createPhotoMarker(photo);
-            resolve();
-          };
+  //         img.onload = () => {
+  //           this.createPhotoMarker(photo);
+  //           resolve();
+  //         };
 
-          img.onerror = () => {
-            console.error(`Failed to load photo ${photo.id}`);
-            resolve(); // Resolve anyway to not block other photos
-          };
+  //         img.onerror = () => {
+  //           console.error(`Failed to load photo ${photo.id}`);
+  //           resolve(); // Resolve anyway to not block other photos
+  //         };
 
-          img.src = thumbnailUrl;
-        });
-      });
+  //         img.src = thumbnailUrl;
+  //       });
+  //     });
 
-      // Wait for all photos to be loaded and rendered
-      await Promise.all(photoLoadPromises);
+  //     // Wait for all photos to be loaded and rendered
+  //     await Promise.all(photoLoadPromises);
 
-      if (!this.map.hasLayer(this.photoMarkers)) {
-        this.photoMarkers.addTo(this.map);
-      }
+  //     if (!this.map.hasLayer(this.photoMarkers)) {
+  //       this.photoMarkers.addTo(this.map);
+  //     }
 
-      // Show checkmark for 1 second before removing
-      const loadingSpinner = document.querySelector('.loading-spinner');
-      loadingSpinner.classList.add('done');
+  //     // Show checkmark for 1 second before removing
+  //     const loadingSpinner = document.querySelector('.loading-spinner');
+  //     loadingSpinner.classList.add('done');
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  //     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    } catch (error) {
-      console.error('Error fetching photos:', error);
-      showFlashMessage('error', 'Failed to fetch photos');
+  //   } catch (error) {
+  //     console.error('Error fetching photos:', error);
+  //     showFlashMessage('error', 'Failed to fetch photos');
 
-      if (retryCount < MAX_RETRIES) {
-        console.log(`Retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
-        setTimeout(() => {
-          this.fetchAndDisplayPhotos(startDate, endDate, retryCount + 1);
-        }, RETRY_DELAY);
-      } else {
-        showFlashMessage('error', 'Failed to fetch photos after multiple attempts');
-      }
-    } finally {
-      // Remove loading control after the delay
-      this.map.removeControl(loadingControl);
-    }
-  }
+  //     if (retryCount < MAX_RETRIES) {
+  //       console.log(`Retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+  //       setTimeout(() => {
+  //         this.fetchAndDisplayPhotos(startDate, endDate, retryCount + 1);
+  //       }, RETRY_DELAY);
+  //     } else {
+  //       showFlashMessage('error', 'Failed to fetch photos after multiple attempts');
+  //     }
+  //   } finally {
+  //     // Remove loading control after the delay
+  //     this.map.removeControl(loadingControl);
+  //   }
+  // }
 
   createPhotoMarker(photo) {
     if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
