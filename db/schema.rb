@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
+ActiveRecord::Schema[7.2].define(version: 2024_11_27_161621) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -175,6 +175,32 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
     t.index ["year"], name: "index_stats_on_year"
   end
 
+  create_table "trips", force: :cascade do |t|
+    t.string "name", null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at", null: false
+    t.text "notes"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_trips_on_user_id"
+  end
+
+  create_table "user_digests", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "kind", default: 0, null: false
+    t.datetime "start_at", null: false
+    t.datetime "end_at"
+    t.integer "distance", default: 0, null: false
+    t.text "countries", default: [], array: true
+    t.text "cities", default: [], array: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["distance"], name: "index_user_digests_on_distance"
+    t.index ["kind"], name: "index_user_digests_on_kind"
+    t.index ["user_id"], name: "index_user_digests_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -216,6 +242,8 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
+  add_foreign_key "trips", "users"
+  add_foreign_key "user_digests", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"

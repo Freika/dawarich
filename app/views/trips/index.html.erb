@@ -1,0 +1,48 @@
+<% content_for :title, 'Trips' %>
+
+<div class="w-full">
+  <div id="trips" class="min-w-full">
+    <% if @trips.empty? %>
+      <div class="hero min-h-80 bg-base-200">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-5xl font-bold">Hello there!</h1>
+            <p class="py-6">
+              Here you'll find your trips, but now there are none. Let's <%= link_to 'create one', new_trip_path, class: 'link' %>!
+            </p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="flex justify-center my-5">
+        <div class='flex'>
+          <%= paginate @trips %>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Started at</th>
+              <th>Ended at</th>
+            </tr>
+          </thead>
+          <tbody
+            data-controller="trips"
+            data-trips-target="index"
+            data-user-id="<%= current_user.id %>"
+          >
+            <% @trips.each do |trip| %>
+              <tr data-trip-id="<%= trip.id %>" id="trip-<%= trip.id %>">
+                <td><%= link_to trip.name, trip, class: 'underline hover:no-underline' %></td>
+                <td><%= trip.started_at.strftime("%d.%m.%Y, %H:%M") %></td>
+                <td><%= trip.ended_at.strftime("%d.%m.%Y, %H:%M") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>

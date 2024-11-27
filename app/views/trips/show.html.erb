@@ -1,0 +1,64 @@
+<% content_for :title, @trip.name %>
+
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+  <!-- Header Section -->
+  <div class="text-center mb-8">
+    <h1 class="text-4xl font-bold mb-2"><%= @trip.name %></h1>
+    <p class="text-lg text-base-content/60">Countries visited: [Placeholder]</p>
+  </div>
+
+  <!-- Map and Description Section -->
+  <div class="bg-base-100 mb-8">
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="w-full">
+        <div id="map" class="w-full h-96 bg-base-200">Map Placeholder</div>
+      </div>
+      <div class="w-full">
+        <div class="prose">
+          <p>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+          </p>
+          <br>
+          <p>
+            At vero eos et accusam et justo duo dolores et ea rebum.
+          </p>
+          <br>
+          <p>
+            Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+          </p>
+        </div>
+
+        <!-- Photos Grid Section -->
+        <% (1..12).each_slice(4) do |slice| %>
+          <div class="flex flex-row gap-4 mt-4 justify-center">
+            <% slice.each do %>
+              <div class="aspect-square rounded-box overflow-hidden bg-base-200 w-32">
+                <img src="https://placehold.co/128x128" alt="Photo Placeholder"
+                      class="w-32 object-cover">
+              </div>
+          <% end %>
+          </div>
+        <% end %>
+
+        <div class="text-center mt-6">
+          <%= link_to "More photos on Immich", "#", class: "btn btn-primary" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons Section -->
+  <div class="bg-base-100 items-center">
+    <div class="flex flex-wrap gap-2 justify-center">
+      <%= link_to "Edit this trip", edit_trip_path(@trip), class: "btn" %>
+      <%= link_to "Destroy this trip",
+          trip_path(@trip),
+          data: {
+            turbo_confirm: "Are you sure? This action will delete all points imported with this file",
+            turbo_method: :delete
+          },
+          class: "btn" %>
+      <%= link_to "Back to trips", trips_path, class: "btn" %>
+    </div>
+  </div>
+</div>

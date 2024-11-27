@@ -1,0 +1,39 @@
+<%= form_with(model: trip, class: "contents") do |form| %>
+  <% if trip.errors.any? %>
+    <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
+      <h2><%= pluralize(trip.errors.count, "error") %> prohibited this trip from being saved:</h2>
+
+      <ul>
+        <% trip.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="flex flex-col lg:flex-row gap-4 mt-4">
+    <div class="form-control w-full lg:w-1/2">
+      <%= form.label :name %>
+      <%= form.text_field :name, class: 'input input-bordered' %>
+    </div>
+    <div class="flex flex-col lg:flex-row lg:w-1/2 gap-4">
+      <div class="form-control w-full lg:w-1/2">
+        <%= form.label :started_at %>
+        <%= form.datetime_field :started_at, include_seconds: false, class: 'input input-bordered', value: trip.started_at %>
+      </div>
+      <div class="form-control w-full lg:w-1/2">
+        <%= form.label :ended_at %>
+        <%= form.datetime_field :ended_at, include_seconds: false, class: 'input input-bordered', value: trip.ended_at %>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-control w-full mt-4 mb-4">
+    <%= form.label :notes %>
+    <%= form.text_area :notes, class: 'textarea textarea-bordered w-full', rows: 10 %>
+  </div>
+
+  <div class="inline mb-4">
+    <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+  </div>
+<% end %>
