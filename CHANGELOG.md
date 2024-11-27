@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Retrieving photos from Immich now using `takenAfter` and `takenBefore` instead of `createdAfter` and `createdBefore`. With `createdAfter` and `createdBefore` Immich was returning no items some years.
+
+# 0.17.1 - 2024-11-27
+
+### Fixed
+
 - Retrieving photos from Immich now correctly handles cases when Immich returns no items. It also logs the response from Immich for debugging purposes.
 
 # 0.17.0 - 2024-11-26
