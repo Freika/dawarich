@@ -61,7 +61,7 @@ class Immich::RequestPhotos
 
   def request_body(page)
     body = {
-      createdAfter: start_date,
+      takenAfter: start_date,
       size: 1000,
       page: page,
       order: 'asc',
@@ -70,7 +70,7 @@ class Immich::RequestPhotos
 
     return body unless end_date
 
-    body.merge(createdBefore: end_date)
+    body.merge(takenBefore: end_date)
   end
 
   def time_framed_data(data)
