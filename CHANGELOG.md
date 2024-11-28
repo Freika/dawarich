@@ -5,7 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.17.1 - 2024-11-27
+# 0.18.0 - 2024-11-28
+
+## The Trips release
+
+You can now create, edit and delete trips. To create a trip, click on the "New Trip" button on the Trips page. Provide a name, date and time for start and end of the trip. You can add your own notes to the trip as well.
+
+If you have points tracked during provided timeframe, they will be automatically added to the trip and will be shown on the trip map.
+
+Also, if you have Immich integrated, you will see photos from the trip on the trip page, along with a link to look at them on Immich.
+
+### Added
+
+- The Trips feature. Read above for more details.
+
+### Changed
+
+- Maps are now not so rough on the edges.
+
+# 0.17.2 - 2024-11-27
 
 ### Fixed
 

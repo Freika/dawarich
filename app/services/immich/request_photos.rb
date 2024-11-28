@@ -52,7 +52,7 @@ class Immich::RequestPhotos
       page += 1
     end
 
-    data.flatten.reject { |asset| asset['type'].downcase == 'video' }
+    data.flatten
   end
 
   def headers

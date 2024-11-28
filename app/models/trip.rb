@@ -22,7 +22,7 @@ class Trip < ApplicationRecord
       user,
       start_date: started_at.to_date.to_s,
       end_date: ended_at.to_date.to_s
-    ).call
+    ).call.reject { |asset| asset['type'].downcase == 'video' }
 
     # let's count what photos are more: vertical or horizontal and select the ones that are more
     vertical_photos = immich_photos.select { _1['exifInfo']['orientation'] == '6' }

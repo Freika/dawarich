@@ -3,7 +3,6 @@
 require 'sidekiq/web'
 
 Rails.application.routes.draw do
-  resources :trips
   mount ActionCable.server => '/cable'
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
@@ -31,6 +30,7 @@ Rails.application.routes.draw do
   resources :visits, only: %i[index update]
   resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
+  resources :trips
   resources :points, only: %i[index] do
     collection do
       delete :bulk_destroy
