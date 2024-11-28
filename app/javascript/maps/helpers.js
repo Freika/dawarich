@@ -250,7 +250,7 @@ export function createPhotoMarker(photo, immichUrl, photoMarkers,apiKey) {
       <a href="${immich_photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
  onmouseout="this.firstElementChild.style.boxShadow = '';">
         <img src="${thumbnailUrl}"
-            class="w-8 h-8 mb-2 rounded"
+            class="mb-2 rounded"
             style="transition: box-shadow 0.3s ease;"
             alt="${photo.originalFileName}">
       </a>
