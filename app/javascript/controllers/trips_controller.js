@@ -10,7 +10,7 @@ import { esriWorldStreetMapLayer } from "../maps/layers"
 import { esriWorldTopoMapLayer } from "../maps/layers"
 import { esriWorldImageryMapLayer } from "../maps/layers"
 import { esriWorldGrayCanvasMapLayer } from "../maps/layers"
-// import { fetchAndDisplayPhotos } from "../helpers/photoFetcher";
+import { fetchAndDisplayPhotos } from '../maps/helpers';
 
 export default class extends Controller {
   static targets = ["container"]
@@ -52,7 +52,28 @@ export default class extends Controller {
     // Add layer control
     L.control.layers(this.baseMaps(), overlayMaps).addTo(this.map)
 
-    // Add markers for each coordinate
+    // Add event listener for layer changes
+    this.map.on('overlayadd', (e) => {
+      if (e.name === 'Photos' && this.coordinates?.length > 0) {
+        const firstCoord = this.coordinates[0];
+        const lastCoord = this.coordinates[this.coordinates.length - 1];
+
+        // Convert Unix timestamp to a Date object
+        const startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
+        const endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
+
+        fetchAndDisplayPhotos({
+          map: this.map,
+          photoMarkers: this.photoMarkers,
+          apiKey: this.apiKey,
+          startDate: startDate,
+          endDate: endDate,
+          userSettings: this.userSettings
+        });
+      }
+    });
+
+    // Add markers and route
     if (this.coordinates?.length > 0) {
       this.addMarkers()
       this.addPolyline()
@@ -128,12 +149,5 @@ export default class extends Controller {
       esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
       esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
     };
-  }
-
-  someMethod() {
-    // Example usage
-    const startDate = '2023-01-01';
-    const endDate = '2023-12-31';
-    fetchAndDisplayPhotos(this.map, this.apiKey, this.photoMarkers, startDate, endDate);
   }
 }

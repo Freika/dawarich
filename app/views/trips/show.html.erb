@@ -48,15 +48,20 @@
         </div>
 
         <!-- Photos Grid Section -->
-        <% (1..12).each_slice(4) do |slice| %>
-          <div class="flex flex-row gap-4 mt-4 justify-center">
-            <% slice.each do %>
-              <div class="aspect-square rounded-box overflow-hidden bg-base-200 w-32">
-                <img src="https://placehold.co/128x128" alt="Photo Placeholder"
-                      class="w-32 object-cover">
-              </div>
+        <% if @photos.any? %>
+          <% @photos.each_slice(4) do |slice| %>
+            <div class="h-32 flex gap-4 mt-4 justify-center">
+              <% slice.each do |photo| %>
+                <div class="flex-1 h-full overflow-hidden rounded-lg transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+                  <img
+                    src="<%= photo[:url] %>"
+                    loading='lazy'
+                    class="h-full w-full object-cover"
+                  >
+                </div>
+              <% end %>
+            </div>
           <% end %>
-          </div>
         <% end %>
 
         <div class="text-center mt-6">
