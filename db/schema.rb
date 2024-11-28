@@ -10,9 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
+ActiveRecord::Schema[7.2].define(version: 2024_11_28_095325) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "action_text_rich_texts", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "body"
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["record_type", "record_id", "name"], name: "index_action_text_rich_texts_uniqueness", unique: true
+  end
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
@@ -175,6 +185,17 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
     t.index ["year"], name: "index_stats_on_year"
   end
 
+  create_table "trips", force: :cascade do |t|
+    t.string "name", null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at", null: false
+    t.integer "distance"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_trips_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -216,6 +237,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
+  add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"

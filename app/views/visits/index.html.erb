@@ -1,7 +1,8 @@
-<div class="w-full">
-  <% content_for :title, "Visits" %>
+<% content_for :title, "Visits" %>
 
-  <div class="flex justify-between my-5">
+<div class="w-full my-5">
+
+  <div class="flex justify-between">
     <h1 class="font-bold text-4xl">Visits</h1>
     <div role="tablist" class="tabs tabs-boxed">
       <%= link_to 'Confirmed', visits_path(status: :confirmed), role: 'tab',

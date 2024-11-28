@@ -106,4 +106,18 @@ module ApplicationHelper
 
     'text-blue-600'
   end
+
+  def human_date(date)
+    date.strftime('%e %B %Y')
+  end
+
+  def immich_search_url(base_url, start_date, end_date)
+    query = {
+      takenAfter: "#{start_date.to_date}T00:00:00.000Z",
+      takenBefore: "#{end_date.to_date}T23:59:59.999Z"
+    }
+
+    encoded_query = URI.encode_www_form_component(query.to_json)
+    "#{base_url}/search?query=#{encoded_query}"
+  end
 end

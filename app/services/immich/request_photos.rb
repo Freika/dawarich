@@ -27,6 +27,7 @@ class Immich::RequestPhotos
     data = []
     max_pages = 10_000 # Prevent infinite loop
 
+    # TODO: Handle pagination using nextPage
     while page <= max_pages
       response = JSON.parse(
         HTTParty.post(
@@ -38,6 +39,8 @@ class Immich::RequestPhotos
 
       if items.blank?
         Rails.logger.debug('==== IMMICH RESPONSE WITH NO ITEMS ====')
+        Rails.logger.debug("START_DATE: #{start_date}")
+        Rails.logger.debug("END_DATE: #{end_date}")
         Rails.logger.debug(response)
         Rails.logger.debug('==== IMMICH RESPONSE WITH NO ITEMS ====')
 
