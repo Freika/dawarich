@@ -17,6 +17,10 @@ export default class extends Controller {
   static values = { }
 
   connect() {
+    if (!this.hasContainerTarget) {
+      return;
+    }
+
     console.log("Trips controller connected")
     this.coordinates = JSON.parse(this.containerTarget.dataset.coordinates)
     this.apiKey = this.containerTarget.dataset.api_key
@@ -77,7 +81,6 @@ export default class extends Controller {
         const firstCoord = this.coordinates[0];
         const lastCoord = this.coordinates[this.coordinates.length - 1];
 
-        // Convert Unix timestamp to a Date object
         const startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
         const endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
 
@@ -130,7 +133,6 @@ export default class extends Controller {
       marker.bindPopup(popupContent)
 
       // Add to markers layer instead of directly to map
-
       marker.addTo(this.markersLayer)
     })
   }
@@ -160,8 +162,10 @@ export default class extends Controller {
     this.coordinates = newCoordinates.map(point => [
       parseFloat(point.latitude),
       parseFloat(point.longitude),
+      point.id,
+      null, // This is so we can use the same order and position of elements in the coordinates object as in the api/v1/points response
       (point.timestamp).toString()
-    ])
+    ]).sort((a, b) => a[4] - b[4]);
 
     // Clear existing layers
     this.markersLayer.clearLayers()
