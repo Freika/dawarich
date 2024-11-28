@@ -22,3 +22,5 @@ pin_all_from 'app/javascript/channels', under: 'channels'
 pin 'notifications_channel', to: 'channels/notifications_channel.js'
 pin 'points_channel', to: 'channels/points_channel.js'
 pin 'imports_channel', to: 'channels/imports_channel.js'
+pin "trix"
+pin "@rails/actiontext", to: "actiontext.esm.js"
