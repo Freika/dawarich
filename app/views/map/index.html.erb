@@ -8,33 +8,35 @@
           <div class="w-full sm:w-2/12 md:w-1/12 lg:w-2/12">
             <div class="flex flex-col space-y-2">
               <%= f.label :start_at, class: "text-sm font-semibold" %>
-              <%= f.datetime_local_field :start_at, class: "rounded-md w-full", value: @start_at %>
+              <%= f.datetime_local_field :start_at, class: "input input-bordered hover:cursor-pointer hover:input-primary", value: @start_at %>
             </div>
           </div>
           <div class="w-full sm:w-2/12 md:w-1/12 lg:w-2/12">
             <div class="flex flex-col space-y-2">
               <%= f.label :end_at, class: "text-sm font-semibold" %>
-              <%= f.datetime_local_field :end_at, class: "rounded-md w-full", value: @end_at %>
+              <%= f.datetime_local_field :end_at, class: "input input-bordered hover:cursor-pointer hover:input-primary", value: @end_at %>
             </div>
           </div>
           <div class="w-full sm:w-6/12 md:w-2/12 lg:w-3/12">
             <div class="flex flex-col space-y-2">
-              <%= f.submit "Search", class: "px-4 py-2 bg-blue-500 text-white rounded-md" %>
+              <%= f.submit "Search", class: "btn btn-primary hover:btn-info" %>
             </div>
           </div>
           <div class="w-full sm:w-6/12 md:w-2/12">
             <div class="flex flex-col space-y-2 text-center">
-              <%= link_to "Yesterday", map_path(start_at: Date.yesterday.beginning_of_day, end_at: Date.yesterday.end_of_day, import_id: params[:import_id]), class: "px-4 py-2 bg-gray-500 text-white rounded-md" %>
+              <%= link_to "Yesterday",
+                map_path(start_at: Date.yesterday.beginning_of_day, end_at: Date.yesterday.end_of_day, import_id: params[:import_id]),
+                class: "btn btn-neutral hover:btn-ghost" %>
             </div>
           </div>
           <div class="w-full sm:w-6/12 md:w-3/12 lg:w-2/12">
             <div class="flex flex-col space-y-2 text-center">
-              <%= link_to "Last 7 days", map_path(start_at: 1.week.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "px-4 py-2 bg-gray-500 text-white rounded-md" %>
+              <%= link_to "Last 7 days", map_path(start_at: 1.week.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn btn-neutral hover:btn-ghost" %>
             </div>
           </div>
           <div class="w-full sm:w-6/12 md:w-3/12 lg:w-2/12">
             <div class="flex flex-col space-y-2 text-center">
-              <%= link_to "Last month", map_path(start_at: 1.month.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "px-4 py-2 bg-gray-500 text-white rounded-md" %>
+              <%= link_to "Last month", map_path(start_at: 1.month.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn btn-neutral hover:btn-ghost" %>
             </div>
           </div>
         </div>

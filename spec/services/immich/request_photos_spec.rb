@@ -137,8 +137,8 @@ RSpec.describe Immich::RequestPhotos do
         ).to_return(status: 200, body: immich_data, headers: {})
       end
 
-      it 'returns only images' do
-        expect(service.map { _1['type'] }.uniq).to eq(['IMAGE'])
+      it 'returns images and videos' do
+        expect(service.map { _1['type'] }.uniq).to eq(['IMAGE', 'VIDEO'])
       end
     end
 

@@ -2,7 +2,7 @@
 
 <div id='years-nav'>
   <div class="dropdown">
-    <div tabindex="0" role="button" class="btn m-1">Select year</div>
+    <div tabindex="0" role="button" class="btn">Select year</div>
     <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
       <% current_user.stats.years.each do |year| %>
         <li><%= link_to year, map_url(year_timespan(year).merge(year: year, import_id: params[:import_id])) %></li>
