@@ -6,7 +6,7 @@ class TripsController < ApplicationController
   before_action :set_coordinates, only: %i[show edit]
 
   def index
-    @trips = current_user.trips.order(created_at: :desc).page(params[:page])
+    @trips = current_user.trips.order(started_at: :desc).page(params[:page]).per(6)
   end
 
   def show
@@ -22,6 +22,7 @@ class TripsController < ApplicationController
 
   def new
     @trip = Trip.new
+    @coordinates = []
   end
 
   def edit; end
@@ -55,7 +56,6 @@ class TripsController < ApplicationController
     @trip = current_user.trips.find(params[:id])
   end
 
-
   def set_coordinates
     @coordinates = @trip.points.pluck(
       :latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id,
@@ -64,6 +64,6 @@ class TripsController < ApplicationController
   end
 
   def trip_params
-    params.require(:trip).permit(:name, :started_at, :ended_at, :notes, :field_notes)
+    params.require(:trip).permit(:name, :started_at, :ended_at, :notes)
   end
 end

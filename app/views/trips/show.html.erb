@@ -9,7 +9,7 @@
     </p>
     <% if @trip.countries.any? %>
       <p class="text-lg text-base-content/60">
-        <%= @trip.countries.join(', ') %>
+        <%= "#{@trip.countries.join(', ')} (#{@trip.distance} #{DISTANCE_UNIT})" %>
       </p>
     <% end %>
   </div>
@@ -34,7 +34,7 @@
       </div>
       <div class="w-full">
         <div>
-          <%= @trip.field_notes.body %>
+          <%= @trip.notes.body %>
         </div>
 
         <!-- Photos Grid Section -->

@@ -24,29 +24,32 @@
           <%= paginate @trips %>
         </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Started at</th>
-              <th>Ended at</th>
-            </tr>
-          </thead>
-          <tbody
-            data-controller="trips"
-            data-trips-target="index"
-            data-user-id="<%= current_user.id %>"
-          >
-            <% @trips.each do |trip| %>
-              <tr data-trip-id="<%= trip.id %>" id="trip-<%= trip.id %>">
-                <td><%= link_to trip.name, trip, class: 'underline hover:no-underline' %></td>
-                <td><%= trip.started_at.strftime("%d.%m.%Y, %H:%M") %></td>
-                <td><%= trip.ended_at.strftime("%d.%m.%Y, %H:%M") %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-4">
+        <% @trips.each do |trip| %>
+          <div class="card bg-base-200 shadow-xl" data-trip-id="<%= trip.id %>" id="trip-<%= trip.id %>">
+            <div class="card-body">
+              <h2 class="card-title justify-center">
+                <%= link_to trip.name, trip, class: 'hover:underline' %>
+              </h2>
+              <p class="text-sm text-gray-600 text-center">
+                <%= "#{human_date(trip.started_at)} – #{human_date(trip.ended_at)}, #{trip.distance} #{DISTANCE_UNIT}" %>
+              </p>
+
+              <div style="width: 100%; aspect-ratio: 1/1;"
+                   id="map-<%= trip.id %>"
+                   class="rounded-lg"
+                   data-controller="trip-map"
+                   data-trip-map-trip-id-value="<%= trip.id %>"
+                   data-trip-map-coordinates-value="<%= trip.points.pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id, :country).to_json %>"
+                   data-trip-map-api-key-value="<%= current_user.api_key %>"
+                   data-trip-map-user-settings-value="<%= current_user.settings.to_json %>"
+                   data-trip-map-timezone-value="<%= Rails.configuration.time_zone %>"
+                   data-trip-map-distance-unit-value="<%= DISTANCE_UNIT %>">
+              </div>
+            </div>
+          </div>
+        <% end %>
       </div>
     <% end %>
   </div>

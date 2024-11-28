@@ -6,7 +6,7 @@ class CreateTrips < ActiveRecord::Migration[7.2]
       t.string :name, null: false
       t.datetime :started_at, null: false
       t.datetime :ended_at, null: false
-      t.text :notes
+      t.integer :distance
       t.references :user, null: false, foreign_key: true
 
       t.timestamps

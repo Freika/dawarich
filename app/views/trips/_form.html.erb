@@ -20,7 +20,7 @@
         data-distance_unit="<%= DISTANCE_UNIT %>"
         data-api_key="<%= current_user.api_key %>"
         data-user_settings="<%= current_user.settings.to_json %>"
-        data-coordinates="<%= [].to_json %>"
+        data-coordinates="<%= @coordinates.to_json %>"
         data-timezone="<%= Rails.configuration.time_zone %>">
       </div>
     </div>
@@ -61,8 +61,8 @@
       </div>
 
       <div class="form-control">
-        <%= form.label :field_notes %>
-        <%= form.rich_text_area :field_notes %>
+        <%= form.label :notes %>
+        <%= form.rich_text_area :notes %>
       </div>
 
       <div>

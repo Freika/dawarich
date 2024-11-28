@@ -142,7 +142,7 @@ export default class extends Controller {
     const polyline = L.polyline(points, {
       color: 'blue',
       weight: 3,
-      opacity: 0.6
+      opacity: 0.8
     })
     // Add to polylines layer instead of directly to map
     this.polylinesLayer.addTo(this.map)

@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
 class Trip < ApplicationRecord
-  has_rich_text :field_notes
+  has_rich_text :notes
 
   belongs_to :user
 
   validates :name, :started_at, :ended_at, presence: true
 
+  before_save :calculate_distance
+
   def points
-    user.points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
+    user.tracked_points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
   end
 
   def countries
@@ -33,5 +35,21 @@ class Trip < ApplicationRecord
     photos.sample(12).map do |asset|
       { url: "/api/v1/photos/#{asset['id']}/thumbnail.jpg?api_key=#{user.api_key}" }
     end
+  end
+
+  private
+
+  def calculate_distance
+    distance = 0
+
+    points.each_cons(2) do |point1, point2|
+      distance_between = Geocoder::Calculations.distance_between(
+        point1.to_coordinates, point2.to_coordinates, units: ::DISTANCE_UNIT
+      )
+
+      distance += distance_between
+    end
+
+    self.distance = distance.round
   end
 end
