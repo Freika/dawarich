@@ -8,9 +8,9 @@
         <li><%= link_to 'Map', map_url, class: "#{active_class?(map_url)}" %></li>
         <li><%= link_to 'Points', points_url, class: "#{active_class?(points_url)}" %></li>
         <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
-        <li><%= link_to 'Visits<sup>β</sup>'.html_safe, visits_url(status: :confirmed), class: "#{active_class?(visits_url)}" %></li>
-        <li><%= link_to 'Places<sup>β</sup>'.html_safe, places_url, class: "#{active_class?(places_url)}" %></li>
-        <li><%= link_to 'Trips<sup>β</sup>'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
+        <li><%= link_to 'Visits<sup>α</sup>'.html_safe, visits_url(status: :confirmed), class: "#{active_class?(visits_url)}" %></li>
+        <li><%= link_to 'Places<sup>α</sup>'.html_safe, places_url, class: "#{active_class?(places_url)}" %></li>
+        <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
         <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
         <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
       </ul>
@@ -45,9 +45,9 @@
       <li><%= link_to 'Map', map_url, class: "#{active_class?(map_url)}" %></li>
       <li><%= link_to 'Points', points_url, class: "#{active_class?(points_url)}" %></li>
       <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
-      <li><%= link_to 'Visits<sup>β</sup>'.html_safe, visits_url(status: :confirmed), class: "#{active_class?(visits_url)}" %></li>
-      <li><%= link_to 'Places<sup>β</sup>'.html_safe, places_url, class: "#{active_class?(places_url)}" %></li>
-      <li><%= link_to 'Trips', trips_url, class: "#{active_class?(trips_url)}" %></li>
+      <li><%= link_to 'Visits<sup>α</sup>'.html_safe, visits_url(status: :confirmed), class: "#{active_class?(visits_url)}" %></li>
+      <li><%= link_to 'Places<sup>α</sup>'.html_safe, places_url, class: "#{active_class?(places_url)}" %></li>
+      <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
       <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
       <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
     </ul>
