@@ -32,7 +32,7 @@ class Trip < ApplicationRecord
     # to show all photos in the same height
     photos = vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
 
-    photos.sample(12).map do |asset|
+    photos.sample(12).sort_by { _1['localDateTime'] }.map do |asset|
       { url: "/api/v1/photos/#{asset['id']}/thumbnail.jpg?api_key=#{user.api_key}" }
     end
   end

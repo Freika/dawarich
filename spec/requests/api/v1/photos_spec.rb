@@ -12,14 +12,14 @@ RSpec.describe 'Api::V1::Photos', type: :request do
           'id' => '123',
           'latitude' => 35.6762,
           'longitude' => 139.6503,
-          'createdAt' => '2024-01-01T00:00:00.000Z',
+          'localDateTime' => '2024-01-01T00:00:00.000Z',
           'type' => 'photo'
         },
         {
           'id' => '456',
           'latitude' => 40.7128,
           'longitude' => -74.0060,
-          'createdAt' => '2024-01-02T00:00:00.000Z',
+          'localDateTime' => '2024-01-02T00:00:00.000Z',
           'type' => 'photo'
         }
       ]

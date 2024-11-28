@@ -54,6 +54,11 @@ FactoryBot.define do
           }
         }
       end
+
+      trait :reverse_geocoded do
+        country { FFaker::Address.country }
+        city { FFaker::Address.city }
+      end
     end
   end
 end
