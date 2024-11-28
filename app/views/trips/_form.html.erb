@@ -11,29 +11,63 @@
     </div>
   <% end %>
 
-  <div class="flex flex-col lg:flex-row gap-4 mt-4">
-    <div class="form-control w-full lg:w-1/2">
-      <%= form.label :name %>
-      <%= form.text_field :name, class: 'input input-bordered' %>
-    </div>
-    <div class="flex flex-col lg:flex-row lg:w-1/2 gap-4">
-      <div class="form-control w-full lg:w-1/2">
-        <%= form.label :started_at %>
-        <%= form.datetime_field :started_at, include_seconds: false, class: 'input input-bordered', value: trip.started_at %>
-      </div>
-      <div class="form-control w-full lg:w-1/2">
-        <%= form.label :ended_at %>
-        <%= form.datetime_field :ended_at, include_seconds: false, class: 'input input-bordered', value: trip.ended_at %>
+  <div class="flex flex-col lg:flex-row gap-4 my-4" data-controller="trips">
+    <div class="w-full lg:w-1/2">
+      <div
+        id='map trips-container'
+        class="w-full h-full rounded-lg"
+        data-trips-target="container"
+        data-distance_unit="<%= DISTANCE_UNIT %>"
+        data-api_key="<%= current_user.api_key %>"
+        data-user_settings="<%= current_user.settings.to_json %>"
+        data-coordinates="<%= [].to_json %>"
+        data-timezone="<%= Rails.configuration.time_zone %>">
       </div>
     </div>
-  </div>
 
-  <div class="form-control w-full mt-4 mb-4">
-    <%= form.label :field_notes %>
-    <%= form.rich_text_area :field_notes %>
-  </div>
+    <div
+      class="w-full lg:w-1/2 space-y-4"
+      data-controller="datetime">
 
-  <div class="inline mb-4">
-    <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+      <div class="form-control">
+        <%= form.label :name %>
+        <%= form.text_field :name, class: 'input input-bordered w-full' %>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-4">
+        <div class="form-control w-full">
+          <input type="hidden" data-datetime-target="apiKey" value="<%= current_user.api_key %>">
+          <%= form.label :started_at %>
+          <%= form.datetime_field :started_at,
+              include_seconds: false,
+              class: 'input input-bordered w-full',
+              value: trip.started_at,
+              data: {
+                datetime_target: "startedAt",
+                action: "change->datetime#updateCoordinates"
+              } %>
+        </div>
+        <div class="form-control w-full">
+          <%= form.label :ended_at %>
+          <%= form.datetime_field :ended_at,
+             include_seconds: false,
+             class: 'input input-bordered w-full',
+             value: trip.ended_at,
+             data: {
+               datetime_target: "endedAt",
+               action: "change->datetime#updateCoordinates"
+             } %>
+        </div>
+      </div>
+
+      <div class="form-control">
+        <%= form.label :field_notes %>
+        <%= form.rich_text_area :field_notes %>
+      </div>
+
+      <div>
+        <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+      </div>
+    </div>
   </div>
 <% end %>

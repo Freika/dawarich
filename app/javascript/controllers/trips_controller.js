@@ -13,24 +13,43 @@ import { esriWorldGrayCanvasMapLayer } from "../maps/layers"
 import { fetchAndDisplayPhotos } from '../maps/helpers';
 
 export default class extends Controller {
-  static targets = ["container"]
+  static targets = ["container", "startedAt", "endedAt"]
+  static values = { }
 
   connect() {
-    this.coordinates = JSON.parse(this.element.dataset.coordinates)
-    this.apiKey = this.element.dataset.api_key
-    this.userSettings = JSON.parse(this.element.dataset.user_settings)
-    this.timezone = this.element.dataset.timezone
-    this.distanceUnit = this.element.dataset.distance_unit
+    console.log("Trips controller connected")
+    this.coordinates = JSON.parse(this.containerTarget.dataset.coordinates)
+    this.apiKey = this.containerTarget.dataset.api_key
+    this.userSettings = JSON.parse(this.containerTarget.dataset.user_settings)
+    this.timezone = this.containerTarget.dataset.timezone
+    this.distanceUnit = this.containerTarget.dataset.distance_unit
 
+    // Initialize map and layers
+    this.initializeMap()
+
+    // Add event listener for coordinates updates
+    this.element.addEventListener('coordinates-updated', (event) => {
+      console.log("Coordinates updated:", event.detail.coordinates)
+      this.updateMapWithCoordinates(event.detail.coordinates)
+    })
+  }
+
+  // Move map initialization to separate method
+  initializeMap() {
     // Initialize layer groups
     this.markersLayer = L.layerGroup()
     this.polylinesLayer = L.layerGroup()
     this.photoMarkers = L.layerGroup()
 
-    const center = [this.coordinates[0][0], this.coordinates[0][1]]
+    // Set default center and zoom for world view
+    const hasValidCoordinates = this.coordinates && Array.isArray(this.coordinates) && this.coordinates.length > 0
+    const center = hasValidCoordinates
+      ? [this.coordinates[0][0], this.coordinates[0][1]]
+      : [20, 0]  // Roughly centers the world map
+    const zoom = hasValidCoordinates ? 14 : 2
 
     // Initialize map
-    this.map = L.map(this.containerTarget).setView(center, 14)
+    this.map = L.map(this.containerTarget).setView(center, zoom)
 
     // Add base map layer
     osmMapLayer(this.map, "OpenStreetMap")
@@ -111,7 +130,7 @@ export default class extends Controller {
       marker.bindPopup(popupContent)
 
       // Add to markers layer instead of directly to map
-      this.markersLayer.addTo(this.map)
+
       marker.addTo(this.markersLayer)
     })
   }
@@ -135,19 +154,25 @@ export default class extends Controller {
     this.map.fitBounds(bounds, { padding: [50, 50] })
   }
 
-  baseMaps() {
-    let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
+  // Add this new method to update coordinates and refresh the map
+  updateMapWithCoordinates(newCoordinates) {
+    // Transform the coordinates to match the expected format
+    this.coordinates = newCoordinates.map(point => [
+      parseFloat(point.latitude),
+      parseFloat(point.longitude),
+      (point.timestamp).toString()
+    ])
 
-    return {
-      OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
-      "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
-      OPNV: OPNVMapLayer(this.map, selectedLayerName),
-      openTopo: openTopoMapLayer(this.map, selectedLayerName),
-      cyclOsm: cyclOsmMapLayer(this.map, selectedLayerName),
-      esriWorldStreet: esriWorldStreetMapLayer(this.map, selectedLayerName),
-      esriWorldTopo: esriWorldTopoMapLayer(this.map, selectedLayerName),
-      esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
-      esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
-    };
+    // Clear existing layers
+    this.markersLayer.clearLayers()
+    this.polylinesLayer.clearLayers()
+    this.photoMarkers.clearLayers()
+
+    // Add new markers and route if coordinates exist
+    if (this.coordinates?.length > 0) {
+      this.addMarkers()
+      this.addPolyline()
+      this.fitMapToBounds()
+    }
   }
 }

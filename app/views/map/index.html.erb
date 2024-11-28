@@ -50,7 +50,7 @@
         data-user_settings=<%= current_user.settings.to_json %>
         data-coordinates="<%= @coordinates %>"
         data-timezone="<%= Rails.configuration.time_zone %>">
-        <div data-maps-target="container" class="h-[25rem] w-full min-h-screen">
+        <div data-maps-target="container" class="h-[25rem] rounded-lg w-full min-h-screen">
           <div id="fog" class="fog"></div>
         </div>
       </div>

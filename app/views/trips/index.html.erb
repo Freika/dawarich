@@ -2,6 +2,11 @@
 
 <div class="w-full">
   <div id="trips" class="min-w-full">
+    <div class="flex justify-between items-center">
+      <h1 class="text-2xl font-bold">Trips</h1>
+      <%= link_to 'New trip', new_trip_path, class: 'btn btn-primary' %>
+    </div>
+
     <% if @trips.empty? %>
       <div class="hero min-h-80 bg-base-200">
         <div class="hero-content text-center">
