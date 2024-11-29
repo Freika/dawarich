@@ -76,7 +76,7 @@ RSpec.describe Trip, type: :model do
         }
       ]
     end
-    let(:user) { create(:user) }
+    let(:user) { create(:user, settings: settings) }
     let(:trip) { create(:trip, user:) }
     let(:expected_photos) do
       [
@@ -89,8 +89,25 @@ RSpec.describe Trip, type: :model do
       allow_any_instance_of(Immich::RequestPhotos).to receive(:call).and_return(photo_data)
     end
 
-    it 'returns the photos' do
-      expect(trip.photos).to eq(expected_photos)
+    context 'when Immich integration is not configured' do
+      let(:settings) { {} }
+
+      it 'returns an empty array' do
+        expect(trip.photos).to eq([])
+      end
+    end
+
+    context 'when Immich integration is configured' do
+      let(:settings) do
+        {
+          immich_url: 'https://immich.example.com',
+          immich_api_key: '1234567890'
+        }
+      end
+
+      it 'returns the photos' do
+        expect(trip.photos).to eq(expected_photos)
+      end
     end
   end
 end
