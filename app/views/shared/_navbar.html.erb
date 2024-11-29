@@ -55,7 +55,7 @@
   <div class="navbar-end">
     <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
       <% if user_signed_in? %>
-        <div class="dropdown dropdown-end dropdown-bottom dropdown-hover z-[10000]"
+        <div class="dropdown dropdown-end dropdown-bottom dropdown-hover z-[5000]"
           data-controller="notifications"
           data-notifications-user-id-value="<%= current_user.id %>">
           <div tabindex="0" role="button" class='btn btn-sm btn-ghost hover:btn-ghost'>
