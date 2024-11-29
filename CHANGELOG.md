@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.18.2 - 2024-11-29
+
+### Added
+
+- Demo account. You can now login with `demo@dawarich.app` / `password` to see how Dawarich works. This replaces previous default credentials.
+
+### Changed
+
+- The login page now shows demo account credentials if `DEMO_ENV` env var is set to `true`.
+
 # 0.18.1 - 2024-11-29
 
 ### Fixed
