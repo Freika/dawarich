@@ -72,7 +72,7 @@ Simply install one of the supported apps on your device and configure it to send
 - **[Synology](https://dawarich.app/docs/tutorials/platforms/synology)**
 
 🆕 **Default Credentials**
-- **Username**: `user@domain.com`
+- **Username**: `demo@dawarich.app`
 - **Password**: `password`
 (Feel free to change them in the account settings.)
 
