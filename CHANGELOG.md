@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.18.1 - 2024-11-29
+
+### Fixed
+
+- Fixed a bug where the trips interface was breaking when Immich integration is not configured.
+
+### Added
+
+- Flash messages are now being shown on the map when Immich integration is not configured.
+
 # 0.18.0 - 2024-11-28
 
 ## The Trips release

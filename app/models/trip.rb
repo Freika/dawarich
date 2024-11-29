@@ -18,6 +18,8 @@ class Trip < ApplicationRecord
   end
 
   def photos
+    return [] if user.settings['immich_url'].blank? || user.settings['immich_api_key'].blank?
+
     immich_photos = Immich::RequestPhotos.new(
       user,
       start_date: started_at.to_date.to_s,

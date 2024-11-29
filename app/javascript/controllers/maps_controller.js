@@ -137,6 +137,14 @@ export default class extends Controller {
         this.map.addControl(this.drawControl);
       }
       if (e.name === 'Photos') {
+        if (!this.userSettings.immich_url || !this.userSettings.immich_api_key) {
+          showFlashMessage(
+            'error',
+            'Immich integration is not configured. Please check your settings.'
+          );
+          return;
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const startDate = urlParams.get('start_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
         const endDate = urlParams.get('end_at')?.split('T')[0] || new Date().toISOString().split('T')[0];

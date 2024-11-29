@@ -11,6 +11,7 @@ import { esriWorldTopoMapLayer } from "../maps/layers"
 import { esriWorldImageryMapLayer } from "../maps/layers"
 import { esriWorldGrayCanvasMapLayer } from "../maps/layers"
 import { fetchAndDisplayPhotos } from '../maps/helpers';
+import { showFlashMessage } from "../maps/helpers";
 
 export default class extends Controller {
   static targets = ["container", "startedAt", "endedAt"]
@@ -77,22 +78,32 @@ export default class extends Controller {
 
     // Add event listener for layer changes
     this.map.on('overlayadd', (e) => {
-      if (e.name === 'Photos' && this.coordinates?.length > 0) {
-        const firstCoord = this.coordinates[0];
-        const lastCoord = this.coordinates[this.coordinates.length - 1];
+      if (e.name !== 'Photos') return;
 
-        const startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
-        const endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
-
-        fetchAndDisplayPhotos({
-          map: this.map,
-          photoMarkers: this.photoMarkers,
-          apiKey: this.apiKey,
-          startDate: startDate,
-          endDate: endDate,
-          userSettings: this.userSettings
-        });
+      if (!this.userSettings.immich_url || !this.userSettings.immich_api_key) {
+        showFlashMessage(
+          'error',
+          'Immich integration is not configured. Please check your settings.'
+        );
+        return;
       }
+
+      if (!this.coordinates?.length) return;
+
+      const firstCoord = this.coordinates[0];
+      const lastCoord = this.coordinates[this.coordinates.length - 1];
+
+      const startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
+      const endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
+
+      fetchAndDisplayPhotos({
+        map: this.map,
+        photoMarkers: this.photoMarkers,
+        apiKey: this.apiKey,
+        startDate: startDate,
+        endDate: endDate,
+        userSettings: this.userSettings
+      });
     });
 
     // Add markers and route
