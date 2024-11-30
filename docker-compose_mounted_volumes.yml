@@ -3,22 +3,22 @@ networks:
 
 
 volumes:
-  dawarich-app-cache:
-    name: dawarich-app-cache
-  dawarich-sidekiq-cache:
-    name: dawarich-sidekiq-cache
-  dawarich-public:
-    name: dawarich-public
-  dawarich-keydb:
-    name: dawarich-keydb
-  dawarich-shared:
-    name: dawarich-shared
+  dawarich_gem_cache_app:
+    name: dawarich_gem_cache_app
+  dawarich_gem_cache_sidekiq:
+    name: dawarich_gem_cache_sidekiq
+  dawarich_public:
+    name: dawarich_public
+  dawarich_keydb:
+    name: dawarich_keydb
+  dawarich_shared:
+    name: dawarich_shared
   watched:
-    name: dawarich-watched
+    name: dawarich_watched
 
 services:
   app:
-    container_name: dawarich
+    container_name: dawarich_app
     image: freikin/dawarich:latest
     restart: unless-stopped
     depends_on:
@@ -52,8 +52,8 @@ services:
     entrypoint: dev-entrypoint.sh
     command: [ 'bin/dev' ]
     volumes:
-      - dawarich-app-cache:/usr/local/bundle/gems
-      - dawarich-public:/var/app/dawarich_public
+      - dawarich_gem_cache_app:/usr/local/bundle/gems
+      - dawarich_public:/var/app/dawarich_public
       - watched:/var/app/tmp/imports/watched
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'" ]
@@ -108,8 +108,8 @@ services:
     entrypoint: dev-entrypoint.sh
     command: [ 'sidekiq' ]
     volumes:
-      - dawarich-sidekiq-cache:/usr/local/bundle/gems
-      - dawarich-public:/var/app/dawarich_public
+      - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
+      - dawarich_public:/var/app/dawarich_public
       - watched:/var/app/tmp/imports/watched
     logging:
       driver: "json-file"
@@ -140,8 +140,8 @@ services:
       - PGID=1000
     command: keydb-server /etc/keydb/keydb.conf --appendonly yes --server-threads 4 --active-replica no
     volumes:
-      - dawarich-keydb:/data
-      - dawarich-shared:/var/shared/redis
+      - dawarich_keydb:/data
+      - dawarich_shared:/var/shared/redis
     healthcheck:
       test: [ "CMD", "keydb-cli", "ping" ]
       start_period: 60s
@@ -162,7 +162,7 @@ services:
       POSTGRES_DATABASE: dawarich
     volumes:
       - ./db:/var/lib/postgresql/data
-      - dawarich-shared:/var/shared
+      - dawarich_shared:/var/shared
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -q -d $${POSTGRES_DATABASE} -U $${POSTGRES_USER} -h localhost" ]
       start_period: 60s
