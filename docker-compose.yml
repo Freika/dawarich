@@ -8,7 +8,7 @@ services:
     networks:
       - dawarich
     volumes:
-      - shared_data:/var/shared/redis
+      - dawarich_shared:/var/shared/redis
     restart: always
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
@@ -20,8 +20,8 @@ services:
     image: postgres:14.2-alpine
     container_name: dawarich_db
     volumes:
-      - db_data:/var/lib/postgresql/data
-      - shared_data:/var/shared
+      - dawarich_db_data:/var/lib/postgresql/data
+      - dawarich_shared:/var/shared
     networks:
       - dawarich
     environment:
@@ -38,9 +38,9 @@ services:
     image: freikin/dawarich:latest
     container_name: dawarich_app
     volumes:
-      - gem_cache_app:/usr/local/bundle/gems_app
-      - public:/var/app/public
-      - watched:/var/app/tmp/imports/watched
+      - dawarich_gem_cache_app:/usr/local/bundle/gems_app
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
     networks:
       - dawarich
     ports:
@@ -96,9 +96,9 @@ services:
     image: freikin/dawarich:latest
     container_name: dawarich_sidekiq
     volumes:
-      - gem_cache_sidekiq:/usr/local/bundle/gems_sidekiq
-      - public:/var/app/public
-      - watched:/var/app/tmp/imports/watched
+      - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems_sidekiq
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
     networks:
       - dawarich
     stdin_open: true
@@ -151,9 +151,9 @@ services:
           memory: '2G'    # Limit memory usage to 2GB
 
 volumes:
-  db_data:
-  gem_cache_app:
-  gem_cache_sidekiq:
-  shared_data:
-  public:
-  watched:
+  dawarich_db_data:
+  dawarich_gem_cache_app:
+  dawarich_gem_cache_sidekiq:
+  dawarich_shared:
+  dawarich_public:
+  dawarich_watched:
