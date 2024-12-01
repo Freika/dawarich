@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.18.3 - 2024-12-01
+
+### Changed
+
+- The `docker-compose.yml` file was refactored to use new container names.
+- Default path for redis volume was changed from `/var/shared/redis` to `/data` to fix persistence issues. #148
+
+### Removed
+
+ENV vars removed from the docker-compose.yml:
+
+```
+TIME_ZONE: Europe/London
+APPLICATION_PROTOCOL: http
+DISTANCE_UNIT: km
+PHOTON_API_HOST: photon.komoot.io
+PHOTON_API_USE_HTTPS: true
+MIN_MINUTES_SPENT_IN_CITY: 60
+APPLICATION_HOST: localhost
+```
+
+Link to the https://dawarich.app/docs/environment-variables-and-settings page added instead, and the app itself is now using defaults that can be changed if env vars are provided.
+
 # 0.18.2 - 2024-11-29
 
 ### Added

@@ -7,7 +7,7 @@ services:
     networks:
       - dawarich
     volumes:
-      - dawarich_shared:/var/shared/redis
+      - dawarich_redis_data:/data
     restart: always
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
@@ -19,7 +19,6 @@ services:
     image: postgres:14.2-alpine
     volumes:
       - dawarich_db_data:/var/lib/postgresql/data
-      - dawarich_shared:/var/shared
     networks:
       - dawarich
     environment:
@@ -140,8 +139,8 @@ services:
 
 volumes:
   dawarich_db_data:
+  dawarich_redis_data:
   dawarich_gem_cache_app:
   dawarich_gem_cache_sidekiq:
-  dawarich_shared:
   dawarich_public:
   dawarich_watched:
