@@ -18,6 +18,7 @@ class User < ApplicationRecord
   has_many :trips, dependent: :destroy
 
   after_create :create_api_key
+  before_save :strip_trailing_slashes
 
   def countries_visited
     stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact
@@ -59,5 +60,10 @@ class User < ApplicationRecord
     self.api_key = SecureRandom.hex(16)
 
     save
+  end
+
+  def strip_trailing_slashes
+    settings['immich_url'].gsub!(%r{/+\z}, '')
+    settings['photoprism_url'].gsub!(%r{/+\z}, '')
   end
 end
