@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Photoprism::RequestPhotos
+  class Error < StandardError; end
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
@@ -12,8 +13,8 @@ class Photoprism::RequestPhotos
   end
 
   def call
-    raise ArgumentError, 'Photoprism API key is missing' if photoprism_api_key.blank?
     raise ArgumentError, 'Photoprism URL is missing' if user.settings['photoprism_url'].blank?
+    raise ArgumentError, 'Photoprism API key is missing' if photoprism_api_key.blank?
 
     data = retrieve_photoprism_data
 
@@ -27,24 +28,28 @@ class Photoprism::RequestPhotos
     offset = 0
 
     while offset < 1_000_000
-      response = HTTParty.get(
-        photoprism_api_base_url,
-        headers: headers,
-        query: request_params(offset)
-      )
+      response_data = fetch_page(offset)
+      break unless response_data
 
-      break if response.code != 200
-
-      photoprism_data = JSON.parse(response.body)
-
-      data << photoprism_data
-
-      break if photoprism_data.empty?
+      data << response_data
+      break if response_data.empty?
 
       offset += 1000
     end
 
     data
+  end
+
+  def fetch_page(offset)
+    response = HTTParty.get(
+      photoprism_api_base_url,
+      headers: headers,
+      query: request_params(offset)
+    )
+
+    raise Error, "Photoprism API returned #{response.code}: #{response.body}" if response.code != 200
+
+    JSON.parse(response.body)
   end
 
   def headers
@@ -55,19 +60,19 @@ class Photoprism::RequestPhotos
   end
 
   def request_params(offset = 0)
-    params = {
+    params = offset.zero? ? default_params : default_params.merge(offset: offset)
+    params[:before] = end_date if end_date.present?
+    params
+  end
+
+  def default_params
+    {
       q: '',
       public: true,
       quality: 3,
       after: start_date,
-      offset: offset,
       count: 1000
     }
-
-    params.delete(:offset) if offset.zero?
-    params[:before] = end_date if end_date.present?
-
-    params
   end
 
   def time_framed_data(data)

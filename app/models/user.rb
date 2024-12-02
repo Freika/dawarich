@@ -63,7 +63,7 @@ class User < ApplicationRecord
   end
 
   def strip_trailing_slashes
-    settings['immich_url'].gsub!(%r{/+\z}, '')
-    settings['photoprism_url'].gsub!(%r{/+\z}, '')
+    settings['immich_url']&.gsub!(%r{/+\z}, '')
+    settings['photoprism_url']&.gsub!(%r{/+\z}, '')
   end
 end
