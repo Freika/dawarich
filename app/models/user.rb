@@ -54,6 +54,14 @@ class User < ApplicationRecord
     tracked_points.select(:id).where.not(geodata: {}).count
   end
 
+  def immich_integration_configured?
+    settings['immich_url'].present? && settings['immich_api_key'].present?
+  end
+
+  def photoprism_integration_configured?
+    settings['photoprism_url'].present? && settings['photoprism_api_key'].present?
+  end
+
   private
 
   def create_api_key

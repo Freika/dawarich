@@ -71,7 +71,8 @@ class Photoprism::RequestPhotos
       public: true,
       quality: 3,
       after: start_date,
-      count: 1000
+      count: 1000,
+      photo: 'yes'
     }
   end
 

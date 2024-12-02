@@ -231,7 +231,8 @@ RSpec.describe Photoprism::RequestPhotos do
               count: '1000',
               public: 'true',
               q: '',
-              quality: '3'
+              quality: '3',
+              photo: 'yes'
             }
           )
           .to_return(status: 200, body: first_page.to_json)
@@ -247,7 +248,8 @@ RSpec.describe Photoprism::RequestPhotos do
               public: 'true',
               q: '',
               quality: '3',
-              offset: '1000'
+              offset: '1000',
+              photo: 'yes'
             }
           )
           .to_return(status: 200, body: second_page.to_json)
@@ -263,7 +265,8 @@ RSpec.describe Photoprism::RequestPhotos do
               public: 'true',
               q: '',
               quality: '3',
-              offset: '2000'
+              offset: '2000',
+              photo: 'yes'
             }
           )
           .to_return(status: 200, body: empty_page.to_json)
