@@ -10,7 +10,14 @@ class Api::V1::PhotosController < ApiController
   end
 
   def thumbnail
-    response = Rails.cache.fetch("photo_thumbnail_#{params[:id]}", expires_in: 1.day) do
+    response = fetch_cached_thumbnail
+    handle_thumbnail_response(response)
+  end
+
+  private
+
+  def fetch_cached_thumbnail
+    Rails.cache.fetch("photo_thumbnail_#{params[:id]}", expires_in: 1.day) do
       HTTParty.get(
         "#{current_api_user.settings['immich_url']}/api/assets/#{params[:id]}/thumbnail?size=preview",
         headers: {
@@ -19,14 +26,11 @@ class Api::V1::PhotosController < ApiController
         }
       )
     end
+  end
 
+  def handle_thumbnail_response(response)
     if response.success?
-      send_data(
-        response.body,
-        type: 'image/jpeg',
-        disposition: 'inline',
-        status: :ok
-      )
+      send_data(response.body, type: 'image/jpeg', disposition: 'inline', status: :ok)
     else
       render json: { error: 'Failed to fetch thumbnail' }, status: response.code
     end

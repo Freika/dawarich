@@ -201,10 +201,10 @@ RSpec.describe Photoprism::RequestPhotos do
           .to_return(status: 401, body: 'Unauthorized')
       end
 
-      it 'raises an error' do
-        expect do
-          service.call
-        end.to raise_error(Photoprism::RequestPhotos::Error, 'Photoprism API returned 401: Unauthorized')
+      it 'logs the error' do
+        expect(Rails.logger).to receive(:error).with('Photoprism API returned 401: Unauthorized')
+
+        service.call
       end
     end
 

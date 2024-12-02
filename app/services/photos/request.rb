@@ -15,7 +15,7 @@ class Photos::Request
     photos << request_immich if user.immich_integration_configured?
     photos << request_photoprism if user.photoprism_integration_configured?
 
-    photos
+    photos.flatten.map { |photo| Api::PhotoSerializer.new(photo).call }
   end
 
   private

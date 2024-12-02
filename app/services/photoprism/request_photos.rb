@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 class Photoprism::RequestPhotos
-  class Error < StandardError; end
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
     @user = user
-    @photoprism_api_base_url = "#{user.settings['photoprism_url']}/api/v1/photos"
+    @photoprism_api_base_url = URI.parse("#{user.settings['photoprism_url']}/api/v1/photos")
     @photoprism_api_key = user.settings['photoprism_api_key']
     @start_date = start_date
     @end_date = end_date
@@ -18,7 +17,9 @@ class Photoprism::RequestPhotos
 
     data = retrieve_photoprism_data
 
-    time_framed_data(data)
+    return [] if data[0]['error'].present?
+
+    time_framed_data(data, start_date, end_date)
   end
 
   private
@@ -29,15 +30,14 @@ class Photoprism::RequestPhotos
 
     while offset < 1_000_000
       response_data = fetch_page(offset)
-      break unless response_data
+      break if response_data.blank? || response_data[0]['error'].present?
 
       data << response_data
-      break if response_data.empty?
 
       offset += 1000
     end
 
-    data
+    data.flatten
   end
 
   def fetch_page(offset)
@@ -47,7 +47,10 @@ class Photoprism::RequestPhotos
       query: request_params(offset)
     )
 
-    raise Error, "Photoprism API returned #{response.code}: #{response.body}" if response.code != 200
+    if response.code != 200
+      Rails.logger.info "Photoprism API returned #{response.code}: #{response.body}"
+      Rails.logger.debug "Photoprism API request params: #{request_params(offset).inspect}"
+    end
 
     JSON.parse(response.body)
   end
@@ -71,12 +74,11 @@ class Photoprism::RequestPhotos
       public: true,
       quality: 3,
       after: start_date,
-      count: 1000,
-      photo: 'yes'
+      count: 1000
     }
   end
 
-  def time_framed_data(data)
+  def time_framed_data(data, start_date, end_date)
     data.flatten.select do |photo|
       taken_at = DateTime.parse(photo['TakenAtLocal'])
       end_date ||= Time.current
