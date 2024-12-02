@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.18.3 - 2024-12-02
+
+### Added
+
+- `reverse_geocoded_at` column added to the `points` table.
+
+### Changed
+
+- On the Stats page, the "Reverse geocoding" section is now showing the number of points that were reverse geocoded based on `reverse_geocoded_at` column, value of which is based on the time when the point was reverse geocoded. If no geodata for the point is available, `reverse_geocoded_at` will be set anyway. Number of points that were reverse geocoded but no geodata is available for them is shown below the "Reverse geocoded" number.
+
 # 0.18.2 - 2024-11-29
 
 ### Added
