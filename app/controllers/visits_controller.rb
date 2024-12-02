@@ -11,6 +11,7 @@ class VisitsController < ApplicationController
     visits = current_user
              .visits
              .where(status:)
+             .includes(%i[suggested_places area])
              .order(started_at: order_by)
              .group_by { |visit| visit.started_at.to_date }
              .map { |k, v| { date: k, visits: v } }

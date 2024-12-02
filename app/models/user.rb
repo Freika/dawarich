@@ -49,8 +49,12 @@ class User < ApplicationRecord
     cities_visited.size
   end
 
-  def total_reverse_geocoded
-    tracked_points.select(:id).where.not(geodata: {}).count
+  def total_reverse_geocoded_points
+    tracked_points.where.not(reverse_geocoded_at: nil).count
+  end
+
+  def total_reverse_geocoded_points_without_data
+    tracked_points.where(geodata: {}).count
   end
 
   private

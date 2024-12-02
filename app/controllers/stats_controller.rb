@@ -5,6 +5,9 @@ class StatsController < ApplicationController
 
   def index
     @stats = current_user.stats.group_by(&:year).sort.reverse
+    @points_total = current_user.tracked_points.count
+    @points_reverse_geocoded = current_user.total_reverse_geocoded_points
+    @points_reverse_geocoded_without_data = current_user.total_reverse_geocoded_points_without_data
   end
 
   def show
