@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2024_11_28_095325) do
+ActiveRecord::Schema[7.2].define(version: 2024_12_02_114820) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -155,6 +155,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_11_28_095325) do
     t.bigint "user_id"
     t.jsonb "geodata", default: {}, null: false
     t.bigint "visit_id"
+    t.datetime "reverse_geocoded_at"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -164,6 +165,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_11_28_095325) do
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
+    t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
     t.index ["user_id"], name: "index_points_on_user_id"

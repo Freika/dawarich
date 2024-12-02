@@ -16,7 +16,7 @@ RSpec.describe Point, type: :model do
 
   describe 'scopes' do
     describe '.reverse_geocoded' do
-      let(:point) { create(:point, :with_geodata) }
+      let(:point) { create(:point, :reverse_geocoded) }
       let(:point_without_address) { create(:point, city: nil, country: nil) }
 
       it 'returns points with reverse geocoded address' do
