@@ -80,10 +80,10 @@ export default class extends Controller {
     this.map.on('overlayadd', (e) => {
       if (e.name !== 'Photos') return;
 
-      if (!this.userSettings.immich_url || !this.userSettings.immich_api_key) {
+      if ((!this.userSettings.immich_url || !this.userSettings.immich_api_key) && (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)) {
         showFlashMessage(
           'error',
-          'Immich integration is not configured. Please check your settings.'
+          'Photos integration is not configured. Please check your integrations settings.'
         );
         return;
       }
