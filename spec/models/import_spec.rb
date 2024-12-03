@@ -17,7 +17,8 @@ RSpec.describe Import, type: :model do
         google_phone_takeout: 3,
         gpx: 4,
         immich_api: 5,
-        geojson: 6
+        geojson: 6,
+        photoprism_api: 7
       )
     end
   end

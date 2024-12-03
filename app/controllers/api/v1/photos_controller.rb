@@ -38,7 +38,7 @@ class Api::V1::PhotosController < ApiController
   end
 
   def unauthorized_integration
-    render json: { error: "#{params[:source].capitalize} integration not configured" },
+    render json: { error: "#{params[:source]&.capitalize} integration not configured" },
            status: :unauthorized
   end
 end
