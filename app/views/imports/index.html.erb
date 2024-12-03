@@ -10,6 +10,11 @@
     <% else %>
       <a href='' class="rounded-lg py-3 px-5 bg-blue-900 text-gray block font-medium tooltip cursor-not-allowed" data-tip="You need to provide your Immich instance data in the Settings">Import Immich data</a>
     <% end %>
+    <% if current_user.settings['photoprism_url'] && current_user.settings['photoprism_api_key'] %>
+      <%= link_to 'Import Photoprism data', settings_background_jobs_path(job_name: 'start_photoprism_import'), method: :post, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium' %>
+    <% else %>
+      <a href='' class="rounded-lg py-3 px-5 bg-blue-900 text-gray block font-medium tooltip cursor-not-allowed" data-tip="You need to provide your Photoprism instance data in the Settings">Import Photoprism data</a>
+    <% end %>
   </div>
 
   <div id="imports" class="min-w-full">
