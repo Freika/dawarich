@@ -17,7 +17,7 @@ class Photoprism::RequestPhotos
 
     data = retrieve_photoprism_data
 
-    return [] if data[0]['error'].present?
+    return [] if data.blank? || data[0]['error'].present?
 
     time_framed_data(data, start_date, end_date)
   end
@@ -30,7 +30,8 @@ class Photoprism::RequestPhotos
 
     while offset < 1_000_000
       response_data = fetch_page(offset)
-      break if response_data.blank? || response_data[0]['error'].present?
+
+      break if response_data.blank? || (response_data.is_a?(Hash) && response_data.try(:[], 'error').present?)
 
       data << response_data
 

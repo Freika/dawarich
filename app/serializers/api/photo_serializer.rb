@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 class Api::PhotoSerializer
-  def initialize(photo)
+  def initialize(photo, source)
     @photo = photo
+    @source = source
   end
 
   def call
@@ -15,13 +16,14 @@ class Api::PhotoSerializer
       city: city,
       state: state,
       country: country,
-      type: type
+      type: type,
+      source: source
     }
   end
 
   private
 
-  attr_reader :photo
+  attr_reader :photo, :source
 
   def id
     photo['id'] || photo['ID']

@@ -10,18 +10,23 @@ class Api::V1::PhotosController < ApiController
   end
 
   def thumbnail
-    response = fetch_cached_thumbnail
+    return unauthorized_integration unless integration_configured?
+
+    response = fetch_cached_thumbnail(params[:source])
     handle_thumbnail_response(response)
   end
 
   private
 
-  def fetch_cached_thumbnail
+  def fetch_cached_thumbnail(source)
     Rails.cache.fetch("photo_thumbnail_#{params[:id]}", expires_in: 1.day) do
+      source_url = current_api_user.settings["#{source}_url"]
+      source_api_key = current_api_user.settings["#{source}_api_key"]
+
       HTTParty.get(
-        "#{current_api_user.settings['immich_url']}/api/assets/#{params[:id]}/thumbnail?size=preview",
+        "#{source_url}/api/assets/#{params[:id]}/thumbnail?size=preview",
         headers: {
-          'x-api-key' => current_api_user.settings['immich_api_key'],
+          'x-api-key' => source_api_key,
           'accept' => 'application/octet-stream'
         }
       )
@@ -34,5 +39,15 @@ class Api::V1::PhotosController < ApiController
     else
       render json: { error: 'Failed to fetch thumbnail' }, status: response.code
     end
+  end
+
+  def integration_configured?
+    (params[:source] == 'immich' && current_api_user.immich_integration_configured?) ||
+      (params[:source] == 'photoprism' && current_api_user.photoprism_integration_configured?)
+  end
+
+  def unauthorized_integration
+    render json: { error: "#{params[:source].capitalize} integration not configured" },
+           status: :unauthorized
   end
 end

@@ -15,7 +15,7 @@ class Photos::Request
     photos << request_immich if user.immich_integration_configured?
     photos << request_photoprism if user.photoprism_integration_configured?
 
-    photos.flatten.map { |photo| Api::PhotoSerializer.new(photo).call }
+    photos.flatten.map { |photo| Api::PhotoSerializer.new(photo, photo[:source]).call }
   end
 
   private
@@ -25,7 +25,7 @@ class Photos::Request
       user,
       start_date: start_date,
       end_date: end_date
-    ).call.reject { |asset| asset['type'].downcase == 'video' }
+    ).call.map { |asset| transform_asset(asset, 'immich') }.compact
   end
 
   def request_photoprism
@@ -33,6 +33,13 @@ class Photos::Request
       user,
       start_date: start_date,
       end_date: end_date
-    ).call.select { |asset| asset['Type'].downcase == 'image' }
+    ).call.map { |asset| transform_asset(asset, 'photoprism') }.compact
+  end
+
+  def transform_asset(asset, source)
+    asset_type = asset['type'] || asset['Type']
+    return if asset_type.downcase == 'video'
+
+    asset.merge(source: source)
   end
 end

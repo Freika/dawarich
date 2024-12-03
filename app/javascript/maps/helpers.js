@@ -159,10 +159,10 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
       start_date: startDate,
       end_date: endDate
     });
-
+    console.log(startDate, endDate);
     const response = await fetch(`/api/v1/photos?${params}`);
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}, response: ${response.body}`);
     }
 
     const photos = await response.json();
