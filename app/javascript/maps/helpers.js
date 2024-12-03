@@ -174,7 +174,7 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
         const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}&source=${photo.source}`;
 
         img.onload = () => {
-          createPhotoMarker(photo, userSettings.immich_url, photoMarkers, apiKey);
+          createPhotoMarker(photo, userSettings, photoMarkers, apiKey);
           resolve();
         };
 
@@ -217,7 +217,7 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
 }
 
 
-export function createPhotoMarker(photo, immichUrl, photoMarkers, apiKey) {
+export function createPhotoMarker(photo, userSettings, photoMarkers, apiKey) {
   if (!photo.latitude || !photo.longitude) return;
 
   const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}&source=${photo.source}`;
@@ -244,10 +244,17 @@ export function createPhotoMarker(photo, immichUrl, photoMarkers, apiKey) {
     takenBefore: endOfDay.toISOString()
   };
   const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
-  const immich_photo_link = `${immichUrl}/search?query=${encodedQuery}`;
+  console.log(userSettings);
+  let photo_link;
+  if (photo.source === 'immich') {
+    photo_link = `${userSettings.immich_url}/search?query=${encodedQuery}`;
+  } else if (photo.source === 'photoprism') {
+    photo_link = `${userSettings.photoprism_url}/library/browse?view=cards&year=${photo.localDateTime.split('-')[0]}&month=${photo.localDateTime.split('-')[1]}&order=newest&public=true&quality=3`;
+  }
+  const source_url = photo.source === 'photoprism' ? userSettings.photoprism_url : userSettings.immich_url;
   const popupContent = `
     <div class="max-w-xs">
-      <a href="${immich_photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
+      <a href="${photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
  onmouseout="this.firstElementChild.style.boxShadow = '';">
         <img src="${thumbnailUrl}"
             class="mb-2 rounded"
@@ -257,7 +264,7 @@ export function createPhotoMarker(photo, immichUrl, photoMarkers, apiKey) {
       <h3 class="font-bold">${photo.originalFileName}</h3>
       <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
       <p>Location: ${photo.city}, ${photo.state}, ${photo.country}</p>
-      <p>Source: <a href="${photo.source_url}" target="_blank">${photo.source}</a></p>
+      <p>Source: <a href="${source_url}" target="_blank">${photo.source}</a></p>
       ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
     </div>
   `;
