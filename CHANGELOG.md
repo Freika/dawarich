@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## The Photoprism integration release
 
+⚠️ This release introduces a breaking change. The `GET /api/v1/photos` endpoint now returns following structure of the response:
+
+```json
+[
+  {
+    "id": id,
+    "latitude": latitude,
+    "longitude": longitude,
+    "localDateTime": local_date_time,
+    "originalFileName": original_file_name,
+    "city": city,
+    "state": state,
+    "country": country,
+    "type": type, // "image" or "video"
+    "source": source // "photoprism" or "immich"
+  }
+]
+```
+
 ### Added
 
 - Photos from Photoprism are now can be shown on the map. To enable this feature, you need to provide your Photoprism instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).

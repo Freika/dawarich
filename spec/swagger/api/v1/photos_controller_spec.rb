@@ -102,17 +102,6 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
                items: {
                  type: :object,
                  properties: {
-                   # {
-                   #   id: id,
-                   #   latitude: latitude,
-                   #   longitude: longitude,
-                   #   localDateTime: local_date_time,
-                   #   originalFileName: original_file_name,
-                   #   city: city,
-                   #   state: state,
-                   #   country: country,
-                   #   type: type,
-                   #   source: source
                    id: { type: :string },
                    latitude: { type: :number, format: :float },
                    longitude: { type: :number, format: :float },
