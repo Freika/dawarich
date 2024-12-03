@@ -49,7 +49,7 @@ class Photoprism::RequestPhotos
     )
 
     if response.code != 200
-      Rails.logger.info "Photoprism API returned #{response.code}: #{response.body}"
+      Rails.logger.error "Photoprism API returned #{response.code}: #{response.body}"
       Rails.logger.debug "Photoprism API request params: #{request_params(offset).inspect}"
     end
 

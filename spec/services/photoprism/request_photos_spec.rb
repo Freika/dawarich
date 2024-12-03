@@ -4,15 +4,17 @@ require 'rails_helper'
 
 RSpec.describe Photoprism::RequestPhotos do
   let(:user) do
-    create(:user,
-           settings: {
-             'photoprism_url' => 'http://photoprism.local',
-             'photoprism_api_key' => 'test_api_key'
-           })
+    create(
+      :user,
+      settings: {
+        'photoprism_url' => 'http://photoprism.local',
+        'photoprism_api_key' => 'test_api_key'
+      }
+    )
   end
 
-  let(:start_date) { '2023-01-01' }
-  let(:end_date) { '2023-12-31' }
+  let(:start_date) { '2024-01-01' }
+  let(:end_date) { '2024-12-31' }
   let(:service) { described_class.new(user, start_date: start_date, end_date: end_date) }
 
   let(:mock_photo_response) do
@@ -150,7 +152,7 @@ RSpec.describe Photoprism::RequestPhotos do
       before do
         stub_request(
           :any,
-          "#{user.settings['photoprism_url']}/api/v1/photos?after=2023-01-01&before=2023-12-31&count=1000&public=true&q=&quality=3"
+          "#{user.settings['photoprism_url']}/api/v1/photos?after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3"
         ).with(
           headers: {
             'Accept' => 'application/json',
@@ -166,7 +168,7 @@ RSpec.describe Photoprism::RequestPhotos do
 
         stub_request(
           :any,
-          "#{user.settings['photoprism_url']}/api/v1/photos?after=2023-01-01&before=2023-12-31&count=1000&public=true&q=&quality=3&offset=1000"
+          "#{user.settings['photoprism_url']}/api/v1/photos?after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3&offset=1000"
         ).to_return(status: 200, body: [].to_json)
       end
 
@@ -196,43 +198,48 @@ RSpec.describe Photoprism::RequestPhotos do
       before do
         stub_request(
           :get,
-          "#{user.settings['photoprism_url']}/api/v1/photos?after=2023-01-01&before=2023-12-31&count=1000&public=true&q=&quality=3"
-        )
-          .to_return(status: 401, body: 'Unauthorized')
+          "#{user.settings['photoprism_url']}/api/v1/photos?after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3"
+        ).to_return(status: 400, body: { status: 400, error: 'Unable to do that' }.to_json)
       end
 
       it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with('Photoprism API returned 401: Unauthorized')
+        expect(Rails.logger).to \
+          receive(:error).with('Photoprism API returned 400: {"status":400,"error":"Unable to do that"}')
+        expect(Rails.logger).to \
+          receive(:debug).with(
+            "Photoprism API request params: #{{ q: '', public: true, quality: 3, after: start_date, count: 1000,
+before: end_date }}"
+          )
 
         service.call
       end
     end
 
     context 'with pagination' do
-      let(:first_page) { [{ 'TakenAtLocal' => '2023-06-15T14:30:00Z' }] }
-      let(:second_page) { [{ 'TakenAtLocal' => '2023-06-16T14:30:00Z' }] }
+      let(:first_page) { [{ 'TakenAtLocal' => "#{start_date}T14:30:00Z" }] }
+      let(:second_page) { [{ 'TakenAtLocal' => "#{start_date}T14:30:00Z" }] }
       let(:empty_page) { [] }
-
-      before do
-        common_headers = {
+      let(:common_headers) do
+        {
           'Accept' => 'application/json',
           'Accept-Encoding' => 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
           'Authorization' => 'Bearer test_api_key',
           'User-Agent' => 'Ruby'
         }
+      end
 
+      before do
         # First page
         stub_request(:any, "#{user.settings['photoprism_url']}/api/v1/photos")
           .with(
             headers: common_headers,
             query: {
-              after: '2023-01-01',
-              before: '2023-12-31',
+              after: start_date,
+              before: end_date,
               count: '1000',
               public: 'true',
               q: '',
-              quality: '3',
-              photo: 'yes'
+              quality: '3'
             }
           )
           .to_return(status: 200, body: first_page.to_json)
@@ -242,14 +249,13 @@ RSpec.describe Photoprism::RequestPhotos do
           .with(
             headers: common_headers,
             query: {
-              after: '2023-01-01',
-              before: '2023-12-31',
+              after: start_date,
+              before: end_date,
               count: '1000',
               public: 'true',
               q: '',
               quality: '3',
-              offset: '1000',
-              photo: 'yes'
+              offset: '1000'
             }
           )
           .to_return(status: 200, body: second_page.to_json)
@@ -259,14 +265,13 @@ RSpec.describe Photoprism::RequestPhotos do
           .with(
             headers: common_headers,
             query: {
-              after: '2023-01-01',
-              before: '2023-12-31',
+              after: start_date,
+              before: end_date,
               count: '1000',
               public: 'true',
               q: '',
               quality: '3',
-              offset: '2000',
-              photo: 'yes'
+              offset: '2000'
             }
           )
           .to_return(status: 200, body: empty_page.to_json)
@@ -274,7 +279,8 @@ RSpec.describe Photoprism::RequestPhotos do
 
       it 'fetches all pages until empty result' do
         result = service.call
-        expect(result.length).to eq(2)
+
+        expect(result.size).to eq(2)
       end
     end
   end
