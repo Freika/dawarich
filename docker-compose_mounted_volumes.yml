@@ -1,7 +1,6 @@
 networks:
   dawarich:
 
-
 volumes:
   dawarich_gem_cache_app:
     name: dawarich_gem_cache_app
@@ -17,15 +16,14 @@ volumes:
     name: dawarich_watched
 
 services:
-  app:
-    container_name: dawarich_app
+  dawarich_app:
     image: freikin/dawarich:latest
     restart: unless-stopped
     depends_on:
-      db:
+      dawarich_db:
         condition: service_healthy
         restart: true
-      keydb:
+      dawarich_keydb:
         condition: service_healthy
         restart: true
     networks:
@@ -33,20 +31,14 @@ services:
     ports:
       - 3000:3000
     environment:
-      TIME_ZONE: Europe/London
       RAILS_ENV: development
-      REDIS_URL: redis://keydb:6379/0
-      DATABASE_HOST: db
+      REDIS_URL: redis://dawarich_keydb:6379/0
+      DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
     stdin_open: true
     tty: true
     entrypoint: dev-entrypoint.sh
@@ -54,7 +46,7 @@ services:
     volumes:
       - dawarich_gem_cache_app:/usr/local/bundle/gems
       - dawarich_public:/var/app/dawarich_public
-      - watched:/var/app/tmp/imports/watched
+      - dawarich_watched:/var/app/tmp/imports/watched
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'" ]
       start_period: 60s
@@ -64,7 +56,7 @@ services:
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
+        max-size: "100m"
         max-file: "5"
     deploy:
       resources:
@@ -72,37 +64,30 @@ services:
           cpus: '0.50' # Limit CPU usage to 50% of one core
           memory: '2G' # Limit memory usage to 2GB
 
-  sidekiq:
-    container_name: dawarich_sidekiq
-    hostname: sidekiq
+  dawarich_sidekiq:
     image: freikin/dawarich:latest
     restart: unless-stopped
     depends_on:
-      app:
+      dawarich_app:
         condition: service_healthy
         restart: true
-      db:
+      dawarich_db:
         condition: service_healthy
         restart: true
-      keydb:
+      dawarich_keydb:
         condition: service_healthy
         restart: true
     networks:
       - dawarich
     environment:
       RAILS_ENV: development
-      REDIS_URL: redis://keydb:6379/0
-      DATABASE_HOST: db
+      REDIS_URL: redis://dawarich_keydb:6379/0
+      DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
-      APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
     stdin_open: true
     tty: true
     entrypoint: dev-entrypoint.sh
@@ -110,7 +95,7 @@ services:
     volumes:
       - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
       - dawarich_public:/var/app/dawarich_public
-      - watched:/var/app/tmp/imports/watched
+      - dawarich_watched:/var/app/tmp/imports/watched
     logging:
       driver: "json-file"
       options:
@@ -128,14 +113,13 @@ services:
           cpus: '0.50' # Limit CPU usage to 50% of one core
           memory: '2G' # Limit memory usage to 2GB
 
-  keydb:
-    container_name: dawarich-keydb
+  dawarich_keydb:
     image: eqalpha/keydb:x86_64_v6.3.4
     restart: unless-stopped
     networks:
       - dawarich
     environment:
-      - TZ=Europe/London
+      - TZ=UTC
       - PUID=1000
       - PGID=1000
     command: keydb-server /etc/keydb/keydb.conf --appendonly yes --server-threads 4 --active-replica no
@@ -149,9 +133,7 @@ services:
       timeout: 5s
       retries: 3
 
-  db:
-    container_name: dawarich-db
-    hostname: db
+  dawarich_db:
     image: postgres:16.4-alpine3.20
     restart: unless-stopped
     networks:

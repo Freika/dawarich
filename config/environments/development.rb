@@ -81,11 +81,12 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions
   config.action_controller.raise_on_missing_callback_actions = true
-  config.action_mailer.default_url_options = { host: ENV.fetch('APPLICATION_HOST', 'localhost'), port: 3000 }
-  config.hosts << ENV.fetch('APPLICATION_HOST', 'localhost')
 
-  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost')
-  config.hosts.concat(hosts.split(',')) if hosts.present?
+  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
+
+  config.action_mailer.default_url_options = { host: hosts[0], port: 3000 }
+
+  config.hosts << hosts
 
   config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'
 
