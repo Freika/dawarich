@@ -216,6 +216,39 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
   }
 }
 
+function getPhotoLink(photo, userSettings) {
+  switch (photo.source) {
+    case 'immich':
+      const startOfDay = new Date(photo.localDateTime);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(photo.localDateTime);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const queryParams = {
+        takenAfter: startOfDay.toISOString(),
+        takenBefore: endOfDay.toISOString()
+      };
+      const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
+
+      return `${userSettings.immich_url}/search?query=${encodedQuery}`;
+    case 'photoprism':
+      return `${userSettings.photoprism_url}/library/browse?view=cards&year=${photo.localDateTime.split('-')[0]}&month=${photo.localDateTime.split('-')[1]}&order=newest&public=true&quality=3`;
+    default:
+      return '#'; // Default or error case
+  }
+}
+
+function getSourceUrl(photo, userSettings) {
+  switch (photo.source) {
+    case 'photoprism':
+      return userSettings.photoprism_url;
+    case 'immich':
+      return userSettings.immich_url;
+    default:
+      return '#'; // Default or error case
+  }
+}
 
 export function createPhotoMarker(photo, userSettings, photoMarkers, apiKey) {
   if (!photo.latitude || !photo.longitude) return;
@@ -233,25 +266,9 @@ export function createPhotoMarker(photo, userSettings, photoMarkers, apiKey) {
     { icon }
   );
 
-  const startOfDay = new Date(photo.localDateTime);
-  startOfDay.setHours(0, 0, 0, 0);
+  const photo_link = getPhotoLink(photo, userSettings);
+  const source_url = getSourceUrl(photo, userSettings);
 
-  const endOfDay = new Date(photo.localDateTime);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  const queryParams = {
-    takenAfter: startOfDay.toISOString(),
-    takenBefore: endOfDay.toISOString()
-  };
-  const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
-  console.log(userSettings);
-  let photo_link;
-  if (photo.source === 'immich') {
-    photo_link = `${userSettings.immich_url}/search?query=${encodedQuery}`;
-  } else if (photo.source === 'photoprism') {
-    photo_link = `${userSettings.photoprism_url}/library/browse?view=cards&year=${photo.localDateTime.split('-')[0]}&month=${photo.localDateTime.split('-')[1]}&order=newest&public=true&quality=3`;
-  }
-  const source_url = photo.source === 'photoprism' ? userSettings.photoprism_url : userSettings.immich_url;
   const popupContent = `
     <div class="max-w-xs">
       <a href="${photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
