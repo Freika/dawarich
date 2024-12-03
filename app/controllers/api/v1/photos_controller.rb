@@ -20,16 +20,7 @@ class Api::V1::PhotosController < ApiController
 
   def fetch_cached_thumbnail(source)
     Rails.cache.fetch("photo_thumbnail_#{params[:id]}", expires_in: 1.day) do
-      source_url = current_api_user.settings["#{source}_url"]
-      source_api_key = current_api_user.settings["#{source}_api_key"]
-
-      HTTParty.get(
-        "#{source_url}/api/assets/#{params[:id]}/thumbnail?size=preview",
-        headers: {
-          'x-api-key' => source_api_key,
-          'accept' => 'application/octet-stream'
-        }
-      )
+      Photos::Thumbnail.new(current_api_user, source, params[:id]).call
     end
   end
 

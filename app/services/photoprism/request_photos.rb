@@ -53,6 +53,8 @@ class Photoprism::RequestPhotos
       Rails.logger.debug "Photoprism API request params: #{request_params(offset).inspect}"
     end
 
+    cache_preview_token(response.headers)
+
     JSON.parse(response.body)
   end
 
@@ -85,5 +87,11 @@ class Photoprism::RequestPhotos
       end_date ||= Time.current
       taken_at.between?(start_date.to_datetime, end_date.to_datetime)
     end
+  end
+
+  def cache_preview_token(headers)
+    preview_token = headers['X-Preview-Token']
+
+    Photoprism::CachePreviewToken.new(user, preview_token).call
   end
 end

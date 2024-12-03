@@ -26,7 +26,7 @@ class Api::PhotoSerializer
   attr_reader :photo, :source
 
   def id
-    photo['id'] || photo['ID']
+    photo['id'] || photo['Hash']
   end
 
   def latitude
