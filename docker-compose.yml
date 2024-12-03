@@ -53,17 +53,18 @@ services:
     restart: on-failure
     environment:
       RAILS_ENV: development
+      RAILS_APPLICATION_CONFIG_HOSTS: ""
       REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: localhost
-      APPLICATION_HOSTS: localhost
-      TIME_ZONE: Europe/London
+      APPLICATION_HOST: ""
+      APPLICATION_HOSTS: "subdomain.your.tld,''" #this is our cloudflare tunnel hostname
+      TIME_ZONE: America/New_York
       APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
+      DISTANCE_UNIT: mi
       PHOTON_API_HOST: photon.komoot.io
       PHOTON_API_USE_HTTPS: true
       PROMETHEUS_EXPORTER_ENABLED: false
@@ -108,16 +109,17 @@ services:
     restart: on-failure
     environment:
       RAILS_ENV: development
+      RAILS_APPLICATION_CONFIG_HOSTS: ""
       REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      APPLICATION_HOST: localhost
-      APPLICATION_HOSTS: localhost
+      APPLICATION_HOST: "subdomain.your.tld,''"  #this is our cloudflare tunnel hostname
+      APPLICATION_HOSTS: "subdomain.your.tld,''" #this is our cloudflare tunnel hostname
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
+      DISTANCE_UNIT: mi
       PHOTON_API_HOST: photon.komoot.io
       PHOTON_API_USE_HTTPS: true
       PROMETHEUS_EXPORTER_ENABLED: false
@@ -149,6 +151,16 @@ services:
         limits:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
           memory: '2G'    # Limit memory usage to 2GB
+  tunnel:
+   image: cloudflare/cloudflared:latest
+   command: tunnel --no-autoupdate run
+   networks: 
+    - dawarich
+   env_file: tunnel.env
+   restart: always
+   container_name: tunnel
+   depends_on:
+    - dawarich_app
 
 volumes:
   dawarich_db_data:
