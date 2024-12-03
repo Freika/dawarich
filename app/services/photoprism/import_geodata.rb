@@ -11,22 +11,28 @@ class Photoprism::ImportGeodata
 
   def call
     photoprism_data = retrieve_photoprism_data
+    return log_no_data if photoprism_data.empty?
 
-    log_no_data and return if photoprism_data.empty?
-
-    photoprism_data_json = parse_photoprism_data(photoprism_data)
-    file_name         = file_name(photoprism_data_json)
-    import            = user.imports.find_or_initialize_by(name: file_name, source: :photoprism_api)
-
-    create_import_failed_notification(import.name) and return unless import.new_record?
-
-    import.raw_data = photoprism_data_json
-    import.save!
-
-    ImportJob.perform_later(user.id, import.id)
+    json_data = parse_photoprism_data(photoprism_data)
+    create_and_process_import(json_data)
   end
 
   private
+
+  def create_and_process_import(json_data)
+    import = find_or_create_import(json_data)
+    return create_import_failed_notification(import.name) unless import.new_record?
+
+    import.update!(raw_data: json_data)
+    ImportJob.perform_later(user.id, import.id)
+  end
+
+  def find_or_create_import(json_data)
+    user.imports.find_or_initialize_by(
+      name: file_name(json_data),
+      source: :photoprism_api
+    )
+  end
 
   def retrieve_photoprism_data
     Photoprism::RequestPhotos.new(user, start_date:, end_date:).call
@@ -52,9 +58,9 @@ class Photoprism::ImportGeodata
 
   def extract_geodata(asset)
     {
-      latitude: asset.dig('exifInfo', 'latitude'),
-      longitude: asset.dig('exifInfo', 'longitude'),
-      timestamp: Time.zone.parse(asset.dig('exifInfo', 'dateTimeOriginal')).to_i
+      latitude: asset['Lat'],
+      longitude: asset['Lng'],
+      timestamp: Time.zone.parse(asset['TakenAt']).to_i
     }
   end
 
@@ -72,8 +78,8 @@ class Photoprism::ImportGeodata
   end
 
   def file_name(photoprism_data_json)
-    from              = Time.zone.at(photoprism_data_json.first[:timestamp]).to_date
-    to                = Time.zone.at(photoprism_data_json.last[:timestamp]).to_date
+    from = Time.zone.at(photoprism_data_json.first[:timestamp]).to_date
+    to   = Time.zone.at(photoprism_data_json.last[:timestamp]).to_date
 
     "photoprism-geodata-#{user.email}-from-#{from}-to-#{to}.json"
   end
