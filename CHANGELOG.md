@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.19.0 - 2024-12-03
+
+## The Photoprism integration release
+
+### Added
+
+- Photos from Photoprism are now can be shown on the map. To enable this feature, you need to provide your Photoprism instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).
+- Geodata is now can be imported from Photoprism to Dawarich.
+
 # 0.18.2 - 2024-11-29
 
 ### Added
