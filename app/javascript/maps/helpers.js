@@ -171,7 +171,7 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
     const photoLoadPromises = photos.map(photo => {
       return new Promise((resolve) => {
         const img = new Image();
-        const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}`;
+        const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}&source=${photo.source}`;
 
         img.onload = () => {
           createPhotoMarker(photo, userSettings.immich_url, photoMarkers, apiKey);
@@ -217,10 +217,10 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
 }
 
 
-export function createPhotoMarker(photo, immichUrl, photoMarkers,apiKey) {
-  if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
+export function createPhotoMarker(photo, immichUrl, photoMarkers, apiKey) {
+  if (!photo.latitude || !photo.longitude) return;
 
-  const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}`;
+  const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}&source=${photo.source}`;
 
   const icon = L.divIcon({
     className: 'photo-marker',
@@ -229,7 +229,7 @@ export function createPhotoMarker(photo, immichUrl, photoMarkers,apiKey) {
   });
 
   const marker = L.marker(
-    [photo.exifInfo.latitude, photo.exifInfo.longitude],
+    [photo.latitude, photo.longitude],
     { icon }
   );
 
@@ -256,7 +256,8 @@ export function createPhotoMarker(photo, immichUrl, photoMarkers,apiKey) {
       </a>
       <h3 class="font-bold">${photo.originalFileName}</h3>
       <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
-      <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
+      <p>Location: ${photo.city}, ${photo.state}, ${photo.country}</p>
+      <p>Source: <a href="${photo.source_url}" target="_blank">${photo.source}</a></p>
       ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
     </div>
   `;
