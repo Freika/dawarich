@@ -8,7 +8,7 @@ class Photos::Thumbnail
   end
 
   def call
-    fetch_thumbnail_from_source
+    HTTParty.get(request_url, headers: headers)
   end
 
   private
@@ -35,6 +35,10 @@ class Photos::Thumbnail
     end
   end
 
+  def request_url
+    "#{source_url}#{source_path}"
+  end
+
   def headers
     request_headers = {
       'accept' => 'application/octet-stream'
@@ -43,12 +47,5 @@ class Photos::Thumbnail
     request_headers['X-Api-Key'] = source_api_key if source == 'immich'
 
     request_headers
-  end
-
-  def fetch_thumbnail_from_source
-    url = "#{source_url}#{source_path}"
-    a = HTTParty.get(url, headers: headers)
-    pp url
-    a
   end
 end
