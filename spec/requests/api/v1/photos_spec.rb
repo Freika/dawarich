@@ -38,7 +38,7 @@ RSpec.describe 'Api::V1::Photos', type: :request do
 
       context 'when the request is successful' do
         before do
-          allow_any_instance_of(Photos::Request).to receive(:call).and_return(photo_data)
+          allow_any_instance_of(Photos::Search).to receive(:call).and_return(photo_data)
 
           get '/api/v1/photos', params: { api_key: user.api_key }
         end

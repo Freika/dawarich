@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Photos::Request
+class Photos::Search
   attr_reader :user, :start_date, :end_date
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
