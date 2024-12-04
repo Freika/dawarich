@@ -16,8 +16,8 @@ The `GET /api/v1/photos` endpoint now returns following structure of the respons
 [
   {
     "id": "1",
-    "latitude": "11.22",
-    "longitude": "12.33",
+    "latitude": 11.22,
+    "longitude": 12.33,
     "localDateTime": "2024-01-01T00:00:00Z",
     "originalFileName": "photo.jpg",
     "city": "Berlin",
