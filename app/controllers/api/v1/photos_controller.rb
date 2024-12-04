@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Api::V1::PhotosController < ApiController
+  before_action :check_integration_configured, only: %i[index thumbnail]
+  before_action :check_source, only: %i[thumbnail]
+
   def index
     @photos = Rails.cache.fetch("photos_#{params[:start_date]}_#{params[:end_date]}", expires_in: 1.day) do
       Photos::Request.new(current_api_user, start_date: params[:start_date], end_date: params[:end_date]).call
@@ -10,8 +13,6 @@ class Api::V1::PhotosController < ApiController
   end
 
   def thumbnail
-    return unauthorized_integration unless integration_configured?
-
     response = fetch_cached_thumbnail(params[:source])
     handle_thumbnail_response(response)
   end
@@ -33,8 +34,15 @@ class Api::V1::PhotosController < ApiController
   end
 
   def integration_configured?
-    (params[:source] == 'immich' && current_api_user.immich_integration_configured?) ||
-      (params[:source] == 'photoprism' && current_api_user.photoprism_integration_configured?)
+    current_api_user.immich_integration_configured? || current_api_user.photoprism_integration_configured?
+  end
+
+  def check_integration_configured
+    unauthorized_integration unless integration_configured?
+  end
+
+  def check_source
+    unauthorized_integration unless params[:source] == 'immich' || params[:source] == 'photoprism'
   end
 
   def unauthorized_integration

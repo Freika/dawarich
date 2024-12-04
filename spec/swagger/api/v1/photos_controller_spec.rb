@@ -3,7 +3,7 @@
 require 'swagger_helper'
 
 RSpec.describe 'Api::V1::PhotosController', type: :request do
-  let(:user) { create(:user, :with_immich_credentials) }
+  let(:user) { create(:user, :with_immich_integration) }
   let(:api_key) { user.api_key }
   let(:start_date) { '2024-01-01' }
   let(:end_date) { '2024-01-02' }
