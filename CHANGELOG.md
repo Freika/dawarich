@@ -9,21 +9,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## The Photoprism integration release
 
-⚠️ This release introduces a breaking change. The `GET /api/v1/photos` endpoint now returns following structure of the response:
+⚠️ This release introduces a breaking change. ⚠️
+The `GET /api/v1/photos` endpoint now returns following structure of the response:
 
 ```json
 [
   {
-    "id": id,
-    "latitude": latitude,
-    "longitude": longitude,
-    "localDateTime": local_date_time,
-    "originalFileName": original_file_name,
-    "city": city,
-    "state": state,
-    "country": country,
-    "type": type, // "image" or "video"
-    "source": source // "photoprism" or "immich"
+    "id": "1",
+    "latitude": "11.22",
+    "longitude": "12.33",
+    "localDateTime": "2024-01-01T00:00:00Z",
+    "originalFileName": "photo.jpg",
+    "city": "Berlin",
+    "state": "Berlin",
+    "country": "Germany",
+    "type": "image", // "image" or "video"
+    "source": "photoprism" // "photoprism" or "immich"
   }
 ]
 ```
@@ -31,7 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Photos from Photoprism are now can be shown on the map. To enable this feature, you need to provide your Photoprism instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).
-- Geodata is now can be imported from Photoprism to Dawarich.
+- Geodata is now can be imported from Photoprism to Dawarich. The "Import Photoprism data" button on the Imports page will start the import process.
 
 # 0.18.2 - 2024-11-29
 

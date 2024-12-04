@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# This integration built based on
+# [September 15, 2024](https://github.com/photoprism/photoprism/releases/tag/240915-e1280b2fb)
+# release of Photoprism.
+
 class Photoprism::RequestPhotos
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
 
