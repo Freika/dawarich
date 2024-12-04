@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.19.0 - 2024-12-03
+
+## The Photoprism integration release
+
+⚠️ This release introduces a breaking change. ⚠️
+The `GET /api/v1/photos` endpoint now returns following structure of the response:
+
+```json
+[
+  {
+    "id": "1",
+    "latitude": 11.22,
+    "longitude": 12.33,
+    "localDateTime": "2024-01-01T00:00:00Z",
+    "originalFileName": "photo.jpg",
+    "city": "Berlin",
+    "state": "Berlin",
+    "country": "Germany",
+    "type": "image", // "image" or "video"
+    "source": "photoprism" // "photoprism" or "immich"
+  }
+]
+```
+
+### Added
+
+- Photos from Photoprism are now can be shown on the map. To enable this feature, you need to provide your Photoprism instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).
+- Geodata is now can be imported from Photoprism to Dawarich. The "Import Photoprism data" button on the Imports page will start the import process.
+
 # 0.18.2 - 2024-11-29
 
 ### Added

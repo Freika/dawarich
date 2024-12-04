@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Immich::ImportParser
+class Photos::ImportParser
   include Imports::Broadcaster
 
   attr_reader :import, :json, :user_id

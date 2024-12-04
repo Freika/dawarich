@@ -5,7 +5,7 @@
 
   <div class="flex flex-col lg:flex-row w-full my-10 space-x-4">
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5 mx-5">
-      <h2 class="text-2xl font-bold">Edit your Dawarich settings!</h1>
+      <h2 class="text-2xl font-bold">Edit your Integrations settings!</h1>
       <%= form_for :settings, url: settings_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
         <div class="form-control my-2">
           <%= f.label :immich_url %>
@@ -15,6 +15,16 @@
           <%= f.label :immich_api_key %>
           <%= f.text_field :immich_api_key, value: current_user.settings['immich_api_key'], class: "input input-bordered", placeholder: 'xxxxxxxxxxxxxx' %>
         </div>
+        <div class="divider"></div>
+        <div class="form-control my-2">
+          <%= f.label :photoprism_url %>
+          <%= f.text_field :photoprism_url, value: current_user.settings['photoprism_url'], class: "input input-bordered", placeholder: 'http://192.168.0.1:2342' %>
+        </div>
+        <div class="form-control my-2">
+          <%= f.label :photoprism_api_key %>
+          <%= f.text_field :photoprism_api_key, value: current_user.settings['photoprism_api_key'], class: "input input-bordered", placeholder: 'xxxxxxxxxxxxxx' %>
+        </div>
+
         <div class="form-control my-2">
           <%= f.submit "Update", class: "btn btn-primary" %>
         </div>

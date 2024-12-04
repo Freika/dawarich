@@ -18,6 +18,7 @@ class User < ApplicationRecord
   has_many :trips, dependent: :destroy
 
   after_create :create_api_key
+  before_save :strip_trailing_slashes
 
   def countries_visited
     stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact
@@ -53,11 +54,24 @@ class User < ApplicationRecord
     tracked_points.select(:id).where.not(geodata: {}).count
   end
 
+  def immich_integration_configured?
+    settings['immich_url'].present? && settings['immich_api_key'].present?
+  end
+
+  def photoprism_integration_configured?
+    settings['photoprism_url'].present? && settings['photoprism_api_key'].present?
+  end
+
   private
 
   def create_api_key
     self.api_key = SecureRandom.hex(16)
 
     save
+  end
+
+  def strip_trailing_slashes
+    settings['immich_url']&.gsub!(%r{/+\z}, '')
+    settings['photoprism_url']&.gsub!(%r{/+\z}, '')
   end
 end

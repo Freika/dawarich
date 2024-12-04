@@ -347,130 +347,38 @@ paths:
                   properties:
                     id:
                       type: string
-                    deviceAssetId:
-                      type: string
-                    ownerId:
-                      type: string
-                    type:
-                      type: string
-                    originalPath:
-                      type: string
-                    originalFileName:
-                      type: string
-                    originalMimeType:
-                      type: string
-                    thumbhash:
-                      type: string
-                    fileCreatedAt:
-                      type: string
-                      format: date-time
-                    fileModifiedAt:
-                      type: string
-                      format: date-time
+                    latitude:
+                      type: number
+                      format: float
+                    longitude:
+                      type: number
+                      format: float
                     localDateTime:
                       type: string
                       format: date-time
-                    updatedAt:
+                    originalFileName:
                       type: string
-                      format: date-time
-                    isFavorite:
-                      type: boolean
-                    isArchived:
-                      type: boolean
-                    isTrashed:
-                      type: boolean
-                    duration:
+                    city:
                       type: string
-                    exifInfo:
-                      type: object
-                      properties:
-                        make:
-                          type: string
-                        model:
-                          type: string
-                        exifImageWidth:
-                          type: integer
-                        exifImageHeight:
-                          type: integer
-                        fileSizeInByte:
-                          type: integer
-                        orientation:
-                          type: string
-                        dateTimeOriginal:
-                          type: string
-                          format: date-time
-                        modifyDate:
-                          type: string
-                          format: date-time
-                        timeZone:
-                          type: string
-                        lensModel:
-                          type: string
-                        fNumber:
-                          type: number
-                          format: float
-                        focalLength:
-                          type: number
-                          format: float
-                        iso:
-                          type: integer
-                        exposureTime:
-                          type: string
-                        latitude:
-                          type: number
-                          format: float
-                        longitude:
-                          type: number
-                          format: float
-                        city:
-                          type: string
-                        state:
-                          type: string
-                        country:
-                          type: string
-                        description:
-                          type: string
-                        projectionType:
-                          type:
-                          - string
-                          - 'null'
-                        rating:
-                          type:
-                          - integer
-                          - 'null'
-                    checksum:
+                    state:
                       type: string
-                    isOffline:
-                      type: boolean
-                    hasMetadata:
-                      type: boolean
-                    duplicateId:
+                    country:
                       type: string
-                    resized:
-                      type: boolean
+                    type:
+                      type: string
+                    source:
+                      type: string
                   required:
                   - id
-                  - deviceAssetId
-                  - ownerId
-                  - type
-                  - originalPath
-                  - originalFileName
-                  - originalMimeType
-                  - thumbhash
-                  - fileCreatedAt
-                  - fileModifiedAt
+                  - latitude
+                  - longitude
                   - localDateTime
-                  - updatedAt
-                  - isFavorite
-                  - isArchived
-                  - isTrashed
-                  - duration
-                  - exifInfo
-                  - checksum
-                  - isOffline
-                  - hasMetadata
-                  - duplicateId
-                  - resized
+                  - originalFileName
+                  - city
+                  - state
+                  - country
+                  - type
+                  - source
   "/api/v1/photos/{id}/thumbnail":
     get:
       summary: Retrieves a photo
@@ -487,6 +395,11 @@ paths:
         required: true
         schema:
           type: string
+      - name: source
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: photo found
@@ -497,107 +410,27 @@ paths:
                 properties:
                   id:
                     type: string
-                  deviceAssetId:
-                    type: string
-                  ownerId:
-                    type: string
-                  type:
-                    type: string
-                  originalPath:
-                    type: string
-                  originalFileName:
-                    type: string
-                  originalMimeType:
-                    type: string
-                  thumbhash:
-                    type: string
-                  fileCreatedAt:
-                    type: string
-                    format: date-time
-                  fileModifiedAt:
-                    type: string
-                    format: date-time
+                  latitude:
+                    type: number
+                    format: float
+                  longitude:
+                    type: number
+                    format: float
                   localDateTime:
                     type: string
                     format: date-time
-                  updatedAt:
+                  originalFileName:
                     type: string
-                    format: date-time
-                  isFavorite:
-                    type: boolean
-                  isArchived:
-                    type: boolean
-                  isTrashed:
-                    type: boolean
-                  duration:
+                  city:
                     type: string
-                  exifInfo:
-                    type: object
-                    properties:
-                      make:
-                        type: string
-                      model:
-                        type: string
-                      exifImageWidth:
-                        type: integer
-                      exifImageHeight:
-                        type: integer
-                      fileSizeInByte:
-                        type: integer
-                      orientation:
-                        type: string
-                      dateTimeOriginal:
-                        type: string
-                        format: date-time
-                      modifyDate:
-                        type: string
-                        format: date-time
-                      timeZone:
-                        type: string
-                      lensModel:
-                        type: string
-                      fNumber:
-                        type: number
-                        format: float
-                      focalLength:
-                        type: number
-                        format: float
-                      iso:
-                        type: integer
-                      exposureTime:
-                        type: string
-                      latitude:
-                        type: number
-                        format: float
-                      longitude:
-                        type: number
-                        format: float
-                      city:
-                        type: string
-                      state:
-                        type: string
-                      country:
-                        type: string
-                      description:
-                        type: string
-                      projectionType:
-                        type:
-                        - string
-                        - 'null'
-                      rating:
-                        type:
-                        - integer
-                        - 'null'
-                  checksum:
+                  state:
                     type: string
-                  isOffline:
-                    type: boolean
-                  hasMetadata:
-                    type: boolean
-                  duplicateId:
+                  country:
                     type: string
-                  resized:
-                    type: boolean
+                  type:
+                    type: string
+                  source:
+                    type: string
         '404':
           description: photo not found
   "/api/v1/points":

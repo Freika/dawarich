@@ -3,7 +3,7 @@
 require 'swagger_helper'
 
 RSpec.describe 'Api::V1::PhotosController', type: :request do
-  let(:user) { create(:user, :with_immich_credentials) }
+  let(:user) { create(:user, :with_immich_integration) }
   let(:api_key) { user.api_key }
   let(:start_date) { '2024-01-01' }
   let(:end_date) { '2024-01-02' }
@@ -103,59 +103,17 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
                  type: :object,
                  properties: {
                    id: { type: :string },
-                   deviceAssetId: { type: :string },
-                   ownerId: { type: :string },
-                   type: { type: :string },
-                   originalPath: { type: :string },
-                   originalFileName: { type: :string },
-                   originalMimeType: { type: :string },
-                   thumbhash: { type: :string },
-                   fileCreatedAt: { type: :string, format: 'date-time' },
-                   fileModifiedAt: { type: :string, format: 'date-time' },
+                   latitude: { type: :number, format: :float },
+                   longitude: { type: :number, format: :float },
                    localDateTime: { type: :string, format: 'date-time' },
-                   updatedAt: { type: :string, format: 'date-time' },
-                   isFavorite: { type: :boolean },
-                   isArchived: { type: :boolean },
-                   isTrashed: { type: :boolean },
-                   duration: { type: :string },
-                   exifInfo: {
-                     type: :object,
-                     properties: {
-                       make: { type: :string },
-                       model: { type: :string },
-                       exifImageWidth: { type: :integer },
-                       exifImageHeight: { type: :integer },
-                       fileSizeInByte: { type: :integer },
-                       orientation: { type: :string },
-                       dateTimeOriginal: { type: :string, format: 'date-time' },
-                       modifyDate: { type: :string, format: 'date-time' },
-                       timeZone: { type: :string },
-                       lensModel: { type: :string },
-                       fNumber: { type: :number, format: :float },
-                       focalLength: { type: :number, format: :float },
-                       iso: { type: :integer },
-                       exposureTime: { type: :string },
-                       latitude: { type: :number, format: :float },
-                       longitude: { type: :number, format: :float },
-                       city: { type: :string },
-                       state: { type: :string },
-                       country: { type: :string },
-                       description: { type: :string },
-                       projectionType: { type: %i[string null] },
-                       rating: { type: %i[integer null] }
-                     }
-                   },
-                   checksum: { type: :string },
-                   isOffline: { type: :boolean },
-                   hasMetadata: { type: :boolean },
-                   duplicateId: { type: :string },
-                   resized: { type: :boolean }
+                   originalFileName: { type: :string },
+                   city: { type: :string },
+                   state: { type: :string },
+                   country: { type: :string },
+                   type: { type: :string },
+                   source: { type: :string }
                  },
-                 required: %w[id deviceAssetId ownerId type originalPath
-                              originalFileName originalMimeType thumbhash
-                              fileCreatedAt fileModifiedAt localDateTime
-                              updatedAt isFavorite isArchived isTrashed duration
-                              exifInfo checksum isOffline hasMetadata duplicateId resized]
+                 required: %w[id latitude longitude localDateTime originalFileName city state country type source]
                }
 
         run_test! do |response|
@@ -172,61 +130,24 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
       produces 'application/json'
       parameter name: :id, in: :path, type: :string, required: true
       parameter name: :api_key, in: :query, type: :string, required: true
-
+      parameter name: :source, in: :query, type: :string, required: true
       response '200', 'photo found' do
         schema type: :object,
                properties: {
                  id: { type: :string },
-                 deviceAssetId: { type: :string },
-                 ownerId: { type: :string },
-                 type: { type: :string },
-                 originalPath: { type: :string },
-                 originalFileName: { type: :string },
-                 originalMimeType: { type: :string },
-                 thumbhash: { type: :string },
-                 fileCreatedAt: { type: :string, format: 'date-time' },
-                 fileModifiedAt: { type: :string, format: 'date-time' },
+                 latitude: { type: :number, format: :float },
+                 longitude: { type: :number, format: :float },
                  localDateTime: { type: :string, format: 'date-time' },
-                 updatedAt: { type: :string, format: 'date-time' },
-                 isFavorite: { type: :boolean },
-                 isArchived: { type: :boolean },
-                 isTrashed: { type: :boolean },
-                 duration: { type: :string },
-                 exifInfo: {
-                   type: :object,
-                   properties: {
-                     make: { type: :string },
-                     model: { type: :string },
-                     exifImageWidth: { type: :integer },
-                     exifImageHeight: { type: :integer },
-                     fileSizeInByte: { type: :integer },
-                     orientation: { type: :string },
-                     dateTimeOriginal: { type: :string, format: 'date-time' },
-                     modifyDate: { type: :string, format: 'date-time' },
-                     timeZone: { type: :string },
-                     lensModel: { type: :string },
-                     fNumber: { type: :number, format: :float },
-                     focalLength: { type: :number, format: :float },
-                     iso: { type: :integer },
-                     exposureTime: { type: :string },
-                     latitude: { type: :number, format: :float },
-                     longitude: { type: :number, format: :float },
-                     city: { type: :string },
-                     state: { type: :string },
-                     country: { type: :string },
-                     description: { type: :string },
-                     projectionType: { type: %i[string null] },
-                     rating: { type: %i[integer null] }
-                   }
-                 },
-                 checksum: { type: :string },
-                 isOffline: { type: :boolean },
-                 hasMetadata: { type: :boolean },
-                 duplicateId: { type: :string },
-                 resized: { type: :boolean }
+                 originalFileName: { type: :string },
+                 city: { type: :string },
+                 state: { type: :string },
+                 country: { type: :string },
+                 type: { type: :string },
+                 source: { type: :string }
                }
 
         let(:id) { '7fe486e3-c3ba-4b54-bbf9-1281b39ed15c' }
+        let(:source) { 'immich' }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -238,6 +159,7 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
       response '404', 'photo not found' do
         let(:id) { 'nonexistent' }
         let(:api_key) { user.api_key }
+        let(:source) { 'immich' }
 
         run_test! do |response|
           data = JSON.parse(response.body)

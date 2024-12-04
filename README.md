@@ -99,6 +99,10 @@ Simply install one of the supported apps on your device and configure it to send
 ### 📊 Statistics
 - Analyze your travel history: number of countries/cities visited, distance traveled, and time spent, broken down by year and month.
 
+### 📸 Integrations
+- Provide credentials for Immich or Photoprism (or both!) and Dawarich will automatically import geodata from your photos.
+- You'll also be able to visualize your photos on the map!
+
 ### 📥 Import Your Data
 - Import from various sources:
   - Google Maps Timeline

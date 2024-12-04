@@ -137,10 +137,13 @@ export default class extends Controller {
         this.map.addControl(this.drawControl);
       }
       if (e.name === 'Photos') {
-        if (!this.userSettings.immich_url || !this.userSettings.immich_api_key) {
+        if (
+          (!this.userSettings.immich_url || !this.userSettings.immich_api_key) &&
+          (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)
+        ) {
           showFlashMessage(
             'error',
-            'Immich integration is not configured. Please check your settings.'
+            'Photos integration is not configured. Please check your integrations settings.'
           );
           return;
         }
@@ -836,7 +839,7 @@ export default class extends Controller {
         <h3 class="font-bold">${photo.originalFileName}</h3>
         <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
         <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
-        ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
+        ${photo.type === 'video' ? '🎥 Video' : '📷 Photo'}
       </div>
     `;
     marker.bindPopup(popupContent);
