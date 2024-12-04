@@ -2,7 +2,7 @@
 
 class Api::PhotoSerializer
   def initialize(photo, source)
-    @photo = photo
+    @photo = photo.with_indifferent_access
     @source = source
   end
 
