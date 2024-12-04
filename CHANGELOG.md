@@ -34,6 +34,11 @@ The `GET /api/v1/photos` endpoint now returns following structure of the respons
 - Photos from Photoprism are now can be shown on the map. To enable this feature, you need to provide your Photoprism instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).
 - Geodata is now can be imported from Photoprism to Dawarich. The "Import Photoprism data" button on the Imports page will start the import process.
 
+### Fixed
+
+- z-index on maps so they won't overlay notifications dropdown
+- Redis connectivity where it's not required
+
 # 0.18.2 - 2024-11-29
 
 ### Added
