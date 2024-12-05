@@ -6,5 +6,8 @@
 2024-03-01T18:33:03Z	*                 	{"cog":18,"batt":85,"lon":13.337,"acc":5,"bs":1,"p":100.347,"vel":4,"vac":3,"lat":52.230,"topic":"owntracks/test/iPhone 12 Pro","conn":"m","m":1,"tst":1709317983,"alt":36,"_type":"location","tid":"RO","_http":true}
 2024-03-01T18:40:11Z	*                 	{"cog":43,"batt":85,"lon":13.338,"acc":5,"bs":1,"p":100.348,"vel":6,"vac":3,"lat":52.231,"topic":"owntracks/test/iPhone 12 Pro","conn":"m","m":1,"tst":1709318411,"alt":37,"_type":"location","tid":"RO","_http":true}
 2024-03-01T18:42:57Z	*                 	{"cog":320,"batt":85,"lon":13.339,"acc":5,"bs":1,"p":100.353,"vel":3,"vac":3,"lat":52.232,"topic":"owntracks/test/iPhone 12 Pro","t":"v","conn":"m","m":1,"tst":1709318577,"alt":37,"_type":"location","tid":"RO","_http":true}
+2024-03-01T18:40:08Z	lwt               	{"_type":"lwt","tst":1717459208}
+2024-03-01T18:40:09Z	waypoints         	{"_type":"waypoint","desc":"Home","lat":52.232,"lon":13.339,"rad":50,"tst":1717459768}
+2024-03-01T18:40:10Z	event             	{"_type":"transition","acc":5,"desc":"Home","event":"enter","lat":52.232,"lon":13.339,"t":"l","tid":"s8","tst":1717460098,"wtst":1717459768}
 2024-03-01T18:40:11Z	*                 	{"cog":43,"batt":85,"lon":13.338,"acc":5,"bs":1,"p":100.348,"vel":6,"vac":3,"lat":52.231,"topic":"owntracks/test/iPhone 12 Pro","conn":"m","m":1,"tst":1709318411,"alt":37,"_type":"location","tid":"RO","_http":true}
 2024-03-01T18:40:11Z	*                 	{"cog":43,"batt":85,"lon":13.341,"acc":5,"bs":1,"p":100.348,"created_at":1709318940,"vel":6,"vac":3,"lat":52.234,"topic":"owntracks/test/iPhone 12 Pro","conn":"m","m":1,"tst":1709318411,"alt":37,"_type":"location","tid":"RO","_http":true}

@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.19.0 - 2024-12-03
+# 0.19.1 - 2024-12-04
+
+### Fixed
+
+- Sidekiq is now being correctly exported to Prometheus with `PROMETHEUS_EXPORTER_ENABLED=true` env var in `dawarich_sidekiq` service.
+
+# 0.19.0 - 2024-12-04
 
 ## The Photoprism integration release
 
