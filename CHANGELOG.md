@@ -19,6 +19,8 @@ Data being sent:
 - App version
 - Instance ID
 
+The data is being sent to a InfluxDB instance hosted by me and won't be shared with anyone.
+
 Basically this set of metrics allows me to see how many people are using Dawarich and what versions they are using. No other data is being sent, nor it gives me any knowledge about individual users or their data or activity.
 
 The telemetry is enabled by default, but it **can be disabled** by setting `DISABLE_TELEMETRY` env var to `true`. The dataset might change in the future, but any changes will be documented here in the changelog and in every release as well as on the [telemetry page](https://dawarich.app/docs/tutorials/telemetry) of the website docs.
