@@ -17,7 +17,7 @@ Data being sent:
 
 - Number of DAU (Daily Active Users)
 - App version
-- Instance ID
+- Instance ID (unique identifier of the Dawarich instance built by hashing the api key of the first user in the database)
 
 The data is being sent to a InfluxDB instance hosted by me and won't be shared with anyone.
 
