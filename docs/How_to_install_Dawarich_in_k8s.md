@@ -140,8 +140,8 @@ spec:
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /usr/local/bundle/gems_app
-              name: gem-cache
+            - mountPath: /usr/local/bundle/gems
+              name: gem-app
             - mountPath: /var/app/public
               name: public
             - mountPath: /var/app/tmp/imports/watched
@@ -196,7 +196,7 @@ spec:
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /usr/local/bundle/gems_sidekiq
+            - mountPath: /usr/local/bundle/gems
               name: gem-sidekiq
             - mountPath: /var/app/public
               name: public

@@ -38,7 +38,7 @@ services:
     image: freikin/dawarich:latest
     container_name: dawarich_app
     volumes:
-      - dawarich_gem_cache_app:/usr/local/bundle/gems_app
+      - dawarich_gem_cache_app:/usr/local/bundle/gems
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
     networks:
@@ -96,7 +96,7 @@ services:
     image: freikin/dawarich:latest
     container_name: dawarich_sidekiq
     volumes:
-      - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems_sidekiq
+      - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
     networks:
