@@ -5,9 +5,7 @@ class Cache::PreheatingJob < ApplicationJob
 
   def perform
     User.find_each do |user|
-      Rails.cache.fetch("dawarich/user_#{user.id}_years_tracked", expires_in: 1.day) do
-        user.years_tracked
-      end
+      Rails.cache.write("dawarich/user_#{user.id}_years_tracked", user.years_tracked, expires_in: 1.day)
     end
   end
 end

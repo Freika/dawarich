@@ -35,12 +35,6 @@ class Stat < ApplicationRecord
     }
   end
 
-  def self.years
-    starting_year = select(:year).min&.year || Time.current.year
-
-    (starting_year..Time.current.year).to_a.reverse
-  end
-
   def points
     user.tracked_points
         .without_raw_data
