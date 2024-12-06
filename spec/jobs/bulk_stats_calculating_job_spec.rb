@@ -4,14 +4,17 @@ require 'rails_helper'
 
 RSpec.describe BulkStatsCalculatingJob, type: :job do
   describe '#perform' do
-    it 'enqueues Stats::CalculatingJob for each user' do
-      user1 = create(:user)
-      user2 = create(:user)
-      user3 = create(:user)
+    let(:user1) { create(:user) }
+    let(:user2) { create(:user) }
 
-      expect(Stats::CalculatingJob).to receive(:perform_later).with(user1.id)
-      expect(Stats::CalculatingJob).to receive(:perform_later).with(user2.id)
-      expect(Stats::CalculatingJob).to receive(:perform_later).with(user3.id)
+    let(:timestamp) { DateTime.new(2024, 1, 1).to_i }
+
+    let!(:points1) { create_list(:point, 10, user_id: user1.id, timestamp:) }
+    let!(:points2) { create_list(:point, 10, user_id: user2.id, timestamp:) }
+
+    it 'enqueues Stats::CalculatingJob for each user' do
+      expect(Stats::CalculatingJob).to receive(:perform_later).with(user1.id, 2024, 1)
+      expect(Stats::CalculatingJob).to receive(:perform_later).with(user2.id, 2024, 1)
 
       BulkStatsCalculatingJob.perform_now
     end

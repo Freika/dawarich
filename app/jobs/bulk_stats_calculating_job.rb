@@ -7,7 +7,7 @@ class BulkStatsCalculatingJob < ApplicationJob
     user_ids = User.pluck(:id)
 
     user_ids.each do |user_id|
-      Stats::CalculatingJob.perform_later(user_id)
+      Stats::BulkCalculator.new(user_id).call
     end
   end
 end

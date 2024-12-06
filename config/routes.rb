@@ -40,7 +40,7 @@ Rails.application.routes.draw do
   post 'notifications/mark_as_read', to: 'notifications#mark_as_read', as: :mark_notifications_as_read
   resources :stats, only: :index do
     collection do
-      post :update
+      post :update, constraints: { year: /\d{4}/, month: /\d{1,2}/ }
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }

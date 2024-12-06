@@ -30,3 +30,8 @@ telemetry_sending_job:
   cron: "0 */1 * * *" # every 1 hour
   class: "TelemetrySendingJob"
   queue: default
+
+cache_preheating_job:
+  cron: "0 0 * * *" # every day at 0:00
+  class: "Cache::PreheatingJob"
+  queue: default

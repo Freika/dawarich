@@ -62,6 +62,17 @@ class User < ApplicationRecord
     settings['photoprism_url'].present? && settings['photoprism_api_key'].present?
   end
 
+  def years_tracked
+    Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
+      tracked_points
+        .pluck(:timestamp)
+        .map { |ts| Time.zone.at(ts).year }
+        .uniq
+        .sort
+        .reverse
+    end
+  end
+
   private
 
   def create_api_key
