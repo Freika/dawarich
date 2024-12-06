@@ -22,4 +22,14 @@ RSpec.describe Import, type: :model do
       )
     end
   end
+
+  describe '#years_and_months_tracked' do
+    let(:import) { create(:import) }
+    let(:timestamp) { Time.zone.local(2024, 11, 1) }
+    let!(:points) { create_list(:point, 3, import:, timestamp:) }
+
+    it 'returns years and months tracked' do
+      expect(import.years_and_months_tracked).to eq([[2024, 11]])
+    end
+  end
 end

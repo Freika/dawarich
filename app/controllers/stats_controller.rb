@@ -13,7 +13,11 @@ class StatsController < ApplicationController
   end
 
   def update
-    Stats::CalculatingJob.perform_later(current_user.id)
+    current_user.years_tracked.each do |year|
+      (1..12).each do |month|
+        Stats::CalculatingJob.perform_later(current_user.id, year, month)
+      end
+    end
 
     redirect_to stats_path, notice: 'Stats are being updated', status: :see_other
   end
