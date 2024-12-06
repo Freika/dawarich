@@ -11,7 +11,8 @@ RSpec.describe Imports::Create do
       let(:import) { create(:import, source: 'google_semantic_history') }
 
       it 'calls the GoogleMaps::SemanticHistoryParser' do
-        expect(GoogleMaps::SemanticHistoryParser).to receive(:new).with(import, user.id).and_return(double(call: true))
+        expect(GoogleMaps::SemanticHistoryParser).to \
+          receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
     end
@@ -20,7 +21,8 @@ RSpec.describe Imports::Create do
       let(:import) { create(:import, source: 'google_phone_takeout') }
 
       it 'calls the GoogleMaps::PhoneTakeoutParser' do
-        expect(GoogleMaps::PhoneTakeoutParser).to receive(:new).with(import, user.id).and_return(double(call: true))
+        expect(GoogleMaps::PhoneTakeoutParser).to \
+          receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
     end
@@ -29,7 +31,8 @@ RSpec.describe Imports::Create do
       let(:import) { create(:import, source: 'owntracks') }
 
       it 'calls the OwnTracks::ExportParser' do
-        expect(OwnTracks::ExportParser).to receive(:new).with(import, user.id).and_return(double(call: true))
+        expect(OwnTracks::ExportParser).to \
+          receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
 
@@ -42,7 +45,8 @@ RSpec.describe Imports::Create do
 
         it 'schedules stats creating' do
           Sidekiq::Testing.inline! do
-            expect { service.call }.to have_enqueued_job(Stats::CalculatingJob)
+            expect { service.call }.to \
+              have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
           end
         end
 
@@ -70,7 +74,8 @@ RSpec.describe Imports::Create do
       let(:import) { create(:import, source: 'gpx') }
 
       it 'calls the Gpx::TrackParser' do
-        expect(Gpx::TrackParser).to receive(:new).with(import, user.id).and_return(double(call: true))
+        expect(Gpx::TrackParser).to \
+          receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
     end
@@ -79,7 +84,8 @@ RSpec.describe Imports::Create do
       let(:import) { create(:import, source: 'geojson') }
 
       it 'calls the Geojson::ImportParser' do
-        expect(Geojson::ImportParser).to receive(:new).with(import, user.id).and_return(double(call: true))
+        expect(Geojson::ImportParser).to \
+          receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
     end
@@ -88,7 +94,8 @@ RSpec.describe Imports::Create do
       let(:import) { create(:import, source: 'immich_api') }
 
       it 'calls the Photos::ImportParser' do
-        expect(Photos::ImportParser).to receive(:new).with(import, user.id).and_return(double(call: true))
+        expect(Photos::ImportParser).to \
+          receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
     end
@@ -97,7 +104,8 @@ RSpec.describe Imports::Create do
       let(:import) { create(:import, source: 'photoprism_api') }
 
       it 'calls the Photos::ImportParser' do
-        expect(Photos::ImportParser).to receive(:new).with(import, user.id).and_return(double(call: true))
+        expect(Photos::ImportParser).to \
+          receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
     end

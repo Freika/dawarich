@@ -16,4 +16,10 @@ class Import < ApplicationRecord
   def process!
     Imports::Create.new(user, self).call
   end
+
+  def years_and_months_tracked
+    points.order(:timestamp).map do |point|
+      [Time.zone.at(point.timestamp).year, Time.zone.at(point.timestamp).month]
+    end.uniq
+  end
 end

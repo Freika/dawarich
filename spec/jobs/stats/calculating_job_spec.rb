@@ -5,24 +5,36 @@ require 'rails_helper'
 RSpec.describe Stats::CalculatingJob, type: :job do
   describe '#perform' do
     let!(:user) { create(:user) }
-    let(:start_at) { nil }
-    let(:end_at) { nil }
 
-    subject { described_class.perform_now(user.id) }
+    subject { described_class.perform_now(user.id, 2024, 1) }
 
     before do
-      allow(Stats::Calculate).to receive(:new).and_call_original
-      allow_any_instance_of(Stats::Calculate).to receive(:call)
+      allow(Stats::CalculateMonth).to receive(:new).and_call_original
+      allow_any_instance_of(Stats::CalculateMonth).to receive(:call)
     end
 
-    it 'calls Stats::Calculate service' do
+    it 'calls Stats::CalculateMonth service' do
       subject
 
-      expect(Stats::Calculate).to have_received(:new).with(user.id, { start_at:, end_at: })
+      expect(Stats::CalculateMonth).to have_received(:new).with(user.id, 2024, 1)
     end
 
-    it 'created notifications' do
-      expect { subject }.to change { Notification.count }.by(1)
+    context 'when Stats::CalculateMonth raises an error' do
+      before do
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:call).and_raise(StandardError)
+      end
+
+      it 'creates an error notification' do
+        expect { subject }.to change { Notification.count }.by(1)
+        expect(Notification.last.kind).to eq('error')
+      end
+    end
+
+    context 'when Stats::CalculateMonth does not raise an error' do
+      it 'creates an info notification' do
+        expect { subject }.to change { Notification.count }.by(1)
+        expect(Notification.last.kind).to eq('info')
+      end
     end
   end
 end

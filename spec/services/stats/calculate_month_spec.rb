@@ -2,11 +2,13 @@
 
 require 'rails_helper'
 
-RSpec.describe Stats::Calculate do
+RSpec.describe Stats::CalculateMonth do
   describe '#call' do
-    subject(:calculate_stats) { described_class.new(user.id).call }
+    subject(:calculate_stats) { described_class.new(user.id, year, month).call }
 
     let(:user) { create(:user) }
+    let(:year) { 2021 }
+    let(:month) { 1 }
 
     context 'when there are no points' do
       it 'does not create stats' do
@@ -15,9 +17,9 @@ RSpec.describe Stats::Calculate do
     end
 
     context 'when there are points' do
-      let(:timestamp1) { DateTime.new(2021, 1, 1, 12).to_i }
-      let(:timestamp2) { DateTime.new(2021, 1, 1, 13).to_i }
-      let(:timestamp3) { DateTime.new(2021, 1, 1, 14).to_i }
+      let(:timestamp1) { DateTime.new(year, month, 1, 12).to_i }
+      let(:timestamp2) { DateTime.new(year, month, 1, 13).to_i }
+      let(:timestamp3) { DateTime.new(year, month, 1, 14).to_i }
       let!(:import) { create(:import, user:) }
       let!(:point1) do
         create(:point,

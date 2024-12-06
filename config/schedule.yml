@@ -1,7 +1,7 @@
 # config/schedule.yml
 
 bulk_stats_calculating_job:
-  cron: "0 */6 * * *" # every 6 hour
+  cron: "0 */1 * * *" # every 1 hour
   class: "BulkStatsCalculatingJob"
   queue: stats
 
@@ -29,4 +29,9 @@ app_version_checking_job:
 telemetry_sending_job:
   cron: "0 */1 * * *" # every 1 hour
   class: "TelemetrySendingJob"
+  queue: default
+
+cache_preheating_job:
+  cron: "0 0 * * *" # every day at 0:00
+  class: "Cache::PreheatingJob"
   queue: default

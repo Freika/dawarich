@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.19.3 - 2024-12-06
+
+### Changed
+
+- Refactored stats calculation to calculate only necessary stats, instead of calculating all stats
+- Stats are now being calculated every 1 hour instead of 6 hours
+- List of years on the Map page is now being calculated based on user's points instead of stats. It's also being cached for 1 day due to the fact that it's usually a heavy operation based on the number of points.
+- Reverse-geocoding points is now being performed in batches of 1,000 points to prevent memory exhaustion.
+
 # 0.19.2 - 2024-12-04
 
 ## The Telemetry release

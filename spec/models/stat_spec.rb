@@ -51,30 +51,6 @@ RSpec.describe Stat, type: :model do
       end
     end
 
-    describe '.years' do
-      subject { described_class.years }
-
-      context 'when there are no stats' do
-        it 'returns years' do
-          expect(subject).to eq([Time.current.year])
-        end
-      end
-
-      context 'when there are stats' do
-        let(:user) { create(:user) }
-        let(:expected_years) { (year..Time.current.year).to_a.reverse }
-
-        before do
-          create(:stat, year: 2021, user:)
-          create(:stat, year: 2020, user:)
-        end
-
-        it 'returns years' do
-          expect(subject).to eq(expected_years)
-        end
-      end
-    end
-
     describe '#distance_by_day' do
       subject { stat.distance_by_day }
 
@@ -144,6 +120,18 @@ RSpec.describe Stat, type: :model do
         it 'returns year distance' do
           expect(subject).to eq(expected_distance)
         end
+      end
+    end
+
+    describe '#points' do
+      subject { stat.points.to_a }
+
+      let(:stat) { create(:stat, year:, month: 1, user:) }
+      let(:timestamp) { DateTime.new(year, 1, 1, 5, 0, 0) }
+      let!(:points) { create_list(:point, 3, user:, timestamp:) }
+
+      it 'returns points' do
+        expect(subject).to eq(points)
       end
     end
   end
