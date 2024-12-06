@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - List of years on the Map page is now being calculated based on user's points instead of stats. It's also being cached for 1 day due to the fact that it's usually a heavy operation based on the number of points.
 - Reverse-geocoding points is now being performed in batches of 1,000 points to prevent memory exhaustion.
 
+### Added
+
+- In-app notification about telemetry being enabled.
+
 # 0.19.2 - 2024-12-04
 
 ## The Telemetry release
