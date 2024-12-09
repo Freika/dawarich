@@ -802,7 +802,7 @@ export default class extends Controller {
   createPhotoMarker(photo) {
     if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
 
-    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}`;
+    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`;
 
     const icon = L.divIcon({
       className: 'photo-marker',
