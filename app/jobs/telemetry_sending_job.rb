@@ -4,7 +4,7 @@ class TelemetrySendingJob < ApplicationJob
   queue_as :default
 
   def perform
-    return if ENV['DISABLE_TELEMETRY'] == 'true'
+    return if ENV['ENABLE_TELEMETRY'] != 'true'
 
     data = Telemetry::Gather.new.call
     Rails.logger.info("Telemetry data: #{data}")
