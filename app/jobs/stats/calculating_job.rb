@@ -3,8 +3,8 @@
 class Stats::CalculatingJob < ApplicationJob
   queue_as :stats
 
-  def perform(user_id, start_at: nil, end_at: nil)
-    Stats::Calculate.new(user_id, start_at:, end_at:).call
+  def perform(user_id, year, month)
+    Stats::CalculateMonth.new(user_id, year, month).call
 
     create_stats_updated_notification(user_id)
   rescue StandardError => e

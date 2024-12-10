@@ -9,7 +9,7 @@ RSpec.describe Immich::RequestPhotos do
     let(:user) do
       create(:user, settings: { 'immich_url' => 'http://immich.app', 'immich_api_key' => '123456' })
     end
-    let(:immich_data) do
+    let(:mock_immich_data) do
       {
         "albums": {
           "total": 0,
@@ -134,11 +134,11 @@ RSpec.describe Immich::RequestPhotos do
         stub_request(
           :any,
           'http://immich.app/api/search/metadata'
-        ).to_return(status: 200, body: immich_data, headers: {})
+        ).to_return(status: 200, body: mock_immich_data, headers: {})
       end
 
       it 'returns images and videos' do
-        expect(service.map { _1['type'] }.uniq).to eq(['IMAGE', 'VIDEO'])
+        expect(service.map { _1['type'] }.uniq).to eq(%w[IMAGE VIDEO])
       end
     end
 

@@ -15,9 +15,10 @@ class TripsController < ApplicationController
       :country
     ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
 
-    @photos = Rails.cache.fetch("trip_photos_#{@trip.id}", expires_in: 1.day) do
-      @trip.photos
+    @photo_previews = Rails.cache.fetch("trip_photos_#{@trip.id}", expires_in: 1.day) do
+      @trip.photo_previews
     end
+    @photo_sources = @trip.photo_sources
   end
 
   def new

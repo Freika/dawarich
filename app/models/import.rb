@@ -10,10 +10,17 @@ class Import < ApplicationRecord
 
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,
-    google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6
+    google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7
   }
 
   def process!
     Imports::Create.new(user, self).call
+  end
+
+  def years_and_months_tracked
+    points.order(:timestamp).pluck(:timestamp).map do |timestamp|
+      time = Time.zone.at(timestamp)
+      [time.year, time.month]
+    end.uniq
   end
 end

@@ -62,7 +62,7 @@ export default class extends Controller {
     this.markersLayer = L.layerGroup(this.markersArray);
     this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
 
-    this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings);
+    this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
@@ -137,10 +137,13 @@ export default class extends Controller {
         this.map.addControl(this.drawControl);
       }
       if (e.name === 'Photos') {
-        if (!this.userSettings.immich_url || !this.userSettings.immich_api_key) {
+        if (
+          (!this.userSettings.immich_url || !this.userSettings.immich_api_key) &&
+          (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)
+        ) {
           showFlashMessage(
             'error',
-            'Immich integration is not configured. Please check your settings.'
+            'Photos integration is not configured. Please check your integrations settings.'
           );
           return;
         }
@@ -212,7 +215,8 @@ export default class extends Controller {
       this.map,
       this.timezone,
       this.routeOpacity,
-      this.userSettings
+      this.userSettings,
+      this.distanceUnit
     );
 
     // Pan map to new location
@@ -684,7 +688,7 @@ export default class extends Controller {
 
     // Recreate layers only if they don't exist
     this.markersLayer = preserveLayers.Points       || L.layerGroup(createMarkersArray(this.markers, newSettings));
-    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings);
+    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = preserveLayers.Heatmap      || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
     this.fogOverlay = preserveLayers["Fog of War"]  || L.layerGroup();
     this.areasLayer = preserveLayers.Areas          || L.layerGroup();
@@ -799,7 +803,7 @@ export default class extends Controller {
   createPhotoMarker(photo) {
     if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
 
-    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}`;
+    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`;
 
     const icon = L.divIcon({
       className: 'photo-marker',
@@ -836,7 +840,7 @@ export default class extends Controller {
         <h3 class="font-bold">${photo.originalFileName}</h3>
         <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
         <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
-        ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
+        ${photo.type === 'video' ? '🎥 Video' : '📷 Photo'}
       </div>
     `;
     marker.bindPopup(popupContent);

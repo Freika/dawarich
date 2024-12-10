@@ -5,15 +5,123 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.18.3 - 2024-12-02
+# 0.19.4 - 2024-12-10
+
+⚠️ This release introduces a breaking change. ⚠️
+
+The `GET /api/v1/trips/:id/photos` endpoint now returns a different structure of the response:
+
+```diff
+{
+  id: 1,
+  latitude: 10,
+  longitude: 10,
+  localDateTime: "2024-01-01T00:00:00Z",
+  originalFileName: "photo.jpg",
+  city: "Berlin",
+  state: "Berlin",
+  country: "Germany",
+  type: "image",
++ orientation: "portrait",
+  source: "photoprism"
+}
+```
+
+### Fixed
+
+- Fixed a bug where the Photoprism photos were not being shown on the trip page.
+- Fixed a bug where the Immich photos were not being shown on the trip page.
+- Fixed a bug where the route popup was showing distance in kilometers instead of miles. #490
 
 ### Added
 
+- A link to the Photoprism photos on the trip page if there are any.
+- A `orientation` field in the Api::PhotoSerializer, hence the `GET /api/v1/photos` endpoint now includes the orientation of the photo. Valid values are `portrait` and `landscape`.
+- Examples for the `type`, `orientation` and `source` fields in the `GET /api/v1/photos` endpoint in the Swagger UI.
+- `DISABLE_TELEMETRY` env var to disable telemetry. More on telemetry: https://dawarich.app/docs/tutorials/telemetry
 - `reverse_geocoded_at` column added to the `points` table.
 
 ### Changed
 
 - On the Stats page, the "Reverse geocoding" section is now showing the number of points that were reverse geocoded based on `reverse_geocoded_at` column, value of which is based on the time when the point was reverse geocoded. If no geodata for the point is available, `reverse_geocoded_at` will be set anyway. Number of points that were reverse geocoded but no geodata is available for them is shown below the "Reverse geocoded" number.
+
+
+# 0.19.3 - 2024-12-06
+
+### Changed
+
+- Refactored stats calculation to calculate only necessary stats, instead of calculating all stats
+- Stats are now being calculated every 1 hour instead of 6 hours
+- List of years on the Map page is now being calculated based on user's points instead of stats. It's also being cached for 1 day due to the fact that it's usually a heavy operation based on the number of points.
+- Reverse-geocoding points is now being performed in batches of 1,000 points to prevent memory exhaustion.
+
+### Added
+
+- In-app notification about telemetry being enabled.
+
+# 0.19.2 - 2024-12-04
+
+## The Telemetry release
+
+Dawarich now can collect usage metrics and send them to InfluxDB. Before this release, the only metrics that could be somehow tracked by developers (only @Freika, as of now) were the number of stars on GitHub and the overall number of docker images being pulled, across all versions of Dawarich, non-splittable by version. New in-app telemetry will allow us to track more granular metrics, allowing me to make decisions based on facts, not just guesses.
+
+I'm aware about the privacy concerns, so I want to be very transparent about what data is being sent and how it's used.
+
+Data being sent:
+
+- Number of DAU (Daily Active Users)
+- App version
+- Instance ID (unique identifier of the Dawarich instance built by hashing the api key of the first user in the database)
+
+The data is being sent to a InfluxDB instance hosted by me and won't be shared with anyone.
+
+Basically this set of metrics allows me to see how many people are using Dawarich and what versions they are using. No other data is being sent, nor it gives me any knowledge about individual users or their data or activity.
+
+The telemetry is enabled by default, but it **can be disabled** by setting `DISABLE_TELEMETRY` env var to `true`. The dataset might change in the future, but any changes will be documented here in the changelog and in every release as well as on the [telemetry page](https://dawarich.app/docs/tutorials/telemetry) of the website docs.
+
+### Added
+
+- Telemetry feature. It's now collecting usage metrics and sending them to InfluxDB.
+
+# 0.19.1 - 2024-12-04
+
+### Fixed
+
+- Sidekiq is now being correctly exported to Prometheus with `PROMETHEUS_EXPORTER_ENABLED=true` env var in `dawarich_sidekiq` service.
+
+# 0.19.0 - 2024-12-04
+
+## The Photoprism integration release
+
+⚠️ This release introduces a breaking change. ⚠️
+The `GET /api/v1/photos` endpoint now returns following structure of the response:
+
+```json
+[
+  {
+    "id": "1",
+    "latitude": 11.22,
+    "longitude": 12.33,
+    "localDateTime": "2024-01-01T00:00:00Z",
+    "originalFileName": "photo.jpg",
+    "city": "Berlin",
+    "state": "Berlin",
+    "country": "Germany",
+    "type": "image", // "image" or "video"
+    "source": "photoprism" // "photoprism" or "immich"
+  }
+]
+```
+
+### Added
+
+- Photos from Photoprism are now can be shown on the map. To enable this feature, you need to provide your Photoprism instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).
+- Geodata is now can be imported from Photoprism to Dawarich. The "Import Photoprism data" button on the Imports page will start the import process.
+
+### Fixed
+
+- z-index on maps so they won't overlay notifications dropdown
+- Redis connectivity where it's not required
 
 # 0.18.2 - 2024-11-29
 

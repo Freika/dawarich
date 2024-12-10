@@ -57,7 +57,7 @@ class Immich::ImportGeodata
   end
 
   def log_no_data
-    Rails.logger.info 'No data found'
+    Rails.logger.info 'No geodata found for Immich'
   end
 
   def create_import_failed_notification(import_name)

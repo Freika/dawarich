@@ -162,7 +162,7 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
 
     const response = await fetch(`/api/v1/photos?${params}`);
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}, response: ${response.body}`);
     }
 
     const photos = await response.json();
@@ -171,10 +171,10 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
     const photoLoadPromises = photos.map(photo => {
       return new Promise((resolve) => {
         const img = new Image();
-        const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}`;
+        const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}&source=${photo.source}`;
 
         img.onload = () => {
-          createPhotoMarker(photo, userSettings.immich_url, photoMarkers, apiKey);
+          createPhotoMarker(photo, userSettings, photoMarkers, apiKey);
           resolve();
         };
 
@@ -216,11 +216,44 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
   }
 }
 
+function getPhotoLink(photo, userSettings) {
+  switch (photo.source) {
+    case 'immich':
+      const startOfDay = new Date(photo.localDateTime);
+      startOfDay.setHours(0, 0, 0, 0);
 
-export function createPhotoMarker(photo, immichUrl, photoMarkers,apiKey) {
-  if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
+      const endOfDay = new Date(photo.localDateTime);
+      endOfDay.setHours(23, 59, 59, 999);
 
-  const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}`;
+      const queryParams = {
+        takenAfter: startOfDay.toISOString(),
+        takenBefore: endOfDay.toISOString()
+      };
+      const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
+
+      return `${userSettings.immich_url}/search?query=${encodedQuery}`;
+    case 'photoprism':
+      return `${userSettings.photoprism_url}/library/browse?view=cards&year=${photo.localDateTime.split('-')[0]}&month=${photo.localDateTime.split('-')[1]}&order=newest&public=true&quality=3`;
+    default:
+      return '#'; // Default or error case
+  }
+}
+
+function getSourceUrl(photo, userSettings) {
+  switch (photo.source) {
+    case 'photoprism':
+      return userSettings.photoprism_url;
+    case 'immich':
+      return userSettings.immich_url;
+    default:
+      return '#'; // Default or error case
+  }
+}
+
+export function createPhotoMarker(photo, userSettings, photoMarkers, apiKey) {
+  if (!photo.latitude || !photo.longitude) return;
+
+  const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${apiKey}&source=${photo.source}`;
 
   const icon = L.divIcon({
     className: 'photo-marker',
@@ -229,25 +262,16 @@ export function createPhotoMarker(photo, immichUrl, photoMarkers,apiKey) {
   });
 
   const marker = L.marker(
-    [photo.exifInfo.latitude, photo.exifInfo.longitude],
+    [photo.latitude, photo.longitude],
     { icon }
   );
 
-  const startOfDay = new Date(photo.localDateTime);
-  startOfDay.setHours(0, 0, 0, 0);
+  const photo_link = getPhotoLink(photo, userSettings);
+  const source_url = getSourceUrl(photo, userSettings);
 
-  const endOfDay = new Date(photo.localDateTime);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  const queryParams = {
-    takenAfter: startOfDay.toISOString(),
-    takenBefore: endOfDay.toISOString()
-  };
-  const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
-  const immich_photo_link = `${immichUrl}/search?query=${encodedQuery}`;
   const popupContent = `
     <div class="max-w-xs">
-      <a href="${immich_photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
+      <a href="${photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
  onmouseout="this.firstElementChild.style.boxShadow = '';">
         <img src="${thumbnailUrl}"
             class="mb-2 rounded"
@@ -256,7 +280,8 @@ export function createPhotoMarker(photo, immichUrl, photoMarkers,apiKey) {
       </a>
       <h3 class="font-bold">${photo.originalFileName}</h3>
       <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
-      <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
+      <p>Location: ${photo.city}, ${photo.state}, ${photo.country}</p>
+      <p>Source: <a href="${source_url}" target="_blank">${photo.source}</a></p>
       ${photo.type === 'VIDEO' ? '🎥 Video' : '📷 Photo'}
     </div>
   `;

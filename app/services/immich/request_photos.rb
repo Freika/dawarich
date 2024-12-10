@@ -5,7 +5,7 @@ class Immich::RequestPhotos
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
     @user = user
-    @immich_api_base_url = "#{user.settings['immich_url']}/api/search/metadata"
+    @immich_api_base_url = URI.parse("#{user.settings['immich_url']}/api/search/metadata")
     @immich_api_key = user.settings['immich_api_key']
     @start_date = start_date
     @end_date = end_date
@@ -37,15 +37,7 @@ class Immich::RequestPhotos
 
       items = response.dig('assets', 'items')
 
-      if items.blank?
-        Rails.logger.debug('==== IMMICH RESPONSE WITH NO ITEMS ====')
-        Rails.logger.debug("START_DATE: #{start_date}")
-        Rails.logger.debug("END_DATE: #{end_date}")
-        Rails.logger.debug(response)
-        Rails.logger.debug('==== IMMICH RESPONSE WITH NO ITEMS ====')
-
-        break
-      end
+      break if items.blank?
 
       data << items
 
