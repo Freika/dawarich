@@ -22,7 +22,7 @@ The `GET /api/v1/trips/:id/photos` endpoint now returns a different structure of
   state: "Berlin",
   country: "Germany",
   type: "image",
-+  orientation: "portrait",
++ orientation: "portrait",
   source: "photoprism"
 }
 ```
