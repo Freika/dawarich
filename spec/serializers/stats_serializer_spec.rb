@@ -28,8 +28,12 @@ RSpec.describe StatsSerializer do
     context 'when the user has stats' do
       let!(:stats_in_2020) { create_list(:stat, 12, year: 2020, user:) }
       let!(:stats_in_2021) { create_list(:stat, 12, year: 2021, user:) }
-      let!(:points_in_2020) { create_list(:point, 85, :with_geodata, timestamp: Time.zone.local(2020), user:) }
-      let!(:points_in_2021) { create_list(:point, 95, timestamp: Time.zone.local(2021), user:) }
+      let!(:points_in_2020) do
+        create_list(:point, 85, :with_geodata, :reverse_geocoded, timestamp: Time.zone.local(2020), user:)
+      end
+      let!(:points_in_2021) do
+        create_list(:point, 95, timestamp: Time.zone.local(2021), user:)
+      end
       let(:expected_json) do
         {
           "totalDistanceKm": stats_in_2020.map(&:distance).sum + stats_in_2021.map(&:distance).sum,
