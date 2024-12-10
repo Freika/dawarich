@@ -37,6 +37,7 @@ The `GET /api/v1/trips/:id/photos` endpoint now returns a different structure of
 - A link to the Photoprism photos on the trip page if there are any.
 - A `orientation` field in the Api::PhotoSerializer, hence the `GET /api/v1/photos` endpoint now includes the orientation of the photo. Valid values are `portrait` and `landscape`.
 - Examples for the `type`, `orientation` and `source` fields in the `GET /api/v1/photos` endpoint in the Swagger UI.
+- `DISABLE_TELEMETRY` env var to disable telemetry. More on telemetry: https://dawarich.app/docs/tutorials/telemetry
 
 # 0.19.3 - 2024-12-06
 
