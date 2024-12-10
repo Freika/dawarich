@@ -18,8 +18,9 @@ class Import < ApplicationRecord
   end
 
   def years_and_months_tracked
-    points.order(:timestamp).map do |point|
-      [Time.zone.at(point.timestamp).year, Time.zone.at(point.timestamp).month]
+    points.order(:timestamp).pluck(:timestamp).map do |timestamp|
+      time = Time.zone.at(timestamp)
+      [time.year, time.month]
     end.uniq
   end
 end

@@ -36,9 +36,7 @@ class MapController < ApplicationController
     @distance ||= 0
 
     @coordinates.each_cons(2) do
-      @distance += Geocoder::Calculations.distance_between(
-        [_1[0], _1[1]], [_2[0], _2[1]], units: DISTANCE_UNIT
-      )
+      @distance += DistanceCalculator.new([_1[0], _1[1]], [_2[0], _2[1]]).call
     end
 
     @distance.round(1)

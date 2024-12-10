@@ -36,8 +36,8 @@
         </div>
 
         <!-- Photos Grid Section -->
-        <% if @photos.any? %>
-          <% @photos.each_slice(4) do |slice| %>
+        <% if @photo_previews.any? %>
+          <% @photo_previews.each_slice(4) do |slice| %>
             <div class="h-32 flex gap-4 mt-4 justify-center">
               <% slice.each do |photo| %>
                 <div class="flex-1 h-full overflow-hidden rounded-lg transition-transform duration-300 hover:scale-105 hover:shadow-lg">
@@ -52,9 +52,13 @@
           <% end %>
         <% end %>
 
-        <div class="text-center mt-6">
-          <%= link_to "More photos on Immich", immich_search_url(current_user.settings['immich_url'], @trip.started_at, @trip.ended_at), class: "btn btn-primary", target: '_blank' %>
-        </div>
+        <% if @photo_sources.any? %>
+          <div class="text-center mt-6">
+            <% @photo_sources.each do |source| %>
+              <%= link_to "More photos on #{source}", photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at), class: "btn btn-primary mt-2", target: '_blank' %>
+            <% end %>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>

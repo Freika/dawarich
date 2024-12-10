@@ -366,8 +366,19 @@ paths:
                       type: string
                     type:
                       type: string
+                      enum:
+                      - image
+                      - video
+                    orientation:
+                      type: string
+                      enum:
+                      - portrait
+                      - landscape
                     source:
                       type: string
+                      enum:
+                      - immich
+                      - photoprism
                   required:
                   - id
                   - latitude
@@ -429,8 +440,24 @@ paths:
                     type: string
                   type:
                     type: string
+                    enum:
+                    - IMAGE
+                    - VIDEO
+                    - image
+                    - video
+                    - raw
+                    - live
+                    - animated
+                  orientation:
+                    type: string
+                    enum:
+                    - portrait
+                    - landscape
                   source:
                     type: string
+                    enum:
+                    - immich
+                    - photoprism
         '404':
           description: photo not found
   "/api/v1/points":
