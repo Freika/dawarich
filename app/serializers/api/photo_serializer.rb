@@ -17,6 +17,7 @@ class Api::PhotoSerializer
       state: state,
       country: country,
       type: type,
+      orientation: orientation,
       source: source
     }
   end
@@ -59,5 +60,14 @@ class Api::PhotoSerializer
 
   def type
     (photo['type'] || photo['Type']).downcase
+  end
+
+  def orientation
+    case source
+    when 'immich'
+      photo.dig('exifInfo', 'orientation') == '6' ? 'portrait' : 'landscape'
+    when 'photoprism'
+      photo['Portrait'] ? 'portrait' : 'landscape'
+    end
   end
 end

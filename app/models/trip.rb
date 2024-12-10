@@ -18,25 +18,15 @@ class Trip < ApplicationRecord
   end
 
   def photos
-    return [] if user.settings['immich_url'].blank? || user.settings['immich_api_key'].blank?
+    return [] unless can_fetch_photos?
 
-    immich_photos = Immich::RequestPhotos.new(
-      user,
-      start_date: started_at.to_date.to_s,
-      end_date: ended_at.to_date.to_s
-    ).call.reject { |asset| asset['type'].downcase == 'video' }
+    filtered_photos.sample(12)
+                         .sort_by { |photo| photo['localDateTime'] }
+                         .map { |asset| photo_thumbnail(asset) }
+  end
 
-    # let's count what photos are more: vertical or horizontal and select the ones that are more
-    vertical_photos = immich_photos.select { _1['exifInfo']['orientation'] == '6' }
-    horizontal_photos = immich_photos.select { _1['exifInfo']['orientation'] == '3' }
-
-    # this is ridiculous, but I couldn't find my way around frontend
-    # to show all photos in the same height
-    photos = vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
-
-    photos.sample(12).sort_by { _1['localDateTime'] }.map do |asset|
-      { url: "/api/v1/photos/#{asset['id']}/thumbnail.jpg?api_key=#{user.api_key}" }
-    end
+  def photos_sources
+    filtered_photos.map { _1[:source] }.uniq
   end
 
   private
@@ -54,4 +44,32 @@ class Trip < ApplicationRecord
 
     self.distance = distance.round
   end
+
+  def can_fetch_photos?
+    user.immich_integration_configured? || user.photoprism_integration_configured?
+  end
+
+  def filtered_photos
+    return @filtered_photos if defined?(@filtered_photos)
+
+    photos = Photos::Search.new(
+      user,
+      start_date: started_at.to_date.to_s,
+      end_date: ended_at.to_date.to_s
+    ).call
+
+    @filtered_photos = select_dominant_orientation(photos)
+  end
+
+  def select_dominant_orientation(photos)
+    vertical_photos = photos.select { |photo| photo[:orientation] == 'portrait' }
+    horizontal_photos = photos.select { |photo| photo[:orientation] == 'landscape' }
+
+    vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
+  end
+
+  def photo_thumbnail(asset)
+    { url: "/api/v1/photos/#{asset[:id]}/thumbnail.jpg?api_key=#{user.api_key}&source=#{asset[:source]}" }
+  end
 end
+
