@@ -73,6 +73,7 @@ RSpec.describe Api::PhotoSerializer do
           state: 'Berlin',
           country: 'Germany',
           type: 'image',
+          orientation: 'portrait',
           source: 'immich'
         )
       end
@@ -152,6 +153,7 @@ RSpec.describe Api::PhotoSerializer do
           state: 'Unknown',
           country: 'zz',
           type: 'image',
+          orientation: 'landscape',
           source: 'photoprism'
         )
       end

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.19.4 - 2024-12-10
+
+### Fixed
+
+- Fixed a bug where the Photoprism photos were not being shown on the trip page.
+- Fixed a bug where the Immich photos were not being shown on the trip page.
+
+### Added
+
+- A link to the Photoprism photos on the trip page if there are any.
+- A `orientation` field in the Api::PhotoSerializer, hence the `GET /api/v1/photos` endpoint now includes the orientation of the photo. Valid values are `portrait` and `landscape`.
+
 # 0.19.3 - 2024-12-06
 
 ### Changed

@@ -74,7 +74,8 @@ RSpec.describe Photos::Search do
           state: nil,
           country: nil,
           type: 'image',
-          source: 'immich'
+          source: 'immich',
+          orientation: 'landscape'
         }
       end
       let(:serialized_photoprism) do
@@ -88,7 +89,8 @@ RSpec.describe Photos::Search do
           state: nil,
           country: nil,
           type: 'image',
-          source: 'photoprism'
+          source: 'photoprism',
+          orientation: 'landscape'
         }
       end
 

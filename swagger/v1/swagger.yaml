@@ -366,6 +366,8 @@ paths:
                       type: string
                     type:
                       type: string
+                    orientation:
+                      type: string
                     source:
                       type: string
                   required:
@@ -431,6 +433,11 @@ paths:
                     type: string
                   source:
                     type: string
+                  orientation:
+                    type: string
+                    enum:
+                    - portrait
+                    - landscape
         '404':
           description: photo not found
   "/api/v1/points":

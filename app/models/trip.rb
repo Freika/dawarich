@@ -17,19 +17,26 @@ class Trip < ApplicationRecord
     points.pluck(:country).uniq.compact
   end
 
-  def photos
-    return [] unless can_fetch_photos?
-
-    filtered_photos.sample(12)
-                         .sort_by { |photo| photo['localDateTime'] }
-                         .map { |asset| photo_thumbnail(asset) }
+  def photo_previews
+    @photo_previews ||= select_dominant_orientation(photos).sample(12)
   end
 
-  def photos_sources
-    filtered_photos.map { _1[:source] }.uniq
+  def photo_sources
+    @photo_sources ||= photos.map { _1[:source] }.uniq
   end
 
   private
+
+  def photos
+    @photos ||= Trips::Photos.new(self, user).call
+  end
+
+  def select_dominant_orientation(photos)
+    vertical_photos = photos.select { |photo| photo[:orientation] == 'portrait' }
+    horizontal_photos = photos.select { |photo| photo[:orientation] == 'landscape' }
+
+    vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
+  end
 
   def calculate_distance
     distance = 0
@@ -44,32 +51,4 @@ class Trip < ApplicationRecord
 
     self.distance = distance.round
   end
-
-  def can_fetch_photos?
-    user.immich_integration_configured? || user.photoprism_integration_configured?
-  end
-
-  def filtered_photos
-    return @filtered_photos if defined?(@filtered_photos)
-
-    photos = Photos::Search.new(
-      user,
-      start_date: started_at.to_date.to_s,
-      end_date: ended_at.to_date.to_s
-    ).call
-
-    @filtered_photos = select_dominant_orientation(photos)
-  end
-
-  def select_dominant_orientation(photos)
-    vertical_photos = photos.select { |photo| photo[:orientation] == 'portrait' }
-    horizontal_photos = photos.select { |photo| photo[:orientation] == 'landscape' }
-
-    vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
-  end
-
-  def photo_thumbnail(asset)
-    { url: "/api/v1/photos/#{asset[:id]}/thumbnail.jpg?api_key=#{user.api_key}&source=#{asset[:source]}" }
-  end
 end
-

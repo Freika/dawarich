@@ -41,7 +41,7 @@ RSpec.describe Trip, type: :model do
     end
   end
 
-  describe '#photos' do
+  describe '#photo_previews' do
     let(:photo_data) do
       [
         {
@@ -80,8 +80,18 @@ RSpec.describe Trip, type: :model do
     let(:trip) { create(:trip, user:) }
     let(:expected_photos) do
       [
-        { url: "/api/v1/photos/456/thumbnail.jpg?api_key=#{user.api_key}" },
-        { url: "/api/v1/photos/789/thumbnail.jpg?api_key=#{user.api_key}" }
+        {
+          id: '456',
+          url: "/api/v1/photos/456/thumbnail.jpg?api_key=#{user.api_key}&source=immich",
+          source: 'immich',
+          orientation: 'portrait'
+        },
+        {
+          id: '789',
+          url: "/api/v1/photos/789/thumbnail.jpg?api_key=#{user.api_key}&source=immich",
+          source: 'immich',
+          orientation: 'portrait'
+        }
       ]
     end
 
@@ -93,7 +103,7 @@ RSpec.describe Trip, type: :model do
       let(:settings) { {} }
 
       it 'returns an empty array' do
-        expect(trip.photos).to eq([])
+        expect(trip.photo_previews).to eq([])
       end
     end
 
@@ -106,7 +116,7 @@ RSpec.describe Trip, type: :model do
       end
 
       it 'returns the photos' do
-        expect(trip.photos).to eq(expected_photos)
+        expect(trip.photo_previews).to eq(expected_photos)
       end
     end
   end

@@ -37,15 +37,7 @@ class Immich::RequestPhotos
 
       items = response.dig('assets', 'items')
 
-      if items.blank?
-        Rails.logger.debug('==== IMMICH RESPONSE WITH NO ITEMS ====')
-        Rails.logger.debug("START_DATE: #{start_date}")
-        Rails.logger.debug("END_DATE: #{end_date}")
-        Rails.logger.debug(response)
-        Rails.logger.debug('==== IMMICH RESPONSE WITH NO ITEMS ====')
-
-        break
-      end
+      break if items.blank?
 
       data << items
 
