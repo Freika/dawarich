@@ -31,6 +31,7 @@ The `GET /api/v1/trips/:id/photos` endpoint now returns a different structure of
 
 - Fixed a bug where the Photoprism photos were not being shown on the trip page.
 - Fixed a bug where the Immich photos were not being shown on the trip page.
+- Fixed a bug where the route popup was showing distance in kilometers instead of miles. #490
 
 ### Added
 
