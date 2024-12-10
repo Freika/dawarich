@@ -441,8 +441,13 @@ paths:
                   type:
                     type: string
                     enum:
+                    - IMAGE
+                    - VIDEO
                     - image
                     - video
+                    - raw
+                    - live
+                    - animated
                   orientation:
                     type: string
                     enum:

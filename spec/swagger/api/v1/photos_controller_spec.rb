@@ -143,7 +143,7 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
                  city: { type: :string },
                  state: { type: :string },
                  country: { type: :string },
-                 type: { type: :string, enum: %w[image video] },
+                 type: { type: :string, enum: %w[IMAGE VIDEO image video raw live animated] },
                  orientation: { type: :string, enum: %w[portrait landscape] },
                  source: { type: :string, enum: %w[immich photoprism] }
                }
