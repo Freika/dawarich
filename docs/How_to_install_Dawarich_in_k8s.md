@@ -7,6 +7,7 @@
 - Working Postgres and Redis instances. In this example Postgres lives in 'db' namespace and Redis in 'redis' namespace.
 - Ngingx ingress controller with Letsencrypt integeation.
 - This example uses 'example.com' as a domain name, you want to change it to your own.
+- This will work on IPv4 and IPv6 Single Stack clusters, as well as Dual Stack deployments.
 
 ## Installation
 
@@ -149,7 +150,7 @@ spec:
           command:
             - "dev-entrypoint.sh"
           args:
-            - "bin/rails server -p 3000 -b 0.0.0.0"
+            - "bin/rails server -p 3000 -b ::"
           resources:
             requests:
               memory: "1Gi"
