@@ -116,7 +116,9 @@ RSpec.describe Trip, type: :model do
       end
 
       it 'returns the photos' do
-        expect(trip.photo_previews).to eq(expected_photos)
+        expect(trip.photo_previews).to include(expected_photos[0])
+        expect(trip.photo_previews).to include(expected_photos[1])
+        expect(trip.photo_previews.size).to eq(2)
       end
     end
   end

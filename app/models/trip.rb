@@ -35,6 +35,8 @@ class Trip < ApplicationRecord
     vertical_photos = photos.select { |photo| photo[:orientation] == 'portrait' }
     horizontal_photos = photos.select { |photo| photo[:orientation] == 'landscape' }
 
+    # this is ridiculous, but I couldn't find my way around frontend
+    # to show all photos in the same height
     vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
   end
 
@@ -42,11 +44,7 @@ class Trip < ApplicationRecord
     distance = 0
 
     points.each_cons(2) do |point1, point2|
-      distance_between = Geocoder::Calculations.distance_between(
-        point1.to_coordinates, point2.to_coordinates, units: ::DISTANCE_UNIT
-      )
-
-      distance += distance_between
+      distance += DistanceCalculator.new(point1, point2).call
     end
 
     self.distance = distance.round

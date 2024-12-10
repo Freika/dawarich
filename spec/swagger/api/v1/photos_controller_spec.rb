@@ -110,9 +110,9 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
                    city: { type: :string },
                    state: { type: :string },
                    country: { type: :string },
-                   type: { type: :string },
-                   orientation: { type: :string },
-                   source: { type: :string }
+                   type: { type: :string, enum: %w[image video] },
+                   orientation: { type: :string, enum: %w[portrait landscape] },
+                   source: { type: :string, enum: %w[immich photoprism] }
                  },
                  required: %w[id latitude longitude localDateTime originalFileName city state country type source]
                }
@@ -143,9 +143,9 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
                  city: { type: :string },
                  state: { type: :string },
                  country: { type: :string },
-                 type: { type: :string },
-                 source: { type: :string },
-                 orientation: { type: :string, enum: %w[portrait landscape] }
+                 type: { type: :string, enum: %w[image video] },
+                 orientation: { type: :string, enum: %w[portrait landscape] },
+                 source: { type: :string, enum: %w[immich photoprism] }
                }
 
         let(:id) { '7fe486e3-c3ba-4b54-bbf9-1281b39ed15c' }

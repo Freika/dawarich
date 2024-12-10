@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.19.4 - 2024-12-10
 
+⚠️ This release introduces a breaking change. ⚠️
+
+The `GET /api/v1/trips/:id/photos` endpoint now returns a different structure of the response:
+
+```diff
+{
+  id: 1,
+  latitude: 10,
+  longitude: 10,
+  localDateTime: "2024-01-01T00:00:00Z",
+  originalFileName: "photo.jpg",
+  city: "Berlin",
+  state: "Berlin",
+  country: "Germany",
+  type: "image",
++  orientation: "portrait",
+  source: "photoprism"
+}
+```
+
 ### Fixed
 
 - Fixed a bug where the Photoprism photos were not being shown on the trip page.
@@ -16,6 +36,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - A link to the Photoprism photos on the trip page if there are any.
 - A `orientation` field in the Api::PhotoSerializer, hence the `GET /api/v1/photos` endpoint now includes the orientation of the photo. Valid values are `portrait` and `landscape`.
+- Examples for the `type`, `orientation` and `source` fields in the `GET /api/v1/photos` endpoint in the Swagger UI.
 
 # 0.19.3 - 2024-12-06
 
