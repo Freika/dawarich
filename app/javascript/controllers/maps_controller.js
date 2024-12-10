@@ -62,7 +62,7 @@ export default class extends Controller {
     this.markersLayer = L.layerGroup(this.markersArray);
     this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
 
-    this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings);
+    this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
@@ -215,7 +215,8 @@ export default class extends Controller {
       this.map,
       this.timezone,
       this.routeOpacity,
-      this.userSettings
+      this.userSettings,
+      this.distanceUnit
     );
 
     // Pan map to new location
@@ -687,7 +688,7 @@ export default class extends Controller {
 
     // Recreate layers only if they don't exist
     this.markersLayer = preserveLayers.Points       || L.layerGroup(createMarkersArray(this.markers, newSettings));
-    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings);
+    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = preserveLayers.Heatmap      || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
     this.fogOverlay = preserveLayers["Fog of War"]  || L.layerGroup();
     this.areasLayer = preserveLayers.Areas          || L.layerGroup();
