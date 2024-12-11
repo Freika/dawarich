@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Fixed a bug where upon deleting a point on the map, the confirmation dialog was shown multiple times and the point was not being deleted from the map until the page was reloaded.
+- Fixed a bug where upon deleting a point on the map, the confirmation dialog was shown multiple times and the point was not being deleted from the map until the page was reloaded. #435
 
 ### Changed
 
