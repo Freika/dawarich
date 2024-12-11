@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2024_12_05_160055) do
+ActiveRecord::Schema[7.2].define(version: 2024_12_11_113119) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -232,6 +232,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_12_05_160055) do
     t.bigint "place_id"
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["place_id"], name: "index_visits_on_place_id"
+    t.index ["started_at"], name: "index_visits_on_started_at"
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 

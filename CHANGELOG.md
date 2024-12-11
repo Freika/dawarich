@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.19.6 - 2024-12-11
+
+### Fixed
+
+- Flash messages are now being removed after 5 seconds.
+- Fixed broken migration that was preventing the app from starting.
+- Visits page is now loading a lot faster than before.
+
+### Changed
+
+- Places page is now accessible from the Visits & Places tab on the navbar.
+
 # 0.19.5 - 2024-12-10
 
 ### Fixed
