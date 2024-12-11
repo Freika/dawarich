@@ -15,22 +15,24 @@ RSpec.describe TelemetrySendingJob, type: :job do
       allow(send_service).to receive(:call)
     end
 
-    it 'gathers telemetry data and sends it' do
-      described_class.perform_now
-
-      expect(gather_service).to have_received(:call)
-      expect(send_service).to have_received(:call)
-    end
-
-    context 'when DISABLE_TELEMETRY is set to true' do
-      before do
-        stub_const('ENV', ENV.to_h.merge('DISABLE_TELEMETRY' => 'true'))
-      end
-
+    context 'with default env' do
       it 'does not send telemetry data' do
         described_class.perform_now
 
         expect(send_service).not_to have_received(:call)
+      end
+    end
+
+    context 'when ENABLE_TELEMETRY is set to true' do
+      before do
+        stub_const('ENV', ENV.to_h.merge('ENABLE_TELEMETRY' => 'true'))
+      end
+
+        it 'gathers telemetry data and sends it' do
+        described_class.perform_now
+
+        expect(gather_service).to have_received(:call)
+        expect(send_service).to have_received(:call)
       end
     end
   end

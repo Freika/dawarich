@@ -13,12 +13,10 @@ class VisitsController < ApplicationController
              .where(status:)
              .includes(%i[suggested_places area])
              .order(started_at: order_by)
-             .group_by { |visit| visit.started_at.to_date }
-             .map { |k, v| { date: k, visits: v } }
 
     @suggested_visits_count = current_user.visits.suggested.count
 
-    @visits = Kaminari.paginate_array(visits).page(params[:page]).per(10)
+    @visits = visits.page(params[:page]).per(10)
   end
 
   def update

@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.19.6 - 2024-12-11
+
+⚠️ This release introduces a breaking change. ⚠️
+
+The `dawarich_shared` volume now being mounted to `/data` instead of `/var/shared` within the container. It fixes Redis data being lost on container restart.
+
+To change this, you need to update the `docker-compose.yml` file:
+
+```diff
+  dawarich_redis:
+    image: redis:7.0-alpine
+    container_name: dawarich_redis
+    command: redis-server
+    volumes:
++     - dawarich_shared:/data
+    restart: always
+    healthcheck:
+```
+
+Telemetry is now disabled by default. To enable it, you need to set `ENABLE_TELEMETRY` env var to `true`. For those who have telemetry enabled using `DISABLE_TELEMETRY` env var set to `false`, telemetry is now disabled by default.
+
+### Fixed
+
+- Flash messages are now being removed after 5 seconds.
+- Fixed broken migration that was preventing the app from starting.
+- Visits page is now loading a lot faster than before.
+- Redis data should now be preserved on container restart.
+- Fixed a bug where export files could have double extension, e.g. `file.gpx.gpx`.
+
+### Changed
+
+- Places page is now accessible from the Visits & Places tab on the navbar.
+- Exporting process is now being logged.
+- `ENABLE_TELEMETRY` env var is now used instead of `DISABLE_TELEMETRY` to enable/disable telemetry.
+
 # 0.19.5 - 2024-12-10
 
 ### Fixed

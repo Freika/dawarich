@@ -101,6 +101,10 @@ module ApplicationHelper
     'tab-active' if current_page?(link_path)
   end
 
+  def active_visit_places_tab?(controller_name)
+    'tab-active' if current_page?(controller: controller_name)
+  end
+
   def notification_link_color(notification)
     return 'text-gray-600' if notification.read?
 
