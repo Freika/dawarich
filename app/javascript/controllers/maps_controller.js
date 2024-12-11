@@ -958,8 +958,9 @@ export default class extends Controller {
       } else {
         this.map.addControl(this.rightPanel);
         localStorage.setItem('mapPanelOpen', 'true');
+        // Fetch visited cities when panel is opened
+        this.fetchAndDisplayVisitedCities();
       }
-
       return;
     }
 
@@ -1008,6 +1009,7 @@ export default class extends Controller {
               `).join('')}
             </div>
           </div>
+
         </div>
       `;
 
@@ -1141,6 +1143,24 @@ export default class extends Controller {
 
       L.DomEvent.disableClickPropagation(div);
 
+      // Add container for visited cities
+      div.innerHTML += `
+        <div id="visited-cities-container" class="mt-4">
+          <h3 class="text-lg font-bold mb-2">Visited cities</h3>
+          <div id="visited-cities-list" class="space-y-2"
+               style="max-height: 300px; overflow-y: auto; padding-right: 10px;">
+            <p class="text-gray-500">Loading visited places...</p>
+          </div>
+        </div>
+      `;
+
+      // Prevent map zoom when scrolling the cities list
+      const citiesList = div.querySelector('#visited-cities-list');
+      L.DomEvent.disableScrollPropagation(citiesList);
+
+      // Fetch visited cities when panel is first created
+      this.fetchAndDisplayVisitedCities();
+
       return div;
     };
 
@@ -1186,6 +1206,72 @@ export default class extends Controller {
     const startDate = `${year}-01-01T00:00`;
     const endDate = `${year}-12-31T23:59`;
     return `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`;
+  }
+
+  async fetchAndDisplayVisitedCities() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const startAt = urlParams.get('start_at') || new Date().toISOString();
+    const endAt = urlParams.get('end_at') || new Date().toISOString();
+
+    try {
+      const response = await fetch(`/api/v1/countries/visited_cities?api_key=${this.apiKey}&start_at=${startAt}&end_at=${endAt}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      this.displayVisitedCities(data.data);
+    } catch (error) {
+      console.error('Error fetching visited cities:', error);
+      const container = document.getElementById('visited-cities-list');
+      if (container) {
+        container.innerHTML = '<p class="text-red-500">Error loading visited places</p>';
+      }
+    }
+  }
+
+  displayVisitedCities(citiesData) {
+    const container = document.getElementById('visited-cities-list');
+    if (!container) return;
+
+    if (!citiesData || citiesData.length === 0) {
+      container.innerHTML = '<p class="text-gray-500">No places visited during this period</p>';
+      return;
+    }
+
+    const html = citiesData.map(country => `
+      <div class="mb-4">
+        <h4 class="font-bold text-md">${country.country}</h4>
+        <ul class="ml-4 space-y-1">
+          ${country.cities.map(city => `
+            <li class="text-sm">
+              ${city.city}
+              <span class="text-gray-500">
+                (${new Date(city.timestamp * 1000).toLocaleDateString()})
+              </span>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `).join('');
+
+    container.innerHTML = html;
+  }
+
+  formatDuration(seconds) {
+    const days = Math.floor(seconds / (24 * 60 * 60));
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    }
+    return `${hours}h`;
   }
 }
 
