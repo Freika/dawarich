@@ -13,11 +13,14 @@ class Stats::CalculatingJob < ApplicationJob
 
   private
 
-  def create_stats_updated_notification(user_id)
+  def create_stats_updated_notification(user_id, year, month)
     user = User.find(user_id)
 
     Notifications::Create.new(
-      user:, kind: :info, title: 'Stats updated', content: 'Stats updated'
+      user:,
+      kind: :info,
+      title: "Stats updated: #{year}-#{month}",
+      content: "Stats updated for #{year}-#{month}"
     ).call
   end
 
