@@ -8,7 +8,8 @@ export function createMarkersArray(markersData, userSettings) {
       const [lat, lon] = marker;
 
       const popupContent = createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit);
-      return L.circleMarker([lat, lon], { radius: 4 }).bindPopup(popupContent);
+      let markerColor = marker[5] < 0 ? "orange" : "blue";
+      return L.circleMarker([lat, lon], { radius: 4, color: markerColor }).bindPopup(popupContent);
     });
   }
 }
@@ -40,7 +41,8 @@ export function createSimplifiedMarkers(markersData) {
   // Now create markers for the simplified data
   return simplifiedMarkers.map((marker) => {
     const [lat, lon] = marker;
-    const popupContent = this.createPopupContent(marker);
-    return L.circleMarker([lat, lon], { radius: 4 }).bindPopup(popupContent);
+    const popupContent = createPopupContent(marker);
+    let markerColor = marker[5] < 0 ? "orange" : "blue";
+    return L.circleMarker([lat, lon], { radius: 4, color: markerColor }).bindPopup(popupContent);
   });
 }
