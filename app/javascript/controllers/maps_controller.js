@@ -174,6 +174,9 @@ export default class extends Controller {
   }
 
   disconnect() {
+    if (this.handleDeleteClick) {
+      document.removeEventListener('click', this.handleDeleteClick);
+    }
     this.map.remove();
   }
 
@@ -331,11 +334,10 @@ export default class extends Controller {
           }
         }
       };
-    }
 
-    // Add the listener only if it hasn't been added before
-    document.removeEventListener('click', this.handleDeleteClick);
-    document.addEventListener('click', this.handleDeleteClick);
+      // Add the listener only if it hasn't been added before
+      document.addEventListener('click', this.handleDeleteClick);
+    }
 
     // Add an event listener for base layer change in Leaflet
     this.map.on('baselayerchange', (event) => {

@@ -116,7 +116,7 @@ module ApplicationHelper
   end
 
   def speed_text_color(speed)
-    return if speed.to_i >= 0
+    return 'text-default' if speed.to_i >= 0
 
     'text-red-500'
   end
