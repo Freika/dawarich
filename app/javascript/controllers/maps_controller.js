@@ -992,18 +992,29 @@ export default class extends Controller {
       // Get current date from URL query parameters
       const urlParams = new URLSearchParams(window.location.search);
       const startDate = urlParams.get('start_at');
-      const currentYear = startDate ? new Date(startDate).getFullYear().toString() : null;
-      const currentMonth = startDate ? allMonths[new Date(startDate).getMonth()] : null;
+      const currentYear = startDate
+        ? new Date(startDate).getFullYear().toString()
+        : new Date().getFullYear().toString();
+      const currentMonth = startDate
+        ? allMonths[new Date(startDate).getMonth()]
+        : allMonths[new Date().getMonth()];
 
       // Initially create select with loading state and current year if available
       div.innerHTML = `
         <div class="panel-content">
           <div id='years-nav'>
-            <select id="year-select" class="select select-bordered w-full max-w-xs mb-4">
-              ${currentYear
-                ? `<option value="${currentYear}" selected>${currentYear}</option>`
-                : '<option disabled selected>Loading years...</option>'}
-            </select>
+            <div class="flex gap-2 mb-4">
+              <select id="year-select" class="select select-bordered w-1/2 max-w-xs">
+                ${currentYear
+                  ? `<option value="${currentYear}" selected>${currentYear}</option>`
+                  : '<option disabled selected>Loading years...</option>'}
+              </select>
+              <a href="${this.getWholeYearLink()}"
+                 id="whole-year-link"
+                 class="btn btn-default">
+                Whole year
+              </a>
+            </div>
 
             <div class='grid grid-cols-3 gap-3' id="months-grid">
               ${allMonths.map(month => `
@@ -1060,8 +1071,8 @@ export default class extends Controller {
           const updateMonthLinks = (selectedYear, availableMonths) => {
             // Get current date from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
-            const startDate = urlParams.get('start_at') ? new Date(urlParams.get('start_at')) : null;
-            const endDate = urlParams.get('end_at') ? new Date(urlParams.get('end_at')) : null;
+            const startDate = urlParams.get('start_at') ? new Date(urlParams.get('start_at')) : new Date();
+            const endDate = urlParams.get('end_at') ? new Date(urlParams.get('end_at')) : new Date();
 
             allMonths.forEach((month, index) => {
               const monthLink = div.querySelector(`a[data-month-name="${month}"]`);
@@ -1115,6 +1126,14 @@ export default class extends Controller {
             const selectedOption = event.target.selectedOptions[0];
             const selectedYear = selectedOption.value;
             const availableMonths = JSON.parse(selectedOption.dataset.months || '[]');
+
+            // Update whole year link with selected year
+            const wholeYearLink = document.getElementById('whole-year-link');
+            const startDate = `${selectedYear}-01-01T00:00`;
+            const endDate = `${selectedYear}-12-31T23:59`;
+            const href = `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`;
+            wholeYearLink.setAttribute('href', href);
+
             console.log('Year changed to:', selectedYear);
             updateMonthLinks(selectedYear, availableMonths);
           });
@@ -1178,6 +1197,29 @@ export default class extends Controller {
       chunked.push(array.slice(i, i + size));
     }
     return chunked;
+  }
+
+  getWholeYearLink() {
+    // First try to get year from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    let year;
+
+    if (urlParams.has('start_at')) {
+      year = new Date(urlParams.get('start_at')).getFullYear();
+    } else {
+      // If no URL params, try to get year from start_at input
+      const startAtInput = document.querySelector('input#start_at');
+      if (startAtInput && startAtInput.value) {
+        year = new Date(startAtInput.value).getFullYear();
+      } else {
+        // If no input value, use current year
+        year = new Date().getFullYear();
+      }
+    }
+
+    const startDate = `${year}-01-01T00:00`;
+    const endDate = `${year}-12-31T23:59`;
+    return `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`;
   }
 }
 
