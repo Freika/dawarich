@@ -180,14 +180,7 @@ export default class extends Controller {
     const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
     const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
 
-    console.log('Initial state check:', {
-      isPanelOpen,
-      hasDateParams,
-      localStorageValue: localStorage.getItem('mapPanelOpen')
-    });
-
     if (isPanelOpen || hasDateParams) {
-      console.log('Opening panel because:', { isPanelOpen, hasDateParams });
       this.toggleRightPanel();
     }
   }
@@ -199,7 +192,7 @@ export default class extends Controller {
     // Store panel state before disconnecting
     if (this.rightPanel) {
       const finalState = this.rightPanel._map ? 'true' : 'false';
-      console.log('Disconnecting, saving panel state:', finalState);
+
       localStorage.setItem('mapPanelOpen', finalState);
     }
     this.map.remove();
@@ -932,9 +925,8 @@ export default class extends Controller {
     const TogglePanelControl = L.Control.extend({
       onAdd: (map) => {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
-        button.innerHTML = '📊'; // You can use any icon or text here
+        button.innerHTML = '📅';
 
-        // Style the button similarly to the settings button
         button.style.backgroundColor = 'white';
         button.style.width = '48px';
         button.style.height = '48px';
@@ -959,30 +951,18 @@ export default class extends Controller {
   }
 
   toggleRightPanel() {
-    console.log('toggleRightPanel called, current state:', {
-      hasPanel: !!this.rightPanel,
-      isPanelOnMap: this.rightPanel?._map,
-      localStorageValue: localStorage.getItem('mapPanelOpen')
-    });
-
     if (this.rightPanel) {
       if (this.rightPanel._map) {
-        console.log('Removing panel from map');
         this.map.removeControl(this.rightPanel);
         localStorage.setItem('mapPanelOpen', 'false');
       } else {
-        console.log('Adding existing panel to map');
         this.map.addControl(this.rightPanel);
         localStorage.setItem('mapPanelOpen', 'true');
       }
-      console.log('After toggle:', {
-        isPanelOnMap: this.rightPanel._map,
-        localStorageValue: localStorage.getItem('mapPanelOpen')
-      });
+
       return;
     }
 
-    console.log('Creating new panel');
     this.rightPanel = L.control({ position: 'topright' });
 
     this.rightPanel.onAdd = () => {
@@ -1011,7 +991,8 @@ export default class extends Controller {
               </select>
               <a href="${this.getWholeYearLink()}"
                  id="whole-year-link"
-                 class="btn btn-default">
+                 class="btn btn-default"
+                 style="color: rgb(116 128 255) !important;">
                 Whole year
               </a>
             </div>
@@ -1019,9 +1000,9 @@ export default class extends Controller {
             <div class='grid grid-cols-3 gap-3' id="months-grid">
               ${allMonths.map(month => `
                 <a href="#"
-                   class="btn btn-default disabled ${month === currentMonth ? 'btn-active' : ''}"
+                   class="btn btn-primary disabled ${month === currentMonth ? 'btn-active' : ''}"
                    data-month-name="${month}"
-                   style="pointer-events: none; opacity: 0.6;">
+                   style="pointer-events: none; opacity: 0.6; color: rgb(116 128 255) !important;">
                   ${month}
                 </a>
               `).join('')}
@@ -1134,7 +1115,6 @@ export default class extends Controller {
             const href = `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`;
             wholeYearLink.setAttribute('href', href);
 
-            console.log('Year changed to:', selectedYear);
             updateMonthLinks(selectedYear, availableMonths);
           });
 
@@ -1145,7 +1125,6 @@ export default class extends Controller {
           }
         })
         .catch(error => {
-          console.error('Error fetching years:', error);
           const yearSelect = document.getElementById('year-select');
           yearSelect.innerHTML = '<option disabled selected>Error loading years</option>';
         });
@@ -1170,25 +1149,12 @@ export default class extends Controller {
     const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
     const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
 
-    console.log('Deciding whether to show new panel:', {
-      isPanelOpen,
-      hasDateParams,
-      localStorageValue: localStorage.getItem('mapPanelOpen')
-    });
-
     if (isPanelOpen || hasDateParams) {
-      console.log('Adding new panel to map');
       this.map.addControl(this.rightPanel);
       localStorage.setItem('mapPanelOpen', 'true');
     } else {
-      console.log('Not adding new panel to map');
       localStorage.setItem('mapPanelOpen', 'false');
     }
-
-    console.log('Final panel state:', {
-      isPanelOnMap: this.rightPanel._map,
-      localStorageValue: localStorage.getItem('mapPanelOpen')
-    });
   }
 
   chunk(array, size) {
