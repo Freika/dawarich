@@ -174,6 +174,9 @@ export default class extends Controller {
   }
 
   disconnect() {
+    if (this.handleDeleteClick) {
+      document.removeEventListener('click', this.handleDeleteClick);
+    }
     this.map.remove();
   }
 
@@ -319,20 +322,22 @@ export default class extends Controller {
   }
 
   addEventListeners() {
-    this.handleDeleteClick = (event) => {
-      if (event.target && event.target.classList.contains('delete-point')) {
-        event.preventDefault();
-        const pointId = event.target.getAttribute('data-id');
+    // Create the handler only once and store it as an instance property
+    if (!this.handleDeleteClick) {
+      this.handleDeleteClick = (event) => {
+        if (event.target && event.target.classList.contains('delete-point')) {
+          event.preventDefault();
+          const pointId = event.target.getAttribute('data-id');
 
-        if (confirm('Are you sure you want to delete this point?')) {
-          this.deletePoint(pointId, this.apiKey);
+          if (confirm('Are you sure you want to delete this point?')) {
+            this.deletePoint(pointId, this.apiKey);
+          }
         }
-      }
-    };
+      };
 
-    // Ensure only one listener is attached by removing any existing ones first
-    this.removeEventListeners();
-    document.addEventListener('click', this.handleDeleteClick);
+      // Add the listener only if it hasn't been added before
+      document.addEventListener('click', this.handleDeleteClick);
+    }
 
     // Add an event listener for base layer change in Leaflet
     this.map.on('baselayerchange', (event) => {
@@ -375,23 +380,73 @@ export default class extends Controller {
       return response.json();
     })
     .then(data => {
+      // Remove the marker and update all layers
       this.removeMarker(id);
+
+      // Explicitly remove old polylines layer from map
+      if (this.polylinesLayer) {
+        this.map.removeLayer(this.polylinesLayer);
+      }
+
+      // Create new polylines layer
+      this.polylinesLayer = createPolylinesLayer(
+        this.markers,
+        this.map,
+        this.timezone,
+        this.routeOpacity,
+        this.userSettings,
+        this.distanceUnit
+      );
+
+      // Add new polylines layer to map and to layer control
+      this.polylinesLayer.addTo(this.map);
+
+      // Update the layer control
+      if (this.layerControl) {
+        this.map.removeControl(this.layerControl);
+        const controlsLayer = {
+          Points: this.markersLayer,
+          Polylines: this.polylinesLayer,
+          Heatmap: this.heatmapLayer,
+          "Fog of War": this.fogOverlay,
+          "Scratch map": this.scratchLayer,
+          Areas: this.areasLayer,
+          Photos: this.photoMarkers
+        };
+        this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+      }
+
+      // Update heatmap
+      this.heatmapLayer.setLatLngs(this.markers.map(marker => [marker[0], marker[1], 0.2]));
+
+      // Update fog if enabled
+      if (this.map.hasLayer(this.fogOverlay)) {
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
     })
     .catch(error => {
       console.error('There was a problem with the delete request:', error);
+      showFlashMessage('error', 'Failed to delete point');
     });
   }
 
   removeMarker(id) {
-    const markerIndex = this.markersArray.findIndex(marker => marker.getPopup().getContent().includes(`data-id="${id}"`));
+    const numericId = parseInt(id);
+
+    const markerIndex = this.markersArray.findIndex(marker =>
+      marker.getPopup().getContent().includes(`data-id="${id}"`)
+    );
+
     if (markerIndex !== -1) {
-      this.markersArray[markerIndex].remove(); // Assuming your marker object has a remove method
+      this.markersArray[markerIndex].remove();
       this.markersArray.splice(markerIndex, 1);
       this.markersLayer.clearLayers();
       this.markersLayer.addLayer(L.layerGroup(this.markersArray));
 
-      // Remove from the markers data array
-      this.markers = this.markers.filter(marker => marker[6] !== parseInt(id));
+      this.markers = this.markers.filter(marker => {
+        const markerId = parseInt(marker[6]);
+        return markerId !== numericId;
+      });
     }
   }
 

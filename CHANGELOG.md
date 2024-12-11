@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.19.7 - 2024-12-11
+
+### Fixed
+
+- Fixed a bug where upon deleting a point on the map, the confirmation dialog was shown multiple times and the point was not being deleted from the map until the page was reloaded. #435
+
+### Changed
+
+- With the "Points" layer enabled on the map, points with negative speed are now being shown in orange color. Since Overland reports negative speed for points that might be faulty, this should help you to identify them.
+- On the Points page, speed of the points with negative speed is now being shown in red color.
+
 # 0.19.6 - 2024-12-11
 
 ⚠️ This release introduces a breaking change. ⚠️
