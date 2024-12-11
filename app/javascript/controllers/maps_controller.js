@@ -171,11 +171,36 @@ export default class extends Controller {
     if (this.liveMapEnabled) {
       this.setupSubscription();
     }
+
+    // Add the toggle panel button
+    this.addTogglePanelButton();
+
+    // Check if we should open the panel based on localStorage or URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
+    const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
+
+    console.log('Initial state check:', {
+      isPanelOpen,
+      hasDateParams,
+      localStorageValue: localStorage.getItem('mapPanelOpen')
+    });
+
+    if (isPanelOpen || hasDateParams) {
+      console.log('Opening panel because:', { isPanelOpen, hasDateParams });
+      this.toggleRightPanel();
+    }
   }
 
   disconnect() {
     if (this.handleDeleteClick) {
       document.removeEventListener('click', this.handleDeleteClick);
+    }
+    // Store panel state before disconnecting
+    if (this.rightPanel) {
+      const finalState = this.rightPanel._map ? 'true' : 'false';
+      console.log('Disconnecting, saving panel state:', finalState);
+      localStorage.setItem('mapPanelOpen', finalState);
     }
     this.map.remove();
   }
@@ -902,4 +927,257 @@ export default class extends Controller {
 
     this.photoMarkers.addLayer(marker);
   }
+
+  addTogglePanelButton() {
+    const TogglePanelControl = L.Control.extend({
+      onAdd: (map) => {
+        const button = L.DomUtil.create('button', 'toggle-panel-button');
+        button.innerHTML = '📊'; // You can use any icon or text here
+
+        // Style the button similarly to the settings button
+        button.style.backgroundColor = 'white';
+        button.style.width = '48px';
+        button.style.height = '48px';
+        button.style.border = 'none';
+        button.style.cursor = 'pointer';
+        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+
+        // Disable map interactions when clicking the button
+        L.DomEvent.disableClickPropagation(button);
+
+        // Toggle panel on button click
+        L.DomEvent.on(button, 'click', () => {
+          this.toggleRightPanel();
+        });
+
+        return button;
+      }
+    });
+
+    // Add the control to the map
+    this.map.addControl(new TogglePanelControl({ position: 'topright' }));
+  }
+
+  toggleRightPanel() {
+    console.log('toggleRightPanel called, current state:', {
+      hasPanel: !!this.rightPanel,
+      isPanelOnMap: this.rightPanel?._map,
+      localStorageValue: localStorage.getItem('mapPanelOpen')
+    });
+
+    if (this.rightPanel) {
+      if (this.rightPanel._map) {
+        console.log('Removing panel from map');
+        this.map.removeControl(this.rightPanel);
+        localStorage.setItem('mapPanelOpen', 'false');
+      } else {
+        console.log('Adding existing panel to map');
+        this.map.addControl(this.rightPanel);
+        localStorage.setItem('mapPanelOpen', 'true');
+      }
+      console.log('After toggle:', {
+        isPanelOnMap: this.rightPanel._map,
+        localStorageValue: localStorage.getItem('mapPanelOpen')
+      });
+      return;
+    }
+
+    console.log('Creating new panel');
+    this.rightPanel = L.control({ position: 'topright' });
+
+    this.rightPanel.onAdd = () => {
+      const div = L.DomUtil.create('div', 'leaflet-right-panel');
+      const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      // Get current date from URL query parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const startDate = urlParams.get('start_at');
+      const currentYear = startDate ? new Date(startDate).getFullYear().toString() : null;
+      const currentMonth = startDate ? allMonths[new Date(startDate).getMonth()] : null;
+
+      // Initially create select with loading state and current year if available
+      div.innerHTML = `
+        <div class="panel-content">
+          <div id='years-nav'>
+            <select id="year-select" class="select select-bordered w-full max-w-xs mb-4">
+              ${currentYear
+                ? `<option value="${currentYear}" selected>${currentYear}</option>`
+                : '<option disabled selected>Loading years...</option>'}
+            </select>
+
+            <div class='grid grid-cols-3 gap-3' id="months-grid">
+              ${allMonths.map(month => `
+                <a href="#"
+                   class="btn btn-default disabled ${month === currentMonth ? 'btn-active' : ''}"
+                   data-month-name="${month}"
+                   style="pointer-events: none; opacity: 0.6;">
+                  ${month}
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      fetch(`/api/v1/points/tracked_months?api_key=${this.apiKey}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(yearsData => {
+          const yearSelect = document.getElementById('year-select');
+
+          if (!Array.isArray(yearsData) || yearsData.length === 0) {
+            yearSelect.innerHTML = '<option disabled selected>No data available</option>';
+            return;
+          }
+
+          // Check if the current year exists in the API response
+          const currentYearData = yearsData.find(yearData => yearData.year.toString() === currentYear);
+
+          const options = yearsData
+            .filter(yearData => yearData && yearData.year)
+            .map(yearData => {
+              const months = Array.isArray(yearData.months) ? yearData.months : [];
+              const isCurrentYear = yearData.year.toString() === currentYear;
+              return `
+                <option value="${yearData.year}"
+                        data-months='${JSON.stringify(months)}'
+                        ${isCurrentYear ? 'selected' : ''}>
+                  ${yearData.year}
+                </option>
+              `;
+            })
+            .join('');
+
+          yearSelect.innerHTML = `
+            <option disabled>Select year</option>
+            ${options}
+          `;
+
+          const updateMonthLinks = (selectedYear, availableMonths) => {
+            // Get current date from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const startDate = urlParams.get('start_at') ? new Date(urlParams.get('start_at')) : null;
+            const endDate = urlParams.get('end_at') ? new Date(urlParams.get('end_at')) : null;
+
+            allMonths.forEach((month, index) => {
+              const monthLink = div.querySelector(`a[data-month-name="${month}"]`);
+              if (!monthLink) return;
+
+              // Check if this month falls within the selected date range
+              const isSelected = startDate && endDate &&
+                selectedYear === startDate.getFullYear().toString() && // Only check months for the currently selected year
+                isMonthInRange(index, startDate, endDate, parseInt(selectedYear));
+
+              if (availableMonths.includes(month)) {
+                monthLink.classList.remove('disabled');
+                monthLink.style.pointerEvents = 'auto';
+                monthLink.style.opacity = '1';
+
+                // Update the active state based on selection
+                if (isSelected) {
+                  monthLink.classList.add('btn-active', 'btn-primary');
+                } else {
+                  monthLink.classList.remove('btn-active', 'btn-primary');
+                }
+
+                const monthNum = (index + 1).toString().padStart(2, '0');
+                const startDate = `${selectedYear}-${monthNum}-01T00:00`;
+                const lastDay = new Date(selectedYear, index + 1, 0).getDate();
+                const endDate = `${selectedYear}-${monthNum}-${lastDay}T23:59`;
+
+                const href = `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`;
+                monthLink.setAttribute('href', href);
+              } else {
+                monthLink.classList.add('disabled');
+                monthLink.classList.remove('btn-active', 'btn-primary');
+                monthLink.style.pointerEvents = 'none';
+                monthLink.style.opacity = '0.6';
+                monthLink.setAttribute('href', '#');
+              }
+            });
+          };
+
+          // Helper function to check if a month falls within a date range
+          const isMonthInRange = (monthIndex, startDate, endDate, selectedYear) => {
+            // Create date objects for the first and last day of the month in the selected year
+            const monthStart = new Date(selectedYear, monthIndex, 1);
+            const monthEnd = new Date(selectedYear, monthIndex + 1, 0);
+
+            // Check if any part of the month overlaps with the selected date range
+            return monthStart <= endDate && monthEnd >= startDate;
+          };
+
+          yearSelect.addEventListener('change', (event) => {
+            const selectedOption = event.target.selectedOptions[0];
+            const selectedYear = selectedOption.value;
+            const availableMonths = JSON.parse(selectedOption.dataset.months || '[]');
+            console.log('Year changed to:', selectedYear);
+            updateMonthLinks(selectedYear, availableMonths);
+          });
+
+          // If we have a current year, set it and update month links
+          if (currentYear && currentYearData) {
+            yearSelect.value = currentYear;
+            updateMonthLinks(currentYear, currentYearData.months);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching years:', error);
+          const yearSelect = document.getElementById('year-select');
+          yearSelect.innerHTML = '<option disabled selected>Error loading years</option>';
+        });
+
+      div.style.backgroundColor = 'white';
+      div.style.padding = '10px';
+      div.style.border = '1px solid #ccc';
+      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+      div.style.marginRight = '10px';
+      div.style.marginTop = '10px';
+      div.style.minWidth = '300px';
+      div.style.maxHeight = '80vh';
+      div.style.overflowY = 'auto';
+
+      L.DomEvent.disableClickPropagation(div);
+
+      return div;
+    };
+
+    // Only add the panel if we should show it
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
+    const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
+
+    console.log('Deciding whether to show new panel:', {
+      isPanelOpen,
+      hasDateParams,
+      localStorageValue: localStorage.getItem('mapPanelOpen')
+    });
+
+    if (isPanelOpen || hasDateParams) {
+      console.log('Adding new panel to map');
+      this.map.addControl(this.rightPanel);
+      localStorage.setItem('mapPanelOpen', 'true');
+    } else {
+      console.log('Not adding new panel to map');
+      localStorage.setItem('mapPanelOpen', 'false');
+    }
+
+    console.log('Final panel state:', {
+      isPanelOnMap: this.rightPanel._map,
+      localStorageValue: localStorage.getItem('mapPanelOpen')
+    });
+  }
+
+  chunk(array, size) {
+    const chunked = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunked.push(array.slice(i, i + size));
+    }
+    return chunked;
+  }
 }
+
