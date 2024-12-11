@@ -9,7 +9,7 @@ class Telemetry::Send
   end
 
   def call
-    return if ENV['DISABLE_TELEMETRY'] == 'true'
+    return unless ENV['ENABLE_TELEMETRY'] == 'true'
 
     line_protocol = build_line_protocol
     response = send_request(line_protocol)

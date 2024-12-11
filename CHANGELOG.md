@@ -24,6 +24,8 @@ To change this, you need to update the `docker-compose.yml` file:
     healthcheck:
 ```
 
+Telemetry is now disabled by default. To enable it, you need to set `ENABLE_TELEMETRY` env var to `true`. For those who have telemetry enabled using `DISABLE_TELEMETRY` env var set to `false`, telemetry is now disabled by default.
+
 ### Fixed
 
 - Flash messages are now being removed after 5 seconds.
@@ -35,6 +37,7 @@ To change this, you need to update the `docker-compose.yml` file:
 
 - Places page is now accessible from the Visits & Places tab on the navbar.
 - Exporting process is now being logged.
+- `ENABLE_TELEMETRY` env var is now used instead of `DISABLE_TELEMETRY` to enable/disable telemetry.
 
 # 0.19.5 - 2024-12-10
 
