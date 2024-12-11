@@ -32,6 +32,7 @@ Telemetry is now disabled by default. To enable it, you need to set `ENABLE_TELE
 - Fixed broken migration that was preventing the app from starting.
 - Visits page is now loading a lot faster than before.
 - Redis data should now be preserved on container restart.
+- Fixed a bug where export files could have double extension, e.g. `file.gpx.gpx`.
 
 ### Changed
 
