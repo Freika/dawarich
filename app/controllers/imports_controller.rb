@@ -32,8 +32,11 @@ class ImportsController < ApplicationController
 
       raw_data =
         case params[:import][:source]
-        when 'gpx' then Hash.from_xml(file)
+        when 'google_semantic_history' then GoogleMaps::SemanticHistoryParser.new(import, current_user.id).call
         when 'owntracks' then OwnTracks::RecParser.new(file).call
+        when 'geojson' then Geojson::ImportParser.new(import, current_user.id).call
+        when 'google_phone_takeout' then GoogleMaps::PhoneTakeoutParser.new(import, current_user.id).call
+        when 'gpx' then Hash.from_xml(file)
         else JSON.parse(file)
         end
 
