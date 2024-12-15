@@ -38,6 +38,7 @@ Rails.application.routes.draw do
   end
   resources :notifications, only: %i[index show destroy]
   post 'notifications/mark_as_read', to: 'notifications#mark_as_read', as: :mark_notifications_as_read
+  post 'notifications/destroy_all', to: 'notifications#destroy_all', as: :delete_all_notifications
   resources :stats, only: :index do
     collection do
       post :update
