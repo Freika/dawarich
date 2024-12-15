@@ -27,8 +27,9 @@ RUN apk -U add --no-cache \
     && rm -rf /var/cache/apk/* \
     && mkdir -p $APP_PATH
 
-RUN gem install bundler --version "$BUNDLE_VERSION" \
+RUN gem update --system 3.5.7 && gem install bundler --version "$BUNDLE_VERSION" \
     && rm -rf $GEM_HOME/cache/*
+
 
 RUN adduser -D -h ${APP_PATH} vscode
 
