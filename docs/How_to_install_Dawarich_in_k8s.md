@@ -1,5 +1,7 @@
 # How to install Dawarich on Kubernetes
 
+> An **unofficial Helm chart** is available [here](https://github.com/Cogitri/charts/tree/master/charts/dawarich). For a manual installation using YAML manifests, see below.
+
 ## Prerequisites
 
 - Kubernetes cluster and basic kubectl knowledge.
