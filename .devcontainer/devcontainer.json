@@ -1,0 +1,17 @@
+{
+  "name": "Ruby and Node DevContainer",
+  "dockerComposeFile": ["docker-compose.yml"],
+  "service": "dawarich_dev",
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash"
+  },
+  "extensions": [
+    "rebornix.ruby",      // Ruby-Unterstützung
+    "esbenp.prettier-vscode", // Prettier für JS-Formatierung
+    "dbaeumer.vscode-eslint"  // ESLint für JavaScript
+  ],
+  "postCreateCommand": "yarn install && bundle config set --local path 'vendor/bundle' && bundle install --jobs 20 --retry 5",
+  "forwardPorts": [3000],   // Weiterleitung für Rails-Server
+  "remoteUser": "vscode",
+  "workspaceFolder": "/var/app"
+}
