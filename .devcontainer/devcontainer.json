@@ -12,6 +12,6 @@
   ],
   "postCreateCommand": "yarn install && bundle config set --local path 'vendor/bundle' && bundle install --jobs 20 --retry 5",
   "forwardPorts": [3000],   // Weiterleitung für Rails-Server
-  "remoteUser": "vscode",
+  "remoteUser": "root",
   "workspaceFolder": "/var/app"
 }
