@@ -4,10 +4,7 @@ Load the directory in Vs-Code and press F1. And Run the command: `Dev Containers
 
 Now you can create/prepare the Database (this need to be done once):
 ```bash
-bundle exec rails db:create
 bundle exec rails db:prepare
-bundle exec rake data:migrate
-bundle exec rake db:seed
 ```
 
 Afterwards you can run sidekiq:
