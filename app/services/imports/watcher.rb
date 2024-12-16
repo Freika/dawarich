@@ -36,7 +36,7 @@ class Imports::Watcher
 
   def file_names(directory_path)
     Dir.entries(directory_path).select do |file|
-      ['.gpx', '.json'].include?(File.extname(file))
+      ['.gpx', '.json', '.rec'].include?(File.extname(file))
     end
   end
 
@@ -73,8 +73,18 @@ class Imports::Watcher
 
   def source(file_name)
     case file_name.split('.').last
-    when 'json' then :geojson
-    when 'gpx'  then :gpx
+    when 'json' 
+      if file_name.match?(/location-history/i)
+        :google_phone_takeout
+      elsif file_name.match?(/Records/i)
+        :google_records
+      elsif file_name.match?(/\d{4}_\w+/i)
+        :google_semantic_history
+      else
+        :geojson
+      end
+    when 'rec' then :owntracks
+    when 'gpx' then :gpx
     else raise UnsupportedSourceError, 'Unsupported source '
     end
   end
@@ -82,6 +92,19 @@ class Imports::Watcher
   def raw_data(file_path, source)
     file = File.read(file_path)
 
-    source.to_sym == :gpx ? Hash.from_xml(file) : JSON.parse(file)
+    case source
+    when :google_phone_takeout
+      GoogleMaps::PhoneTakeoutParser.new(file).call
+    when :google_semantic_history
+      GoogleMaps::SemanticHistoryParser.new(file).call
+    when :google_records
+      GoogleMaps::RecordsParser.new(file).call
+    when :owntracks
+      OwnTracks::RecParser.new(file).call
+    when :gpx
+      Hash.from_xml(file)
+    else 
+      JSON.parse(file)
+    end
   end
 end
