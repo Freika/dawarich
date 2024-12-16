@@ -20,7 +20,7 @@ class NotificationsController < ApplicationController
 
 
   def destroy_all
-    current_user.notifications.delete_all()
+    current_user.notifications.destroy_all
     redirect_to notifications_url, notice: 'All notifications where successfully destroyed.', status: :see_other
   end
 
