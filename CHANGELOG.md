@@ -5,16 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.19.8 - 2024-12-16
+# 0.20.0 - 2024-12-16
 
 ### Added
 
 - `GET /api/v1/points/tracked_months` endpoint added to get list of tracked years and months.
 - `GET /api/v1/countries/visited_cities` endpoint added to get list of visited cities.
+- A link to the docs leading to a help chart for k8s. #550
+- A button to delete all notifications. #548
+- A support for `RAILS_LOG_LEVEL` env var to change log level. More on that here: https://guides.rubyonrails.org/debugging_rails_applications.html#log-levels. The available log levels are: `:debug`, `:info`, `:warn`, `:error`, `:fatal`, and `:unknown`, corresponding to the log level numbers from 0 up to 5, respectively. The default log level is `:debug`. #540
+- A devcontainer to improve developers experience. #546
 
 ### Fixed
 
 - A point popup is no longer closes when hovering over a polyline. #536
+- When polylines layer is disabled and user deletes a point from its popup, polylines layer is no longer being enabled right away. #552
+- Paths to gems within the sidekiq and app containers. #499
 
 ### Changed
 
