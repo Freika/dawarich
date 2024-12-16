@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class CountriesAndCities
-  MIN_MINUTES_SPENT_IN_CITY = 30 # You can adjust this value as needed
-
   CountryData = Struct.new(:country, :cities, keyword_init: true)
   CityData = Struct.new(:city, :points, :timestamp, :stayed_for, keyword_init: true)
 
@@ -40,7 +38,7 @@ class CountriesAndCities
   end
 
   def build_city_data(city, points_count, timestamps, duration)
-    return nil if duration < MIN_MINUTES_SPENT_IN_CITY
+    return nil if duration < ::MIN_MINUTES_SPENT_IN_CITY
 
     CityData.new(
       city: city,

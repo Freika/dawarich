@@ -16,15 +16,7 @@ class Api::V1::Countries::VisitedCitiesController < ApiController
 
   private
 
-  def validate_params
-    missing_params = %i[start_at end_at].select { |param| params[param].blank? }
-
-    if missing_params.any?
-      render json: {
-        error: "Missing required parameters: #{missing_params.join(', ')}"
-      }, status: :bad_request and return
-    end
-
-    params.permit(:start_at, :end_at)
+  def required_params
+    %i[start_at end_at]
   end
 end

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [Unreleased]
 
+### Added
+
+- `GET /api/v1/points/tracked_months` endpoint added to get list of tracked years and months.
+- `GET /api/v1/countries/visited_cities` endpoint added to get list of visited cities.
+
 ### Fixed
 
 - A point popup is no longer closes when hovering over a polyline. #536

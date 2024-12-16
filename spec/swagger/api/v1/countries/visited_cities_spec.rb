@@ -1,4 +1,5 @@
-# spec/swagger/api/v1/countries/visited_cities_controller_spec.rb
+# frozen_string_literal: true
+
 require 'swagger_helper'
 
 RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
@@ -14,16 +15,16 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
                 type: :string,
                 format: 'date-time',
                 required: true,
-                description: 'Start date and time for the range (ISO 8601 format)',
-                example: '2023-01-01T00:00:00Z'
+                description: 'Start date in YYYY-MM-DD format',
+                example: '2023-01-01'
 
       parameter name: :end_at,
                 in: :query,
                 type: :string,
                 format: 'date-time',
                 required: true,
-                description: 'End date and time for the range (ISO 8601 format)',
-                example: '2023-12-31T23:59:59Z'
+                description: 'End date in YYYY-MM-DD format',
+                example: '2023-12-31'
 
       response '200', 'cities found' do
         schema type: :object,
@@ -70,8 +71,8 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
                  }
                }
 
-        let(:start_at) { '2023-01-01T00:00:00Z' }
-        let(:end_at) { '2023-12-31T23:59:59Z' }
+        let(:start_at) { '2023-01-01' }
+        let(:end_at) { '2023-12-31' }
         let(:api_key) { create(:user).api_key }
         run_test!
       end
