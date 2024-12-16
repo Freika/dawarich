@@ -538,6 +538,56 @@ paths:
                     - photoprism
         '404':
           description: photo not found
+  "/api/v1/points/tracked_months":
+    get:
+      summary: Returns list of tracked years and months
+      tags:
+      - Points
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: years and months found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    year:
+                      type: integer
+                      description: Year in YYYY format
+                    months:
+                      type: array
+                      items:
+                        type: string
+                        description: Three-letter month abbreviation
+                  required:
+                  - year
+                  - months
+                example:
+                - year: 2024
+                  months:
+                  - Jan
+                  - Feb
+                  - Mar
+                  - Apr
+                  - May
+                  - Jun
+                  - Jul
+                  - Aug
+                  - Sep
+                  - Oct
+                  - Nov
+                  - Dec
+        '401':
+          description: unauthorized
   "/api/v1/points":
     get:
       summary: Retrieves all points
