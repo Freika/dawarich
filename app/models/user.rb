@@ -70,10 +70,13 @@ class User < ApplicationRecord
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
       tracked_points
         .pluck(:timestamp)
-        .map { |ts| Time.zone.at(ts).year }
-        .uniq
-        .sort
-        .reverse
+        .map { |ts| Time.zone.at(ts) }
+        .group_by(&:year)
+        .transform_values do |dates|
+          dates.map { |date| date.strftime('%b') }.uniq.sort
+        end
+        .map { |year, months| { year: year, months: months } }
+        .sort_by { |entry| -entry[:year] } # Sort in descending order
     end
   end
 

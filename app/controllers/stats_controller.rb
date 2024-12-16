@@ -17,8 +17,10 @@ class StatsController < ApplicationController
 
   def update
     current_user.years_tracked.each do |year|
-      (1..12).each do |month|
-        Stats::CalculatingJob.perform_later(current_user.id, year, month)
+      year[:months].each do |month|
+        Stats::CalculatingJob.perform_later(
+          current_user.id, year[:year], Date::ABBR_MONTHNAMES.index(month)
+        )
       end
     end
 

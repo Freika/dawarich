@@ -9,7 +9,7 @@ export function createMarkersArray(markersData, userSettings) {
 
       const popupContent = createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit);
       let markerColor = marker[5] < 0 ? "orange" : "blue";
-      return L.circleMarker([lat, lon], { radius: 4, color: markerColor }).bindPopup(popupContent);
+      return L.circleMarker([lat, lon], { radius: 4, color: markerColor }).bindPopup(popupContent, { autoClose: false });
     });
   }
 }

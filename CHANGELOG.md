@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.19.8 - 2024-12-16
+
+### Added
+
+- `GET /api/v1/points/tracked_months` endpoint added to get list of tracked years and months.
+- `GET /api/v1/countries/visited_cities` endpoint added to get list of visited cities.
+
+### Fixed
+
+- A point popup is no longer closes when hovering over a polyline. #536
+
+### Changed
+
+- Months and years navigation is moved to a map panel on the right side of the map.
+- List of visited cities is now being shown in a map panel on the right side of the map.
+
 # 0.19.7 - 2024-12-11
 
 ### Fixed
