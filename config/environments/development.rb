@@ -19,6 +19,11 @@ Rails.application.configure do
   # Enable server timing
   config.server_timing = true
 
+  # Info include generic and useful information about system operation, but avoids logging too much
+  # information to avoid inadvertent exposure of personally identifiable information (PII). If you
+  # want to log everything, leave the level on "debug".
+  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "debug")
+
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
   if Rails.root.join('tmp/caching-dev.txt').exist?
