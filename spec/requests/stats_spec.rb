@@ -55,13 +55,13 @@ RSpec.describe '/stats', type: :request do
       let(:stat) { create(:stat, user:, year: 2024) }
 
       it 'enqueues Stats::CalculatingJob for each tracked year and month' do
-        allow(user).to receive(:years_tracked).and_return([2024])
+        allow(user).to receive(:years_tracked).and_return([{ year: 2024, months: %w[Jan Feb] }])
 
         post stats_url
 
-        (1..12).each do |month|
-          expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2024, month)
-        end
+        expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2024, 1)
+        expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2024, 2)
+        expect(Stats::CalculatingJob).to_not have_been_enqueued.with(user.id, 2024, 3)
       end
     end
   end

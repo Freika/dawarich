@@ -21,20 +21,6 @@ class Stat < ApplicationRecord
     end
   end
 
-  def self.year_cities_and_countries(year, user)
-    start_at = DateTime.new(year).beginning_of_year
-    end_at = DateTime.new(year).end_of_year
-
-    points = user.tracked_points.without_raw_data.where(timestamp: start_at..end_at)
-
-    data = CountriesAndCities.new(points).call
-
-    {
-      countries: data.map { _1[:country] }.uniq.count,
-      cities: data.sum { _1[:cities].count }
-    }
-  end
-
   def points
     user.tracked_points
         .without_raw_data

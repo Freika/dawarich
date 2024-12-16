@@ -6,7 +6,7 @@ class Stats::CalculatingJob < ApplicationJob
   def perform(user_id, year, month)
     Stats::CalculateMonth.new(user_id, year, month).call
 
-    create_stats_updated_notification(user_id)
+    create_stats_updated_notification(user_id, year, month)
   rescue StandardError => e
     create_stats_update_failed_notification(user_id, e)
   end

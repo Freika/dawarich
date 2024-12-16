@@ -106,6 +106,84 @@ paths:
       responses:
         '200':
           description: area deleted
+  "/api/v1/countries/visited_cities":
+    get:
+      summary: Get visited cities by date range
+      tags:
+      - Countries
+      description: Returns a list of visited cities and countries based on tracked
+        points within the specified date range
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        format: date-time
+        required: true
+        description: Start date and time for the range (ISO 8601 format)
+        example: '2023-01-01T00:00:00Z'
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        format: date-time
+        required: true
+        description: End date and time for the range (ISO 8601 format)
+        example: '2023-12-31T23:59:59Z'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: cities found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    description: Array of countries and their visited cities
+                    items:
+                      type: object
+                      properties:
+                        country:
+                          type: string
+                          example: Germany
+                        cities:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              city:
+                                type: string
+                                example: Berlin
+                              points:
+                                type: integer
+                                example: 4394
+                                description: Number of points in the city
+                              timestamp:
+                                type: integer
+                                example: 1724868369
+                                description: Timestamp of the last point in the city
+                                  in seconds since Unix epoch
+                              stayed_for:
+                                type: integer
+                                example: 24490
+                                description: Number of minutes the user stayed in
+                                  the city
+        '400':
+          description: bad request - missing parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: 'Missing required parameters: start_at, end_at'
   "/api/v1/health":
     get:
       summary: Retrieves application status

@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 class CountriesAndCities
-  CityStats = Struct.new(:points, :last_timestamp, :stayed_for, keyword_init: true)
+  MIN_MINUTES_SPENT_IN_CITY = 30 # You can adjust this value as needed
+
   CountryData = Struct.new(:country, :cities, keyword_init: true)
   CityData = Struct.new(:city, :points, :timestamp, :stayed_for, keyword_init: true)
 
@@ -24,19 +25,28 @@ class CountriesAndCities
   def process_country_points(country_points)
     country_points
       .group_by(&:city)
-      .transform_values do |city_points|
-        timestamps = city_points.map(&:timestamp)
-        build_city_data(city_points.first.city, city_points.size, timestamps)
-      end
+      .transform_values { |city_points| create_city_data_if_valid(city_points) }
       .values
+      .compact
   end
 
-  def build_city_data(city, points_count, timestamps)
+  def create_city_data_if_valid(city_points)
+    timestamps = city_points.pluck(:timestamp)
+    duration = calculate_duration_in_minutes(timestamps)
+    city = city_points.first.city
+    points_count = city_points.size
+
+    build_city_data(city, points_count, timestamps, duration)
+  end
+
+  def build_city_data(city, points_count, timestamps, duration)
+    return nil if duration < MIN_MINUTES_SPENT_IN_CITY
+
     CityData.new(
       city: city,
       points: points_count,
       timestamp: timestamps.max,
-      stayed_for: calculate_duration_in_minutes(timestamps)
+      stayed_for: duration
     )
   end
 
