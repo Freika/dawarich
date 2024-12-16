@@ -382,10 +382,14 @@ export default class extends Controller {
     .then(data => {
       // Remove the marker and update all layers
       this.removeMarker(id);
-
+      let wasPolyLayerVisible = false;
       // Explicitly remove old polylines layer from map
       if (this.polylinesLayer) {
+        if (this.map.hasLayer(this.polylinesLayer)) {
+          wasPolyLayerVisible = true;
+        }
         this.map.removeLayer(this.polylinesLayer);
+
       }
 
       // Create new polylines layer
@@ -397,10 +401,12 @@ export default class extends Controller {
         this.userSettings,
         this.distanceUnit
       );
-
-      // Add new polylines layer to map and to layer control
-      this.polylinesLayer.addTo(this.map);
-
+      if (wasPolyLayerVisible) {
+        // Add new polylines layer to map and to layer control
+        this.polylinesLayer.addTo(this.map);
+      } else {
+        this.map.removeLayer(this.polylinesLayer);
+      }
       // Update the layer control
       if (this.layerControl) {
         this.map.removeControl(this.layerControl);
