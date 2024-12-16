@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.20.1 - 2024-12-16
+
+### Fixed
+
+- Setting `reverse_geocoded_at` for points that don't have geodata is now being performed in background job, in batches of 10,000 points to prevent memory exhaustion.
+
 # 0.20.0 - 2024-12-16
 
 ### Added
