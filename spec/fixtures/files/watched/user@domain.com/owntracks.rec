@@ -1,0 +1,16 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [102.0, 0.5]
+      },
+      "properties": {
+        "timestamp": "2023-01-01T00:00:00Z",
+        "accuracy": 10
+      }
+    }
+  ]
+}
