@@ -51,3 +51,12 @@
 !/app/assets/builds/.keep
 .DS_Store
 .env
+
+.devcontainer/.onCreateCommandMarker
+.devcontainer/.postCreateCommandMarker
+.devcontainer/.updateContentCommandMarker
+
+.vscode-server/
+.ash_history
+.cache/
+.dotnet/
