@@ -925,7 +925,7 @@ export default class extends Controller {
         ${photo.type === 'video' ? '🎥 Video' : '📷 Photo'}
       </div>
     `;
-    marker.bindPopup(popupContent);
+    marker.bindPopup(popupContent, { autoClose: false });
 
     this.photoMarkers.addLayer(marker);
   }

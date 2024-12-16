@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [Unreleased]
+
+### Fixed
+
+- A point popup is no longer closes when hovering over a polyline. #536
+
+### Changed
+
+- Months and years navigation is moved to a map panel on the right side of the map.
+- List of visited cities is now being shown in a map panel on the right side of the map.
+
 # 0.19.7 - 2024-12-11
 
 ### Fixed
