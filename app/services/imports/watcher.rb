@@ -48,6 +48,7 @@ class Imports::Watcher
     return if import.persisted?
 
     import.source = source(file_name)
+   
     import.raw_data = raw_data(file_path, import.source)
 
     import.save!
@@ -73,7 +74,7 @@ class Imports::Watcher
   end
 
   def source(file_name)
-    case file_name.split('.').last
+    case file_name.split('.').last.downcase
     when 'json' 
       if file_name.match?(/location-history/i)
         :google_phone_takeout
@@ -93,17 +94,15 @@ class Imports::Watcher
   def raw_data(file_path, source)
     file = File.read(file_path)
 
-    case source
-    when :google_phone_takeout
-      GoogleMaps::PhoneTakeoutParser.new(file).call
-    when :google_semantic_history
-      GoogleMaps::SemanticHistoryParser.new(file).call
-    when :google_records
-      GoogleMaps::RecordsParser.new(file).call
-    when :owntracks
-      OwnTracks::RecParser.new(file).call
+    case source.to_sym
     when :gpx
       Hash.from_xml(file)
+    when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history
+      JSON.parse(file)
+    when :owntracks
+      OwnTracks::RecParser.new(file).call
+    else
+      raise UnsupportedSourceError, "Unsupported source: #{source}"
     end
   end
 end
