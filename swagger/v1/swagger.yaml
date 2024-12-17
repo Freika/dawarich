@@ -123,16 +123,16 @@ paths:
         in: query
         format: date-time
         required: true
-        description: Start date and time for the range (ISO 8601 format)
-        example: '2023-01-01T00:00:00Z'
+        description: Start date in YYYY-MM-DD format
+        example: '2023-01-01'
         schema:
           type: string
       - name: end_at
         in: query
         format: date-time
         required: true
-        description: End date and time for the range (ISO 8601 format)
-        example: '2023-12-31T23:59:59Z'
+        description: End date in YYYY-MM-DD format
+        example: '2023-12-31'
         schema:
           type: string
       responses:
