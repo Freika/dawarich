@@ -15,6 +15,7 @@ export function createPopupContent(marker, timezone, distanceUnit) {
     <strong>Altitude:</strong> ${marker[3]}m<br>
     <strong>Velocity:</strong> ${marker[5]}km/h<br>
     <strong>Battery:</strong> ${marker[2]}%<br>
+    <strong>Id:</strong> ${marker[6]}<br>
     <a href="#" data-id="${marker[6]}" class="delete-point">[Delete]</a>
   `;
 }

@@ -5,11 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.20.2 - 2024-12-17
+
+### Added
+
+- A point id is now being shown in the point popup.
+
+### Fixed
+
+- North Macedonia is now being shown on the scratch map. #537
+
 # 0.20.1 - 2024-12-16
 
 ### Fixed
 
-- Setting `reverse_geocoded_at` for points that don't have geodata is now being performed in background job, in batches of 10,000 points to prevent memory exhaustion.
+- Setting `reverse_geocoded_at` for points that don't have geodata is now being performed in background job, in batches of 10,000 points to prevent memory exhaustion and long-running data migration.
 
 # 0.20.0 - 2024-12-16
 

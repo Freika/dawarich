@@ -161,6 +161,7 @@ export function countryCodesMap() {
     "Niue": "NU",
     "Norfolk Island": "NF",
     "Northern Mariana Islands": "MP",
+    "North Macedonia": "MK",
     "Norway": "NO",
     "Oman": "OM",
     "Pakistan": "PK",
