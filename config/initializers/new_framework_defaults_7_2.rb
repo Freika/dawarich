@@ -32,7 +32,7 @@
 # backends that use the same database as Active Record as a queue, hence they
 # don't need this feature.
 #++
-Rails.application.config.active_job.enqueue_after_transaction_commit = :default
+# Rails.application.config.active_job.enqueue_after_transaction_commit = :default
 
 ###
 # Adds image/webp to the list of content types Active Storage considers as an image
