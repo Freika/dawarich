@@ -14,6 +14,8 @@ RSpec.describe Imports::Watcher do
       Sidekiq::Testing.inline!
     end
 
+    after { Sidekiq::Testing.fake! }
+
     context 'when there are no files in the watched directory' do
       it 'does not call ImportJob' do
         expect(ImportJob).not_to receive(:perform_later)
