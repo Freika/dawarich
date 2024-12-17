@@ -105,7 +105,7 @@ GEM
     cronex (0.15.0)
       tzinfo
       unicode (>= 0.4.4.5)
-    csv (3.3.0)
+    csv (3.3.1)
     data_migrate (11.2.0)
       activerecord (>= 6.1)
       railties (>= 6.1)
