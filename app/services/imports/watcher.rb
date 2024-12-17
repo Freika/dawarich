@@ -48,7 +48,6 @@ class Imports::Watcher
     return if import.persisted?
 
     import.source = source(file_name)
-   
     import.raw_data = raw_data(file_path, import.source)
 
     import.save!
@@ -75,7 +74,7 @@ class Imports::Watcher
 
   def source(file_name)
     case file_name.split('.').last.downcase
-    when 'json' 
+    when 'json'
       if file_name.match?(/location-history/i)
         :google_phone_takeout
       elsif file_name.match?(/Records/i)
@@ -84,7 +83,7 @@ class Imports::Watcher
         :google_semantic_history
       else
         :geojson
-    end
+      end
     when 'rec' then :owntracks
     when 'gpx' then :gpx
     else raise UnsupportedSourceError, 'Unsupported source '
