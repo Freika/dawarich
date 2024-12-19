@@ -1,3 +1,4 @@
+import { formatDate } from "../maps/helpers";
 import { formatDistance } from "../maps/helpers";
 import { getUrlParameter } from "../maps/helpers";
 import { minutesToDaysHoursMinutes } from "../maps/helpers";
@@ -12,8 +13,8 @@ export function addHighlightOnHover(polyline, map, polylineCoordinates, userSett
   const startPoint = polylineCoordinates[0];
   const endPoint = polylineCoordinates[polylineCoordinates.length - 1];
 
-  const firstTimestamp = new Date(startPoint[4] * 1000).toLocaleString("en-GB", { timeZone: userSettings.timezone });
-  const lastTimestamp = new Date(endPoint[4] * 1000).toLocaleString("en-GB", { timeZone: userSettings.timezone });
+  const firstTimestamp = formatDate(startPoint[4], userSettings.timezone);
+  const lastTimestamp = formatDate(endPoint[4], userSettings.timezone);
 
   const minutes = Math.round((endPoint[4] - startPoint[4]) / 60);
   const timeOnRoute = minutesToDaysHoursMinutes(minutes);
