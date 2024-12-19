@@ -4,6 +4,7 @@ class Imports::Watcher
   class UnsupportedSourceError < StandardError; end
 
   WATCHED_DIR_PATH = Rails.root.join('tmp/imports/watched')
+  SUPPORTED_FORMATS = %w[.gpx .json .rec].freeze
 
   def call
     user_directories.each do |user_email|
@@ -36,7 +37,7 @@ class Imports::Watcher
 
   def file_names(directory_path)
     Dir.entries(directory_path).select do |file|
-      ['.gpx', '.json'].include?(File.extname(file))
+      SUPPORTED_FORMATS.include?(File.extname(file))
     end
   end
 
@@ -72,9 +73,19 @@ class Imports::Watcher
   end
 
   def source(file_name)
-    case file_name.split('.').last
-    when 'json' then :geojson
-    when 'gpx'  then :gpx
+    case file_name.split('.').last.downcase
+    when 'json'
+      if file_name.match?(/location-history/i)
+        :google_phone_takeout
+      elsif file_name.match?(/Records/i)
+        :google_records
+      elsif file_name.match?(/\d{4}_\w+/i)
+        :google_semantic_history
+      else
+        :geojson
+      end
+    when 'rec' then :owntracks
+    when 'gpx' then :gpx
     else raise UnsupportedSourceError, 'Unsupported source '
     end
   end
@@ -82,6 +93,15 @@ class Imports::Watcher
   def raw_data(file_path, source)
     file = File.read(file_path)
 
-    source.to_sym == :gpx ? Hash.from_xml(file) : JSON.parse(file)
+    case source.to_sym
+    when :gpx
+      Hash.from_xml(file)
+    when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history
+      JSON.parse(file)
+    when :owntracks
+      OwnTracks::RecParser.new(file).call
+    else
+      raise UnsupportedSourceError, "Unsupported source: #{source}"
+    end
   end
 end
