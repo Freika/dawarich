@@ -55,7 +55,14 @@ export function minutesToDaysHoursMinutes(minutes) {
 
 export function formatDate(timestamp, timezone) {
   const date = new Date(timestamp * 1000);
-  const locale = navigator.languages !== undefined ? navigator.languages[0] : navigator.language;
+  let locale;
+  if (navigator.languages !== undefined) {
+    locale = navigator.languages[0];
+  } else if (navigator.language) {
+    locale = navigator.language;
+  } else {
+    locale = 'en-GB';
+  }
   return date.toLocaleString(locale, { timeZone: timezone });
 }
 
