@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - North Macedonia is now being shown on the scratch map. #537
 
+### Changed
+
+- The app process is now bound to :: instead of 0.0.0.0 to provide compatibility with IPV6.
+- The app was updated to use Rails 8.0.1.
+
 # 0.20.1 - 2024-12-16
 
 ### Fixed
