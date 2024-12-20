@@ -16,6 +16,22 @@ class StatsController < ApplicationController
   end
 
   def update
+    if params[:month] == 'all'
+      (1..12).each do |month|
+        Stats::CalculatingJob.perform_later(current_user.id, params[:year], month)
+      end
+
+      target = "the whole #{params[:year]}"
+    else
+      Stats::CalculatingJob.perform_later(current_user.id, params[:year], params[:month])
+
+      target = "#{Date::MONTHNAMES[params[:month].to_i]} of #{params[:year]}"
+    end
+
+    redirect_to stats_path, notice: "Stats for #{target} are being updated", status: :see_other
+  end
+
+  def update_all
     current_user.years_tracked.each do |year|
       year[:months].each do |month|
         Stats::CalculatingJob.perform_later(

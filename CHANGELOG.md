@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.20.3 - 2024-12-20
+
+### Added
+
+- A button on a year stats card to update stats for the whole year.
+- A button on a month stats card to update stats for a specific month.
+- A confirmation alert on the Notifications page before deleting all notifications.
+
 # 0.20.2 - 2024-12-17
 
 ### Added

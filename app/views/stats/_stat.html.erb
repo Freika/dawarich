@@ -1,10 +1,16 @@
 <div id="<%= dom_id stat %>" class="card w-full bg-base-200 shadow-xl">
   <div class="card-body">
-    <h2 class="card-title">
-      <%= link_to map_url(timespan(stat.month, stat.year)), class: "underline hover:no-underline text-#{header_colors.sample}" do %>
-        <%= "#{Date::MONTHNAMES[stat.month]} of #{stat.year}" %>
-      <% end %>
-    </h2>
+    <div class="flex justify-between items-center">
+      <h2 class="card-title">
+        <%= link_to map_url(timespan(stat.month, stat.year)), class: "underline hover:no-underline text-#{header_colors.sample}" do %>
+          <%= Date::MONTHNAMES[stat.month] %>
+        <% end %>
+      </h2>
+
+      <div class="flex items-center gap-2">
+        <%= link_to '[Update]', update_year_month_stats_path(stat.year, stat.month), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
+      </div>
+    </div>
     <p><%= stat.distance %><%= DISTANCE_UNIT %></p>
     <% if REVERSE_GEOCODING_ENABLED %>
       <div class="card-actions justify-end">

@@ -41,10 +41,14 @@ Rails.application.routes.draw do
   post 'notifications/destroy_all', to: 'notifications#destroy_all', as: :delete_all_notifications
   resources :stats, only: :index do
     collection do
-      post :update
+      put :update_all
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
+  put 'stats/:year/:month/update',
+      to: 'stats#update',
+      as: :update_year_month_stats,
+      constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
 
   root to: 'home#index'
   devise_for :users, skip: [:registrations]
