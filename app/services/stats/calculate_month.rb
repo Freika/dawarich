@@ -3,8 +3,8 @@
 class Stats::CalculateMonth
   def initialize(user_id, year, month)
     @user = User.find(user_id)
-    @year = year
-    @month = month
+    @year = year.to_i
+    @month = month.to_i
   end
 
   def call

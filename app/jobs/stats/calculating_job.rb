@@ -19,8 +19,8 @@ class Stats::CalculatingJob < ApplicationJob
     Notifications::Create.new(
       user:,
       kind: :info,
-      title: "Stats updated: #{year}-#{month}",
-      content: "Stats updated for #{year}-#{month}"
+      title: "Stats updated for #{Date::MONTHNAMES[month.to_i]} of #{year}",
+      content: "Stats updated for #{Date::MONTHNAMES[month.to_i]} of #{year}"
     ).call
   end
 

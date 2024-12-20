@@ -7,7 +7,7 @@
         <%= link_to "Mark all as read", mark_notifications_as_read_path, method: :post, data: { turbo_method: :post }, class: "btn btn-sm btn-primary" %>&nbsp;
       <% end %>
       <% if @notifications.any? %>
-        <%= link_to "Delete all", delete_all_notifications_path, method: :post, data: { turbo_method: :post }, class: "btn btn-sm btn-warning" %>
+        <%= link_to "Delete all", delete_all_notifications_path, method: :post, data: { turbo_method: :post, turbo_confirm: 'Are you sure you want to delete all notifications?' }, class: "btn btn-sm btn-warning" %>
       <% end %>
     </div>
     <div class="mb-4">
