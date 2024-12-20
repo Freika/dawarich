@@ -5,13 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.20.3 - 2024-12-20
+# 0.21.0 - 2024-12-20
+
+⚠️ This release introduces a breaking change. ⚠️
+
+The `dawarich_db` service now uses a custom `postgresql.conf` file.
+
+As @tabacha pointed out in #549, the default `shm_size` for the `dawarich_db` service is too small and it may lead to database performance issues. This release introduces a `shm_size` parameter to the `dawarich_db` service to increase the size of the shared memory for PostgreSQL. This should help database with peforming vacuum and other operations. Also, it introduces a custom `postgresql.conf` file to the `dawarich_db` service.
+
+To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf` file in the `dawarich_db` service directory and add the following line to it:
+
+```diff
+  dawarich_db:
+    image: postgres:14.2-alpine
+    shm_size: 1G
+    container_name: dawarich_db
+    volumes:
+      - dawarich_db_data:/var/lib/postgresql/data
+      - dawarich_shared:/var/shared
++      - ./postgresql.conf:/etc/postgresql/postgresql.conf # Provide path to custom config
+  ...
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
++    command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config
+```
+
+To ensure your database is using custom config, you can connect to the container (`docker exec -it dawarich_db psql -U postgres`) and run `SHOW config_file;` command. It should return the following path: `/etc/postgresql/postgresql.conf`.
 
 ### Added
 
-- A button on a year stats card to update stats for the whole year.
-- A button on a month stats card to update stats for a specific month.
+- A button on a year stats card to update stats for the whole year. #466
+- A button on a month stats card to update stats for a specific month. #466
 - A confirmation alert on the Notifications page before deleting all notifications.
+- A `shm_size` parameter to the `dawarich_db` service to increase the size of the shared memory for PostgreSQL. This should help database with peforming vacuum and other operations.
+
+```diff
+  ...
+  dawarich_db:
+    image: postgres:14.2-alpine
++    shm_size: 1G
+  ...
+```
+
 - In addition to `api_key` parameter, `Authorization` header is now being used to authenticate API requests. #543
 
 Example:
@@ -23,6 +62,7 @@ Authorization: Bearer YOUR_API_KEY
 ### Changed
 
 - The map borders were expanded to make it easier to scroll around the map for New Zealanders.
+- The `dawarich_db` service now uses a custom `postgresql.conf` file.
 
 # 0.20.2 - 2024-12-17
 
