@@ -65,6 +65,7 @@ Authorization: Bearer YOUR_API_KEY
 
 - The map borders were expanded to make it easier to scroll around the map for New Zealanders.
 - The `dawarich_db` service now uses a custom `postgresql.conf` file.
+- The popup over polylines now shows dates in the user's format, based on their browser settings.
 
 # 0.20.2 - 2024-12-17
 
