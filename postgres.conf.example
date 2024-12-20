@@ -1,0 +1,36 @@
+listen_addresses = '*'
+max_connections = 50
+
+shared_buffers = 512MB
+
+work_mem = 128MB
+maintenance_work_mem = 128MB
+
+
+dynamic_shared_memory_type = posix
+checkpoint_timeout = 10min              # range 30s-1d
+max_wal_size = 2GB
+min_wal_size = 80MB
+max_parallel_workers_per_gather = 4
+
+log_min_duration_statement = 500        # -1 is disabled, 0 logs all statements
+                                        # -1 disables, 0 logs all temp files
+log_timezone = 'UTC'
+
+
+autovacuum_vacuum_scale_factor = 0.05   # fraction of table size before vacuum
+autovacuum_analyze_scale_factor = 0.05  # fraction of table size before analyze
+
+
+datestyle = 'iso, dmy'
+
+timezone = 'UTC'
+
+lc_messages = 'en_US.utf8'                      # locale for system error message
+                                        # strings
+lc_monetary = 'en_US.utf8'                      # locale for monetary formatting
+lc_numeric = 'en_US.utf8'                       # locale for number formatting
+lc_time = 'en_US.utf8'                          # locale for time formatting
+
+
+default_text_search_config = 'pg_catalog.english'
