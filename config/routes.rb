@@ -57,8 +57,6 @@ Rails.application.routes.draw do
     put 'users' => 'devise/registrations#update', :as => 'user_registration'
   end
 
-  # And then modify the app/views/devise/shared/_links.erb
-
   get 'map', to: 'map#index'
 
   namespace :api do

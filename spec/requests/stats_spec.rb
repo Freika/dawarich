@@ -27,11 +27,9 @@ RSpec.describe '/stats', type: :request do
   end
 
   context 'when user is signed in' do
-    before do
-      sign_in user
-    end
-
     let(:user) { create(:user) }
+
+    before { sign_in user }
 
     describe 'GET /index' do
       it 'renders a successful response' do
@@ -54,10 +52,32 @@ RSpec.describe '/stats', type: :request do
     describe 'POST /update' do
       let(:stat) { create(:stat, user:, year: 2024) }
 
+      context 'when updating a specific month' do
+        it 'enqueues Stats::CalculatingJob for the given year and month' do
+          put update_year_month_stats_url(year: '2024', month: '1')
+
+          expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, '2024', '1')
+        end
+      end
+
+      context 'when updating the whole year' do
+        it 'enqueues Stats::CalculatingJob for each month of the year' do
+          put update_year_month_stats_url(year: '2024', month: 'all')
+
+          (1..12).each do |month|
+            expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, '2024', month)
+          end
+        end
+      end
+    end
+
+    describe 'PUT /update_all' do
+      let(:stat) { create(:stat, user:, year: 2024) }
+
       it 'enqueues Stats::CalculatingJob for each tracked year and month' do
         allow(user).to receive(:years_tracked).and_return([{ year: 2024, months: %w[Jan Feb] }])
 
-        post stats_url
+        put update_all_stats_url
 
         expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2024, 1)
         expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2024, 2)
