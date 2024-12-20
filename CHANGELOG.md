@@ -23,7 +23,7 @@ To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf`
     volumes:
       - dawarich_db_data:/var/lib/postgresql/data
       - dawarich_shared:/var/shared
-+      - ./postgresql.conf:/etc/postgresql/postgresql.conf # Provide path to custom config
++     - ./postgresql.conf:/etc/postgresql/postgresql.conf # Provide path to custom config
   ...
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
@@ -31,10 +31,12 @@ To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf`
       retries: 5
       start_period: 30s
       timeout: 10s
-+    command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config
++   command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config
 ```
 
 To ensure your database is using custom config, you can connect to the container (`docker exec -it dawarich_db psql -U postgres`) and run `SHOW config_file;` command. It should return the following path: `/etc/postgresql/postgresql.conf`.
+
+An example of a custom `postgresql.conf` file is provided in the `postgresql.conf.example` file.
 
 ### Added
 
@@ -47,7 +49,7 @@ To ensure your database is using custom config, you can connect to the container
   ...
   dawarich_db:
     image: postgres:14.2-alpine
-+    shm_size: 1G
++   shm_size: 1G
   ...
 ```
 
