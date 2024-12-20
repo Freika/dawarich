@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- A button on a year stats card to update stats for the whole year.
+- A button on a month stats card to update stats for a specific month.
+- A confirmation alert on the Notifications page before deleting all notifications.
 - In addition to `api_key` parameter, `Authorization` header is now being used to authenticate API requests. #543
 
 Example:
@@ -17,13 +20,9 @@ Example:
 Authorization: Bearer YOUR_API_KEY
 ```
 
-# 0.20.3 - 2024-12-20
+### Changed
 
-### Added
-
-- A button on a year stats card to update stats for the whole year.
-- A button on a month stats card to update stats for a specific month.
-- A confirmation alert on the Notifications page before deleting all notifications.
+- The map borders were expanded to make it easier to scroll around the map for New Zealanders.
 
 # 0.20.2 - 2024-12-17
 

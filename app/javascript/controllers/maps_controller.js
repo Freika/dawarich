@@ -54,8 +54,8 @@ export default class extends Controller {
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
     // Set the maximum bounds to prevent infinite scroll
-    var southWest = L.latLng(-90, -180);
-    var northEast = L.latLng(90, 180);
+    var southWest = L.latLng(-120, -210);
+    var northEast = L.latLng(120, 210);
     var bounds = L.latLngBounds(southWest, northEast);
 
     this.map.setMaxBounds(bounds);
