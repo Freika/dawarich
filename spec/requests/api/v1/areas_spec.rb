@@ -7,7 +7,7 @@ RSpec.describe '/api/v1/areas', type: :request do
 
   describe 'GET /index' do
     it 'renders a successful response' do
-      get api_v1_areas_url(api_key: user.api_key)
+      get api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" }
       expect(response).to be_successful
     end
   end
@@ -20,12 +20,14 @@ RSpec.describe '/api/v1/areas', type: :request do
 
       it 'creates a new Area' do
         expect do
-          post api_v1_areas_url(api_key: user.api_key), params: { area: valid_attributes }
+          post api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" },
+                                 params: { area: valid_attributes }
         end.to change(Area, :count).by(1)
       end
 
       it 'redirects to the created api_v1_area' do
-        post api_v1_areas_url(api_key: user.api_key), params: { area: valid_attributes }
+        post api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" },
+                              params: { area: valid_attributes }
 
         expect(response).to have_http_status(:created)
       end
@@ -38,12 +40,15 @@ RSpec.describe '/api/v1/areas', type: :request do
 
       it 'does not create a new Area' do
         expect do
-          post api_v1_areas_url(api_key: user.api_key), params: { area: invalid_attributes }
+          post api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" },
+                                 params: { area: invalid_attributes }
         end.to change(Area, :count).by(0)
       end
 
       it 'renders a response with 422 status' do
-        post api_v1_areas_url(api_key: user.api_key), params: { area: invalid_attributes }
+        post api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" },
+                               params: { area: invalid_attributes }
+
         expect(response).to have_http_status(:unprocessable_entity)
       end
     end
@@ -56,14 +61,16 @@ RSpec.describe '/api/v1/areas', type: :request do
       let(:new_attributes) { attributes_for(:area).merge(name: 'New Name') }
 
       it 'updates the requested api_v1_area' do
-        patch api_v1_area_url(area, api_key: user.api_key), params: { area: new_attributes }
+        patch api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" },
+                                     params: { area: new_attributes }
         area.reload
 
         expect(area.reload.name).to eq('New Name')
       end
 
       it 'redirects to the api_v1_area' do
-        patch api_v1_area_url(area, api_key: user.api_key), params: { area: new_attributes }
+        patch api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" },
+                                     params: { area: new_attributes }
         area.reload
 
         expect(response).to have_http_status(:ok)
@@ -75,7 +82,8 @@ RSpec.describe '/api/v1/areas', type: :request do
       let(:invalid_attributes) { attributes_for(:area, name: nil) }
 
       it 'renders a response with 422 status' do
-        patch api_v1_area_url(area, api_key: user.api_key), params: { area: invalid_attributes }
+        patch api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" },
+                                     params: { area: invalid_attributes }
 
         expect(response).to have_http_status(:unprocessable_entity)
       end
@@ -87,12 +95,12 @@ RSpec.describe '/api/v1/areas', type: :request do
 
     it 'destroys the requested api_v1_area' do
       expect do
-        delete api_v1_area_url(area, api_key: user.api_key)
+        delete api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" }
       end.to change(Area, :count).by(-1)
     end
 
     it 'redirects to the api_v1_areas list' do
-      delete api_v1_area_url(area, api_key: user.api_key)
+      delete api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" }
 
       expect(response).to have_http_status(:ok)
     end

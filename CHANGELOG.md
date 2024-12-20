@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- In addition to `api_key` parameter, `Authorization` header is now being used to authenticate API requests. #543
+
+Example:
+
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+# 0.20.3 - 2024-12-20
+
+### Added
+
 - A button on a year stats card to update stats for the whole year.
 - A button on a month stats card to update stats for a specific month.
 - A confirmation alert on the Notifications page before deleting all notifications.

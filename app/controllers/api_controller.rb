@@ -13,7 +13,11 @@ class ApiController < ApplicationController
   end
 
   def current_api_user
-    @current_api_user ||= User.find_by(api_key: params[:api_key])
+    @current_api_user ||= User.find_by(api_key:)
+  end
+
+  def api_key
+    params[:api_key] || request.headers['Authorization']&.split(' ')&.last
   end
 
   def validate_params
