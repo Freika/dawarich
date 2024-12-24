@@ -29,6 +29,12 @@ RSpec.describe Imports::Watcher do
         it 'creates an import for the user' do
           expect { service }.to change(user.imports, :count).by(6)
         end
+
+         it 'creates points for the user' do
+          initial_point_count = Point.count
+          service
+          expect(Point.count).to be > initial_point_count
+        end
       end
 
       context 'when the file has an invalid user email' do

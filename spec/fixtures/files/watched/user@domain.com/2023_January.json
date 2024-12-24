@@ -52,6 +52,19 @@
       "properties": {
         "timestamp": "2023-01-02T14:00:00Z"
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.42076,
+          50.08804
+        ]
+      },
+      "properties": {
+        "timestamp": "2023-01-02T16:00:00Z"
+      }
     }
   ]
 }

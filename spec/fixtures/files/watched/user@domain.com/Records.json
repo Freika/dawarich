@@ -21,6 +21,20 @@
       "source": "WIFI",
       "deviceTag": 1184882232,
       "timestamp": "2013-03-01T05:17:39.849Z"
+    },
+    {
+      "latitudeE7": 533700000,
+      "longitudeE7": 836960000,
+      "accuracy": 50,
+      "source": "GPS",
+      "timestamp": "2013-04-01T12:00:00.000Z"
+    },
+    {
+      "latitudeE7": 533710000,
+      "longitudeE7": 836970000,
+      "accuracy": 30,
+      "source": "GPS",
+      "timestamp": "2013-05-01T08:30:00.000Z"
     }
   ]
 }

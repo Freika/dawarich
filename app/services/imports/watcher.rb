@@ -10,11 +10,13 @@ class Imports::Watcher
     user_directories.each do |user_email|
       user = User.find_by(email: user_email)
       next unless user
+puts "Processing directory for user: #{user.email}"
 
       user_directory_path = File.join(WATCHED_DIR_PATH, user_email)
       file_names = file_names(user_directory_path)
 
       file_names.each do |file_name|
+       puts "Processing file: #{file_name}"
         process_file(user, user_directory_path, file_name)
       end
     end
@@ -51,8 +53,11 @@ class Imports::Watcher
     import.raw_data = raw_data(file_path, import.source)
 
     import.save!
+    puts "Import saved for file: #{file_name}"
+
 
     ImportJob.perform_later(user.id, import.id)
+     puts "ImportJob enqueued for user_id: #{user.id}, import_id: #{import.id}"
   end
 
   def find_or_initialize_import(user, file_name)
