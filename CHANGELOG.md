@@ -5,11 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.21.1 - 2024-12-23
+# 0.21.1 - 2024-12-24
 
 ### Added
 
 - Cache cleaning and preheating upon application start.
+- `PHOTON_API_KEY` env var to set Photon API key. It's an optional env var, but it's required if you want to use Photon API as a Patreon supporter.
+- 'X-Dawarich-Response' header to the `GET /api/v1/health` endpoint. It's set to 'Hey, I\'m alive!' to make it easier to check if the API is working.
+
+### Changed
+
+- Custom config for PostgreSQL is now optional in `docker-compose.yml`.
 
 # 0.21.0 - 2024-12-20
 
@@ -29,7 +35,7 @@ To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf`
     volumes:
       - dawarich_db_data:/var/lib/postgresql/data
       - dawarich_shared:/var/shared
-+     - ./postgresql.conf:/etc/postgresql/postgresql.conf # Provide path to custom config
++     - ./postgresql.conf:/etc/postgresql/postgres.conf # Provide path to custom config
   ...
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
@@ -37,7 +43,7 @@ To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf`
       retries: 5
       start_period: 30s
       timeout: 10s
-+   command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config
++   command: postgres -c config_file=/etc/postgresql/postgres.conf # Use custom config
 ```
 
 To ensure your database is using custom config, you can connect to the container (`docker exec -it dawarich_db psql -U postgres`) and run `SHOW config_file;` command. It should return the following path: `/etc/postgresql/postgresql.conf`.

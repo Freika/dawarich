@@ -17,4 +17,6 @@ if defined?(PHOTON_API_HOST)
   settings[:photon] = { use_https: PHOTON_API_USE_HTTPS, host: PHOTON_API_HOST }
 end
 
+settings[:http_headers] = { 'X-Api-Key' => PHOTON_API_KEY } if defined?(PHOTON_API_KEY)
+
 Geocoder.configure(settings)

@@ -23,7 +23,7 @@ services:
     volumes:
       - dawarich_db_data:/var/lib/postgresql/data
       - dawarich_shared:/var/shared
-      - ./postgresql.conf:/etc/postgresql/postgresql.conf # Provide path to your custom config
+      # - ./postgresql.conf:/etc/postgresql/postgresql.conf # Optional, uncomment if you want to use a custom config
     networks:
       - dawarich
     environment:
@@ -36,7 +36,7 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config
+    # command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config, uncomment if you want to use a custom config
   dawarich_app:
     image: freikin/dawarich:latest
     container_name: dawarich_app
