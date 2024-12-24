@@ -7,7 +7,7 @@ require_relative 'application'
 Rails.application.initialize!
 
 # Clear the cache
-Cache::Clean.call
+Cache::CleaningJob.perform_later
 
 # Preheat the cache
 Cache::PreheatingJob.perform_later

@@ -28,8 +28,8 @@ jobs:
       - run:
           name: Database Setup
           command: |
-            bundle exec bin/rails db:create
-            bundle exec bin/rails db:schema:load
+            bundle exec rails db:create
+            bundle exec rails db:schema:load
       - run:
           name: Run RSpec tests
           command: bundle exec rspec
