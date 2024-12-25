@@ -51,3 +51,5 @@
 !/app/assets/builds/.keep
 .DS_Store
 .env
+
+.byebug_history
