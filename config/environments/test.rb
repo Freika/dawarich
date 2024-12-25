@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'active_support/core_ext/integer/time'
 
 # The test environment is used exclusively to run your application's
@@ -24,11 +26,11 @@ Rails.application.configure do
   }
 
   # Show full error reports and disable caching.
-  config.consider_all_requests_local       = true
+  config.consider_all_requests_local = true
   config.action_controller.perform_caching = false
   config.cache_store = :null_store
 
-  # Raise exceptions instead of rendering exception templates.
+  # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 
   # Disable request forgery protection in test environment.
@@ -37,12 +39,18 @@ Rails.application.configure do
   # Store uploaded files on the local file system in a temporary directory.
   config.active_storage.service = :test
 
+  # Disable caching for Action Mailer templates even if Action Controller
+  # caching is enabled.
   config.action_mailer.perform_caching = false
 
   # Tell Action Mailer not to deliver emails to the real world.
   # The :test delivery method accumulates sent emails in the
   # ActionMailer::Base.deliveries array.
   config.action_mailer.delivery_method = :test
+
+  # Unlike controllers, the mailer instance doesn't have any context about the
+  # incoming request so you'll need to provide the :host parameter yourself.
+  config.action_mailer.default_url_options = { host: 'www.example.com' }
 
   # Print deprecation notices to the stderr.
   config.active_support.deprecation = :stderr
@@ -59,6 +67,6 @@ Rails.application.configure do
   # Annotate rendered view with file names.
   # config.action_view.annotate_rendered_view_with_filenames = true
 
-  # Raise error when a before_action's only/except options reference missing actions
+  # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
 end

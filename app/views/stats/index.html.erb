@@ -21,15 +21,18 @@
     <% end %>
   </div>
 
-  <%= link_to 'Update stats', stats_path, data: { 'turbo-method' => :post }, class: 'btn btn-primary mt-5' %>
+  <%= link_to 'Update stats', update_all_stats_path, data: { turbo_method: :put }, class: 'btn btn-primary mt-5' %>
 
-  <div class="mt-5 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 p-4">
+  <div class="mt-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
     <% @stats.each do |year, stats| %>
       <div class="card w-full bg-base-200 shadow-xl">
         <div class="card-body">
-          <h2 class="card-title text-<%= header_colors.sample %>">
-            <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
-            <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
+          <h2 class="card-title justify-between text-<%= header_colors.sample %>">
+            <div>
+              <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
+              <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
+            </div>
+            <%= link_to '[Update]', update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
           </h2>
           <p>
             <% cache [current_user, 'year_distance_stat', year], skip_digest: true do %>

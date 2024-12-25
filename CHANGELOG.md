@@ -5,6 +5,123 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.21.1 - 2024-12-24
+
+### Added
+
+- Cache cleaning and preheating upon application start.
+- `PHOTON_API_KEY` env var to set Photon API key. It's an optional env var, but it's required if you want to use Photon API as a Patreon supporter.
+- 'X-Dawarich-Response' header to the `GET /api/v1/health` endpoint. It's set to 'Hey, I\'m alive!' to make it easier to check if the API is working.
+
+### Changed
+
+- Custom config for PostgreSQL is now optional in `docker-compose.yml`.
+
+# 0.21.0 - 2024-12-20
+
+⚠️ This release introduces a breaking change. ⚠️
+
+The `dawarich_db` service now uses a custom `postgresql.conf` file.
+
+As @tabacha pointed out in #549, the default `shm_size` for the `dawarich_db` service is too small and it may lead to database performance issues. This release introduces a `shm_size` parameter to the `dawarich_db` service to increase the size of the shared memory for PostgreSQL. This should help database with peforming vacuum and other operations. Also, it introduces a custom `postgresql.conf` file to the `dawarich_db` service.
+
+To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf` file in the `dawarich_db` service directory and add the following line to it:
+
+```diff
+  dawarich_db:
+    image: postgres:14.2-alpine
+    shm_size: 1G
+    container_name: dawarich_db
+    volumes:
+      - dawarich_db_data:/var/lib/postgresql/data
+      - dawarich_shared:/var/shared
++     - ./postgresql.conf:/etc/postgresql/postgres.conf # Provide path to custom config
+  ...
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
++   command: postgres -c config_file=/etc/postgresql/postgres.conf # Use custom config
+```
+
+To ensure your database is using custom config, you can connect to the container (`docker exec -it dawarich_db psql -U postgres`) and run `SHOW config_file;` command. It should return the following path: `/etc/postgresql/postgresql.conf`.
+
+An example of a custom `postgresql.conf` file is provided in the `postgresql.conf.example` file.
+
+### Added
+
+- A button on a year stats card to update stats for the whole year. #466
+- A button on a month stats card to update stats for a specific month. #466
+- A confirmation alert on the Notifications page before deleting all notifications.
+- A `shm_size` parameter to the `dawarich_db` service to increase the size of the shared memory for PostgreSQL. This should help database with peforming vacuum and other operations.
+
+```diff
+  ...
+  dawarich_db:
+    image: postgres:14.2-alpine
++   shm_size: 1G
+  ...
+```
+
+- In addition to `api_key` parameter, `Authorization` header is now being used to authenticate API requests. #543
+
+Example:
+
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Changed
+
+- The map borders were expanded to make it easier to scroll around the map for New Zealanders.
+- The `dawarich_db` service now uses a custom `postgresql.conf` file.
+- The popup over polylines now shows dates in the user's format, based on their browser settings.
+
+# 0.20.2 - 2024-12-17
+
+### Added
+
+- A point id is now being shown in the point popup.
+
+### Fixed
+
+- North Macedonia is now being shown on the scratch map. #537
+
+### Changed
+
+- The app process is now bound to :: instead of 0.0.0.0 to provide compatibility with IPV6.
+- The app was updated to use Rails 8.0.1.
+
+# 0.20.1 - 2024-12-16
+
+### Fixed
+
+- Setting `reverse_geocoded_at` for points that don't have geodata is now being performed in background job, in batches of 10,000 points to prevent memory exhaustion and long-running data migration.
+
+# 0.20.0 - 2024-12-16
+
+### Added
+
+- `GET /api/v1/points/tracked_months` endpoint added to get list of tracked years and months.
+- `GET /api/v1/countries/visited_cities` endpoint added to get list of visited cities.
+- A link to the docs leading to a help chart for k8s. #550
+- A button to delete all notifications. #548
+- A support for `RAILS_LOG_LEVEL` env var to change log level. More on that here: https://guides.rubyonrails.org/debugging_rails_applications.html#log-levels. The available log levels are: `:debug`, `:info`, `:warn`, `:error`, `:fatal`, and `:unknown`, corresponding to the log level numbers from 0 up to 5, respectively. The default log level is `:debug`. #540
+- A devcontainer to improve developers experience. #546
+
+### Fixed
+
+- A point popup is no longer closes when hovering over a polyline. #536
+- When polylines layer is disabled and user deletes a point from its popup, polylines layer is no longer being enabled right away. #552
+- Paths to gems within the sidekiq and app containers. #499
+
+### Changed
+
+- Months and years navigation is moved to a map panel on the right side of the map.
+- List of visited cities is now being shown in a map panel on the right side of the map.
+
 # 0.19.7 - 2024-12-11
 
 ### Fixed

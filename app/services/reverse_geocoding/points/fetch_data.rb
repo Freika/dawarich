@@ -12,6 +12,12 @@ class ReverseGeocoding::Points::FetchData
   def call
     return if point.reverse_geocoded?
 
+    update_point_with_geocoding_data
+  end
+
+  private
+
+  def update_point_with_geocoding_data
     response = Geocoder.search([point.latitude, point.longitude]).first
     return if response.blank? || response.data['error'].present?
 

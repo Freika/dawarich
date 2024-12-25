@@ -53,3 +53,13 @@
 .env
 
 .byebug_history
+
+
+.devcontainer/.onCreateCommandMarker
+.devcontainer/.postCreateCommandMarker
+.devcontainer/.updateContentCommandMarker
+
+.vscode-server/
+.ash_history
+.cache/
+.dotnet/

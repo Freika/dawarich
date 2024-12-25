@@ -1,2 +1,2 @@
-prometheus_exporter: bundle exec prometheus_exporter -b 0.0.0.0
-web: bin/rails server -p 3000 -b 0.0.0.0
+prometheus_exporter: bundle exec prometheus_exporter -b ANY
+web: bin/rails server -p 3000 -b ::

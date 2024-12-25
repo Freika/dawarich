@@ -6,18 +6,21 @@ class Stats::CalculatingJob < ApplicationJob
   def perform(user_id, year, month)
     Stats::CalculateMonth.new(user_id, year, month).call
 
-    create_stats_updated_notification(user_id)
+    create_stats_updated_notification(user_id, year, month)
   rescue StandardError => e
     create_stats_update_failed_notification(user_id, e)
   end
 
   private
 
-  def create_stats_updated_notification(user_id)
+  def create_stats_updated_notification(user_id, year, month)
     user = User.find(user_id)
 
     Notifications::Create.new(
-      user:, kind: :info, title: 'Stats updated', content: 'Stats updated'
+      user:,
+      kind: :info,
+      title: "Stats updated for #{Date::MONTHNAMES[month.to_i]} of #{year}",
+      content: "Stats updated for #{Date::MONTHNAMES[month.to_i]} of #{year}"
     ).call
   end
 

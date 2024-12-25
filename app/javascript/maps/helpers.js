@@ -55,7 +55,15 @@ export function minutesToDaysHoursMinutes(minutes) {
 
 export function formatDate(timestamp, timezone) {
   const date = new Date(timestamp * 1000);
-  return date.toLocaleString("en-GB", { timeZone: timezone });
+  let locale;
+  if (navigator.languages !== undefined) {
+    locale = navigator.languages[0];
+  } else if (navigator.language) {
+    locale = navigator.language;
+  } else {
+    locale = 'en-GB';
+  }
+  return date.toLocaleString(locale, { timeZone: timezone });
 }
 
 export function haversineDistance(lat1, lon1, lat2, lon2, unit = 'km') {

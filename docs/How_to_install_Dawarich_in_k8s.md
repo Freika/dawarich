@@ -1,5 +1,7 @@
 # How to install Dawarich on Kubernetes
 
+> An **unofficial Helm chart** is available [here](https://github.com/Cogitri/charts/tree/master/charts/dawarich). For a manual installation using YAML manifests, see below.
+
 ## Prerequisites
 
 - Kubernetes cluster and basic kubectl knowledge.
@@ -7,6 +9,7 @@
 - Working Postgres and Redis instances. In this example Postgres lives in 'db' namespace and Redis in 'redis' namespace.
 - Ngingx ingress controller with Letsencrypt integeation.
 - This example uses 'example.com' as a domain name, you want to change it to your own.
+- This will work on IPv4 and IPv6 Single Stack clusters, as well as Dual Stack deployments.
 
 ## Installation
 
@@ -140,8 +143,8 @@ spec:
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /usr/local/bundle/gems_app
-              name: gem-cache
+            - mountPath: /usr/local/bundle/gems
+              name: gem-app
             - mountPath: /var/app/public
               name: public
             - mountPath: /var/app/tmp/imports/watched
@@ -149,7 +152,7 @@ spec:
           command:
             - "dev-entrypoint.sh"
           args:
-            - "bin/rails server -p 3000 -b 0.0.0.0"
+            - "bin/rails server -p 3000 -b ::"
           resources:
             requests:
               memory: "1Gi"
@@ -196,7 +199,7 @@ spec:
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /usr/local/bundle/gems_sidekiq
+            - mountPath: /usr/local/bundle/gems
               name: gem-sidekiq
             - mountPath: /var/app/public
               name: public

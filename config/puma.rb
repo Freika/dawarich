@@ -6,9 +6,8 @@
 # the maximum value specified for Puma. Default is set to 5 threads for minimum
 # and maximum; this matches the default thread size of Active Record.
 #
-max_threads_count = ENV.fetch('RAILS_MAX_THREADS', 5)
-min_threads_count = ENV.fetch('RAILS_MIN_THREADS') { max_threads_count }
-threads min_threads_count, max_threads_count
+threads_count = ENV.fetch('RAILS_MAX_THREADS', 5)
+threads threads_count, threads_count
 
 # Specifies the `worker_timeout` threshold that Puma will use to wait before
 # terminating a worker in development environments.
@@ -50,7 +49,7 @@ if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
 
   before_fork do
     PrometheusExporter::Client.default = PrometheusExporter::Client.new(
-      host: ENV.fetch('PROMETHEUS_EXPORTER_HOST', '0.0.0.0'),
+      host: ENV.fetch('PROMETHEUS_EXPORTER_HOST', 'ANY'),
       port: ENV.fetch('PROMETHEUS_EXPORTER_PORT', 9394)
     )
   end

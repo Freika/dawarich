@@ -38,12 +38,17 @@ Rails.application.routes.draw do
   end
   resources :notifications, only: %i[index show destroy]
   post 'notifications/mark_as_read', to: 'notifications#mark_as_read', as: :mark_notifications_as_read
+  post 'notifications/destroy_all', to: 'notifications#destroy_all', as: :delete_all_notifications
   resources :stats, only: :index do
     collection do
-      post :update
+      put :update_all
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
+  put 'stats/:year/:month/update',
+      to: 'stats#update',
+      as: :update_year_month_stats,
+      constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
 
   root to: 'home#index'
   devise_for :users, skip: [:registrations]
@@ -51,8 +56,6 @@ Rails.application.routes.draw do
     get 'users/edit' => 'devise/registrations#edit', :as => 'edit_user_registration'
     put 'users' => 'devise/registrations#update', :as => 'user_registration'
   end
-
-  # And then modify the app/views/devise/shared/_links.erb
 
   get 'map', to: 'map#index'
 
@@ -78,6 +81,11 @@ Rails.application.routes.draw do
 
       namespace :countries do
         resources :borders, only: :index
+        resources :visited_cities, only: :index
+      end
+
+      namespace :points do
+        get 'tracked_months', to: 'tracked_months#index'
       end
 
       resources :photos, only: %i[index] do

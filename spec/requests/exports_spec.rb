@@ -49,7 +49,7 @@ RSpec.describe '/exports', type: :request do
         expect(response).to redirect_to(exports_url)
       end
 
-      it 'enqeuues a job to process the export' do
+      it 'enqueues a job to process the export' do
         ActiveJob::Base.queue_adapter = :test
 
         expect { post exports_url, params: }.to have_enqueued_job(ExportJob)

@@ -1,7 +1,7 @@
 <% content_for :title, 'Map' %>
 
 <div class="flex flex-col lg:flex-row lg:space-x-4 my-5 w-full">
-  <div class='w-full lg:w-5/6'>
+  <div class='w-full'>
     <div class="flex flex-col space-y-4 mb-4 w-full">
       <%= form_with url: map_path(import_id: params[:import_id]), method: :get do |f| %>
         <div class="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4 sm:items-end">
@@ -57,10 +57,6 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <div class='w-full lg:w-1/6 mt-8 lg:mt-0 mx-auto'>
-    <%= render 'shared/right_sidebar' %>
   </div>
 </div>
 

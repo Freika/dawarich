@@ -6,6 +6,8 @@ require_relative 'application'
 # Initialize the Rails application.
 Rails.application.initialize!
 
-# Clear the cache of the application version
+# Clear the cache
+Cache::CleaningJob.perform_later
 
-Rails.cache.delete(CheckAppVersion::VERSION_CACHE_KEY)
+# Preheat the cache
+Cache::PreheatingJob.perform_later
