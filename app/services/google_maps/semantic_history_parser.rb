@@ -33,8 +33,6 @@ class GoogleMaps::SemanticHistoryParser
       )
 
       broadcast_import_progress(import, index)
-      puts "Created point: #{location['latitudeE7'] / 1e7}, #{location['longitudeE7'] / 1e7} at #{location['timestamp']}"
-     
     end
   end
 

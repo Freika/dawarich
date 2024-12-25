@@ -57,7 +57,7 @@ puts "Processing directory for user: #{user.email}"
 
 
     ImportJob.perform_later(user.id, import.id)
-     puts "ImportJob enqueued for user_id: #{user.id}, import_id: #{import.id}"
+    puts "ImportJob enqueued for user_id: #{user.id}, import_id: #{import.id}"
   end
 
   def find_or_initialize_import(user, file_name)
