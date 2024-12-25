@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Import < ApplicationRecord
-  # self.ignored_columns = %w[raw_data]
-
   belongs_to :user
   has_many :points, dependent: :destroy
 
@@ -15,6 +13,10 @@ class Import < ApplicationRecord
 
   def process!
     Imports::Create.new(user, self).call
+  end
+
+  def reverse_geocoded_points_count
+    points.reverse_geocoded.count
   end
 
   def years_and_months_tracked

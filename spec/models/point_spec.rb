@@ -52,6 +52,20 @@ RSpec.describe Point, type: :model do
         expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
           .with('Point', point.id)
       end
+
+      context 'when point is imported' do
+        let(:point) { build(:point, import_id: 1) }
+
+        it 'does not enqueue ReverseGeocodeJob' do
+          expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
+        end
+
+        context 'when reverse geocoding is forced' do
+          it 'enqueues ReverseGeocodeJob' do
+            expect { point.async_reverse_geocode(force: true) }.to have_enqueued_job(ReverseGeocodingJob)
+          end
+        end
+      end
     end
   end
 end

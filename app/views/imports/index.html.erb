@@ -41,6 +41,7 @@
             <tr>
               <th>Name</th>
               <th>Imported points</th>
+              <th>Reverse geocoded points</th>
               <th>Created at</th>
             </tr>
           </thead>
@@ -50,7 +51,9 @@
             data-user-id="<%= current_user.id %>"
           >
             <% @imports.each do |import| %>
-              <tr data-import-id="<%= import.id %>" id="import-<%= import.id %>">
+              <tr data-import-id="<%= import.id %>"
+                  id="import-<%= import.id %>"
+                  data-points-total="<%= import.points_count %>">
                 <td>
                   <%= link_to import.name, import, class: 'underline hover:no-underline' %>
                   (<%= import.source %>)
@@ -61,6 +64,9 @@
                 </td>
                 <td data-points-count>
                   <%= number_with_delimiter import.points_count %>
+                </td>
+                <td data-reverse-geocoded-points-count>
+                  <%= number_with_delimiter import.reverse_geocoded_points_count %>
                 </td>
                 <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
               </tr>

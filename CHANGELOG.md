@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.21.2 - 2024-12-25
+
+### Changed
+
+- Imported points will now be reverse geocoded only after import is finished.
+
 # 0.21.1 - 2024-12-24
 
 ### Added
