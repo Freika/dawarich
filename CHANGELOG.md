@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Imported points will now be reverse geocoded only after import is finished.
 
+### Fixed
+
+- Markers on the map are now being rendered with higher z-index than polylines. #577
+
 # 0.21.1 - 2024-12-24
 
 ### Added

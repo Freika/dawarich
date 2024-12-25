@@ -122,7 +122,12 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
   return L.layerGroup(
     splitPolylines.map((polylineCoordinates) => {
       const latLngs = polylineCoordinates.map((point) => [point[0], point[1]]);
-      const polyline = L.polyline(latLngs, { color: "blue", opacity: 0.6, weight: 3 });
+      const polyline = L.polyline(latLngs, {
+        color: "blue",
+        opacity: 0.6,
+        weight: 3,
+        zIndexOffset: 400
+      });
 
       addHighlightOnHover(polyline, map, polylineCoordinates, userSettings, distanceUnit);
 
