@@ -38,7 +38,6 @@ RSpec.describe OwnTracks::ExportParser do
           'topic' => 'owntracks/test/iPhone 12 Pro',
           'visit_id' => nil,
           'user_id' => user.id,
-          'country' => nil,
           'raw_data' => {
             'm' => 1,
             'p' => 100.266,

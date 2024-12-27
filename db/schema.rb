@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2024_12_27_114444) do
+ActiveRecord::Schema[8.0].define(version: 2024_12_27_130757) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -179,24 +179,43 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_114444) do
     t.text "in_regions", default: [], array: true
     t.jsonb "raw_data", default: {}
     t.bigint "import_id"
-    t.string "city"
-    t.string "country"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.jsonb "geodata", default: {}, null: false
     t.bigint "visit_id"
     t.datetime "reverse_geocoded_at"
+    t.string "osm_id"
+    t.string "osm_type"
+    t.string "osm_key"
+    t.string "osm_value"
+    t.string "osm_district"
+    t.string "post_code"
+    t.string "type"
+    t.string "house_number"
+    t.string "street"
+    t.string "name"
+    t.string "district"
+    t.string "locality"
+    t.string "importance"
+    t.string "object_type"
+    t.string "classification"
+    t.bigint "country_id"
+    t.bigint "state_id"
+    t.bigint "county_id"
+    t.bigint "city_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
-    t.index ["city"], name: "index_points_on_city"
+    t.index ["city_id"], name: "index_points_on_city_id"
     t.index ["connection"], name: "index_points_on_connection"
-    t.index ["country"], name: "index_points_on_country"
+    t.index ["country_id"], name: "index_points_on_country_id"
+    t.index ["county_id"], name: "index_points_on_county_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
+    t.index ["state_id"], name: "index_points_on_state_id"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
     t.index ["user_id"], name: "index_points_on_user_id"
@@ -286,6 +305,10 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_114444) do
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
+  add_foreign_key "points", "cities"
+  add_foreign_key "points", "counties"
+  add_foreign_key "points", "countries"
+  add_foreign_key "points", "states"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "states", "countries"

@@ -7,7 +7,15 @@ class Point < ApplicationRecord
   belongs_to :visit, optional: true
   belongs_to :user
 
+  belongs_to :country, optional: true
+  belongs_to :state, optional: true
+  belongs_to :county, optional: true
+  belongs_to :city, optional: true
+
   validates :latitude, :longitude, :timestamp, presence: true
+
+  delegate :name, to: :city, prefix: true, allow_nil: true
+  delegate :name, to: :country, prefix: true, allow_nil: true
 
   enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3 }, suffix: true
   enum :trigger, {
@@ -57,7 +65,7 @@ class Point < ApplicationRecord
         timestamp.to_s,
         velocity.to_s,
         id.to_s,
-        country.to_s
+        country_name.to_s
       ]
     )
   end

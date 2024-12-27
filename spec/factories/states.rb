@@ -2,7 +2,7 @@
 
 FactoryBot.define do
   factory :state do
-    name { FFaker::Address.state }
+    name { FFaker::AddressAU.state }
     country
   end
 end

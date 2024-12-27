@@ -14,7 +14,8 @@ class Trip < ApplicationRecord
   end
 
   def countries
-    points.pluck(:country).uniq.compact
+    ids = points.pluck(:country_id).uniq.compact
+    Country.where(id: ids).pluck(:name)
   end
 
   def photo_previews

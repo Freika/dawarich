@@ -12,10 +12,7 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def call
-    if ::PHOTON_API_HOST.blank?
-      Rails.logger.warn('PHOTON_API_HOST is not set')
-      return
-    end
+    Rails.logger.warn('PHOTON_API_HOST is not set') and return if ::PHOTON_API_HOST.blank?
 
     first_place = reverse_geocoded_places.shift
     update_place(first_place)
@@ -34,8 +31,8 @@ class ReverseGeocoding::Places::FetchData
       name:       place_name(data),
       latitude:   data['geometry']['coordinates'][1],
       longitude:  data['geometry']['coordinates'][0],
-      city:       data['properties']['city'],
-      country:    data['properties']['country'],
+      city:       city(data),
+      country:    country(data),
       geodata:    data,
       source:     Place.sources[:photon],
       reverse_geocoded_at: Time.current
@@ -47,8 +44,8 @@ class ReverseGeocoding::Places::FetchData
     new_place = find_place(data)
 
     new_place.name = place_name(data)
-    new_place.city = data['properties']['city']
-    new_place.country = data['properties']['country']
+    new_place.city = city(data)
+    new_place.country = country(data)
     new_place.geodata = data
     new_place.source = :photon
 
@@ -102,5 +99,19 @@ class ReverseGeocoding::Places::FetchData
       place.data['properties']['osm_value'].in?(IGNORED_OSM_VALUES) ||
         place.data['properties']['osm_key'].in?(IGNORED_OSM_KEYS)
     end
+  end
+
+  def country(data)
+    Country.find_or_create_by(
+      name: data['properties']['country'],
+      iso2_code: data['properties']['countrycode']
+    )
+  end
+
+  def city(data)
+    City.find_or_create_by(
+      name: data['properties']['city'],
+      country: country(data)
+    )
   end
 end
