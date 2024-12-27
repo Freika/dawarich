@@ -10,5 +10,7 @@ RSpec.describe State, type: :model do
 
   describe 'associations' do
     it { is_expected.to belong_to(:country) }
+    it { is_expected.to have_many(:cities).dependent(:destroy) }
+    it { is_expected.to have_many(:counties).dependent(:destroy) }
   end
 end

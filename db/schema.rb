@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2024_12_27_113655) do
+ActiveRecord::Schema[8.0].define(version: 2024_12_27_114444) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -68,7 +68,21 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_113655) do
     t.bigint "country_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "state_id"
+    t.bigint "county_id"
     t.index ["country_id"], name: "index_cities_on_country_id"
+    t.index ["county_id"], name: "index_cities_on_county_id"
+    t.index ["state_id"], name: "index_cities_on_state_id"
+  end
+
+  create_table "counties", force: :cascade do |t|
+    t.string "name"
+    t.bigint "country_id", null: false
+    t.bigint "state_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["country_id"], name: "index_counties_on_country_id"
+    t.index ["state_id"], name: "index_counties_on_state_id"
   end
 
   create_table "countries", force: :cascade do |t|
@@ -264,7 +278,11 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_113655) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
+  add_foreign_key "cities", "counties"
   add_foreign_key "cities", "countries"
+  add_foreign_key "cities", "states"
+  add_foreign_key "counties", "countries"
+  add_foreign_key "counties", "states"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
