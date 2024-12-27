@@ -8,6 +8,6 @@ RSpec.describe DataMigrations::MigratePointsDataToColumnsAndTablesJob, type: :jo
   it 'migrates point data to columns and tables' do
     expect_any_instance_of(DataMigrations::MigratePoint).to receive(:call)
 
-    described_class.perform_now(point.id)
+    described_class.perform_now([point.id])
   end
 end

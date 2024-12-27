@@ -16,6 +16,8 @@ class Point < ApplicationRecord
 
   delegate :name, to: :city, prefix: true, allow_nil: true
   delegate :name, to: :country, prefix: true, allow_nil: true
+  delegate :name, to: :state, prefix: true, allow_nil: true
+  delegate :name, to: :county, prefix: true, allow_nil: true
 
   enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3 }, suffix: true
   enum :trigger, {

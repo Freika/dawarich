@@ -30,6 +30,12 @@
           <%= render 'trip', trip: trip %>
         <% end %>
       </div>
+
+      <div class="flex justify-center my-5">
+        <div class='flex'>
+          <%= paginate @trips %>
+        </div>
+      </div>
     <% end %>
   </div>
 </div>

@@ -8,8 +8,20 @@ class MapController < ApplicationController
 
     @countries_and_cities = CountriesAndCities.new(@points).call
     @coordinates =
-      @points.pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id, :country)
-             .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
+      @points
+        .select(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id)
+        .map do |point|
+          [
+            point.latitude.to_f,
+            point.longitude.to_f,
+            point.battery.to_s,
+            point.altitude.to_s,
+            point.timestamp.to_s,
+            point.velocity.to_s,
+            point.id.to_s,
+            point.country_name.to_s
+          ]
+        end
     @distance = distance
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)

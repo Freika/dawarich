@@ -10,7 +10,14 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
   context 'when Geocoder returns city and country' do
     before do
       allow(Geocoder).to receive(:search).and_return(
-        [double(city: 'City', country: 'Country', countrycode: 'US', data: { 'address' => 'Address' })]
+        [double(
+          city: 'City',
+          country: 'Country',
+          countrycode: 'US',
+          data: { 'address' => 'Address' },
+          state: 'State',
+          county: 'County'
+        )]
       )
     end
 
@@ -19,6 +26,8 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
         expect { fetch_data }.to change { point.reload.city_name }
           .from(nil).to('City')
           .and change { point.reload.country_name }.from(nil).to('Country')
+          .and change { point.reload.state_name }.from(nil).to('State')
+          .and change { point.reload.county_name }.from(nil).to('County')
       end
 
       it 'updates point with geodata' do
