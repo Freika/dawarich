@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2024_12_27_113137) do
+ActiveRecord::Schema[8.0].define(version: 2024_12_27_113655) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -189,6 +189,14 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_113137) do
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
+  create_table "states", force: :cascade do |t|
+    t.string "name"
+    t.bigint "country_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["country_id"], name: "index_states_on_country_id"
+  end
+
   create_table "stats", force: :cascade do |t|
     t.integer "year", null: false
     t.integer "month", null: false
@@ -262,6 +270,7 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_113137) do
   add_foreign_key "place_visits", "visits"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
+  add_foreign_key "states", "countries"
   add_foreign_key "stats", "users"
   add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"
