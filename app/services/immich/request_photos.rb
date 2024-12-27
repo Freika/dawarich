@@ -34,7 +34,8 @@ class Immich::RequestPhotos
           immich_api_base_url, headers: headers, body: request_body(page)
         ).body
       )
-
+      Rails.logger.debug('==== IMMICH RESPONSE ====')
+      Rails.logger.debug(response)
       items = response.dig('assets', 'items')
 
       break if items.blank?
