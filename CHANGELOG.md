@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.21.2 - 2024-12-25
 
+### Added
+
+- Logging for Immich responses.
+- Watcher now supports all data formats that can be imported via web interface.
+
 ### Changed
 
 - Imported points will now be reverse geocoded only after import is finished.
