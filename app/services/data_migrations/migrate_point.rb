@@ -6,12 +6,14 @@ class DataMigrations::MigratePoint
   end
 
   def call
+    return if geodata.blank?
+
     country = find_or_create_country(geodata['country'], geodata['countrycode'])
     state   = find_or_create_state(geodata['state'], country)
     county  = find_or_create_county(geodata['county'], state)
     city    = find_or_create_city(geodata['city'], county)
 
-    point.update(
+    @point.update(
       country: country,
       state: state,
       county: county,
