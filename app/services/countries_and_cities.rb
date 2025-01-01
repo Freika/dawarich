@@ -10,8 +10,8 @@ class CountriesAndCities
 
   def call
     points
-      .reject { |point| point.country.nil? || point.city.nil? }
-      .group_by(&:country)
+      .reject { |point| point.country_name.nil? || point.city_name.nil? }
+      .group_by(&:country_name)
       .transform_values { |country_points| process_country_points(country_points) }
       .map { |country, cities| CountryData.new(country: country, cities: cities) }
   end
@@ -22,7 +22,7 @@ class CountriesAndCities
 
   def process_country_points(country_points)
     country_points
-      .group_by(&:city)
+      .group_by(&:city_name)
       .transform_values { |city_points| create_city_data_if_valid(city_points) }
       .values
       .compact
@@ -31,7 +31,7 @@ class CountriesAndCities
   def create_city_data_if_valid(city_points)
     timestamps = city_points.pluck(:timestamp)
     duration = calculate_duration_in_minutes(timestamps)
-    city = city_points.first.city
+    city = city_points.first.city_name
     points_count = city_points.size
 
     build_city_data(city, points_count, timestamps, duration)
