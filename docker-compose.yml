@@ -8,7 +8,7 @@ services:
     networks:
       - dawarich
     volumes:
-      - dawarich_shared:/data
+      - ./data/dawarich_shared:/data
     restart: always
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
@@ -21,8 +21,8 @@ services:
     shm_size: 1G
     container_name: dawarich_db
     volumes:
-      - dawarich_db_data:/var/lib/postgresql/data
-      - dawarich_shared:/var/shared
+      - ./data/dawarich_db_data:/var/lib/postgresql/data
+      - ./data/dawarich_shared:/var/shared
       # - ./postgresql.conf:/etc/postgresql/postgresql.conf # Optional, uncomment if you want to use a custom config
     networks:
       - dawarich
@@ -41,9 +41,9 @@ services:
     image: freikin/dawarich:latest
     container_name: dawarich_app
     volumes:
-      - dawarich_gem_cache_app:/usr/local/bundle/gems
-      - dawarich_public:/var/app/public
-      - dawarich_watched:/var/app/tmp/imports/watched
+      - ./data/dawarich_gem_cache_app:/usr/local/bundle/gems
+      - ./data/dawarich_public:/var/app/public
+      - ./data/dawarich_watched:/var/app/tmp/imports/watched
     networks:
       - dawarich
     ports:
@@ -100,9 +100,9 @@ services:
     image: freikin/dawarich:latest
     container_name: dawarich_sidekiq
     volumes:
-      - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
-      - dawarich_public:/var/app/public
-      - dawarich_watched:/var/app/tmp/imports/watched
+      - ./data/dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
+      - ./data/dawarich_public:/var/app/public
+      - ./data/dawarich_watched:/var/app/tmp/imports/watched
     networks:
       - dawarich
     stdin_open: true
@@ -154,11 +154,3 @@ services:
         limits:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
           memory: '2G'    # Limit memory usage to 2GB
-
-volumes:
-  dawarich_db_data:
-  dawarich_gem_cache_app:
-  dawarich_gem_cache_sidekiq:
-  dawarich_shared:
-  dawarich_public:
-  dawarich_watched:
