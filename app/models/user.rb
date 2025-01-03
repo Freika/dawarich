@@ -18,6 +18,11 @@ class User < ApplicationRecord
   after_create :create_api_key
   before_save :strip_trailing_slashes
 
+  validates :email, presence: true
+  validates :reset_password_token, uniqueness: true, allow_nil: true
+
+  attribute :admin, :boolean, default: false
+
   def countries_visited
     stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact
   end
