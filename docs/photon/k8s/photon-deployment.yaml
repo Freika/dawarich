@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photon
+  namespace: dawarich
+  labels:
+    app: photon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: photon
+  template:
+    metadata:
+      labels:
+        app: photon
+      containers:
+        - name: photon
+          image: your-registry/photon:latest
+          ports:
+            - containerPort: 2322
+          volumeMounts:
+            - name: photon-data
+              mountPath: /photon/photon_data
+      volumes:
+        - name: photon-data
+          persistentVolumeClaim:
+            claimName: photon-data
+      imagePullSecrets:
+        - name: my-private-registry
