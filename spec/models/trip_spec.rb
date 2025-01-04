@@ -35,9 +35,10 @@ RSpec.describe Trip, type: :model do
         timestamp: (trip.started_at.to_i..trip.ended_at.to_i).to_a.sample
       )
     end
+    let!(:expected_countries) { points.pluck(:country_id).uniq.compact.map { |id| Country.find(id).name } }
 
     it 'returns the unique countries of the points' do
-      expect(trip.countries).to eq(trip.points.pluck(:country).uniq.compact)
+      expect(trip.countries).to eq(expected_countries)
     end
   end
 
