@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.21.3 - 2025-01-04
+
+### Added
+
+- A notification about Photon API being under heavy load.
+
+### Removed
+
+- The notification about telemetry being enabled.
+
+### Reverted
+
+- ~~Imported points will now be reverse geocoded only after import is finished.~~
+
 # 0.21.2 - 2024-12-25
 
 ### Added
