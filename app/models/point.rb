@@ -33,9 +33,8 @@ class Point < ApplicationRecord
     Time.zone.at(timestamp)
   end
 
-  def async_reverse_geocode(force: false)
+  def async_reverse_geocode
     return unless REVERSE_GEOCODING_ENABLED
-    return if import_id.present? && !force
 
     ReverseGeocodingJob.perform_later(self.class.to_s, id)
   end

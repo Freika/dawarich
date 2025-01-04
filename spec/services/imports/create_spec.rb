@@ -55,11 +55,6 @@ RSpec.describe Imports::Create do
             expect { service.call }.to have_enqueued_job(VisitSuggestingJob)
           end
         end
-
-        it 'schedules reverse geocoding' do
-          expect { service.call }.to \
-            have_enqueued_job(EnqueueBackgroundJob).with('continue_reverse_geocoding', user.id)
-        end
       end
 
       context 'when import fails' do
