@@ -126,7 +126,8 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
         color: "blue",
         opacity: 0.6,
         weight: 3,
-        zIndexOffset: 400
+        zIndexOffset: 400,
+        pane: 'overlayPane'
       });
 
       addHighlightOnHover(polyline, map, polylineCoordinates, userSettings, distanceUnit);
