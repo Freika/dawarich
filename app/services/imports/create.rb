@@ -14,7 +14,7 @@ class Imports::Create
     create_import_finished_notification(import, user)
 
     schedule_stats_creating(user.id)
-    schedule_visit_suggesting(user.id, import)
+    # schedule_visit_suggesting(user.id, import) # Disabled until places & visits are reworked
   rescue StandardError => e
     create_import_failed_notification(import, user, e)
   end

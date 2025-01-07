@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.21.6 - 2025-01-07
 
+### Changed
+
+- Disabled visit suggesting job after import.
+- Improved performance of the `User#years_tracked` method.
+
 ### Fixed
 
 - Inconsistent password for the `dawarich_db` service in `docker-compose_mounted_volumes.yml`. #605
 - Points are now being rendered with higher z-index than polylines. #577
+- Run cache cleaning and preheating jobs only on server start. #594
 
 # 0.21.5 - 2025-01-07
 
