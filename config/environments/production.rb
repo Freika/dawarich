@@ -103,8 +103,8 @@ Rails.application.configure do
   # ]
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
-  config.hosts << ENV.fetch('APPLICATION_HOST', 'localhost')
+  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
 
-  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost')
-  config.hosts.concat(hosts.split(',')) if hosts.present?
+  config.action_mailer.default_url_options = { host: hosts.first, port: 3000 }
+  config.hosts.concat(hosts) if hosts.present?
 end
