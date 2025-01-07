@@ -4,6 +4,8 @@ require 'rails_helper'
 
 RSpec.describe Jobs::Create do
   describe '#call' do
+    before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
+
     context 'when job_name is start_reverse_geocoding' do
       let(:user) { create(:user) }
       let(:points) { create_list(:point, 4, user:) }

@@ -4,7 +4,7 @@ class ReverseGeocodingJob < ApplicationJob
   queue_as :reverse_geocoding
 
   def perform(klass, id)
-    return unless REVERSE_GEOCODING_ENABLED
+    return unless DawarichSettings.reverse_geocoding_enabled?
 
     rate_limit_for_photon_api
 
@@ -18,8 +18,8 @@ class ReverseGeocodingJob < ApplicationJob
   end
 
   def rate_limit_for_photon_api
-    return unless PHOTON_API_HOST == 'photon.komoot.io'
+    return unless DawarichSettings.photon_enabled?
 
-    sleep 1 if PHOTON_API_HOST == 'photon.komoot.io'
+    sleep 1 if DawarichSettings.photon_uses_komoot_io?
   end
 end

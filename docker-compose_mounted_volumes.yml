@@ -41,12 +41,9 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
     stdin_open: true
     tty: true
     entrypoint: dev-entrypoint.sh
@@ -96,13 +93,10 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
     stdin_open: true
     tty: true
     entrypoint: dev-entrypoint.sh

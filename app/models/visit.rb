@@ -40,7 +40,7 @@ class Visit < ApplicationRecord
   end
 
   def async_reverse_geocode
-    return unless REVERSE_GEOCODING_ENABLED
+    return unless DawarichSettings.reverse_geocoding_enabled?
     return if place.blank?
 
     ReverseGeocodingJob.perform_later('place', place_id)

@@ -62,13 +62,10 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
@@ -117,13 +114,10 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: dawarich_app
       PROMETHEUS_EXPORTER_PORT: 9394
