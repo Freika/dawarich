@@ -9,8 +9,6 @@ TELEMETRY_STRING = Base64.encode64('IjVFvb8j3P9-ArqhSGav9j8YcJaQiuNIzkfOPKQDk2lv
 TELEMETRY_URL = 'https://influxdb2.frey.today/api/v2/write'
 
 # Reverse geocoding settings
-REVERSE_GEOCODING_ENABLED = ENV.fetch('REVERSE_GEOCODING_ENABLED', 'true') == 'true'
-
 PHOTON_API_HOST = ENV.fetch('PHOTON_API_HOST', nil)
 PHOTON_API_KEY = ENV.fetch('PHOTON_API_KEY', nil)
 PHOTON_API_USE_HTTPS = ENV.fetch('PHOTON_API_USE_HTTPS', 'true') == 'true'

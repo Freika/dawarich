@@ -17,6 +17,7 @@ You may now use Geoapify API for reverse geocoding. To obtain an API key, sign u
 
 - Photon ENV vars from the `.env.development` and docker-compose.yml files.
 - `APPLICATION_HOST` env var.
+- `REVERSE_GEOCODING_ENABLED` env var.
 
 # 0.21.4 - 2025-01-05
 

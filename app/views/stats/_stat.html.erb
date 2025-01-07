@@ -12,7 +12,7 @@
       </div>
     </div>
     <p><%= stat.distance %><%= DISTANCE_UNIT %></p>
-    <% if REVERSE_GEOCODING_ENABLED %>
+    <% if DawarichSettings.reverse_geocoding_enabled? %>
       <div class="card-actions justify-end">
         <%= countries_and_cities_stat_for_month(stat) %>
       </div>

@@ -4,7 +4,7 @@ class ReverseGeocodingJob < ApplicationJob
   queue_as :reverse_geocoding
 
   def perform(klass, id)
-    return unless REVERSE_GEOCODING_ENABLED
+    return unless DawarichSettings.reverse_geocoding_enabled?
 
     rate_limit_for_photon_api
 

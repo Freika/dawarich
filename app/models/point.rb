@@ -34,7 +34,7 @@ class Point < ApplicationRecord
   end
 
   def async_reverse_geocode
-    return unless REVERSE_GEOCODING_ENABLED
+    return unless DawarichSettings.reverse_geocoding_enabled?
 
     ReverseGeocodingJob.perform_later(self.class.to_s, id)
   end

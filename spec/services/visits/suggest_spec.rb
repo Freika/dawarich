@@ -44,8 +44,7 @@ RSpec.describe Visits::Suggest do
 
     context 'when reverse geocoding is enabled' do
       before do
-        stub_const('REVERSE_GEOCODING_ENABLED', true)
-        stub_const('PHOTON_API_HOST', 'http://localhost:2323')
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
       end
 
       it 'reverse geocodes visits' do
@@ -57,7 +56,7 @@ RSpec.describe Visits::Suggest do
 
     context 'when reverse geocoding is disabled' do
       before do
-        stub_const('REVERSE_GEOCODING_ENABLED', false)
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
       end
 
       it 'does not reverse geocode visits' do

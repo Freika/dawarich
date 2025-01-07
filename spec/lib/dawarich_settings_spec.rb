@@ -3,6 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe DawarichSettings do
+  before do
+    described_class.instance_variables.each do |ivar|
+      described_class.remove_instance_variable(ivar)
+    end
+  end
+
   describe '.reverse_geocoding_enabled?' do
     context 'when photon is enabled' do
       before do

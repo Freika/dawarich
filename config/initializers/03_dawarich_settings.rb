@@ -3,19 +3,19 @@
 class DawarichSettings
   class << self
     def reverse_geocoding_enabled?
-      photon_enabled? || geoapify_enabled?
+      @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled?
     end
 
     def photon_enabled?
-      PHOTON_API_HOST.present?
+      @photon_enabled ||= PHOTON_API_HOST.present?
     end
 
     def photon_uses_komoot_io?
-      PHOTON_API_HOST == 'photon.komoot.io'
+      @photon_uses_komoot_io ||= PHOTON_API_HOST == 'photon.komoot.io'
     end
 
     def geoapify_enabled?
-      GEOAPIFY_API_KEY.present?
+      @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
     end
   end
 end
