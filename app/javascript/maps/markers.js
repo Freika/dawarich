@@ -12,7 +12,8 @@ export function createMarkersArray(markersData, userSettings) {
       return L.circleMarker([lat, lon], {
         radius: 4,
         color: markerColor,
-        zIndexOffset: 1000
+        zIndexOffset: 1000,
+        pane: 'markerPane'
       }).bindPopup(popupContent, { autoClose: false });
     });
   }
@@ -47,6 +48,9 @@ export function createSimplifiedMarkers(markersData) {
     const [lat, lon] = marker;
     const popupContent = createPopupContent(marker);
     let markerColor = marker[5] < 0 ? "orange" : "blue";
-    return L.circleMarker([lat, lon], { radius: 4, color: markerColor }).bindPopup(popupContent);
+    return L.circleMarker(
+      [lat, lon],
+      { radius: 4, color: markerColor, zIndexOffset: 1000 }
+    ).bindPopup(popupContent);
   });
 }

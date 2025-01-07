@@ -152,7 +152,7 @@ services:
       - dawarich
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: eJH3YZsVc2s6byhFwpEny
+      POSTGRES_PASSWORD: password
       POSTGRES_DATABASE: dawarich
     volumes:
       - ./db:/var/lib/postgresql/data

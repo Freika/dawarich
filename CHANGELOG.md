@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.21.6 - 2025-01-07
+
+### Changed
+
+- Disabled visit suggesting job after import.
+- Improved performance of the `User#years_tracked` method.
+
+### Fixed
+
+- Inconsistent password for the `dawarich_db` service in `docker-compose_mounted_volumes.yml`. #605
+- Points are now being rendered with higher z-index than polylines. #577
+- Run cache cleaning and preheating jobs only on server start. #594
+
 # 0.21.5 - 2025-01-07
 
 You may now use Geoapify API for reverse geocoding. To obtain an API key, sign up at https://myprojects.geoapify.com/ and create a new project. Make sure you have read and understood the [pricing policy](https://www.geoapify.com/pricing) and [Terms and Conditions](https://www.geoapify.com/terms-and-conditions/).
