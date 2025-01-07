@@ -10,9 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
+ActiveRecord::Schema[8.0].define(version: 2024_12_11_113119) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
+  enable_extension "pg_catalog.plpgsql"
+
+  create_table "action_text_rich_texts", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "body"
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["record_type", "record_id", "name"], name: "index_action_text_rich_texts_uniqueness", unique: true
+  end
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
@@ -145,6 +155,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
     t.bigint "user_id"
     t.jsonb "geodata", default: {}, null: false
     t.bigint "visit_id"
+    t.datetime "reverse_geocoded_at"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -154,6 +165,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
+    t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
     t.index ["user_id"], name: "index_points_on_user_id"
@@ -175,6 +187,17 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
     t.index ["year"], name: "index_stats_on_year"
   end
 
+  create_table "trips", force: :cascade do |t|
+    t.string "name", null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at", null: false
+    t.integer "distance"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_trips_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -187,6 +210,11 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
     t.string "theme", default: "dark", null: false
     t.jsonb "settings", default: {"fog_of_war_meters"=>"100", "meters_between_routes"=>"1000", "minutes_between_routes"=>"60"}
     t.boolean "admin", default: false
+    t.integer "sign_in_count", default: 0, null: false
+    t.datetime "current_sign_in_at"
+    t.datetime "last_sign_in_at"
+    t.string "current_sign_in_ip"
+    t.string "last_sign_in_ip"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
@@ -204,6 +232,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
     t.bigint "place_id"
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["place_id"], name: "index_visits_on_place_id"
+    t.index ["started_at"], name: "index_visits_on_started_at"
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
@@ -216,6 +245,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_10_30_152025) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
+  add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"

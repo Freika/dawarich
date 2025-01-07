@@ -10,11 +10,16 @@ RSpec.describe Exports::Create do
     let(:user)            { create(:user) }
     let(:start_at)        { DateTime.new(2021, 1, 1).to_s }
     let(:end_at)          { DateTime.new(2021, 1, 2).to_s }
-    let(:export_name)     { "#{start_at.to_date}_#{end_at.to_date}" }
+    let(:export_name)     { "#{start_at.to_date}_#{end_at.to_date}.#{file_format}" }
     let(:export)          { create(:export, user:, name: export_name, status: :created) }
     let(:export_content)  { Points::GeojsonSerializer.new(points).call }
+    let(:reverse_geocoded_at) { Time.zone.local(2021, 1, 1) }
     let!(:points) do
-      create_list(:point, 10, :with_known_location, user:, timestamp: start_at.to_datetime.to_i)
+      create_list(:point, 10, :with_known_location, user:, timestamp: start_at.to_datetime.to_i, reverse_geocoded_at:)
+    end
+
+    before do
+      allow_any_instance_of(Point).to receive(:reverse_geocoded_at).and_return(reverse_geocoded_at)
     end
 
     it 'writes the data to a file' do
@@ -25,10 +30,10 @@ RSpec.describe Exports::Create do
       expect(File.read(file_path).strip).to eq(export_content)
     end
 
-    it 'updates the export url' do
+    it 'sets the export url' do
       create_export
 
-      expect(export.reload.url).to eq("exports/#{export.name}.json")
+      expect(export.reload.url).to eq("exports/#{export.name}")
     end
 
     it 'updates the export status to completed' do

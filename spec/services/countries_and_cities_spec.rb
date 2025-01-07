@@ -36,13 +36,18 @@ RSpec.describe CountriesAndCities do
         it 'returns countries and cities' do
           expect(countries_and_cities).to eq(
             [
-              {
-                cities: [{ city: 'Berlin', points: 8, timestamp: 1609463400, stayed_for: 70 }],
-                country: 'Germany'
-              },
-              {
-                cities: [], country: 'Belgium'
-              }
+              CountriesAndCities::CountryData.new(
+                country: 'Germany',
+                cities: [
+                  CountriesAndCities::CityData.new(
+                    city: 'Berlin', points: 8, timestamp: 1_609_463_400, stayed_for: 70
+                  )
+                ]
+              ),
+              CountriesAndCities::CountryData.new(
+                country: 'Belgium',
+                cities: []
+              )
             ]
           )
         end
@@ -62,12 +67,14 @@ RSpec.describe CountriesAndCities do
         it 'returns countries and cities' do
           expect(countries_and_cities).to eq(
             [
-              {
-                cities: [], country: 'Germany'
-              },
-              {
-                cities: [], country: 'Belgium'
-              }
+              CountriesAndCities::CountryData.new(
+                country: 'Germany',
+                cities: []
+              ),
+              CountriesAndCities::CountryData.new(
+                country: 'Belgium',
+                cities: []
+              )
             ]
           )
         end

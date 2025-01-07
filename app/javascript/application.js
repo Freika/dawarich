@@ -9,3 +9,6 @@ import "leaflet-providers"
 import "chartkick"
 import "Chart.bundle"
 import "./channels"
+
+import "trix"
+import "@rails/actiontext"

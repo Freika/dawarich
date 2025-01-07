@@ -1,0 +1,80 @@
+<% content_for :title, @trip.name %>
+
+<div class="container mx-auto px-4 max-w-4xl my-5">
+  <div class="text-center mb-8">
+    <h1 class="text-4xl font-bold mb-2"><%= @trip.name %></h1>
+    <p class="text-md text-base-content/60">
+      <%= human_date(@trip.started_at) %> - <%= human_date(@trip.ended_at) %>
+    </p>
+    <% if @trip.countries.any? %>
+      <p class="text-lg text-base-content/60">
+        <%= "#{@trip.countries.join(', ')} (#{@trip.distance} #{DISTANCE_UNIT})" %>
+      </p>
+    <% end %>
+  </div>
+
+  <div class="bg-base-100 my-8 p-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="w-full">
+        <div
+          id='map'
+          class="w-full h-full rounded-lg z-0"
+          data-controller="trips"
+          data-trips-target="container"
+          data-distance_unit="<%= DISTANCE_UNIT %>"
+          data-api_key="<%= current_user.api_key %>"
+          data-user_settings="<%= current_user.settings.to_json %>"
+          data-coordinates="<%= @coordinates.to_json %>"
+          data-timezone="<%= Rails.configuration.time_zone %>">
+          <div data-trips-target="container" class="h-[25rem] w-full min-h-screen">
+          </div>
+        </div>
+      </div>
+      <div class="w-full">
+        <div>
+          <%= @trip.notes.body %>
+        </div>
+
+        <!-- Photos Grid Section -->
+        <% if @photo_previews.any? %>
+          <% @photo_previews.each_slice(4) do |slice| %>
+            <div class="h-32 flex gap-4 mt-4 justify-center">
+              <% slice.each do |photo| %>
+                <div class="flex-1 h-full overflow-hidden rounded-lg transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+                  <img
+                    src="<%= photo[:url] %>"
+                    loading='lazy'
+                    class="h-full w-full object-cover"
+                  >
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+
+        <% if @photo_sources.any? %>
+          <div class="text-center mt-6">
+            <% @photo_sources.each do |source| %>
+              <%= link_to "More photos on #{source}", photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at), class: "btn btn-primary mt-2", target: '_blank' %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons Section -->
+  <div class="bg-base-100 items-center">
+    <div class="flex flex-wrap gap-2 justify-center">
+      <%= link_to "Edit this trip", edit_trip_path(@trip), class: "btn" %>
+      <%= link_to "Destroy this trip",
+          trip_path(@trip),
+          data: {
+            turbo_confirm: "Are you sure?",
+            turbo_method: :delete
+          },
+          class: "btn" %>
+      <%= link_to "Back to trips", trips_path, class: "btn" %>
+    </div>
+  </div>
+</div>

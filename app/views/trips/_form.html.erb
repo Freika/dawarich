@@ -1,0 +1,73 @@
+<%= form_with(model: trip, class: "contents") do |form| %>
+  <% if trip.errors.any? %>
+    <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
+      <h2><%= pluralize(trip.errors.count, "error") %> prohibited this trip from being saved:</h2>
+
+      <ul>
+        <% trip.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="flex flex-col lg:flex-row gap-4 my-4" data-controller="trips">
+    <div class="w-full lg:w-1/2">
+      <div
+        id='map trips-container'
+        class="w-full h-full rounded-lg"
+        data-trips-target="container"
+        data-distance_unit="<%= DISTANCE_UNIT %>"
+        data-api_key="<%= current_user.api_key %>"
+        data-user_settings="<%= current_user.settings.to_json %>"
+        data-coordinates="<%= @coordinates.to_json %>"
+        data-timezone="<%= Rails.configuration.time_zone %>">
+      </div>
+    </div>
+
+    <div
+      class="w-full lg:w-1/2 space-y-4"
+      data-controller="datetime">
+
+      <div class="form-control">
+        <%= form.label :name %>
+        <%= form.text_field :name, class: 'input input-bordered w-full' %>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-4">
+        <div class="form-control w-full">
+          <input type="hidden" data-datetime-target="apiKey" value="<%= current_user.api_key %>">
+          <%= form.label :started_at %>
+          <%= form.datetime_field :started_at,
+              include_seconds: false,
+              class: 'input input-bordered w-full',
+              value: trip.started_at,
+              data: {
+                datetime_target: "startedAt",
+                action: "change->datetime#updateCoordinates"
+              } %>
+        </div>
+        <div class="form-control w-full">
+          <%= form.label :ended_at %>
+          <%= form.datetime_field :ended_at,
+             include_seconds: false,
+             class: 'input input-bordered w-full',
+             value: trip.ended_at,
+             data: {
+               datetime_target: "endedAt",
+               action: "change->datetime#updateCoordinates"
+             } %>
+        </div>
+      </div>
+
+      <div class="form-control">
+        <%= form.label :notes %>
+        <%= form.rich_text_area :notes %>
+      </div>
+
+      <div>
+        <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+      </div>
+    </div>
+  </div>
+<% end %>

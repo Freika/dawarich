@@ -1,9 +1,10 @@
+import { formatDate } from "../maps/helpers";
 import { formatDistance } from "../maps/helpers";
 import { getUrlParameter } from "../maps/helpers";
 import { minutesToDaysHoursMinutes } from "../maps/helpers";
 import { haversineDistance } from "../maps/helpers";
 
-export function addHighlightOnHover(polyline, map, polylineCoordinates, userSettings) {
+export function addHighlightOnHover(polyline, map, polylineCoordinates, userSettings, distanceUnit) {
   const originalStyle = { color: "blue", opacity: userSettings.routeOpacity, weight: 3 };
   const highlightStyle = { color: "yellow", opacity: 1, weight: 5 };
 
@@ -12,8 +13,8 @@ export function addHighlightOnHover(polyline, map, polylineCoordinates, userSett
   const startPoint = polylineCoordinates[0];
   const endPoint = polylineCoordinates[polylineCoordinates.length - 1];
 
-  const firstTimestamp = new Date(startPoint[4] * 1000).toLocaleString("en-GB", { timeZone: userSettings.timezone });
-  const lastTimestamp = new Date(endPoint[4] * 1000).toLocaleString("en-GB", { timeZone: userSettings.timezone });
+  const firstTimestamp = formatDate(startPoint[4], userSettings.timezone);
+  const lastTimestamp = formatDate(endPoint[4], userSettings.timezone);
 
   const minutes = Math.round((endPoint[4] - startPoint[4]) / 60);
   const timeOnRoute = minutesToDaysHoursMinutes(minutes);
@@ -33,7 +34,7 @@ export function addHighlightOnHover(polyline, map, polylineCoordinates, userSett
     <strong>Start:</strong> ${firstTimestamp}<br>
     <strong>End:</strong> ${lastTimestamp}<br>
     <strong>Duration:</strong> ${timeOnRoute}<br>
-    <strong>Total Distance:</strong> ${formatDistance(totalDistance, userSettings.distanceUnit)}<br>
+    <strong>Total Distance:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
   `;
 
   if (isDebugMode) {
@@ -90,7 +91,7 @@ export function addHighlightOnHover(polyline, map, polylineCoordinates, userSett
   });
 }
 
-export function createPolylinesLayer(markers, map, userSettings) {
+export function createPolylinesLayer(markers, map, timezone, routeOpacity, userSettings, distanceUnit) {
   const splitPolylines = [];
   let currentPolyline = [];
   const distanceThresholdMeters = parseInt(userSettings.meters_between_routes) || 500;
@@ -121,9 +122,15 @@ export function createPolylinesLayer(markers, map, userSettings) {
   return L.layerGroup(
     splitPolylines.map((polylineCoordinates) => {
       const latLngs = polylineCoordinates.map((point) => [point[0], point[1]]);
-      const polyline = L.polyline(latLngs, { color: "blue", opacity: 0.6, weight: 3 });
+      const polyline = L.polyline(latLngs, {
+        color: "blue",
+        opacity: 0.6,
+        weight: 3,
+        zIndexOffset: 400,
+        pane: 'overlayPane'
+      });
 
-      addHighlightOnHover(polyline, map, polylineCoordinates, userSettings);
+      addHighlightOnHover(polyline, map, polylineCoordinates, userSettings, distanceUnit);
 
       return polyline;
     })

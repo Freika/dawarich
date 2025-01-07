@@ -17,8 +17,8 @@ class Point < ApplicationRecord
   }, suffix: true
   enum :connection, { mobile: 0, wifi: 1, offline: 2, unknown: 4 }, suffix: true
 
-  scope :reverse_geocoded, -> { where.not(geodata: {}) }
-  scope :not_reverse_geocoded, -> { where(geodata: {}) }
+  scope :reverse_geocoded, -> { where.not(reverse_geocoded_at: nil) }
+  scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
 
@@ -34,9 +34,13 @@ class Point < ApplicationRecord
   end
 
   def async_reverse_geocode
-    return unless REVERSE_GEOCODING_ENABLED
+    return unless DawarichSettings.reverse_geocoding_enabled?
 
     ReverseGeocodingJob.perform_later(self.class.to_s, id)
+  end
+
+  def reverse_geocoded?
+    reverse_geocoded_at.present?
   end
 
   private

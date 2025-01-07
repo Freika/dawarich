@@ -12,6 +12,7 @@ import { fetchAndDrawAreas } from "../maps/areas";
 import { handleAreaCreated } from "../maps/areas";
 
 import { showFlashMessage } from "../maps/helpers";
+import { fetchAndDisplayPhotos } from '../maps/helpers';
 
 import { osmMapLayer } from "../maps/layers";
 import { osmHotMapLayer } from "../maps/layers";
@@ -31,6 +32,8 @@ export default class extends Controller {
 
   settingsButtonAdded = false;
   layerControl = null;
+  visitedCitiesCache = new Map();
+  trackedMonthsCache = null;
 
   connect() {
     console.log("Map controller connected");
@@ -51,8 +54,8 @@ export default class extends Controller {
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
     // Set the maximum bounds to prevent infinite scroll
-    var southWest = L.latLng(-90, -180);
-    var northEast = L.latLng(90, 180);
+    var southWest = L.latLng(-120, -210);
+    var northEast = L.latLng(120, 210);
     var bounds = L.latLngBounds(southWest, northEast);
 
     this.map.setMaxBounds(bounds);
@@ -61,10 +64,12 @@ export default class extends Controller {
     this.markersLayer = L.layerGroup(this.markersArray);
     this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
 
-    this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings);
+    this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
     this.areasLayer = L.layerGroup(); // Initialize areas layer
+    this.photoMarkers = L.layerGroup();
+
     this.setupScratchLayer(this.countryCodesMap);
 
     if (!this.settingsButtonAdded) {
@@ -77,17 +82,17 @@ export default class extends Controller {
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer,
-      Areas: this.areasLayer // Add the areas layer to the controls
+      Areas: this.areasLayer,
+      Photos: this.photoMarkers
     };
 
-    L.control
-      .scale({
-        position: "bottomright",
-        metric: true,
-        imperial: true,
-        maxWidth: 120,
-      })
-      .addTo(this.map);
+    // Add scale control to bottom right
+    L.control.scale({
+      position: 'bottomright',
+      imperial: this.distanceUnit === 'mi',
+      metric: this.distanceUnit === 'km',
+      maxWidth: 120
+    }).addTo(this.map)
 
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
@@ -129,9 +134,33 @@ export default class extends Controller {
     this.initializeDrawControl();
 
     // Add event listeners to toggle draw controls
-    this.map.on('overlayadd', (e) => {
+    this.map.on('overlayadd', async (e) => {
       if (e.name === 'Areas') {
         this.map.addControl(this.drawControl);
+      }
+      if (e.name === 'Photos') {
+        if (
+          (!this.userSettings.immich_url || !this.userSettings.immich_api_key) &&
+          (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)
+        ) {
+          showFlashMessage(
+            'error',
+            'Photos integration is not configured. Please check your integrations settings.'
+          );
+          return;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const startDate = urlParams.get('start_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        const endDate = urlParams.get('end_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        await fetchAndDisplayPhotos({
+          map: this.map,
+          photoMarkers: this.photoMarkers,
+          apiKey: this.apiKey,
+          startDate: startDate,
+          endDate: endDate,
+          userSettings: this.userSettings
+        });
       }
     });
 
@@ -144,9 +173,37 @@ export default class extends Controller {
     if (this.liveMapEnabled) {
       this.setupSubscription();
     }
+
+    // Add the toggle panel button
+    this.addTogglePanelButton();
+
+    // Check if we should open the panel based on localStorage or URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
+    const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
+
+    // Always create the panel first
+    this.toggleRightPanel();
+
+    // Then hide it if it shouldn't be open
+    if (!isPanelOpen && !hasDateParams) {
+      const panel = document.querySelector('.leaflet-right-panel');
+      if (panel) {
+        panel.style.display = 'none';
+        localStorage.setItem('mapPanelOpen', 'false');
+      }
+    }
   }
 
   disconnect() {
+    if (this.handleDeleteClick) {
+      document.removeEventListener('click', this.handleDeleteClick);
+    }
+    // Store panel state before disconnecting
+    if (this.rightPanel) {
+      const finalState = document.querySelector('.leaflet-right-panel').style.display !== 'none' ? 'true' : 'false';
+      localStorage.setItem('mapPanelOpen', finalState);
+    }
     this.map.remove();
   }
 
@@ -188,7 +245,8 @@ export default class extends Controller {
       this.map,
       this.timezone,
       this.routeOpacity,
-      this.userSettings
+      this.userSettings,
+      this.distanceUnit
     );
 
     // Pan map to new location
@@ -291,20 +349,22 @@ export default class extends Controller {
   }
 
   addEventListeners() {
-    this.handleDeleteClick = (event) => {
-      if (event.target && event.target.classList.contains('delete-point')) {
-        event.preventDefault();
-        const pointId = event.target.getAttribute('data-id');
+    // Create the handler only once and store it as an instance property
+    if (!this.handleDeleteClick) {
+      this.handleDeleteClick = (event) => {
+        if (event.target && event.target.classList.contains('delete-point')) {
+          event.preventDefault();
+          const pointId = event.target.getAttribute('data-id');
 
-        if (confirm('Are you sure you want to delete this point?')) {
-          this.deletePoint(pointId, this.apiKey);
+          if (confirm('Are you sure you want to delete this point?')) {
+            this.deletePoint(pointId, this.apiKey);
+          }
         }
-      }
-    };
+      };
 
-    // Ensure only one listener is attached by removing any existing ones first
-    this.removeEventListeners();
-    document.addEventListener('click', this.handleDeleteClick);
+      // Add the listener only if it hasn't been added before
+      document.addEventListener('click', this.handleDeleteClick);
+    }
 
     // Add an event listener for base layer change in Leaflet
     this.map.on('baselayerchange', (event) => {
@@ -347,23 +407,79 @@ export default class extends Controller {
       return response.json();
     })
     .then(data => {
+      // Remove the marker and update all layers
       this.removeMarker(id);
+      let wasPolyLayerVisible = false;
+      // Explicitly remove old polylines layer from map
+      if (this.polylinesLayer) {
+        if (this.map.hasLayer(this.polylinesLayer)) {
+          wasPolyLayerVisible = true;
+        }
+        this.map.removeLayer(this.polylinesLayer);
+
+      }
+
+      // Create new polylines layer
+      this.polylinesLayer = createPolylinesLayer(
+        this.markers,
+        this.map,
+        this.timezone,
+        this.routeOpacity,
+        this.userSettings,
+        this.distanceUnit
+      );
+      if (wasPolyLayerVisible) {
+        // Add new polylines layer to map and to layer control
+        this.polylinesLayer.addTo(this.map);
+      } else {
+        this.map.removeLayer(this.polylinesLayer);
+      }
+      // Update the layer control
+      if (this.layerControl) {
+        this.map.removeControl(this.layerControl);
+        const controlsLayer = {
+          Points: this.markersLayer,
+          Polylines: this.polylinesLayer,
+          Heatmap: this.heatmapLayer,
+          "Fog of War": this.fogOverlay,
+          "Scratch map": this.scratchLayer,
+          Areas: this.areasLayer,
+          Photos: this.photoMarkers
+        };
+        this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+      }
+
+      // Update heatmap
+      this.heatmapLayer.setLatLngs(this.markers.map(marker => [marker[0], marker[1], 0.2]));
+
+      // Update fog if enabled
+      if (this.map.hasLayer(this.fogOverlay)) {
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
     })
     .catch(error => {
       console.error('There was a problem with the delete request:', error);
+      showFlashMessage('error', 'Failed to delete point');
     });
   }
 
   removeMarker(id) {
-    const markerIndex = this.markersArray.findIndex(marker => marker.getPopup().getContent().includes(`data-id="${id}"`));
+    const numericId = parseInt(id);
+
+    const markerIndex = this.markersArray.findIndex(marker =>
+      marker.getPopup().getContent().includes(`data-id="${id}"`)
+    );
+
     if (markerIndex !== -1) {
-      this.markersArray[markerIndex].remove(); // Assuming your marker object has a remove method
+      this.markersArray[markerIndex].remove();
       this.markersArray.splice(markerIndex, 1);
       this.markersLayer.clearLayers();
       this.markersLayer.addLayer(L.layerGroup(this.markersArray));
 
-      // Remove from the markers data array
-      this.markers = this.markers.filter(marker => marker[6] !== parseInt(id));
+      this.markers = this.markers.filter(marker => {
+        const markerId = parseInt(marker[6]);
+        return markerId !== numericId;
+      });
     }
   }
 
@@ -660,7 +776,7 @@ export default class extends Controller {
 
     // Recreate layers only if they don't exist
     this.markersLayer = preserveLayers.Points       || L.layerGroup(createMarkersArray(this.markers, newSettings));
-    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings);
+    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = preserveLayers.Heatmap      || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
     this.fogOverlay = preserveLayers["Fog of War"]  || L.layerGroup();
     this.areasLayer = preserveLayers.Areas          || L.layerGroup();
@@ -771,4 +887,429 @@ export default class extends Controller {
     this.map.removeControl(this.layerControl);
     this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
   }
+
+  createPhotoMarker(photo) {
+    if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
+
+    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`;
+
+    const icon = L.divIcon({
+      className: 'photo-marker',
+      html: `<img src="${thumbnailUrl}" style="width: 48px; height: 48px;">`,
+      iconSize: [48, 48]
+    });
+
+    const marker = L.marker(
+      [photo.exifInfo.latitude, photo.exifInfo.longitude],
+      { icon }
+    );
+
+    const startOfDay = new Date(photo.localDateTime);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(photo.localDateTime);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const queryParams = {
+      takenAfter: startOfDay.toISOString(),
+      takenBefore: endOfDay.toISOString()
+    };
+    const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
+    const immich_photo_link = `${this.userSettings.immich_url}/search?query=${encodedQuery}`;
+    const popupContent = `
+      <div class="max-w-xs">
+        <a href="${immich_photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
+   onmouseout="this.firstElementChild.style.boxShadow = '';">
+          <img src="${thumbnailUrl}"
+              class="w-8 h-8 mb-2 rounded"
+              style="transition: box-shadow 0.3s ease;"
+              alt="${photo.originalFileName}">
+        </a>
+        <h3 class="font-bold">${photo.originalFileName}</h3>
+        <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
+        <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
+        ${photo.type === 'video' ? '🎥 Video' : '📷 Photo'}
+      </div>
+    `;
+    marker.bindPopup(popupContent, { autoClose: false });
+
+    this.photoMarkers.addLayer(marker);
+  }
+
+  addTogglePanelButton() {
+    const TogglePanelControl = L.Control.extend({
+      onAdd: (map) => {
+        const button = L.DomUtil.create('button', 'toggle-panel-button');
+        button.innerHTML = '📅';
+
+        button.style.backgroundColor = 'white';
+        button.style.width = '48px';
+        button.style.height = '48px';
+        button.style.border = 'none';
+        button.style.cursor = 'pointer';
+        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+
+        // Disable map interactions when clicking the button
+        L.DomEvent.disableClickPropagation(button);
+
+        // Toggle panel on button click
+        L.DomEvent.on(button, 'click', () => {
+          this.toggleRightPanel();
+        });
+
+        return button;
+      }
+    });
+
+    // Add the control to the map
+    this.map.addControl(new TogglePanelControl({ position: 'topright' }));
+  }
+
+  toggleRightPanel() {
+    if (this.rightPanel) {
+      const panel = document.querySelector('.leaflet-right-panel');
+      if (panel) {
+        if (panel.style.display === 'none') {
+          panel.style.display = 'block';
+          localStorage.setItem('mapPanelOpen', 'true');
+        } else {
+          panel.style.display = 'none';
+          localStorage.setItem('mapPanelOpen', 'false');
+        }
+        return;
+      }
+    }
+
+    this.rightPanel = L.control({ position: 'topright' });
+
+    this.rightPanel.onAdd = () => {
+      const div = L.DomUtil.create('div', 'leaflet-right-panel');
+      const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      // Get current date from URL query parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const startDate = urlParams.get('start_at');
+      const currentYear = startDate
+        ? new Date(startDate).getFullYear().toString()
+        : new Date().getFullYear().toString();
+      const currentMonth = startDate
+        ? allMonths[new Date(startDate).getMonth()]
+        : allMonths[new Date().getMonth()];
+
+      // Initially create select with loading state and current year if available
+      div.innerHTML = `
+        <div class="panel-content">
+          <div id='years-nav'>
+            <div class="flex gap-2 mb-4">
+              <select id="year-select" class="select select-bordered w-1/2 max-w-xs">
+                ${currentYear
+                  ? `<option value="${currentYear}" selected>${currentYear}</option>`
+                  : '<option disabled selected>Loading years...</option>'}
+              </select>
+              <a href="${this.getWholeYearLink()}"
+                 id="whole-year-link"
+                 class="btn btn-default"
+                 style="color: rgb(116 128 255) !important;">
+                Whole year
+              </a>
+            </div>
+
+            <div class='grid grid-cols-3 gap-3' id="months-grid">
+              ${allMonths.map(month => `
+                <a href="#"
+                   class="btn btn-primary disabled ${month === currentMonth ? 'btn-active' : ''}"
+                   data-month-name="${month}"
+                   style="pointer-events: none; opacity: 0.6; color: rgb(116 128 255) !important;">
+                   <span class="loading loading-dots loading-md"></span>
+                </a>
+              `).join('')}
+            </div>
+          </div>
+
+        </div>
+      `;
+
+      this.fetchAndDisplayTrackedMonths(div, currentYear, currentMonth, allMonths);
+
+      div.style.backgroundColor = 'white';
+      div.style.padding = '10px';
+      div.style.border = '1px solid #ccc';
+      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+      div.style.marginRight = '10px';
+      div.style.marginTop = '10px';
+      div.style.width = '300px';
+      div.style.maxHeight = '80vh';
+      div.style.overflowY = 'auto';
+
+      L.DomEvent.disableClickPropagation(div);
+
+      // Add container for visited cities
+      div.innerHTML += `
+        <div id="visited-cities-container" class="mt-4">
+          <h3 class="text-lg font-bold mb-2">Visited cities</h3>
+          <div id="visited-cities-list" class="space-y-2"
+               style="max-height: 300px; overflow-y: auto; overflow-x: auto; padding-right: 10px;">
+            <p class="text-gray-500">Loading visited places...</p>
+          </div>
+        </div>
+      `;
+
+      // Prevent map zoom when scrolling the cities list
+      const citiesList = div.querySelector('#visited-cities-list');
+      L.DomEvent.disableScrollPropagation(citiesList);
+
+      // Fetch visited cities when panel is first created
+      this.fetchAndDisplayVisitedCities();
+
+      // Set initial display style based on localStorage
+      const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
+      div.style.display = isPanelOpen ? 'block' : 'none';
+
+      return div;
+    };
+
+    this.map.addControl(this.rightPanel);
+  }
+
+  async fetchAndDisplayTrackedMonths(div, currentYear, currentMonth, allMonths) {
+    try {
+      let yearsData;
+
+      // Check cache first
+      if (this.trackedMonthsCache) {
+        yearsData = this.trackedMonthsCache;
+      } else {
+        const response = await fetch(`/api/v1/points/tracked_months?api_key=${this.apiKey}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        yearsData = await response.json();
+        // Store in cache
+        this.trackedMonthsCache = yearsData;
+      }
+
+      const yearSelect = document.getElementById('year-select');
+
+      if (!Array.isArray(yearsData) || yearsData.length === 0) {
+        yearSelect.innerHTML = '<option disabled selected>No data available</option>';
+        return;
+      }
+
+      // Check if the current year exists in the API response
+      const currentYearData = yearsData.find(yearData => yearData.year.toString() === currentYear);
+
+      const options = yearsData
+        .filter(yearData => yearData && yearData.year)
+        .map(yearData => {
+          const months = Array.isArray(yearData.months) ? yearData.months : [];
+          const isCurrentYear = yearData.year.toString() === currentYear;
+          return `
+            <option value="${yearData.year}"
+                    data-months='${JSON.stringify(months)}'
+                    ${isCurrentYear ? 'selected' : ''}>
+              ${yearData.year}
+            </option>
+          `;
+        })
+        .join('');
+
+      yearSelect.innerHTML = `
+        <option disabled>Select year</option>
+        ${options}
+      `;
+
+      const updateMonthLinks = (selectedYear, availableMonths) => {
+        // Get current date from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const startDate = urlParams.get('start_at') ? new Date(urlParams.get('start_at')) : new Date();
+        const endDate = urlParams.get('end_at') ? new Date(urlParams.get('end_at')) : new Date();
+
+        allMonths.forEach((month, index) => {
+          const monthLink = div.querySelector(`a[data-month-name="${month}"]`);
+          if (!monthLink) return;
+
+          // Update the content to show the month name instead of loading dots
+          monthLink.innerHTML = month;
+
+          // Check if this month falls within the selected date range
+          const isSelected = startDate && endDate &&
+            selectedYear === startDate.getFullYear().toString() && // Only check months for the currently selected year
+            isMonthInRange(index, startDate, endDate, parseInt(selectedYear));
+
+          if (availableMonths.includes(month)) {
+            monthLink.classList.remove('disabled');
+            monthLink.style.pointerEvents = 'auto';
+            monthLink.style.opacity = '1';
+
+            // Update the active state based on selection
+            if (isSelected) {
+              monthLink.classList.add('btn-active', 'btn-primary');
+            } else {
+              monthLink.classList.remove('btn-active', 'btn-primary');
+            }
+
+            const monthNum = (index + 1).toString().padStart(2, '0');
+            const startDate = `${selectedYear}-${monthNum}-01T00:00`;
+            const lastDay = new Date(selectedYear, index + 1, 0).getDate();
+            const endDate = `${selectedYear}-${monthNum}-${lastDay}T23:59`;
+
+            const href = `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`;
+            monthLink.setAttribute('href', href);
+          } else {
+            monthLink.classList.add('disabled');
+            monthLink.classList.remove('btn-active', 'btn-primary');
+            monthLink.style.pointerEvents = 'none';
+            monthLink.style.opacity = '0.6';
+            monthLink.setAttribute('href', '#');
+          }
+        });
+      };
+
+      // Helper function to check if a month falls within a date range
+      const isMonthInRange = (monthIndex, startDate, endDate, selectedYear) => {
+        // Create date objects for the first and last day of the month in the selected year
+        const monthStart = new Date(selectedYear, monthIndex, 1);
+        const monthEnd = new Date(selectedYear, monthIndex + 1, 0);
+
+        // Check if any part of the month overlaps with the selected date range
+        return monthStart <= endDate && monthEnd >= startDate;
+      };
+
+      yearSelect.addEventListener('change', (event) => {
+        const selectedOption = event.target.selectedOptions[0];
+        const selectedYear = selectedOption.value;
+        const availableMonths = JSON.parse(selectedOption.dataset.months || '[]');
+
+        // Update whole year link with selected year
+        const wholeYearLink = document.getElementById('whole-year-link');
+        const startDate = `${selectedYear}-01-01T00:00`;
+        const endDate = `${selectedYear}-12-31T23:59`;
+        const href = `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`;
+        wholeYearLink.setAttribute('href', href);
+
+        updateMonthLinks(selectedYear, availableMonths);
+      });
+
+      // If we have a current year, set it and update month links
+      if (currentYear && currentYearData) {
+        yearSelect.value = currentYear;
+        updateMonthLinks(currentYear, currentYearData.months);
+      }
+    } catch (error) {
+      const yearSelect = document.getElementById('year-select');
+      yearSelect.innerHTML = '<option disabled selected>Error loading years</option>';
+      console.error('Error fetching tracked months:', error);
+    }
+  }
+
+  chunk(array, size) {
+    const chunked = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunked.push(array.slice(i, i + size));
+    }
+    return chunked;
+  }
+
+  getWholeYearLink() {
+    // First try to get year from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    let year;
+
+    if (urlParams.has('start_at')) {
+      year = new Date(urlParams.get('start_at')).getFullYear();
+    } else {
+      // If no URL params, try to get year from start_at input
+      const startAtInput = document.querySelector('input#start_at');
+      if (startAtInput && startAtInput.value) {
+        year = new Date(startAtInput.value).getFullYear();
+      } else {
+        // If no input value, use current year
+        year = new Date().getFullYear();
+      }
+    }
+
+    const startDate = `${year}-01-01T00:00`;
+    const endDate = `${year}-12-31T23:59`;
+    return `map?end_at=${encodeURIComponent(endDate)}&start_at=${encodeURIComponent(startDate)}`;
+  }
+
+  async fetchAndDisplayVisitedCities() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const startAt = urlParams.get('start_at') || new Date().toISOString();
+    const endAt = urlParams.get('end_at') || new Date().toISOString();
+
+    // Create a cache key from the date range
+    const cacheKey = `${startAt}-${endAt}`;
+
+    // Check if we have cached data for this date range
+    if (this.visitedCitiesCache.has(cacheKey)) {
+      this.displayVisitedCities(this.visitedCitiesCache.get(cacheKey));
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/countries/visited_cities?api_key=${this.apiKey}&start_at=${startAt}&end_at=${endAt}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+
+      // Cache the results
+      this.visitedCitiesCache.set(cacheKey, data.data);
+
+      this.displayVisitedCities(data.data);
+    } catch (error) {
+      console.error('Error fetching visited cities:', error);
+      const container = document.getElementById('visited-cities-list');
+      if (container) {
+        container.innerHTML = '<p class="text-red-500">Error loading visited places</p>';
+      }
+    }
+  }
+
+  displayVisitedCities(citiesData) {
+    const container = document.getElementById('visited-cities-list');
+    if (!container) return;
+
+    if (!citiesData || citiesData.length === 0) {
+      container.innerHTML = '<p class="text-gray-500">No places visited during this period</p>';
+      return;
+    }
+
+    const html = citiesData.map(country => `
+      <div class="mb-4" style="min-width: min-content;">
+        <h4 class="font-bold text-md">${country.country}</h4>
+        <ul class="ml-4 space-y-1">
+          ${country.cities.map(city => `
+            <li class="text-sm whitespace-nowrap">
+              ${city.city}
+              <span class="text-gray-500">
+                (${new Date(city.timestamp * 1000).toLocaleDateString()})
+              </span>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `).join('');
+
+    container.innerHTML = html;
+  }
+
+  formatDuration(seconds) {
+    const days = Math.floor(seconds / (24 * 60 * 60));
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    }
+    return `${hours}h`;
+  }
 }
+

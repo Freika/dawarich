@@ -12,3 +12,11 @@
 }
 
 */
+@import 'actiontext.css';
+
+@layer components {
+  .fade-out {
+    opacity: 0;
+    transition: opacity 150ms ease-in-out;
+  }
+}

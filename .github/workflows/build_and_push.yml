@@ -6,7 +6,7 @@ on:
       branch:
         description: "The branch to build the Docker image from"
         required: false
-        default: "main"
+        default: "master"
   release:
     types: [created]
 
@@ -23,7 +23,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}

@@ -2,8 +2,10 @@
 
 return if User.any?
 
+puts 'Creating user...'
+
 User.create!(
-  email: 'user@domain.com',
+  email: 'demo@dawarich.app',
   password: 'password',
   password_confirmation: 'password',
   admin: true

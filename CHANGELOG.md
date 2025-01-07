@@ -5,6 +5,430 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.21.6 - 2025-01-07
+
+### Changed
+
+- Disabled visit suggesting job after import.
+- Improved performance of the `User#years_tracked` method.
+
+### Fixed
+
+- Inconsistent password for the `dawarich_db` service in `docker-compose_mounted_volumes.yml`. #605
+- Points are now being rendered with higher z-index than polylines. #577
+- Run cache cleaning and preheating jobs only on server start. #594
+
+# 0.21.5 - 2025-01-07
+
+You may now use Geoapify API for reverse geocoding. To obtain an API key, sign up at https://myprojects.geoapify.com/ and create a new project. Make sure you have read and understood the [pricing policy](https://www.geoapify.com/pricing) and [Terms and Conditions](https://www.geoapify.com/terms-and-conditions/).
+
+### Added
+
+- Geoapify API support for reverse geocoding. Provide `GEOAPIFY_API_KEY` env var to use it.
+
+### Removed
+
+- Photon ENV vars from the `.env.development` and docker-compose.yml files.
+- `APPLICATION_HOST` env var.
+- `REVERSE_GEOCODING_ENABLED` env var.
+
+# 0.21.4 - 2025-01-05
+
+### Fixed
+
+- Fixed a bug where Photon API for patreon supporters was not being used for reverse geocoding.
+
+# 0.21.3 - 2025-01-04
+
+### Added
+
+- A notification about Photon API being under heavy load.
+
+### Removed
+
+- The notification about telemetry being enabled.
+
+### Reverted
+
+- ~~Imported points will now be reverse geocoded only after import is finished.~~
+
+# 0.21.2 - 2024-12-25
+
+### Added
+
+- Logging for Immich responses.
+- Watcher now supports all data formats that can be imported via web interface.
+
+### Changed
+
+- Imported points will now be reverse geocoded only after import is finished.
+
+### Fixed
+
+- Markers on the map are now being rendered with higher z-index than polylines. #577
+
+# 0.21.1 - 2024-12-24
+
+### Added
+
+- Cache cleaning and preheating upon application start.
+- `PHOTON_API_KEY` env var to set Photon API key. It's an optional env var, but it's required if you want to use Photon API as a Patreon supporter.
+- 'X-Dawarich-Response' header to the `GET /api/v1/health` endpoint. It's set to 'Hey, I\'m alive!' to make it easier to check if the API is working.
+
+### Changed
+
+- Custom config for PostgreSQL is now optional in `docker-compose.yml`.
+
+# 0.21.0 - 2024-12-20
+
+⚠️ This release introduces a breaking change. ⚠️
+
+The `dawarich_db` service now uses a custom `postgresql.conf` file.
+
+As @tabacha pointed out in #549, the default `shm_size` for the `dawarich_db` service is too small and it may lead to database performance issues. This release introduces a `shm_size` parameter to the `dawarich_db` service to increase the size of the shared memory for PostgreSQL. This should help database with peforming vacuum and other operations. Also, it introduces a custom `postgresql.conf` file to the `dawarich_db` service.
+
+To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf` file in the `dawarich_db` service directory and add the following line to it:
+
+```diff
+  dawarich_db:
+    image: postgres:14.2-alpine
+    shm_size: 1G
+    container_name: dawarich_db
+    volumes:
+      - dawarich_db_data:/var/lib/postgresql/data
+      - dawarich_shared:/var/shared
++     - ./postgresql.conf:/etc/postgresql/postgres.conf # Provide path to custom config
+  ...
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
++   command: postgres -c config_file=/etc/postgresql/postgres.conf # Use custom config
+```
+
+To ensure your database is using custom config, you can connect to the container (`docker exec -it dawarich_db psql -U postgres`) and run `SHOW config_file;` command. It should return the following path: `/etc/postgresql/postgresql.conf`.
+
+An example of a custom `postgresql.conf` file is provided in the `postgresql.conf.example` file.
+
+### Added
+
+- A button on a year stats card to update stats for the whole year. #466
+- A button on a month stats card to update stats for a specific month. #466
+- A confirmation alert on the Notifications page before deleting all notifications.
+- A `shm_size` parameter to the `dawarich_db` service to increase the size of the shared memory for PostgreSQL. This should help database with peforming vacuum and other operations.
+
+```diff
+  ...
+  dawarich_db:
+    image: postgres:14.2-alpine
++   shm_size: 1G
+  ...
+```
+
+- In addition to `api_key` parameter, `Authorization` header is now being used to authenticate API requests. #543
+
+Example:
+
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Changed
+
+- The map borders were expanded to make it easier to scroll around the map for New Zealanders.
+- The `dawarich_db` service now uses a custom `postgresql.conf` file.
+- The popup over polylines now shows dates in the user's format, based on their browser settings.
+
+# 0.20.2 - 2024-12-17
+
+### Added
+
+- A point id is now being shown in the point popup.
+
+### Fixed
+
+- North Macedonia is now being shown on the scratch map. #537
+
+### Changed
+
+- The app process is now bound to :: instead of 0.0.0.0 to provide compatibility with IPV6.
+- The app was updated to use Rails 8.0.1.
+
+# 0.20.1 - 2024-12-16
+
+### Fixed
+
+- Setting `reverse_geocoded_at` for points that don't have geodata is now being performed in background job, in batches of 10,000 points to prevent memory exhaustion and long-running data migration.
+
+# 0.20.0 - 2024-12-16
+
+### Added
+
+- `GET /api/v1/points/tracked_months` endpoint added to get list of tracked years and months.
+- `GET /api/v1/countries/visited_cities` endpoint added to get list of visited cities.
+- A link to the docs leading to a help chart for k8s. #550
+- A button to delete all notifications. #548
+- A support for `RAILS_LOG_LEVEL` env var to change log level. More on that here: https://guides.rubyonrails.org/debugging_rails_applications.html#log-levels. The available log levels are: `:debug`, `:info`, `:warn`, `:error`, `:fatal`, and `:unknown`, corresponding to the log level numbers from 0 up to 5, respectively. The default log level is `:debug`. #540
+- A devcontainer to improve developers experience. #546
+
+### Fixed
+
+- A point popup is no longer closes when hovering over a polyline. #536
+- When polylines layer is disabled and user deletes a point from its popup, polylines layer is no longer being enabled right away. #552
+- Paths to gems within the sidekiq and app containers. #499
+
+### Changed
+
+- Months and years navigation is moved to a map panel on the right side of the map.
+- List of visited cities is now being shown in a map panel on the right side of the map.
+
+# 0.19.7 - 2024-12-11
+
+### Fixed
+
+- Fixed a bug where upon deleting a point on the map, the confirmation dialog was shown multiple times and the point was not being deleted from the map until the page was reloaded. #435
+
+### Changed
+
+- With the "Points" layer enabled on the map, points with negative speed are now being shown in orange color. Since Overland reports negative speed for points that might be faulty, this should help you to identify them.
+- On the Points page, speed of the points with negative speed is now being shown in red color.
+
+# 0.19.6 - 2024-12-11
+
+⚠️ This release introduces a breaking change. ⚠️
+
+The `dawarich_shared` volume now being mounted to `/data` instead of `/var/shared` within the container. It fixes Redis data being lost on container restart.
+
+To change this, you need to update the `docker-compose.yml` file:
+
+```diff
+  dawarich_redis:
+    image: redis:7.0-alpine
+    container_name: dawarich_redis
+    command: redis-server
+    volumes:
++     - dawarich_shared:/data
+    restart: always
+    healthcheck:
+```
+
+Telemetry is now disabled by default. To enable it, you need to set `ENABLE_TELEMETRY` env var to `true`. For those who have telemetry enabled using `DISABLE_TELEMETRY` env var set to `false`, telemetry is now disabled by default.
+
+### Fixed
+
+- Flash messages are now being removed after 5 seconds.
+- Fixed broken migration that was preventing the app from starting.
+- Visits page is now loading a lot faster than before.
+- Redis data should now be preserved on container restart.
+- Fixed a bug where export files could have double extension, e.g. `file.gpx.gpx`.
+
+### Changed
+
+- Places page is now accessible from the Visits & Places tab on the navbar.
+- Exporting process is now being logged.
+- `ENABLE_TELEMETRY` env var is now used instead of `DISABLE_TELEMETRY` to enable/disable telemetry.
+
+# 0.19.5 - 2024-12-10
+
+### Fixed
+
+- Fixed a bug where the map and visits pages were throwing an error due to incorrect approach to distance calculation.
+
+# 0.19.4 - 2024-12-10
+
+⚠️ This release introduces a breaking change. ⚠️
+
+The `GET /api/v1/trips/:id/photos` endpoint now returns a different structure of the response:
+
+```diff
+{
+  id: 1,
+  latitude: 10,
+  longitude: 10,
+  localDateTime: "2024-01-01T00:00:00Z",
+  originalFileName: "photo.jpg",
+  city: "Berlin",
+  state: "Berlin",
+  country: "Germany",
+  type: "image",
++ orientation: "portrait",
+  source: "photoprism"
+}
+```
+
+### Fixed
+
+- Fixed a bug where the Photoprism photos were not being shown on the trip page.
+- Fixed a bug where the Immich photos were not being shown on the trip page.
+- Fixed a bug where the route popup was showing distance in kilometers instead of miles. #490
+
+### Added
+
+- A link to the Photoprism photos on the trip page if there are any.
+- A `orientation` field in the Api::PhotoSerializer, hence the `GET /api/v1/photos` endpoint now includes the orientation of the photo. Valid values are `portrait` and `landscape`.
+- Examples for the `type`, `orientation` and `source` fields in the `GET /api/v1/photos` endpoint in the Swagger UI.
+- `DISABLE_TELEMETRY` env var to disable telemetry. More on telemetry: https://dawarich.app/docs/tutorials/telemetry
+- `reverse_geocoded_at` column added to the `points` table.
+
+### Changed
+
+- On the Stats page, the "Reverse geocoding" section is now showing the number of points that were reverse geocoded based on `reverse_geocoded_at` column, value of which is based on the time when the point was reverse geocoded. If no geodata for the point is available, `reverse_geocoded_at` will be set anyway. Number of points that were reverse geocoded but no geodata is available for them is shown below the "Reverse geocoded" number.
+
+
+# 0.19.3 - 2024-12-06
+
+### Changed
+
+- Refactored stats calculation to calculate only necessary stats, instead of calculating all stats
+- Stats are now being calculated every 1 hour instead of 6 hours
+- List of years on the Map page is now being calculated based on user's points instead of stats. It's also being cached for 1 day due to the fact that it's usually a heavy operation based on the number of points.
+- Reverse-geocoding points is now being performed in batches of 1,000 points to prevent memory exhaustion.
+
+### Added
+
+- In-app notification about telemetry being enabled.
+
+# 0.19.2 - 2024-12-04
+
+## The Telemetry release
+
+Dawarich now can collect usage metrics and send them to InfluxDB. Before this release, the only metrics that could be somehow tracked by developers (only @Freika, as of now) were the number of stars on GitHub and the overall number of docker images being pulled, across all versions of Dawarich, non-splittable by version. New in-app telemetry will allow us to track more granular metrics, allowing me to make decisions based on facts, not just guesses.
+
+I'm aware about the privacy concerns, so I want to be very transparent about what data is being sent and how it's used.
+
+Data being sent:
+
+- Number of DAU (Daily Active Users)
+- App version
+- Instance ID (unique identifier of the Dawarich instance built by hashing the api key of the first user in the database)
+
+The data is being sent to a InfluxDB instance hosted by me and won't be shared with anyone.
+
+Basically this set of metrics allows me to see how many people are using Dawarich and what versions they are using. No other data is being sent, nor it gives me any knowledge about individual users or their data or activity.
+
+The telemetry is enabled by default, but it **can be disabled** by setting `DISABLE_TELEMETRY` env var to `true`. The dataset might change in the future, but any changes will be documented here in the changelog and in every release as well as on the [telemetry page](https://dawarich.app/docs/tutorials/telemetry) of the website docs.
+
+### Added
+
+- Telemetry feature. It's now collecting usage metrics and sending them to InfluxDB.
+
+# 0.19.1 - 2024-12-04
+
+### Fixed
+
+- Sidekiq is now being correctly exported to Prometheus with `PROMETHEUS_EXPORTER_ENABLED=true` env var in `dawarich_sidekiq` service.
+
+# 0.19.0 - 2024-12-04
+
+## The Photoprism integration release
+
+⚠️ This release introduces a breaking change. ⚠️
+The `GET /api/v1/photos` endpoint now returns following structure of the response:
+
+```json
+[
+  {
+    "id": "1",
+    "latitude": 11.22,
+    "longitude": 12.33,
+    "localDateTime": "2024-01-01T00:00:00Z",
+    "originalFileName": "photo.jpg",
+    "city": "Berlin",
+    "state": "Berlin",
+    "country": "Germany",
+    "type": "image", // "image" or "video"
+    "source": "photoprism" // "photoprism" or "immich"
+  }
+]
+```
+
+### Added
+
+- Photos from Photoprism are now can be shown on the map. To enable this feature, you need to provide your Photoprism instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).
+- Geodata is now can be imported from Photoprism to Dawarich. The "Import Photoprism data" button on the Imports page will start the import process.
+
+### Fixed
+
+- z-index on maps so they won't overlay notifications dropdown
+- Redis connectivity where it's not required
+
+# 0.18.2 - 2024-11-29
+
+### Added
+
+- Demo account. You can now login with `demo@dawarich.app` / `password` to see how Dawarich works. This replaces previous default credentials.
+
+### Changed
+
+- The login page now shows demo account credentials if `DEMO_ENV` env var is set to `true`.
+
+# 0.18.1 - 2024-11-29
+
+### Fixed
+
+- Fixed a bug where the trips interface was breaking when Immich integration is not configured.
+
+### Added
+
+- Flash messages are now being shown on the map when Immich integration is not configured.
+
+# 0.18.0 - 2024-11-28
+
+## The Trips release
+
+You can now create, edit and delete trips. To create a trip, click on the "New Trip" button on the Trips page. Provide a name, date and time for start and end of the trip. You can add your own notes to the trip as well.
+
+If you have points tracked during provided timeframe, they will be automatically added to the trip and will be shown on the trip map.
+
+Also, if you have Immich integrated, you will see photos from the trip on the trip page, along with a link to look at them on Immich.
+
+### Added
+
+- The Trips feature. Read above for more details.
+
+### Changed
+
+- Maps are now not so rough on the edges.
+
+# 0.17.2 - 2024-11-27
+
+### Fixed
+
+- Retrieving photos from Immich now using `takenAfter` and `takenBefore` instead of `createdAfter` and `createdBefore`. With `createdAfter` and `createdBefore` Immich was returning no items some years.
+
+# 0.17.1 - 2024-11-27
+
+### Fixed
+
+- Retrieving photos from Immich now correctly handles cases when Immich returns no items. It also logs the response from Immich for debugging purposes.
+
+# 0.17.0 - 2024-11-26
+
+## The Immich Photos release
+
+With this release, Dawarich can now show photos from your Immich instance on the map.
+
+To enable this feature, you need to provide your Immich instance URL and API key in the Settings page. Then you need to enable "Photos" layer on the map (top right corner).
+
+An important note to add here is that photos are heavy and hence generate a lot of traffic. The response from Immich for specific dates is being cached in Redis for 1 day, and that may lead to Redis taking a lot more space than previously. But since the cache is being expired after 24 hours, you'll get your space back pretty soon.
+
+The other thing worth mentioning is how Dawarich gets data from Immich. It goes like this:
+
+1. When you click on the "Photos" layer, Dawarich will make a request to `GET /api/v1/photos` endpoint to get photos for the selected timeframe.
+2. This endpoint will make a request to `POST /search/metadata` endpoint of your Immich instance to get photos for the selected timeframe.
+3. The response from Immich is being cached in Redis for 1 day.
+4. Dawarich's frontend will make a request to `GET /api/v1/photos/:id/thumbnail.jpg` endpoint to get photo thumbnail from Immich. The number of requests to this endpoint will depend on how many photos you have in the selected timeframe.
+5. For each photo, Dawarich's frontend will make a request to `GET /api/v1/photos/:id/thumbnail.jpg` endpoint to get photo thumbnail from Immich. This thumbnail request is also cached in Redis for 1 day.
+
+
+### Added
+
+- If you have provided your Immich instance URL and API key, the map will now show photos from your Immich instance when Photos layer is enabled.
+- `GET /api/v1/photos` endpoint added to get photos from Immich.
+- `GET /api/v1/photos/:id/thumbnail.jpg` endpoint added to get photo thumbnail from Immich.
+
 # 0.16.9 - 2024-11-24
 
 ### Changed

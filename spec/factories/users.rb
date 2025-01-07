@@ -22,5 +22,23 @@ FactoryBot.define do
     trait :admin do
       admin { true }
     end
+
+    trait :with_immich_integration do
+      settings do
+        {
+          immich_url: 'https://immich.example.com',
+          immich_api_key: '1234567890'
+        }
+      end
+    end
+
+    trait :with_photoprism_integration do
+      settings do
+        {
+          photoprism_url: 'https://photoprism.example.com',
+          photoprism_api_key: '1234567890'
+        }
+      end
+    end
   end
 end

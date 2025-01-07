@@ -55,5 +55,11 @@ FactoryBot.define do
         }
       end
     end
+
+    trait :reverse_geocoded do
+      country { FFaker::Address.country }
+      city { FFaker::Address.city }
+      reverse_geocoded_at { Time.current }
+    end
   end
 end
