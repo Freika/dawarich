@@ -27,4 +27,4 @@ Sidekiq.configure_client do |config|
   config.redis = { url: ENV['REDIS_URL'] }
 end
 
-Sidekiq::Queue['reverse_geocoding'].limit = 1 if Sidekiq.server? && PHOTON_API_HOST == 'photon.komoot.io'
+Sidekiq::Queue['reverse_geocoding'].limit = 1 if Sidekiq.server? && DawarichSettings.photon_uses_komoot_io?
