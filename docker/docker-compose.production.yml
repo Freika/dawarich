@@ -2,7 +2,7 @@ networks:
   dawarich:
 services:
   dawarich_redis:
-    image: redis:7.0-alpine
+    image: redis:7.4-alpine
     container_name: dawarich_redis
     command: redis-server
     networks:
@@ -17,7 +17,7 @@ services:
       start_period: 30s
       timeout: 10s
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgres:17-alpine
     container_name: dawarich_db
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -27,15 +27,16 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+      POSTGRES_DB: dawarich_production
     restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
       interval: 10s
       retries: 5
       start_period: 30s
       timeout: 10s
   dawarich_app:
-    image: freikin/dawarich:latest
+    image: dawarich:prod
     container_name: dawarich_app
     volumes:
       - gem_cache:/usr/local/bundle/gems_app
@@ -48,16 +49,17 @@ services:
       # - 9394:9394 # Prometheus exporter, uncomment if needed
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
+    entrypoint: entrypoint.sh
     command: ['bin/dev']
     restart: on-failure
     environment:
       RAILS_ENV: production
       REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
+      DATABASE_PORT: 5432
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
+      DATABASE_NAME: dawarich_production
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
@@ -69,6 +71,8 @@ services:
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
+      SECRET_KEY_BASE: 1234567890
+      RAILS_LOG_TO_STDOUT: "true"
     logging:
       driver: "json-file"
       options:
@@ -93,7 +97,7 @@ services:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
           memory: '2G'    # Limit memory usage to 2GB
   dawarich_sidekiq:
-    image: freikin/dawarich:latest
+    image: dawarich:prod
     container_name: dawarich_sidekiq
     volumes:
       - gem_cache:/usr/local/bundle/gems_sidekiq
@@ -103,16 +107,17 @@ services:
       - dawarich
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
+    entrypoint: entrypoint.sh
     command: ['sidekiq']
     restart: on-failure
     environment:
       RAILS_ENV: production
       REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
+      DATABASE_PORT: 5432
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
+      DATABASE_NAME: dawarich_production
       APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10

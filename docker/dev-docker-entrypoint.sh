@@ -24,8 +24,8 @@ until nc -zv $DATABASE_HOST ${DATABASE_PORT:-5432}; do
 done
 
 # Install gems
-gem update --system 3.5.7
-gem install bundler --version '2.5.9'
+gem update --system 3.6.2
+gem install bundler --version '2.5.21'
 
 # Create the database
 if [ "$(psql "postgres://$DATABASE_USERNAME:$DATABASE_PASSWORD@$DATABASE_HOST:$DATABASE_PORT" -XtAc "SELECT 1 FROM pg_database WHERE datname='$DATABASE_NAME'")" = '1' ]; then
@@ -37,7 +37,7 @@ fi
 
 # Run database migrations
 echo "PostgreSQL is ready. Running database migrations..."
-bundle exec rails db:prepare
+bundle exec rails db:migrate
 
 # Run data migrations
 echo "Running DATA migrations..."

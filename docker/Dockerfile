@@ -32,17 +32,17 @@ RUN gem install bundler --version "$BUNDLE_VERSION" \
 # Navigate to app directory
 WORKDIR $APP_PATH
 
-COPY Gemfile Gemfile.lock vendor .ruby-version ./
+COPY ../Gemfile ../Gemfile.lock ../vendor ../.ruby-version ./
 
 # Install missing gems
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle install --jobs 20 --retry 5
 
-COPY . ./
+COPY ../. ./
 
 # Copy entrypoint scripts and grant execution permissions
-COPY ./dev-docker-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
-RUN chmod +x /usr/local/bin/dev-entrypoint.sh
+COPY ./docker/prod-docker-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE $RAILS_PORT
 
