@@ -50,7 +50,7 @@ services:
     stdin_open: true
     tty: true
     entrypoint: entrypoint.sh
-    command: ['bin/dev']
+    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: on-failure
     environment:
       RAILS_ENV: production
@@ -61,8 +61,7 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_production
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: localhost
-      APPLICATION_HOSTS: localhost
+      APPLICATION_HOSTS: localhost,::1,127.0.0.1
       TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
@@ -108,7 +107,7 @@ services:
     stdin_open: true
     tty: true
     entrypoint: entrypoint.sh
-    command: ['sidekiq']
+    command: ['bundle', 'exec', 'sidekiq']
     restart: on-failure
     environment:
       RAILS_ENV: production
@@ -118,8 +117,7 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_production
-      APPLICATION_HOST: localhost
-      APPLICATION_HOSTS: localhost
+      APPLICATION_HOSTS: localhost,::1,127.0.0.1
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
@@ -128,6 +126,8 @@ services:
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: dawarich_app
       PROMETHEUS_EXPORTER_PORT: 9394
+      SECRET_KEY_BASE: 1234567890
+      RAILS_LOG_TO_STDOUT: "true"
     logging:
       driver: "json-file"
       options:
