@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.22.0 - 2025-01-09
+
+⚠️ This release introduces a breaking change. ⚠️
+
+Please read this release notes carefully before upgrading.
+
+### Changed
+
+- All docker-related files were moved to the `docker` directory.
+- Default memory limit for `dawarich_app` and `dawarich_sidekiq` services was increased to 4GB.
+- `dawarich_app` and `dawarich_sidekiq` services now use separate entrypoint scripts.
+- Gems (dependency libraries) are now being shipped as part of the Dawarich Docker image.
+
+### Fixed
+
+- Visit suggesting job does nothing if user has no tracked points.
+- `BulkStatsCalculationJob` now being called without arguments in the data migration.
+
+### Added
+
+- A proper production Dockerfile, docker-compose and env files.
+
 # 0.21.6 - 2025-01-07
 
 ### Changed

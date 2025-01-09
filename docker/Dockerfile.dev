@@ -28,26 +28,15 @@ RUN gem update --system 3.6.2 \
     && gem install bundler --version "$BUNDLE_VERSION" \
     && rm -rf $GEM_HOME/cache/*
 
-# Navigate to app directory
 WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../vendor ../.ruby-version ./
 
-# Install missing gems
+# Install all gems including development and test
 RUN bundle config set --local path 'vendor/bundle' \
-    && if [ "$RAILS_ENV" = "production" ]; then \
-         bundle install --jobs 4 --retry 3 --without development test; \
-       else \
-         bundle install --jobs 4 --retry 3; \
-       fi
+    && bundle install --jobs 4 --retry 3
 
 COPY ../. ./
-
-# Precompile assets for production
-RUN if [ "$RAILS_ENV" = "production" ]; then \
-    bundle exec rake assets:precompile \
-    && rm -rf node_modules tmp/cache; \
-    fi
 
 # Copy entrypoint scripts and grant execution permissions
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh

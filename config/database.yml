@@ -20,4 +20,3 @@ test:
 production:
   <<: *default
   database: <%= ENV['DATABASE_NAME'] || 'dawarich_production' %>
-  # url: <%= ENV['DATABASE_URL'] %>

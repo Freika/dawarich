@@ -92,7 +92,7 @@ services:
       resources:
         limits:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
-          memory: '2G'    # Limit memory usage to 2GB
+          memory: '4G'    # Limit memory usage to 4GB
   dawarich_sidekiq:
     image: dawarich:prod
     container_name: dawarich_sidekiq
@@ -147,7 +147,7 @@ services:
       resources:
         limits:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
-          memory: '2G'    # Limit memory usage to 2GB
+          memory: '4G'    # Limit memory usage to 4GB
 
 volumes:
   dawarich_db_data:
