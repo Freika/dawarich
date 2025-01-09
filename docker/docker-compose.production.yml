@@ -49,7 +49,7 @@ services:
       # - 9394:9394 # Prometheus exporter, uncomment if needed
     stdin_open: true
     tty: true
-    entrypoint: entrypoint.sh
+    entrypoint: web-entrypoint.sh
     command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: on-failure
     environment:
@@ -106,7 +106,7 @@ services:
       - dawarich
     stdin_open: true
     tty: true
-    entrypoint: entrypoint.sh
+    entrypoint: sidekiq-entrypoint.sh
     command: ['bundle', 'exec', 'sidekiq']
     restart: on-failure
     environment:

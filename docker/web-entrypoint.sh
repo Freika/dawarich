@@ -5,7 +5,7 @@ unset BUNDLE_BIN
 
 set -e
 
-echo "⚠️ Environment: $RAILS_ENV ⚠️"
+echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
@@ -27,14 +27,16 @@ fi
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
 
-# Install gems
-gem update --system 3.6.2
-gem install bundler --version '2.5.21'
+# Wait for the database to become available
+echo "⏳ Waiting for database to be ready..."
+until PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -c '\q'; do
+  >&2 echo "Postgres is unavailable - retrying..."
+  sleep 2
+done
+echo "✅ PostgreSQL is ready!"
 
-# Create the database if it doesn't exist
-if PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -c "SELECT 1 FROM pg_database WHERE datname='$DATABASE_NAME'" | grep -q 1; then
-  echo "Database $DATABASE_NAME already exists, skipping creation..."
-else
+# Create database if it doesn't exist
+if ! PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -c "SELECT 1 FROM pg_database WHERE datname='$DATABASE_NAME'" | grep -q 1; then
   echo "Creating database $DATABASE_NAME..."
   bundle exec rails db:create
 fi
@@ -47,14 +49,9 @@ bundle exec rails db:migrate
 echo "Running DATA migrations..."
 bundle exec rake data:migrate
 
-# Run seeds
-echo "Running seeds..."
-bundle exec rake db:seed
-
-# Precompile assets
-if [ "$RAILS_ENV" = "production" ]; then
-  echo "Precompiling assets..."
-  bundle exec rake assets:precompile
+if [ "$RAILS_ENV" != "production" ]; then
+  echo "Running seeds..."
+  bundle exec rails db:seed
 fi
 
 # run passed commands
