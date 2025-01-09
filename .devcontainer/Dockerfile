@@ -1,4 +1,4 @@
-# Basis-Image für Ruby und Node.js
+# Base-Image for Ruby and Node.js
 FROM ruby:3.3.4-alpine
 
 ENV APP_PATH=/var/app

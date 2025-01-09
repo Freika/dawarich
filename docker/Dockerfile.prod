@@ -6,6 +6,8 @@ ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 ENV RAILS_ENV=production
+ENV SECRET_KEY_BASE=$SECRET_KEY_BASE
+
 
 # Install dependencies for application
 RUN apk -U add --no-cache \
@@ -31,11 +33,13 @@ RUN gem update --system 3.6.2 \
 
 WORKDIR $APP_PATH
 
-COPY ../Gemfile ../Gemfile.lock ../vendor ../.ruby-version ./
+COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
 # Install production gems only
 RUN bundle config set --local path 'vendor/bundle' \
-    && bundle install --jobs 4 --retry 3 --without development test
+    && bundle config set --local without 'development test' \
+    && bundle install --jobs 4 --retry 3 \
+    && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
 
 COPY ../. ./
 

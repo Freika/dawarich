@@ -8,7 +8,6 @@ services:
     container_name: dawarich_dev
     volumes:
       - "${PWD}:/var/app:cached"
-      - dawarich_gem_cache_app:/usr/local/bundle/gems_app
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
     networks:
@@ -69,8 +68,6 @@ services:
       POSTGRES_PASSWORD: password
 volumes:
   dawarich_db_data:
-  dawarich_gem_cache_app:
-  dawarich_gem_cache_sidekiq:
   dawarich_shared:
   dawarich_public:
   dawarich_watched:

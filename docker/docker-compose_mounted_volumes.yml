@@ -3,10 +3,6 @@ networks:
 
 
 volumes:
-  dawarich_gem_cache_app:
-    name: dawarich_gem_cache_app
-  dawarich_gem_cache_sidekiq:
-    name: dawarich_gem_cache_sidekiq
   dawarich_public:
     name: dawarich_public
   dawarich_keydb:
@@ -49,7 +45,6 @@ services:
     entrypoint: dev-entrypoint.sh
     command: [ 'bin/dev' ]
     volumes:
-      - dawarich_gem_cache_app:/usr/local/bundle/gems
       - dawarich_public:/var/app/dawarich_public
       - watched:/var/app/tmp/imports/watched
     healthcheck:
@@ -102,7 +97,6 @@ services:
     entrypoint: dev-entrypoint.sh
     command: [ 'sidekiq' ]
     volumes:
-      - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
       - dawarich_public:/var/app/dawarich_public
       - watched:/var/app/tmp/imports/watched
     logging:
