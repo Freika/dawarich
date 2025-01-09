@@ -2,13 +2,13 @@ networks:
   dawarich:
 services:
   dawarich_redis:
-    image: redis:7.0-alpine
+    image: redis:7.4-alpine
     container_name: dawarich_redis
     command: redis-server
     networks:
       - dawarich
     volumes:
-      - dawarich_shared:/data
+      - dawarich_redis_data:/var/shared/redis
     restart: always
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
@@ -17,26 +17,24 @@ services:
       start_period: 30s
       timeout: 10s
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgres:17-alpine
     shm_size: 1G
     container_name: dawarich_db
     volumes:
       - dawarich_db_data:/var/lib/postgresql/data
-      - dawarich_shared:/var/shared
-      # - ./postgresql.conf:/etc/postgresql/postgresql.conf # Optional, uncomment if you want to use a custom config
     networks:
       - dawarich
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+      POSTGRES_DB: dawarich_production
     restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
       interval: 10s
       retries: 5
       start_period: 30s
       timeout: 10s
-    # command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config, uncomment if you want to use a custom config
   dawarich_app:
     image: freikin/dawarich:latest
     container_name: dawarich_app
@@ -51,25 +49,27 @@ services:
       # - 9394:9394 # Prometheus exporter, uncomment if needed
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['bin/dev']
+    entrypoint: web-entrypoint.sh
+    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: on-failure
     environment:
-      RAILS_ENV: development
+      RAILS_ENV: production
       REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
+      DATABASE_PORT: 5432
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
+      DATABASE_NAME: dawarich_production
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOSTS: localhost
+      APPLICATION_HOSTS: localhost,::1,127.0.0.1
       TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
-      ENABLE_TELEMETRY: false # More on telemetry: https://dawarich.app/docs/tutorials/telemetry
+      SECRET_KEY_BASE: 1234567890
+      RAILS_LOG_TO_STDOUT: "true"
     logging:
       driver: "json-file"
       options:
@@ -104,24 +104,26 @@ services:
       - dawarich
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['sidekiq']
+    entrypoint: sidekiq-entrypoint.sh
+    command: ['bundle', 'exec', 'sidekiq']
     restart: on-failure
     environment:
-      RAILS_ENV: development
+      RAILS_ENV: production
       REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
+      DATABASE_PORT: 5432
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
-      APPLICATION_HOSTS: localhost
+      DATABASE_NAME: dawarich_production
+      APPLICATION_HOSTS: localhost,::1,127.0.0.1
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: dawarich_app
       PROMETHEUS_EXPORTER_PORT: 9394
-      ENABLE_TELEMETRY: false # More on telemetry: https://dawarich.app/docs/tutorials/telemetry
+      SECRET_KEY_BASE: 1234567890
+      RAILS_LOG_TO_STDOUT: "true"
     logging:
       driver: "json-file"
       options:
@@ -151,8 +153,8 @@ services:
 
 volumes:
   dawarich_db_data:
+  dawarich_redis_data:
   dawarich_gem_cache_app:
   dawarich_gem_cache_sidekiq:
-  dawarich_shared:
   dawarich_public:
   dawarich_watched:

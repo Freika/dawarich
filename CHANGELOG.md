@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.22.0 - 2025-01-09
+
+⚠️ This release introduces a breaking change. ⚠️
+
+Please read this release notes carefully before upgrading.
+
+Docker-related files were moved to the `docker` directory and some of them were renamed. Before upgrading, study carefully changes in the `docker/docker-compose.yml` file and update your docker-compose file accordingly, so it uses the new files and commands. Copying `docker/docker-compose.yml` blindly may lead to errors.
+
+No volumes were removed or renamed, so with a proper docker-compose file, you should be able to upgrade without any issues. To make it easier comparing your existing docker-compose file with the new one, you may use https://www.diffchecker.com/.
+
+Although `docker-compose.production.yml` was added, it's not being used by default. It's just an example of how to configure Dawarich for production. The default `docker-compose.yml` file is still recommended for running the app.
+
+### Changed
+
+- All docker-related files were moved to the `docker` directory.
+- Default memory limit for `dawarich_app` and `dawarich_sidekiq` services was increased to 4GB.
+- `dawarich_app` and `dawarich_sidekiq` services now use separate entrypoint scripts.
+- Gems (dependency libraries) are now being shipped as part of the Dawarich Docker image.
+
+### Fixed
+
+- Visit suggesting job does nothing if user has no tracked points.
+- `BulkStatsCalculationJob` now being called without arguments in the data migration.
+
+### Added
+
+- A proper production Dockerfile, docker-compose and env files.
+
 # 0.21.6 - 2025-01-07
 
 ### Changed
