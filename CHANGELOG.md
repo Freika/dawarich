@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Gems caching volume from the `docker-compose.yml` file.
 
+To update existing `docker-compose.yml` to new changes, refer to the following:
+
 ```diff
   dawarich_app:
     image: freikin/dawarich:latest
