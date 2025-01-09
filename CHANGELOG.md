@@ -15,6 +15,8 @@ Docker-related files were moved to the `docker` directory and some of them were 
 
 No volumes were removed or renamed, so with a proper docker-compose file, you should be able to upgrade without any issues. To make it easier comparing your existing docker-compose file with the new one, you may use https://www.diffchecker.com/.
 
+Although `docker-compose.production.yml` was added, it's not being used by default. It's just an example of how to configure Dawarich for production. The default `docker-compose.yml` file is still recommended for running the app.
+
 ### Changed
 
 - All docker-related files were moved to the `docker` directory.
