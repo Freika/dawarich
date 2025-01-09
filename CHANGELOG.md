@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.22.1 - 2025-01-09
+
+### Removed
+
+- Gems caching volume from the `docker-compose.yml` file.
+
+To update existing `docker-compose.yml` to new changes, refer to the following:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+...
+    volumes:
+-      - dawarich_gem_cache_app:/usr/local/bundle/gems
+...
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+...
+    volumes:
+-      - dawarich_gem_cache_app:/usr/local/bundle/gems
+...
+
+volumes:
+  dawarich_db_data:
+- dawarich_gem_cache_app:
+- dawarich_gem_cache_sidekiq:
+  dawarich_shared:
+  dawarich_public:
+  dawarich_watched:
+```
+
+### Changed
+
+- `GET /api/v1/health` endpoint now returns a `X-Dawarich-Response: Hey, Im alive and authenticated!` header if user is authenticated.
+
 # 0.22.0 - 2025-01-09
 
 ⚠️ This release introduces a breaking change. ⚠️
@@ -13,7 +48,27 @@ Please read this release notes carefully before upgrading.
 
 Docker-related files were moved to the `docker` directory and some of them were renamed. Before upgrading, study carefully changes in the `docker/docker-compose.yml` file and update your docker-compose file accordingly, so it uses the new files and commands. Copying `docker/docker-compose.yml` blindly may lead to errors.
 
-No volumes were removed or renamed, so with a proper docker-compose file, you should be able to upgrade without any issues. To make it easier comparing your existing docker-compose file with the new one, you may use https://www.diffchecker.com/.
+No volumes were removed or renamed, so with a proper docker-compose file, you should be able to upgrade without any issues.
+
+To update existing `docker-compose.yml` to new changes, refer to the following:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+...
+-    entrypoint: dev-entrypoint.sh
+-    command: ['bin/dev']
++    entrypoint: web-entrypoint.sh
++    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
+...
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+...
+-    entrypoint: dev-entrypoint.sh
+-    command: ['bin/dev']
++    entrypoint: sidekiq-entrypoint.sh
++    command: ['bundle', 'exec', 'sidekiq']
+```
 
 Although `docker-compose.production.yml` was added, it's not being used by default. It's just an example of how to configure Dawarich for production. The default `docker-compose.yml` file is still recommended for running the app.
 
