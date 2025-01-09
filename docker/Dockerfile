@@ -40,7 +40,7 @@ RUN bundle config set --local path 'vendor/bundle' \
 COPY ../. ./
 
 # Copy entrypoint scripts and grant execution permissions
-COPY ./docker/prod-docker-entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ./docker/docker-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE $RAILS_PORT

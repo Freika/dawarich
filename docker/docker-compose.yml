@@ -38,7 +38,7 @@ services:
       timeout: 10s
     # command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config, uncomment if you want to use a custom config
   dawarich_app:
-    image: freikin/dawarich:latest
+    image: dawarich:prod
     container_name: dawarich_app
     volumes:
       - dawarich_gem_cache_app:/usr/local/bundle/gems
@@ -51,8 +51,8 @@ services:
       # - 9394:9394 # Prometheus exporter, uncomment if needed
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['bin/dev']
+    entrypoint: entrypoint.sh
+    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: on-failure
     environment:
       RAILS_ENV: development
@@ -94,7 +94,7 @@ services:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
           memory: '2G'    # Limit memory usage to 2GB
   dawarich_sidekiq:
-    image: freikin/dawarich:latest
+    image: dawarich:prod
     container_name: dawarich_sidekiq
     volumes:
       - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
@@ -104,7 +104,7 @@ services:
       - dawarich
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
+    entrypoint: entrypoint.sh
     command: ['sidekiq']
     restart: on-failure
     environment:

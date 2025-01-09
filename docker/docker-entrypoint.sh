@@ -5,7 +5,7 @@ unset BUNDLE_BIN
 
 set -e
 
-echo "Environment: $RAILS_ENV"
+echo "⚠️ Environment: $RAILS_ENV ⚠️"
 
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then

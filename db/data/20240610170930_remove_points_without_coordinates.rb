@@ -12,7 +12,7 @@ class RemovePointsWithoutCoordinates < ActiveRecord::Migration[7.1]
 
     Rails.logger.info 'Points without coordinates removed.'
 
-    BulkStatsCalculatingJob.perform_later(User.pluck(:id))
+    BulkStatsCalculatingJob.perform_later
   end
 
   def down
