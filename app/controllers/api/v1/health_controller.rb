@@ -8,4 +8,3 @@ class Api::V1::HealthController < ApiController
     render json: { status: 'ok' }
   end
 end
-

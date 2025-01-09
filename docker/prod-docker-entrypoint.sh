@@ -17,44 +17,12 @@ if [ -n "$DATABASE_URL" ]; then
   DATABASE_NAME=$(echo $DATABASE_URL | awk -F[@/] '{print $5}')
 else
   # Use existing environment variables
-  DATABASE_HOST=${DATABASE_HOST:-dawarich_db}
-  DATABASE_PORT=${DATABASE_PORT:-5432}
-  DATABASE_USERNAME=${DATABASE_USERNAME:-postgres}
-  DATABASE_PASSWORD=${DATABASE_PASSWORD:-password}
-  DATABASE_NAME=${DATABASE_NAME:-dawarich_production}
+  DATABASE_HOST=${DATABASE_HOST}
+  DATABASE_PORT=${DATABASE_PORT}
+  DATABASE_USERNAME=${DATABASE_USERNAME}
+  DATABASE_PASSWORD=${DATABASE_PASSWORD}
+  DATABASE_NAME=${DATABASE_NAME}
 fi
-
-# Function to test database connection
-test_db_connection() {
-  echo "Testing connection to PostgreSQL..."
-  echo "Host: $DATABASE_HOST"
-  echo "Port: $DATABASE_PORT"
-  echo "Username: $DATABASE_USERNAME"
-  echo "Database: postgres (default database)"
-
-  if PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d postgres -c "SELECT 1" > /dev/null 2>&1; then
-    echo "✅ Successfully connected to PostgreSQL!"
-    return 0
-  else
-    echo "❌ Failed to connect to PostgreSQL"
-    return 1
-  fi
-}
-
-# Try to connect to PostgreSQL, with a timeout
-max_attempts=30
-attempt=1
-
-while ! test_db_connection; do
-  if [ $attempt -ge $max_attempts ]; then
-    echo "Failed to connect to PostgreSQL after $max_attempts attempts. Exiting."
-    exit 1
-  fi
-
-  echo "Attempt $attempt of $max_attempts. Waiting 2 seconds before retry..."
-  attempt=$((attempt + 1))
-  sleep 2
-done
 
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid

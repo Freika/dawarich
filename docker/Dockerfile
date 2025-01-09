@@ -21,7 +21,6 @@ RUN apk -U add --no-cache \
     tzdata \
     less \
     yaml-dev \
-    # gcompat for nokogiri on mac m1
     gcompat \
     && rm -rf /var/cache/apk/* \
     && mkdir -p $APP_PATH
