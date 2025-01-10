@@ -758,10 +758,9 @@ export default class extends Controller {
     this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
     this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
 
-    // Preserve existing layer instances if they exist
+    // Preserve existing layers except polylines which need to be recreated
     const preserveLayers = {
       Points:       this.markersLayer,
-      Polylines:    this.polylinesLayer,
       Heatmap:      this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       Areas:        this.areasLayer,
@@ -774,12 +773,15 @@ export default class extends Controller {
       }
     });
 
-    // Recreate layers only if they don't exist
-    this.markersLayer = preserveLayers.Points       || L.layerGroup(createMarkersArray(this.markers, newSettings));
-    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
-    this.heatmapLayer = preserveLayers.Heatmap      || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
-    this.fogOverlay = preserveLayers["Fog of War"]  || L.layerGroup();
-    this.areasLayer = preserveLayers.Areas          || L.layerGroup();
+    // Recreate polylines layer with new settings
+    this.polylinesLayer = createPolylinesLayer(
+      this.markers,
+      this.map,
+      this.timezone,
+      this.routeOpacity,
+      newSettings,
+      this.distanceUnit
+    );
 
     // Redraw areas
     fetchAndDrawAreas(this.areasLayer, this.apiKey);

@@ -4,11 +4,50 @@ import { getUrlParameter } from "../maps/helpers";
 import { minutesToDaysHoursMinutes } from "../maps/helpers";
 import { haversineDistance } from "../maps/helpers";
 
-export function addHighlightOnHover(polyline, map, polylineCoordinates, userSettings, distanceUnit) {
-  const originalStyle = { color: "blue", opacity: userSettings.routeOpacity, weight: 3 };
-  const highlightStyle = { color: "yellow", opacity: 1, weight: 5 };
+function getSpeedColor(speedKmh) {
+  console.log('Speed to color:', speedKmh + ' km/h');
 
-  polyline.setStyle(originalStyle);
+  if (speedKmh > 100) {
+    console.log('Red - Very fast');
+    return '#FF0000';
+  }
+  if (speedKmh > 70) {
+    console.log('Orange - Fast');
+    return '#FFA500';
+  }
+  if (speedKmh > 40) {
+    console.log('Yellow - Moderate');
+    return '#FFFF00';
+  }
+  if (speedKmh > 20) {
+    console.log('Light green - Normal');
+    return '#90EE90';
+  }
+  console.log('Green - Slow');
+  return '#008000';
+}
+
+function calculateSpeed(point1, point2) {
+  const distanceKm = haversineDistance(point1[0], point1[1], point2[0], point2[1]); // in kilometers
+  const timeDiffSeconds = point2[4] - point1[4];
+
+  // Convert to km/h: (kilometers / seconds) * (3600 seconds / hour)
+  const speed = (distanceKm / timeDiffSeconds) * 3600;
+
+  console.log('Speed calculation:', {
+    distance: distanceKm + ' km',
+    timeDiff: timeDiffSeconds + ' seconds',
+    speed: speed + ' km/h',
+    point1: point1,
+    point2: point2
+  });
+
+  return speed;
+}
+
+export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, userSettings, distanceUnit) {
+  const highlightStyle = { opacity: 1, weight: 5 };
+  const normalStyle = { opacity: userSettings.routeOpacity, weight: 3 };
 
   const startPoint = polylineCoordinates[0];
   const endPoint = polylineCoordinates[polylineCoordinates.length - 1];
@@ -28,66 +67,112 @@ export function addHighlightOnHover(polyline, map, polylineCoordinates, userSett
   const startIcon = L.divIcon({ html: "🚥", className: "emoji-icon" });
   const finishIcon = L.divIcon({ html: "🏁", className: "emoji-icon" });
 
-  const isDebugMode = getUrlParameter("debug") === "true";
-
-  let popupContent = `
-    <strong>Start:</strong> ${firstTimestamp}<br>
-    <strong>End:</strong> ${lastTimestamp}<br>
-    <strong>Duration:</strong> ${timeOnRoute}<br>
-    <strong>Total Distance:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
-  `;
-
-  if (isDebugMode) {
-    const prevPoint = polylineCoordinates[0];
-    const nextPoint = polylineCoordinates[polylineCoordinates.length - 1];
-    const distanceToPrev = haversineDistance(prevPoint[0], prevPoint[1], startPoint[0], startPoint[1]);
-    const distanceToNext = haversineDistance(endPoint[0], endPoint[1], nextPoint[0], nextPoint[1]);
-
-    const timeBetweenPrev = Math.round((startPoint[4] - prevPoint[4]) / 60);
-    const timeBetweenNext = Math.round((endPoint[4] - nextPoint[4]) / 60);
-    const pointsNumber = polylineCoordinates.length;
-
-    popupContent += `
-      <strong>Prev Route:</strong> ${Math.round(distanceToPrev)}m and ${minutesToDaysHoursMinutes(timeBetweenPrev)} away<br>
-      <strong>Next Route:</strong> ${Math.round(distanceToNext)}m and ${minutesToDaysHoursMinutes(timeBetweenNext)} away<br>
-      <strong>Points:</strong> ${pointsNumber}<br>
-    `;
-  }
-
-  const startMarker = L.marker([startPoint[0], startPoint[1]], { icon: startIcon }).bindPopup(`Start: ${firstTimestamp}`);
-  const endMarker = L.marker([endPoint[0], endPoint[1]], { icon: finishIcon }).bindPopup(popupContent);
+  const startMarker = L.marker([startPoint[0], startPoint[1]], { icon: startIcon });
+  const endMarker = L.marker([endPoint[0], endPoint[1]], { icon: finishIcon });
 
   let hoverPopup = null;
 
-  polyline.on("mouseover", function (e) {
-    polyline.setStyle(highlightStyle);
+  polylineGroup.on("mouseover", function (e) {
+    // Find the closest segment and its speed
+    let closestSegment = null;
+    let minDistance = Infinity;
+    let currentSpeed = 0;
+
+    polylineGroup.eachLayer((layer) => {
+      if (layer instanceof L.Polyline) {
+        const layerLatLngs = layer.getLatLngs();
+        const distance = L.LineUtil.pointToSegmentDistance(
+          e.latlng,
+          layerLatLngs[0],
+          layerLatLngs[1]
+        );
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestSegment = layer;
+
+          // Get the coordinates of the segment
+          const startPoint = layerLatLngs[0];
+          const endPoint = layerLatLngs[1];
+
+          console.log('Closest segment found:', {
+            startPoint,
+            endPoint,
+            distance
+          });
+
+          // Find matching points in polylineCoordinates
+          const startIdx = polylineCoordinates.findIndex(p => {
+            const latMatch = Math.abs(p[0] - startPoint.lat) < 0.0000001;
+            const lngMatch = Math.abs(p[1] - startPoint.lng) < 0.0000001;
+            return latMatch && lngMatch;
+          });
+
+          console.log('Start point index:', startIdx);
+          console.log('Original point:', startIdx !== -1 ? polylineCoordinates[startIdx] : 'not found');
+
+          if (startIdx !== -1 && startIdx < polylineCoordinates.length - 1) {
+            currentSpeed = calculateSpeed(
+              polylineCoordinates[startIdx],
+              polylineCoordinates[startIdx + 1]
+            );
+            console.log('Speed calculated:', currentSpeed);
+          }
+        }
+      }
+    });
+
+    // Highlight all segments in the group
+    polylineGroup.eachLayer((layer) => {
+      if (layer instanceof L.Polyline) {
+        layer.setStyle({
+          ...highlightStyle,
+          color: layer.options.originalColor
+        });
+      }
+    });
+
     startMarker.addTo(map);
     endMarker.addTo(map);
 
-    const latLng = e.latlng;
+    const popupContent = `
+      <strong>Start:</strong> ${firstTimestamp}<br>
+      <strong>End:</strong> ${lastTimestamp}<br>
+      <strong>Duration:</strong> ${timeOnRoute}<br>
+      <strong>Total Distance:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
+      <strong>Current Speed:</strong> ${Math.round(currentSpeed)} km/h
+    `;
+
     if (hoverPopup) {
       map.closePopup(hoverPopup);
     }
+
     hoverPopup = L.popup()
-      .setLatLng(latLng)
+      .setLatLng(e.latlng)
       .setContent(popupContent)
       .openOn(map);
   });
 
-  polyline.on("mouseout", function () {
-    polyline.setStyle(originalStyle);
-    map.closePopup(hoverPopup);
+  polylineGroup.on("mouseout", function () {
+    // Restore original styles for all segments
+    polylineGroup.eachLayer((layer) => {
+      if (layer instanceof L.Polyline) {
+        layer.setStyle({
+          ...normalStyle,
+          color: layer.options.originalColor
+        });
+      }
+    });
+
+    if (hoverPopup) {
+      map.closePopup(hoverPopup);
+    }
     map.removeLayer(startMarker);
     map.removeLayer(endMarker);
   });
 
-  polyline.on("click", function () {
-    map.fitBounds(polyline.getBounds());
-  });
-
-  // Close the popup when clicking elsewhere on the map
-  map.on("click", function () {
-    map.closePopup(hoverPopup);
+  polylineGroup.on("click", function () {
+    map.fitBounds(polylineGroup.getBounds());
   });
 }
 
@@ -97,6 +182,7 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
   const distanceThresholdMeters = parseInt(userSettings.meters_between_routes) || 500;
   const timeThresholdMinutes = parseInt(userSettings.minutes_between_routes) || 60;
 
+  // Split into separate polylines based on distance/time thresholds
   for (let i = 0, len = markers.length; i < len; i++) {
     if (currentPolyline.length === 0) {
       currentPolyline.push(markers[i]);
@@ -121,26 +207,45 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 
   return L.layerGroup(
     splitPolylines.map((polylineCoordinates) => {
-      const latLngs = polylineCoordinates.map((point) => [point[0], point[1]]);
-      const polyline = L.polyline(latLngs, {
-        color: "blue",
-        opacity: 0.6,
-        weight: 3,
-        zIndexOffset: 400,
-        pane: 'overlayPane'
-      });
+      const segmentGroup = L.featureGroup();
 
-      addHighlightOnHover(polyline, map, polylineCoordinates, userSettings, distanceUnit);
+      // Create segments with different colors based on speed
+      for (let i = 0; i < polylineCoordinates.length - 1; i++) {
+        const speed = calculateSpeed(polylineCoordinates[i], polylineCoordinates[i + 1]);
+        const color = getSpeedColor(speed);
 
-      return polyline;
+        const segment = L.polyline(
+          [
+            [polylineCoordinates[i][0], polylineCoordinates[i][1]],
+            [polylineCoordinates[i + 1][0], polylineCoordinates[i + 1][1]]
+          ],
+          {
+            color: color,
+            originalColor: color,
+            opacity: routeOpacity,
+            weight: 3
+          }
+        );
+
+        segmentGroup.addLayer(segment);
+      }
+
+      // Add hover effect to the entire group of segments
+      addHighlightOnHover(segmentGroup, map, polylineCoordinates, userSettings, distanceUnit);
+
+      return segmentGroup;
     })
   ).addTo(map);
 }
 
 export function updatePolylinesOpacity(polylinesLayer, opacity) {
-  polylinesLayer.eachLayer((layer) => {
-    if (layer instanceof L.Polyline) {
-      layer.setStyle({ opacity: opacity });
+  polylinesLayer.eachLayer((groupLayer) => {
+    if (groupLayer instanceof L.LayerGroup) {
+      groupLayer.eachLayer((segment) => {
+        if (segment instanceof L.Polyline) {
+          segment.setStyle({ opacity: opacity });
+        }
+      });
     }
   });
 }
