@@ -4,50 +4,137 @@ import { getUrlParameter } from "../maps/helpers";
 import { minutesToDaysHoursMinutes } from "../maps/helpers";
 import { haversineDistance } from "../maps/helpers";
 
-function getSpeedColor(speedKmh) {
-  console.log('Speed to color:', speedKmh + ' km/h');
+function pointToLineDistance(point, lineStart, lineEnd) {
+  const x = point.lat;
+  const y = point.lng;
+  const x1 = lineStart.lat;
+  const y1 = lineStart.lng;
+  const x2 = lineEnd.lat;
+  const y2 = lineEnd.lng;
 
-  if (speedKmh > 100) {
-    console.log('Red - Very fast');
-    return '#FF0000';
+  const A = x - x1;
+  const B = y - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+
+  if (lenSq !== 0) {
+    param = dot / lenSq;
   }
-  if (speedKmh > 70) {
-    console.log('Orange - Fast');
-    return '#FFA500';
+
+  let xx, yy;
+
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  } else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  } else {
+    xx = x1 + param * C;
+    yy = y1 + param * D;
   }
-  if (speedKmh > 40) {
-    console.log('Yellow - Moderate');
-    return '#FFFF00';
-  }
-  if (speedKmh > 20) {
-    console.log('Light green - Normal');
-    return '#90EE90';
-  }
-  console.log('Green - Slow');
-  return '#008000';
+
+  const dx = x - xx;
+  const dy = y - yy;
+
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
-function calculateSpeed(point1, point2) {
+export function calculateSpeed(point1, point2) {
   const distanceKm = haversineDistance(point1[0], point1[1], point2[0], point2[1]); // in kilometers
   const timeDiffSeconds = point2[4] - point1[4];
 
-  // Convert to km/h: (kilometers / seconds) * (3600 seconds / hour)
-  const speed = (distanceKm / timeDiffSeconds) * 3600;
+  // Handle edge cases
+  if (timeDiffSeconds <= 0 || distanceKm <= 0) {
+    return 0;
+  }
 
-  console.log('Speed calculation:', {
-    distance: distanceKm + ' km',
-    timeDiff: timeDiffSeconds + ' seconds',
-    speed: speed + ' km/h',
-    point1: point1,
-    point2: point2
-  });
+  const speedKmh = (distanceKm / timeDiffSeconds) * 3600; // Convert to km/h
 
-  return speed;
+  // Cap speed at reasonable maximum (e.g., 150 km/h)
+  const MAX_SPEED = 150;
+  return Math.min(speedKmh, MAX_SPEED);
+}
+
+export function getSpeedColor(speedKmh, useSpeedColors) {
+  if (!useSpeedColors) {
+    return '#0000ff'; // Default blue color
+  }
+
+  // Existing speed-based color logic
+  const colorStops = [
+    { speed: 0, color: '#00ff00' },    // Stationary/very slow (neon green)
+    { speed: 15, color: '#00ffff' },   // Walking/jogging (neon cyan)
+    { speed: 30, color: '#ff00ff' },   // Cycling/slow driving (neon magenta)
+    { speed: 50, color: '#ff3300' },   // Urban driving (neon orange-red)
+    { speed: 100, color: '#ffff00' }   // Highway driving (neon yellow)
+  ];
+
+  // Find the appropriate color segment
+  for (let i = 1; i < colorStops.length; i++) {
+    if (speedKmh <= colorStops[i].speed) {
+      // Calculate how far we are between the two speeds (0-1)
+      const ratio = (speedKmh - colorStops[i-1].speed) / (colorStops[i].speed - colorStops[i-1].speed);
+
+      // Convert hex to RGB for interpolation
+      const color1 = hexToRGB(colorStops[i-1].color);
+      const color2 = hexToRGB(colorStops[i].color);
+
+      // Interpolate between the two colors
+      const r = Math.round(color1.r + (color2.r - color1.r) * ratio);
+      const g = Math.round(color1.g + (color2.g - color1.g) * ratio);
+      const b = Math.round(color1.b + (color2.b - color1.b) * ratio);
+
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+  }
+
+  // If speed is higher than our highest threshold, return the last color
+  return colorStops[colorStops.length - 1].color;
+}
+
+// Helper function to convert hex to RGB
+function hexToRGB(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+// Add new function for batch processing
+function processInBatches(items, batchSize, processFn) {
+  let index = 0;
+
+  function processNextBatch() {
+    const batch = items.slice(index, index + batchSize);
+    batch.forEach(processFn);
+
+    index += batchSize;
+
+    if (index < items.length) {
+      // Schedule next batch using requestAnimationFrame
+      window.requestAnimationFrame(processNextBatch);
+    }
+  }
+
+  processNextBatch();
 }
 
 export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, userSettings, distanceUnit) {
-  const highlightStyle = { opacity: 1, weight: 5 };
-  const normalStyle = { opacity: userSettings.routeOpacity, weight: 3 };
+  const highlightStyle = {
+    opacity: 1,
+    weight: 5,
+    color: userSettings.speed_colored_polylines ? null : '#ffff00' // Yellow highlight if not using speed colors
+  };
+  const normalStyle = {
+    opacity: userSettings.routeOpacity,
+    weight: 3,
+    color: userSettings.speed_colored_polylines ? null : '#0000ff' // Blue normal if not using speed colors
+  };
 
   const startPoint = polylineCoordinates[0];
   const endPoint = polylineCoordinates[polylineCoordinates.length - 1];
@@ -73,7 +160,6 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
   let hoverPopup = null;
 
   polylineGroup.on("mouseover", function (e) {
-    // Find the closest segment and its speed
     let closestSegment = null;
     let minDistance = Infinity;
     let currentSpeed = 0;
@@ -81,53 +167,33 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
     polylineGroup.eachLayer((layer) => {
       if (layer instanceof L.Polyline) {
         const layerLatLngs = layer.getLatLngs();
-        const distance = L.LineUtil.pointToSegmentDistance(
-          e.latlng,
-          layerLatLngs[0],
-          layerLatLngs[1]
-        );
+        const distance = pointToLineDistance(e.latlng, layerLatLngs[0], layerLatLngs[1]);
 
         if (distance < minDistance) {
           minDistance = distance;
           closestSegment = layer;
 
-          // Get the coordinates of the segment
-          const startPoint = layerLatLngs[0];
-          const endPoint = layerLatLngs[1];
-
-          console.log('Closest segment found:', {
-            startPoint,
-            endPoint,
-            distance
-          });
-
-          // Find matching points in polylineCoordinates
           const startIdx = polylineCoordinates.findIndex(p => {
-            const latMatch = Math.abs(p[0] - startPoint.lat) < 0.0000001;
-            const lngMatch = Math.abs(p[1] - startPoint.lng) < 0.0000001;
+            const latMatch = Math.abs(p[0] - layerLatLngs[0].lat) < 0.0000001;
+            const lngMatch = Math.abs(p[1] - layerLatLngs[0].lng) < 0.0000001;
             return latMatch && lngMatch;
           });
-
-          console.log('Start point index:', startIdx);
-          console.log('Original point:', startIdx !== -1 ? polylineCoordinates[startIdx] : 'not found');
 
           if (startIdx !== -1 && startIdx < polylineCoordinates.length - 1) {
             currentSpeed = calculateSpeed(
               polylineCoordinates[startIdx],
               polylineCoordinates[startIdx + 1]
             );
-            console.log('Speed calculated:', currentSpeed);
           }
         }
       }
     });
 
-    // Highlight all segments in the group
     polylineGroup.eachLayer((layer) => {
       if (layer instanceof L.Polyline) {
         layer.setStyle({
           ...highlightStyle,
-          color: layer.options.originalColor
+          color: userSettings.speed_colored_polylines ? layer.options.originalColor : highlightStyle.color
         });
       }
     });
@@ -154,12 +220,11 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
   });
 
   polylineGroup.on("mouseout", function () {
-    // Restore original styles for all segments
     polylineGroup.eachLayer((layer) => {
       if (layer instanceof L.Polyline) {
         layer.setStyle({
           ...normalStyle,
-          color: layer.options.originalColor
+          color: userSettings.speed_colored_polylines ? layer.options.originalColor : normalStyle.color
         });
       }
     });
@@ -182,7 +247,6 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
   const distanceThresholdMeters = parseInt(userSettings.meters_between_routes) || 500;
   const timeThresholdMinutes = parseInt(userSettings.minutes_between_routes) || 60;
 
-  // Split into separate polylines based on distance/time thresholds
   for (let i = 0, len = markers.length; i < len; i++) {
     if (currentPolyline.length === 0) {
       currentPolyline.push(markers[i]);
@@ -209,10 +273,9 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
     splitPolylines.map((polylineCoordinates) => {
       const segmentGroup = L.featureGroup();
 
-      // Create segments with different colors based on speed
       for (let i = 0; i < polylineCoordinates.length - 1; i++) {
         const speed = calculateSpeed(polylineCoordinates[i], polylineCoordinates[i + 1]);
-        const color = getSpeedColor(speed);
+        const color = getSpeedColor(speed, userSettings.speed_colored_polylines);
 
         const segment = L.polyline(
           [
@@ -223,14 +286,15 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
             color: color,
             originalColor: color,
             opacity: routeOpacity,
-            weight: 3
+            weight: 3,
+            startTime: polylineCoordinates[i][4],
+            endTime: polylineCoordinates[i + 1][4]
           }
         );
 
         segmentGroup.addLayer(segment);
       }
 
-      // Add hover effect to the entire group of segments
       addHighlightOnHover(segmentGroup, map, polylineCoordinates, userSettings, distanceUnit);
 
       return segmentGroup;
@@ -238,14 +302,58 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
   ).addTo(map);
 }
 
-export function updatePolylinesOpacity(polylinesLayer, opacity) {
+export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
+  const segments = [];
+
+  // Collect all segments first
   polylinesLayer.eachLayer((groupLayer) => {
     if (groupLayer instanceof L.LayerGroup) {
       groupLayer.eachLayer((segment) => {
         if (segment instanceof L.Polyline) {
-          segment.setStyle({ opacity: opacity });
+          segments.push(segment);
         }
       });
     }
+  });
+
+  // Process segments in batches of 50
+  processInBatches(segments, 50, (segment) => {
+    const latLngs = segment.getLatLngs();
+    const point1 = [latLngs[0].lat, latLngs[0].lng];
+    const point2 = [latLngs[1].lat, latLngs[1].lng];
+
+    const speed = calculateSpeed(
+      [...point1, 0, segment.options.startTime],
+      [...point2, 0, segment.options.endTime]
+    );
+
+    const newColor = useSpeedColors ?
+      getSpeedColor(speed, useSpeedColors) :
+      '#0000ff';
+
+    segment.setStyle({
+      color: newColor,
+      originalColor: newColor
+    });
+  });
+}
+
+export function updatePolylinesOpacity(polylinesLayer, opacity) {
+  const segments = [];
+
+  // Collect all segments first
+  polylinesLayer.eachLayer((groupLayer) => {
+    if (groupLayer instanceof L.LayerGroup) {
+      groupLayer.eachLayer((segment) => {
+        if (segment instanceof L.Polyline) {
+          segments.push(segment);
+        }
+      });
+    }
+  });
+
+  // Process segments in batches of 50
+  processInBatches(segments, 50, (segment) => {
+    segment.setStyle({ opacity: opacity });
   });
 }
