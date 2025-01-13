@@ -810,23 +810,13 @@ export default class extends Controller {
         // Check if speed_colored_polylines setting has changed
         if (newSettings.speed_colored_polylines !== this.userSettings.speed_colored_polylines) {
           if (this.polylinesLayer) {
-            // Remove existing polylines layer
-            this.map.removeLayer(this.polylinesLayer);
+            console.log('Starting gradual polyline color update');
 
-            // Create new polylines layer with updated settings
-            this.polylinesLayer = createPolylinesLayer(
-              this.markers,
-              this.map,
-              this.timezone,
-              this.routeOpacity,
-              { ...this.userSettings, speed_colored_polylines: newSettings.speed_colored_polylines },
-              this.distanceUnit
+            // Use the batch processing approach instead of recreating the layer
+            updatePolylinesColors(
+              this.polylinesLayer,
+              newSettings.speed_colored_polylines
             );
-
-            // Add the layer back if it was visible
-            if (wasPolylinesVisible) {
-              this.polylinesLayer.addTo(this.map);
-            }
           }
         }
 
@@ -860,8 +850,10 @@ export default class extends Controller {
         console.error('Error updating map settings:', error);
         console.error(error.stack);
       } finally {
-        // Remove loading indicator
-        document.body.removeChild(loadingDiv);
+        // Remove loading indicator after all updates are complete
+        setTimeout(() => {
+          document.body.removeChild(loadingDiv);
+        }, 500); // Give a small delay to ensure all batches are processed
       }
     }, 250);
 

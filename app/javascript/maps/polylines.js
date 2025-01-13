@@ -45,8 +45,20 @@ function pointToLineDistance(point, lineStart, lineEnd) {
 }
 
 export function calculateSpeed(point1, point2) {
+  if (!point1 || !point2 || !point1[4] || !point2[4]) {
+    console.warn('Invalid points for speed calculation:', { point1, point2 });
+    return 0;
+  }
+
   const distanceKm = haversineDistance(point1[0], point1[1], point2[0], point2[1]); // in kilometers
   const timeDiffSeconds = point2[4] - point1[4];
+
+  console.log('Speed calculation:', {
+    distance: distanceKm,
+    timeDiff: timeDiffSeconds,
+    point1Time: point1[4],
+    point2Time: point2[4]
+  });
 
   // Handle edge cases
   if (timeDiffSeconds <= 0 || distanceKm <= 0) {
@@ -65,26 +77,22 @@ export function getSpeedColor(speedKmh, useSpeedColors) {
     return '#0000ff'; // Default blue color
   }
 
-  // Existing speed-based color logic
+  // Speed-based color logic
   const colorStops = [
-    { speed: 0, color: '#00ff00' },    // Stationary/very slow (neon green)
-    { speed: 15, color: '#00ffff' },   // Walking/jogging (neon cyan)
-    { speed: 30, color: '#ff00ff' },   // Cycling/slow driving (neon magenta)
-    { speed: 50, color: '#ff3300' },   // Urban driving (neon orange-red)
-    { speed: 100, color: '#ffff00' }   // Highway driving (neon yellow)
+    { speed: 0, color: '#00ff00' },    // Stationary/very slow (green)
+    { speed: 15, color: '#00ffff' },   // Walking/jogging (cyan)
+    { speed: 30, color: '#ff00ff' },   // Cycling/slow driving (magenta)
+    { speed: 50, color: '#ff3300' },   // Urban driving (orange-red)
+    { speed: 100, color: '#ffff00' }   // Highway driving (yellow)
   ];
 
   // Find the appropriate color segment
   for (let i = 1; i < colorStops.length; i++) {
     if (speedKmh <= colorStops[i].speed) {
-      // Calculate how far we are between the two speeds (0-1)
       const ratio = (speedKmh - colorStops[i-1].speed) / (colorStops[i].speed - colorStops[i-1].speed);
-
-      // Convert hex to RGB for interpolation
       const color1 = hexToRGB(colorStops[i-1].color);
       const color2 = hexToRGB(colorStops[i].color);
 
-      // Interpolate between the two colors
       const r = Math.round(color1.r + (color2.r - color1.r) * ratio);
       const g = Math.round(color1.g + (color2.g - color1.g) * ratio);
       const b = Math.round(color1.b + (color2.b - color1.b) * ratio);
@@ -93,7 +101,6 @@ export function getSpeedColor(speedKmh, useSpeedColors) {
     }
   }
 
-  // If speed is higher than our highest threshold, return the last color
   return colorStops[colorStops.length - 1].color;
 }
 
@@ -116,8 +123,10 @@ function processInBatches(items, batchSize, processFn) {
     index += batchSize;
 
     if (index < items.length) {
-      // Schedule next batch using requestAnimationFrame
-      window.requestAnimationFrame(processNextBatch);
+      // Add a small delay between batches
+      setTimeout(() => {
+        window.requestAnimationFrame(processNextBatch);
+      }, 10); // 10ms delay between batches
     }
   }
 
@@ -186,9 +195,9 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
           opacity: 1
         };
 
-        // Change color to yellow only for non-speed-colored (blue) polylines
+        // Only change color to yellow if speed colors are disabled
         if (!userSettings.speed_colored_polylines) {
-          highlightStyle.color = '#ffff00'; // Yellow
+          highlightStyle.color = '#ffff00';
         }
 
         layer.setStyle(highlightStyle);
@@ -222,13 +231,9 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
       if (layer instanceof L.Polyline) {
         const originalStyle = {
           weight: 3,
-          opacity: userSettings.route_opacity
+          opacity: userSettings.route_opacity,
+          color: layer.options.originalColor // Use the stored original color
         };
-
-        // Restore original blue color for non-speed-colored polylines
-        if (!userSettings.speed_colored_polylines) {
-          originalStyle.color = '#0000ff';
-        }
 
         layer.setStyle(originalStyle);
       }
@@ -280,6 +285,11 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 
       for (let i = 0; i < polylineCoordinates.length - 1; i++) {
         const speed = calculateSpeed(polylineCoordinates[i], polylineCoordinates[i + 1]);
+        console.log('Creating segment with speed:', speed, 'from points:', {
+          point1: polylineCoordinates[i],
+          point2: polylineCoordinates[i + 1]
+        });
+
         const color = getSpeedColor(speed, userSettings.speed_colored_polylines);
 
         const segment = L.polyline(
@@ -292,6 +302,7 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
             originalColor: color,
             opacity: routeOpacity,
             weight: 3,
+            speed: speed,  // Store the calculated speed
             startTime: polylineCoordinates[i][4],
             endTime: polylineCoordinates[i + 1][4]
           }
@@ -308,6 +319,7 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 }
 
 export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
+  console.log('Starting color update with useSpeedColors:', useSpeedColors);
   const segments = [];
 
   // Collect all segments first
@@ -321,20 +333,25 @@ export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
     }
   });
 
-  // Process segments in batches of 50
-  processInBatches(segments, 50, (segment) => {
-    const latLngs = segment.getLatLngs();
-    const point1 = [latLngs[0].lat, latLngs[0].lng];
-    const point2 = [latLngs[1].lat, latLngs[1].lng];
+  console.log(`Found ${segments.length} segments to update`);
 
-    const speed = calculateSpeed(
-      [...point1, 0, segment.options.startTime],
-      [...point2, 0, segment.options.endTime]
-    );
+  // Process segments in smaller batches of 20
+  processInBatches(segments, 20, (segment) => {
+    if (!useSpeedColors) {
+      segment.setStyle({
+        color: '#0000ff',
+        originalColor: '#0000ff'
+      });
+      return;
+    }
 
-    const newColor = useSpeedColors ?
-      getSpeedColor(speed, useSpeedColors) :
-      '#0000ff';
+    // Get the original speed from the segment options
+    const speed = segment.options.speed;
+    console.log('Segment options:', segment.options);
+    console.log('Retrieved speed:', speed);
+
+    const newColor = getSpeedColor(speed, true);
+    console.log('Calculated color for speed:', {speed, newColor});
 
     segment.setStyle({
       color: newColor,
