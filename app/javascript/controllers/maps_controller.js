@@ -65,7 +65,7 @@ export default class extends Controller {
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
-    this.speedColoredPolylines = this.userSettings.speed_colored_polylines || false;
+    this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -96,7 +96,7 @@ export default class extends Controller {
 
     const controlsLayer = {
       Points: this.markersLayer,
-      Polylines: this.polylinesLayer,
+      Routes: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer,
@@ -476,7 +476,7 @@ export default class extends Controller {
         this.map.removeControl(this.layerControl);
         const controlsLayer = {
           Points: this.markersLayer,
-          Polylines: this.polylinesLayer,
+          Routes: this.polylinesLayer,
           Heatmap: this.heatmapLayer,
           "Fog of War": this.fogOverlay,
           "Scratch map": this.scratchLayer,
@@ -714,10 +714,10 @@ export default class extends Controller {
             <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class='w-4' style="width: 20px;" value="false" ${this.liveMapEnabledChecked(true)} />
           </label>
 
-          <label for="speed_colored_polylines">
+          <label for="speed_colored_routes">
             Speed-colored routes
-            <label for="speed_colored_polylines_info" class="btn-xs join-item inline">?</label>
-            <input type="checkbox" id="speed_colored_polylines" name="speed_colored_polylines" class='w-4' style="width: 20px;" ${this.speedColoredPolylinesChecked()} />
+            <label for="speed_colored_routes_info" class="btn-xs join-item inline">?</label>
+            <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class='w-4' style="width: 20px;" ${this.speedColoredRoutesChecked()} />
           </label>
 
           <button type="submit">Update</button>
@@ -760,8 +760,8 @@ export default class extends Controller {
     }
   }
 
-  speedColoredPolylinesChecked() {
-    return this.userSettings.speed_colored_polylines ? 'checked' : '';
+  speedColoredRoutesChecked() {
+    return this.userSettings.speed_colored_routes ? 'checked' : '';
   }
 
   updateSettings(event) {
@@ -781,7 +781,7 @@ export default class extends Controller {
           merge_threshold_minutes: event.target.merge_threshold_minutes.value,
           points_rendering_mode: event.target.points_rendering_mode.value,
           live_map_enabled: event.target.live_map_enabled.checked,
-          speed_colored_polylines: event.target.speed_colored_polylines.checked
+          speed_colored_routes: event.target.speed_colored_routes.checked
         },
       }),
     })
@@ -813,10 +813,6 @@ export default class extends Controller {
       isVisible: this.polylinesLayer && this.map.hasLayer(this.polylinesLayer)
     });
 
-    // Store current visibility state
-    const wasPolylinesVisible = this.polylinesLayer && this.map.hasLayer(this.polylinesLayer);
-    const currentLayerStates = this.getLayerControlStates();
-
     // Show loading indicator
     const loadingDiv = document.createElement('div');
     loadingDiv.className = 'map-loading-overlay';
@@ -826,12 +822,12 @@ export default class extends Controller {
     // Debounce the heavy operations
     const updateLayers = debounce(() => {
       try {
-        // Check if speed_colored_polylines setting has changed
-        if (newSettings.speed_colored_polylines !== this.userSettings.speed_colored_polylines) {
+        // Check if speed_colored_routes setting has changed
+        if (newSettings.speed_colored_routes !== this.userSettings.speed_colored_routes) {
           if (this.polylinesLayer) {
             updatePolylinesColors(
               this.polylinesLayer,
-              newSettings.speed_colored_polylines
+              newSettings.speed_colored_routes
             );
           }
         }
@@ -853,7 +849,7 @@ export default class extends Controller {
         this.map.removeControl(this.layerControl);
         const controlsLayer = {
           Points: this.markersLayer,
-          Polylines: this.polylinesLayer,
+          Routes: this.polylinesLayer,
           Heatmap: this.heatmapLayer,
           "Fog of War": this.fogOverlay,
           "Scratch map": this.scratchLayer,
@@ -893,7 +889,7 @@ export default class extends Controller {
   getLayerName(layer) {
     const controlLayers = {
       Points: this.markersLayer,
-      Polylines: this.polylinesLayer,
+      Routes: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       Areas: this.areasLayer,
@@ -917,7 +913,7 @@ export default class extends Controller {
 
     const layerControl = {
       Points: this.markersLayer,
-      Polylines: this.polylinesLayer,
+      Routes: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       Areas: this.areasLayer,

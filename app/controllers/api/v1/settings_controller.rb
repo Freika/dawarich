@@ -28,7 +28,7 @@ class Api::V1::SettingsController < ApiController
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,
       :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
-      :speed_colored_polylines
+      :speed_colored_routes
     )
   end
 end

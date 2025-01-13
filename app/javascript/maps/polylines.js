@@ -209,7 +209,7 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
         };
 
         // Only change color to yellow if speed colors are disabled
-        if (!userSettings.speed_colored_polylines) {
+        if (!userSettings.speed_colored_routes) {
           highlightStyle.color = '#ffff00';
         }
 
@@ -299,7 +299,7 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
       for (let i = 0; i < polylineCoordinates.length - 1; i++) {
         const speed = calculateSpeed(polylineCoordinates[i], polylineCoordinates[i + 1]);
 
-        const color = getSpeedColor(speed, userSettings.speed_colored_polylines);
+        const color = getSpeedColor(speed, userSettings.speed_colored_routes);
 
         const segment = L.polyline(
           [
