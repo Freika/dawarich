@@ -810,9 +810,6 @@ export default class extends Controller {
         // Check if speed_colored_polylines setting has changed
         if (newSettings.speed_colored_polylines !== this.userSettings.speed_colored_polylines) {
           if (this.polylinesLayer) {
-            console.log('Starting gradual polyline color update');
-
-            // Use the batch processing approach instead of recreating the layer
             updatePolylinesColors(
               this.polylinesLayer,
               newSettings.speed_colored_polylines

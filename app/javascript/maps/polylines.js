@@ -1,6 +1,5 @@
 import { formatDate } from "../maps/helpers";
 import { formatDistance } from "../maps/helpers";
-import { getUrlParameter } from "../maps/helpers";
 import { minutesToDaysHoursMinutes } from "../maps/helpers";
 import { haversineDistance } from "../maps/helpers";
 
@@ -65,26 +64,29 @@ export function calculateSpeed(point1, point2) {
   return Math.min(speedKmh, MAX_SPEED);
 }
 
+// Optimize getSpeedColor by pre-calculating color stops
+const colorStops = [
+  { speed: 0, color: '#00ff00' },    // Stationary/very slow (green)
+  { speed: 15, color: '#00ffff' },   // Walking/jogging (cyan)
+  { speed: 30, color: '#ff00ff' },   // Cycling/slow driving (magenta)
+  { speed: 50, color: '#ff3300' },   // Urban driving (orange-red)
+  { speed: 100, color: '#ffff00' }   // Highway driving (yellow)
+].map(stop => ({
+  ...stop,
+  rgb: hexToRGB(stop.color)
+}));
+
 export function getSpeedColor(speedKmh, useSpeedColors) {
   if (!useSpeedColors) {
-    return '#0000ff'; // Default blue color
+    return '#0000ff';
   }
-
-  // Speed-based color logic
-  const colorStops = [
-    { speed: 0, color: '#00ff00' },    // Stationary/very slow (green)
-    { speed: 15, color: '#00ffff' },   // Walking/jogging (cyan)
-    { speed: 30, color: '#ff00ff' },   // Cycling/slow driving (magenta)
-    { speed: 50, color: '#ff3300' },   // Urban driving (orange-red)
-    { speed: 100, color: '#ffff00' }   // Highway driving (yellow)
-  ];
 
   // Find the appropriate color segment
   for (let i = 1; i < colorStops.length; i++) {
     if (speedKmh <= colorStops[i].speed) {
       const ratio = (speedKmh - colorStops[i-1].speed) / (colorStops[i].speed - colorStops[i-1].speed);
-      const color1 = hexToRGB(colorStops[i-1].color);
-      const color2 = hexToRGB(colorStops[i].color);
+      const color1 = colorStops[i-1].rgb;
+      const color2 = colorStops[i].rgb;
 
       const r = Math.round(color1.r + (color2.r - color1.r) * ratio);
       const g = Math.round(color1.g + (color2.g - color1.g) * ratio);
@@ -108,43 +110,40 @@ function hexToRGB(hex) {
 // Add new function for batch processing
 function processInBatches(items, batchSize, processFn) {
   let index = 0;
-  const totalBatches = Math.ceil(items.length / batchSize);
-  let batchCount = 0;
-  const startTime = performance.now();
+  const totalItems = items.length;
 
   function processNextBatch() {
     const batchStartTime = performance.now();
     let processedInThisFrame = 0;
 
-    // Process multiple batches in one frame if they're taking very little time
-    while (index < items.length && processedInThisFrame < 100) {
-      const batch = items.slice(index, index + batchSize);
-      batch.forEach(processFn);
+    // Process as many items as possible within our time budget
+    while (index < totalItems && processedInThisFrame < 500) {
+      const end = Math.min(index + batchSize, totalItems);
 
-      index += batchSize;
-      batchCount++;
-      processedInThisFrame += batch.length;
+      // Ensure we're within bounds
+      for (let i = index; i < end; i++) {
+        if (items[i]) {  // Add null check
+          processFn(items[i]);
+        }
+      }
 
-      // If we've been processing for more than 16ms (targeting 60fps),
-      // break and schedule the next frame
-      if (performance.now() - batchStartTime > 16) {
+      processedInThisFrame += (end - index);
+      index = end;
+
+      if (performance.now() - batchStartTime > 32) {
         break;
       }
     }
 
-    const batchEndTime = performance.now();
-    console.log(`Processed ${processedInThisFrame} items in ${batchEndTime - batchStartTime}ms`);
-
-    if (index < items.length) {
-      window.requestAnimationFrame(processNextBatch);
+    if (index < totalItems) {
+      setTimeout(processNextBatch, 0);
     } else {
-      const endTime = performance.now();
-      console.log(`All items completed in ${endTime - startTime}ms`);
+      // Only clear the array after all processing is complete
+      items.length = 0;
     }
   }
 
-  console.log(`Starting processing of ${items.length} items`);
-  window.requestAnimationFrame(processNextBatch);
+  processNextBatch();
 }
 
 export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, userSettings, distanceUnit) {
@@ -329,14 +328,16 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 }
 
 export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
-  console.log('Starting color update with useSpeedColors:', useSpeedColors);
-  const segments = [];
-  const startCollectTime = performance.now();
+  const defaultStyle = {
+    color: '#0000ff',
+    originalColor: '#0000ff'
+  };
 
-  // Collect all segments first
-  polylinesLayer.eachLayer((groupLayer) => {
+  // More efficient segment collection
+  const segments = new Array();
+  polylinesLayer.eachLayer(groupLayer => {
     if (groupLayer instanceof L.LayerGroup) {
-      groupLayer.eachLayer((segment) => {
+      groupLayer.eachLayer(segment => {
         if (segment instanceof L.Polyline) {
           segments.push(segment);
         }
@@ -344,29 +345,27 @@ export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
     }
   });
 
-  const endCollectTime = performance.now();
-  console.log(`Collected ${segments.length} segments in ${endCollectTime - startCollectTime}ms`);
+  // Reuse style object to reduce garbage collection
+  const styleObj = {};
 
-  // Increased batch size since individual operations are very fast
-  const BATCH_SIZE = 50;
+  // Process segments in larger batches
+  processInBatches(segments, 200, (segment) => {
+    try {
+      if (!useSpeedColors) {
+        segment.setStyle(defaultStyle);
+        return;
+      }
 
-  // Process segments in batches
-  processInBatches(segments, BATCH_SIZE, (segment) => {
-    if (!useSpeedColors) {
-      segment.setStyle({
-        color: '#0000ff',
-        originalColor: '#0000ff'
-      });
-      return;
+      const speed = segment.options.speed || 0;
+      const newColor = getSpeedColor(speed, true);
+
+      // Reuse style object
+      styleObj.color = newColor;
+      styleObj.originalColor = newColor;
+      segment.setStyle(styleObj);
+    } catch (error) {
+      console.error('Error processing segment:', error);
     }
-
-    const speed = segment.options.speed;
-    const newColor = getSpeedColor(speed, true);
-
-    segment.setStyle({
-      color: newColor,
-      originalColor: newColor
-    });
   });
 }
 
