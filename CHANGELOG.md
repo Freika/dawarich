@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Hovering over a polyline now shows the speed of the segment. Move cursor over a polyline to see the speed of different segments.
 - Distance and points number in the custom control to the map.
 
+### Changed
+
+- The name of the "Polylines" feature is now "Routes".
+
 ⚠️ Important note on the Prometheus monitoring ⚠️
 
 In the previous release, `bin/dev` command in the default `docker-compose.yml` file was replaced with `bin/rails server -p 3000 -b ::`, but this way Dawarich won't be able to start Prometheus Exporter. If you want to use Prometheus monitoring, you need to use `bin/dev` command instead.
