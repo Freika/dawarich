@@ -104,7 +104,26 @@ export default class extends Controller {
       Photos: this.photoMarkers
     };
 
-    // Add scale control to bottom right
+    // Add this new custom control BEFORE the scale control
+    const TestControl = L.Control.extend({
+      onAdd: (map) => {
+        const div = L.DomUtil.create('div', 'leaflet-control');
+        const distance = this.element.dataset.distance || '0';
+        const pointsNumber = this.element.dataset.points_number || '0';
+        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
+        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
+        div.style.backgroundColor = 'white';
+        div.style.padding = '0 5px';
+        div.style.marginRight = '5px';
+        div.style.display = 'inline-block';
+        return div;
+      }
+    });
+
+    // Add the test control first
+    new TestControl({ position: 'bottomright' }).addTo(this.map);
+
+    // Then add scale control
     L.control.scale({
       position: 'bottomright',
       imperial: this.distanceUnit === 'mi',
