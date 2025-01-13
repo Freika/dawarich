@@ -53,13 +53,6 @@ export function calculateSpeed(point1, point2) {
   const distanceKm = haversineDistance(point1[0], point1[1], point2[0], point2[1]); // in kilometers
   const timeDiffSeconds = point2[4] - point1[4];
 
-  console.log('Speed calculation:', {
-    distance: distanceKm,
-    timeDiff: timeDiffSeconds,
-    point1Time: point1[4],
-    point2Time: point2[4]
-  });
-
   // Handle edge cases
   if (timeDiffSeconds <= 0 || distanceKm <= 0) {
     return 0;
@@ -115,22 +108,43 @@ function hexToRGB(hex) {
 // Add new function for batch processing
 function processInBatches(items, batchSize, processFn) {
   let index = 0;
+  const totalBatches = Math.ceil(items.length / batchSize);
+  let batchCount = 0;
+  const startTime = performance.now();
 
   function processNextBatch() {
-    const batch = items.slice(index, index + batchSize);
-    batch.forEach(processFn);
+    const batchStartTime = performance.now();
+    let processedInThisFrame = 0;
 
-    index += batchSize;
+    // Process multiple batches in one frame if they're taking very little time
+    while (index < items.length && processedInThisFrame < 100) {
+      const batch = items.slice(index, index + batchSize);
+      batch.forEach(processFn);
+
+      index += batchSize;
+      batchCount++;
+      processedInThisFrame += batch.length;
+
+      // If we've been processing for more than 16ms (targeting 60fps),
+      // break and schedule the next frame
+      if (performance.now() - batchStartTime > 16) {
+        break;
+      }
+    }
+
+    const batchEndTime = performance.now();
+    console.log(`Processed ${processedInThisFrame} items in ${batchEndTime - batchStartTime}ms`);
 
     if (index < items.length) {
-      // Add a small delay between batches
-      setTimeout(() => {
-        window.requestAnimationFrame(processNextBatch);
-      }, 10); // 10ms delay between batches
+      window.requestAnimationFrame(processNextBatch);
+    } else {
+      const endTime = performance.now();
+      console.log(`All items completed in ${endTime - startTime}ms`);
     }
   }
 
-  processNextBatch();
+  console.log(`Starting processing of ${items.length} items`);
+  window.requestAnimationFrame(processNextBatch);
 }
 
 export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, userSettings, distanceUnit) {
@@ -285,10 +299,6 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 
       for (let i = 0; i < polylineCoordinates.length - 1; i++) {
         const speed = calculateSpeed(polylineCoordinates[i], polylineCoordinates[i + 1]);
-        console.log('Creating segment with speed:', speed, 'from points:', {
-          point1: polylineCoordinates[i],
-          point2: polylineCoordinates[i + 1]
-        });
 
         const color = getSpeedColor(speed, userSettings.speed_colored_polylines);
 
@@ -321,6 +331,7 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
   console.log('Starting color update with useSpeedColors:', useSpeedColors);
   const segments = [];
+  const startCollectTime = performance.now();
 
   // Collect all segments first
   polylinesLayer.eachLayer((groupLayer) => {
@@ -333,10 +344,14 @@ export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
     }
   });
 
-  console.log(`Found ${segments.length} segments to update`);
+  const endCollectTime = performance.now();
+  console.log(`Collected ${segments.length} segments in ${endCollectTime - startCollectTime}ms`);
 
-  // Process segments in smaller batches of 20
-  processInBatches(segments, 20, (segment) => {
+  // Increased batch size since individual operations are very fast
+  const BATCH_SIZE = 50;
+
+  // Process segments in batches
+  processInBatches(segments, BATCH_SIZE, (segment) => {
     if (!useSpeedColors) {
       segment.setStyle({
         color: '#0000ff',
@@ -345,13 +360,8 @@ export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
       return;
     }
 
-    // Get the original speed from the segment options
     const speed = segment.options.speed;
-    console.log('Segment options:', segment.options);
-    console.log('Retrieved speed:', speed);
-
     const newColor = getSpeedColor(speed, true);
-    console.log('Calculated color for speed:', {speed, newColor});
 
     segment.setStyle({
       color: newColor,
