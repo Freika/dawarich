@@ -69,8 +69,8 @@ const colorStops = [
   { speed: 0, color: '#00ff00' },    // Stationary/very slow (green)
   { speed: 15, color: '#00ffff' },   // Walking/jogging (cyan)
   { speed: 30, color: '#ff00ff' },   // Cycling/slow driving (magenta)
-  { speed: 50, color: '#ff3300' },   // Urban driving (orange-red)
-  { speed: 100, color: '#ffff00' }   // Highway driving (yellow)
+  { speed: 50, color: '#ffff00' },   // Urban driving (yellow)
+  { speed: 100, color: '#ff3300' }   // Highway driving (red)
 ].map(stop => ({
   ...stop,
   rgb: hexToRGB(stop.color)
