@@ -125,17 +125,6 @@ function processInBatches(items, batchSize, processFn) {
 }
 
 export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, userSettings, distanceUnit) {
-  const highlightStyle = {
-    opacity: 1,
-    weight: 5,
-    color: userSettings.speed_colored_polylines ? null : '#ffff00' // Yellow highlight if not using speed colors
-  };
-  const normalStyle = {
-    opacity: userSettings.routeOpacity,
-    weight: 3,
-    color: userSettings.speed_colored_polylines ? null : '#0000ff' // Blue normal if not using speed colors
-  };
-
   const startPoint = polylineCoordinates[0];
   const endPoint = polylineCoordinates[polylineCoordinates.length - 1];
 
@@ -189,12 +178,20 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
       }
     });
 
+    // Apply highlight style to all segments
     polylineGroup.eachLayer((layer) => {
       if (layer instanceof L.Polyline) {
-        layer.setStyle({
-          ...highlightStyle,
-          color: userSettings.speed_colored_polylines ? layer.options.originalColor : highlightStyle.color
-        });
+        const highlightStyle = {
+          weight: 5,
+          opacity: 1
+        };
+
+        // Change color to yellow only for non-speed-colored (blue) polylines
+        if (!userSettings.speed_colored_polylines) {
+          highlightStyle.color = '#ffff00'; // Yellow
+        }
+
+        layer.setStyle(highlightStyle);
       }
     });
 
@@ -220,12 +217,20 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
   });
 
   polylineGroup.on("mouseout", function () {
+    // Restore original style
     polylineGroup.eachLayer((layer) => {
       if (layer instanceof L.Polyline) {
-        layer.setStyle({
-          ...normalStyle,
-          color: userSettings.speed_colored_polylines ? layer.options.originalColor : normalStyle.color
-        });
+        const originalStyle = {
+          weight: 3,
+          opacity: userSettings.route_opacity
+        };
+
+        // Restore original blue color for non-speed-colored polylines
+        if (!userSettings.speed_colored_polylines) {
+          originalStyle.color = '#0000ff';
+        }
+
+        layer.setStyle(originalStyle);
       }
     });
 

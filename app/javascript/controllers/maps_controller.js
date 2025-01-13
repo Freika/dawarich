@@ -809,46 +809,28 @@ export default class extends Controller {
       try {
         // Check if speed_colored_polylines setting has changed
         if (newSettings.speed_colored_polylines !== this.userSettings.speed_colored_polylines) {
-          console.log('Speed colored polylines setting changed:', {
-            old: this.userSettings.speed_colored_polylines,
-            new: newSettings.speed_colored_polylines
-          });
-
           if (this.polylinesLayer) {
-            console.log('Starting polylines color update');
+            // Remove existing polylines layer
+            this.map.removeLayer(this.polylinesLayer);
 
-            // Update colors without removing the layer
-            this.polylinesLayer.eachLayer(groupLayer => {
-              if (groupLayer instanceof L.LayerGroup || groupLayer instanceof L.FeatureGroup) {
-                groupLayer.eachLayer(segment => {
-                  if (segment instanceof L.Polyline) {
-                    const latLngs = segment.getLatLngs();
-                    const point1 = [latLngs[0].lat, latLngs[0].lng];
-                    const point2 = [latLngs[1].lat, latLngs[1].lng];
+            // Create new polylines layer with updated settings
+            this.polylinesLayer = createPolylinesLayer(
+              this.markers,
+              this.map,
+              this.timezone,
+              this.routeOpacity,
+              { ...this.userSettings, speed_colored_polylines: newSettings.speed_colored_polylines },
+              this.distanceUnit
+            );
 
-                    const speed = calculateSpeed(
-                      [...point1, 0, segment.options.startTime],
-                      [...point2, 0, segment.options.endTime]
-                    );
-
-                    const newColor = newSettings.speed_colored_polylines ?
-                      getSpeedColor(speed, true) :
-                      '#0000ff';
-
-                    segment.setStyle({
-                      color: newColor,
-                      originalColor: newColor
-                    });
-                  }
-                });
-              }
-            });
-
-            console.log('Finished polylines color update');
+            // Add the layer back if it was visible
+            if (wasPolylinesVisible) {
+              this.polylinesLayer.addTo(this.map);
+            }
           }
         }
 
-        // Check if route opacity has changed
+        // Update opacity if changed
         if (newSettings.route_opacity !== this.userSettings.route_opacity) {
           const newOpacity = parseFloat(newSettings.route_opacity) || 0.6;
           if (this.polylinesLayer) {
@@ -861,8 +843,18 @@ export default class extends Controller {
         this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
         this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
 
-        // Reapply layer states
-        this.applyLayerControlStates(currentLayerStates);
+        // Update layer control
+        this.map.removeControl(this.layerControl);
+        const controlsLayer = {
+          Points: this.markersLayer,
+          Polylines: this.polylinesLayer,
+          Heatmap: this.heatmapLayer,
+          "Fog of War": this.fogOverlay,
+          "Scratch map": this.scratchLayer,
+          Areas: this.areasLayer,
+          Photos: this.photoMarkers
+        };
+        this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
       } catch (error) {
         console.error('Error updating map settings:', error);
@@ -913,6 +905,8 @@ export default class extends Controller {
   }
 
   applyLayerControlStates(states) {
+    console.log('Applying layer states:', states);
+
     const layerControl = {
       Points: this.markersLayer,
       Polylines: this.polylinesLayer,
@@ -923,11 +917,16 @@ export default class extends Controller {
 
     for (const [name, isVisible] of Object.entries(states)) {
       const layer = layerControl[name];
+      console.log(`Processing layer ${name}:`, { layer, isVisible });
 
-      if (isVisible && !this.map.hasLayer(layer)) {
-        this.map.addLayer(layer);
-      } else if (this.map.hasLayer(layer)) {
-        this.map.removeLayer(layer);
+      if (layer) {
+        if (isVisible && !this.map.hasLayer(layer)) {
+          console.log(`Adding layer ${name} to map`);
+          this.map.addLayer(layer);
+        } else if (!isVisible && this.map.hasLayer(layer)) {
+          console.log(`Removing layer ${name} from map`);
+          this.map.removeLayer(layer);
+        }
       }
     }
 
