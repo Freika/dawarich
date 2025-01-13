@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.22.2 - 2025-01-13
+
+✨ The Fancy Routes release ✨
+
+### Added
+
+- In the Map Settings (coggle in the top left corner of the map), you can now enable/disable the Fancy Routes feature. Simply said, it will color your routes based on the speed of each segment.
+- Hovering over a polyline now shows the speed of the segment. Move cursor over a polyline to see the speed of different segments.
+- Distance and points number in the custom control to the map.
+
+⚠️ Important note on the Prometheus monitoring ⚠️
+
+In the previous release, `bin/dev` command in the default `docker-compose.yml` file was replaced with `bin/rails server -p 3000 -b ::`, but this way Dawarich won't be able to start Prometheus Exporter. If you want to use Prometheus monitoring, you need to use `bin/dev` command instead.
+
+Example:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+...
+-    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
++    command: ['bin/dev']
+```
+
 # 0.22.1 - 2025-01-09
 
 ### Removed
