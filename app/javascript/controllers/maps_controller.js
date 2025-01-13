@@ -5,8 +5,13 @@ import consumer from "../channels/consumer";
 
 import { createMarkersArray } from "../maps/markers";
 
-import { createPolylinesLayer } from "../maps/polylines";
-import { updatePolylinesOpacity } from "../maps/polylines";
+import {
+  createPolylinesLayer,
+  updatePolylinesOpacity,
+  updatePolylinesColors,
+  calculateSpeed,
+  getSpeedColor
+} from "../maps/polylines";
 
 import { fetchAndDrawAreas } from "../maps/areas";
 import { handleAreaCreated } from "../maps/areas";
@@ -26,6 +31,18 @@ import { esriWorldGrayCanvasMapLayer } from "../maps/layers";
 import { countryCodesMap } from "../maps/country_codes";
 
 import "leaflet-draw";
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 
 export default class extends Controller {
   static targets = ["container"];
@@ -48,6 +65,7 @@ export default class extends Controller {
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
+    this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -78,7 +96,7 @@ export default class extends Controller {
 
     const controlsLayer = {
       Points: this.markersLayer,
-      Polylines: this.polylinesLayer,
+      Routes: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer,
@@ -86,7 +104,26 @@ export default class extends Controller {
       Photos: this.photoMarkers
     };
 
-    // Add scale control to bottom right
+    // Add this new custom control BEFORE the scale control
+    const TestControl = L.Control.extend({
+      onAdd: (map) => {
+        const div = L.DomUtil.create('div', 'leaflet-control');
+        const distance = this.element.dataset.distance || '0';
+        const pointsNumber = this.element.dataset.points_number || '0';
+        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
+        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
+        div.style.backgroundColor = 'white';
+        div.style.padding = '0 5px';
+        div.style.marginRight = '5px';
+        div.style.display = 'inline-block';
+        return div;
+      }
+    });
+
+    // Add the test control first
+    new TestControl({ position: 'bottomright' }).addTo(this.map);
+
+    // Then add scale control
     L.control.scale({
       position: 'bottomright',
       imperial: this.distanceUnit === 'mi',
@@ -439,7 +476,7 @@ export default class extends Controller {
         this.map.removeControl(this.layerControl);
         const controlsLayer = {
           Points: this.markersLayer,
-          Polylines: this.polylinesLayer,
+          Routes: this.polylinesLayer,
           Heatmap: this.heatmapLayer,
           "Fog of War": this.fogOverlay,
           "Scratch map": this.scratchLayer,
@@ -677,6 +714,12 @@ export default class extends Controller {
             <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class='w-4' style="width: 20px;" value="false" ${this.liveMapEnabledChecked(true)} />
           </label>
 
+          <label for="speed_colored_routes">
+            Speed-colored routes
+            <label for="speed_colored_routes_info" class="btn-xs join-item inline">?</label>
+            <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class='w-4' style="width: 20px;" ${this.speedColoredRoutesChecked()} />
+          </label>
+
           <button type="submit">Update</button>
         </form>
       `;
@@ -717,8 +760,13 @@ export default class extends Controller {
     }
   }
 
+  speedColoredRoutesChecked() {
+    return this.userSettings.speed_colored_routes ? 'checked' : '';
+  }
+
   updateSettings(event) {
     event.preventDefault();
+    console.log('Form submitted');
 
     fetch(`/api/v1/settings?api_key=${this.apiKey}`, {
       method: 'PATCH',
@@ -732,12 +780,14 @@ export default class extends Controller {
           time_threshold_minutes: event.target.time_threshold_minutes.value,
           merge_threshold_minutes: event.target.merge_threshold_minutes.value,
           points_rendering_mode: event.target.points_rendering_mode.value,
-          live_map_enabled: event.target.live_map_enabled.checked
+          live_map_enabled: event.target.live_map_enabled.checked,
+          speed_colored_routes: event.target.speed_colored_routes.checked
         },
       }),
     })
       .then((response) => response.json())
       .then((data) => {
+        console.log('Settings update response:', data);
         if (data.status === 'success') {
           showFlashMessage('notice', data.message);
           this.updateMapWithNewSettings(data.settings);
@@ -748,84 +798,78 @@ export default class extends Controller {
         } else {
           showFlashMessage('error', data.message);
         }
+      })
+      .catch(error => {
+        console.error('Settings update error:', error);
+        showFlashMessage('error', 'Failed to update settings');
       });
   }
 
   updateMapWithNewSettings(newSettings) {
-    const currentLayerStates = this.getLayerControlStates();
-
-    // Update local state with new settings
-    this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
-    this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
-
-    // Preserve existing layer instances if they exist
-    const preserveLayers = {
-      Points:       this.markersLayer,
-      Polylines:    this.polylinesLayer,
-      Heatmap:      this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
-      Areas:        this.areasLayer,
-    };
-
-    // Clear all layers except base layers
-    this.map.eachLayer((layer) => {
-      if (!(layer instanceof L.TileLayer)) {
-        this.map.removeLayer(layer);
-      }
+    console.log('Updating map settings:', {
+      newSettings,
+      currentSettings: this.userSettings,
+      hasPolylines: !!this.polylinesLayer,
+      isVisible: this.polylinesLayer && this.map.hasLayer(this.polylinesLayer)
     });
 
-    // Recreate layers only if they don't exist
-    this.markersLayer = preserveLayers.Points       || L.layerGroup(createMarkersArray(this.markers, newSettings));
-    this.polylinesLayer = preserveLayers.Polylines  || createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
-    this.heatmapLayer = preserveLayers.Heatmap      || L.heatLayer(this.markers.map((element) => [element[0], element[1], 0.2]), { radius: 20 });
-    this.fogOverlay = preserveLayers["Fog of War"]  || L.layerGroup();
-    this.areasLayer = preserveLayers.Areas          || L.layerGroup();
+    // Show loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'map-loading-overlay';
+    loadingDiv.innerHTML = '<div class="loading loading-lg">Updating map...</div>';
+    document.body.appendChild(loadingDiv);
 
-    // Redraw areas
-    fetchAndDrawAreas(this.areasLayer, this.apiKey);
+    // Debounce the heavy operations
+    const updateLayers = debounce(() => {
+      try {
+        // Check if speed_colored_routes setting has changed
+        if (newSettings.speed_colored_routes !== this.userSettings.speed_colored_routes) {
+          if (this.polylinesLayer) {
+            updatePolylinesColors(
+              this.polylinesLayer,
+              newSettings.speed_colored_routes
+            );
+          }
+        }
 
-    let fogEnabled = false;
-    document.getElementById('fog').style.display = 'none';
+        // Update opacity if changed
+        if (newSettings.route_opacity !== this.userSettings.route_opacity) {
+          const newOpacity = parseFloat(newSettings.route_opacity) || 0.6;
+          if (this.polylinesLayer) {
+            updatePolylinesOpacity(this.polylinesLayer, newOpacity);
+          }
+        }
 
-    this.map.on('overlayadd', (e) => {
-      if (e.name === 'Fog of War') {
-        fogEnabled = true;
-        document.getElementById('fog').style.display = 'block';
-        this.updateFog(this.markers, this.clearFogRadius);
+        // Update the local settings
+        this.userSettings = { ...this.userSettings, ...newSettings };
+        this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
+        this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
+
+        // Update layer control
+        this.map.removeControl(this.layerControl);
+        const controlsLayer = {
+          Points: this.markersLayer,
+          Routes: this.polylinesLayer,
+          Heatmap: this.heatmapLayer,
+          "Fog of War": this.fogOverlay,
+          "Scratch map": this.scratchLayer,
+          Areas: this.areasLayer,
+          Photos: this.photoMarkers
+        };
+        this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+
+      } catch (error) {
+        console.error('Error updating map settings:', error);
+        console.error(error.stack);
+      } finally {
+        // Remove loading indicator after all updates are complete
+        setTimeout(() => {
+          document.body.removeChild(loadingDiv);
+        }, 500); // Give a small delay to ensure all batches are processed
       }
-    });
+    }, 250);
 
-    this.map.on('overlayremove', (e) => {
-      if (e.name === 'Fog of War') {
-        fogEnabled = false;
-        document.getElementById('fog').style.display = 'none';
-      }
-    });
-
-    this.map.on('zoomend moveend', () => {
-      if (fogEnabled) {
-        this.updateFog(this.markers, this.clearFogRadius);
-      }
-    });
-
-    this.addLastMarker(this.map, this.markers);
-    this.addEventListeners();
-    this.initializeDrawControl();
-    updatePolylinesOpacity(this.polylinesLayer, this.routeOpacity);
-
-    this.map.on('overlayadd', (e) => {
-      if (e.name === 'Areas') {
-        this.map.addControl(this.drawControl);
-      }
-    });
-
-    this.map.on('overlayremove', (e) => {
-      if (e.name === 'Areas') {
-        this.map.removeControl(this.drawControl);
-      }
-    });
-
-    this.applyLayerControlStates(currentLayerStates);
+    updateLayers();
   }
 
   getLayerControlStates() {
@@ -845,7 +889,7 @@ export default class extends Controller {
   getLayerName(layer) {
     const controlLayers = {
       Points: this.markersLayer,
-      Polylines: this.polylinesLayer,
+      Routes: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       Areas: this.areasLayer,
@@ -865,9 +909,11 @@ export default class extends Controller {
   }
 
   applyLayerControlStates(states) {
+    console.log('Applying layer states:', states);
+
     const layerControl = {
       Points: this.markersLayer,
-      Polylines: this.polylinesLayer,
+      Routes: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
       Areas: this.areasLayer,
@@ -875,11 +921,16 @@ export default class extends Controller {
 
     for (const [name, isVisible] of Object.entries(states)) {
       const layer = layerControl[name];
+      console.log(`Processing layer ${name}:`, { layer, isVisible });
 
-      if (isVisible && !this.map.hasLayer(layer)) {
-        this.map.addLayer(layer);
-      } else if (this.map.hasLayer(layer)) {
-        this.map.removeLayer(layer);
+      if (layer) {
+        if (isVisible && !this.map.hasLayer(layer)) {
+          console.log(`Adding layer ${name} to map`);
+          this.map.addLayer(layer);
+        } else if (!isVisible && this.map.hasLayer(layer)) {
+          console.log(`Removing layer ${name} from map`);
+          this.map.removeLayer(layer);
+        }
       }
     }
 

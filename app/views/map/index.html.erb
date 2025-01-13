@@ -51,6 +51,8 @@
         data-api_key="<%= current_user.api_key %>"
         data-user_settings=<%= current_user.settings.to_json %>
         data-coordinates="<%= @coordinates %>"
+        data-distance="<%= @distance %>"
+        data-points_number="<%= @points_number %>"
         data-timezone="<%= Rails.configuration.time_zone %>">
         <div data-maps-target="container" class="h-[25rem] rounded-lg w-full min-h-screen">
           <div id="fog" class="fog"></div>
