@@ -107,3 +107,8 @@
     transform: rotate(360deg);
   }
 }
+
+.custom-div-icon {
+  background: none;
+  border: none;
+}

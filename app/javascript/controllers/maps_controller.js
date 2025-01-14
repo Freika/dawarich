@@ -78,9 +78,16 @@ export default class extends Controller {
 
     this.map.setMaxBounds(bounds);
 
-    this.markersArray = createMarkersArray(this.markers, this.userSettings);
+    this.markersArray = createMarkersArray(this.markers, this.userSettings, this.apiKey);
     this.markersLayer = L.layerGroup(this.markersArray);
-    this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
+
+    // Filter out the polyline before creating heatmap markers
+    const markerElements = this.markersArray.filter(element => element instanceof L.Marker);
+    this.heatmapMarkers = markerElements.map((element) => [
+      element._latlng.lat,
+      element._latlng.lng,
+      0.2
+    ]);
 
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
