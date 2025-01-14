@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.22.3 - 2025-01-14
+
+### Changed
+
+- The Map now uses a canvas to draw polylines, points and fog of war. This should improve performance in browser with a lot of points and polylines.
+
 # 0.22.2 - 2025-01-13
 
 ✨ The Fancy Routes release ✨
