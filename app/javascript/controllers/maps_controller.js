@@ -16,33 +16,23 @@ import {
 import { fetchAndDrawAreas } from "../maps/areas";
 import { handleAreaCreated } from "../maps/areas";
 
-import { showFlashMessage } from "../maps/helpers";
-import { fetchAndDisplayPhotos } from '../maps/helpers';
+import { showFlashMessage, fetchAndDisplayPhotos, debounce } from "../maps/helpers";
 
-import { osmMapLayer } from "../maps/layers";
-import { osmHotMapLayer } from "../maps/layers";
-import { OPNVMapLayer } from "../maps/layers";
-import { openTopoMapLayer } from "../maps/layers";
-import { cyclOsmMapLayer } from "../maps/layers";
-import { esriWorldStreetMapLayer } from "../maps/layers";
-import { esriWorldTopoMapLayer } from "../maps/layers";
-import { esriWorldImageryMapLayer } from "../maps/layers";
-import { esriWorldGrayCanvasMapLayer } from "../maps/layers";
+import {
+  osmMapLayer,
+  osmHotMapLayer,
+  OPNVMapLayer,
+  openTopoMapLayer,
+  cyclOsmMapLayer,
+  esriWorldStreetMapLayer,
+  esriWorldTopoMapLayer,
+  esriWorldImageryMapLayer,
+  esriWorldGrayCanvasMapLayer
+} from "../maps/layers";
 import { countryCodesMap } from "../maps/country_codes";
 
 import "leaflet-draw";
-
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
+import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
 
 export default class extends Controller {
   static targets = ["container"];
@@ -84,7 +74,10 @@ export default class extends Controller {
 
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
-    this.fogOverlay = L.layerGroup(); // Initialize fog layer
+
+    // Create a proper Leaflet layer for fog
+    this.fogOverlay = createFogOverlay();
+
     this.areasLayer = L.layerGroup(); // Initialize areas layer
     this.photoMarkers = L.layerGroup();
 
@@ -94,11 +87,12 @@ export default class extends Controller {
       this.addSettingsButton();
     }
 
+    // Initialize layers for the layer control
     const controlsLayer = {
       Points: this.markersLayer,
       Routes: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
+      "Fog of War": new this.fogOverlay(),
       "Scratch map": this.scratchLayer,
       Areas: this.areasLayer,
       Photos: this.photoMarkers
@@ -131,6 +125,7 @@ export default class extends Controller {
       maxWidth: 120
     }).addTo(this.map)
 
+    // Initialize layer control
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
     // Fetch and draw areas when the map is loaded
@@ -230,6 +225,19 @@ export default class extends Controller {
         localStorage.setItem('mapPanelOpen', 'false');
       }
     }
+
+    // Update event handlers
+    this.map.on('moveend', () => {
+      if (document.getElementById('fog')) {
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
+    });
+
+    this.map.on('zoomend', () => {
+      if (document.getElementById('fog')) {
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
+    });
   }
 
   disconnect() {
@@ -528,39 +536,11 @@ export default class extends Controller {
   }
 
   updateFog(markers, clearFogRadius) {
-    var fog = document.getElementById('fog');
-    fog.innerHTML = ''; // Clear previous circles
-    markers.forEach((point) => {
-      const radiusInPixels = this.metersToPixels(this.map, clearFogRadius);
-      this.clearFog(point[0], point[1], radiusInPixels);
-    });
-  }
-
-  metersToPixels(map, meters) {
-    const zoom = map.getZoom();
-    const latLng = map.getCenter(); // Get map center for correct projection
-    const metersPerPixel = this.getMetersPerPixel(latLng.lat, zoom);
-    return meters / metersPerPixel;
-  }
-
-  getMetersPerPixel(latitude, zoom) {
-    const earthCircumference = 40075016.686; // Earth's circumference in meters
-    const metersPerPixel = earthCircumference * Math.cos(latitude * Math.PI / 180) / Math.pow(2, zoom + 8);
-    return metersPerPixel;
-  }
-
-  clearFog(lat, lng, radius) {
-    var fog = document.getElementById('fog');
-    var point = this.map.latLngToContainerPoint([lat, lng]);
-    var size = radius * 2;
-    var circle = document.createElement('div');
-    circle.className = 'unfogged-circle';
-    circle.style.width = size + 'px';
-    circle.style.height = size + 'px';
-    circle.style.left = (point.x - radius) + 'px';
-    circle.style.top = (point.y - radius) + 'px';
-    circle.style.backdropFilter = 'blur(0px)'; // Remove blur for the circles
-    fog.appendChild(circle);
+    const fog = document.getElementById('fog');
+    if (!fog) {
+      initializeFogCanvas(this.map);
+    }
+    requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius));
   }
 
   initializeDrawControl() {
@@ -822,6 +802,17 @@ export default class extends Controller {
     // Debounce the heavy operations
     const updateLayers = debounce(() => {
       try {
+        // Store current layer visibility states
+        const layerStates = {
+          Points: this.map.hasLayer(this.markersLayer),
+          Routes: this.map.hasLayer(this.polylinesLayer),
+          Heatmap: this.map.hasLayer(this.heatmapLayer),
+          "Fog of War": this.map.hasLayer(this.fogOverlay),
+          "Scratch map": this.map.hasLayer(this.scratchLayer),
+          Areas: this.map.hasLayer(this.areasLayer),
+          Photos: this.map.hasLayer(this.photoMarkers)
+        };
+
         // Check if speed_colored_routes setting has changed
         if (newSettings.speed_colored_routes !== this.userSettings.speed_colored_routes) {
           if (this.polylinesLayer) {
@@ -845,18 +836,34 @@ export default class extends Controller {
         this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
         this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
 
-        // Update layer control
-        this.map.removeControl(this.layerControl);
+        // Remove existing layer control
+        if (this.layerControl) {
+          this.map.removeControl(this.layerControl);
+        }
+
+        // Create new controls layer object with proper initialization
         const controlsLayer = {
-          Points: this.markersLayer,
-          Routes: this.polylinesLayer,
-          Heatmap: this.heatmapLayer,
-          "Fog of War": this.fogOverlay,
-          "Scratch map": this.scratchLayer,
-          Areas: this.areasLayer,
-          Photos: this.photoMarkers
+          Points: this.markersLayer || L.layerGroup(),
+          Routes: this.polylinesLayer || L.layerGroup(),
+          Heatmap: this.heatmapLayer || L.heatLayer([]),
+          "Fog of War": new this.fogOverlay(),
+          "Scratch map": this.scratchLayer || L.layerGroup(),
+          Areas: this.areasLayer || L.layerGroup(),
+          Photos: this.photoMarkers || L.layerGroup()
         };
+
+        // Add new layer control
         this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+
+        // Restore layer visibility states
+        Object.entries(layerStates).forEach(([name, wasVisible]) => {
+          const layer = controlsLayer[name];
+          if (wasVisible && layer) {
+            layer.addTo(this.map);
+          } else if (layer && this.map.hasLayer(layer)) {
+            this.map.removeLayer(layer);
+          }
+        });
 
       } catch (error) {
         console.error('Error updating map settings:', error);

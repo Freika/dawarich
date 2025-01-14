@@ -17,6 +17,6 @@ class Api::V1::Countries::VisitedCitiesController < ApiController
   private
 
   def required_params
-    %i[start_at end_at]
+    %i[start_at end_at api_key]
   end
 end

@@ -1,15 +1,19 @@
 import { createPopupContent } from "./popups";
 
 export function createMarkersArray(markersData, userSettings) {
+  // Create a canvas renderer
+  const renderer = L.canvas({ padding: 0.5 });
+
   if (userSettings.pointsRenderingMode === "simplified") {
-    return createSimplifiedMarkers(markersData);
+    return createSimplifiedMarkers(markersData, renderer);
   } else {
     return markersData.map((marker) => {
       const [lat, lon] = marker;
-
       const popupContent = createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit);
       let markerColor = marker[5] < 0 ? "orange" : "blue";
+
       return L.circleMarker([lat, lon], {
+        renderer: renderer, // Use canvas renderer
         radius: 4,
         color: markerColor,
         zIndexOffset: 1000,
@@ -19,7 +23,7 @@ export function createMarkersArray(markersData, userSettings) {
   }
 }
 
-export function createSimplifiedMarkers(markersData) {
+export function createSimplifiedMarkers(markersData, renderer) {
   const distanceThreshold = 50; // meters
   const timeThreshold = 20000; // milliseconds (3 seconds)
 
@@ -48,9 +52,15 @@ export function createSimplifiedMarkers(markersData) {
     const [lat, lon] = marker;
     const popupContent = createPopupContent(marker);
     let markerColor = marker[5] < 0 ? "orange" : "blue";
+
     return L.circleMarker(
       [lat, lon],
-      { radius: 4, color: markerColor, zIndexOffset: 1000 }
+      {
+        renderer: renderer, // Use canvas renderer
+        radius: 4,
+        color: markerColor,
+        zIndexOffset: 1000
+      }
     ).bindPopup(popupContent);
   });
 }
