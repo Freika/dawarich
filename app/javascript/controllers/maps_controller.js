@@ -84,7 +84,21 @@ export default class extends Controller {
 
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
-    this.fogOverlay = L.layerGroup(); // Initialize fog layer
+
+    // Create a proper Leaflet layer for fog
+    this.fogOverlay = L.Layer.extend({
+      onAdd: (map) => {
+        this.initializeFogCanvas();
+        this.updateFog(this.markers, this.clearFogRadius);
+      },
+      onRemove: (map) => {
+        const fog = document.getElementById('fog');
+        if (fog) {
+          fog.remove();
+        }
+      }
+    });
+
     this.areasLayer = L.layerGroup(); // Initialize areas layer
     this.photoMarkers = L.layerGroup();
 
@@ -94,11 +108,12 @@ export default class extends Controller {
       this.addSettingsButton();
     }
 
+    // Initialize layers for the layer control
     const controlsLayer = {
       Points: this.markersLayer,
       Routes: this.polylinesLayer,
       Heatmap: this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
+      "Fog of War": new this.fogOverlay(),
       "Scratch map": this.scratchLayer,
       Areas: this.areasLayer,
       Photos: this.photoMarkers
@@ -131,6 +146,7 @@ export default class extends Controller {
       maxWidth: 120
     }).addTo(this.map)
 
+    // Initialize layer control
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
     // Fetch and draw areas when the map is loaded
@@ -230,6 +246,19 @@ export default class extends Controller {
         localStorage.setItem('mapPanelOpen', 'false');
       }
     }
+
+    // Update event handlers
+    this.map.on('moveend', () => {
+      if (document.getElementById('fog')) {
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
+    });
+
+    this.map.on('zoomend', () => {
+      if (document.getElementById('fog')) {
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
+    });
   }
 
   disconnect() {
@@ -528,39 +557,99 @@ export default class extends Controller {
   }
 
   updateFog(markers, clearFogRadius) {
-    var fog = document.getElementById('fog');
-    fog.innerHTML = ''; // Clear previous circles
-    markers.forEach((point) => {
-      const radiusInPixels = this.metersToPixels(this.map, clearFogRadius);
-      this.clearFog(point[0], point[1], radiusInPixels);
+    const fog = document.getElementById('fog');
+    if (!fog) {
+      this.initializeFogCanvas();
+    }
+    requestAnimationFrame(() => this.drawFogCanvas(markers, clearFogRadius));
+  }
+
+  initializeFogCanvas() {
+    // Remove existing fog canvas if it exists
+    const oldFog = document.getElementById('fog');
+    if (oldFog) oldFog.remove();
+
+    // Create new fog canvas
+    const fog = document.createElement('canvas');
+    fog.id = 'fog';
+    fog.style.position = 'absolute';
+    fog.style.top = '0';
+    fog.style.left = '0';
+    fog.style.pointerEvents = 'none';
+    fog.style.zIndex = '400';
+
+    // Set canvas size to match map container
+    const mapSize = this.map.getSize();
+    fog.width = mapSize.x;
+    fog.height = mapSize.y;
+
+    // Add canvas to map container
+    this.map.getContainer().appendChild(fog);
+
+    // Add resize handler
+    this.map.on('resize', () => {
+      const newSize = this.map.getSize();
+      fog.width = newSize.x;
+      fog.height = newSize.y;
+      this.drawFogCanvas(this.markers, this.clearFogRadius);
     });
+  }
+
+  drawFogCanvas(markers, clearFogRadius) {
+    const fog = document.getElementById('fog');
+    if (!fog) return;
+
+    const ctx = fog.getContext('2d');
+    if (!ctx) return;
+
+    const size = this.map.getSize();
+
+    // Clear the canvas
+    ctx.clearRect(0, 0, size.x, size.y);
+
+    // Keep the light fog for unexplored areas
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillRect(0, 0, size.x, size.y);
+
+    // Set up for "cutting" holes
+    ctx.globalCompositeOperation = 'destination-out';
+
+    // Draw clear circles for each point
+    markers.forEach(point => {
+      const latLng = L.latLng(point[0], point[1]);
+      const pixelPoint = this.map.latLngToContainerPoint(latLng);
+      const radiusInPixels = this.metersToPixels(this.map, clearFogRadius);
+
+      // Make explored areas completely transparent
+      const gradient = ctx.createRadialGradient(
+        pixelPoint.x, pixelPoint.y, 0,
+        pixelPoint.x, pixelPoint.y, radiusInPixels
+      );
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');      // 100% transparent
+      gradient.addColorStop(0.85, 'rgba(255, 255, 255, 1)');   // Still 100% transparent
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');      // Fade to fog at edge
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(pixelPoint.x, pixelPoint.y, radiusInPixels, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Reset composite operation
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   metersToPixels(map, meters) {
     const zoom = map.getZoom();
-    const latLng = map.getCenter(); // Get map center for correct projection
+    const latLng = map.getCenter();
     const metersPerPixel = this.getMetersPerPixel(latLng.lat, zoom);
     return meters / metersPerPixel;
   }
 
   getMetersPerPixel(latitude, zoom) {
-    const earthCircumference = 40075016.686; // Earth's circumference in meters
+    const earthCircumference = 40075016.686;
     const metersPerPixel = earthCircumference * Math.cos(latitude * Math.PI / 180) / Math.pow(2, zoom + 8);
     return metersPerPixel;
-  }
-
-  clearFog(lat, lng, radius) {
-    var fog = document.getElementById('fog');
-    var point = this.map.latLngToContainerPoint([lat, lng]);
-    var size = radius * 2;
-    var circle = document.createElement('div');
-    circle.className = 'unfogged-circle';
-    circle.style.width = size + 'px';
-    circle.style.height = size + 'px';
-    circle.style.left = (point.x - radius) + 'px';
-    circle.style.top = (point.y - radius) + 'px';
-    circle.style.backdropFilter = 'blur(0px)'; // Remove blur for the circles
-    fog.appendChild(circle);
   }
 
   initializeDrawControl() {
