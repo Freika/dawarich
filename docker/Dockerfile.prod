@@ -6,8 +6,6 @@ ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 ENV RAILS_ENV=production
-ENV SECRET_KEY_BASE=$SECRET_KEY_BASE
-
 
 # Install dependencies for application
 RUN apk -U add --no-cache \
@@ -44,7 +42,7 @@ RUN bundle config set --local path 'vendor/bundle' \
 COPY ../. ./
 
 # Precompile assets for production
-RUN bundle exec rake assets:precompile \
+RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
     && rm -rf node_modules tmp/cache
 
 # Copy entrypoint scripts and grant execution permissions

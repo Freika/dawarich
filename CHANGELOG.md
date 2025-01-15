@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.22.4 - 2025-01-15
+
+### Changed
+
+- Run seeds even in prod env so Unraid users could have default user.
+- Precompile assets in production env using dummy secret key base.
+
 # 0.22.3 - 2025-01-14
 
 ### Changed

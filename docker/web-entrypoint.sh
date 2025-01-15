@@ -49,10 +49,10 @@ bundle exec rails db:migrate
 echo "Running DATA migrations..."
 bundle exec rake data:migrate
 
-if [ "$RAILS_ENV" != "production" ]; then
+# if [ "$RAILS_ENV" != "production" ]; then
   echo "Running seeds..."
   bundle exec rails db:seed
-fi
+# fi
 
 # run passed commands
 bundle exec ${@}
