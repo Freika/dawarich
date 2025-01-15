@@ -18,4 +18,10 @@ class ApplicationController < ActionController::Base
 
     redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :see_other
   end
+
+  def authenticate_self_hosted!
+    return if DawarichSettings.self_hosted?
+
+    redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :see_other
+  end
 end
