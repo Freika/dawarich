@@ -265,6 +265,9 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
 }
 
 export function createPolylinesLayer(markers, map, timezone, routeOpacity, userSettings, distanceUnit) {
+  // Create a canvas renderer
+  const renderer = L.canvas({ padding: 0.5 });
+
   const splitPolylines = [];
   let currentPolyline = [];
   const distanceThresholdMeters = parseInt(userSettings.meters_between_routes) || 500;
@@ -298,7 +301,6 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 
       for (let i = 0; i < polylineCoordinates.length - 1; i++) {
         const speed = calculateSpeed(polylineCoordinates[i], polylineCoordinates[i + 1]);
-
         const color = getSpeedColor(speed, userSettings.speed_colored_routes);
 
         const segment = L.polyline(
@@ -307,11 +309,12 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
             [polylineCoordinates[i + 1][0], polylineCoordinates[i + 1][1]]
           ],
           {
+            renderer: renderer, // Use canvas renderer
             color: color,
             originalColor: color,
             opacity: routeOpacity,
             weight: 3,
-            speed: speed,  // Store the calculated speed
+            speed: speed,
             startTime: polylineCoordinates[i][4],
             endTime: polylineCoordinates[i + 1][4]
           }

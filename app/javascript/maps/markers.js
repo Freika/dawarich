@@ -8,8 +8,12 @@ export function createMarkersArray(markersData, userSettings, apiKey, map) {
     return { markers: [], polyline: null };
   }
 
+export function createMarkersArray(markersData, userSettings) {
+  // Create a canvas renderer
+  const renderer = L.canvas({ padding: 0.5 });
+
   if (userSettings.pointsRenderingMode === "simplified") {
-    return createSimplifiedMarkers(markersData);
+    return createSimplifiedMarkers(markersData, renderer);
   } else {
     try {
       // Create an array to store all coordinates for the polyline
@@ -52,10 +56,12 @@ export function createMarkersArray(markersData, userSettings, apiKey, map) {
         });
 
         return L.marker([lat, lon], {
+          renderer: renderer,
           icon: icon,
           draggable: true,
           zIndexOffset: 1000,
-          markerIndex: index
+          markerIndex: index,
+          pane: 'markerPane'
         }).bindPopup(popupContent, { autoClose: false })
           .on('dragend', function(event) {
             const marker = event.target;
@@ -198,7 +204,7 @@ export function createMarkersArray(markersData, userSettings, apiKey, map) {
   }
 }
 
-export function createSimplifiedMarkers(markersData) {
+export function createSimplifiedMarkers(markersData, renderer) {
   const distanceThreshold = 50; // meters
   const timeThreshold = 20000; // milliseconds (3 seconds)
 
@@ -227,9 +233,15 @@ export function createSimplifiedMarkers(markersData) {
     const [lat, lon] = marker;
     const popupContent = createPopupContent(marker);
     let markerColor = marker[5] < 0 ? "orange" : "blue";
+
     return L.circleMarker(
       [lat, lon],
-      { radius: 4, color: markerColor, zIndexOffset: 1000 }
+      {
+        renderer: renderer, // Use canvas renderer
+        radius: 4,
+        color: markerColor,
+        zIndexOffset: 1000
+      }
     ).bindPopup(popupContent);
   });
 }
