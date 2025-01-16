@@ -1,4 +1,12 @@
 import { createPopupContent } from "./popups";
+import { calculateSpeed, getSpeedColor } from "./polylines";
+import { haversineDistance } from "./helpers";
+
+export function createMarkersArray(markersData, userSettings, apiKey, map) {
+  if (!markersData || !markersData.length) {
+    console.warn('No marker data provided');
+    return { markers: [], polyline: null };
+  }
 
 export function createMarkersArray(markersData, userSettings) {
   // Create a canvas renderer
@@ -7,19 +15,192 @@ export function createMarkersArray(markersData, userSettings) {
   if (userSettings.pointsRenderingMode === "simplified") {
     return createSimplifiedMarkers(markersData, renderer);
   } else {
-    return markersData.map((marker) => {
-      const [lat, lon] = marker;
-      const popupContent = createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit);
-      let markerColor = marker[5] < 0 ? "orange" : "blue";
+    try {
+      // Create an array to store all coordinates for the polyline
+      const coordinates = markersData.map(marker => {
+        if (!Array.isArray(marker) || marker.length < 2) {
+          console.warn('Invalid marker data:', marker);
+          return null;
+        }
+        return [marker[0], marker[1]];
+      }).filter(coord => coord !== null);
 
-      return L.circleMarker([lat, lon], {
-        renderer: renderer, // Use canvas renderer
-        radius: 4,
-        color: markerColor,
-        zIndexOffset: 1000,
-        pane: 'markerPane'
-      }).bindPopup(popupContent, { autoClose: false });
-    });
+      // Create the polyline
+      const polyline = L.polyline(coordinates, {
+        color: 'blue',
+        weight: 3,
+        zIndexOffset: 400
+      });
+
+      const markers = markersData.map((marker, index) => {
+        if (!Array.isArray(marker) || marker.length < 2) {
+          console.warn('Invalid marker data:', marker);
+          return null;
+        }
+
+        const [lat, lon] = marker;
+        const pointId = marker[6]; // Assuming the ID is at index 6
+
+        if (typeof lat !== 'number' || typeof lon !== 'number') {
+          console.warn('Invalid coordinates:', lat, lon);
+          return null;
+        }
+
+        const popupContent = createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit);
+        let markerColor = marker[5] < 0 ? "orange" : "blue";
+
+        const icon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style="background-color: ${markerColor}; width: 12px; height: 12px; border-radius: 50%;"></div>`,
+          iconSize: [12, 12]
+        });
+
+        return L.marker([lat, lon], {
+          renderer: renderer,
+          icon: icon,
+          draggable: true,
+          zIndexOffset: 1000,
+          markerIndex: index,
+          pane: 'markerPane'
+        }).bindPopup(popupContent, { autoClose: false })
+          .on('dragend', function(event) {
+            const marker = event.target;
+            const position = marker.getLatLng();
+            const index = marker.options.markerIndex;
+
+            // Remove the old polyline
+            if (polyline) {
+              polyline.remove();
+            }
+
+            // Find the polylines layer in the map layers
+            let polylinesLayer;
+            map.eachLayer((layer) => {
+              if (layer instanceof L.LayerGroup && layer.getLayers().some(l => l instanceof L.FeatureGroup)) {
+                polylinesLayer = layer;
+              }
+            });
+
+            if (polylinesLayer) {
+              // Update affected segments in all feature groups
+              polylinesLayer.eachLayer((featureGroup) => {
+                if (featureGroup instanceof L.FeatureGroup) {
+                  featureGroup.eachLayer((segment) => {
+                    if (segment instanceof L.Polyline) {
+                      const segmentLatLngs = segment.getLatLngs();
+                      let updated = false;
+
+                      // Check if this segment starts or ends with our point
+                      if (Math.abs(segmentLatLngs[0].lat - lat) < 0.0000001 &&
+                          Math.abs(segmentLatLngs[0].lng - lon) < 0.0000001) {
+                        segmentLatLngs[0] = position;
+                        updated = true;
+                      }
+                      if (Math.abs(segmentLatLngs[1].lat - lat) < 0.0000001 &&
+                          Math.abs(segmentLatLngs[1].lng - lon) < 0.0000001) {
+                        segmentLatLngs[1] = position;
+                        updated = true;
+                      }
+
+                      if (updated) {
+                        // Update segment position
+                        segment.setLatLngs(segmentLatLngs);
+
+                        // Recalculate speed for the segment
+                        const point1 = markersData[index];
+                        const adjacentIndex = index + (segmentLatLngs[0].equals(position) ? -1 : 1);
+                        const point2 = markersData[adjacentIndex];
+
+                        if (point1 && point2) {
+                          const speed = calculateSpeed(point1, point2);
+                          const color = getSpeedColor(speed, userSettings.speed_colored_routes);
+                          segment.setStyle({
+                            color: color,
+                            originalColor: color,
+                            speed: speed
+                          });
+                        }
+                      }
+                    }
+                  });
+                }
+              });
+            }
+
+            // Send API request to update point position
+            fetch(`/api/v1/points/${pointId}?api_key=${apiKey}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                point: {
+                  latitude: position.lat,
+                  longitude: position.lng
+                }
+              })
+            })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Failed to update point position');
+              }
+              return response.json();
+            })
+            .then(data => {
+              if (window.showFlashMessage) {
+                window.showFlashMessage('notice', 'Point position updated successfully');
+              }
+
+              // Update the popup content with new data
+              const updatedPopupContent = createPopupContent([
+                data.latitude,
+                data.longitude,
+                data.battery,
+                data.altitude,
+                data.timestamp,
+                data.velocity || 0,
+                data.id
+              ], userSettings.timezone, userSettings.distanceUnit);
+
+              marker.setPopupContent(updatedPopupContent);
+            })
+            .catch(error => {
+              console.error('Error updating point position:', error);
+              if (window.showFlashMessage) {
+                window.showFlashMessage('error', 'Failed to update point position');
+              }
+              // Revert the marker position
+              marker.setLatLng([lat, lon]);
+
+              // Revert the polyline segments
+              if (polylinesLayer) {
+                polylinesLayer.eachLayer((featureGroup) => {
+                  if (featureGroup instanceof L.FeatureGroup) {
+                    featureGroup.eachLayer((segment) => {
+                      if (segment instanceof L.Polyline) {
+                        const segmentLatLngs = segment.getLatLngs();
+                        if (segmentLatLngs[0].equals(position)) {
+                          segmentLatLngs[0] = L.latLng(lat, lon);
+                          segment.setLatLngs(segmentLatLngs);
+                        }
+                        if (segmentLatLngs[1].equals(position)) {
+                          segmentLatLngs[1] = L.latLng(lat, lon);
+                          segment.setLatLngs(segmentLatLngs);
+                        }
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          });
+      }).filter(marker => marker !== null);
+
+      return [...markers, polyline];
+    } catch (error) {
+      console.error('Error creating markers:', error);
+      return [];
+    }
   }
 }
 

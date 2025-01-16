@@ -68,9 +68,30 @@ export default class extends Controller {
 
     this.map.setMaxBounds(bounds);
 
-    this.markersArray = createMarkersArray(this.markers, this.userSettings);
+    this.markersArray = createMarkersArray(this.markers, this.userSettings, this.apiKey, this.map);
     this.markersLayer = L.layerGroup(this.markersArray);
-    this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
+
+    // Filter out the polyline before creating heatmap markers
+    const markerElements = this.markersArray.filter(element => element instanceof L.Marker);
+    this.heatmapMarkers = markerElements.map((element) => [
+      element._latlng.lat,
+      element._latlng.lng,
+      0.2
+    ]);
+
+    // Add drag event listeners to markers
+    markerElements.forEach((marker, index) => {
+      marker.on('dragend', (event) => {
+        // Update heatmap marker at corresponding index
+        this.heatmapMarkers[index] = [
+          event.target._latlng.lat,
+          event.target._latlng.lng,
+          0.2
+        ];
+        // Update the heatmap layer with new positions
+        this.heatmapLayer.setLatLngs(this.heatmapMarkers);
+      });
+    });
 
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);

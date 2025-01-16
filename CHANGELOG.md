@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.22.3 - 2025-01-14
+
+# 0.22.3 - 2025-01-16
+
+You can now drag-n-drop a point on the map to update its position. Enable the "Points" layer on the map to see the points.
+
+### Added
+
+- Drag-n-drop points on the map to update their position.
+- `PATCH /api/v1/points/:id` endpoint added to update a point. It only accepts `latitude` and `longitude` params. #51 #503
 
 ### Changed
 

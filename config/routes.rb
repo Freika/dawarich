@@ -67,7 +67,7 @@ Rails.application.routes.draw do
       get   'settings', to: 'settings#index'
 
       resources :areas,     only: %i[index create update destroy]
-      resources :points,    only: %i[index destroy]
+      resources :points,    only: %i[index destroy update]
       resources :visits,    only: %i[update]
       resources :stats,     only: :index
 
