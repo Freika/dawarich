@@ -78,7 +78,7 @@ export default class extends Controller {
 
     this.map.setMaxBounds(bounds);
 
-    this.markersArray = createMarkersArray(this.markers, this.userSettings, this.apiKey);
+    this.markersArray = createMarkersArray(this.markers, this.userSettings, this.apiKey, this.map);
     this.markersLayer = L.layerGroup(this.markersArray);
 
     // Filter out the polyline before creating heatmap markers
