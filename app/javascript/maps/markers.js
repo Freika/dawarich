@@ -144,6 +144,19 @@ export function createMarkersArray(markersData, userSettings, apiKey, map) {
               if (window.showFlashMessage) {
                 window.showFlashMessage('notice', 'Point position updated successfully');
               }
+
+              // Update the popup content with new data
+              const updatedPopupContent = createPopupContent([
+                data.latitude,
+                data.longitude,
+                data.battery,
+                data.altitude,
+                data.timestamp,
+                data.velocity || 0,
+                data.id
+              ], userSettings.timezone, userSettings.distanceUnit);
+
+              marker.setPopupContent(updatedPopupContent);
             })
             .catch(error => {
               console.error('Error updating point position:', error);
