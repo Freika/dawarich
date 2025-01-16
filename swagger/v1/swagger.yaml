@@ -717,6 +717,26 @@ paths:
       responses:
         '200':
           description: point deleted
+    patch:
+      summary: Updates a point
+      tags:
+      - Points
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        description: Point ID
+        schema:
+          type: string
+      responses:
+        '200':
+          description: point updated
   "/api/v1/settings":
     patch:
       summary: Updates user settings

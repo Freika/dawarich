@@ -81,5 +81,21 @@ describe 'Points API', type: :request do
         run_test!
       end
     end
+
+    patch 'Updates a point' do
+      tags 'Points'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      parameter name: :id, in: :path, type: :string, required: true, description: 'Point ID'
+
+      response '200', 'point updated' do
+        let(:user)    { create(:user) }
+        let(:point)   { create(:point, user:) }
+        let(:api_key) { user.api_key }
+        let(:id)      { point.id }
+
+        run_test!
+      end
+    end
   end
 end
