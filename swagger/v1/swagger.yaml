@@ -737,6 +737,19 @@ paths:
       responses:
         '200':
           description: point updated
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+              required:
+              - latitude
+              - longitude
   "/api/v1/settings":
     patch:
       summary: Updates user settings

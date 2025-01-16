@@ -85,14 +85,23 @@ describe 'Points API', type: :request do
     patch 'Updates a point' do
       tags 'Points'
       produces 'application/json'
+      consumes 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
       parameter name: :id, in: :path, type: :string, required: true, description: 'Point ID'
+      parameter name: :point, in: :body, schema: {
+        type: :object,
+        properties: {
+          latitude: { type: :number },
+          longitude: { type: :number }
+        },
+        required: %i[latitude longitude]
+      }
 
       response '200', 'point updated' do
         let(:user)    { create(:user) }
-        let(:point)   { create(:point, user:) }
         let(:api_key) { user.api_key }
-        let(:id)      { point.id }
+        let(:id)      { create(:point, user:).id }
+        let(:point) { { latitude: 10.0, longitude: 10.0 } }
 
         run_test!
       end
