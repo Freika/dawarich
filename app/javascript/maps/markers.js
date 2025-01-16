@@ -24,7 +24,8 @@ export function createMarkersArray(markersData, userSettings, apiKey, map) {
       // Create the polyline
       const polyline = L.polyline(coordinates, {
         color: 'blue',
-        weight: 2
+        weight: 3,
+        zIndexOffset: 400
       });
 
       const markers = markersData.map((marker, index) => {
@@ -46,8 +47,8 @@ export function createMarkersArray(markersData, userSettings, apiKey, map) {
 
         const icon = L.divIcon({
           className: 'custom-div-icon',
-          html: `<div style="background-color: ${markerColor}; width: 8px; height: 8px; border-radius: 50%;"></div>`,
-          iconSize: [8, 8]
+          html: `<div style="background-color: ${markerColor}; width: 12px; height: 12px; border-radius: 50%;"></div>`,
+          iconSize: [12, 12]
         });
 
         return L.marker([lat, lon], {
