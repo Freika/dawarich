@@ -89,6 +89,20 @@ export default class extends Controller {
       0.2
     ]);
 
+    // Add drag event listeners to markers
+    markerElements.forEach((marker, index) => {
+      marker.on('dragend', (event) => {
+        // Update heatmap marker at corresponding index
+        this.heatmapMarkers[index] = [
+          event.target._latlng.lat,
+          event.target._latlng.lng,
+          0.2
+        ];
+        // Update the heatmap layer with new positions
+        this.heatmapLayer.setLatLngs(this.heatmapMarkers);
+      });
+    });
+
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
     this.fogOverlay = L.layerGroup(); // Initialize fog layer
