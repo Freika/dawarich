@@ -31,4 +31,4 @@ done
 echo "✅ PostgreSQL is ready!"
 
 # run sidekiq
-bundle exec sidekiq
+exec bundle exec sidekiq

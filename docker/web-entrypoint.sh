@@ -55,4 +55,4 @@ bundle exec rake data:migrate
 # fi
 
 # run passed commands
-bundle exec ${@}
+exec bundle exec "${@}"
