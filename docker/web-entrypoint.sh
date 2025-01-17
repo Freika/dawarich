@@ -10,18 +10,18 @@ echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
   # Extract components from DATABASE_URL
-  DATABASE_HOST=$(echo $DATABASE_URL | awk -F[@/] '{print $4}')
-  DATABASE_PORT=$(echo $DATABASE_URL | awk -F[@/:] '{print $5}')
-  DATABASE_USERNAME=$(echo $DATABASE_URL | awk -F[:/@] '{print $4}')
-  DATABASE_PASSWORD=$(echo $DATABASE_URL | awk -F[:/@] '{print $5}')
-  DATABASE_NAME=$(echo $DATABASE_URL | awk -F[@/] '{print $5}')
+  DATABASE_HOST="$(echo "$DATABASE_URL" | awk -F[@/] '{print $4}')"
+  DATABASE_PORT="$(echo "$DATABASE_URL" | awk -F[@/:] '{print $5}')"
+  DATABASE_USERNAME="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $4}')"
+  DATABASE_PASSWORD="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $5}')"
+  DATABASE_NAME="$(echo "$DATABASE_URL" | awk -F[@/] '{print $5}')"
 else
   # Use existing environment variables
-  DATABASE_HOST=${DATABASE_HOST}
-  DATABASE_PORT=${DATABASE_PORT}
-  DATABASE_USERNAME=${DATABASE_USERNAME}
-  DATABASE_PASSWORD=${DATABASE_PASSWORD}
-  DATABASE_NAME=${DATABASE_NAME}
+  DATABASE_HOST="${DATABASE_HOST}"
+  DATABASE_PORT="${DATABASE_PORT}"
+  DATABASE_USERNAME="${DATABASE_USERNAME}"
+  DATABASE_PASSWORD="${DATABASE_PASSWORD}"
+  DATABASE_NAME="${DATABASE_NAME}"
 fi
 
 # Export main database variables to ensure they're available
@@ -32,7 +32,7 @@ export DATABASE_PASSWORD
 export DATABASE_NAME
 
 # Remove pre-existing puma/passenger server.pid
-rm -f $APP_PATH/tmp/pids/server.pid
+rm -f "$APP_PATH/tmp/pids/server.pid"
 
 # Function to check and create a PostgreSQL database
 create_database() {
