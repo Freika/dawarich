@@ -14,12 +14,6 @@ if [ -n "$DATABASE_URL" ]; then
   DATABASE_PORT="$(echo "$DATABASE_URL" | awk -F[@/:] '{print $5}')"
   DATABASE_USERNAME="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $4}')"
   DATABASE_PASSWORD="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $5}')"
-else
-  # Use existing environment variables
-  DATABASE_HOST="${DATABASE_HOST}"
-  DATABASE_PORT="${DATABASE_PORT}"
-  DATABASE_USERNAME="${DATABASE_USERNAME}"
-  DATABASE_PASSWORD="${DATABASE_PASSWORD}"
 fi
 
 # Wait for the database to become available
