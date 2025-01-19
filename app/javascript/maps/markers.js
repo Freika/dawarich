@@ -9,9 +9,8 @@ export function createMarkersArray(markersData, userSettings, apiKey) {
   } else {
     return markersData.map((marker, index) => {
       const [lat, lon] = marker;
-      const pointId = marker[2];
-      const popupContent = createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit);
-      let markerColor = marker[5] < 0 ? "orange" : "blue";
+      const pointId = marker[6];  // ID is at index 6
+      const markerColor = marker[5] < 0 ? "orange" : "blue";
 
       return L.marker([lat, lon], {
         icon: L.divIcon({
@@ -26,10 +25,10 @@ export function createMarkersArray(markersData, userSettings, apiKey) {
         pointId: pointId,
         originalLat: lat,
         originalLng: lon,
+        markerData: marker,  // Store the complete marker data
         renderer: renderer
-      }).bindPopup(popupContent)
+      }).bindPopup(createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit))
         .on('dragstart', function(e) {
-          console.log('Drag started', { index: this.options.pointIndex });
           this.closePopup();
         })
         .on('drag', function(e) {
@@ -38,13 +37,6 @@ export function createMarkersArray(markersData, userSettings, apiKey) {
           const pointIndex = e.target.options.pointIndex;
           const originalLat = e.target.options.originalLat;
           const originalLng = e.target.options.originalLng;
-
-          console.log('Dragging point', {
-            pointIndex,
-            newPosition: newLatLng,
-            originalPosition: { lat: originalLat, lng: originalLng }
-          });
-
           // Find polylines by iterating through all map layers
           map.eachLayer((layer) => {
             // Check if this is a LayerGroup containing polylines
@@ -60,10 +52,6 @@ export function createMarkersArray(markersData, userSettings, apiKey) {
                       // Check and update start point
                       if (Math.abs(coords[0].lat - originalLat) < tolerance &&
                           Math.abs(coords[0].lng - originalLng) < tolerance) {
-                        console.log('Updating start point of segment', {
-                          from: coords[0],
-                          to: newLatLng
-                        });
                         coords[0] = newLatLng;
                         updated = true;
                       }
@@ -71,10 +59,6 @@ export function createMarkersArray(markersData, userSettings, apiKey) {
                       // Check and update end point
                       if (Math.abs(coords[1].lat - originalLat) < tolerance &&
                           Math.abs(coords[1].lng - originalLng) < tolerance) {
-                        console.log('Updating end point of segment', {
-                          from: coords[1],
-                          to: newLatLng
-                        });
                         coords[1] = newLatLng;
                         updated = true;
                       }
@@ -96,19 +80,11 @@ export function createMarkersArray(markersData, userSettings, apiKey) {
           e.target.options.originalLng = newLatLng.lng;
         })
         .on('dragend', function(e) {
-          console.log('Drag ended', {
-            finalPosition: e.target.getLatLng(),
-            pointIndex: e.target.options.pointIndex
-          });
           const newLatLng = e.target.getLatLng();
           const pointId = e.target.options.pointId;
           const pointIndex = e.target.options.pointIndex;
+          const originalMarkerData = e.target.options.markerData;
 
-          // Update the marker's position
-          this.setLatLng(newLatLng);
-          this.openPopup();
-
-          // Send API request to update point position
           fetch(`/api/v1/points/${pointId}`, {
             method: 'PATCH',
             headers: {
@@ -118,68 +94,56 @@ export function createMarkersArray(markersData, userSettings, apiKey) {
             },
             body: JSON.stringify({
               point: {
-                latitude: newLatLng.lat,
-                longitude: newLatLng.lng
+                latitude: newLatLng.lat.toString(),
+                longitude: newLatLng.lng.toString()
               }
             })
           })
           .then(response => {
             if (!response.ok) {
-              throw new Error('Failed to update point position');
+              throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
           })
           .then(data => {
-            // Update the markers array in the controller
             const map = e.target._map;
-            const mapsController = map.mapsController;
-            if (mapsController && mapsController.markers) {
-              mapsController.markers[pointIndex][0] = newLatLng.lat;
-              mapsController.markers[pointIndex][1] = newLatLng.lng;
-
-              // Store current polylines visibility state
-              const wasPolyLayerVisible = map.hasLayer(mapsController.polylinesLayer);
-
-              // Remove old polylines layer
-              if (mapsController.polylinesLayer) {
-                map.removeLayer(mapsController.polylinesLayer);
-              }
-
-              // Create new polylines layer with updated coordinates
-              mapsController.polylinesLayer = createPolylinesLayer(
-                mapsController.markers,
-                map,
-                mapsController.timezone,
-                mapsController.routeOpacity,
-                mapsController.userSettings,
-                mapsController.distanceUnit
-              );
-
-              // Restore polylines visibility if it was visible before
-              if (wasPolyLayerVisible) {
-                mapsController.polylinesLayer.addTo(map);
+            if (map && map.mapsController && map.mapsController.markers) {
+              const markers = map.mapsController.markers;
+              if (markers[pointIndex]) {
+                markers[pointIndex][0] = parseFloat(data.latitude);
+                markers[pointIndex][1] = parseFloat(data.longitude);
               }
             }
 
-            // Update popup content with new data
-            const updatedPopupContent = createPopupContent(
-              [
-                data.latitude,
-                data.longitude,
-                data.id,
-                data.altitude,
-                data.timestamp,
-                data.velocity || 0
-              ],
-              userSettings.timezone,
-              userSettings.distanceUnit
-            );
-            this.setPopupContent(updatedPopupContent);
+            // Create updated marker data array
+            const updatedMarkerData = [
+              parseFloat(data.latitude),
+              parseFloat(data.longitude),
+              originalMarkerData[2],  // battery
+              originalMarkerData[3],  // altitude
+              originalMarkerData[4],  // timestamp
+              originalMarkerData[5],  // velocity
+              data.id,                // id
+              originalMarkerData[7]   // country
+            ];
+
+            // Update the marker's stored data
+            e.target.options.markerData = updatedMarkerData;
+
+            // Update the popup content
+            if (this._popup) {
+              const updatedPopupContent = createPopupContent(
+                updatedMarkerData,
+                userSettings.timezone,
+                userSettings.distanceUnit
+              );
+              this.setPopupContent(updatedPopupContent);
+            }
           })
           .catch(error => {
-            console.error('Error updating point position:', error);
-            // Revert the marker position on error
-            this.setLatLng([lat, lon]);
+            console.error('Error updating point:', error);
+            this.setLatLng([e.target.options.originalLat, e.target.options.originalLng]);
+            alert('Failed to update point position. Please try again.');
           });
         });
     });
