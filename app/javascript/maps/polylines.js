@@ -174,20 +174,16 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
   polylineGroup.eachLayer((layer) => {
     if (layer instanceof L.Polyline) {
       layer.on("mouseover", function (e) {
-        console.log("Individual polyline mouseover", e);
         handleMouseOver(e);
       });
 
       layer.on("mouseout", function (e) {
-        console.log("Individual polyline mouseout", e);
         handleMouseOut(e);
       });
     }
   });
 
   function handleMouseOver(e) {
-    console.log('Individual polyline mouseover', e);
-
     // Handle both direct layer events and group propagated events
     const layer = e.layer || e.target;
     let speed = 0;
@@ -219,11 +215,10 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
       if (segment instanceof L.Polyline) {
         const newStyle = {
           weight: 8,
-          opacity: 0.8
+          opacity: 1
         };
 
         // Only change color if speed-colored routes are not enabled
-        console.log("speed_colored_routes", userSettings.speed_colored_routes);
         if (!userSettings.speed_colored_routes) {
           newStyle.color = "yellow"
         }
@@ -295,8 +290,6 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
     pane: 'polylinesPane'
   });
 
-  console.log("Creating polylines layer with markers:", markers.length);
-
   const splitPolylines = [];
   let currentPolyline = [];
   const distanceThresholdMeters = parseInt(userSettings.meters_between_routes) || 500;
@@ -324,13 +317,9 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
     splitPolylines.push(currentPolyline);
   }
 
-  console.log("Split into polyline groups:", splitPolylines.length);
-
   // Create the layer group with the polylines
   const layerGroup = L.layerGroup(
     splitPolylines.map((polylineCoordinates, groupIndex) => {
-      console.log(`Creating group ${groupIndex} with coordinates:`, polylineCoordinates.length);
-
       const segmentGroup = L.featureGroup();
       const segments = [];
 
@@ -362,7 +351,6 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 
       // Add mouseover/mouseout to the entire group
       segmentGroup.on('mouseover', function(e) {
-        console.log("Group mouseover", groupIndex);
         L.DomEvent.stopPropagation(e);
         segments.forEach(segment => {
           segment.setStyle({
@@ -376,7 +364,6 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
       });
 
       segmentGroup.on('mouseout', function(e) {
-        console.log("Group mouseout", groupIndex);
         L.DomEvent.stopPropagation(e);
         segments.forEach(segment => {
           segment.setStyle({
@@ -412,7 +399,6 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 
   // Add to map and return
   layerGroup.addTo(map);
-  console.log("Layer group added to map");
 
   return layerGroup;
 }
