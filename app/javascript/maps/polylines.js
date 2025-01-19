@@ -214,10 +214,22 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
       }
     }
 
-    layer.setStyle({
-      weight: 8,
-      opacity: 0.8,
-      color: '#FFD700'
+    // Apply style to all segments in the group
+    polylineGroup.eachLayer((segment) => {
+      if (segment instanceof L.Polyline) {
+        const newStyle = {
+          weight: 8,
+          opacity: 0.8
+        };
+
+        // Only change color if speed-colored routes are not enabled
+        console.log("speed_colored_routes", userSettings.speed_colored_routes);
+        if (!userSettings.speed_colored_routes) {
+          newStyle.color = "yellow"
+        }
+
+        segment.setStyle(newStyle);
+      }
     });
 
     startMarker.addTo(map);
