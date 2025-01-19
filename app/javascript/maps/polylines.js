@@ -170,50 +170,60 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
 
   let hoverPopup = null;
 
-  polylineGroup.on("mouseover", function (e) {
-    let closestSegment = null;
-    let minDistance = Infinity;
-    let currentSpeed = 0;
+  // Add events to both group and individual polylines
+  polylineGroup.eachLayer((layer) => {
+    if (layer instanceof L.Polyline) {
+      layer.on("mouseover", function (e) {
+        handleMouseOver(e);
+      });
 
-    polylineGroup.eachLayer((layer) => {
-      if (layer instanceof L.Polyline) {
-        const layerLatLngs = layer.getLatLngs();
-        const distance = pointToLineDistance(e.latlng, layerLatLngs[0], layerLatLngs[1]);
+      layer.on("mouseout", function (e) {
+        handleMouseOut(e);
+      });
+    }
+  });
 
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestSegment = layer;
+  function handleMouseOver(e) {
+    // Handle both direct layer events and group propagated events
+    const layer = e.layer || e.target;
+    let speed = 0;
 
-          const startIdx = polylineCoordinates.findIndex(p => {
-            const latMatch = Math.abs(p[0] - layerLatLngs[0].lat) < 0.0000001;
-            const lngMatch = Math.abs(p[1] - layerLatLngs[0].lng) < 0.0000001;
-            return latMatch && lngMatch;
-          });
+    if (layer instanceof L.Polyline) {
+      // Get the coordinates array from the layer
+      const coords = layer.getLatLngs();
+      if (coords && coords.length >= 2) {
+        const startPoint = coords[0];
+        const endPoint = coords[coords.length - 1];
 
-          if (startIdx !== -1 && startIdx < polylineCoordinates.length - 1) {
-            currentSpeed = calculateSpeed(
-              polylineCoordinates[startIdx],
-              polylineCoordinates[startIdx + 1]
-            );
-          }
+        // Find the corresponding markers for these coordinates
+        const startMarkerData = polylineCoordinates.find(m =>
+          m[0] === startPoint.lat && m[1] === startPoint.lng
+        );
+        const endMarkerData = polylineCoordinates.find(m =>
+          m[0] === endPoint.lat && m[1] === endPoint.lng
+        );
+
+        // Calculate speed if we have both markers
+        if (startMarkerData && endMarkerData) {
+          speed = startMarkerData[5] || endMarkerData[5] || 0;
         }
       }
-    });
+    }
 
-    // Apply highlight style to all segments
-    polylineGroup.eachLayer((layer) => {
-      if (layer instanceof L.Polyline) {
-        const highlightStyle = {
-          weight: 5,
+    // Apply style to all segments in the group
+    polylineGroup.eachLayer((segment) => {
+      if (segment instanceof L.Polyline) {
+        const newStyle = {
+          weight: 8,
           opacity: 1
         };
 
-        // Only change color to yellow if speed colors are disabled
+        // Only change color if speed-colored routes are not enabled
         if (!userSettings.speed_colored_routes) {
-          highlightStyle.color = '#ffff00';
+          newStyle.color = "yellow"
         }
 
-        layer.setStyle(highlightStyle);
+        segment.setStyle(newStyle);
       }
     });
 
@@ -225,7 +235,7 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
       <strong>End:</strong> ${lastTimestamp}<br>
       <strong>Duration:</strong> ${timeOnRoute}<br>
       <strong>Total Distance:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
-      <strong>Current Speed:</strong> ${Math.round(currentSpeed)} km/h
+      <strong>Current Speed:</strong> ${Math.round(speed)} km/h
     `;
 
     if (hoverPopup) {
@@ -236,16 +246,15 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
       .setLatLng(e.latlng)
       .setContent(popupContent)
       .openOn(map);
-  });
+  }
 
-  polylineGroup.on("mouseout", function () {
-    // Restore original style
+  function handleMouseOut(e) {
     polylineGroup.eachLayer((layer) => {
       if (layer instanceof L.Polyline) {
         const originalStyle = {
           weight: 3,
           opacity: userSettings.route_opacity,
-          color: layer.options.originalColor // Use the stored original color
+          color: layer.options.originalColor
         };
 
         layer.setStyle(originalStyle);
@@ -257,16 +266,29 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
     }
     map.removeLayer(startMarker);
     map.removeLayer(endMarker);
-  });
+  }
 
+  // Keep the original group events as a fallback
+  polylineGroup.on("mouseover", handleMouseOver);
+  polylineGroup.on("mouseout", handleMouseOut);
+
+  // Keep the click event
   polylineGroup.on("click", function () {
     map.fitBounds(polylineGroup.getBounds());
   });
 }
 
 export function createPolylinesLayer(markers, map, timezone, routeOpacity, userSettings, distanceUnit) {
-  // Create a canvas renderer
-  const renderer = L.canvas({ padding: 0.5 });
+  // Create a custom pane for our polylines with higher z-index
+  if (!map.getPane('polylinesPane')) {
+    map.createPane('polylinesPane');
+    map.getPane('polylinesPane').style.zIndex = 450; // Above the default overlay pane (400)
+  }
+
+  const renderer = L.canvas({
+    padding: 0.5,
+    pane: 'polylinesPane'
+  });
 
   const splitPolylines = [];
   let currentPolyline = [];
@@ -295,9 +317,11 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
     splitPolylines.push(currentPolyline);
   }
 
-  return L.layerGroup(
-    splitPolylines.map((polylineCoordinates) => {
+  // Create the layer group with the polylines
+  const layerGroup = L.layerGroup(
+    splitPolylines.map((polylineCoordinates, groupIndex) => {
       const segmentGroup = L.featureGroup();
+      const segments = [];
 
       for (let i = 0; i < polylineCoordinates.length - 1; i++) {
         const speed = calculateSpeed(polylineCoordinates[i], polylineCoordinates[i + 1]);
@@ -309,25 +333,74 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
             [polylineCoordinates[i + 1][0], polylineCoordinates[i + 1][1]]
           ],
           {
-            renderer: renderer, // Use canvas renderer
+            renderer: renderer,
             color: color,
             originalColor: color,
             opacity: routeOpacity,
             weight: 3,
             speed: speed,
-            startTime: polylineCoordinates[i][4],
-            endTime: polylineCoordinates[i + 1][4]
+            interactive: true,
+            pane: 'polylinesPane',
+            bubblingMouseEvents: false
           }
         );
 
+        segments.push(segment);
         segmentGroup.addLayer(segment);
       }
 
+      // Add mouseover/mouseout to the entire group
+      segmentGroup.on('mouseover', function(e) {
+        L.DomEvent.stopPropagation(e);
+        segments.forEach(segment => {
+          segment.setStyle({
+            weight: 8,
+            opacity: 1
+          });
+          if (map.hasLayer(segment)) {
+            segment.bringToFront();
+          }
+        });
+      });
+
+      segmentGroup.on('mouseout', function(e) {
+        L.DomEvent.stopPropagation(e);
+        segments.forEach(segment => {
+          segment.setStyle({
+            weight: 3,
+            opacity: routeOpacity,
+            color: segment.options.originalColor
+          });
+        });
+      });
+
+      // Make the group interactive
+      segmentGroup.options.interactive = true;
+      segmentGroup.options.bubblingMouseEvents = false;
+
+      // Add the hover functionality to the group
       addHighlightOnHover(segmentGroup, map, polylineCoordinates, userSettings, distanceUnit);
 
       return segmentGroup;
     })
-  ).addTo(map);
+  );
+
+  // Add CSS to ensure our pane receives mouse events
+  const style = document.createElement('style');
+  style.textContent = `
+    .leaflet-polylinesPane-pane {
+      pointer-events: auto !important;
+    }
+    .leaflet-polylinesPane-pane canvas {
+      pointer-events: auto !important;
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Add to map and return
+  layerGroup.addTo(map);
+
+  return layerGroup;
 }
 
 export function updatePolylinesColors(polylinesLayer, useSpeedColors) {

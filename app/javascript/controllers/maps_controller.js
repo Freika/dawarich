@@ -68,7 +68,7 @@ export default class extends Controller {
 
     this.map.setMaxBounds(bounds);
 
-    this.markersArray = createMarkersArray(this.markers, this.userSettings);
+    this.markersArray = createMarkersArray(this.markers, this.userSettings, this.apiKey);
     this.markersLayer = L.layerGroup(this.markersArray);
     this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
 

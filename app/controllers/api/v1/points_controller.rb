@@ -21,6 +21,14 @@ class Api::V1::PointsController < ApiController
     render json: serialized_points
   end
 
+  def update
+    point = current_api_user.tracked_points.find(params[:id])
+
+    point.update(point_params)
+
+    render json: point_serializer.new(point).call
+  end
+
   def destroy
     point = current_api_user.tracked_points.find(params[:id])
     point.destroy
@@ -29,6 +37,10 @@ class Api::V1::PointsController < ApiController
   end
 
   private
+
+  def point_params
+    params.require(:point).permit(:latitude, :longitude)
+  end
 
   def point_serializer
     params[:slim] == 'true' ? Api::SlimPointSerializer : Api::PointSerializer
