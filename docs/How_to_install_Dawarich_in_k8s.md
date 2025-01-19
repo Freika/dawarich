@@ -36,37 +36,7 @@ spec:
   storageClassName: longhorn
   resources:
     requests:
-      storage: 15Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  namespace: dawarich
-  name: gem-cache
-  labels:
-    storage.k8s.io/name: longhorn
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn
-  resources:
-    requests:
-      storage: 15Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  namespace: dawarich
-  name: gem-sidekiq
-  labels:
-    storage.k8s.io/name: longhorn
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn
-  resources:
-    requests:
-      storage: 15Gi
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -81,7 +51,7 @@ spec:
   storageClassName: longhorn
   resources:
     requests:
-      storage: 15Gi
+      storage: 1Gi
 ```
 
 ### Deployment
@@ -143,14 +113,12 @@ spec:
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /usr/local/bundle/gems
-              name: gem-app
             - mountPath: /var/app/public
               name: public
             - mountPath: /var/app/tmp/imports/watched
               name: watched
           command:
-            - "dev-entrypoint.sh"
+            - "web-entrypoint.sh"
           args:
             - "bin/rails server -p 3000 -b ::"
           resources:
@@ -199,16 +167,14 @@ spec:
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /usr/local/bundle/gems
-              name: gem-sidekiq
             - mountPath: /var/app/public
               name: public
             - mountPath: /var/app/tmp/imports/watched
               name: watched
           command:
-            - "dev-entrypoint.sh"
+            - "sidekiq-entrypoint.sh"
           args:
-            - "sidekiq"
+            - "bundle exec sidekiq"
           resources:
             requests:
               memory: "1Gi"
@@ -216,6 +182,22 @@ spec:
             limits:
               memory: "3Gi"
               cpu: "1500m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
       volumes:
         - name: gem-cache
           persistentVolumeClaim:
