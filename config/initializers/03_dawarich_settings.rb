@@ -3,7 +3,7 @@
 class DawarichSettings
   class << self
     def reverse_geocoding_enabled?
-      @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled?
+      @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled? || nominatim_enabled?
     end
 
     def photon_enabled?
@@ -16,6 +16,10 @@ class DawarichSettings
 
     def geoapify_enabled?
       @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
+    end
+
+    def nominatim_enabled?
+      @nominatim_enabled ||= NOMINATIM_API_HOST.present?
     end
   end
 end
