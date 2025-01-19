@@ -8,6 +8,9 @@ export function createPopupContent(marker, timezone, distanceUnit) {
     marker[3] = marker[3] * 3.28084;
   }
 
+  // convert marker[5] from m/s to km/h and round to nearest integer
+  marker[5] = Math.round(marker[5] * 3.6);
+
   return `
     <strong>Timestamp:</strong> ${formatDate(marker[4], timezone)}<br>
     <strong>Latitude:</strong> ${marker[0]}<br>
