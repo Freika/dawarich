@@ -12,13 +12,25 @@ export function createMarkersArray(markersData, userSettings) {
       const popupContent = createPopupContent(marker, userSettings.timezone, userSettings.distanceUnit);
       let markerColor = marker[5] < 0 ? "orange" : "blue";
 
-      return L.circleMarker([lat, lon], {
-        renderer: renderer, // Use canvas renderer
-        radius: 4,
-        color: markerColor,
-        zIndexOffset: 1000,
-        pane: 'markerPane'
-      }).bindPopup(popupContent, { autoClose: false });
+      // Use L.marker instead of L.circleMarker for better drag support
+      return L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style='background-color: ${markerColor}; width: 8px; height: 8px; border-radius: 50%;'></div>`,
+          iconSize: [8, 8],
+          iconAnchor: [4, 4]
+        }),
+        draggable: true,
+        autoPan: true
+      }).bindPopup(popupContent, { autoClose: false })
+        .on('dragstart', function(e) {
+          this.closePopup();
+        })
+        .on('dragend', function(e) {
+          const newLatLng = e.target.getLatLng();
+          this.setLatLng(newLatLng);
+          this.openPopup();
+        });
     });
   }
 }
@@ -53,14 +65,24 @@ export function createSimplifiedMarkers(markersData, renderer) {
     const popupContent = createPopupContent(marker);
     let markerColor = marker[5] < 0 ? "orange" : "blue";
 
-    return L.circleMarker(
-      [lat, lon],
-      {
-        renderer: renderer, // Use canvas renderer
-        radius: 4,
-        color: markerColor,
-        zIndexOffset: 1000
-      }
-    ).bindPopup(popupContent);
+    // Use L.marker instead of L.circleMarker for better drag support
+    return L.marker([lat, lon], {
+      icon: L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style='background-color: ${markerColor}; width: 8px; height: 8px; border-radius: 50%;'></div>`,
+        iconSize: [8, 8],
+        iconAnchor: [4, 4]
+      }),
+      draggable: true,
+      autoPan: true
+    }).bindPopup(popupContent)
+      .on('dragstart', function(e) {
+        this.closePopup();
+      })
+      .on('dragend', function(e) {
+        const newLatLng = e.target.getLatLng();
+        this.setLatLng(newLatLng);
+        this.openPopup();
+      });
   });
 }
