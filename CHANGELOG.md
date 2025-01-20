@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.22.5 - 2025-01-20
+
+### Added
+
+- `GET /api/v1/users/me` endpoint added to get current user.
+
 # 0.22.4 - 2025-01-20
 
 ### Added
