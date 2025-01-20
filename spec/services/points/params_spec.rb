@@ -4,6 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Points::Params do
   describe '#call' do
+    let(:user) { create(:user) }
     let(:file_path) { 'spec/fixtures/files/points/geojson_example.json' }
     let(:file) { File.open(file_path) }
     let(:json) { JSON.parse(file.read) }
@@ -40,11 +41,12 @@ RSpec.describe Points::Params do
             timestamp:          '2025-01-17T21:03:01Z',
             device_id:          '8D5D4197-245B-4619-A88B-2049100ADE46'
           }
-        }.with_indifferent_access
+        }.with_indifferent_access,
+        user_id:            user.id
       }
     end
 
-    subject(:params) { described_class.new(json).call }
+    subject(:params) { described_class.new(json, user.id).call }
 
     it 'returns an array of points' do
       expect(params).to be_an(Array)

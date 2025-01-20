@@ -9,19 +9,9 @@ class Points::CreateJob < ApplicationJob
     data.each_slice(1000) do |location_batch|
       Point.upsert_all(
         location_batch,
-        unique_by: %i[latitude longitude timestamp user_id]
+        unique_by: %i[latitude longitude timestamp user_id],
+        returning: false
       )
     end
-  end
-
-  private
-
-  def point_exists?(params, user_id)
-    Point.exists?(
-      latitude: params[:latitude],
-      longitude: params[:longitude],
-      timestamp: params[:timestamp],
-      user_id:
-    )
   end
 end
