@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.23.0 - 2025-01-20
 
-⚠️ IMPORTANT ⚠️
+## ⚠️ IMPORTANT ⚠️
 
-This release includes a data migration to remove duplicated points from the database. It will not remove anything except for duplcates from the `points` table, but please make sure to create a backup before updating to this version.
+This release includes a data migration to remove duplicated points from the database. It will not remove anything except for duplcates from the `points` table, but please make sure to create a [backup](https://dawarich.app/docs/tutorials/backup-and-restore) before updating to this version.
 
 ### Added
 
