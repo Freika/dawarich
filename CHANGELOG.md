@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - You can now drag-n-drop a point on the map to update its position. Enable the "Points" layer on the map to see the points.
+- `PATCH /api/v1/points/:id` endpoint added to update a point. It only accepts `latitude` and `longitude` params. #51 #503
 
 ### Changed
 
