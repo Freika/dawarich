@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
 class Points::Params
-  attr_reader :data, :points
+  attr_reader :data, :points, :user_id
 
-  def initialize(json)
+  def initialize(json, user_id)
     @data = json.with_indifferent_access
     @points = @data[:locations]
+    @user_id = user_id
   end
 
   def call
     points.map do |point|
-      next if point[:geometry].nil? || point.dig(:properties, :timestamp).nil?
+      next unless params_valid?(point)
 
       {
         latitude:           point[:geometry][:coordinates][1],
@@ -26,7 +27,8 @@ class Points::Params
         vertical_accuracy:  point[:properties][:vertical_accuracy],
         course_accuracy:    point[:properties][:course_accuracy],
         course:             point[:properties][:course],
-        raw_data:           point
+        raw_data:           point,
+        user_id:            user_id
       }
     end.compact
   end
@@ -37,5 +39,11 @@ class Points::Params
     value = (level.to_f * 100).to_i
 
     value.positive? ? value : nil
+  end
+
+  def params_valid?(point)
+    point[:geometry].present? &&
+      point[:geometry][:coordinates].present? &&
+      point.dig(:properties, :timestamp).present?
   end
 end
