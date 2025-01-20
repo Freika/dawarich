@@ -25,7 +25,8 @@ export function initializeFogCanvas(map) {
 
 export function drawFogCanvas(map, markers, clearFogRadius) {
   const fog = document.getElementById('fog');
-  if (!fog) return;
+  // Return early if fog element doesn't exist or isn't a canvas
+  if (!fog || !(fog instanceof HTMLCanvasElement)) return;
 
   const ctx = fog.getContext('2d');
   if (!ctx) return;
@@ -83,12 +84,25 @@ export function createFogOverlay() {
   return L.Layer.extend({
     onAdd: (map) => {
       initializeFogCanvas(map);
+
+      // Add drag event handlers to update fog during marker movement
+      map.on('drag', () => {
+        const fog = document.getElementById('fog');
+        if (fog) {
+          // Update fog canvas position to match map position
+          const mapPos = map.getContainer().getBoundingClientRect();
+          fog.style.left = `${mapPos.left}px`;
+          fog.style.top = `${mapPos.top}px`;
+        }
+      });
     },
     onRemove: (map) => {
       const fog = document.getElementById('fog');
       if (fog) {
         fog.remove();
       }
+      // Clean up event listener
+      map.off('drag');
     }
   });
 }

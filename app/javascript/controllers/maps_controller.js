@@ -61,6 +61,35 @@ export default class extends Controller {
 
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
+    // Add scale control
+    L.control.scale({
+      position: 'bottomright',
+      imperial: this.distanceUnit === 'mi',
+      metric: this.distanceUnit === 'km',
+      maxWidth: 120
+    }).addTo(this.map)
+
+    // Add stats control
+    const StatsControl = L.Control.extend({
+      options: {
+        position: 'bottomright'
+      },
+      onAdd: (map) => {
+        const div = L.DomUtil.create('div', 'leaflet-control-stats');
+        const distance = this.element.dataset.distance || '0';
+        const pointsNumber = this.element.dataset.points_number || '0';
+        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
+        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
+        div.style.backgroundColor = 'white';
+        div.style.padding = '0 5px';
+        div.style.marginRight = '5px';
+        div.style.display = 'inline-block';
+        return div;
+      }
+    });
+
+    new StatsControl().addTo(this.map);
+
     // Set the maximum bounds to prevent infinite scroll
     var southWest = L.latLng(-120, -210);
     var northEast = L.latLng(120, 210);
@@ -68,7 +97,7 @@ export default class extends Controller {
 
     this.map.setMaxBounds(bounds);
 
-    this.markersArray = createMarkersArray(this.markers, this.userSettings);
+    this.markersArray = createMarkersArray(this.markers, this.userSettings, this.apiKey);
     this.markersLayer = L.layerGroup(this.markersArray);
     this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
 
@@ -98,35 +127,41 @@ export default class extends Controller {
       Photos: this.photoMarkers
     };
 
-    // Add this new custom control BEFORE the scale control
-    const TestControl = L.Control.extend({
-      onAdd: (map) => {
-        const div = L.DomUtil.create('div', 'leaflet-control');
-        const distance = this.element.dataset.distance || '0';
-        const pointsNumber = this.element.dataset.points_number || '0';
-        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
-        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
-        div.style.backgroundColor = 'white';
-        div.style.padding = '0 5px';
-        div.style.marginRight = '5px';
-        div.style.display = 'inline-block';
-        return div;
+    // Initialize layer control first
+    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+
+    // Add the toggle panel button
+    this.addTogglePanelButton();
+
+    // Check if we should open the panel based on localStorage or URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
+    const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
+
+    // Always create the panel first
+    this.toggleRightPanel();
+
+    // Then hide it if it shouldn't be open
+    if (!isPanelOpen && !hasDateParams) {
+      const panel = document.querySelector('.leaflet-right-panel');
+      if (panel) {
+        panel.style.display = 'none';
+        localStorage.setItem('mapPanelOpen', 'false');
+      }
+    }
+
+    // Update event handlers
+    this.map.on('moveend', () => {
+      if (document.getElementById('fog')) {
+        this.updateFog(this.markers, this.clearFogRadius);
       }
     });
 
-    // Add the test control first
-    new TestControl({ position: 'bottomright' }).addTo(this.map);
-
-    // Then add scale control
-    L.control.scale({
-      position: 'bottomright',
-      imperial: this.distanceUnit === 'mi',
-      metric: this.distanceUnit === 'km',
-      maxWidth: 120
-    }).addTo(this.map)
-
-    // Initialize layer control
-    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+    this.map.on('zoomend', () => {
+      if (document.getElementById('fog')) {
+        this.updateFog(this.markers, this.clearFogRadius);
+      }
+    });
 
     // Fetch and draw areas when the map is loaded
     fetchAndDrawAreas(this.areasLayer, this.apiKey);
@@ -205,39 +240,6 @@ export default class extends Controller {
     if (this.liveMapEnabled) {
       this.setupSubscription();
     }
-
-    // Add the toggle panel button
-    this.addTogglePanelButton();
-
-    // Check if we should open the panel based on localStorage or URL params
-    const urlParams = new URLSearchParams(window.location.search);
-    const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
-    const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
-
-    // Always create the panel first
-    this.toggleRightPanel();
-
-    // Then hide it if it shouldn't be open
-    if (!isPanelOpen && !hasDateParams) {
-      const panel = document.querySelector('.leaflet-right-panel');
-      if (panel) {
-        panel.style.display = 'none';
-        localStorage.setItem('mapPanelOpen', 'false');
-      }
-    }
-
-    // Update event handlers
-    this.map.on('moveend', () => {
-      if (document.getElementById('fog')) {
-        this.updateFog(this.markers, this.clearFogRadius);
-      }
-    });
-
-    this.map.on('zoomend', () => {
-      if (document.getElementById('fog')) {
-        this.updateFog(this.markers, this.clearFogRadius);
-      }
-    });
   }
 
   disconnect() {
@@ -786,164 +788,84 @@ export default class extends Controller {
   }
 
   updateMapWithNewSettings(newSettings) {
-    console.log('Updating map settings:', {
-      newSettings,
-      currentSettings: this.userSettings,
-      hasPolylines: !!this.polylinesLayer,
-      isVisible: this.polylinesLayer && this.map.hasLayer(this.polylinesLayer)
-    });
-
     // Show loading indicator
     const loadingDiv = document.createElement('div');
     loadingDiv.className = 'map-loading-overlay';
     loadingDiv.innerHTML = '<div class="loading loading-lg">Updating map...</div>';
     document.body.appendChild(loadingDiv);
 
-    // Debounce the heavy operations
-    const updateLayers = debounce(() => {
-      try {
-        // Store current layer visibility states
-        const layerStates = {
-          Points: this.map.hasLayer(this.markersLayer),
-          Routes: this.map.hasLayer(this.polylinesLayer),
-          Heatmap: this.map.hasLayer(this.heatmapLayer),
-          "Fog of War": this.map.hasLayer(this.fogOverlay),
-          "Scratch map": this.map.hasLayer(this.scratchLayer),
-          Areas: this.map.hasLayer(this.areasLayer),
-          Photos: this.map.hasLayer(this.photoMarkers)
-        };
-
-        // Check if speed_colored_routes setting has changed
-        if (newSettings.speed_colored_routes !== this.userSettings.speed_colored_routes) {
-          if (this.polylinesLayer) {
-            updatePolylinesColors(
-              this.polylinesLayer,
-              newSettings.speed_colored_routes
-            );
-          }
+    try {
+      // Update settings first
+      if (newSettings.speed_colored_routes !== this.userSettings.speed_colored_routes) {
+        if (this.polylinesLayer) {
+          updatePolylinesColors(
+            this.polylinesLayer,
+            newSettings.speed_colored_routes
+          );
         }
-
-        // Update opacity if changed
-        if (newSettings.route_opacity !== this.userSettings.route_opacity) {
-          const newOpacity = parseFloat(newSettings.route_opacity) || 0.6;
-          if (this.polylinesLayer) {
-            updatePolylinesOpacity(this.polylinesLayer, newOpacity);
-          }
-        }
-
-        // Update the local settings
-        this.userSettings = { ...this.userSettings, ...newSettings };
-        this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
-        this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
-
-        // Remove existing layer control
-        if (this.layerControl) {
-          this.map.removeControl(this.layerControl);
-        }
-
-        // Create new controls layer object with proper initialization
-        const controlsLayer = {
-          Points: this.markersLayer || L.layerGroup(),
-          Routes: this.polylinesLayer || L.layerGroup(),
-          Heatmap: this.heatmapLayer || L.heatLayer([]),
-          "Fog of War": new this.fogOverlay(),
-          "Scratch map": this.scratchLayer || L.layerGroup(),
-          Areas: this.areasLayer || L.layerGroup(),
-          Photos: this.photoMarkers || L.layerGroup()
-        };
-
-        // Add new layer control
-        this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
-
-        // Restore layer visibility states
-        Object.entries(layerStates).forEach(([name, wasVisible]) => {
-          const layer = controlsLayer[name];
-          if (wasVisible && layer) {
-            layer.addTo(this.map);
-          } else if (layer && this.map.hasLayer(layer)) {
-            this.map.removeLayer(layer);
-          }
-        });
-
-      } catch (error) {
-        console.error('Error updating map settings:', error);
-        console.error(error.stack);
-      } finally {
-        // Remove loading indicator after all updates are complete
-        setTimeout(() => {
-          document.body.removeChild(loadingDiv);
-        }, 500); // Give a small delay to ensure all batches are processed
       }
-    }, 250);
 
-    updateLayers();
-  }
-
-  getLayerControlStates() {
-    const controls = {};
-
-    this.map.eachLayer((layer) => {
-      const layerName = this.getLayerName(layer);
-
-      if (layerName) {
-        controls[layerName] = this.map.hasLayer(layer);
+      if (newSettings.route_opacity !== this.userSettings.route_opacity) {
+        const newOpacity = parseFloat(newSettings.route_opacity) || 0.6;
+        if (this.polylinesLayer) {
+          updatePolylinesOpacity(this.polylinesLayer, newOpacity);
+        }
       }
-    });
 
-    return controls;
-  }
+      // Update the local settings
+      this.userSettings = { ...this.userSettings, ...newSettings };
+      this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
+      this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
 
-  getLayerName(layer) {
-    const controlLayers = {
-      Points: this.markersLayer,
-      Routes: this.polylinesLayer,
-      Heatmap: this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
-      Areas: this.areasLayer,
-    };
+      // Store current layer states
+      const layerStates = {
+        Points: this.map.hasLayer(this.markersLayer),
+        Routes: this.map.hasLayer(this.polylinesLayer),
+        Heatmap: this.map.hasLayer(this.heatmapLayer),
+        "Fog of War": this.map.hasLayer(this.fogOverlay),
+        "Scratch map": this.map.hasLayer(this.scratchLayer),
+        Areas: this.map.hasLayer(this.areasLayer),
+        Photos: this.map.hasLayer(this.photoMarkers)
+      };
 
-    for (const [name, val] of Object.entries(controlLayers)) {
-      if (val && val.hasLayer && layer && val.hasLayer(layer)) // Check if the group layer contains the current layer
-        return name;
-    }
+      // Remove only the layer control
+      if (this.layerControl) {
+        this.map.removeControl(this.layerControl);
+      }
 
-    // Direct instance matching
-    for (const [name, val] of Object.entries(controlLayers)) {
-      if (val === layer) return name;
-    }
+      // Create new controls layer object
+      const controlsLayer = {
+        Points: this.markersLayer || L.layerGroup(),
+        Routes: this.polylinesLayer || L.layerGroup(),
+        Heatmap: this.heatmapLayer || L.heatLayer([]),
+        "Fog of War": new this.fogOverlay(),
+        "Scratch map": this.scratchLayer || L.layerGroup(),
+        Areas: this.areasLayer || L.layerGroup(),
+        Photos: this.photoMarkers || L.layerGroup()
+      };
 
-    return undefined; // Indicate no matching layer name found
-  }
+      // Re-add the layer control in the same position
+      this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
-  applyLayerControlStates(states) {
-    console.log('Applying layer states:', states);
-
-    const layerControl = {
-      Points: this.markersLayer,
-      Routes: this.polylinesLayer,
-      Heatmap: this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
-      Areas: this.areasLayer,
-    };
-
-    for (const [name, isVisible] of Object.entries(states)) {
-      const layer = layerControl[name];
-      console.log(`Processing layer ${name}:`, { layer, isVisible });
-
-      if (layer) {
-        if (isVisible && !this.map.hasLayer(layer)) {
-          console.log(`Adding layer ${name} to map`);
-          this.map.addLayer(layer);
-        } else if (!isVisible && this.map.hasLayer(layer)) {
-          console.log(`Removing layer ${name} from map`);
+      // Restore layer visibility states
+      Object.entries(layerStates).forEach(([name, wasVisible]) => {
+        const layer = controlsLayer[name];
+        if (wasVisible && layer) {
+          layer.addTo(this.map);
+        } else if (layer && this.map.hasLayer(layer)) {
           this.map.removeLayer(layer);
         }
-      }
-    }
+      });
 
-    // Ensure the layer control reflects the current state
-    this.map.removeControl(this.layerControl);
-    this.layerControl = L.control.layers(this.baseMaps(), layerControl).addTo(this.map);
+    } catch (error) {
+      console.error('Error updating map settings:', error);
+      console.error(error.stack);
+    } finally {
+      // Remove loading indicator
+      setTimeout(() => {
+        document.body.removeChild(loadingDiv);
+      }, 500);
+    }
   }
 
   createPhotoMarker(photo) {
