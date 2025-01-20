@@ -7,7 +7,7 @@ RSpec.describe GoogleMaps::RecordsParser do
     subject(:parser) { described_class.new(import).call(json) }
 
     let(:import) { create(:import) }
-    let(:time) { Time.zone.now }
+    let(:time) { DateTime.new(2025, 1, 1, 12, 0, 0) }
     let(:json) do
       {
         'latitudeE7' => 123_456_789,
@@ -31,7 +31,7 @@ RSpec.describe GoogleMaps::RecordsParser do
       before do
         create(
           :point, user: import.user, import:, latitude: 12.3456789, longitude: 12.3456789,
-          timestamp: Time.zone.now.to_i
+          timestamp: time.to_i
         )
       end
 

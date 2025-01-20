@@ -21,6 +21,9 @@ class Api::V1::PointsController < ApiController
     render json: serialized_points
   end
 
+  def create
+  end
+
   def update
     point = current_api_user.tracked_points.find(params[:id])
 

@@ -4,12 +4,13 @@ class Points::CreateJob < ApplicationJob
   queue_as :default
 
   def perform(params, user_id)
-    data = Overland::Params.new(params).call
+    data = Points::Params.new(params, user_id).call
 
-    data.each do |location|
-      next if point_exists?(location, user_id)
-
-      Point.create!(location.merge(user_id:))
+    data.each_slice(1000) do |location_batch|
+      Point.upsert_all(
+        location_batch,
+        unique_by: %i[latitude longitude timestamp user_id]
+      )
     end
   end
 

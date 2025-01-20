@@ -58,7 +58,11 @@ describe 'Points API', type: :request do
         let(:api_key)   { user.api_key }
         let(:start_at)  { Time.zone.now - 1.day }
         let(:end_at)    { Time.zone.now }
-        let(:points)    { create_list(:point, 10, user:, timestamp: 2.hours.ago) }
+        let(:points) do
+          (1..10).map do |i|
+            create(:point, user:, timestamp: 2.hours.ago + i.minutes)
+          end
+        end
 
         run_test!
       end

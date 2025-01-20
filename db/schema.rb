@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_01_20_152540) do
+ActiveRecord::Schema[8.0].define(version: 2025_01_20_154555) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -168,6 +168,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_20_152540) do
     t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
+    t.index ["latitude", "longitude", "timestamp", "user_id"], name: "unique_points_index", unique: true
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
