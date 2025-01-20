@@ -892,6 +892,23 @@ paths:
                 - totalCountriesVisited
                 - totalCitiesVisited
                 - yearlyStats
+  "/api/v1/users/me":
+    get:
+      summary: Returns the current user
+      tags:
+      - Users
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: 'Bearer token in the format: Bearer {api_key}'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: user found
 servers:
 - url: http://{defaultHost}
   variables:
