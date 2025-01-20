@@ -15,6 +15,7 @@ This release includes a data migration to remove duplicated points from the data
 
 - `POST /api/v1/points/create` endpoint added to create points from a file.
 - An index to guarantee uniqueness of points across `latitude`, `longitude`, `timestamp` and `user_id` values. This is introduced to make sure no duplicates will be created in the database in addition to previously existing validations.
+- `GET /api/v1/users/me` endpoint added to get current user.
 
 # 0.22.4 - 2025-01-20
 
