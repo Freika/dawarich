@@ -5,11 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.22.5 - 2025-01-20
+# 0.23.0 - 2025-01-20
+
+⚠️ IMPORTANT ⚠️
+
+This release includes a data migration to remove duplicated points from the database. It will not remove anything except for duplcates from the `points` table, but please make sure to create a backup before updating to this version.
 
 ### Added
 
 - `POST /api/v1/points/create` endpoint added to create points from a file.
+- An index to guarantee uniqueness of points across `latitude`, `longitude`, `timestamp` and `user_id` values. This is introduced to make sure no duplicates will be created in the database in addition to previously existing validations.
 
 # 0.22.4 - 2025-01-20
 
