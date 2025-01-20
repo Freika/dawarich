@@ -5,12 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.22.4 - 2025-01-15
+# 0.22.4 - 2025-01-20
+
+### Added
+
+- You can now drag-n-drop a point on the map to update its position. Enable the "Points" layer on the map to see the points.
 
 ### Changed
 
 - Run seeds even in prod env so Unraid users could have default user.
 - Precompile assets in production env using dummy secret key base.
+
+### Fixed
+
+- Fixed a bug where route wasn't highlighted when it was hovered or clicked.
 
 # 0.22.3 - 2025-01-14
 

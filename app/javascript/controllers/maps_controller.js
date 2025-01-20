@@ -61,6 +61,35 @@ export default class extends Controller {
 
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
+    // Add scale control
+    L.control.scale({
+      position: 'bottomright',
+      imperial: this.distanceUnit === 'mi',
+      metric: this.distanceUnit === 'km',
+      maxWidth: 120
+    }).addTo(this.map)
+
+    // Add stats control
+    const StatsControl = L.Control.extend({
+      options: {
+        position: 'bottomright'
+      },
+      onAdd: (map) => {
+        const div = L.DomUtil.create('div', 'leaflet-control-stats');
+        const distance = this.element.dataset.distance || '0';
+        const pointsNumber = this.element.dataset.points_number || '0';
+        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
+        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
+        div.style.backgroundColor = 'white';
+        div.style.padding = '0 5px';
+        div.style.marginRight = '5px';
+        div.style.display = 'inline-block';
+        return div;
+      }
+    });
+
+    new StatsControl().addTo(this.map);
+
     // Set the maximum bounds to prevent infinite scroll
     var southWest = L.latLng(-120, -210);
     var northEast = L.latLng(120, 210);
