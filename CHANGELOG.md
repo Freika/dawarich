@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.23.3 - 2025-01-21
 
+### Changed
+
+- Synology-related files are now up to date. #684
+
 ### Fixed
 
 - Drastically improved performance for Google's Records.json import. It will now take less than 5 minutes to import 500,000 points, which previously took a few hours.
