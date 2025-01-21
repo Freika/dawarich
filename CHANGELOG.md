@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.23.3 - 2025-01-21
+
+### Changed
+
+- Synology-related files are now up to date. #684
+
 # 0.23.2 - 2025-01-21
 
 ### Fixed
