@@ -4,11 +4,10 @@ class Import::GoogleTakeoutJob < ApplicationJob
   queue_as :imports
   sidekiq_options retry: false
 
-  def perform(import_id, json_string)
+  def perform(import_id, json_array)
     import = Import.find(import_id)
+    records = Oj.load(json_array)
 
-    json = Oj.load(json_string)
-
-    GoogleMaps::RecordsParser.new(import).call(json)
+    GoogleMaps::RecordsParser.new(import).call(records)
   end
 end

@@ -4,6 +4,8 @@
 # the main source of user's location history data.
 
 class Tasks::Imports::GoogleRecords
+  BATCH_SIZE = 1000 # Adjust based on your needs
+
   def initialize(file_path, user_email)
     @file_path = file_path
     @user = User.find_by(email: user_email)
@@ -14,10 +16,11 @@ class Tasks::Imports::GoogleRecords
 
     import_id = create_import
     log_start
-    file_content = read_file
-    json_data = Oj.load(file_content)
-    schedule_import_jobs(json_data, import_id)
+    process_file_in_batches(import_id)
     log_success
+  rescue Oj::ParseError => e
+    Rails.logger.error("JSON parsing error: #{e.message}")
+    raise
   end
 
   private
@@ -26,14 +29,45 @@ class Tasks::Imports::GoogleRecords
     @user.imports.create(name: @file_path, source: :google_records).id
   end
 
-  def read_file
-    File.read(@file_path)
+  def process_file_in_batches(import_id)
+    batch = []
+
+    Oj.load_file(@file_path, mode: :compat) do |record|
+      next unless record.is_a?(Hash) && record['locations']
+
+      record['locations'].each do |location|
+        batch << prepare_location_data(location, import_id)
+
+        if batch.size >= BATCH_SIZE
+          bulk_insert_locations(batch)
+          batch = []
+        end
+      end
+    end
+
+    # Process any remaining records
+    bulk_insert_locations(batch) if batch.any?
   end
 
-  def schedule_import_jobs(json_data, import_id)
-    json_data['locations'].each do |json|
-      Import::GoogleTakeoutJob.perform_later(import_id, json.to_json)
-    end
+  def prepare_location_data(location, import_id)
+    {
+      import_id: import_id,
+      latitude: location['latitudeE7']&.to_f&. / 1e7,
+      longitude: location['longitudeE7']&.to_f&. / 1e7,
+      timestamp: Time.at(location['timestampMs'].to_i / 1000),
+      accuracy: location['accuracy'],
+      source_data: location.to_json,
+      created_at: Time.current,
+      updated_at: Time.current
+    }
+  end
+
+  def bulk_insert_locations(batch)
+    Location.upsert_all(
+      batch,
+      unique_by: %i[import_id timestamp],
+      returning: false
+    )
   end
 
   def log_start
