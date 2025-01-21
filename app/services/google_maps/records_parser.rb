@@ -35,7 +35,7 @@ class GoogleMaps::RecordsParser
     {
       latitude: location['latitudeE7'].to_f / 10**7,
       longitude: location['longitudeE7'].to_f / 10**7,
-      timestamp: Timestamps.parse_timestamp(location['timestamp'] || location['timestampMs']),
+      timestamp: parse_timestamp(location),
       altitude: location['altitude'],
       velocity: location['velocity'],
       raw_data: location,
@@ -84,5 +84,9 @@ class GoogleMaps::RecordsParser
         record[:user_id]
       ]
     end
+  end
+
+  def parse_timestamp(location)
+    Timestamps.parse_timestamp(location['timestamp'] || location['timestampMs'])
   end
 end
