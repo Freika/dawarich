@@ -6,7 +6,6 @@ class MapController < ApplicationController
   def index
     @points = points.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
 
-    @countries_and_cities = CountriesAndCities.new(@points).call
     @coordinates =
       @points.pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id, :country)
              .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }

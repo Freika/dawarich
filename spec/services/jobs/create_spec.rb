@@ -8,7 +8,12 @@ RSpec.describe Jobs::Create do
 
     context 'when job_name is start_reverse_geocoding' do
       let(:user) { create(:user) }
-      let(:points) { create_list(:point, 4, user:) }
+      let(:points) do
+        (1..4).map do |i|
+          create(:point, user:, timestamp: 1.day.ago + i.minutes)
+        end
+      end
+
       let(:job_name) { 'start_reverse_geocoding' }
 
       it 'enqueues reverse geocoding for all user points' do
@@ -24,8 +29,17 @@ RSpec.describe Jobs::Create do
 
     context 'when job_name is continue_reverse_geocoding' do
       let(:user) { create(:user) }
-      let(:points_without_address) { create_list(:point, 4, user:, country: nil, city: nil) }
-      let(:points_with_address) { create_list(:point, 5, user:, country: 'Country', city: 'City') }
+      let(:points_without_address) do
+        (1..4).map do |i|
+          create(:point, user:, country: nil, city: nil, timestamp: 1.day.ago + i.minutes)
+        end
+      end
+
+      let(:points_with_address) do
+        (1..5).map do |i|
+          create(:point, user:, country: 'Country', city: 'City', timestamp: 1.day.ago + i.minutes)
+        end
+      end
 
       let(:job_name) { 'continue_reverse_geocoding' }
 

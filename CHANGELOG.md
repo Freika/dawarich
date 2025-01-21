@@ -5,10 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.22.5 - 2025-01-20
+# 0.23.0 - 2025-01-20
+
+## ⚠️ IMPORTANT ⚠️
+
+This release includes a data migration to remove duplicated points from the database. It will not remove anything except for duplcates from the `points` table, but please make sure to create a [backup](https://dawarich.app/docs/tutorials/backup-and-restore) before updating to this version.
 
 ### Added
 
+- `POST /api/v1/points/create` endpoint added.
+- An index to guarantee uniqueness of points across `latitude`, `longitude`, `timestamp` and `user_id` values. This is introduced to make sure no duplicates will be created in the database in addition to previously existing validations.
 - `GET /api/v1/users/me` endpoint added to get current user.
 
 # 0.22.4 - 2025-01-20

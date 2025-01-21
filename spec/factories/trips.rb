@@ -10,11 +10,15 @@ FactoryBot.define do
 
     trait :with_points do
       after(:build) do |trip|
-        create_list(
-          :point, 25,
-          user: trip.user,
-          timestamp: trip.started_at + (1..1000).to_a.sample.minutes
-        )
+        (1..25).map do |i|
+          create(
+            :point,
+            :with_geodata,
+            :reverse_geocoded,
+            timestamp: trip.started_at + i.minutes,
+            user: trip.user
+          )
+        end
       end
     end
   end

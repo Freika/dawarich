@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2024_12_11_113119) do
+ActiveRecord::Schema[8.0].define(version: 2025_01_20_154555) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -156,14 +156,19 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_11_113119) do
     t.jsonb "geodata", default: {}, null: false
     t.bigint "visit_id"
     t.datetime "reverse_geocoded_at"
+    t.decimal "course", precision: 8, scale: 5
+    t.decimal "course_accuracy", precision: 8, scale: 5
+    t.string "external_track_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
     t.index ["city"], name: "index_points_on_city"
     t.index ["connection"], name: "index_points_on_connection"
     t.index ["country"], name: "index_points_on_country"
+    t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
+    t.index ["latitude", "longitude", "timestamp", "user_id"], name: "unique_points_index", unique: true
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
