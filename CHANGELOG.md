@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.23.1 - 2025-01-21
+
+### Fixed
+
+- Renamed unique index on points to `unique_points_lat_long_timestamp_user_id_index` to fix naming conflict with `unique_points_index`.
+
 # 0.23.0 - 2025-01-20
 
 ## ⚠️ IMPORTANT ⚠️
