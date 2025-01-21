@@ -39,22 +39,22 @@ class Tasks::Imports::GoogleRecords
         batch << prepare_location_data(location, import_id)
 
         if batch.size >= BATCH_SIZE
-          bulk_insert_locations(batch)
+          bulk_insert_points(batch)
           batch = []
         end
       end
     end
 
     # Process any remaining records
-    bulk_insert_locations(batch) if batch.any?
+    bulk_insert_points(batch) if batch.any?
   end
 
   def prepare_location_data(location, import_id)
     {
       import_id: import_id,
-      latitude: location['latitudeE7']&.to_f&. / 1e7,
-      longitude: location['longitudeE7']&.to_f&. / 1e7,
-      timestamp: Time.at(location['timestampMs'].to_i / 1000),
+      latitude: location['latitudeE7']&.to_f&.div(1e7),
+      longitude: location['longitudeE7']&.to_f&.div(1e7),
+      timestamp: Time.zone.at(location['timestampMs'].to_i / 1000),
       accuracy: location['accuracy'],
       source_data: location.to_json,
       created_at: Time.current,
@@ -62,8 +62,8 @@ class Tasks::Imports::GoogleRecords
     }
   end
 
-  def bulk_insert_locations(batch)
-    Location.upsert_all(
+  def bulk_insert_points(batch)
+    Point.upsert_all(
       batch,
       unique_by: %i[import_id timestamp],
       returning: false
