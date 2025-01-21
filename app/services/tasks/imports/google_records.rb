@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-# This class is named based on Google Takeout's Records.json file,
-# the main source of user's location history data.
+# This class is named based on Google Takeout's Records.json file
 
 class Tasks::Imports::GoogleRecords
   BATCH_SIZE = 1000 # Adjust based on your needs
@@ -35,39 +34,20 @@ class Tasks::Imports::GoogleRecords
     Oj.load_file(@file_path, mode: :compat) do |record|
       next unless record.is_a?(Hash) && record['locations']
 
-      record['locations'].each do |location|
-        batch << prepare_location_data(location, import_id)
+      index = 0
 
-        if batch.size >= BATCH_SIZE
-          bulk_insert_points(batch)
-          batch = []
-        end
+      record['locations'].each do |location|
+        batch << location
+
+        next unless batch.size >= BATCH_SIZE
+
+        index += BATCH_SIZE
+        Import::GoogleTakeoutJob.perform_later(import_id, Oj.dump(batch), index)
+        batch = []
       end
     end
 
-    # Process any remaining records
-    bulk_insert_points(batch) if batch.any?
-  end
-
-  def prepare_location_data(location, import_id)
-    {
-      import_id: import_id,
-      latitude: location['latitudeE7']&.to_f&.div(1e7),
-      longitude: location['longitudeE7']&.to_f&.div(1e7),
-      timestamp: Time.zone.at(location['timestampMs'].to_i / 1000),
-      accuracy: location['accuracy'],
-      source_data: location.to_json,
-      created_at: Time.current,
-      updated_at: Time.current
-    }
-  end
-
-  def bulk_insert_points(batch)
-    Point.upsert_all(
-      batch,
-      unique_by: %i[import_id timestamp],
-      returning: false
-    )
+    Import::GoogleTakeoutJob.perform_later(import_id, Oj.dump(batch)) if batch.any?
   end
 
   def log_start
