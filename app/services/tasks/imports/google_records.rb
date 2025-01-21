@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
-# This class is named based on Google Takeout's Records.json file,
-# the main source of user's location history data.
+# This class is named based on Google Takeout's Records.json file
 
 class Tasks::Imports::GoogleRecords
+  BATCH_SIZE = 1000 # Adjust based on your needs
+
   def initialize(file_path, user_email)
     @file_path = file_path
     @user = User.find_by(email: user_email)
@@ -14,10 +15,11 @@ class Tasks::Imports::GoogleRecords
 
     import_id = create_import
     log_start
-    file_content = read_file
-    json_data = Oj.load(file_content)
-    schedule_import_jobs(json_data, import_id)
+    process_file_in_batches(import_id)
     log_success
+  rescue Oj::ParseError => e
+    Rails.logger.error("JSON parsing error: #{e.message}")
+    raise
   end
 
   private
@@ -26,14 +28,26 @@ class Tasks::Imports::GoogleRecords
     @user.imports.create(name: @file_path, source: :google_records).id
   end
 
-  def read_file
-    File.read(@file_path)
-  end
+  def process_file_in_batches(import_id)
+    batch = []
 
-  def schedule_import_jobs(json_data, import_id)
-    json_data['locations'].each do |json|
-      Import::GoogleTakeoutJob.perform_later(import_id, json.to_json)
+    Oj.load_file(@file_path, mode: :compat) do |record|
+      next unless record.is_a?(Hash) && record['locations']
+
+      index = 0
+
+      record['locations'].each do |location|
+        batch << location
+
+        next unless batch.size >= BATCH_SIZE
+
+        index += BATCH_SIZE
+        Import::GoogleTakeoutJob.perform_later(import_id, Oj.dump(batch), index)
+        batch = []
+      end
     end
+
+    Import::GoogleTakeoutJob.perform_later(import_id, Oj.dump(batch)) if batch.any?
   end
 
   def log_start
