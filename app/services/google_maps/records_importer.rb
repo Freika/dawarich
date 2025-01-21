@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class GoogleMaps::RecordsParser
+class GoogleMaps::RecordsImporter
   include Imports::Broadcaster
 
   BATCH_SIZE = 1000
@@ -13,19 +13,11 @@ class GoogleMaps::RecordsParser
   end
 
   def call(locations)
-    Array(locations).each do |location|
-      @batch << prepare_location_data(location)
-      next unless @batch.size >= BATCH_SIZE
-
-      bulk_insert_points(@batch)
+    Array(locations).each_slice(BATCH_SIZE) do |location_batch|
+      batch = location_batch.map { prepare_location_data(_1) }
+      bulk_insert_points(batch)
       broadcast_import_progress(import, current_index)
-      @batch = []
     end
-
-    return unless @batch.any?
-
-    bulk_insert_points(@batch)
-    broadcast_import_progress(import, current_index)
   end
 
   private
@@ -47,32 +39,21 @@ class GoogleMaps::RecordsParser
       updated_at: Time.current
     }
   end
-
   # rubocop:enable Metrics/MethodLength
+
   def bulk_insert_points(batch)
-    # Deduplicate records within the batch before upserting
-    # Use all fields in the unique constraint for deduplication
     unique_batch = deduplicate_batch(batch)
 
-    # Sort the batch to ensure consistent ordering and prevent deadlocks
-    # sorted_batch = sort_batch(unique_batch)
-
+    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[latitude longitude timestamp user_id],
       returning: false,
       on_duplicate: :skip
     )
+    # rubocop:enable Rails/SkipsModelValidations
   rescue StandardError => e
-    Rails.logger.error("Batch insert failed for import #{@import.id}: #{e.message}")
-
-    # Create notification for the user
-    Notification.create!(
-      user: @import.user,
-      title: 'Google Maps Import Error',
-      content: "Failed to process location batch: #{e.message}",
-      kind: :error
-    )
+    create_notification("Failed to process location batch: #{e.message}")
   end
 
   def deduplicate_batch(batch)
@@ -87,6 +68,17 @@ class GoogleMaps::RecordsParser
   end
 
   def parse_timestamp(location)
-    Timestamps.parse_timestamp(location['timestamp'] || location['timestampMs'])
+    Timestamps.parse_timestamp(
+      location['timestamp'] || location['timestampMs']
+    )
+  end
+
+  def create_notification(message)
+    Notification.create!(
+      user: @import.user,
+      title: 'Google\'s Records.json Import Error',
+      content: message,
+      kind: :error
+    )
   end
 end

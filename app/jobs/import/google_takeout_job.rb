@@ -8,6 +8,6 @@ class Import::GoogleTakeoutJob < ApplicationJob
     locations_batch = Oj.load(locations)
     import = Import.find(import_id)
 
-    GoogleMaps::RecordsParser.new(import, current_index).call(locations_batch)
+    GoogleMaps::RecordsImporter.new(import, current_index).call(locations_batch)
   end
 end

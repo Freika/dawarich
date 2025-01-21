@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe GoogleMaps::RecordsParser do
+RSpec.describe GoogleMaps::RecordsImporter do
   describe '#call' do
     subject(:parser) { described_class.new(import).call(locations) }
 
