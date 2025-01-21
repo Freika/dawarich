@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Drastically improved performance for Google's Records.json import.
+- Drastically improved performance for Google's Records.json import. It will now take less than 5 minutes to import 500,000 points, which previously took a few hours.
 
 ### Fixed
 
