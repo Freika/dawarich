@@ -89,8 +89,14 @@ RSpec.describe Stat, type: :model do
       subject { stat.points.to_a }
 
       let(:stat) { create(:stat, year:, month: 1, user:) }
-      let(:timestamp) { DateTime.new(year, 1, 1, 5, 0, 0) }
-      let!(:points) { create_list(:point, 3, user:, timestamp:) }
+      let(:base_timestamp) { DateTime.new(year, 1, 1, 5, 0, 0) }
+      let!(:points) do
+        [
+          create(:point, user:, timestamp: base_timestamp),
+          create(:point, user:, timestamp: base_timestamp + 1.hour),
+          create(:point, user:, timestamp: base_timestamp + 2.hours)
+        ]
+      end
 
       it 'returns points' do
         expect(subject).to eq(points)

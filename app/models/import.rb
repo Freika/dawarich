@@ -4,6 +4,8 @@ class Import < ApplicationRecord
   belongs_to :user
   has_many :points, dependent: :destroy
 
+  delegate :count, to: :points, prefix: true
+
   include ImportUploader::Attachment(:raw)
 
   enum :source, {

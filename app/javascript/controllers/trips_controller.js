@@ -138,7 +138,14 @@ export default class extends Controller {
 
   addMarkers() {
     this.coordinates.forEach(coord => {
-      const marker = L.circleMarker([coord[0], coord[1]], {radius: 4})
+      const marker = L.circleMarker(
+        [coord[0], coord[1]],
+        {
+          radius: 4,
+          color: coord[5] < 0 ? "orange" : "blue",
+          zIndexOffset: 1000
+        }
+      )
 
       const popupContent = createPopupContent(coord, this.timezone, this.distanceUnit)
       marker.bindPopup(popupContent)
@@ -152,8 +159,9 @@ export default class extends Controller {
     const points = this.coordinates.map(coord => [coord[0], coord[1]])
     const polyline = L.polyline(points, {
       color: 'blue',
+      opacity: 0.8,
       weight: 3,
-      opacity: 0.8
+      zIndexOffset: 400
     })
     // Add to polylines layer instead of directly to map
     this.polylinesLayer.addTo(this.map)

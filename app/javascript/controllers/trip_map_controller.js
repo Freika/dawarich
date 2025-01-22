@@ -43,8 +43,9 @@ export default class extends Controller {
 
     const polyline = L.polyline(points, {
       color: 'blue',
+      opacity: 0.8,
       weight: 3,
-      opacity: 0.8
+      zIndexOffset: 400
     }).addTo(this.map)
 
     this.map.fitBounds(polyline.getBounds(), {

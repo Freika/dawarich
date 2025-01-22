@@ -58,7 +58,92 @@ describe 'Points API', type: :request do
         let(:api_key)   { user.api_key }
         let(:start_at)  { Time.zone.now - 1.day }
         let(:end_at)    { Time.zone.now }
-        let(:points)    { create_list(:point, 10, user:, timestamp: 2.hours.ago) }
+        let(:points) do
+          (1..10).map do |i|
+            create(:point, user:, timestamp: 2.hours.ago + i.minutes)
+          end
+        end
+
+        run_test!
+      end
+    end
+
+    post 'Creates a batch of points' do
+      request_body_example value: {
+        locations: [
+          {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [-122.40530871, 37.74430413]
+            },
+            properties: {
+              timestamp: '2025-01-17T21:03:01Z',
+              horizontal_accuracy: 5,
+              vertical_accuracy: -1,
+              altitude: 0,
+              speed: 92.088,
+              speed_accuracy: 0,
+              course: 27.07,
+              course_accuracy: 0,
+              track_id: '799F32F5-89BB-45FB-A639-098B1B95B09F',
+              device_id: '8D5D4197-245B-4619-A88B-2049100ADE46'
+            }
+          }
+        ]
+      }
+      tags 'Batches'
+      consumes 'application/json'
+      parameter name: :locations, in: :body, schema: {
+        type: :object,
+        properties: {
+          type: { type: :string },
+          geometry: {
+            type: :object,
+            properties: {
+              type: { type: :string },
+              coordinates: { type: :array, items: { type: :number } }
+            }
+          },
+          properties: {
+            type: :object,
+            properties: {
+              timestamp: { type: :string },
+              horizontal_accuracy: { type: :number },
+              vertical_accuracy: { type: :number },
+              altitude: { type: :number },
+              speed: { type: :number },
+              speed_accuracy: { type: :number },
+              course: { type: :number },
+              course_accuracy: { type: :number },
+              track_id: { type: :string },
+              device_id: { type: :string }
+            }
+          }
+        },
+        required: %w[geometry properties]
+      }
+
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+
+      response '200', 'Batch of points being processed' do
+        let(:file_path) { 'spec/fixtures/files/points/geojson_example.json' }
+        let(:file) { File.open(file_path) }
+        let(:json) { JSON.parse(file.read) }
+        let(:params) { json }
+        let(:locations) { params['locations'] }
+        let(:api_key) { create(:user).api_key }
+
+        run_test!
+      end
+
+      response '401', 'Unauthorized' do
+        let(:file_path) { 'spec/fixtures/files/points/geojson_example.json' }
+        let(:file) { File.open(file_path) }
+        let(:json) { JSON.parse(file.read) }
+        let(:params) { json }
+        let(:locations) { params['locations'] }
+        let(:api_key) { 'invalid_api_key' }
 
         run_test!
       end

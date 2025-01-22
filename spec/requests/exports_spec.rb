@@ -37,7 +37,11 @@ RSpec.describe '/exports', type: :request do
     before { sign_in user }
 
     context 'with valid parameters' do
-      let(:points) { create_list(:point, 10, user:, timestamp: 1.day.ago) }
+      let(:points) do
+        (1..10).map do |i|
+          create(:point, user:, timestamp: 1.day.ago + i.minutes)
+        end
+      end
 
       it 'creates a new Export' do
         expect { post exports_url, params: }.to change(Export, :count).by(1)

@@ -5,7 +5,236 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.23.4 - 2025-01-22
+
+### Added
+
+- A test for building rc Docker image.
+
+### Fixed
+
+- Fix authentication to `GET /api/v1/countries/visited_cities` with header `Authorization: Bearer YOUR_API_KEY` instead of `api_key` query param. #679
+- Fix a bug where a gpx file with empty tracks was not being imported. #646
+- Fix a bug where rc version was being checked as a stable release. #711
+
+# 0.23.3 - 2025-01-21
+
+### Changed
+
+- Synology-related files are now up to date. #684
+
+### Fixed
+
+- Drastically improved performance for Google's Records.json import. It will now take less than 5 minutes to import 500,000 points, which previously took a few hours.
+
+### Fixed
+
+- Add index only if it doesn't exist.
+
+# 0.23.1 - 2025-01-21
+
+### Fixed
+
+- Renamed unique index on points to `unique_points_lat_long_timestamp_user_id_index` to fix naming conflict with `unique_points_index`.
+
+# 0.23.0 - 2025-01-20
+
+## ⚠️ IMPORTANT ⚠️
+
+This release includes a data migration to remove duplicated points from the database. It will not remove anything except for duplcates from the `points` table, but please make sure to create a [backup](https://dawarich.app/docs/tutorials/backup-and-restore) before updating to this version.
+
+### Added
+
+- `POST /api/v1/points/create` endpoint added.
+- An index to guarantee uniqueness of points across `latitude`, `longitude`, `timestamp` and `user_id` values. This is introduced to make sure no duplicates will be created in the database in addition to previously existing validations.
+- `GET /api/v1/users/me` endpoint added to get current user.
+
+# 0.22.4 - 2025-01-20
+
+### Added
+
+- You can now drag-n-drop a point on the map to update its position. Enable the "Points" layer on the map to see the points.
+- `PATCH /api/v1/points/:id` endpoint added to update a point. It only accepts `latitude` and `longitude` params. #51 #503
+
+### Changed
+
+- Run seeds even in prod env so Unraid users could have default user.
+- Precompile assets in production env using dummy secret key base.
+
+### Fixed
+
+- Fixed a bug where route wasn't highlighted when it was hovered or clicked.
+
+# 0.22.3 - 2025-01-14
+
+### Changed
+
+- The Map now uses a canvas to draw polylines, points and fog of war. This should improve performance in browser with a lot of points and polylines.
+
+# 0.22.2 - 2025-01-13
+
+✨ The Fancy Routes release ✨
+
+### Added
+
+- In the Map Settings (coggle in the top left corner of the map), you can now enable/disable the Fancy Routes feature. Simply said, it will color your routes based on the speed of each segment.
+- Hovering over a polyline now shows the speed of the segment. Move cursor over a polyline to see the speed of different segments.
+- Distance and points number in the custom control to the map.
+
+### Changed
+
+- The name of the "Polylines" feature is now "Routes".
+
+⚠️ Important note on the Prometheus monitoring ⚠️
+
+In the previous release, `bin/dev` command in the default `docker-compose.yml` file was replaced with `bin/rails server -p 3000 -b ::`, but this way Dawarich won't be able to start Prometheus Exporter. If you want to use Prometheus monitoring, you need to use `bin/dev` command instead.
+
+Example:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+...
+-    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
++    command: ['bin/dev']
+```
+
+# 0.22.1 - 2025-01-09
+
+### Removed
+
+- Gems caching volume from the `docker-compose.yml` file.
+
+To update existing `docker-compose.yml` to new changes, refer to the following:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+...
+    volumes:
+-      - dawarich_gem_cache_app:/usr/local/bundle/gems
+...
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+...
+    volumes:
+-      - dawarich_gem_cache_app:/usr/local/bundle/gems
+...
+
+volumes:
+  dawarich_db_data:
+- dawarich_gem_cache_app:
+- dawarich_gem_cache_sidekiq:
+  dawarich_shared:
+  dawarich_public:
+  dawarich_watched:
+```
+
+### Changed
+
+- `GET /api/v1/health` endpoint now returns a `X-Dawarich-Response: Hey, Im alive and authenticated!` header if user is authenticated.
+
+# 0.22.0 - 2025-01-09
+
+⚠️ This release introduces a breaking change. ⚠️
+
+Please read this release notes carefully before upgrading.
+
+Docker-related files were moved to the `docker` directory and some of them were renamed. Before upgrading, study carefully changes in the `docker/docker-compose.yml` file and update your docker-compose file accordingly, so it uses the new files and commands. Copying `docker/docker-compose.yml` blindly may lead to errors.
+
+No volumes were removed or renamed, so with a proper docker-compose file, you should be able to upgrade without any issues.
+
+To update existing `docker-compose.yml` to new changes, refer to the following:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+...
+-    entrypoint: dev-entrypoint.sh
+-    command: ['bin/dev']
++    entrypoint: web-entrypoint.sh
++    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
+...
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+...
+-    entrypoint: dev-entrypoint.sh
+-    command: ['bin/dev']
++    entrypoint: sidekiq-entrypoint.sh
++    command: ['bundle', 'exec', 'sidekiq']
+```
+
+Although `docker-compose.production.yml` was added, it's not being used by default. It's just an example of how to configure Dawarich for production. The default `docker-compose.yml` file is still recommended for running the app.
+
+### Changed
+
+- All docker-related files were moved to the `docker` directory.
+- Default memory limit for `dawarich_app` and `dawarich_sidekiq` services was increased to 4GB.
+- `dawarich_app` and `dawarich_sidekiq` services now use separate entrypoint scripts.
+- Gems (dependency libraries) are now being shipped as part of the Dawarich Docker image.
+
+### Fixed
+
+- Visit suggesting job does nothing if user has no tracked points.
+- `BulkStatsCalculationJob` now being called without arguments in the data migration.
+
+### Added
+
+- A proper production Dockerfile, docker-compose and env files.
+
+# 0.21.6 - 2025-01-07
+
+### Changed
+
+- Disabled visit suggesting job after import.
+- Improved performance of the `User#years_tracked` method.
+
+### Fixed
+
+- Inconsistent password for the `dawarich_db` service in `docker-compose_mounted_volumes.yml`. #605
+- Points are now being rendered with higher z-index than polylines. #577
+- Run cache cleaning and preheating jobs only on server start. #594
+
+# 0.21.5 - 2025-01-07
+
+You may now use Geoapify API for reverse geocoding. To obtain an API key, sign up at https://myprojects.geoapify.com/ and create a new project. Make sure you have read and understood the [pricing policy](https://www.geoapify.com/pricing) and [Terms and Conditions](https://www.geoapify.com/terms-and-conditions/).
+
+### Added
+
+- Geoapify API support for reverse geocoding. Provide `GEOAPIFY_API_KEY` env var to use it.
+
+### Removed
+
+- Photon ENV vars from the `.env.development` and docker-compose.yml files.
+- `APPLICATION_HOST` env var.
+- `REVERSE_GEOCODING_ENABLED` env var.
+
+# 0.21.4 - 2025-01-05
+
+### Fixed
+
+- Fixed a bug where Photon API for patreon supporters was not being used for reverse geocoding.
+
+# 0.21.3 - 2025-01-04
+
+### Added
+
+- A notification about Photon API being under heavy load.
+
+### Removed
+
+- The notification about telemetry being enabled.
+
+### Reverted
+
+- ~~Imported points will now be reverse geocoded only after import is finished.~~
+
 # 0.21.2 - 2024-12-25
+
+### Added
+
+- Logging for Immich responses.
+- Watcher now supports all data formats that can be imported via web interface.
 
 ### Changed
 

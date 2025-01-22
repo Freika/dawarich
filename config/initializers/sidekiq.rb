@@ -2,6 +2,7 @@
 
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'] }
+  config.logger = Sidekiq::Logger.new($stdout)
 
   if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
     require 'prometheus_exporter/instrumentation'
@@ -27,4 +28,4 @@ Sidekiq.configure_client do |config|
   config.redis = { url: ENV['REDIS_URL'] }
 end
 
-Sidekiq::Queue['reverse_geocoding'].limit = 1 if Sidekiq.server? && PHOTON_API_HOST == 'photon.komoot.io'
+Sidekiq::Queue['reverse_geocoding'].limit = 1 if Sidekiq.server? && DawarichSettings.photon_uses_komoot_io?

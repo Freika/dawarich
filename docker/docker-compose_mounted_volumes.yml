@@ -3,10 +3,6 @@ networks:
 
 
 volumes:
-  dawarich_gem_cache_app:
-    name: dawarich_gem_cache_app
-  dawarich_gem_cache_sidekiq:
-    name: dawarich_gem_cache_sidekiq
   dawarich_public:
     name: dawarich_public
   dawarich_keydb:
@@ -41,18 +37,14 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
     stdin_open: true
     tty: true
     entrypoint: dev-entrypoint.sh
     command: [ 'bin/dev' ]
     volumes:
-      - dawarich_gem_cache_app:/usr/local/bundle/gems
       - dawarich_public:/var/app/dawarich_public
       - watched:/var/app/tmp/imports/watched
     healthcheck:
@@ -96,19 +88,15 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
     stdin_open: true
     tty: true
     entrypoint: dev-entrypoint.sh
     command: [ 'sidekiq' ]
     volumes:
-      - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
       - dawarich_public:/var/app/dawarich_public
       - watched:/var/app/tmp/imports/watched
     logging:
@@ -158,7 +146,7 @@ services:
       - dawarich
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: eJH3YZsVc2s6byhFwpEny
+      POSTGRES_PASSWORD: password
       POSTGRES_DATABASE: dawarich
     volumes:
       - ./db:/var/lib/postgresql/data

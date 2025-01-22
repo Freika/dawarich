@@ -7,11 +7,14 @@ assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**OS & Hardware**
+Provide your software and hardware specs
 
 **Version**
-Include version of Dawarich you're experiencing problem on.
+Provide the version of Dawarich you're experiencing the problem on.
+
+**Describe the bug**
+A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:

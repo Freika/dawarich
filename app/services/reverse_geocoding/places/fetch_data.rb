@@ -12,8 +12,8 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def call
-    if ::PHOTON_API_HOST.blank?
-      Rails.logger.warn('PHOTON_API_HOST is not set')
+    unless DawarichSettings.reverse_geocoding_enabled?
+      Rails.logger.warn('Reverse geocoding is not enabled')
       return
     end
 

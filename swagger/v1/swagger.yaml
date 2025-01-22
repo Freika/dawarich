@@ -696,6 +696,87 @@ paths:
                       type: string
                     visit_id:
                       type: string
+    post:
+      summary: Creates a batch of points
+      tags:
+      - Batches
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Batch of points being processed
+        '401':
+          description: Unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                geometry:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    coordinates:
+                      type: array
+                      items:
+                        type: number
+                properties:
+                  type: object
+                  properties:
+                    timestamp:
+                      type: string
+                    horizontal_accuracy:
+                      type: number
+                    vertical_accuracy:
+                      type: number
+                    altitude:
+                      type: number
+                    speed:
+                      type: number
+                    speed_accuracy:
+                      type: number
+                    course:
+                      type: number
+                    course_accuracy:
+                      type: number
+                    track_id:
+                      type: string
+                    device_id:
+                      type: string
+              required:
+              - geometry
+              - properties
+            examples:
+              '0':
+                summary: Creates a batch of points
+                value:
+                  locations:
+                  - type: Feature
+                    geometry:
+                      type: Point
+                      coordinates:
+                      - -122.40530871
+                      - 37.74430413
+                    properties:
+                      timestamp: '2025-01-17T21:03:01Z'
+                      horizontal_accuracy: 5
+                      vertical_accuracy: -1
+                      altitude: 0
+                      speed: 92.088
+                      speed_accuracy: 0
+                      course: 27.07
+                      course_accuracy: 0
+                      track_id: 799F32F5-89BB-45FB-A639-098B1B95B09F
+                      device_id: 8D5D4197-245B-4619-A88B-2049100ADE46
   "/api/v1/points/{id}":
     delete:
       summary: Deletes a point
@@ -892,6 +973,23 @@ paths:
                 - totalCountriesVisited
                 - totalCitiesVisited
                 - yearlyStats
+  "/api/v1/users/me":
+    get:
+      summary: Returns the current user
+      tags:
+      - Users
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: 'Bearer token in the format: Bearer {api_key}'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: user found
 servers:
 - url: http://{defaultHost}
   variables:

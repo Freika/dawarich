@@ -16,7 +16,7 @@
       <div class="stat-title">Geopoints tracked</div>
     </div>
 
-    <% if REVERSE_GEOCODING_ENABLED %>
+    <% if DawarichSettings.reverse_geocoding_enabled? %>
       <%= render 'stats/reverse_geocoding_stats' %>
     <% end %>
   </div>
@@ -39,7 +39,7 @@
               <%= number_with_delimiter year_distance_stat(year, current_user) %><%= DISTANCE_UNIT %>
             <% end %>
           </p>
-          <% if REVERSE_GEOCODING_ENABLED %>
+          <% if DawarichSettings.reverse_geocoding_enabled? %>
             <div class="card-actions justify-end">
               <%= countries_and_cities_stat_for_year(year, stats) %>
             </div>

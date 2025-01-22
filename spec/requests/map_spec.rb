@@ -11,7 +11,11 @@ RSpec.describe 'Map', type: :request do
   describe 'GET /index' do
     context 'when user signed in' do
       let(:user) { create(:user) }
-      let(:points) { create_list(:point, 10, user:, timestamp: 1.day.ago) }
+      let(:points) do
+        (1..10).map do |i|
+          create(:point, user:, timestamp: 1.day.ago + i.minutes)
+        end
+      end
 
       before { sign_in user }
 

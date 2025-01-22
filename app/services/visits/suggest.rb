@@ -20,7 +20,7 @@ class Visits::Suggest
 
     create_visits_notification(user)
 
-    return nil unless reverse_geocoding_enabled?
+    return nil unless DawarichSettings.reverse_geocoding_enabled?
 
     reverse_geocode(visits)
   end
@@ -66,10 +66,6 @@ class Visits::Suggest
 
   def reverse_geocode(visits)
     visits.each(&:async_reverse_geocode)
-  end
-
-  def reverse_geocoding_enabled?
-    ::REVERSE_GEOCODING_ENABLED && ::PHOTON_API_HOST.present?
   end
 
   def create_visits_notification(user)

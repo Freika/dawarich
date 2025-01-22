@@ -8,7 +8,6 @@ services:
     container_name: dawarich_dev
     volumes:
       - "${PWD}:/var/app:cached"
-      - dawarich_gem_cache_app:/usr/local/bundle/gems_app
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
     networks:
@@ -26,19 +25,16 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
       ENABLE_TELEMETRY: false # More on telemetry: https://dawarich.app/docs/tutorials/telemetry
   dawarich_redis:
-    image: redis:7.0-alpine
+    image: redis:7.4-alpine
     container_name: dawarich_redis
     command: redis-server
     networks:
@@ -53,7 +49,7 @@ services:
       start_period: 30s
       timeout: 10s
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgres:17-alpine
     container_name: dawarich_db
     volumes:
       - dawarich_db_data:/var/lib/postgresql/data
@@ -72,8 +68,6 @@ services:
       POSTGRES_PASSWORD: password
 volumes:
   dawarich_db_data:
-  dawarich_gem_cache_app:
-  dawarich_gem_cache_sidekiq:
   dawarich_shared:
   dawarich_public:
   dawarich_watched:

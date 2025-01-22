@@ -41,7 +41,6 @@ services:
     image: freikin/dawarich:latest
     container_name: dawarich_app
     volumes:
-      - dawarich_gem_cache_app:/usr/local/bundle/gems
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
     networks:
@@ -51,8 +50,8 @@ services:
       # - 9394:9394 # Prometheus exporter, uncomment if needed
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
-    command: ['bin/dev']
+    entrypoint: web-entrypoint.sh
+    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: on-failure
     environment:
       RAILS_ENV: development
@@ -62,13 +61,10 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
@@ -95,19 +91,18 @@ services:
       resources:
         limits:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
-          memory: '2G'    # Limit memory usage to 2GB
+          memory: '4G'    # Limit memory usage to 4GB
   dawarich_sidekiq:
     image: freikin/dawarich:latest
     container_name: dawarich_sidekiq
     volumes:
-      - dawarich_gem_cache_sidekiq:/usr/local/bundle/gems
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
     networks:
       - dawarich
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
+    entrypoint: sidekiq-entrypoint.sh
     command: ['sidekiq']
     restart: on-failure
     environment:
@@ -117,13 +112,10 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      APPLICATION_HOST: localhost
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
       DISTANCE_UNIT: km
-      PHOTON_API_HOST: photon.komoot.io
-      PHOTON_API_USE_HTTPS: true
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: dawarich_app
       PROMETHEUS_EXPORTER_PORT: 9394
@@ -153,12 +145,10 @@ services:
       resources:
         limits:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
-          memory: '2G'    # Limit memory usage to 2GB
+          memory: '4G'    # Limit memory usage to 4GB
 
 volumes:
   dawarich_db_data:
-  dawarich_gem_cache_app:
-  dawarich_gem_cache_sidekiq:
   dawarich_shared:
   dawarich_public:
   dawarich_watched:
