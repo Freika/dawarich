@@ -30,11 +30,10 @@ class Tasks::Imports::GoogleRecords
 
   def process_file_in_batches(import_id)
     batch = []
+    index = 0
 
     Oj.load_file(@file_path, mode: :compat) do |record|
       next unless record.is_a?(Hash) && record['locations']
-
-      index = 0
 
       record['locations'].each do |location|
         batch << location
@@ -47,7 +46,7 @@ class Tasks::Imports::GoogleRecords
       end
     end
 
-    Import::GoogleTakeoutJob.perform_later(import_id, Oj.dump(batch)) if batch.any?
+    Import::GoogleTakeoutJob.perform_later(import_id, Oj.dump(batch), index) if batch.any?
   end
 
   def log_start
