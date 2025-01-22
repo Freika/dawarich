@@ -74,5 +74,15 @@ RSpec.describe Gpx::TrackParser do
         expect(Point.first.velocity).to eq('2.8')
       end
     end
+
+    context 'when file exported from Arc' do
+      context 'when file has empty tracks' do
+        let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/arc_example.gpx') }
+
+        it 'creates points' do
+          expect { parser }.to change { Point.count }.by(6)
+        end
+      end
+    end
   end
 end
