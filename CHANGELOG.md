@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Fix authentication to `GET /api/v1/countries/visited_cities` with header `Authorization: Bearer YOUR_API_KEY` instead of `api_key` query param. #679
-
+- Fix a bug where a gpx file with empty tracks was not being imported. #646
 
 # 0.23.3 - 2025-01-21
 

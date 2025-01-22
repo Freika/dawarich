@@ -15,7 +15,7 @@ class Gpx::TrackParser
     tracks = json['gpx']['trk']
     tracks_arr = tracks.is_a?(Array) ? tracks : [tracks]
 
-    tracks_arr.map { parse_track(_1) }.flatten.each.with_index(1) do |point, index|
+    tracks_arr.map { parse_track(_1) }.flatten.compact.each.with_index(1) do |point, index|
       create_point(point, index)
     end
   end
@@ -23,6 +23,8 @@ class Gpx::TrackParser
   private
 
   def parse_track(track)
+    return if track['trkseg'].blank?
+
     segments = track['trkseg']
     segments_array = segments.is_a?(Array) ? segments : [segments]
 
