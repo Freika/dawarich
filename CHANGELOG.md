@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.23.6 - 2025-01-23
+
+### Added
+
+- Enabled Postgis extension for PostgreSQL.
+
 # 0.23.5 - 2025-01-22
 
 ### Added
