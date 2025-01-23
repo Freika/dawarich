@@ -224,6 +224,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_20_154555) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false
+
   create_table "visits", force: :cascade do |t|
     t.bigint "area_id"
     t.bigint "user_id", null: false

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.23.5 - 2025-01-22
+
+### Added
+
+- A test for building rc Docker image.
+
+### Fixed
+
+- Fix authentication to `GET /api/v1/countries/visited_cities` with header `Authorization: Bearer YOUR_API_KEY` instead of `api_key` query param. #679
+- Fix a bug where a gpx file with empty tracks was not being imported. #646
+- Fix a bug where rc version was being checked as a stable release. #711
+
 # 0.23.3 - 2025-01-21
 
 ### Changed

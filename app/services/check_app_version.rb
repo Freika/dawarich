@@ -17,7 +17,10 @@ class CheckAppVersion
 
   def latest_version
     Rails.cache.fetch(VERSION_CACHE_KEY, expires_in: 6.hours) do
-      JSON.parse(Net::HTTP.get(URI.parse(@repo_url)))[0]['name']
+      versions = JSON.parse(Net::HTTP.get(URI.parse(@repo_url)))
+      # Find first version that contains only numbers and dots
+      release_version = versions.find { |v| v['name'].match?(/^\d+\.\d+\.\d+$/) }
+      release_version ? release_version['name'] : APP_VERSION
     end
   end
 end
