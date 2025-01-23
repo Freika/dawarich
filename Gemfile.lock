@@ -1,4 +1,13 @@
 GIT
+  remote: https://github.com/StoneGod/activerecord-postgis-adapter.git
+  revision: 147fd43191ef703e2a1b3654f31d9139201a87e8
+  branch: rails-8
+  specs:
+    activerecord-postgis-adapter (10.0.1)
+      activerecord (~> 8.0.0)
+      rgeo-activerecord (~> 8.0.0)
+
+GIT
   remote: https://github.com/alexreisner/geocoder.git
   revision: 04ee2936a30b30a23ded5231d7faf6cf6c27c099
   ref: 04ee293
@@ -314,6 +323,10 @@ GEM
       actionpack (>= 5.2)
       railties (>= 5.2)
     rexml (3.3.8)
+    rgeo (3.0.1)
+    rgeo-activerecord (8.0.0)
+      activerecord (>= 7.0)
+      rgeo (>= 3.0)
     rspec-core (3.13.2)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.3)
@@ -443,6 +456,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  activerecord-postgis-adapter!
   bootsnap
   chartkick
   data_migrate
