@@ -43,7 +43,6 @@ export default class extends Controller {
 
     // Add event listener for coordinates updates
     this.element.addEventListener('coordinates-updated', (event) => {
-      console.log("Coordinates updated:", event.detail.coordinates)
       this.updateMapWithCoordinates(event.detail.coordinates)
     })
   }
@@ -84,6 +83,15 @@ export default class extends Controller {
     this.map.on('overlayadd', (e) => {
       if (e.name !== 'Photos') return;
 
+      const startedAt = this.element.dataset.started_at;
+      const endedAt = this.element.dataset.ended_at;
+
+      console.log('Dataset values:', {
+        startedAt,
+        endedAt,
+        path: this.element.dataset.path
+      });
+
       if ((!this.userSettings.immich_url || !this.userSettings.immich_api_key) && (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)) {
         showFlashMessage(
           'error',
@@ -92,13 +100,26 @@ export default class extends Controller {
         return;
       }
 
-      if (!this.coordinates?.length) return;
+      // Try to get dates from coordinates first, then fall back to path data
+      let startDate, endDate;
 
-      const firstCoord = this.coordinates[0];
-      const lastCoord = this.coordinates[this.coordinates.length - 1];
-
-      const startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
-      const endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
+      if (this.coordinates?.length) {
+        const firstCoord = this.coordinates[0];
+        const lastCoord = this.coordinates[this.coordinates.length - 1];
+        startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
+        endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
+      } else if (startedAt && endedAt) {
+        // Parse the dates and format them correctly
+        startDate = new Date(startedAt).toISOString().split('T')[0];
+        endDate = new Date(endedAt).toISOString().split('T')[0];
+      } else {
+        console.log('No date range available for photos');
+        showFlashMessage(
+          'error',
+          'No date range available for photos. Please ensure the trip has start and end dates.'
+        );
+        return;
+      }
 
       fetchAndDisplayPhotos({
         map: this.map,
@@ -174,6 +195,7 @@ export default class extends Controller {
 
       const popupContent = createPopupContent(coord, this.timezone, this.distanceUnit)
       marker.bindPopup(popupContent)
+      marker.addTo(this.polylinesLayer)
     })
   }
 
