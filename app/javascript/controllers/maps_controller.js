@@ -76,14 +76,8 @@ export default class extends Controller {
       },
       onAdd: (map) => {
         const div = L.DomUtil.create('div', 'leaflet-control-stats');
-        const distance = this.element.dataset.distance || '0';
-        const pointsNumber = this.element.dataset.points_number || '0';
-        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
-        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
-        div.style.backgroundColor = 'white';
-        div.style.padding = '0 5px';
-        div.style.marginRight = '5px';
-        div.style.display = 'inline-block';
+        this.statsDiv = div; // Store reference to the div
+        this.updateStats(); // Initial update
         return div;
       }
     });
@@ -102,6 +96,7 @@ export default class extends Controller {
     this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
 
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
+    this.updateStats();
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
 
     // Create a proper Leaflet layer for fog
@@ -295,6 +290,7 @@ export default class extends Controller {
       this.userSettings,
       this.distanceUnit
     );
+    this.updateStats();
 
     // Pan map to new location
     this.map.setView([newPoint[0], newPoint[1]], 16);
@@ -475,6 +471,7 @@ export default class extends Controller {
         this.userSettings,
         this.distanceUnit
       );
+      this.updateStats();
       if (wasPolyLayerVisible) {
         // Add new polylines layer to map and to layer control
         this.polylinesLayer.addTo(this.map);
@@ -802,6 +799,7 @@ export default class extends Controller {
             this.polylinesLayer,
             newSettings.speed_colored_routes
           );
+          this.updateStats();
         }
       }
 
@@ -809,6 +807,7 @@ export default class extends Controller {
         const newOpacity = parseFloat(newSettings.route_opacity) || 0.6;
         if (this.polylinesLayer) {
           updatePolylinesOpacity(this.polylinesLayer, newOpacity);
+          this.updateStats();
         }
       }
 
@@ -1290,6 +1289,21 @@ export default class extends Controller {
       return `${days}d ${hours}h`;
     }
     return `${hours}h`;
+  }
+
+  updateStats() {
+    if (!this.statsDiv) return;
+
+    const distance = this.element.dataset.distance || '0';
+    const pointsNumber = this.element.dataset.points_number || '0';
+    const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
+    const polylinesCount = this.polylinesLayer ? this.polylinesLayer.getLayers().length : 0;
+
+    this.statsDiv.innerHTML = `${distance} ${unit} | ${pointsNumber} points | ${polylinesCount} routes`;
+    this.statsDiv.style.backgroundColor = 'white';
+    this.statsDiv.style.padding = '0 5px';
+    this.statsDiv.style.marginRight = '5px';
+    this.statsDiv.style.display = 'inline-block';
   }
 }
 

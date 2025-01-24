@@ -2,7 +2,7 @@
 
 class Tracks::BuildPath
   def initialize(coordinates)
-    @coordinates = coordinates
+    @coordinates = coordinates # [[lat, lon], [lat, lon], ...]
   end
 
   def call

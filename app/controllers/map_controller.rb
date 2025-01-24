@@ -6,6 +6,8 @@ class MapController < ApplicationController
   def index
     @points = points.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
 
+    @track_ids = track_ids
+
     @coordinates =
       @points.pluck(:latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id, :country)
              .map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
@@ -52,5 +54,17 @@ class MapController < ApplicationController
 
   def points_from_user
     current_user.tracked_points.without_raw_data.order(timestamp: :asc)
+  end
+
+  def track_ids
+    started_at = params[:start_at].present? ? Time.zone.parse(params[:start_at]) : Time.zone.today.beginning_of_day
+    ended_at = params[:end_at].present? ? Time.zone.parse(params[:end_at]) : Time.zone.today.end_of_day
+
+    current_user
+      .tracks
+      .where(started_at: started_at..ended_at)
+      .or(current_user.tracks.where(ended_at: started_at..ended_at))
+      .order(started_at: :asc)
+      .pluck(:id)
   end
 end
