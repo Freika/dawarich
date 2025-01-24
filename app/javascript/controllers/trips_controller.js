@@ -27,9 +27,9 @@ export default class extends Controller {
     }
 
     console.log("Trips controller connected")
-    this.coordinates = JSON.parse(this.containerTarget.dataset.coordinates)
+
     this.apiKey = this.containerTarget.dataset.api_key
-    this.userSettings = JSON.parse(this.containerTarget.dataset.user_settings)
+    this.userSettings = JSON.parse(this.containerTarget.dataset.user_settings || '{}')
     this.timezone = this.containerTarget.dataset.timezone
     this.distanceUnit = this.containerTarget.dataset.distance_unit
 
@@ -46,16 +46,12 @@ export default class extends Controller {
   // Move map initialization to separate method
   initializeMap() {
     // Initialize layer groups
-    this.markersLayer = L.layerGroup()
     this.polylinesLayer = L.layerGroup()
     this.photoMarkers = L.layerGroup()
 
     // Set default center and zoom for world view
-    const hasValidCoordinates = this.coordinates && Array.isArray(this.coordinates) && this.coordinates.length > 0
-    const center = hasValidCoordinates
-      ? [this.coordinates[0][0], this.coordinates[0][1]]
-      : [20, 0]  // Roughly centers the world map
-    const zoom = hasValidCoordinates ? 14 : 2
+    const center = [20, 0]  // Roughly centers the world map
+    const zoom = 2
 
     // Initialize map
     this.map = L.map(this.containerTarget).setView(center, zoom)
@@ -72,7 +68,6 @@ export default class extends Controller {
     }).addTo(this.map)
 
     const overlayMaps = {
-      "Points": this.markersLayer,
       "Route": this.polylinesLayer,
       "Photos": this.photoMarkers
     }
@@ -116,6 +111,27 @@ export default class extends Controller {
       this.addPolyline()
       this.fitMapToBounds()
     }
+
+    // After map initialization, add the path if it exists
+    if (this.containerTarget.dataset.path) {
+      const pathData = this.containerTarget.dataset.path.replace(/^"|"$/g, ''); // Remove surrounding quotes
+      const coordinates = this.parseLineString(pathData);
+
+      const polyline = L.polyline(coordinates, {
+        color: 'blue',
+        opacity: 0.8,
+        weight: 3,
+        zIndexOffset: 400
+      });
+
+      polyline.addTo(this.polylinesLayer);
+      this.polylinesLayer.addTo(this.map);
+
+      // Fit the map to the polyline bounds
+      if (coordinates.length > 0) {
+        this.map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+      }
+    }
   }
 
   disconnect() {
@@ -153,9 +169,6 @@ export default class extends Controller {
 
       const popupContent = createPopupContent(coord, this.timezone, this.distanceUnit)
       marker.bindPopup(popupContent)
-
-      // Add to markers layer instead of directly to map
-      marker.addTo(this.markersLayer)
     })
   }
 
@@ -191,7 +204,6 @@ export default class extends Controller {
     ]).sort((a, b) => a[4] - b[4]);
 
     // Clear existing layers
-    this.markersLayer.clearLayers()
     this.polylinesLayer.clearLayers()
     this.photoMarkers.clearLayers()
 
@@ -201,5 +213,18 @@ export default class extends Controller {
       this.addPolyline()
       this.fitMapToBounds()
     }
+  }
+
+  // Add this method to parse the LineString format
+  parseLineString(lineString) {
+    // Remove LINESTRING and parentheses, then split into coordinate pairs
+    const coordsString = lineString.replace('LINESTRING (', '').replace(')', '');
+    const coords = coordsString.split(', ');
+
+    // Convert each coordinate pair to [lat, lng] format
+    return coords.map(coord => {
+      const [lng, lat] = coord.split(' ').map(Number);
+      return [lat, lng]; // Swap to lat, lng for Leaflet
+    });
   }
 }
