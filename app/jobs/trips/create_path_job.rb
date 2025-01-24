@@ -5,6 +5,8 @@ class Trips::CreatePathJob < ApplicationJob
 
   def perform(trip_id)
     trip = Trip.find(trip_id)
-    trip.create_path!
+    trip.path = Tracks::BuildPath.new(trip.points.pluck(:latitude, :longitude)).call
+
+    trip.save!
   end
 end

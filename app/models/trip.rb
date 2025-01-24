@@ -7,13 +7,11 @@ class Trip < ApplicationRecord
 
   validates :name, :started_at, :ended_at, presence: true
 
-  before_save :create_path!
+  before_save :set_path_and_distance
 
-  def create_path!
-    trip_path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
-
-    self.distance = calculate_distance
-    self.path = trip_path
+  def set_path_and_distance
+    calculate_path
+    calculate_distance
   end
 
   def points
@@ -55,5 +53,9 @@ class Trip < ApplicationRecord
     end
 
     self.distance = distance.round
+  end
+
+  def calculate_path
+    self.path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
   end
 end
