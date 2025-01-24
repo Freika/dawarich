@@ -11,9 +11,9 @@ class Trip < ApplicationRecord
 
   def create_path!
     trip_path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
-    distance = calculate_distance
 
-    update_columns(path: trip_path, distance: distance) # Avoids recursion with `after_save`
+    self.distance = calculate_distance
+    self.path = trip_path
   end
 
   def points

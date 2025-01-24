@@ -2,6 +2,9 @@
 
 class CreatePathsForTrips < ActiveRecord::Migration[8.0]
   def up
+    Trip.find_each do |trip|
+      Trips::CreatePathJob.perform_later(trip.id)
+    end
   end
 
   def down
