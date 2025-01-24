@@ -218,8 +218,8 @@ export default class extends Controller {
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        const startDate = urlParams.get('start_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
-        const endDate = urlParams.get('end_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        const startDate = urlParams.get('start_at') || new Date().toISOString();
+        const endDate = urlParams.get('end_at')|| new Date().toISOString();
         await fetchAndDisplayPhotos({
           map: this.map,
           photoMarkers: this.photoMarkers,

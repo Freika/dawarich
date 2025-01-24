@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trips are now store their paths in the database independently of the points.
 - Trips are now being rendered on the map using their precalculated paths instead of list of coordinates.
 
+### Changed
+
+- Requesting photos on the Map page now uses the start and end dates from the URL params. #589
+
 # 0.23.5 - 2025-01-22
 
 ### Added
