@@ -9,6 +9,12 @@ class Trip < ApplicationRecord
 
   before_save :calculate_distance
 
+  def create_path!
+    self.path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
+
+    save!
+  end
+
   def points
     user.tracked_points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
   end

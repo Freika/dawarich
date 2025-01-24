@@ -1,17 +1,21 @@
 import { Controller } from "@hotwired/stimulus"
 import L from "leaflet"
-import { osmMapLayer } from "../maps/layers"
+import {
+  osmMapLayer,
+  osmHotMapLayer,
+  OPNVMapLayer,
+  openTopoMapLayer,
+  cyclOsmMapLayer,
+  esriWorldStreetMapLayer,
+  esriWorldTopoMapLayer,
+  esriWorldImageryMapLayer,
+  esriWorldGrayCanvasMapLayer
+} from "../maps/layers"
 import { createPopupContent } from "../maps/popups"
-import { osmHotMapLayer } from "../maps/layers"
-import { OPNVMapLayer } from "../maps/layers"
-import { openTopoMapLayer } from "../maps/layers"
-import { cyclOsmMapLayer } from "../maps/layers"
-import { esriWorldStreetMapLayer } from "../maps/layers"
-import { esriWorldTopoMapLayer } from "../maps/layers"
-import { esriWorldImageryMapLayer } from "../maps/layers"
-import { esriWorldGrayCanvasMapLayer } from "../maps/layers"
-import { fetchAndDisplayPhotos } from '../maps/helpers';
-import { showFlashMessage } from "../maps/helpers";
+import {
+  fetchAndDisplayPhotos,
+  showFlashMessage
+} from '../maps/helpers';
 
 export default class extends Controller {
   static targets = ["container", "startedAt", "endedAt"]

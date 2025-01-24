@@ -17,5 +17,13 @@ class DawarichSettings
     def geoapify_enabled?
       @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
     end
+
+    def meters_between_tracks
+      @meters_between_tracks ||= 300
+    end
+
+    def minutes_between_tracks
+      @minutes_between_tracks ||= 20
+    end
   end
 end

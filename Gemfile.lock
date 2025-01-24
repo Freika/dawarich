@@ -484,6 +484,7 @@ DEPENDENCIES
   pundit
   rails (~> 8.0)
   redis
+  rgeo
   rspec-rails
   rswag-api
   rswag-specs
