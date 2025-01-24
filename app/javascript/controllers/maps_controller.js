@@ -126,7 +126,6 @@ export default class extends Controller {
       Areas: this.areasLayer,
       Photos: this.photoMarkers
     };
-
     // Initialize layer control first
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
@@ -485,13 +484,13 @@ export default class extends Controller {
       if (this.layerControl) {
         this.map.removeControl(this.layerControl);
         const controlsLayer = {
-          Points: this.markersLayer,
-          Routes: this.polylinesLayer,
-          Heatmap: this.heatmapLayer,
-          "Fog of War": this.fogOverlay,
-          "Scratch map": this.scratchLayer,
-          Areas: this.areasLayer,
-          Photos: this.photoMarkers
+          Points: this.markersLayer || L.layerGroup(),
+          Routes: this.polylinesLayer || L.layerGroup(),
+          Heatmap: this.heatmapLayer || L.heatLayer([]),
+          "Fog of War": new this.fogOverlay(),
+          "Scratch map": this.scratchLayer || L.layerGroup(),
+          Areas: this.areasLayer || L.layerGroup(),
+          Photos: this.photoMarkers || L.layerGroup()
         };
         this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
       }
