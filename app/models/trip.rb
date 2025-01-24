@@ -7,12 +7,13 @@ class Trip < ApplicationRecord
 
   validates :name, :started_at, :ended_at, presence: true
 
-  before_save :calculate_distance
+  before_save :create_path!
 
   def create_path!
-    self.path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
+    trip_path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
+    distance = calculate_distance
 
-    save!
+    update_columns(path: trip_path, distance: distance) # Avoids recursion with `after_save`
   end
 
   def points

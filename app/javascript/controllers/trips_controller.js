@@ -1,3 +1,8 @@
+// This controller is being used on:
+// - trips/show
+// - trips/edit
+// - trips/new
+
 import { Controller } from "@hotwired/stimulus"
 import L from "leaflet"
 import {
@@ -192,7 +197,7 @@ export default class extends Controller {
     this.map.fitBounds(bounds, { padding: [50, 50] })
   }
 
-  // Add this new method to update coordinates and refresh the map
+  // Update coordinates and refresh the map
   updateMapWithCoordinates(newCoordinates) {
     // Transform the coordinates to match the expected format
     this.coordinates = newCoordinates.map(point => [
