@@ -10,7 +10,8 @@ import {
   updatePolylinesOpacity,
   updatePolylinesColors,
   calculateSpeed,
-  getSpeedColor
+  getSpeedColor,
+  createTrackPolyline
 } from "../maps/polylines";
 
 import { fetchAndDrawAreas } from "../maps/areas";
@@ -56,6 +57,7 @@ export default class extends Controller {
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
     this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
+    this.fetchAndRenderTracks();
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -235,6 +237,11 @@ export default class extends Controller {
     if (this.liveMapEnabled) {
       this.setupSubscription();
     }
+
+    // After map is initialized, fetch and render tracks
+    this.map.whenReady(() => {
+      this.fetchAndRenderTracks();
+    });
   }
 
   disconnect() {
@@ -1304,6 +1311,99 @@ export default class extends Controller {
     this.statsDiv.style.padding = '0 5px';
     this.statsDiv.style.marginRight = '5px';
     this.statsDiv.style.display = 'inline-block';
+  }
+
+  async fetchAndRenderTracks() {
+    const trackIdsString = this.element.dataset.track_ids;
+    console.log('Track IDs string:', trackIdsString);
+    if (!trackIdsString || !this.map) {
+      console.log('Early return - missing data:', { trackIdsString: !!trackIdsString, map: !!this.map });
+      return;
+    }
+
+    const trackIds = trackIdsString.replace(/[\[\]]/g, '').split(',').map(id => id.trim());
+    console.log(`Total tracks to fetch: ${trackIds.length}`);
+
+    try {
+      // Create the layer group and store it as a class property
+      if (!this.tracksLayer) {
+        console.log('Creating new tracks layer');
+        this.tracksLayer = L.layerGroup();
+        if (this.map) {
+          console.log('Adding tracks layer to map');
+          this.tracksLayer.addTo(this.map);
+
+          if (this.layerControl) {
+            this.layerControl.addOverlay(this.tracksLayer, 'Tracks');
+          }
+        }
+      }
+
+      // Create shared renderer
+      const renderer = L.canvas({ padding: 0.5, pane: 'overlayPane' });
+
+      // Process tracks in smaller chunks to avoid URL length limits
+      const CHUNK_SIZE = 50; // Number of track IDs to include in each request
+      const BATCH_SIZE = 10; // Number of tracks to process at once from the response
+
+      for (let i = 0; i < trackIds.length; i += CHUNK_SIZE) {
+        const chunk = trackIds.slice(i, i + CHUNK_SIZE);
+        console.log(`Fetching chunk ${Math.floor(i/CHUNK_SIZE) + 1}/${Math.ceil(trackIds.length/CHUNK_SIZE)}`);
+
+        try {
+          const response = await fetch(
+            `/api/v1/tracks?ids=${chunk.join(',')}&per_page=${CHUNK_SIZE}&api_key=${this.apiKey}`,
+            {
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              credentials: 'same-origin'
+            }
+          );
+
+          if (!response.ok) {
+            console.warn(`Failed to fetch chunk: ${response.status}`);
+            continue;
+          }
+
+          const tracks = await response.json();
+          console.log(`Rendering ${tracks.length} tracks from chunk`);
+
+          // Process tracks in smaller batches
+          for (let j = 0; j < tracks.length; j += BATCH_SIZE) {
+            const batch = tracks.slice(j, j + BATCH_SIZE);
+
+            batch.forEach(track => {
+              try {
+                const trackLayer = createTrackPolyline(track, this.map, this.userSettings, renderer);
+                if (trackLayer && this.tracksLayer) {
+                  this.tracksLayer.addLayer(trackLayer);
+                }
+              } catch (error) {
+                console.warn(`Failed to render track ${track.id}:`, error);
+              }
+            });
+
+            // Small delay between batches to allow browser to breathe
+            if (j + BATCH_SIZE < tracks.length) {
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
+          }
+
+        } catch (error) {
+          console.error(`Error processing chunk:`, error);
+        }
+
+        // Small delay between chunks
+        if (i + CHUNK_SIZE < trackIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in track fetching/rendering:', error);
+    }
   }
 }
 

@@ -527,3 +527,134 @@ export function updatePolylinesOpacity(polylinesLayer, opacity) {
     segment.setStyle({ opacity: opacity });
   });
 }
+
+// New function to create a single track polyline
+export function createTrackPolyline(track, map, userSettings, renderer) {
+  if (!track.path) return null;
+
+  const coordinates = parseLineString(track.path);
+  if (coordinates.length < 2) return null;
+
+  // Create a feature group for this track
+  const trackGroup = L.featureGroup();
+
+  // Create a polyline for the track
+  const trackLine = L.polyline(coordinates, {
+    renderer: renderer,
+    color: userSettings.speed_colored_routes ?
+      getSpeedColor(calculateAverageSpeed(track), true) :
+      '#0000ff',
+    weight: 3,
+    opacity: userSettings.route_opacity || 0.6,
+    interactive: true
+  });
+
+  // Add the track to the feature group
+  trackGroup.addLayer(trackLine);
+
+  // Add highlight functionality
+  addHighlightOnHover(
+    trackGroup,
+    map,
+    coordinates.map(coord => [
+      coord[0],
+      coord[1],
+      null,
+      null,
+      new Date(track.started_at).getTime() / 1000
+    ]),
+    userSettings,
+    'km'
+  );
+
+  // Add track metadata
+  trackGroup.trackData = {
+    id: track.id,
+    startedAt: track.started_at,
+    endedAt: track.ended_at,
+    speed: calculateAverageSpeed(track)
+  };
+
+  return trackGroup;
+}
+
+// Update the original function to use the new single track function
+export function createTrackPolylinesLayer(tracks, map, userSettings) {
+  const layerGroup = L.layerGroup();
+  const renderer = L.canvas({ padding: 0.5, pane: 'overlayPane' });
+
+  tracks.forEach(track => {
+    const trackLayer = createTrackPolyline(track, map, userSettings, renderer);
+    if (trackLayer) {
+      layerGroup.addLayer(trackLayer);
+    }
+  });
+
+  return layerGroup;
+}
+
+// Helper function to calculate average speed for a track
+function calculateAverageSpeed(track) {
+  const startTime = new Date(track.started_at).getTime() / 1000;
+  const endTime = new Date(track.ended_at).getTime() / 1000;
+  const coordinates = parseLineString(track.path);
+
+  let totalDistance = 0;
+  for (let i = 1; i < coordinates.length; i++) {
+    totalDistance += haversineDistance(
+      coordinates[i-1][0], coordinates[i-1][1],
+      coordinates[i][0], coordinates[i][1]
+    );
+  }
+
+  const duration = endTime - startTime;
+  if (duration <= 0) return 0;
+
+  const speedKmh = (totalDistance / duration) * 3600;
+  return Math.min(speedKmh, 150); // Cap at 150 km/h
+}
+
+// Helper function to format duration
+function formatDuration(startTime, endTime) {
+  const duration = (new Date(endTime) - new Date(startTime)) / 1000; // in seconds
+  const hours = Math.floor(duration / 3600);
+  const minutes = Math.floor((duration % 3600) / 60);
+  return `${hours}h ${minutes}m`;
+}
+
+// Helper function to parse LineString format
+function parseLineString(pathString) {
+  try {
+    // Handle null or undefined input
+    if (!pathString) {
+      console.warn('Invalid pathString:', pathString);
+      return [];
+    }
+
+    // Remove LINESTRING wrapper and split coordinates
+    const coordsString = pathString.replace(/LINESTRING\s*\((.*)\)/, '$1');
+    const coordPairs = coordsString.split(',').map(pair => pair.trim());
+
+    return coordPairs.map(pair => {
+      const [lon, lat] = pair.split(' ').map(str => parseFloat(str.trim()));
+      return [lat, lon]; // Leaflet uses [lat, lon] order
+    }).filter(coord => isValidLatLng(coord[0], coord[1]));
+  } catch (error) {
+    console.error('Error parsing LineString:', error, { pathString });
+    return [];
+  }
+}
+
+// Helper function to validate coordinates
+function isValidLatLng(lat, lng) {
+  return (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    !isNaN(lat) &&
+    !isNaN(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
