@@ -1,3 +1,7 @@
+// This controller is being used on:
+// - trips/new
+// - trips/edit
+
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {

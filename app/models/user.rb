@@ -13,7 +13,8 @@ class User < ApplicationRecord
   has_many :visits,         dependent: :destroy
   has_many :points, through: :imports
   has_many :places, through: :visits
-  has_many :trips, dependent: :destroy
+  has_many :trips,  dependent: :destroy
+  has_many :tracks, dependent: :destroy
 
   after_create :create_api_key
   before_save :strip_trailing_slashes

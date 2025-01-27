@@ -10,7 +10,8 @@ import {
   updatePolylinesOpacity,
   updatePolylinesColors,
   calculateSpeed,
-  getSpeedColor
+  getSpeedColor,
+  createTrackPolyline
 } from "../maps/polylines";
 
 import { fetchAndDrawAreas } from "../maps/areas";
@@ -56,6 +57,7 @@ export default class extends Controller {
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
     this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
+    this.fetchAndRenderTracks();
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -76,14 +78,8 @@ export default class extends Controller {
       },
       onAdd: (map) => {
         const div = L.DomUtil.create('div', 'leaflet-control-stats');
-        const distance = this.element.dataset.distance || '0';
-        const pointsNumber = this.element.dataset.points_number || '0';
-        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
-        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
-        div.style.backgroundColor = 'white';
-        div.style.padding = '0 5px';
-        div.style.marginRight = '5px';
-        div.style.display = 'inline-block';
+        this.statsDiv = div; // Store reference to the div
+        this.updateStats(); // Initial update
         return div;
       }
     });
@@ -102,6 +98,7 @@ export default class extends Controller {
     this.heatmapMarkers = this.markersArray.map((element) => [element._latlng.lat, element._latlng.lng, 0.2]);
 
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
+    this.updateStats();
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
 
     // Create a proper Leaflet layer for fog
@@ -218,8 +215,8 @@ export default class extends Controller {
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        const startDate = urlParams.get('start_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
-        const endDate = urlParams.get('end_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        const startDate = urlParams.get('start_at') || new Date().toISOString();
+        const endDate = urlParams.get('end_at')|| new Date().toISOString();
         await fetchAndDisplayPhotos({
           map: this.map,
           photoMarkers: this.photoMarkers,
@@ -240,6 +237,11 @@ export default class extends Controller {
     if (this.liveMapEnabled) {
       this.setupSubscription();
     }
+
+    // After map is initialized, fetch and render tracks
+    this.map.whenReady(() => {
+      this.fetchAndRenderTracks();
+    });
   }
 
   disconnect() {
@@ -295,6 +297,7 @@ export default class extends Controller {
       this.userSettings,
       this.distanceUnit
     );
+    this.updateStats();
 
     // Pan map to new location
     this.map.setView([newPoint[0], newPoint[1]], 16);
@@ -475,6 +478,7 @@ export default class extends Controller {
         this.userSettings,
         this.distanceUnit
       );
+      this.updateStats();
       if (wasPolyLayerVisible) {
         // Add new polylines layer to map and to layer control
         this.polylinesLayer.addTo(this.map);
@@ -802,6 +806,7 @@ export default class extends Controller {
             this.polylinesLayer,
             newSettings.speed_colored_routes
           );
+          this.updateStats();
         }
       }
 
@@ -809,6 +814,7 @@ export default class extends Controller {
         const newOpacity = parseFloat(newSettings.route_opacity) || 0.6;
         if (this.polylinesLayer) {
           updatePolylinesOpacity(this.polylinesLayer, newOpacity);
+          this.updateStats();
         }
       }
 
@@ -1290,6 +1296,114 @@ export default class extends Controller {
       return `${days}d ${hours}h`;
     }
     return `${hours}h`;
+  }
+
+  updateStats() {
+    if (!this.statsDiv) return;
+
+    const distance = this.element.dataset.distance || '0';
+    const pointsNumber = this.element.dataset.points_number || '0';
+    const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
+    const polylinesCount = this.polylinesLayer ? this.polylinesLayer.getLayers().length : 0;
+
+    this.statsDiv.innerHTML = `${distance} ${unit} | ${pointsNumber} points | ${polylinesCount} routes`;
+    this.statsDiv.style.backgroundColor = 'white';
+    this.statsDiv.style.padding = '0 5px';
+    this.statsDiv.style.marginRight = '5px';
+    this.statsDiv.style.display = 'inline-block';
+  }
+
+  async fetchAndRenderTracks() {
+    const trackIdsString = this.element.dataset.track_ids;
+    console.log('Track IDs string:', trackIdsString);
+    if (!trackIdsString || !this.map) {
+      console.log('Early return - missing data:', { trackIdsString: !!trackIdsString, map: !!this.map });
+      return;
+    }
+
+    const trackIds = trackIdsString.replace(/[\[\]]/g, '').split(',').map(id => id.trim());
+    console.log(`Total tracks to fetch: ${trackIds.length}`);
+
+    try {
+      // Create the layer group and store it as a class property
+      if (!this.tracksLayer) {
+        console.log('Creating new tracks layer');
+        this.tracksLayer = L.layerGroup();
+        if (this.map) {
+          console.log('Adding tracks layer to map');
+          this.tracksLayer.addTo(this.map);
+
+          if (this.layerControl) {
+            this.layerControl.addOverlay(this.tracksLayer, 'Tracks');
+          }
+        }
+      }
+
+      // Create shared renderer
+      const renderer = L.canvas({ padding: 0.5, pane: 'overlayPane' });
+
+      // Process tracks in smaller chunks to avoid URL length limits
+      const CHUNK_SIZE = 50; // Number of track IDs to include in each request
+      const BATCH_SIZE = 10; // Number of tracks to process at once from the response
+
+      for (let i = 0; i < trackIds.length; i += CHUNK_SIZE) {
+        const chunk = trackIds.slice(i, i + CHUNK_SIZE);
+        console.log(`Fetching chunk ${Math.floor(i/CHUNK_SIZE) + 1}/${Math.ceil(trackIds.length/CHUNK_SIZE)}`);
+
+        try {
+          const response = await fetch(
+            `/api/v1/tracks?ids=${chunk.join(',')}&per_page=${CHUNK_SIZE}&api_key=${this.apiKey}`,
+            {
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              credentials: 'same-origin'
+            }
+          );
+
+          if (!response.ok) {
+            console.warn(`Failed to fetch chunk: ${response.status}`);
+            continue;
+          }
+
+          const tracks = await response.json();
+          console.log(`Rendering ${tracks.length} tracks from chunk`);
+
+          // Process tracks in smaller batches
+          for (let j = 0; j < tracks.length; j += BATCH_SIZE) {
+            const batch = tracks.slice(j, j + BATCH_SIZE);
+
+            batch.forEach(track => {
+              try {
+                const trackLayer = createTrackPolyline(track, this.map, this.userSettings, renderer);
+                if (trackLayer && this.tracksLayer) {
+                  this.tracksLayer.addLayer(trackLayer);
+                }
+              } catch (error) {
+                console.warn(`Failed to render track ${track.id}:`, error);
+              }
+            });
+
+            // Small delay between batches to allow browser to breathe
+            if (j + BATCH_SIZE < tracks.length) {
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
+          }
+
+        } catch (error) {
+          console.error(`Error processing chunk:`, error);
+        }
+
+        // Small delay between chunks
+        if (i + CHUNK_SIZE < trackIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in track fetching/rendering:', error);
+    }
   }
 }
 

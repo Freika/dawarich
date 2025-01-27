@@ -21,6 +21,10 @@ RSpec.describe Trip, type: :model do
     it 'sets the distance' do
       expect(trip.distance).to eq(calculated_distance)
     end
+
+    it 'sets the path' do
+      expect(trip.path).to be_present
+    end
   end
 
   describe '#countries' do

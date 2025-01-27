@@ -20,7 +20,9 @@
         data-distance_unit="<%= DISTANCE_UNIT %>"
         data-api_key="<%= current_user.api_key %>"
         data-user_settings="<%= current_user.settings.to_json %>"
-        data-coordinates="<%= @coordinates.to_json %>"
+        data-path="<%= trip.path.to_json %>"
+        data-started_at="<%= trip.started_at %>"
+        data-ended_at="<%= trip.ended_at %>"
         data-timezone="<%= Rails.configuration.time_zone %>">
       </div>
     </div>
@@ -62,7 +64,7 @@
 
       <div class="form-control">
         <%= form.label :notes %>
-        <%= form.rich_text_area :notes %>
+        <%= form.rich_text_area :notes, class: 'trix-content-editor' %>
       </div>
 
       <div>

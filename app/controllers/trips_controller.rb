@@ -10,11 +10,6 @@ class TripsController < ApplicationController
   end
 
   def show
-    @coordinates = @trip.points.pluck(
-      :latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id,
-      :country
-    ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
-
     @photo_previews = Rails.cache.fetch("trip_photos_#{@trip.id}", expires_in: 1.day) do
       @trip.photo_previews
     end
