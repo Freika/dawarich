@@ -163,7 +163,8 @@ GEM
       activesupport (>= 6.0.0)
       railties (>= 6.0.0)
     io-console (0.8.0)
-    irb (1.14.3)
+    irb (1.15.1)
+      pp (>= 0.6.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     json (2.9.1)
@@ -240,6 +241,9 @@ GEM
     patience_diff (1.2.0)
       optimist (~> 3.0)
     pg (1.5.9)
+    pp (0.6.2)
+      prettyprint
+    prettyprint (0.2.0)
     prometheus_exporter (2.2.0)
       webrick
     pry (0.14.2)
@@ -400,9 +404,9 @@ GEM
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
-    tailwindcss-rails (3.3.0)
+    tailwindcss-rails (3.3.1)
       railties (>= 7.0.0)
-      tailwindcss-ruby
+      tailwindcss-ruby (~> 3.0)
     tailwindcss-ruby (3.4.17)
     tailwindcss-ruby (3.4.17-aarch64-linux)
     tailwindcss-ruby (3.4.17-arm-linux)
