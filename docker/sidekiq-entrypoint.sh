@@ -24,7 +24,7 @@ fi
 
 # Wait for the database to become available
 echo "⏳ Waiting for database to be ready..."
-until PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" -d "$DATABASE_NAME" -c '\q'; do
+until PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" -c '\q'; do
   >&2 echo "Postgres is unavailable - retrying..."
   sleep 2
 done
