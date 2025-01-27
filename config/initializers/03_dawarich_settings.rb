@@ -17,5 +17,9 @@ class DawarichSettings
     def geoapify_enabled?
       @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
     end
+
+    def self_hosted?
+      @self_hosted ||= SELF_HOSTED
+    end
   end
 end

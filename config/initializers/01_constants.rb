@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+SELF_HOSTED = ENV.fetch('SELF_HOSTED', 'true') == 'true'
+
 MIN_MINUTES_SPENT_IN_CITY = ENV.fetch('MIN_MINUTES_SPENT_IN_CITY', 60).to_i
 DISTANCE_UNIT = ENV.fetch('DISTANCE_UNIT', 'km').to_sym
 
@@ -11,7 +13,7 @@ TELEMETRY_URL = 'https://influxdb2.frey.today/api/v2/write'
 # Reverse geocoding settings
 PHOTON_API_HOST = ENV.fetch('PHOTON_API_HOST', nil)
 PHOTON_API_KEY = ENV.fetch('PHOTON_API_KEY', nil)
-PHOTON_API_USE_HTTPS = ENV.fetch('PHOTON_API_USE_HTTPS', 'true') == 'true'
+PHOTON_API_USE_HTTPS = ENV.fetch('PHOTON_API_USE_HTTPS', 'false') == 'true'
 
 GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
 # /Reverse geocoding settings
