@@ -10,11 +10,15 @@ jobs:
       - image: cimg/ruby:3.3.4
         environment:
           RAILS_ENV: test
-      - image: cimg/postgres:13.3
+      - image: cimg/postgres:14.0
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database
           POSTGRES_PASSWORD: mysecretpassword
+          POSTGRES_INITDB_ARGS: --enable-debug --data-checksums --encoding=UTF8 --lc-collate=C --lc-ctype=C
+        command: |
+          apt-get update
+          apt-get install -y postgis postgresql-14-postgis-3
       - image: redis:7.0
 
     steps:
