@@ -10,11 +10,7 @@ jobs:
       - image: cimg/ruby:3.3.4
         environment:
           RAILS_ENV: test
-          POSTGRES_HOST: localhost
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: mysecretpassword
-          POSTGRES_DB: test_database
-      - image: cimg/postgres:14.0
+      - image: cimg/postgres:14.0-postgis
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database
@@ -28,27 +24,16 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install System Dependencies
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y postgresql-client
-            wget https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz
-            sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-v0.6.1.tar.gz
-            rm dockerize-linux-amd64-v0.6.1.tar.gz
-      - run:
           name: Install Bundler
           command: gem install bundler
       - run:
           name: Bundle Install
           command: bundle install --jobs=4 --retry=3
       - run:
-          name: Wait for PostgreSQL
-          command: dockerize -wait tcp://localhost:5432 -timeout 1m
-      - run:
           name: Database Setup
           command: |
-            cp config/database.ci.yml config/database.yml
-            bundle exec rails db:create db:schema:load
+            bundle exec rails db:create
+            bundle exec rails db:schema:load
       - run:
           name: Run RSpec tests
           command: bundle exec rspec
