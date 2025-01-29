@@ -5,6 +5,9 @@ class Trips::CreatePathJob < ApplicationJob
 
   def perform(trip_id)
     trip = Trip.find(trip_id)
-    trip.create_path!
+
+    trip.calculate_path_and_distance
+
+    trip.save!
   end
 end
