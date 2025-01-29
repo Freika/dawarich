@@ -193,16 +193,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.index ["year"], name: "index_stats_on_year"
   end
 
-  create_table "tracks", force: :cascade do |t|
-    t.datetime "started_at", null: false
-    t.datetime "ended_at", null: false
-    t.bigint "user_id", null: false
-    t.geometry "path", limit: {:srid=>3857, :type=>"line_string"}, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["user_id"], name: "index_tracks_on_user_id"
-  end
-
   create_table "trips", force: :cascade do |t|
     t.string "name", null: false
     t.datetime "started_at", null: false
@@ -264,7 +254,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
-  add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
