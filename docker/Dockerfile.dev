@@ -13,6 +13,7 @@ RUN apk -U add --no-cache \
     git \
     postgresql-dev \
     postgresql-client \
+    libpq \
     libxml2-dev \
     libxslt-dev \
     nodejs \
@@ -22,6 +23,7 @@ RUN apk -U add --no-cache \
     less \
     yaml-dev \
     gcompat \
+    linux-headers \
     && mkdir -p $APP_PATH
 
 # Update gem system and install bundler
@@ -35,6 +37,7 @@ COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
 # Install all gems into the image
 RUN bundle config set --local path 'vendor/bundle' \
+    && bundle config build.pg --with-pg-config=/usr/bin/pg_config \
     && bundle install --jobs 4 --retry 3 \
     && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
 
