@@ -1,4 +1,4 @@
-FROM ruby:3.3.4-alpine
+FROM ruby:3.3.4-slim
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
@@ -6,22 +6,27 @@ ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 ENV RAILS_ENV=development
+ENV BUNDLE_FORCE_RUBY_PLATFORM=1
+ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
 # Install dependencies for application
-RUN apk -U add --no-cache \
-    build-base \
+RUN apt-get update -qq && apt-get install -y \
+    build-essential \
     git \
-    postgresql-dev \
+    libpq-dev \
     postgresql-client \
+    libxml2 \
     libxml2-dev \
-    libxslt-dev \
+    libxslt1-dev \
     nodejs \
-    yarn \
+    npm \
     imagemagick \
     tzdata \
     less \
-    yaml-dev \
-    gcompat \
+    libyaml-dev \
+    pkg-config \
+    && npm install -g yarn \
+    && rm -rf /var/lib/apt/lists/* \
     && mkdir -p $APP_PATH
 
 # Update gem system and install bundler
@@ -35,7 +40,7 @@ COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
 # Install all gems into the image
 RUN bundle config set --local path 'vendor/bundle' \
-    && bundle install --jobs 4 --retry 3 \
+    && bundle install --jobs 1 --retry 3 \
     && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
 
 # Copy the rest of the application

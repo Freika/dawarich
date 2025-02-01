@@ -23,6 +23,7 @@ gem 'activerecord-postgis-adapter', github: 'StoneGod/activerecord-postgis-adapt
 gem 'puma'
 gem 'pundit'
 gem 'rails', '~> 8.0'
+gem 'racc', '~> 1.8', '>= 1.8.1' # Nokogiri dependency
 gem 'rgeo'
 gem 'rswag-api'
 gem 'rswag-ui'

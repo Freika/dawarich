@@ -482,6 +482,7 @@ DEPENDENCIES
   pry-rails
   puma
   pundit
+  racc (~> 1.8, >= 1.8.1)
   rails (~> 8.0)
   redis
   rgeo
