@@ -8,6 +8,7 @@ executors:
 orbs:
   ruby: circleci/ruby@2.1.4
   browser-tools: circleci/browser-tools@1.4.8
+  docker: circleci/docker@2.2.1
 
 jobs:
   test:
@@ -66,9 +67,9 @@ jobs:
           name: Install dependencies
           command: npm install
 
-      - run:
-          name: Login to Docker Hub
-          command: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      - docker/login:
+          username: << pipeline.parameters.DOCKERHUB_USERNAME >>
+          password: << pipeline.parameters.DOCKERHUB_TOKEN >>
 
       - run:
           name: Set Docker tags
