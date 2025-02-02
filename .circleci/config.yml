@@ -42,7 +42,8 @@ jobs:
           path: coverage
 
   build-and-push:
-    executor: docker-executor
+    docker:
+      - image: cimg/base:current
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
