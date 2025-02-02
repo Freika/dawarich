@@ -117,5 +117,6 @@ workflows:
             branches:
               only:
                 - master
+                - dev
             tags:
               only: /.*/  # Match ANY tag name
