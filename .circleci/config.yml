@@ -112,10 +112,11 @@ workflows:
       - test
       - build-and-push:
           requires:
-            - test  # Ensures build happens only if tests pass
+            - test
           filters:
             branches:
               only:
                 - master
             tags:
-              only: /^v.*/  # Run only on version tags
+              only:
+                - /^\d+\.\d+\.\d+$/  # Matches tags like 0.23.6
