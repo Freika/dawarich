@@ -68,7 +68,7 @@ jobs:
 
       - run:
           name: Login to Docker Hub
-          command: echo "$DOCKERHUB_TOKEN" | docker login -username "$DOCKERHUB_USERNAME" --password-stdin
+          command: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 
       - run:
           name: Set Docker tags
