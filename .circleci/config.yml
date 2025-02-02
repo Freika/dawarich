@@ -22,7 +22,6 @@ jobs:
           POSTGRES_DB: test_database
           POSTGRES_PASSWORD: mysecretpassword
       - image: redis:7.0
-
     steps:
       - checkout
       - run:
@@ -45,23 +44,18 @@ jobs:
   build-and-push:
     executor:
       name: docker/docker
-      # You can also specify a different image if required.
     parameters:
       tag:
         type: string
         default: "rc"
     steps:
       - checkout
-      # Login to Docker Hub using the orb command. The orb expects environment
-      # variables DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD (or DOCKERHUB_TOKEN).
       - docker/login:
           username: "$DOCKERHUB_USERNAME"
           password: "$DOCKERHUB_TOKEN"
-      # Build and publish the Docker image.
       - docker/build-publish:
           image: "freikin/dawarich:<< parameters.tag >>"
           dockerfile: ./docker/Dockerfile.dev
-          # Set additional options if needed:
           build-args: ""
           extra-build-args: "--platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6"
           registry: "docker.io"
@@ -77,7 +71,6 @@ workflows:
             - test
           filters:
             branches:
-              ignore: /.*/   # Ignore branches; run only on tag builds (or adjust as needed)
+              ignore: /.*/   # Run only on tag builds
             tags:
-              only: /.*/     # Run for any tag; adjust regex if you want more specific tag matching
-          tag: "<< pipeline.parameters.tag >>"
+              only: /.*/     # Run for any tag
