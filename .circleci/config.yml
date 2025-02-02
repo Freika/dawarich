@@ -118,5 +118,4 @@ workflows:
               only:
                 - master
             tags:
-              only:
-                - /^\d+\.\d+\.\d+$/  # Matches tags like 0.23.6
+              only: /.*/  # Match ANY tag name
