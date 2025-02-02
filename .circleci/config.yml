@@ -64,4 +64,6 @@ workflows:
           use-remote-docker: true
           use-docker-credentials-store: true
           tag: "rc"
+          docker-username: "$DOCKERHUB_USERNAME"
+          docker-password: "$DOCKERHUB_TOKEN"
 
