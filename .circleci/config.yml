@@ -9,7 +9,6 @@ orbs:
   ruby: circleci/ruby@2.1.4
   browser-tools: circleci/browser-tools@1.4.8
 
-
 jobs:
   test:
     docker:
@@ -41,6 +40,7 @@ jobs:
           command: bundle exec rspec
       - store_artifacts:
           path: coverage
+
   build-and-push:
     executor: docker-executor
     environment:
@@ -49,72 +49,70 @@ jobs:
       - checkout
 
       - run:
-        name: Set branch variable
-        command: |
-          if [ -z "$CIRCLE_BRANCH" ]; then
-            echo 'export BUILD_BRANCH=master' >> $BASH_ENV
-          else
-            echo "export BUILD_BRANCH=$CIRCLE_BRANCH" >> $BASH_ENV
-          fi
+          name: Set branch variable
+          command: |
+            if [ -z "$CIRCLE_BRANCH" ]; then
+              echo 'export BUILD_BRANCH=master' >> $BASH_ENV
+            else
+              echo "export BUILD_BRANCH=$CIRCLE_BRANCH" >> $BASH_ENV
+            fi
 
       - setup_remote_docker:
-        version: 20.10.24
-        docker_layer_caching: true
+          version: 20.10.24
+          docker_layer_caching: true
 
       - run:
-        name: Install dependencies
-        command: npm install
+          name: Install dependencies
+          command: npm install
 
       - run:
-        name: Login to Docker Hub
-        command: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          name: Login to Docker Hub
+          command: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 
       - run:
-        name: Set Docker tags
-        command: |
-          if [[ -n "$CIRCLE_TAG" ]]; then
-            VERSION="${CIRCLE_TAG}"
-          else
-            VERSION="latest"
-          fi
+          name: Set Docker tags
+          command: |
+            if [[ -n "$CIRCLE_TAG" ]]; then
+              VERSION="${CIRCLE_TAG}"
+            else
+              VERSION="latest"
+            fi
 
-          TAGS="freikin/dawarich:${VERSION}"
+            TAGS="freikin/dawarich:${VERSION}"
 
-          if [[ "$CIRCLE_TAG" =~ rc ]]; then
-            TAGS="${TAGS},freikin/dawarich:rc"
-          else
-            TAGS="${TAGS},freikin/dawarich:latest"
-          fi
+            if [[ "$CIRCLE_TAG" =~ rc ]]; then
+              TAGS="${TAGS},freikin/dawarich:rc"
+            else
+              TAGS="${TAGS},freikin/dawarich:latest"
+            fi
 
-          echo "export DOCKER_TAGS=\"$TAGS\"" >> $BASH_ENV
-
-      - run:
-        name: Build and push (arm64)
-        command: |
-          docker buildx create --use
-          docker buildx build --platform linux/arm64 \
-            --file ./docker/Dockerfile.dev \
-            --tag freikin/dawarich:${VERSION} \
-            --push .
+            echo "export DOCKER_TAGS=\"$TAGS\"" >> $BASH_ENV
 
       - run:
-        name: Build and push (other architectures)
-        command: |
-          docker buildx build --platform linux/amd64,linux/arm/v7,linux/arm/v6 \
-            --file ./docker/Dockerfile.dev \
-            --tag freikin/dawarich:${VERSION} \
-            --push .
+          name: Build and push (arm64)
+          command: |
+            docker buildx create --use
+            docker buildx build --platform linux/arm64 \
+              --file ./docker/Dockerfile.dev \
+              --tag freikin/dawarich:${VERSION} \
+              --push .
+
+      - run:
+          name: Build and push (other architectures)
+          command: |
+            docker buildx build --platform linux/amd64,linux/arm/v7,linux/arm/v6 \
+              --file ./docker/Dockerfile.dev \
+              --tag freikin/dawarich:${VERSION} \
+              --push .
 
 workflows:
   version: 2
-  rspec:
-    jobs:
-      - test
-
-  build-and-push:
+  build-and-test:
     jobs:
       - test
       - build-and-push:
+          requires:
+            - test  # Ensures build happens only if tests pass
           filters:
             branches:
               only:
