@@ -1,10 +1,5 @@
 version: 2.1
 
-parameters:
-  tag:
-    type: string
-    default: "rc"
-
 executors:
   docker-executor:
     machine:
@@ -46,37 +41,24 @@ jobs:
       - store_artifacts:
           path: coverage
 
-  build-and-push:
-    executor:
-      name: docker/docker
-    parameters:
-      tag:
-        type: string
-        default: "rc"
-    steps:
-      - checkout
-      - docker/login:
-          docker-username: "$DOCKERHUB_USERNAME"
-          docker-password: "$DOCKERHUB_TOKEN"
-      - docker/build-publish:
-          image: "freikin/dawarich:<< parameters.tag >>"
-          dockerfile: ./docker/Dockerfile.dev
-          build-args: ""
-          extra-build-args: "--platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6"
-          registry: "docker.io"
-          push: true
+
 
 workflows:
   version: 2
-  build-and-test:
+  test:
     jobs:
       - test
-      - build-and-push:
-          requires:
-            - test
-          filters:
-            branches:
-              ignore: /.*/   # Run only on tag builds
-            tags:
-              only: /.*/     # Run for any tag
-          tag: "<< pipeline.parameters.tag >>"
+  build-docker-image-only:
+    jobs:
+      - docker/publish:
+          image: $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+          update-description: true
+  build-docker-image-only-with-buildkit:
+    jobs:
+      - docker/publish:
+          image: $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+          remote-docker-version: 20.10.12
+          update-description: true
+          use-buildkit: true
+          use-remote-docker: true
+
