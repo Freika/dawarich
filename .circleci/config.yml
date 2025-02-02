@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  tag:
+    type: string
+    default: "rc"
+
 executors:
   docker-executor:
     machine:
@@ -74,3 +79,4 @@ workflows:
               ignore: /.*/   # Run only on tag builds
             tags:
               only: /.*/     # Run for any tag
+          tag: "<< pipeline.parameters.tag >>"
