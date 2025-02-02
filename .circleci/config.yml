@@ -57,8 +57,11 @@ workflows:
     jobs:
       - docker/publish:
           image: $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+          dockerfile: ./docker/Dockerfile.dev
           remote-docker-version: 20.10.12
           update-description: true
           use-buildkit: true
           use-remote-docker: true
+          use-docker-credentials-store: true
+          tag: "rc"
 
