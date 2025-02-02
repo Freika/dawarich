@@ -43,7 +43,7 @@ jobs:
 
   build-and-push:
     docker:
-      - image: cimg/base:current
+      - image: cimg/node:current
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
