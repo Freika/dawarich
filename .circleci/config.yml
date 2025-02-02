@@ -3,6 +3,12 @@ version: 2.1
 orbs:
   ruby: circleci/ruby@2.1.4
   browser-tools: circleci/browser-tools@1.4.8
+  docker: circleci/docker@2.4.0
+
+parameters:
+  branch:
+    type: string
+    default: "master"
 
 jobs:
   test:
@@ -36,7 +42,68 @@ jobs:
       - store_artifacts:
           path: coverage
 
+  build-and-push:
+    machine:
+      image: ubuntu-2204:current
+    steps:
+      - checkout
+
+      - docker/setup-buildx
+
+      - restore_cache:
+          keys:
+            - docker-layers-{{ .Branch }}-{{ .Revision }}
+            - docker-layers-{{ .Branch }}
+            - docker-layers-
+
+      - run:
+          name: Install dependencies
+          command: npm install
+
+      - run:
+          name: Login to DockerHub
+          command: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+      - run:
+          name: Set Docker tags
+          command: |
+            VERSION=${CIRCLE_TAG:-latest}
+            TAGS="freikin/dawarich:${VERSION}"
+
+            # Add :rc tag for pre-releases (assuming tag contains 'rc' for pre-releases)
+            if [[ $CIRCLE_TAG == *"rc"* ]]; then
+              TAGS="${TAGS},freikin/dawarich:rc"
+            fi
+
+            # Add :latest tag only if not a pre-release
+            if [[ $CIRCLE_TAG != *"rc"* ]]; then
+              TAGS="${TAGS},freikin/dawarich:latest"
+            fi
+
+            echo "export DOCKER_TAGS=${TAGS}" >> $BASH_ENV
+
+      - docker/build:
+          image: freikin/dawarich
+          tag: ${DOCKER_TAGS}
+          dockerfile: ./docker/Dockerfile.dev
+          platform: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6
+          push: true
+
+      - save_cache:
+          key: docker-layers-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/docker-cache
+
 workflows:
   rspec:
     jobs:
       - test
+  version: 2
+  build-and-deploy:
+    jobs:
+      - build-and-push:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              only: master

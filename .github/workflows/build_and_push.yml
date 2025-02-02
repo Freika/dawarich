@@ -67,8 +67,8 @@ jobs:
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
           platforms: linux/arm64
-          # cache-from: type=local,src=/tmp/.buildx-cache
-          # cache-to: type=local,dest=/tmp/.buildx-cache-arm64
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-arm64
 
       - name: Build and push (other architectures)
         uses: docker/build-push-action@v2
