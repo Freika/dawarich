@@ -1,14 +1,8 @@
 version: 2.1
 
-executors:
-  docker-executor:
-    machine:
-      image: ubuntu-2204:current
-
 orbs:
   ruby: circleci/ruby@2.1.4
   browser-tools: circleci/browser-tools@1.4.8
-  docker: circleci/docker@2.8.2
 
 jobs:
   test:
@@ -22,6 +16,7 @@ jobs:
           POSTGRES_DB: test_database
           POSTGRES_PASSWORD: mysecretpassword
       - image: redis:7.0
+
     steps:
       - checkout
       - run:
@@ -41,29 +36,7 @@ jobs:
       - store_artifacts:
           path: coverage
 
-
-
 workflows:
-  version: 2
-  test:
+  rspec:
     jobs:
       - test
-  build-docker-image-only:
-    jobs:
-      - docker/publish:
-          image: $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
-          update-description: true
-  build-docker-image-only-with-buildkit:
-    jobs:
-      - docker/publish:
-          image: $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
-          dockerfile: ./docker/Dockerfile.dev
-          remote-docker-version: 20.10.12
-          update-description: true
-          use-buildkit: true
-          use-remote-docker: true
-          use-docker-credentials-store: true
-          tag: "rc"
-          docker-username: DOCKERHUB_USERNAME
-          docker-password: DOCKERHUB_TOKEN
-
