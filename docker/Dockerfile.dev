@@ -21,15 +21,17 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     less \
     libyaml-dev \
-    gcc \
-    g++ \
+    gcc-11 \
+    g++-11 \
     make \
     libgeos-dev \
     libproj-dev \
     && npm install -g yarn \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p $APP_PATH
+    && mkdir -p $APP_PATH \
+    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 \
+    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
 
 # Update gem system and install bundler
 RUN gem update --system 3.6.2 \
@@ -40,9 +42,11 @@ WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
-# Install all gems into the image
+# Install all gems into the image with reduced parallelism for ARM64
 RUN bundle config set --local path 'vendor/bundle' \
-    && bundle install --jobs 4 --retry 3 \
+    && bundle config set --local jobs 2 \
+    && bundle config set build.nokogiri --use-system-libraries \
+    && bundle install --retry 3 \
     && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
 
 # Copy the rest of the application
