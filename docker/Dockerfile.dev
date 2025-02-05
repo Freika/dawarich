@@ -8,11 +8,13 @@ ENV RAILS_PORT=3000
 ENV RAILS_ENV=development
 
 # Install dependencies for application
-RUN apt-get update && apt-get install -y \
+RUN dpkg --add-architecture arm64 && \
+    apt-get update && apt-get install -y \
     build-essential \
     git \
-    postgresql-client \
-    libpq-dev \
+    postgresql-client:arm64 \
+    libpq-dev:arm64 \
+    libpq5:arm64 \
     libxml2-dev \
     libxslt-dev \
     nodejs \
