@@ -43,14 +43,13 @@ COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 # Set environment variables for compilation
 ENV CFLAGS="-O2 -pipe -fstack-protector-strong -fno-strict-aliasing" \
     CXXFLAGS="-O2 -pipe -fstack-protector-strong -fno-strict-aliasing" \
-    MAKEFLAGS="-j2"
+    MAKEFLAGS="-j2" \
+    BUNDLE_FORCE_RUBY_PLATFORM="true"
 
 # Install all gems into the image with reduced parallelism for ARM64
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle config set --local jobs 2 \
     && bundle config set build.nokogiri --use-system-libraries \
-    && bundle config build.racc --with-cflags="-O2 -pipe -fno-strict-aliasing" \
-    && bundle config build.oj --with-cflags="-O2 -pipe -fno-strict-aliasing" \
     && bundle install --retry 3 \
     && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
 
