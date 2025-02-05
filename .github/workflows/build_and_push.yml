@@ -77,6 +77,6 @@ jobs:
           file: ./docker/Dockerfile.dev
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
-          platforms: linux/amd64,linux/arm/v7,linux/arm/v6
+          platforms: linux/amd64,linux/arm/v7,linux/arm/v6,linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
