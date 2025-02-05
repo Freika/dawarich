@@ -1,4 +1,4 @@
-FROM ruby:3.3.4-alpine
+FROM ruby:3.4.1-bookworm
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
@@ -8,20 +8,22 @@ ENV RAILS_PORT=3000
 ENV RAILS_ENV=development
 
 # Install dependencies for application
-RUN apk -U add --no-cache \
-    build-base \
+RUN apt-get update && apt-get install -y \
+    build-essential \
     git \
-    postgresql-dev \
     postgresql-client \
+    libpq-dev \
     libxml2-dev \
     libxslt-dev \
     nodejs \
-    yarn \
+    npm \
     imagemagick \
     tzdata \
     less \
-    yaml-dev \
-    gcompat \
+    libyaml-dev \
+    && npm install -g yarn \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
     && mkdir -p $APP_PATH
 
 # Update gem system and install bundler
@@ -36,7 +38,7 @@ COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 # Install all gems into the image
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle install --jobs 4 --retry 3 \
-    && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
+    && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
 
 # Copy the rest of the application
 COPY ../. ./

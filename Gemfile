@@ -24,6 +24,7 @@ gem 'puma'
 gem 'pundit'
 gem 'rails', '~> 8.0'
 gem 'racc', '~> 1.8', '>= 1.8.1' # Nokogiri dependency
+gem 'nokogiri', '1.18.1'
 gem 'rgeo'
 gem 'rswag-api'
 gem 'rswag-ui'

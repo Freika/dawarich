@@ -1,0 +1,32 @@
+version: 2
+jobs:
+  build-and-push:
+    docker:
+    - image: cimg/base:stable
+    steps:
+    - checkout
+    - setup_remote_docker
+    - run:
+        name: Login to DockerHub
+        command: |
+          echo "Attempting to login to DockerHub..."
+          echo "$DOCKERHUB_TOKEN" | sudo docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - run:
+        name: Build and push Docker images
+        command: |
+          # Get the short SHA or use 'latest' as fallback
+          SHORT_SHA=${CIRCLE_SHA1:-rc1}
+
+          sudo docker buildx create --use
+          sudo docker buildx build \
+            --platform linux/amd64 \
+            -t freikin/dawarich:${SHORT_SHA} \
+            -t freikin/dawarich:rc \
+            -f docker/Dockerfile.dev \
+            --push .
+workflows:
+  version: 2
+  build-and-push:
+    jobs:
+    - build-and-push:
+        context: dockerhub
