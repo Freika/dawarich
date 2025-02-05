@@ -21,17 +21,15 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     less \
     libyaml-dev \
-    gcc-10 \
-    g++-10 \
+    gcc \
+    g++ \
     make \
     libgeos-dev \
     libproj-dev \
     && npm install -g yarn \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p $APP_PATH \
-    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
-    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 100
+    && mkdir -p $APP_PATH
 
 # Update gem system and install bundler
 RUN gem update --system 3.6.2 \
@@ -43,16 +41,16 @@ WORKDIR $APP_PATH
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
 # Set environment variables for compilation
-ENV CFLAGS="-O2 -pipe -fstack-protector-strong" \
-    CXXFLAGS="-O2 -pipe -fstack-protector-strong" \
+ENV CFLAGS="-O2 -pipe -fstack-protector-strong -fno-strict-aliasing" \
+    CXXFLAGS="-O2 -pipe -fstack-protector-strong -fno-strict-aliasing" \
     MAKEFLAGS="-j2"
 
 # Install all gems into the image with reduced parallelism for ARM64
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle config set --local jobs 2 \
     && bundle config set build.nokogiri --use-system-libraries \
-    && bundle config build.racc --with-cflags="-O2 -pipe" \
-    && bundle config build.oj --with-cflags="-O2 -pipe" \
+    && bundle config build.racc --with-cflags="-O2 -pipe -fno-strict-aliasing" \
+    && bundle config build.oj --with-cflags="-O2 -pipe -fno-strict-aliasing" \
     && bundle install --retry 3 \
     && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
 
