@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     make \
+    libgeos-dev \
+    libproj-dev \
     && npm install -g yarn \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
