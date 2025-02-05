@@ -21,6 +21,9 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     less \
     libyaml-dev \
+    gcc \
+    g++ \
+    make \
     && npm install -g yarn \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
