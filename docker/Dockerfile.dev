@@ -1,4 +1,4 @@
-FROM ruby:3.4.1-bookworm
+FROM ruby:3.4.1-alpine
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
@@ -8,29 +8,20 @@ ENV RAILS_PORT=3000
 ENV RAILS_ENV=development
 
 # Install dependencies for application
-RUN dpkg --add-architecture arm64 && \
-    apt-get update && apt-get install -y \
-    build-essential \
+RUN apk -U add --no-cache \
+    build-base \
     git \
-    postgresql-client:arm64 \
-    libpq-dev:arm64 \
-    libpq5:arm64 \
+    postgresql-dev \
+    postgresql-client \
     libxml2-dev \
     libxslt-dev \
     nodejs \
-    npm \
+    yarn \
     imagemagick \
     tzdata \
     less \
-    libyaml-dev \
-    gcc \
-    g++ \
-    make \
-    libgeos-dev \
-    libproj-dev \
-    && npm install -g yarn \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
+    yaml-dev \
+    gcompat \
     && mkdir -p $APP_PATH
 
 # Update gem system and install bundler
@@ -42,18 +33,10 @@ WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
-# Set environment variables for compilation
-ENV CFLAGS="-O2 -pipe -fstack-protector-strong -fno-strict-aliasing" \
-    CXXFLAGS="-O2 -pipe -fstack-protector-strong -fno-strict-aliasing" \
-    MAKEFLAGS="-j2" \
-    BUNDLE_FORCE_RUBY_PLATFORM="true"
-
-# Install all gems into the image with reduced parallelism for ARM64
+# Install all gems into the image
 RUN bundle config set --local path 'vendor/bundle' \
-    && bundle config set --local jobs 2 \
-    && bundle config set build.nokogiri --use-system-libraries \
-    && bundle install --retry 3 \
-    && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
+    && bundle install --jobs 4 --retry 3 \
+    && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
 
 # Copy the rest of the application
 COPY ../. ./
