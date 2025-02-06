@@ -5,11 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.23.7 - 2025-02-06
-
-### Fixed
-
-- After deleting one point from the map, other points can now be deleted as well. #723
+## 0.23.7 - 2025-02-06
 
 ### Added
 
