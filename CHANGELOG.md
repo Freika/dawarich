@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - After deleting one point from the map, other points can now be deleted as well. #723 #678
-
+- Fixed a bug where export file was not being deleted from the server after it was deleted. #808
 ### Added
 
 - `X-Dawarich-Version` header to the `GET /api/v1/health` endpoint response. #800
