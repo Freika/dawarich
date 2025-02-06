@@ -475,7 +475,6 @@ DEPENDENCIES
   importmap-rails
   kaminari
   lograge
-  nokogiri (= 1.18.1)
   oj
   pg
   prometheus_exporter
@@ -483,7 +482,6 @@ DEPENDENCIES
   pry-rails
   puma
   pundit
-  racc (~> 1.8, >= 1.8.1)
   rails (~> 8.0)
   redis
   rgeo

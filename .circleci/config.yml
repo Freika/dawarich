@@ -7,7 +7,7 @@ orbs:
 jobs:
   test:
     docker:
-      - image: cimg/ruby:3.3.4
+      - image: cimg/ruby:3.4.1
         environment:
           RAILS_ENV: test
       - image: cimg/postgres:13.3-postgis
