@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.23.7 - 2025-02-06
+
+### Added
+
+- `X-Dawarich-Version` header to the `GET /api/v1/health` endpoint response.
+
 # 0.23.6 - 2025-02-06
 
 ### Added
