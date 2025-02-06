@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.23.6 - 2025-02-06
+
+### Added
+
+- Enabled Postgis extension for PostgreSQL.
+- Trips are now store their paths in the database independently of the points.
+- Trips are now being rendered on the map using their precalculated paths instead of list of coordinates.
+
+### Changed
+
+- Ruby version was updated to 3.4.1.
+- Requesting photos on the Map page now uses the start and end dates from the URL params. #589
+
 # 0.23.5 - 2025-01-22
 
 ### Added

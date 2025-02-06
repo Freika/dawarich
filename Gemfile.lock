@@ -1,4 +1,13 @@
 GIT
+  remote: https://github.com/StoneGod/activerecord-postgis-adapter.git
+  revision: 147fd43191ef703e2a1b3654f31d9139201a87e8
+  branch: rails-8
+  specs:
+    activerecord-postgis-adapter (10.0.1)
+      activerecord (~> 8.0.0)
+      rgeo-activerecord (~> 8.0.0)
+
+GIT
   remote: https://github.com/alexreisner/geocoder.git
   revision: 04ee2936a30b30a23ded5231d7faf6cf6c27c099
   ref: 04ee293
@@ -215,18 +224,18 @@ GEM
     net-smtp (0.5.0)
       net-protocol
     nio4r (2.7.4)
-    nokogiri (1.18.2)
+    nokogiri (1.18.1)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
-    nokogiri (1.18.2-aarch64-linux-gnu)
+    nokogiri (1.18.1-aarch64-linux-gnu)
       racc (~> 1.4)
-    nokogiri (1.18.2-arm-linux-gnu)
+    nokogiri (1.18.1-arm-linux-gnu)
       racc (~> 1.4)
-    nokogiri (1.18.2-arm64-darwin)
+    nokogiri (1.18.1-arm64-darwin)
       racc (~> 1.4)
-    nokogiri (1.18.2-x86_64-darwin)
+    nokogiri (1.18.1-x86_64-darwin)
       racc (~> 1.4)
-    nokogiri (1.18.2-x86_64-linux-gnu)
+    nokogiri (1.18.1-x86_64-linux-gnu)
       racc (~> 1.4)
     oj (3.16.9)
       bigdecimal (>= 3.0)
@@ -318,6 +327,10 @@ GEM
       actionpack (>= 5.2)
       railties (>= 5.2)
     rexml (3.3.8)
+    rgeo (3.0.1)
+    rgeo-activerecord (8.0.0)
+      activerecord (>= 7.0)
+      rgeo (>= 3.0)
     rspec-core (3.13.2)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.3)
@@ -448,6 +461,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  activerecord-postgis-adapter!
   bootsnap
   chartkick
   data_migrate
@@ -475,6 +489,7 @@ DEPENDENCIES
   pundit
   rails (~> 8.0)
   redis
+  rgeo
   rspec-rails
   rswag-api
   rswag-specs
@@ -496,7 +511,7 @@ DEPENDENCIES
   webmock
 
 RUBY VERSION
-   ruby 3.3.4p94
+   ruby 3.4.1p0
 
 BUNDLED WITH
    2.5.21
