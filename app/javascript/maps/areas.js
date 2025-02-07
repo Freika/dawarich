@@ -169,6 +169,7 @@ export function deleteArea(id, areasLayer, layer, apiKey) {
 }
 
 export function fetchAndDrawAreas(areasLayer, apiKey) {
+  console.log('Fetching areas...');
   fetch(`/api/v1/areas?api_key=${apiKey}`, {
     method: 'GET',
     headers: {
@@ -182,35 +183,90 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
     return response.json();
   })
   .then(data => {
+    console.log('Received areas:', data);
+
+    // Clear existing areas
+    areasLayer.clearLayers();
+
     data.forEach(area => {
-      // Check if necessary fields are present
       if (area.latitude && area.longitude && area.radius && area.name && area.id) {
-        const layer = L.circle([area.latitude, area.longitude], {
-          radius: area.radius,
+        console.log('Creating circle for area:', area);
+
+        // Convert string coordinates to numbers
+        const lat = parseFloat(area.latitude);
+        const lng = parseFloat(area.longitude);
+        const radius = parseFloat(area.radius);
+
+        // Create circle with custom pane
+        const circle = L.circle([lat, lng], {
+          radius: radius,
           color: 'red',
           fillColor: '#f03',
-          fillOpacity: 0.5
-        }).bindPopup(`
-          Name: ${area.name}<br>
-          Radius: ${Math.round(area.radius)} meters<br>
-          <a href="#" data-id="${area.id}" class="delete-area">[Delete]</a>
-        `);
-
-        areasLayer.addLayer(layer); // Add to areas layer group
-
-        // Add event listener for the delete button
-        layer.on('popupopen', () => {
-          document.querySelector('.delete-area').addEventListener('click', (e) => {
-            e.preventDefault();
-            if (confirm('Are you sure you want to delete this area?')) {
-              deleteArea(area.id, areasLayer, layer, apiKey);
-            }
-          });
+          fillOpacity: 0.5,
+          weight: 2,
+          interactive: true,
+          bubblingMouseEvents: false,
+          pane: 'areasPane'
         });
-      } else {
-        console.error('Area missing required fields:', area);
+
+        // Bind popup content
+        const popupContent = `
+          <div class="card w-96 bg-base-100">
+            <div class="card-body">
+              <h2 class="card-title">${area.name}</h2>
+              <p>Radius: ${Math.round(radius)} meters</p>
+              <p>Center: [${lat.toFixed(4)}, ${lng.toFixed(4)}]</p>
+              <div class="flex justify-end mt-4">
+                <button class="btn btn-error delete-area" data-id="${area.id}">Delete</button>
+              </div>
+            </div>
+          </div>
+        `;
+        circle.bindPopup(popupContent);
+
+        // Add to layer group
+        areasLayer.addLayer(circle);
+
+        // Wait for the circle to be added to the DOM
+        setTimeout(() => {
+          const circlePath = circle.getElement();
+          if (circlePath) {
+            // Add CSS styles
+            circlePath.style.cursor = 'pointer';
+            circlePath.style.transition = 'all 0.3s ease';
+
+            // Add direct DOM event listeners
+            circlePath.addEventListener('click', (e) => {
+              console.log('Area circle clicked:', area.name);
+              e.stopPropagation();
+              circle.openPopup();
+            });
+
+            circlePath.addEventListener('mouseenter', (e) => {
+              console.log('Mouse entered area:', area.name);
+              e.stopPropagation();
+              circle.setStyle({
+                fillOpacity: 0.8,
+                weight: 3
+              });
+            });
+
+            circlePath.addEventListener('mouseleave', (e) => {
+              console.log('Mouse left area:', area.name);
+              e.stopPropagation();
+              circle.setStyle({
+                fillOpacity: 0.5,
+                weight: 2
+              });
+            });
+          }
+        }, 100);
+
+        console.log('Adding circle to areasLayer');
       }
     });
+
+    console.log('All circles added to areasLayer');
   })
   .catch(error => {
     console.error('There was a problem with the fetch request:', error);

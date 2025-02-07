@@ -106,7 +106,92 @@ export default class extends Controller {
     // Create a proper Leaflet layer for fog
     this.fogOverlay = createFogOverlay();
 
-    this.areasLayer = L.layerGroup(); // Initialize areasLayer
+    // Create custom pane for areas
+    this.map.createPane('areasPane');
+    this.map.getPane('areasPane').style.zIndex = 650;
+    this.map.getPane('areasPane').style.pointerEvents = 'all';
+
+    // Initialize areasLayer as a feature group and add it to the map immediately
+    this.areasLayer = new L.FeatureGroup().addTo(this.map);
+
+    // Create a custom pane for the test circle
+    this.map.createPane('testCirclePane');
+    this.map.getPane('testCirclePane').style.zIndex = 650; // Above most layers
+    this.map.getPane('testCirclePane').style.pointerEvents = 'all'; // Ensure events are received
+
+    // Add a simple test circle directly to the map
+    const testCircle = L.circle([52.514568, 13.350111], {
+      radius: 500,
+      color: 'blue',
+      fillColor: '#30f',
+      fillOpacity: 0.8,
+      weight: 3,
+      interactive: true,
+      bubblingMouseEvents: false,
+      pane: 'testCirclePane'
+    }).addTo(this.map);
+
+    // Add a popup to the test circle
+    testCircle.bindPopup("Test Circle - Berlin");
+
+    // Pan to the test circle location
+    this.map.setView([52.514568, 13.350111], 14);
+
+    // Store reference to test circle
+    this.testCircle = testCircle;
+
+    // Wait for the circle to be added to the DOM
+    setTimeout(() => {
+      // Get the circle's SVG path element
+      const circlePath = testCircle.getElement();
+      if (circlePath) {
+        console.log('Found circle element:', circlePath);
+
+        // Add CSS styles
+        circlePath.style.cursor = 'pointer';
+        circlePath.style.transition = 'all 0.3s ease';
+
+        // Add direct DOM event listeners
+        circlePath.addEventListener('click', (e) => {
+          console.log('Direct click on circle!');
+          e.stopPropagation();
+          testCircle.openPopup();
+        });
+
+        circlePath.addEventListener('mouseenter', (e) => {
+          console.log('Direct mouseenter on circle!');
+          e.stopPropagation();
+          testCircle.setStyle({
+            fillOpacity: 1,
+            weight: 4
+          });
+        });
+
+        circlePath.addEventListener('mouseleave', (e) => {
+          console.log('Direct mouseleave on circle!');
+          e.stopPropagation();
+          testCircle.setStyle({
+            fillOpacity: 0.8,
+            weight: 3
+          });
+        });
+      } else {
+        console.log('Could not find circle element');
+      }
+    }, 1000);
+
+    // Add debug click handler to map
+    this.map.on('click', (e) => {
+      console.log('Map clicked at:', e.latlng);
+      // Log all layers at click point
+      const point = this.map.latLngToContainerPoint(e.latlng);
+      const size = this.map.getSize();
+      console.log('Visible layers:', this.map._layers);
+      console.log('Map size:', size);
+      console.log('Click point:', point);
+      console.log('Test circle visible:', this.map.hasLayer(testCircle));
+      console.log('Test circle bounds:', testCircle.getBounds());
+    });
 
     this.photoMarkers = L.layerGroup();
 
@@ -165,20 +250,6 @@ export default class extends Controller {
 
     // Fetch and draw areas when the map is loaded
     fetchAndDrawAreas(this.areasLayer, this.apiKey);
-
-    // Add a simple test circle to the map
-    const testCircle = L.circle([52.514568, 13.350111], {
-      radius: 100,
-      color: 'blue',
-      fillColor: '#30f',
-      fillOpacity: 0.5,
-      interactive: true,
-      zIndexOffset: 1000
-    }).addTo(this.map);
-
-    testCircle.on('mouseover', () => {
-      console.log('Mouse over test circle');
-    });
 
     let fogEnabled = false;
 
