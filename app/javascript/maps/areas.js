@@ -1,3 +1,5 @@
+import { showFlashMessage } from "./helpers";
+
 export function handleAreaCreated(areasLayer, layer, apiKey) {
   console.log('handleAreaCreated called with apiKey:', apiKey);
   const radius = layer.getRadius();
@@ -162,6 +164,8 @@ export function deleteArea(id, areasLayer, layer, apiKey) {
   })
   .then(data => {
     areasLayer.removeLayer(layer); // Remove the layer from the areas layer group
+
+    showFlashMessage('notice', `Area was successfully deleted!`);
   })
   .catch(error => {
     console.error('There was a problem with the delete request:', error);
@@ -223,6 +227,20 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
           </div>
         `;
         circle.bindPopup(popupContent);
+
+        // Add delete button handler when popup opens
+        circle.on('popupopen', () => {
+          const deleteButton = document.querySelector('.delete-area[data-id="' + area.id + '"]');
+          if (deleteButton) {
+            deleteButton.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (confirm('Are you sure you want to delete this area?')) {
+                deleteArea(area.id, areasLayer, circle, apiKey);
+              }
+            });
+          }
+        });
 
         // Add to layer group
         areasLayer.addLayer(circle);
