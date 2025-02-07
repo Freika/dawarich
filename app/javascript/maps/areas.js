@@ -1,54 +1,105 @@
 export function handleAreaCreated(areasLayer, layer, apiKey) {
+  console.log('handleAreaCreated called with apiKey:', apiKey);
   const radius = layer.getRadius();
   const center = layer.getLatLng();
 
   const formHtml = `
-    <div class="card w-96 max-w-sm bg-content-100 shadow-xl">
+    <div class="card w-96 bg-base-100 shadow-xl">
       <div class="card-body">
         <h2 class="card-title">New Area</h2>
-        <form id="circle-form">
+        <form id="circle-form" class="space-y-4">
           <div class="form-control">
             <label for="circle-name" class="label">
-              <span class="label-text">Name</span>
+              <span class="label-text">Area Name</span>
             </label>
-            <input type="text" id="circle-name" name="area[name]" class="input input-bordered input-ghost focus:input-ghost w-full max-w-xs" required>
+            <input type="text"
+                   id="circle-name"
+                   name="area[name]"
+                   class="input input-bordered w-full"
+                   placeholder="Enter area name"
+                   autofocus
+                   required>
           </div>
           <input type="hidden" name="area[latitude]" value="${center.lat}">
           <input type="hidden" name="area[longitude]" value="${center.lng}">
           <input type="hidden" name="area[radius]" value="${radius}">
-          <div class="card-actions justify-end mt-4">
-            <button type="submit" class="btn btn-primary">Save</button>
+          <div class="flex justify-between mt-4">
+            <button type="button"
+                    class="btn btn-ghost"
+                    onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
+              Cancel
+            </button>
+            <button type="button" id="save-area-btn" class="btn btn-primary">Save Area</button>
           </div>
         </form>
       </div>
     </div>
   `;
 
-  layer.bindPopup(
-    formHtml, {
-      maxWidth: "auto",
-      minWidth: 300
-    }
-    ).openPopup();
+  console.log('Binding popup to layer');
+  layer.bindPopup(formHtml, {
+    maxWidth: "auto",
+    minWidth: 300,
+    closeButton: true,
+    closeOnClick: false,
+    className: 'area-form-popup'
+  }).openPopup();
 
-  layer.on('popupopen', () => {
-    const form = document.getElementById('circle-form');
-
-    if (!form) return;
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      saveArea(new FormData(form), areasLayer, layer, apiKey);
-    });
-  });
-
-  // Add the layer to the areas layer group
+  console.log('Adding layer to areasLayer');
   areasLayer.addLayer(layer);
+
+  // Bind the event handler immediately after opening the popup
+  setTimeout(() => {
+    console.log('Setting up form handlers');
+    const form = document.getElementById('circle-form');
+    const saveButton = document.getElementById('save-area-btn');
+    const nameInput = document.getElementById('circle-name');
+
+    console.log('Form:', form);
+    console.log('Save button:', saveButton);
+    console.log('Name input:', nameInput);
+
+    if (!form || !saveButton || !nameInput) {
+      console.error('Required elements not found');
+      return;
+    }
+
+    // Focus the name input
+    nameInput.focus();
+
+    // Remove any existing click handlers
+    const newSaveButton = saveButton.cloneNode(true);
+    saveButton.parentNode.replaceChild(newSaveButton, saveButton);
+
+    // Add click handler
+    newSaveButton.addEventListener('click', (e) => {
+      console.log('Save button clicked');
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!nameInput.value.trim()) {
+        console.log('Name is empty');
+        nameInput.classList.add('input-error');
+        return;
+      }
+
+      console.log('Creating FormData');
+      const formData = new FormData(form);
+      formData.forEach((value, key) => {
+        console.log(`FormData: ${key} = ${value}`);
+      });
+
+      console.log('Calling saveArea');
+      saveArea(formData, areasLayer, layer, apiKey);
+    });
+  }, 100); // Small delay to ensure DOM is ready
 }
 
 export function saveArea(formData, areasLayer, layer, apiKey) {
+  console.log('saveArea called with apiKey:', apiKey);
   const data = {};
   formData.forEach((value, key) => {
+    console.log('FormData entry:', key, value);
     const keys = key.split('[').map(k => k.replace(']', ''));
     if (keys.length > 1) {
       if (!data[keys[0]]) data[keys[0]] = {};
@@ -58,18 +109,21 @@ export function saveArea(formData, areasLayer, layer, apiKey) {
     }
   });
 
+  console.log('Sending fetch request with data:', data);
   fetch(`/api/v1/areas?api_key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json'},
     body: JSON.stringify(data)
   })
   .then(response => {
+    console.log('Received response:', response);
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }
     return response.json();
   })
   .then(data => {
+    console.log('Area saved successfully:', data);
     layer.closePopup();
     layer.bindPopup(`
       Name: ${data.name}<br>
@@ -79,9 +133,13 @@ export function saveArea(formData, areasLayer, layer, apiKey) {
 
     // Add event listener for the delete button
     layer.on('popupopen', () => {
-      document.querySelector('.delete-area').addEventListener('click', () => {
-        deleteArea(data.id, areasLayer, layer, apiKey);
-      });
+      const deleteButton = document.querySelector('.delete-area');
+      if (deleteButton) {
+        deleteButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          deleteArea(data.id, areasLayer, layer, apiKey);
+        });
+      }
     });
   })
   .catch(error => {

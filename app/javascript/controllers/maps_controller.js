@@ -13,8 +13,7 @@ import {
   getSpeedColor
 } from "../maps/polylines";
 
-import { fetchAndDrawAreas } from "../maps/areas";
-import { handleAreaCreated } from "../maps/areas";
+import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
 import { showFlashMessage, fetchAndDisplayPhotos, debounce } from "../maps/helpers";
 
@@ -67,7 +66,7 @@ export default class extends Controller {
       imperial: this.distanceUnit === 'mi',
       metric: this.distanceUnit === 'km',
       maxWidth: 120
-    }).addTo(this.map)
+    }).addTo(this.map);
 
     // Add stats control
     const StatsControl = L.Control.extend({
@@ -107,7 +106,8 @@ export default class extends Controller {
     // Create a proper Leaflet layer for fog
     this.fogOverlay = createFogOverlay();
 
-    this.areasLayer = L.layerGroup(); // Initialize areas layer
+    this.areasLayer = L.layerGroup(); // Initialize areasLayer
+
     this.photoMarkers = L.layerGroup();
 
     this.setupScratchLayer(this.countryCodesMap);
@@ -123,7 +123,7 @@ export default class extends Controller {
       Heatmap: this.heatmapLayer,
       "Fog of War": new this.fogOverlay(),
       "Scratch map": this.scratchLayer,
-      Areas: this.areasLayer,
+      Areas: this.areasLayer, // Add areasLayer to the control
       Photos: this.photoMarkers
     };
 
@@ -165,6 +165,20 @@ export default class extends Controller {
 
     // Fetch and draw areas when the map is loaded
     fetchAndDrawAreas(this.areasLayer, this.apiKey);
+
+    // Add a simple test circle to the map
+    const testCircle = L.circle([52.514568, 13.350111], {
+      radius: 100,
+      color: 'blue',
+      fillColor: '#30f',
+      fillOpacity: 0.5,
+      interactive: true,
+      zIndexOffset: 1000
+    }).addTo(this.map);
+
+    testCircle.on('mouseover', () => {
+      console.log('Mouse over test circle');
+    });
 
     let fogEnabled = false;
 
@@ -248,10 +262,13 @@ export default class extends Controller {
     }
     // Store panel state before disconnecting
     if (this.rightPanel) {
-      const finalState = document.querySelector('.leaflet-right-panel').style.display !== 'none' ? 'true' : 'false';
+      const panel = document.querySelector('.leaflet-right-panel');
+      const finalState = panel ? (panel.style.display !== 'none' ? 'true' : 'false') : 'false';
       localStorage.setItem('mapPanelOpen', finalState);
     }
-    this.map.remove();
+    if (this.map) {
+      this.map.remove();
+    }
   }
 
   setupSubscription() {
@@ -567,17 +584,26 @@ export default class extends Controller {
           },
         },
       },
+      edit: {
+        featureGroup: this.drawnItems
+      }
     });
 
     // Handle circle creation
-    this.map.on(L.Draw.Event.CREATED, (event) => {
+    this.map.on('draw:created', (event) => {
       const layer = event.layer;
 
       if (event.layerType === 'circle') {
-        handleAreaCreated(this.areasLayer, layer, this.apiKey);
+        console.log("Circle created, opening popup..."); // Add debug log
+        try {
+          // Add the layer to the map first
+          layer.addTo(this.map);
+          handleAreaCreated(this.areasLayer, layer, this.apiKey);
+        } catch (error) {
+          console.error("Error in handleAreaCreated:", error);
+          console.error(error.stack); // Add stack trace
+        }
       }
-
-      this.drawnItems.addLayer(layer);
     });
   }
 
