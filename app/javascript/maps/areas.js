@@ -187,15 +187,11 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
     return response.json();
   })
   .then(data => {
-    console.log('Received areas:', data);
-
     // Clear existing areas
     areasLayer.clearLayers();
 
     data.forEach(area => {
       if (area.latitude && area.longitude && area.radius && area.name && area.id) {
-        console.log('Creating circle for area:', area);
-
         // Convert string coordinates to numbers
         const lat = parseFloat(area.latitude);
         const lng = parseFloat(area.longitude);
@@ -255,13 +251,11 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
 
             // Add direct DOM event listeners
             circlePath.addEventListener('click', (e) => {
-              console.log('Area circle clicked:', area.name);
               e.stopPropagation();
               circle.openPopup();
             });
 
             circlePath.addEventListener('mouseenter', (e) => {
-              console.log('Mouse entered area:', area.name);
               e.stopPropagation();
               circle.setStyle({
                 fillOpacity: 0.8,
@@ -270,7 +264,6 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
             });
 
             circlePath.addEventListener('mouseleave', (e) => {
-              console.log('Mouse left area:', area.name);
               e.stopPropagation();
               circle.setStyle({
                 fillOpacity: 0.5,
@@ -279,12 +272,8 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
             });
           }
         }, 100);
-
-        console.log('Adding circle to areasLayer');
       }
     });
-
-    console.log('All circles added to areasLayer');
   })
   .catch(error => {
     console.error('There was a problem with the fetch request:', error);
