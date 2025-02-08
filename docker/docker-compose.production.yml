@@ -17,7 +17,7 @@ services:
       start_period: 30s
       timeout: 10s
   dawarich_db:
-    image: postgres:17-alpine
+    image: postgres:17-alpine # TODO: Use postgis here
     shm_size: 1G
     container_name: dawarich_db
     volumes:

@@ -327,7 +327,7 @@ To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf`
 
 ```diff
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgis/postgis:14-3.5-alpine
     shm_size: 1G
     container_name: dawarich_db
     volumes:
@@ -358,7 +358,7 @@ An example of a custom `postgresql.conf` file is provided in the `postgresql.con
 ```diff
   ...
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgis/postgis:14-3.5-alpine
 +   shm_size: 1G
   ...
 ```
@@ -1299,7 +1299,7 @@ deploy:
       - shared_data:/var/shared/redis
 +   restart: always
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgis/postgis:14-3.5-alpine
     container_name: dawarich_db
     volumes:
       - db_data:/var/lib/postgresql/data
