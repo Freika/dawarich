@@ -20,12 +20,26 @@ describe 'Settings API', type: :request do
       parameter name: :settings, in: :body, schema: {
         type: :object,
         properties: {
-          route_opacity:           { type: :number },
-          meters_between_routes:   { type: :number },
-          minutes_between_routes:  { type: :number },
-          fog_of_war_meters:       { type: :number },
-          time_threshold_minutes:  { type: :number },
-          merge_threshold_minutes: { type: :number }
+          route_opacity: {
+            type: :number,
+            example: 0.3,
+            description: 'the opacity of the route, float between 0 and 1'
+          },
+          meters_between_routes: {
+            type: :number,
+            example: 100,
+            description: 'the distance between routes in meters'
+          },
+          minutes_between_routes: {
+            type: :number,
+            example: 100,
+            description: 'the time between routes in minutes'
+          },
+          fog_of_war_meters: {
+            type: :number,
+            example: 100,
+            description: 'the fog of war distance in meters'
+          }
         },
         optional: %w[route_opacity meters_between_routes minutes_between_routes fog_of_war_meters
                      time_threshold_minutes merge_threshold_minutes]
@@ -49,12 +63,26 @@ describe 'Settings API', type: :request do
                  settings: {
                    type: :object,
                    properties: {
-                     route_opacity:           { type: :string },
-                     meters_between_routes:   { type: :string },
-                     minutes_between_routes:  { type: :string },
-                     fog_of_war_meters:       { type: :string },
-                     time_threshold_minutes:  { type: :string },
-                     merge_threshold_minutes: { type: :string }
+                     route_opacity: {
+                       type: :string,
+                       example: 0.3,
+                       description: 'the opacity of the route, float between 0 and 1'
+                     },
+                     meters_between_routes: {
+                       type: :string,
+                       example: 100,
+                       description: 'the distance between routes in meters'
+                     },
+                     minutes_between_routes: {
+                       type: :string,
+                       example: 100,
+                       description: 'the time between routes in minutes'
+                     },
+                     fog_of_war_meters: {
+                       type: :string,
+                       example: 100,
+                       description: 'the fog of war distance in meters'
+                     }
                    },
                    required: %w[route_opacity meters_between_routes minutes_between_routes fog_of_war_meters
                                 time_threshold_minutes merge_threshold_minutes]
