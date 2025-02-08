@@ -48,6 +48,7 @@ This will select points tracked between January 1st and January 31st 2025. Then 
 - Fixed a bug where export file was not being deleted from the server after it was deleted. #808
 - After an area was drawn on the map, a popup is now being shown to allow user to provide a name and save the area. #740
 - Docker entrypoints now use database name to fix problem with custom database names.
+- Garmin GPX files with empty tracks are now being imported correctly. #827
 
 ### Added
 
