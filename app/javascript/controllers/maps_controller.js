@@ -112,7 +112,7 @@ export default class extends Controller {
     this.map.getPane('areasPane').style.pointerEvents = 'all';
 
     // Initialize areasLayer as a feature group and add it to the map immediately
-    this.areasLayer = new L.FeatureGroup().addTo(this.map);
+    this.areasLayer = new L.FeatureGroup();
     this.photoMarkers = L.layerGroup();
 
     this.setupScratchLayer(this.countryCodesMap);
@@ -585,7 +585,6 @@ export default class extends Controller {
       const layer = event.layer;
 
       if (event.layerType === 'circle') {
-        console.log("Circle created, opening popup..."); // Add debug log
         try {
           // Add the layer to the map first
           layer.addTo(this.map);

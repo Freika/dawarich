@@ -6,14 +6,11 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
   const center = layer.getLatLng();
 
   const formHtml = `
-    <div class="card w-96 bg-base-100 shadow-xl">
+    <div class="card w-96">
       <div class="card-body">
         <h2 class="card-title">New Area</h2>
         <form id="circle-form" class="space-y-4">
           <div class="form-control">
-            <label for="circle-name" class="label">
-              <span class="label-text">Area Name</span>
-            </label>
             <input type="text"
                    id="circle-name"
                    name="area[name]"
@@ -27,7 +24,7 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
           <input type="hidden" name="area[radius]" value="${radius}">
           <div class="flex justify-between mt-4">
             <button type="button"
-                    class="btn btn-ghost"
+                    class="btn btn-outline"
                     onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
               Cancel
             </button>
@@ -211,13 +208,13 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
 
         // Bind popup content
         const popupContent = `
-          <div class="card w-96 bg-base-100">
+          <div class="card w-full">
             <div class="card-body">
               <h2 class="card-title">${area.name}</h2>
               <p>Radius: ${Math.round(radius)} meters</p>
               <p>Center: [${lat.toFixed(4)}, ${lng.toFixed(4)}]</p>
               <div class="flex justify-end mt-4">
-                <button class="btn btn-error delete-area" data-id="${area.id}">Delete</button>
+                <button class="btn btn-sm btn-error delete-area" data-id="${area.id}">Delete</button>
               </div>
             </div>
           </div>
