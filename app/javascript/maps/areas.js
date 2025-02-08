@@ -1,7 +1,6 @@
 import { showFlashMessage } from "./helpers";
 
 export function handleAreaCreated(areasLayer, layer, apiKey) {
-  console.log('handleAreaCreated called with apiKey:', apiKey);
   const radius = layer.getRadius();
   const center = layer.getLatLng();
 
