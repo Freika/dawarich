@@ -12,7 +12,10 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def call
-    Rails.logger.warn('PHOTON_API_HOST is not set') and return if ::PHOTON_API_HOST.blank?
+    unless DawarichSettings.reverse_geocoding_enabled?
+      Rails.logger.warn('Reverse geocoding is not enabled')
+      return
+    end
 
     first_place = reverse_geocoded_places.shift
     update_place(first_place)

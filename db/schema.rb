@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2024_12_27_130757) do
+ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "postgis"
 
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
@@ -204,6 +205,9 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_130757) do
     t.bigint "state_id"
     t.bigint "county_id"
     t.bigint "city_id"
+    t.decimal "course", precision: 8, scale: 5
+    t.decimal "course_accuracy", precision: 8, scale: 5
+    t.string "external_track_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -211,8 +215,11 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_130757) do
     t.index ["connection"], name: "index_points_on_connection"
     t.index ["country_id"], name: "index_points_on_country_id"
     t.index ["county_id"], name: "index_points_on_county_id"
+    t.index ["country"], name: "index_points_on_country"
+    t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
+    t.index ["latitude", "longitude", "timestamp", "user_id"], name: "unique_points_lat_long_timestamp_user_id_index", unique: true
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["state_id"], name: "index_points_on_state_id"
@@ -253,6 +260,7 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_130757) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.geometry "path", limit: {:srid=>3857, :type=>"line_string"}
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -276,6 +284,8 @@ ActiveRecord::Schema[8.0].define(version: 2024_12_27_130757) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
+
+  add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false
 
   create_table "visits", force: :cascade do |t|
     t.bigint "area_id"

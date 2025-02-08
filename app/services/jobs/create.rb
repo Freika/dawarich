@@ -22,7 +22,7 @@ class Jobs::Create
       end
 
     points.find_each(batch_size: 1_000) do |point|
-      point.async_reverse_geocode(force: true)
+      point.async_reverse_geocode
     end
   end
 end

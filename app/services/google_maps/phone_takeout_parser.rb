@@ -144,7 +144,7 @@ class GoogleMaps::PhoneTakeoutParser
   end
 
   def parse_raw_array(raw_data)
-    raw_data.map do |data_point|
+    raw_data.flat_map do |data_point|
       if data_point.dig('visit', 'topCandidate', 'placeLocation')
         parse_visit_place_location(data_point)
       elsif data_point.dig('activity', 'start') && data_point.dig('activity', 'end')
@@ -152,7 +152,7 @@ class GoogleMaps::PhoneTakeoutParser
       elsif data_point['timelinePath']
         parse_timeline_path(data_point)
       end
-    end.flatten.compact
+    end.compact
   end
 
   def parse_semantic_segments(semantic_segments)

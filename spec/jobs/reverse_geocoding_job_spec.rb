@@ -12,8 +12,8 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       allow(Geocoder).to receive(:search).and_return([double(city: 'City', country: 'Country')])
     end
 
-    context 'when REVERSE_GEOCODING_ENABLED is false' do
-      before { stub_const('REVERSE_GEOCODING_ENABLED', false) }
+    context 'when reverse geocoding is disabled' do
+      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false) }
 
       it 'does not update point' do
         expect { perform }.not_to(change { point.reload.city })
@@ -28,8 +28,8 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       end
     end
 
-    context 'when REVERSE_GEOCODING_ENABLED is true' do
-      before { stub_const('REVERSE_GEOCODING_ENABLED', true) }
+    context 'when reverse geocoding is enabled' do
+      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
 
       let(:stubbed_geocoder) { OpenStruct.new(data: { city: 'City', country: 'Country' }) }
 

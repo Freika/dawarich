@@ -13,10 +13,15 @@ class User < ApplicationRecord
   has_many :visits,         dependent: :destroy
   has_many :points, through: :imports
   has_many :places, through: :visits
-  has_many :trips, dependent: :destroy
+  has_many :trips,  dependent: :destroy
 
   after_create :create_api_key
   before_save :strip_trailing_slashes
+
+  validates :email, presence: true
+  validates :reset_password_token, uniqueness: true, allow_nil: true
+
+  attribute :admin, :boolean, default: false
 
   def countries_visited
     stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact
@@ -66,15 +71,23 @@ class User < ApplicationRecord
 
   def years_tracked
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
-      tracked_points
-        .pluck(:timestamp)
-        .map { |ts| Time.zone.at(ts) }
-        .group_by(&:year)
-        .transform_values do |dates|
-          dates.map { |date| date.strftime('%b') }.uniq.sort
-        end
+      # Use select_all for better performance with large datasets
+      sql = <<-SQL
+        SELECT DISTINCT
+          EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp)) AS year,
+          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month
+        FROM points
+        WHERE user_id = #{id}
+        ORDER BY year DESC, month ASC
+      SQL
+
+      result = ActiveRecord::Base.connection.select_all(sql)
+
+      result
+        .map { |r| [r['year'].to_i, r['month']] }
+        .group_by { |year, _| year }
+        .transform_values { |year_data| year_data.map { |_, month| month } }
         .map { |year, months| { year: year, months: months } }
-        .sort_by { |entry| -entry[:year] } # Sort in descending order
     end
   end
 

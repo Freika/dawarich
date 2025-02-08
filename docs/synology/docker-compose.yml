@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./redis:/var/shared/redis
-  
+
   dawarich_db:
     image: postgres:14.2-alpine
     container_name: dawarich_db
@@ -28,17 +28,16 @@ services:
       - dawarich_redis
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
+    entrypoint: web-entrypoint.sh
     command: ['bin/dev']
     restart: unless-stopped
     env_file:
       - .env
     volumes:
-      - ./gem_cache:/usr/local/bundle/gems
       - ./public:/var/app/public
     ports:
       - 32568:3000
-  
+
   dawarich_sidekiq:
     image: freikin/dawarich:latest
     container_name: dawarich_sidekiq
@@ -46,11 +45,10 @@ services:
       - dawarich_db
       - dawarich_redis
       - dawarich_app
-    entrypoint: dev-entrypoint.sh
+    entrypoint: sidekiq-entrypoint.sh
     command: ['sidekiq']
     restart: unless-stopped
     env_file:
       - .env
     volumes:
-      - ./gem_cache:/usr/local/bundle/gems
       - ./public:/var/app/public

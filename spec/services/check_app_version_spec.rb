@@ -29,6 +29,15 @@ RSpec.describe CheckAppVersion do
       it { is_expected.to be true }
     end
 
+    context 'when latest version is not a stable release' do
+      before do
+        stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
+          .to_return(status: 200, body: '[{"name": "1.0.0-rc.1"}]', headers: {})
+      end
+
+      it { is_expected.to be false }
+    end
+
     context 'when request fails' do
       before do
         allow(Net::HTTP).to receive(:get).and_raise(StandardError)

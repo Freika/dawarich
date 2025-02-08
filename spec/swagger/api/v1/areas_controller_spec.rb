@@ -16,10 +16,26 @@ describe 'Areas API', type: :request do
       parameter name: :area, in: :body, schema: {
         type: :object,
         properties: {
-          name:       { type: :string },
-          latitude:   { type: :number },
-          longitude:  { type: :number },
-          radius:     { type: :number }
+          name: {
+            type: :string,
+            example: 'Home',
+            description: 'The name of the area'
+          },
+          latitude: {
+            type: :number,
+            example: 40.7128,
+            description: 'The latitude of the area'
+          },
+          longitude: {
+            type: :number,
+            example: -74.0060,
+            description: 'The longitude of the area'
+          },
+          radius: {
+            type: :number,
+            example: 100,
+            description: 'The radius of the area in meters'
+          }
         },
         required: %w[name latitude longitude radius]
       }
@@ -47,11 +63,31 @@ describe 'Areas API', type: :request do
                items: {
                  type: :object,
                  properties: {
-                   id:        { type: :integer },
-                   name:      { type: :string },
-                   latitude:  { type: :number },
-                   longitude: { type: :number },
-                   radius:    { type: :number }
+                   id: {
+                     type: :integer,
+                     example: 1,
+                     description: 'The ID of the area'
+                   },
+                   name: {
+                     type: :string,
+                     example: 'Home',
+                     description: 'The name of the area'
+                   },
+                   latitude: {
+                     type: :number,
+                     example: 40.7128,
+                     description: 'The latitude of the area'
+                   },
+                   longitude: {
+                     type: :number,
+                     example: -74.0060,
+                     description: 'The longitude of the area'
+                   },
+                   radius: {
+                     type: :number,
+                     example: 100,
+                     description: 'The radius of the area in meters'
+                   }
                  },
                  required: %w[id name latitude longitude radius]
                }

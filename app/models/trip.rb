@@ -7,7 +7,13 @@ class Trip < ApplicationRecord
 
   validates :name, :started_at, :ended_at, presence: true
 
-  before_save :calculate_distance
+  before_save :calculate_path_and_distance
+
+  def calculate_path_and_distance
+    calculate_path
+    calculate_distance
+  end
+
 
   def points
     user.tracked_points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
@@ -40,6 +46,13 @@ class Trip < ApplicationRecord
     # to show all photos in the same height
     vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
   end
+
+  def calculate_path
+    trip_path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
+
+    self.path = trip_path
+  end
+
 
   def calculate_distance
     distance = 0

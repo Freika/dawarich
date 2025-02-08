@@ -7,7 +7,12 @@ RSpec.describe ExportSerializer do
     subject(:serializer) { described_class.new(points, user_email).call }
 
     let(:user_email) { 'ab@cd.com' }
-    let(:points) { create_list(:point, 2) }
+    let(:points) do
+      (1..2).map do |i|
+        create(:point, timestamp: 1.day.ago + i.minutes)
+      end
+    end
+
     let(:expected_json) do
       {
         user_email => {

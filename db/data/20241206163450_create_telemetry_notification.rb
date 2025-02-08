@@ -2,11 +2,12 @@
 
 class CreateTelemetryNotification < ActiveRecord::Migration[7.2]
   def up
-    User.find_each do |user|
-      Notifications::Create.new(
-        user:, kind: :info, title: 'Telemetry enabled', content: notification_content
-      ).call
-    end
+    # TODO: Remove
+    # User.find_each do |user|
+    #   Notifications::Create.new(
+    #     user:, kind: :info, title: 'Telemetry enabled', content: notification_content
+    #   ).call
+    # end
   end
 
   def down

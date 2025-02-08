@@ -19,6 +19,12 @@ class Point < ApplicationRecord
   delegate :name, to: :state, prefix: true, allow_nil: true
   delegate :name, to: :county, prefix: true, allow_nil: true
 
+  validates :timestamp, uniqueness: {
+    scope: %i[latitude longitude user_id],
+    message: 'already has a point at this location and time for this user',
+    index: true
+  }
+
   enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3 }, suffix: true
   enum :trigger, {
     unknown: 0, background_event: 1, circular_region_event: 2, beacon_event: 3,
@@ -43,9 +49,8 @@ class Point < ApplicationRecord
     Time.zone.at(timestamp)
   end
 
-  def async_reverse_geocode(force: false)
-    return unless REVERSE_GEOCODING_ENABLED
-    return if import_id.present? && !force
+  def async_reverse_geocode
+    return unless DawarichSettings.reverse_geocoding_enabled?
 
     ReverseGeocodingJob.perform_later(self.class.to_s, id)
   end

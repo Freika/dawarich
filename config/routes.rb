@@ -65,9 +65,10 @@ Rails.application.routes.draw do
       get   'health', to: 'health#index'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index create update destroy]
-      resources :points,    only: %i[index destroy]
+      resources :points,    only: %i[index create update destroy]
       resources :visits,    only: %i[update]
       resources :stats,     only: :index
 

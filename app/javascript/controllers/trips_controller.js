@@ -1,17 +1,26 @@
+// This controller is being used on:
+// - trips/show
+// - trips/edit
+// - trips/new
+
 import { Controller } from "@hotwired/stimulus"
 import L from "leaflet"
-import { osmMapLayer } from "../maps/layers"
+import {
+  osmMapLayer,
+  osmHotMapLayer,
+  OPNVMapLayer,
+  openTopoMapLayer,
+  cyclOsmMapLayer,
+  esriWorldStreetMapLayer,
+  esriWorldTopoMapLayer,
+  esriWorldImageryMapLayer,
+  esriWorldGrayCanvasMapLayer
+} from "../maps/layers"
 import { createPopupContent } from "../maps/popups"
-import { osmHotMapLayer } from "../maps/layers"
-import { OPNVMapLayer } from "../maps/layers"
-import { openTopoMapLayer } from "../maps/layers"
-import { cyclOsmMapLayer } from "../maps/layers"
-import { esriWorldStreetMapLayer } from "../maps/layers"
-import { esriWorldTopoMapLayer } from "../maps/layers"
-import { esriWorldImageryMapLayer } from "../maps/layers"
-import { esriWorldGrayCanvasMapLayer } from "../maps/layers"
-import { fetchAndDisplayPhotos } from '../maps/helpers';
-import { showFlashMessage } from "../maps/helpers";
+import {
+  fetchAndDisplayPhotos,
+  showFlashMessage
+} from '../maps/helpers';
 
 export default class extends Controller {
   static targets = ["container", "startedAt", "endedAt"]
@@ -23,9 +32,9 @@ export default class extends Controller {
     }
 
     console.log("Trips controller connected")
-    this.coordinates = JSON.parse(this.containerTarget.dataset.coordinates)
+
     this.apiKey = this.containerTarget.dataset.api_key
-    this.userSettings = JSON.parse(this.containerTarget.dataset.user_settings)
+    this.userSettings = JSON.parse(this.containerTarget.dataset.user_settings || '{}')
     this.timezone = this.containerTarget.dataset.timezone
     this.distanceUnit = this.containerTarget.dataset.distance_unit
 
@@ -34,7 +43,6 @@ export default class extends Controller {
 
     // Add event listener for coordinates updates
     this.element.addEventListener('coordinates-updated', (event) => {
-      console.log("Coordinates updated:", event.detail.coordinates)
       this.updateMapWithCoordinates(event.detail.coordinates)
     })
   }
@@ -42,16 +50,12 @@ export default class extends Controller {
   // Move map initialization to separate method
   initializeMap() {
     // Initialize layer groups
-    this.markersLayer = L.layerGroup()
     this.polylinesLayer = L.layerGroup()
     this.photoMarkers = L.layerGroup()
 
     // Set default center and zoom for world view
-    const hasValidCoordinates = this.coordinates && Array.isArray(this.coordinates) && this.coordinates.length > 0
-    const center = hasValidCoordinates
-      ? [this.coordinates[0][0], this.coordinates[0][1]]
-      : [20, 0]  // Roughly centers the world map
-    const zoom = hasValidCoordinates ? 14 : 2
+    const center = [20, 0]  // Roughly centers the world map
+    const zoom = 2
 
     // Initialize map
     this.map = L.map(this.containerTarget).setView(center, zoom)
@@ -68,7 +72,6 @@ export default class extends Controller {
     }).addTo(this.map)
 
     const overlayMaps = {
-      "Points": this.markersLayer,
       "Route": this.polylinesLayer,
       "Photos": this.photoMarkers
     }
@@ -80,6 +83,15 @@ export default class extends Controller {
     this.map.on('overlayadd', (e) => {
       if (e.name !== 'Photos') return;
 
+      const startedAt = this.element.dataset.started_at;
+      const endedAt = this.element.dataset.ended_at;
+
+      console.log('Dataset values:', {
+        startedAt,
+        endedAt,
+        path: this.element.dataset.path
+      });
+
       if ((!this.userSettings.immich_url || !this.userSettings.immich_api_key) && (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)) {
         showFlashMessage(
           'error',
@@ -88,13 +100,26 @@ export default class extends Controller {
         return;
       }
 
-      if (!this.coordinates?.length) return;
+      // Try to get dates from coordinates first, then fall back to path data
+      let startDate, endDate;
 
-      const firstCoord = this.coordinates[0];
-      const lastCoord = this.coordinates[this.coordinates.length - 1];
-
-      const startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
-      const endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
+      if (this.coordinates?.length) {
+        const firstCoord = this.coordinates[0];
+        const lastCoord = this.coordinates[this.coordinates.length - 1];
+        startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
+        endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
+      } else if (startedAt && endedAt) {
+        // Parse the dates and format them correctly
+        startDate = new Date(startedAt).toISOString().split('T')[0];
+        endDate = new Date(endedAt).toISOString().split('T')[0];
+      } else {
+        console.log('No date range available for photos');
+        showFlashMessage(
+          'error',
+          'No date range available for photos. Please ensure the trip has start and end dates.'
+        );
+        return;
+      }
 
       fetchAndDisplayPhotos({
         map: this.map,
@@ -111,6 +136,27 @@ export default class extends Controller {
       this.addMarkers()
       this.addPolyline()
       this.fitMapToBounds()
+    }
+
+    // After map initialization, add the path if it exists
+    if (this.containerTarget.dataset.path) {
+      const pathData = this.containerTarget.dataset.path.replace(/^"|"$/g, ''); // Remove surrounding quotes
+      const coordinates = this.parseLineString(pathData);
+
+      const polyline = L.polyline(coordinates, {
+        color: 'blue',
+        opacity: 0.8,
+        weight: 3,
+        zIndexOffset: 400
+      });
+
+      polyline.addTo(this.polylinesLayer);
+      this.polylinesLayer.addTo(this.map);
+
+      // Fit the map to the polyline bounds
+      if (coordinates.length > 0) {
+        this.map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+      }
     }
   }
 
@@ -138,13 +184,18 @@ export default class extends Controller {
 
   addMarkers() {
     this.coordinates.forEach(coord => {
-      const marker = L.circleMarker([coord[0], coord[1]], {radius: 4})
+      const marker = L.circleMarker(
+        [coord[0], coord[1]],
+        {
+          radius: 4,
+          color: coord[5] < 0 ? "orange" : "blue",
+          zIndexOffset: 1000
+        }
+      )
 
       const popupContent = createPopupContent(coord, this.timezone, this.distanceUnit)
       marker.bindPopup(popupContent)
-
-      // Add to markers layer instead of directly to map
-      marker.addTo(this.markersLayer)
+      marker.addTo(this.polylinesLayer)
     })
   }
 
@@ -152,8 +203,9 @@ export default class extends Controller {
     const points = this.coordinates.map(coord => [coord[0], coord[1]])
     const polyline = L.polyline(points, {
       color: 'blue',
+      opacity: 0.8,
       weight: 3,
-      opacity: 0.8
+      zIndexOffset: 400
     })
     // Add to polylines layer instead of directly to map
     this.polylinesLayer.addTo(this.map)
@@ -167,7 +219,7 @@ export default class extends Controller {
     this.map.fitBounds(bounds, { padding: [50, 50] })
   }
 
-  // Add this new method to update coordinates and refresh the map
+  // Update coordinates and refresh the map
   updateMapWithCoordinates(newCoordinates) {
     // Transform the coordinates to match the expected format
     this.coordinates = newCoordinates.map(point => [
@@ -179,7 +231,6 @@ export default class extends Controller {
     ]).sort((a, b) => a[4] - b[4]);
 
     // Clear existing layers
-    this.markersLayer.clearLayers()
     this.polylinesLayer.clearLayers()
     this.photoMarkers.clearLayers()
 
@@ -189,5 +240,18 @@ export default class extends Controller {
       this.addPolyline()
       this.fitMapToBounds()
     }
+  }
+
+  // Add this method to parse the LineString format
+  parseLineString(lineString) {
+    // Remove LINESTRING and parentheses, then split into coordinate pairs
+    const coordsString = lineString.replace('LINESTRING (', '').replace(')', '');
+    const coords = coordsString.split(', ');
+
+    // Convert each coordinate pair to [lat, lng] format
+    return coords.map(coord => {
+      const [lng, lat] = coord.split(' ').map(Number);
+      return [lat, lng]; // Swap to lat, lng for Leaflet
+    });
   }
 }

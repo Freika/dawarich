@@ -6,8 +6,8 @@ require_relative 'application'
 # Initialize the Rails application.
 Rails.application.initialize!
 
-# Only run cache jobs when starting the server
-if defined?(Rails::Server)
+# Use an atomic operation to ensure one-time execution
+if defined?(Rails::Server) && Rails.cache.write('cache_jobs_scheduled', true, unless_exist: true)
   # Clear the cache
   Cache::CleaningJob.perform_later
 

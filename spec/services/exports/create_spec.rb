@@ -17,15 +17,12 @@ RSpec.describe Exports::Create do
     let(:country) { create(:country, name: 'Germany') }
     let(:city) { create(:city, name: 'Berlin', country:) }
     let!(:points) do
-      create_list(
-        :point, 10,
-        :with_known_location,
-        user:,
-        timestamp: start_at.to_datetime.to_i,
-        reverse_geocoded_at:,
-        city:,
-        country:
-      )
+      10.times.map do |i|
+        create(:point, :with_known_location,
+               user: user,
+               timestamp: start_at.to_datetime.to_i + i,
+               reverse_geocoded_at: reverse_geocoded_at)
+      end
     end
 
     before do

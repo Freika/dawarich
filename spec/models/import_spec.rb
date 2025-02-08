@@ -26,7 +26,11 @@ RSpec.describe Import, type: :model do
   describe '#years_and_months_tracked' do
     let(:import) { create(:import) }
     let(:timestamp) { Time.zone.local(2024, 11, 1) }
-    let!(:points) { create_list(:point, 3, import:, timestamp:) }
+    let!(:points) do
+      (1..3).map do |i|
+        create(:point, import:, timestamp: timestamp + i.minutes)
+      end
+    end
 
     it 'returns years and months tracked' do
       expect(import.years_and_months_tracked).to eq([[2024, 11]])

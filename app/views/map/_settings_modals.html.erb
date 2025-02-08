@@ -112,3 +112,32 @@
   </div>
   <label class="modal-backdrop" for="points_rendering_mode_info">Close</label>
 </div>
+
+<input type="checkbox" id="speed_colored_routes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Speed-colored routes</h3>
+    <p class="py-4">
+      This checkbox will color the routes based on the speed of each segment.
+    </p>
+    <p class="py-4">
+      Uncheck this checkbox if you want to disable the speed-colored routes.
+    </p>
+    <p class="py-4">
+      Speed coloring is based on the following color stops:
+
+      <code>
+        0 km/h — green, stationary or walking
+        <br>
+        15 km/h — cyan, jogging
+        <br>
+        30 km/h — magenta, cycling
+        <br>
+        50 km/h — yellow, urban driving
+        <br>
+        100 km/h — orange-red, highway driving
+      </code>
+    </p>
+  </div>
+  <label class="modal-backdrop" for="speed_colored_routes_info">Close</label>
+</div>

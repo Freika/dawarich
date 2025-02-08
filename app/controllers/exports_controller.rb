@@ -23,7 +23,11 @@ class ExportsController < ApplicationController
   end
 
   def destroy
-    @export.destroy
+    ActiveRecord::Base.transaction do
+      @export.destroy
+
+      File.delete(Rails.root.join('public', 'exports', @export.name))
+    end
 
     redirect_to exports_url, notice: 'Export was successfully destroyed.', status: :see_other
   end
