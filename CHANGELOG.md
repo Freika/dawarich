@@ -20,7 +20,7 @@ Now, we need to fix existing points with speed in kilometers per hour. The follo
 To convert speed in kilometers per hour to meters per second in your points, follow these steps:
 
 1. Enter [Dawarich console](https://dawarich.app/docs/FAQ#how-to-enter-dawarich-console)
-2. Run `points = Point.where(import_id: nil).where("velocity != ? OR velocity != ?", nil, "0")`. This will return all tracked (not imported) points.
+2. Run `points = Point.where(import_id: nil).where.not(velocity: [nil, "0"]).where("velocity NOT LIKE '%.%'")`. This will return all tracked (not imported) points.
 3. Run
 ```ruby
 points.update_all("velocity = CAST(ROUND(CAST((CAST(velocity AS FLOAT) * 1000 / 3600) AS NUMERIC), 1) AS TEXT)")
@@ -29,10 +29,10 @@ points.update_all("velocity = CAST(ROUND(CAST((CAST(velocity AS FLOAT) * 1000 / 
 
 This will convert speed in kilometers per hour to meters per second and round it to 1 decimal place.
 
-If you have been using both speed units, but you know the dates where you were tracking with speed in kilometers per hour, on the second step of the instruction above, you can add `where("timestamp BETWEEN ? AND ?", "2025-01-01", "2025-01-31")` to the query to convert speed in kilometers per hour to meters per second only for a specific period of time. Resulting query will look like this:
+If you have been using both speed units, but you know the dates where you were tracking with speed in kilometers per hour, on the second step of the instruction above, you can add `where("timestamp BETWEEN ? AND ?", Date.parse("2025-01-01").beginning_of_day.to_i, Date.parse("2025-01-31").end_of_day.to_i)` to the query to convert speed in kilometers per hour to meters per second only for a specific period of time. Resulting query will look like this:
 
 ```ruby
-points = Point.where(import_id: nil).where("velocity != ? OR velocity != ?", nil, "0").where("timestamp BETWEEN ? AND ?", "2025-01-01", "2025-01-31")
+points = Point.where(import_id: nil).where.not(velocity: [nil, "0"]).where("timestamp BETWEEN ? AND ?", Date.parse("2025-01-01").beginning_of_day.to_i, Date.parse("2025-01-31").end_of_day.to_i).where("velocity NOT LIKE '%.%'")
 ```
 
 This will select points tracked between January 1st and January 31st 2025. Then just use step 3 to convert speed in kilometers per hour to meters per second.
