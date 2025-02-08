@@ -31,7 +31,9 @@ This will convert speed in kilometers per hour to meters per second and round it
 If you have been using both speed units, but you know the dates where you were tracking with speed in kilometers per hour, on the second step of the instruction above, you can add `where("timestamp BETWEEN ? AND ?", Date.parse("2025-01-01").beginning_of_day.to_i, Date.parse("2025-01-31").end_of_day.to_i)` to the query to convert speed in kilometers per hour to meters per second only for a specific period of time. Resulting query will look like this:
 
 ```ruby
-points = Point.where(import_id: nil).where.not(velocity: [nil, "0"]).where("timestamp BETWEEN ? AND ?", Date.parse("2025-01-01").beginning_of_day.to_i, Date.parse("2025-01-31").end_of_day.to_i).where("velocity NOT LIKE '%.%'")
+start_at = DateTime.new(2025, 1, 1, 0, 0, 0).in_time_zone(Time.current.time_zone).to_i
+end_at = DateTime.new(2025, 1, 31, 23, 59, 59).in_time_zone(Time.current.time_zone).to_i
+points = Point.where(import_id: nil).where.not(velocity: [nil, "0"]).where("timestamp BETWEEN ? AND ?", start_at, end_at).where("velocity NOT LIKE '%.%'")
 ```
 
 This will select points tracked between January 1st and January 31st 2025. Then just use step 3 to convert speed in kilometers per hour to meters per second.
