@@ -186,6 +186,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.jsonb "geodata", default: {}, null: false
     t.bigint "visit_id"
     t.datetime "reverse_geocoded_at"
+    t.decimal "course", precision: 8, scale: 5
+    t.decimal "course_accuracy", precision: 8, scale: 5
+    t.string "external_track_id"
     t.string "osm_id"
     t.string "osm_type"
     t.string "osm_key"
@@ -205,9 +208,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.bigint "state_id"
     t.bigint "county_id"
     t.bigint "city_id"
-    t.decimal "course", precision: 8, scale: 5
-    t.decimal "course_accuracy", precision: 8, scale: 5
-    t.string "external_track_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -215,7 +215,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.index ["connection"], name: "index_points_on_connection"
     t.index ["country_id"], name: "index_points_on_country_id"
     t.index ["county_id"], name: "index_points_on_county_id"
-    t.index ["country"], name: "index_points_on_country"
     t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
@@ -260,7 +259,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.geometry "path", limit: {:srid=>3857, :type=>"line_string"}
+    t.geometry "path", limit: {srid: 3857, type: "line_string"}
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -274,7 +273,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.datetime "updated_at", null: false
     t.string "api_key", default: "", null: false
     t.string "theme", default: "dark", null: false
-    t.jsonb "settings", default: {"fog_of_war_meters"=>"100", "meters_between_routes"=>"1000", "minutes_between_routes"=>"60"}
+    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
     t.boolean "admin", default: false
     t.integer "sign_in_count", default: 0, null: false
     t.datetime "current_sign_in_at"
