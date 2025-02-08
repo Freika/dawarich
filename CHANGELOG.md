@@ -45,6 +45,11 @@ This will select points tracked between January 1st and January 31st 2025. Then 
 - After deleting one point from the map, other points can now be deleted as well. #723 #678
 - Fixed a bug where export file was not being deleted from the server after it was deleted. #808
 - After an area was drawn on the map, a popup is now being shown to allow user to provide a name and save the area. #740
+- Docker entrypoints now use database name to fix problem with custom database names.
+
+### Added
+
+- `X-Dawarich-Version` header to the `GET /api/v1/health` endpoint response.
 
 # 0.23.6 - 2025-02-06
 

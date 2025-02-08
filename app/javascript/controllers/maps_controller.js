@@ -128,7 +128,7 @@ export default class extends Controller {
       Heatmap: this.heatmapLayer,
       "Fog of War": new this.fogOverlay(),
       "Scratch map": this.scratchLayer,
-      Areas: this.areasLayer, // Add areasLayer to the control
+      Areas: this.areasLayer,
       Photos: this.photoMarkers
     };
 
@@ -573,9 +573,6 @@ export default class extends Controller {
             fillOpacity: 0.5,
           },
         },
-      },
-      edit: {
-        featureGroup: this.drawnItems
       }
     });
 

@@ -35,7 +35,6 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
     </div>
   `;
 
-  console.log('Binding popup to layer');
   layer.bindPopup(formHtml, {
     maxWidth: "auto",
     minWidth: 300,
@@ -44,19 +43,13 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
     className: 'area-form-popup'
   }).openPopup();
 
-  console.log('Adding layer to areasLayer');
   areasLayer.addLayer(layer);
 
   // Bind the event handler immediately after opening the popup
   setTimeout(() => {
-    console.log('Setting up form handlers');
     const form = document.getElementById('circle-form');
     const saveButton = document.getElementById('save-area-btn');
     const nameInput = document.getElementById('circle-name');
-
-    console.log('Form:', form);
-    console.log('Save button:', saveButton);
-    console.log('Name input:', nameInput);
 
     if (!form || !saveButton || !nameInput) {
       console.error('Required elements not found');
@@ -77,28 +70,20 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
       e.stopPropagation();
 
       if (!nameInput.value.trim()) {
-        console.log('Name is empty');
         nameInput.classList.add('input-error');
         return;
       }
 
-      console.log('Creating FormData');
       const formData = new FormData(form);
-      formData.forEach((value, key) => {
-        console.log(`FormData: ${key} = ${value}`);
-      });
 
-      console.log('Calling saveArea');
       saveArea(formData, areasLayer, layer, apiKey);
     });
   }, 100); // Small delay to ensure DOM is ready
 }
 
 export function saveArea(formData, areasLayer, layer, apiKey) {
-  console.log('saveArea called with apiKey:', apiKey);
   const data = {};
   formData.forEach((value, key) => {
-    console.log('FormData entry:', key, value);
     const keys = key.split('[').map(k => k.replace(']', ''));
     if (keys.length > 1) {
       if (!data[keys[0]]) data[keys[0]] = {};
@@ -108,21 +93,18 @@ export function saveArea(formData, areasLayer, layer, apiKey) {
     }
   });
 
-  console.log('Sending fetch request with data:', data);
   fetch(`/api/v1/areas?api_key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json'},
     body: JSON.stringify(data)
   })
   .then(response => {
-    console.log('Received response:', response);
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }
     return response.json();
   })
   .then(data => {
-    console.log('Area saved successfully:', data);
     layer.closePopup();
     layer.bindPopup(`
       Name: ${data.name}<br>
@@ -170,7 +152,6 @@ export function deleteArea(id, areasLayer, layer, apiKey) {
 }
 
 export function fetchAndDrawAreas(areasLayer, apiKey) {
-  console.log('Fetching areas...');
   fetch(`/api/v1/areas?api_key=${apiKey}`, {
     method: 'GET',
     headers: {

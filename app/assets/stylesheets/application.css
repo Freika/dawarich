@@ -107,8 +107,3 @@
     transform: rotate(360deg);
   }
 }
-
-.clickable-area,
-.leaflet-interactive {
-  cursor: pointer !important;
-}
