@@ -46,10 +46,6 @@ This will select points tracked between January 1st and January 31st 2025. Then 
 - Fixed a bug where export file was not being deleted from the server after it was deleted. #808
 - After an area was drawn on the map, a popup is now being shown to allow user to provide a name and save the area. #740
 
-### Added
-
-- `X-Dawarich-Version` header to the `GET /api/v1/health` endpoint response. #800
-
 # 0.23.6 - 2025-02-06
 
 ### Added

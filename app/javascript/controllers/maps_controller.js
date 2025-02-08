@@ -462,9 +462,6 @@ export default class extends Controller {
       return response.json();
     })
     .then(data => {
-      // Show success message
-      showFlashMessage('notice', 'Point was successfully deleted');
-
       // Remove the marker and update all layers
       this.removeMarker(id);
       let wasPolyLayerVisible = false;
@@ -474,6 +471,7 @@ export default class extends Controller {
           wasPolyLayerVisible = true;
         }
         this.map.removeLayer(this.polylinesLayer);
+
       }
 
       // Create new polylines layer
@@ -495,16 +493,17 @@ export default class extends Controller {
       if (this.layerControl) {
         this.map.removeControl(this.layerControl);
         const controlsLayer = {
-          Points: this.markersLayer || L.layerGroup(),
-          Routes: this.polylinesLayer || L.layerGroup(),
-          Heatmap: this.heatmapLayer || L.heatLayer([]),
-          "Fog of War": new this.fogOverlay(),
-          "Scratch map": this.scratchLayer || L.layerGroup(),
-          Areas: this.areasLayer || L.layerGroup(),
-          Photos: this.photoMarkers || L.layerGroup()
+          Points: this.markersLayer,
+          Routes: this.polylinesLayer,
+          Heatmap: this.heatmapLayer,
+          "Fog of War": this.fogOverlay,
+          "Scratch map": this.scratchLayer,
+          Areas: this.areasLayer,
+          Photos: this.photoMarkers
         };
         this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
       }
+
       // Update heatmap
       this.heatmapLayer.setLatLngs(this.markers.map(marker => [marker[0], marker[1], 0.2]));
 
