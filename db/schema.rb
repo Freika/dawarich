@@ -64,6 +64,37 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.index ["user_id"], name: "index_areas_on_user_id"
   end
 
+  create_table "cities", force: :cascade do |t|
+    t.string "name", null: false
+    t.bigint "country_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "state_id"
+    t.bigint "county_id"
+    t.index ["country_id"], name: "index_cities_on_country_id"
+    t.index ["county_id"], name: "index_cities_on_county_id"
+    t.index ["state_id"], name: "index_cities_on_state_id"
+  end
+
+  create_table "counties", force: :cascade do |t|
+    t.string "name"
+    t.bigint "country_id", null: false
+    t.bigint "state_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["country_id"], name: "index_counties_on_country_id"
+    t.index ["state_id"], name: "index_counties_on_state_id"
+  end
+
+  create_table "countries", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "iso2_code", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["iso2_code"], name: "index_countries_on_iso2_code"
+    t.index ["name"], name: "index_countries_on_name"
+  end
+
   create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
   end
 
@@ -149,8 +180,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.text "in_regions", default: [], array: true
     t.jsonb "raw_data", default: {}
     t.bigint "import_id"
-    t.string "city"
-    t.string "country"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
@@ -160,22 +189,51 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.decimal "course", precision: 8, scale: 5
     t.decimal "course_accuracy", precision: 8, scale: 5
     t.string "external_track_id"
+    t.string "osm_id"
+    t.string "osm_type"
+    t.string "osm_key"
+    t.string "osm_value"
+    t.string "osm_district"
+    t.string "post_code"
+    t.string "type"
+    t.string "house_number"
+    t.string "street"
+    t.string "name"
+    t.string "district"
+    t.string "locality"
+    t.string "importance"
+    t.string "object_type"
+    t.string "classification"
+    t.bigint "country_id"
+    t.bigint "state_id"
+    t.bigint "county_id"
+    t.bigint "city_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
-    t.index ["city"], name: "index_points_on_city"
+    t.index ["city_id"], name: "index_points_on_city_id"
     t.index ["connection"], name: "index_points_on_connection"
-    t.index ["country"], name: "index_points_on_country"
+    t.index ["country_id"], name: "index_points_on_country_id"
+    t.index ["county_id"], name: "index_points_on_county_id"
     t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["latitude", "longitude", "timestamp", "user_id"], name: "unique_points_lat_long_timestamp_user_id_index", unique: true
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
+    t.index ["state_id"], name: "index_points_on_state_id"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
+  end
+
+  create_table "states", force: :cascade do |t|
+    t.string "name"
+    t.bigint "country_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["country_id"], name: "index_states_on_country_id"
   end
 
   create_table "stats", force: :cascade do |t|
@@ -201,7 +259,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.geometry "path", limit: {:srid=>3857, :type=>"line_string"}
+    t.geometry "path", limit: {srid: 3857, type: "line_string"}
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -215,7 +273,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.datetime "updated_at", null: false
     t.string "api_key", default: "", null: false
     t.string "theme", default: "dark", null: false
-    t.jsonb "settings", default: {"fog_of_war_meters"=>"100", "meters_between_routes"=>"1000", "minutes_between_routes"=>"60"}
+    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
     t.boolean "admin", default: false
     t.integer "sign_in_count", default: 0, null: false
     t.datetime "current_sign_in_at"
@@ -248,11 +306,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
+  add_foreign_key "cities", "counties"
+  add_foreign_key "cities", "countries"
+  add_foreign_key "cities", "states"
+  add_foreign_key "counties", "countries"
+  add_foreign_key "counties", "states"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
+  add_foreign_key "points", "cities"
+  add_foreign_key "points", "counties"
+  add_foreign_key "points", "countries"
+  add_foreign_key "points", "states"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
+  add_foreign_key "states", "countries"
   add_foreign_key "stats", "users"
   add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"

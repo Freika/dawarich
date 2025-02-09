@@ -8,7 +8,10 @@ RSpec.describe PointSerializer do
 
     let(:point) { create(:point) }
     let(:expected_json) do
-      point.attributes.except(*PointSerializer::EXCLUDED_ATTRIBUTES)
+      point.attributes.except(*PointSerializer::EXCLUDED_ATTRIBUTES).merge(
+        city: point.city_name,
+        country: point.country_name
+      )
     end
 
     it 'returns JSON' do

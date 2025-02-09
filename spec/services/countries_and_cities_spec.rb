@@ -11,19 +11,23 @@ RSpec.describe CountriesAndCities do
     # and we expect to get one country with one city which has 5 points
 
     let(:timestamp) { DateTime.new(2021, 1, 1, 0, 0, 0) }
+    let(:germany) { create(:country, name: 'Germany') }
+    let(:belgium) { create(:country, name: 'Belgium') }
+    let(:berlin) { create(:city, name: 'Berlin', country: germany) }
+    let(:brugges) { create(:city, name: 'Brugges', country: belgium) }
 
     let(:points) do
       [
-        create(:point, city: 'Berlin', country: 'Germany', timestamp:),
-        create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 10.minutes),
-        create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.minutes),
-        create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
-        create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 40.minutes),
-        create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 50.minutes),
-        create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 60.minutes),
-        create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 70.minutes),
-        create(:point, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 80.minutes),
-        create(:point, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 90.minutes)
+        create(:point, city: berlin, country: germany, timestamp:),
+        create(:point, city: berlin, country: germany, timestamp: timestamp + 10.minutes),
+        create(:point, city: berlin, country: germany, timestamp: timestamp + 20.minutes),
+        create(:point, city: berlin, country: germany, timestamp: timestamp + 30.minutes),
+        create(:point, city: berlin, country: germany, timestamp: timestamp + 40.minutes),
+        create(:point, city: berlin, country: germany, timestamp: timestamp + 50.minutes),
+        create(:point, city: berlin, country: germany, timestamp: timestamp + 60.minutes),
+        create(:point, city: berlin, country: germany, timestamp: timestamp + 70.minutes),
+        create(:point, city: brugges, country: belgium, timestamp: timestamp + 80.minutes),
+        create(:point, city: brugges, country: belgium, timestamp: timestamp + 90.minutes)
       ]
     end
 
@@ -37,15 +41,15 @@ RSpec.describe CountriesAndCities do
           expect(countries_and_cities).to eq(
             [
               CountriesAndCities::CountryData.new(
-                country: 'Germany',
+                country: germany.name,
                 cities: [
                   CountriesAndCities::CityData.new(
-                    city: 'Berlin', points: 8, timestamp: 1_609_463_400, stayed_for: 70
+                    city: berlin.name, points: 8, timestamp: 1_609_463_400, stayed_for: 70
                   )
                 ]
               ),
               CountriesAndCities::CountryData.new(
-                country: 'Belgium',
+                country: belgium.name,
                 cities: []
               )
             ]
@@ -56,11 +60,11 @@ RSpec.describe CountriesAndCities do
       context 'when user stayed in the city for less than 1 hour' do
         let(:points) do
           [
-            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 10.minutes),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.minutes),
-            create(:point, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 80.minutes),
-            create(:point, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 90.minutes)
+            create(:point, city: berlin, country: germany, timestamp:),
+            create(:point, city: berlin, country: germany, timestamp: timestamp + 10.minutes),
+            create(:point, city: berlin, country: germany, timestamp: timestamp + 20.minutes),
+            create(:point, city: brugges, country: belgium, timestamp: timestamp + 80.minutes),
+            create(:point, city: brugges, country: belgium, timestamp: timestamp + 90.minutes)
           ]
         end
 
@@ -68,11 +72,11 @@ RSpec.describe CountriesAndCities do
           expect(countries_and_cities).to eq(
             [
               CountriesAndCities::CountryData.new(
-                country: 'Germany',
+                country: germany.name,
                 cities: []
               ),
               CountriesAndCities::CountryData.new(
-                country: 'Belgium',
+                country: belgium.name,
                 cities: []
               )
             ]

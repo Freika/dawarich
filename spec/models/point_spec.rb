@@ -6,6 +6,10 @@ RSpec.describe Point, type: :model do
   describe 'associations' do
     it { is_expected.to belong_to(:import).optional }
     it { is_expected.to belong_to(:user) }
+    it { is_expected.to belong_to(:country).optional }
+    it { is_expected.to belong_to(:state).optional }
+    it { is_expected.to belong_to(:county).optional }
+    it { is_expected.to belong_to(:city).optional }
   end
 
   describe 'validations' do
@@ -17,7 +21,7 @@ RSpec.describe Point, type: :model do
   describe 'scopes' do
     describe '.reverse_geocoded' do
       let(:point) { create(:point, :reverse_geocoded) }
-      let(:point_without_address) { create(:point, city: nil, country: nil) }
+      let(:point_without_address) { create(:point, city_id: nil, country_id: nil) }
 
       it 'returns points with reverse geocoded address' do
         expect(described_class.reverse_geocoded).to eq([point])
