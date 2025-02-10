@@ -107,6 +107,6 @@ class User < ApplicationRecord
   def sanitize_input
     settings['immich_url']&.gsub!(%r{/+\z}, '')
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
-    settings['maps']['url']&.strip!
+    settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
   end
 end
