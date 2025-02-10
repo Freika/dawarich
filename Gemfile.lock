@@ -160,7 +160,7 @@ GEM
       rake
     groupdate (6.5.1)
       activesupport (>= 7)
-    hashdiff (1.1.1)
+    hashdiff (1.1.2)
     httparty (0.22.0)
       csv
       mini_mime (>= 1.0.0)
@@ -326,7 +326,7 @@ GEM
     responders (3.1.1)
       actionpack (>= 5.2)
       railties (>= 5.2)
-    rexml (3.3.8)
+    rexml (3.4.0)
     rgeo (3.0.1)
     rgeo-activerecord (8.0.0)
       activerecord (>= 7.0)
@@ -442,7 +442,7 @@ GEM
     useragent (0.16.11)
     warden (1.2.9)
       rack (>= 2.0.9)
-    webmock (3.24.0)
+    webmock (3.25.0)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
       hashdiff (>= 0.4.0, < 2.0.0)
