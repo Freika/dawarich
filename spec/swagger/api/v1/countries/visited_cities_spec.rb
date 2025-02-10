@@ -9,7 +9,12 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
       description 'Returns a list of visited cities and countries based on tracked points within the specified date range'
       produces 'application/json'
 
-      parameter name: :api_key, in: :query, type: :string, required: true
+      parameter name: :api_key,
+                in: :query,
+                type: :string,
+                required: true,
+                example: 'a1b2c3d4e5f6g7h8i9j0',
+                description: 'Your API authentication key'
       parameter name: :start_at,
                 in: :query,
                 type: :string,
@@ -32,6 +37,36 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
                  data: {
                    type: :array,
                    description: 'Array of countries and their visited cities',
+                   example: [
+                     {
+                       country: 'Germany',
+                       cities: [
+                         {
+                           city: 'Berlin',
+                           points: 4394,
+                           timestamp: 1_724_868_369,
+                           stayed_for: 24_490
+                         },
+                         {
+                           city: 'Munich',
+                           points: 2156,
+                           timestamp: 1_724_782_369,
+                           stayed_for: 12_450
+                         }
+                       ]
+                     },
+                     {
+                       country: 'France',
+                       cities: [
+                         {
+                           city: 'Paris',
+                           points: 3267,
+                           timestamp: 1_724_695_969,
+                           stayed_for: 18_720
+                         }
+                       ]
+                     }
+                   ],
                    items: {
                      type: :object,
                      properties: {

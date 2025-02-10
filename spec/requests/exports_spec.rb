@@ -76,9 +76,25 @@ RSpec.describe '/exports', type: :request do
   end
 
   describe 'DELETE /destroy' do
-    let!(:export) { create(:export, user:, url: 'exports/export.json') }
+    let!(:export) { create(:export, user:, url: 'exports/export.json', name: 'export.json') }
+    let(:export_file) { Rails.root.join('public', 'exports', export.name) }
 
-    before { sign_in user }
+    before do
+      sign_in user
+
+      FileUtils.mkdir_p(File.dirname(export_file))
+      File.write(export_file, '{"some": "data"}')
+    end
+
+    after { FileUtils.rm_f(export_file) }
+
+    it 'removes the export file from disk' do
+      expect(File.exist?(export_file)).to be true
+
+      delete export_url(export)
+
+      expect(File.exist?(export_file)).to be false
+    end
 
     it 'destroys the requested export' do
       expect { delete export_url(export) }.to change(Export, :count).by(-1)
@@ -88,15 +104,6 @@ RSpec.describe '/exports', type: :request do
       delete export_url(export)
 
       expect(response).to redirect_to(exports_url)
-    end
-
-    it 'remove the export file from the disk' do
-      export_file = Rails.root.join('public', export.url)
-      FileUtils.touch(export_file)
-
-      delete export_url(export)
-
-      expect(File.exist?(export_file)).to be_falsey
     end
   end
 end

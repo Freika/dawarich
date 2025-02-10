@@ -28,7 +28,7 @@ class Gpx::TrackParser
     segments = track['trkseg']
     segments_array = segments.is_a?(Array) ? segments : [segments]
 
-    segments_array.map { |segment| segment['trkpt'] }
+    segments_array.compact.map { |segment| segment['trkpt'] }
   end
 
   def create_point(point, index)
