@@ -118,7 +118,7 @@ GEM
     data_migrate (11.2.0)
       activerecord (>= 6.1)
       railties (>= 6.1)
-    database_consistency (2.0.3)
+    database_consistency (2.0.4)
       activerecord (>= 3.2)
     date (3.4.1)
     debug (1.10.0)
