@@ -19,9 +19,11 @@ gem 'lograge'
 gem 'oj'
 gem 'pg'
 gem 'prometheus_exporter'
+gem 'activerecord-postgis-adapter', github: 'StoneGod/activerecord-postgis-adapter', branch: 'rails-8'
 gem 'puma'
 gem 'pundit'
 gem 'rails', '~> 8.0'
+gem 'rgeo'
 gem 'rswag-api'
 gem 'rswag-ui'
 gem 'shrine', '~> 3.6'
@@ -30,6 +32,7 @@ gem 'sidekiq-cron'
 gem 'sidekiq-limit_fetch'
 gem 'sprockets-rails'
 gem 'stimulus-rails'
+gem 'strong_migrations'
 gem 'tailwindcss-rails'
 gem 'turbo-rails'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
@@ -54,6 +57,7 @@ group :test do
 end
 
 group :development do
+  gem 'database_consistency', require: false
   gem 'foreman'
   gem 'rubocop-rails', require: false
 end

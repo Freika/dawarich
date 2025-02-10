@@ -2,6 +2,7 @@
 
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'] }
+  config.logger = Sidekiq::Logger.new($stdout)
 
   if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
     require 'prometheus_exporter/instrumentation'

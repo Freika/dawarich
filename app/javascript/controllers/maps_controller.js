@@ -13,8 +13,7 @@ import {
   getSpeedColor
 } from "../maps/polylines";
 
-import { fetchAndDrawAreas } from "../maps/areas";
-import { handleAreaCreated } from "../maps/areas";
+import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
 import { showFlashMessage, fetchAndDisplayPhotos, debounce } from "../maps/helpers";
 
@@ -67,7 +66,7 @@ export default class extends Controller {
       imperial: this.distanceUnit === 'mi',
       metric: this.distanceUnit === 'km',
       maxWidth: 120
-    }).addTo(this.map)
+    }).addTo(this.map);
 
     // Add stats control
     const StatsControl = L.Control.extend({
@@ -107,7 +106,13 @@ export default class extends Controller {
     // Create a proper Leaflet layer for fog
     this.fogOverlay = createFogOverlay();
 
-    this.areasLayer = L.layerGroup(); // Initialize areas layer
+    // Create custom pane for areas
+    this.map.createPane('areasPane');
+    this.map.getPane('areasPane').style.zIndex = 650;
+    this.map.getPane('areasPane').style.pointerEvents = 'all';
+
+    // Initialize areasLayer as a feature group and add it to the map immediately
+    this.areasLayer = new L.FeatureGroup();
     this.photoMarkers = L.layerGroup();
 
     this.setupScratchLayer(this.countryCodesMap);
@@ -218,8 +223,8 @@ export default class extends Controller {
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        const startDate = urlParams.get('start_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
-        const endDate = urlParams.get('end_at')?.split('T')[0] || new Date().toISOString().split('T')[0];
+        const startDate = urlParams.get('start_at') || new Date().toISOString();
+        const endDate = urlParams.get('end_at')|| new Date().toISOString();
         await fetchAndDisplayPhotos({
           map: this.map,
           photoMarkers: this.photoMarkers,
@@ -248,10 +253,13 @@ export default class extends Controller {
     }
     // Store panel state before disconnecting
     if (this.rightPanel) {
-      const finalState = document.querySelector('.leaflet-right-panel').style.display !== 'none' ? 'true' : 'false';
+      const panel = document.querySelector('.leaflet-right-panel');
+      const finalState = panel ? (panel.style.display !== 'none' ? 'true' : 'false') : 'false';
       localStorage.setItem('mapPanelOpen', finalState);
     }
-    this.map.remove();
+    if (this.map) {
+      this.map.remove();
+    }
   }
 
   setupSubscription() {
@@ -565,18 +573,23 @@ export default class extends Controller {
             fillOpacity: 0.5,
           },
         },
-      },
+      }
     });
 
     // Handle circle creation
-    this.map.on(L.Draw.Event.CREATED, (event) => {
+    this.map.on('draw:created', (event) => {
       const layer = event.layer;
 
       if (event.layerType === 'circle') {
-        handleAreaCreated(this.areasLayer, layer, this.apiKey);
+        try {
+          // Add the layer to the map first
+          layer.addTo(this.map);
+          handleAreaCreated(this.areasLayer, layer, this.apiKey);
+        } catch (error) {
+          console.error("Error in handleAreaCreated:", error);
+          console.error(error.stack); // Add stack trace
+        }
       }
-
-      this.drawnItems.addLayer(layer);
     });
   }
 

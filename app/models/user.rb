@@ -13,10 +13,15 @@ class User < ApplicationRecord
   has_many :visits,         dependent: :destroy
   has_many :points, through: :imports
   has_many :places, through: :visits
-  has_many :trips, dependent: :destroy
+  has_many :trips,  dependent: :destroy
 
   after_create :create_api_key
   before_save :strip_trailing_slashes
+
+  validates :email, presence: true
+  validates :reset_password_token, uniqueness: true, allow_nil: true
+
+  attribute :admin, :boolean, default: false
 
   def countries_visited
     stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact

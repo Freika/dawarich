@@ -1,4 +1,13 @@
 GIT
+  remote: https://github.com/StoneGod/activerecord-postgis-adapter.git
+  revision: 147fd43191ef703e2a1b3654f31d9139201a87e8
+  branch: rails-8
+  specs:
+    activerecord-postgis-adapter (10.0.1)
+      activerecord (~> 8.0.0)
+      rgeo-activerecord (~> 8.0.0)
+
+GIT
   remote: https://github.com/alexreisner/geocoder.git
   revision: 04ee2936a30b30a23ded5231d7faf6cf6c27c099
   ref: 04ee293
@@ -93,7 +102,7 @@ GEM
       msgpack (~> 1.2)
     builder (3.3.0)
     byebug (11.1.3)
-    chartkick (5.1.2)
+    chartkick (5.1.3)
     coderay (1.1.3)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.0)
@@ -109,6 +118,8 @@ GEM
     data_migrate (11.2.0)
       activerecord (>= 6.1)
       railties (>= 6.1)
+    database_consistency (2.0.4)
+      activerecord (>= 3.2)
     date (3.4.1)
     debug (1.10.0)
       irb (~> 1.10)
@@ -137,7 +148,7 @@ GEM
       factory_bot (~> 6.5)
       railties (>= 5.0.0)
     fakeredis (0.1.4)
-    ffaker (2.23.0)
+    ffaker (2.24.0)
     foreman (0.88.1)
     fugit (1.11.1)
       et-orbi (~> 1, >= 1.2.11)
@@ -149,7 +160,7 @@ GEM
       rake
     groupdate (6.5.1)
       activesupport (>= 7)
-    hashdiff (1.1.1)
+    hashdiff (1.1.2)
     httparty (0.22.0)
       csv
       mini_mime (>= 1.0.0)
@@ -161,7 +172,8 @@ GEM
       activesupport (>= 6.0.0)
       railties (>= 6.0.0)
     io-console (0.8.0)
-    irb (1.14.3)
+    irb (1.15.1)
+      pp (>= 0.6.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     json (2.9.1)
@@ -179,7 +191,7 @@ GEM
       activerecord
       kaminari-core (= 1.2.2)
     kaminari-core (1.2.2)
-    language_server-protocol (3.17.0.3)
+    language_server-protocol (3.17.0.4)
     logger (1.6.5)
     lograge (0.14.0)
       actionpack (>= 4)
@@ -238,6 +250,9 @@ GEM
     patience_diff (1.2.0)
       optimist (~> 3.0)
     pg (1.5.9)
+    pp (0.6.2)
+      prettyprint
+    prettyprint (0.2.0)
     prometheus_exporter (2.2.0)
       webrick
     pry (0.14.2)
@@ -252,13 +267,13 @@ GEM
       date
       stringio
     public_suffix (6.0.1)
-    puma (6.5.0)
+    puma (6.6.0)
       nio4r (~> 2.0)
     pundit (2.4.0)
       activesupport (>= 3.0.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (3.1.8)
+    rack (3.1.9)
     rack-session (2.1.0)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -297,7 +312,7 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.2.1)
-    rdoc (6.11.0)
+    rdoc (6.12.0)
       psych (>= 4.0.0)
     redis (5.3.0)
       redis-client (>= 0.22.0)
@@ -311,8 +326,12 @@ GEM
     responders (3.1.1)
       actionpack (>= 5.2)
       railties (>= 5.2)
-    rexml (3.3.8)
-    rspec-core (3.13.2)
+    rexml (3.4.0)
+    rgeo (3.0.1)
+    rgeo-activerecord (8.0.0)
+      activerecord (>= 7.0)
+      rgeo (>= 3.0)
+    rspec-core (3.13.3)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.3)
       diff-lcs (>= 1.2.0, < 2.0)
@@ -320,7 +339,7 @@ GEM
     rspec-mocks (3.13.2)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
-    rspec-rails (7.1.0)
+    rspec-rails (7.1.1)
       actionpack (>= 7.0)
       activesupport (>= 7.0)
       railties (>= 7.0)
@@ -328,7 +347,7 @@ GEM
       rspec-expectations (~> 3.13)
       rspec-mocks (~> 3.13)
       rspec-support (~> 3.13)
-    rspec-support (3.13.1)
+    rspec-support (3.13.2)
     rswag-api (2.16.0)
       activesupport (>= 5.2, < 8.1)
       railties (>= 5.2, < 8.1)
@@ -340,7 +359,7 @@ GEM
     rswag-ui (2.16.0)
       actionpack (>= 5.2, < 8.1)
       railties (>= 5.2, < 8.1)
-    rubocop (1.70.0)
+    rubocop (1.71.0)
       json (~> 2.3)
       language_server-protocol (>= 3.17.0)
       parallel (~> 1.10)
@@ -352,7 +371,7 @@ GEM
       unicode-display_width (>= 2.4.0, < 4.0)
     rubocop-ast (1.37.0)
       parser (>= 3.3.1.0)
-    rubocop-rails (2.29.0)
+    rubocop-rails (2.29.1)
       activesupport (>= 4.2.0)
       rack (>= 1.1)
       rubocop (>= 1.52.0, < 2.0)
@@ -364,7 +383,8 @@ GEM
     shrine (3.6.0)
       content_disposition (~> 1.0)
       down (~> 5.1)
-    sidekiq (7.3.7)
+    sidekiq (7.3.8)
+      base64
       connection_pool (>= 2.3.0)
       logger
       rack (>= 2.2.4)
@@ -392,13 +412,15 @@ GEM
     stimulus-rails (1.3.4)
       railties (>= 6.0.0)
     stringio (3.1.2)
+    strong_migrations (2.2.0)
+      activerecord (>= 7)
     super_diff (0.15.0)
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
-    tailwindcss-rails (3.3.0)
+    tailwindcss-rails (3.3.1)
       railties (>= 7.0.0)
-      tailwindcss-ruby
+      tailwindcss-ruby (~> 3.0)
     tailwindcss-ruby (3.4.17)
     tailwindcss-ruby (3.4.17-aarch64-linux)
     tailwindcss-ruby (3.4.17-arm-linux)
@@ -406,7 +428,7 @@ GEM
     tailwindcss-ruby (3.4.17-x86_64-darwin)
     tailwindcss-ruby (3.4.17-x86_64-linux)
     thor (1.3.2)
-    timeout (0.4.2)
+    timeout (0.4.3)
     turbo-rails (2.0.11)
       actionpack (>= 6.0.0)
       railties (>= 6.0.0)
@@ -420,7 +442,7 @@ GEM
     useragent (0.16.11)
     warden (1.2.9)
       rack (>= 2.0.9)
-    webmock (3.24.0)
+    webmock (3.25.0)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
       hashdiff (>= 0.4.0, < 2.0.0)
@@ -439,9 +461,11 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  activerecord-postgis-adapter!
   bootsnap
   chartkick
   data_migrate
+  database_consistency
   debug
   devise
   dotenv-rails
@@ -465,6 +489,7 @@ DEPENDENCIES
   pundit
   rails (~> 8.0)
   redis
+  rgeo
   rspec-rails
   rswag-api
   rswag-specs
@@ -478,6 +503,7 @@ DEPENDENCIES
   simplecov
   sprockets-rails
   stimulus-rails
+  strong_migrations
   super_diff
   tailwindcss-rails
   turbo-rails
@@ -485,7 +511,7 @@ DEPENDENCIES
   webmock
 
 RUBY VERSION
-   ruby 3.3.4p94
+   ruby 3.4.1p0
 
 BUNDLED WITH
    2.5.21

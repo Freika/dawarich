@@ -115,7 +115,11 @@ RSpec.describe User, type: :model do
     end
 
     describe '#years_tracked' do
-      let!(:points) { create_list(:point, 3, user:, timestamp: DateTime.new(2024, 1, 1, 5, 0, 0)) }
+      let!(:points) do
+        (1..3).map do |i|
+          create(:point, user:, timestamp: DateTime.new(2024, 1, 1, 5, 0, 0) + i.minutes)
+        end
+      end
 
       it 'returns years tracked' do
         expect(user.years_tracked).to eq([{ year: 2024, months: ['Jan'] }])

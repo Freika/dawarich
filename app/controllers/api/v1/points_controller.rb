@@ -21,6 +21,12 @@ class Api::V1::PointsController < ApiController
     render json: serialized_points
   end
 
+  def create
+    Points::CreateJob.perform_later(batch_params, current_api_user.id)
+
+    render json: { message: 'Points are being processed' }
+  end
+
   def update
     point = current_api_user.tracked_points.find(params[:id])
 
@@ -40,6 +46,10 @@ class Api::V1::PointsController < ApiController
 
   def point_params
     params.require(:point).permit(:latitude, :longitude)
+  end
+
+  def batch_params
+    params.permit(locations: [:type, { geometry: {}, properties: {} }], batch: {})
   end
 
   def point_serializer

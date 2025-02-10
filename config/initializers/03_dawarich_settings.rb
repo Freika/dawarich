@@ -21,5 +21,13 @@ class DawarichSettings
     def nominatim_enabled?
       @nominatim_enabled ||= NOMINATIM_API_HOST.present?
     end
+
+    def meters_between_tracks
+      @meters_between_tracks ||= 300
+    end
+
+    def minutes_between_tracks
+      @minutes_between_tracks ||= 20
+    end
   end
 end

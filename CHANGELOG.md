@@ -1,14 +1,114 @@
-
 # Change Log
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.22.5 - 2025-01-20
+# 0.24.0 - 2025-02-09
+
+## Points speed units
+
+Dawarich expects speed to be sent in meters per second. It's already known that OwnTracks and GPSLogger (in some configurations) are sending speed in kilometers per hour.
+
+In GPSLogger it's easily fixable: if you previously had `"vel": "%SPD_KMH"`, change it to `"vel": "%SPD"`, like it's described in the [docs](https://dawarich.app/docs/tutorials/track-your-location#gps-logger).
+
+In OwnTracks it's a bit more complicated. You can't change the speed unit in the settings, so Dawarich will expect speed in kilometers per hour and will convert it to meters per second. Nothing is needed to be done from your side.
+
+Now, we need to fix existing points with speed in kilometers per hour. The following guide assumes that you have been tracking your location exclusively with speed in kilometers per hour. If you have been using both speed units (say, were tracking with OwnTracks in kilometers per hour and with GPSLogger in meters per second), you need to decide what to do with points that have speed in kilometers per hour, as there is no easy way to distinguish them from points with speed in meters per second.
+
+To convert speed in kilometers per hour to meters per second in your points, follow these steps:
+
+1. Enter [Dawarich console](https://dawarich.app/docs/FAQ#how-to-enter-dawarich-console)
+2. Run `points = Point.where(import_id: nil).where.not(velocity: [nil, "0"]).where("velocity NOT LIKE '%.%'")`. This will return all tracked (not imported) points.
+3. Run
+```ruby
+points.update_all("velocity = CAST(ROUND(CAST((CAST(velocity AS FLOAT) * 1000 / 3600) AS NUMERIC), 1) AS TEXT)")
+
+```
+
+This will convert speed in kilometers per hour to meters per second and round it to 1 decimal place.
+
+If you have been using both speed units, but you know the dates where you were tracking with speed in kilometers per hour, on the second step of the instruction above, you can add `where("timestamp BETWEEN ? AND ?", Date.parse("2025-01-01").beginning_of_day.to_i, Date.parse("2025-01-31").end_of_day.to_i)` to the query to convert speed in kilometers per hour to meters per second only for a specific period of time. Resulting query will look like this:
+
+```ruby
+start_at = DateTime.new(2025, 1, 1, 0, 0, 0).in_time_zone(Time.current.time_zone).to_i
+end_at = DateTime.new(2025, 1, 31, 23, 59, 59).in_time_zone(Time.current.time_zone).to_i
+points = Point.where(import_id: nil).where.not(velocity: [nil, "0"]).where("timestamp BETWEEN ? AND ?", start_at, end_at).where("velocity NOT LIKE '%.%'")
+```
+
+This will select points tracked between January 1st and January 31st 2025. Then just use step 3 to convert speed in kilometers per hour to meters per second.
+
+### Changed
+
+- Speed for points, that are sent to Dawarich via `POST /api/v1/owntracks/points` endpoint, will now be converted to meters per second, if `topic` param is sent. The official GPSLogger instructions are assuming user won't be sending `topic` param, so this shouldn't affect you if you're using GPSLogger.
+
+### Fixed
+
+- After deleting one point from the map, other points can now be deleted as well. #723 #678
+- Fixed a bug where export file was not being deleted from the server after it was deleted. #808
+- After an area was drawn on the map, a popup is now being shown to allow user to provide a name and save the area. #740
+- Docker entrypoints now use database name to fix problem with custom database names.
+- Garmin GPX files with empty tracks are now being imported correctly. #827
 
 ### Added
 
+- `X-Dawarich-Version` header to the `GET /api/v1/health` endpoint response.
+
+# 0.23.6 - 2025-02-06
+
+### Added
+
+- Enabled Postgis extension for PostgreSQL.
+- Trips are now store their paths in the database independently of the points.
+- Trips are now being rendered on the map using their precalculated paths instead of list of coordinates.
+
+### Changed
+
+- Ruby version was updated to 3.4.1.
+- Requesting photos on the Map page now uses the start and end dates from the URL params. #589
+
+# 0.23.5 - 2025-01-22
+
+### Added
+
+- A test for building rc Docker image.
+
+### Fixed
+
+- Fix authentication to `GET /api/v1/countries/visited_cities` with header `Authorization: Bearer YOUR_API_KEY` instead of `api_key` query param. #679
+- Fix a bug where a gpx file with empty tracks was not being imported. #646
+- Fix a bug where rc version was being checked as a stable release. #711
+
+# 0.23.3 - 2025-01-21
+
+### Changed
+
+- Synology-related files are now up to date. #684
+
+### Fixed
+
+- Drastically improved performance for Google's Records.json import. It will now take less than 5 minutes to import 500,000 points, which previously took a few hours.
+
+### Fixed
+
+- Add index only if it doesn't exist.
+
+# 0.23.1 - 2025-01-21
+
+### Fixed
+
+- Renamed unique index on points to `unique_points_lat_long_timestamp_user_id_index` to fix naming conflict with `unique_points_index`.
+
+# 0.23.0 - 2025-01-20
+
+## ⚠️ IMPORTANT ⚠️
+
+This release includes a data migration to remove duplicated points from the database. It will not remove anything except for duplcates from the `points` table, but please make sure to create a [backup](https://dawarich.app/docs/tutorials/backup-and-restore) before updating to this version.
+
+### Added
+
+- `POST /api/v1/points/create` endpoint added.
+- An index to guarantee uniqueness of points across `latitude`, `longitude`, `timestamp` and `user_id` values. This is introduced to make sure no duplicates will be created in the database in addition to previously existing validations.
 - `GET /api/v1/users/me` endpoint added to get current user.
 
 # 0.22.4 - 2025-01-20
@@ -230,7 +330,7 @@ To mount a custom `postgresql.conf` file, you need to create a `postgresql.conf`
 
 ```diff
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgis/postgis:14-3.5-alpine
     shm_size: 1G
     container_name: dawarich_db
     volumes:
@@ -261,7 +361,7 @@ An example of a custom `postgresql.conf` file is provided in the `postgresql.con
 ```diff
   ...
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgis/postgis:14-3.5-alpine
 +   shm_size: 1G
   ...
 ```
@@ -1202,7 +1302,7 @@ deploy:
       - shared_data:/var/shared/redis
 +   restart: always
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgis/postgis:14-3.5-alpine
     container_name: dawarich_db
     volumes:
       - db_data:/var/lib/postgresql/data

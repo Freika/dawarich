@@ -57,8 +57,18 @@ describe 'Stats API', type: :request do
         let!(:user) { create(:user) }
         let!(:stats_in_2020) { create_list(:stat, 12, year: 2020, user:) }
         let!(:stats_in_2021) { create_list(:stat, 12, year: 2021, user:) }
-        let!(:points_in_2020) { create_list(:point, 85, :with_geodata, timestamp: Time.zone.local(2020), user:) }
-        let!(:points_in_2021) { create_list(:point, 95, timestamp: Time.zone.local(2021), user:) }
+        let!(:points_in_2020) do
+          (1..85).map do |i|
+            create(:point, :with_geodata, :reverse_geocoded, timestamp: Time.zone.local(2020, 1, 1).to_i + i.hours,
+user:)
+          end
+        end
+        let!(:points_in_2021) do
+          (1..95).map do |i|
+            create(:point, :with_geodata, :reverse_geocoded, timestamp: Time.zone.local(2021, 1, 1).to_i + i.hours,
+user:)
+          end
+        end
         let(:api_key) { user.api_key }
 
         run_test!

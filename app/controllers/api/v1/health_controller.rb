@@ -10,6 +10,8 @@ class Api::V1::HealthController < ApiController
       response.set_header('X-Dawarich-Response', 'Hey, I\'m alive!')
     end
 
+    response.set_header('X-Dawarich-Version', APP_VERSION)
+
     render json: { status: 'ok' }
   end
 end

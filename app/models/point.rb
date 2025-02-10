@@ -8,7 +8,11 @@ class Point < ApplicationRecord
   belongs_to :user
 
   validates :latitude, :longitude, :timestamp, presence: true
-
+  validates :timestamp, uniqueness: {
+    scope: %i[latitude longitude user_id],
+    message: 'already has a point at this location and time for this user',
+    index: true
+  }
   enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3 }, suffix: true
   enum :trigger, {
     unknown: 0, background_event: 1, circular_region_event: 2, beacon_event: 3,

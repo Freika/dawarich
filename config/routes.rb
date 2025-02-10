@@ -68,7 +68,7 @@ Rails.application.routes.draw do
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index create update destroy]
-      resources :points,    only: %i[index destroy update]
+      resources :points,    only: %i[index create update destroy]
       resources :visits,    only: %i[update]
       resources :stats,     only: :index
 

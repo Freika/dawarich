@@ -23,5 +23,11 @@ RSpec.describe 'Api::V1::Healths', type: :request do
         expect(response.headers['X-Dawarich-Response']).to eq('Hey, I\'m alive and authenticated!')
       end
     end
+
+    it 'returns the correct version' do
+      get '/api/v1/health'
+
+      expect(response.headers['X-Dawarich-Version']).to eq(APP_VERSION)
+    end
   end
 end

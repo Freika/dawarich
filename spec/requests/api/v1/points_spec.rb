@@ -4,7 +4,11 @@ require 'rails_helper'
 
 RSpec.describe 'Api::V1::Points', type: :request do
   let!(:user) { create(:user) }
-  let!(:points) { create_list(:point, 150, user:) }
+  let!(:points) do
+    (1..15).map do |i|
+      create(:point, user:, timestamp: 1.day.ago + i.minutes)
+    end
+  end
 
   describe 'GET /index' do
     context 'when regular version of points is requested' do
@@ -21,7 +25,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
         json_response = JSON.parse(response.body)
 
-        expect(json_response.size).to eq(100)
+        expect(json_response.size).to eq(15)
       end
 
       it 'returns a list of points with pagination' do
@@ -31,7 +35,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
         json_response = JSON.parse(response.body)
 
-        expect(json_response.size).to eq(10)
+        expect(json_response.size).to eq(5)
       end
 
       it 'returns a list of points with pagination headers' do
@@ -40,7 +44,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response).to have_http_status(:ok)
 
         expect(response.headers['X-Current-Page']).to eq('2')
-        expect(response.headers['X-Total-Pages']).to eq('15')
+        expect(response.headers['X-Total-Pages']).to eq('2')
       end
     end
 
@@ -58,7 +62,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
         json_response = JSON.parse(response.body)
 
-        expect(json_response.size).to eq(100)
+        expect(json_response.size).to eq(15)
       end
 
       it 'returns a list of points with pagination' do
@@ -68,7 +72,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
         json_response = JSON.parse(response.body)
 
-        expect(json_response.size).to eq(10)
+        expect(json_response.size).to eq(5)
       end
 
       it 'returns a list of points with pagination headers' do
@@ -77,7 +81,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response).to have_http_status(:ok)
 
         expect(response.headers['X-Current-Page']).to eq('2')
-        expect(response.headers['X-Total-Pages']).to eq('15')
+        expect(response.headers['X-Total-Pages']).to eq('2')
       end
 
       it 'returns a list of points with slim attributes' do
