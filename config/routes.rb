@@ -20,6 +20,8 @@ Rails.application.routes.draw do
   namespace :settings do
     resources :background_jobs, only: %i[index create destroy]
     resources :users, only: %i[index create destroy edit update]
+    resources :maps, only: %i[index]
+    patch 'maps', to: 'maps#update'
   end
 
   patch 'settings', to: 'settings#update'

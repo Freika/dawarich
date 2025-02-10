@@ -6,8 +6,8 @@ class Areas::Visits::Create
   def initialize(user, areas)
     @user = user
     @areas = areas
-    @time_threshold_minutes = 30 || user.settings['time_threshold_minutes']
-    @merge_threshold_minutes = 15 || user.settings['merge_threshold_minutes']
+    @time_threshold_minutes = 30 || user.safe_settings.time_threshold_minutes
+    @merge_threshold_minutes = 15 || user.safe_settings.merge_threshold_minutes
   end
 
   def call
