@@ -8,7 +8,11 @@ class Point < ApplicationRecord
   belongs_to :user
 
   validates :latitude, :longitude, :timestamp, presence: true
-
+  validates :timestamp, uniqueness: {
+    scope: %i[latitude longitude user_id],
+    message: 'already has a point at this location and time for this user',
+    index: true
+  }
   enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3 }, suffix: true
   enum :trigger, {
     unknown: 0, background_event: 1, circular_region_event: 2, beacon_event: 3,
@@ -17,8 +21,8 @@ class Point < ApplicationRecord
   }, suffix: true
   enum :connection, { mobile: 0, wifi: 1, offline: 2, unknown: 4 }, suffix: true
 
-  scope :reverse_geocoded, -> { where.not(geodata: {}) }
-  scope :not_reverse_geocoded, -> { where(geodata: {}) }
+  scope :reverse_geocoded, -> { where.not(reverse_geocoded_at: nil) }
+  scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
 
@@ -34,9 +38,13 @@ class Point < ApplicationRecord
   end
 
   def async_reverse_geocode
-    return unless REVERSE_GEOCODING_ENABLED
+    return unless DawarichSettings.reverse_geocoding_enabled?
 
     ReverseGeocodingJob.perform_later(self.class.to_s, id)
+  end
+
+  def reverse_geocoded?
+    reverse_geocoded_at.present?
   end
 
   private

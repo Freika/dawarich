@@ -1,0 +1,40 @@
+{
+  "locations": [
+    {
+      "latitudeE7": 533690550,
+      "longitudeE7": 836950010,
+      "accuracy": 150,
+      "source": "UNKNOWN",
+      "timestamp": "2012-12-15T14:21:29.460Z"
+    },
+    {
+      "latitudeE7": 533563380,
+      "longitudeE7": 837616500,
+      "accuracy": 18000,
+      "source": "UNKNOWN",
+      "timestamp": "2013-01-04T10:22:43.225Z"
+    },
+    {
+      "latitudeE7": 533690589,
+      "longitudeE7": 836951347,
+      "accuracy": 22,
+      "source": "WIFI",
+      "deviceTag": 1184882232,
+      "timestamp": "2013-03-01T05:17:39.849Z"
+    },
+    {
+      "latitudeE7": 533700000,
+      "longitudeE7": 836960000,
+      "accuracy": 50,
+      "source": "GPS",
+      "timestamp": "2013-04-01T12:00:00.000Z"
+    },
+    {
+      "latitudeE7": 533710000,
+      "longitudeE7": 836970000,
+      "accuracy": 30,
+      "source": "GPS",
+      "timestamp": "2013-05-01T08:30:00.000Z"
+    }
+  ]
+}

@@ -17,8 +17,23 @@ RSpec.describe Import, type: :model do
         google_phone_takeout: 3,
         gpx: 4,
         immich_api: 5,
-        geojson: 6
+        geojson: 6,
+        photoprism_api: 7
       )
+    end
+  end
+
+  describe '#years_and_months_tracked' do
+    let(:import) { create(:import) }
+    let(:timestamp) { Time.zone.local(2024, 11, 1) }
+    let!(:points) do
+      (1..3).map do |i|
+        create(:point, import:, timestamp: timestamp + i.minutes)
+      end
+    end
+
+    it 'returns years and months tracked' do
+      expect(import.years_and_months_tracked).to eq([[2024, 11]])
     end
   end
 end

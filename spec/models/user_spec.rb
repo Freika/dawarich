@@ -92,16 +92,37 @@ RSpec.describe User, type: :model do
       end
     end
 
-    describe '#total_reverse_geocoded' do
-      subject { user.total_reverse_geocoded }
+    describe '#total_reverse_geocoded_points' do
+      subject { user.total_reverse_geocoded_points }
 
-      let!(:reverse_geocoded_point) do
-        create(:point, country: 'Country', city: 'City', geodata: { some: 'data' }, user:)
-      end
-      let!(:not_reverse_geocoded_point) { create(:point, country: 'Country', city: 'City', user:) }
+      let!(:reverse_geocoded_point) { create(:point, :reverse_geocoded, user:) }
+      let!(:not_reverse_geocoded_point) { create(:point, user:, reverse_geocoded_at: nil) }
 
       it 'returns number of reverse geocoded points' do
         expect(subject).to eq(1)
+      end
+    end
+
+    describe '#total_reverse_geocoded_points_without_data' do
+      subject { user.total_reverse_geocoded_points_without_data }
+
+      let!(:reverse_geocoded_point) { create(:point, :reverse_geocoded, :with_geodata, user:) }
+      let!(:reverse_geocoded_point_without_data) { create(:point, :reverse_geocoded, user:, geodata: {}) }
+
+      it 'returns number of reverse geocoded points without data' do
+        expect(subject).to eq(1)
+      end
+    end
+
+    describe '#years_tracked' do
+      let!(:points) do
+        (1..3).map do |i|
+          create(:point, user:, timestamp: DateTime.new(2024, 1, 1, 5, 0, 0) + i.minutes)
+        end
+      end
+
+      it 'returns years tracked' do
+        expect(user.years_tracked).to eq([{ year: 2024, months: ['Jan'] }])
       end
     end
   end

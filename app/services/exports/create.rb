@@ -18,7 +18,7 @@ class Exports::Create
 
     create_export_file(data)
 
-    export.update!(status: :completed, url: "exports/#{export.name}.#{file_format}")
+    export.update!(status: :completed, url: "exports/#{export.name}")
 
     create_export_finished_notification
   rescue StandardError => e
@@ -74,10 +74,16 @@ class Exports::Create
 
   def create_export_file(data)
     dir_path = Rails.root.join('public/exports')
-    Dir.mkdir(dir_path) unless Dir.exist?(dir_path)
 
-    file_path = dir_path.join("#{export.name}.#{file_format}")
+    FileUtils.mkdir_p(dir_path) unless Dir.exist?(dir_path)
+
+    file_path = dir_path.join(export.name)
+
+    Rails.logger.info("Creating export file at: #{file_path}")
 
     File.open(file_path, 'w') { |file| file.write(data) }
+  rescue StandardError => e
+    Rails.logger.error("Failed to create export file: #{e.message}")
+    raise
   end
 end

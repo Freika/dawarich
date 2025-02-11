@@ -1,0 +1,57 @@
+FROM ruby:3.4.1-alpine
+
+ENV APP_PATH=/var/app
+ENV BUNDLE_VERSION=2.5.21
+ENV BUNDLE_PATH=/usr/local/bundle/gems
+ENV RAILS_LOG_TO_STDOUT=true
+ENV RAILS_PORT=3000
+ENV RAILS_ENV=production
+
+# Install dependencies for application
+RUN apk -U add --no-cache \
+    build-base \
+    git \
+    postgresql-dev \
+    postgresql-client \
+    libxml2-dev \
+    libxslt-dev \
+    nodejs \
+    yarn \
+    imagemagick \
+    tzdata \
+    less \
+    yaml-dev \
+    gcompat \
+    && mkdir -p $APP_PATH
+
+# Update gem system and install bundler
+RUN gem update --system 3.6.2 \
+    && gem install bundler --version "$BUNDLE_VERSION" \
+    && rm -rf $GEM_HOME/cache/*
+
+WORKDIR $APP_PATH
+
+COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
+
+# Install production gems only
+RUN bundle config set --local path 'vendor/bundle' \
+    && bundle config set --local without 'development test' \
+    && bundle install --jobs 4 --retry 3 \
+    && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
+
+COPY ../. ./
+
+# Precompile assets for production
+RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
+    && rm -rf node_modules tmp/cache
+
+# Copy entrypoint scripts and grant execution permissions
+COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
+RUN chmod +x /usr/local/bin/web-entrypoint.sh
+
+COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
+RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
+
+EXPOSE $RAILS_PORT
+
+ENTRYPOINT [ "bundle", "exec" ]

@@ -25,7 +25,7 @@ RSpec.describe '/trips', type: :request do
     stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
       .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
 
-    allow_any_instance_of(Trip).to receive(:photos).and_return([])
+    allow_any_instance_of(Trip).to receive(:photo_previews).and_return([])
 
     sign_in user
   end

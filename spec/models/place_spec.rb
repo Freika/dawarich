@@ -23,6 +23,8 @@ RSpec.describe Place, type: :model do
     describe '#async_reverse_geocode' do
       let(:place) { create(:place) }
 
+      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
+
       it 'updates address' do
         expect { place.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob).with('Place', place.id)
       end

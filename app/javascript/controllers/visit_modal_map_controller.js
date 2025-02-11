@@ -27,7 +27,15 @@ export default class extends Controller {
 
   addMarkers() {
     this.coordinates.forEach((coordinate) => {
-      L.circleMarker([coordinate[0], coordinate[1]], { radius: 4 }).addTo(this.map);
+      L.circleMarker(
+        [coordinate[0], coordinate[1]],
+        {
+          radius: 4,
+          color: coordinate[5] < 0 ? "orange" : "blue",
+          zIndexOffset: 1000
+        }
+      ).addTo(this.map);
     });
   }
 }
+

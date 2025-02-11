@@ -24,9 +24,7 @@ RSpec.describe '/visits', type: :request do
       it 'returns confirmed visits' do
         get visits_url
 
-        expect(@controller.instance_variable_get(:@visits).map do |v|
-                 v[:visits]
-               end.flatten).to match_array(confirmed_visits)
+        expect(@controller.instance_variable_get(:@visits)).to match_array(confirmed_visits)
       end
     end
 
@@ -36,17 +34,13 @@ RSpec.describe '/visits', type: :request do
       it 'does not return suggested visits' do
         get visits_url
 
-        expect(@controller.instance_variable_get(:@visits).map do |v|
-                 v[:visits]
-               end.flatten).not_to include(suggested_visits)
+        expect(@controller.instance_variable_get(:@visits)).not_to include(suggested_visits)
       end
 
       it 'returns suggested visits' do
         get visits_url, params: { status: 'suggested' }
 
-        expect(@controller.instance_variable_get(:@visits).map do |v|
-                 v[:visits]
-               end.flatten).to match_array(suggested_visits)
+        expect(@controller.instance_variable_get(:@visits)).to match_array(suggested_visits)
       end
     end
 
@@ -56,17 +50,13 @@ RSpec.describe '/visits', type: :request do
       it 'does not return declined visits' do
         get visits_url
 
-        expect(@controller.instance_variable_get(:@visits).map do |v|
-                 v[:visits]
-               end.flatten).not_to include(declined_visits)
+        expect(@controller.instance_variable_get(:@visits)).not_to include(declined_visits)
       end
 
       it 'returns declined visits' do
         get visits_url, params: { status: 'declined' }
 
-        expect(@controller.instance_variable_get(:@visits).map do |v|
-                 v[:visits]
-               end.flatten).to match_array(declined_visits)
+        expect(@controller.instance_variable_get(:@visits)).to match_array(declined_visits)
       end
     end
 
@@ -76,17 +66,13 @@ RSpec.describe '/visits', type: :request do
       it 'does not return suggested visits' do
         get visits_url
 
-        expect(@controller.instance_variable_get(:@visits).map do |v|
-                 v[:visits]
-               end.flatten).not_to include(suggested_visits)
+        expect(@controller.instance_variable_get(:@visits)).not_to include(suggested_visits)
       end
 
       it 'returns suggested visits' do
         get visits_url, params: { status: 'suggested' }
 
-        expect(@controller.instance_variable_get(:@visits).map do |v|
-                 v[:visits]
-               end.flatten).to match_array(suggested_visits)
+        expect(@controller.instance_variable_get(:@visits)).to match_array(suggested_visits)
       end
     end
   end

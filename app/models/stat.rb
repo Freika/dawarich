@@ -6,67 +6,52 @@ class Stat < ApplicationRecord
   belongs_to :user
 
   def distance_by_day
-    timespan.to_a.map.with_index(1) do |day, index|
-      beginning_of_day = day.beginning_of_day.to_i
-      end_of_day = day.end_of_day.to_i
-
-      # We have to filter by user as well
-      points = user
-               .tracked_points
-               .without_raw_data
-               .order(timestamp: :asc)
-               .where(timestamp: beginning_of_day..end_of_day)
-
-      data = { day: index, distance: 0 }
-
-      points.each_cons(2) do |point1, point2|
-        distance = Geocoder::Calculations.distance_between(
-          point1.to_coordinates, point2.to_coordinates, units: ::DISTANCE_UNIT
-        )
-
-        data[:distance] += distance
-      end
-
-      [data[:day], data[:distance].round(2)]
-    end
+    monthly_points = points
+    calculate_daily_distances(monthly_points)
   end
 
   def self.year_distance(year, user)
-    stats = where(year:, user:).order(:month)
+    stats_by_month = where(year:, user:).order(:month).index_by(&:month)
 
-    (1..12).to_a.map do |month|
-      month_stat = stats.select { |stat| stat.month == month }.first
-
+    (1..12).map do |month|
       month_name = Date::MONTHNAMES[month]
-      distance = month_stat&.distance || 0
+      distance = stats_by_month[month]&.distance || 0
 
       [month_name, distance]
     end
   end
 
-  def self.year_cities_and_countries(year, user)
-    start_at = DateTime.new(year).beginning_of_year
-    end_at = DateTime.new(year).end_of_year
-
-    points = user.tracked_points.without_raw_data.where(timestamp: start_at..end_at)
-
-    data = CountriesAndCities.new(points).call
-
-    {
-      countries: data.map { _1[:country] }.uniq.count,
-      cities: data.sum { _1[:cities].count }
-    }
-  end
-
-  def self.years
-    starting_year = select(:year).min&.year || Time.current.year
-
-    (starting_year..Time.current.year).to_a.reverse
+  def points
+    user.tracked_points
+        .without_raw_data
+        .where(timestamp: timespan)
+        .order(timestamp: :asc)
   end
 
   private
 
   def timespan
     DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
+  end
+
+  def calculate_daily_distances(monthly_points)
+    timespan.to_a.map.with_index(1) do |day, index|
+      daily_points = filter_points_for_day(monthly_points, day)
+      distance = calculate_distance(daily_points)
+      [index, distance.round(2)]
+    end
+  end
+
+  def filter_points_for_day(points, day)
+    beginning_of_day = day.beginning_of_day.to_i
+    end_of_day = day.end_of_day.to_i
+
+    points.select { |p| p.timestamp.between?(beginning_of_day, end_of_day) }
+  end
+
+  def calculate_distance(points)
+    points.each_cons(2).sum do |point1, point2|
+      DistanceCalculator.new(point1, point2).call
+    end
   end
 end

@@ -1,0 +1,73 @@
+networks:
+  dawarich:
+services:
+  dawarich_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dawarich_dev
+    volumes:
+      - "${PWD}:/var/app:cached"
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
+    networks:
+      - dawarich
+    ports:
+      - 3000:3000
+      - 9394:9394
+    stdin_open: true
+    tty: true
+    environment:
+      RAILS_ENV: development
+      REDIS_URL: redis://dawarich_redis:6379/0
+      DATABASE_HOST: dawarich_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: dawarich_development
+      MIN_MINUTES_SPENT_IN_CITY: 60
+      APPLICATION_HOSTS: localhost
+      TIME_ZONE: Europe/London
+      APPLICATION_PROTOCOL: http
+      DISTANCE_UNIT: km
+      PROMETHEUS_EXPORTER_ENABLED: false
+      PROMETHEUS_EXPORTER_HOST: 0.0.0.0
+      PROMETHEUS_EXPORTER_PORT: 9394
+      ENABLE_TELEMETRY: false # More on telemetry: https://dawarich.app/docs/tutorials/telemetry
+  dawarich_redis:
+    image: redis:7.4-alpine
+    container_name: dawarich_redis
+    command: redis-server
+    networks:
+      - dawarich
+    volumes:
+      - dawarich_shared:/data
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+  dawarich_db:
+    image: postgres:17-alpine
+    container_name: dawarich_db
+    volumes:
+      - dawarich_db_data:/var/lib/postgresql/data
+      - dawarich_shared:/var/shared
+    networks:
+      - dawarich
+    restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+volumes:
+  dawarich_db_data:
+  dawarich_shared:
+  dawarich_public:
+  dawarich_watched:

@@ -14,7 +14,7 @@ class Imports::Create
     create_import_finished_notification(import, user)
 
     schedule_stats_creating(user.id)
-    schedule_visit_suggesting(user.id, import)
+    # schedule_visit_suggesting(user.id, import) # Disabled until places & visits are reworked
   rescue StandardError => e
     create_import_failed_notification(import, user, e)
   end
@@ -24,20 +24,19 @@ class Imports::Create
   def parser(source)
     # Bad classes naming by the way, they are not parsers, they are point creators
     case source
-    when 'google_semantic_history'  then GoogleMaps::SemanticHistoryParser
-    when 'google_phone_takeout'     then GoogleMaps::PhoneTakeoutParser
-    when 'owntracks'                then OwnTracks::ExportParser
-    when 'gpx'                      then Gpx::TrackParser
-    when 'immich_api'               then Immich::ImportParser
-    when 'geojson'                  then Geojson::ImportParser
+    when 'google_semantic_history'      then GoogleMaps::SemanticHistoryParser
+    when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutParser
+    when 'owntracks'                    then OwnTracks::ExportParser
+    when 'gpx'                          then Gpx::TrackParser
+    when 'geojson'                      then Geojson::ImportParser
+    when 'immich_api', 'photoprism_api' then Photos::ImportParser
     end
   end
 
   def schedule_stats_creating(user_id)
-    start_at = import.points.order(:timestamp).first.recorded_at
-    end_at = import.points.order(:timestamp).last.recorded_at
-
-    Stats::CalculatingJob.perform_later(user_id, start_at:, end_at:)
+    import.years_and_months_tracked.each do |year, month|
+      Stats::CalculatingJob.perform_later(user_id, year, month)
+    end
   end
 
   def schedule_visit_suggesting(user_id, import)

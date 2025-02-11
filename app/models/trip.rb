@@ -7,7 +7,13 @@ class Trip < ApplicationRecord
 
   validates :name, :started_at, :ended_at, presence: true
 
-  before_save :calculate_distance
+  before_save :calculate_path_and_distance
+
+  def calculate_path_and_distance
+    calculate_path
+    calculate_distance
+  end
+
 
   def points
     user.tracked_points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
@@ -17,39 +23,41 @@ class Trip < ApplicationRecord
     points.pluck(:country).uniq.compact
   end
 
-  def photos
-    return [] if user.settings['immich_url'].blank? || user.settings['immich_api_key'].blank?
+  def photo_previews
+    @photo_previews ||= select_dominant_orientation(photos).sample(12)
+  end
 
-    immich_photos = Immich::RequestPhotos.new(
-      user,
-      start_date: started_at.to_date.to_s,
-      end_date: ended_at.to_date.to_s
-    ).call.reject { |asset| asset['type'].downcase == 'video' }
-
-    # let's count what photos are more: vertical or horizontal and select the ones that are more
-    vertical_photos = immich_photos.select { _1['exifInfo']['orientation'] == '6' }
-    horizontal_photos = immich_photos.select { _1['exifInfo']['orientation'] == '3' }
-
-    # this is ridiculous, but I couldn't find my way around frontend
-    # to show all photos in the same height
-    photos = vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
-
-    photos.sample(12).sort_by { _1['localDateTime'] }.map do |asset|
-      { url: "/api/v1/photos/#{asset['id']}/thumbnail.jpg?api_key=#{user.api_key}" }
-    end
+  def photo_sources
+    @photo_sources ||= photos.map { _1[:source] }.uniq
   end
 
   private
+
+  def photos
+    @photos ||= Trips::Photos.new(self, user).call
+  end
+
+  def select_dominant_orientation(photos)
+    vertical_photos = photos.select { |photo| photo[:orientation] == 'portrait' }
+    horizontal_photos = photos.select { |photo| photo[:orientation] == 'landscape' }
+
+    # this is ridiculous, but I couldn't find my way around frontend
+    # to show all photos in the same height
+    vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
+  end
+
+  def calculate_path
+    trip_path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
+
+    self.path = trip_path
+  end
+
 
   def calculate_distance
     distance = 0
 
     points.each_cons(2) do |point1, point2|
-      distance_between = Geocoder::Calculations.distance_between(
-        point1.to_coordinates, point2.to_coordinates, units: ::DISTANCE_UNIT
-      )
-
-      distance += distance_between
+      distance += DistanceCalculator.new(point1, point2).call
     end
 
     self.distance = distance.round

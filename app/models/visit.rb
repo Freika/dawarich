@@ -28,7 +28,9 @@ class Visit < ApplicationRecord
   def default_radius
     return area&.radius if area.present?
 
-    radius = points.map { Geocoder::Calculations.distance_between(center, [_1.latitude, _1.longitude]) }.max
+    radius = points.map do |point|
+      Geocoder::Calculations.distance_between(center, [point.latitude, point.longitude])
+    end.max
 
     radius && radius >= 15 ? radius : 15
   end
@@ -38,7 +40,7 @@ class Visit < ApplicationRecord
   end
 
   def async_reverse_geocode
-    return unless REVERSE_GEOCODING_ENABLED
+    return unless DawarichSettings.reverse_geocoding_enabled?
     return if place.blank?
 
     ReverseGeocodingJob.perform_later('place', place_id)

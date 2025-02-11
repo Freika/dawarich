@@ -101,6 +101,10 @@ module ApplicationHelper
     'tab-active' if current_page?(link_path)
   end
 
+  def active_visit_places_tab?(controller_name)
+    'tab-active' if current_page?(controller: controller_name)
+  end
+
   def notification_link_color(notification)
     return 'text-gray-600' if notification.read?
 
@@ -111,13 +115,9 @@ module ApplicationHelper
     date.strftime('%e %B %Y')
   end
 
-  def immich_search_url(base_url, start_date, end_date)
-    query = {
-      takenAfter: "#{start_date.to_date}T00:00:00.000Z",
-      takenBefore: "#{end_date.to_date}T23:59:59.999Z"
-    }
+  def speed_text_color(speed)
+    return 'text-default' if speed.to_i >= 0
 
-    encoded_query = URI.encode_www_form_component(query.to_json)
-    "#{base_url}/search?query=#{encoded_query}"
+    'text-red-500'
   end
 end

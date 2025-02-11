@@ -28,11 +28,12 @@ Donate using crypto: [0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4](https://ethers
 - Explore statistics like the number of countries and cities visited, total distance traveled, and more!
 
 📄 **Changelog**: Find the latest updates [here](CHANGELOG.md).
-
+👩‍💻 **Contribute**: See [CONTRIBUTING.md](CONTRIBUTING.md) for how to contribute to Dawarich.
 ---
 
 ## ⚠️ Disclaimer
 
+- 💔 **DO NOT UPDATE AUTOMATICALLY**: Read release notes before updating. Automatic updates may break your setup.
 - 🛠️ **Under active development**: Expect frequent updates, bugs, and breaking changes.
 - ❌ **Do not delete your original data** after importing into Dawarich.
 - 📦 **Backup before updates**: Always [backup your data](https://dawarich.app/docs/tutorials/backup-and-restore) before upgrading.
@@ -98,6 +99,10 @@ Simply install one of the supported apps on your device and configure it to send
 
 ### 📊 Statistics
 - Analyze your travel history: number of countries/cities visited, distance traveled, and time spent, broken down by year and month.
+
+### 📸 Integrations
+- Provide credentials for Immich or Photoprism (or both!) and Dawarich will automatically import geodata from your photos.
+- You'll also be able to visualize your photos on the map!
 
 ### 📥 Import Your Data
 - Import from various sources:

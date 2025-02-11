@@ -13,11 +13,11 @@ RSpec.describe Gpx::TrackParser do
 
     context 'when file has a single segment' do
       it 'creates points' do
-        expect { parser }.to change { Point.count }.by(301)
+        expect { parser }.to change { Point.count }.by(10)
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(301).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(10).times
 
         parser
       end
@@ -27,11 +27,11 @@ RSpec.describe Gpx::TrackParser do
       let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/gpx_track_multiple_segments.gpx') }
 
       it 'creates points' do
-        expect { parser }.to change { Point.count }.by(558)
+        expect { parser }.to change { Point.count }.by(43)
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(558).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(43).times
 
         parser
       end
@@ -41,11 +41,11 @@ RSpec.describe Gpx::TrackParser do
       let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/gpx_track_multiple_tracks.gpx') }
 
       it 'creates points' do
-        expect { parser }.to change { Point.count }.by(407)
+        expect { parser }.to change { Point.count }.by(34)
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(407).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(34).times
 
         parser
       end
@@ -72,6 +72,16 @@ RSpec.describe Gpx::TrackParser do
         expect(Point.first.altitude).to eq(17)
         expect(Point.first.timestamp).to eq(1_730_626_211)
         expect(Point.first.velocity).to eq('2.8')
+      end
+    end
+
+    context 'when file exported from Arc' do
+      context 'when file has empty tracks' do
+        let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/arc_example.gpx') }
+
+        it 'creates points' do
+          expect { parser }.to change { Point.count }.by(6)
+        end
       end
     end
   end

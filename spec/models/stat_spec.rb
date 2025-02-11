@@ -13,68 +13,6 @@ RSpec.describe Stat, type: :model do
     let(:year) { 2021 }
     let(:user) { create(:user) }
 
-    describe '.year_cities_and_countries' do
-      subject { described_class.year_cities_and_countries(year, user) }
-
-      let(:timestamp) { DateTime.new(year, 1, 1, 0, 0, 0) }
-
-      before do
-        stub_const('MIN_MINUTES_SPENT_IN_CITY', 60)
-      end
-
-      context 'when there are points' do
-        let!(:points) do
-          [
-            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp:),
-            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 10.minutes),
-            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 20.minutes),
-            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 30.minutes),
-            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 40.minutes),
-            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 50.minutes),
-            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 60.minutes),
-            create(:point, user:, city: 'Berlin', country: 'Germany', timestamp: timestamp + 70.minutes),
-            create(:point, user:, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 80.minutes),
-            create(:point, user:, city: 'Brugges', country: 'Belgium', timestamp: timestamp + 90.minutes)
-          ]
-        end
-
-        it 'returns countries and cities' do
-          # User spent only 20 minutes in Brugges, so it should not be included
-          expect(subject).to eq(countries: 2, cities: 1)
-        end
-      end
-
-      context 'when there are no points' do
-        it 'returns countries and cities' do
-          expect(subject).to eq(countries: 0, cities: 0)
-        end
-      end
-    end
-
-    describe '.years' do
-      subject { described_class.years }
-
-      context 'when there are no stats' do
-        it 'returns years' do
-          expect(subject).to eq([Time.current.year])
-        end
-      end
-
-      context 'when there are stats' do
-        let(:user) { create(:user) }
-        let(:expected_years) { (year..Time.current.year).to_a.reverse }
-
-        before do
-          create(:stat, year: 2021, user:)
-          create(:stat, year: 2020, user:)
-        end
-
-        it 'returns years' do
-          expect(subject).to eq(expected_years)
-        end
-      end
-    end
-
     describe '#distance_by_day' do
       subject { stat.distance_by_day }
 
@@ -144,6 +82,24 @@ RSpec.describe Stat, type: :model do
         it 'returns year distance' do
           expect(subject).to eq(expected_distance)
         end
+      end
+    end
+
+    describe '#points' do
+      subject { stat.points.to_a }
+
+      let(:stat) { create(:stat, year:, month: 1, user:) }
+      let(:base_timestamp) { DateTime.new(year, 1, 1, 5, 0, 0) }
+      let!(:points) do
+        [
+          create(:point, user:, timestamp: base_timestamp),
+          create(:point, user:, timestamp: base_timestamp + 1.hour),
+          create(:point, user:, timestamp: base_timestamp + 2.hours)
+        ]
+      end
+
+      it 'returns points' do
+        expect(subject).to eq(points)
       end
     end
   end

@@ -1,8 +1,9 @@
 <% content_for :title, "Places" %>
 
 <div class="w-full my-5">
-  <div class="flex justify-center">
-    <h1 class="font-bold text-4xl">Places</h1>
+  <div role="tablist" class="tabs tabs-lifted tabs-lg">
+    <%= link_to 'Visits', visits_path(status: :confirmed), role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('visits')}" %>
+    <%= link_to 'Places', places_path, role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('places')}" %>
   </div>
 
   <div id="places" class="min-w-full">

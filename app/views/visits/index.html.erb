@@ -1,9 +1,12 @@
 <% content_for :title, "Visits" %>
 
 <div class="w-full my-5">
+  <div role="tablist" class="tabs tabs-lifted tabs-lg">
+    <%= link_to 'Visits', visits_path(status: :confirmed), role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('visits')}" %>
+    <%= link_to 'Places', places_path, role: 'tab', class: "tab font-bold text-xl #{active_visit_places_tab?('places')}" %>
+  </div>
 
   <div class="flex justify-between">
-    <h1 class="font-bold text-4xl">Visits</h1>
     <div role="tablist" class="tabs tabs-boxed">
       <%= link_to 'Confirmed', visits_path(status: :confirmed), role: 'tab',
           class: "tab #{active_tab?(visits_path(status: :confirmed))}" %>
@@ -24,7 +27,7 @@
     </div>
   </div>
 
-  <div role="alert" class="alert">
+  <div role="alert" class="alert mt-5">
     <svg
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
@@ -58,13 +61,13 @@
     </div>
 
     <ul class="timeline timeline-snap-icon max-md:timeline-compact timeline-vertical">
-      <% @visits.each.with_index do |date, index| %>
+      <% @visits.each do |visit| %>
         <li>
           <div class="timeline-middle">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
-              fill="<%= date[:visits].all?(&:confirmed?) ? 'green' : 'currentColor' %>"
+              fill="<%= visit.confirmed? ? 'green' : 'currentColor' %>"
               class="h-5 w-5">
               <path
                 fill-rule="evenodd"
@@ -72,11 +75,11 @@
                 clip-rule="evenodd" />
             </svg>
           </div>
-          <div class="<%= index.odd? ? 'timeline-start' : 'timeline-end' %> mb-10 md:text-end">
-            <time class="font-mono italic"><%= date[:date].strftime('%A, %d %B %Y') %></time>
-            <% date[:visits].each do |visit| %>
-              <%= render partial: 'visit', locals: { visit: visit } %>
-            <% end %>
+          <div class="timeline-start md:text-end">
+            <time class="font-mono italic"><%= visit.started_at.strftime('%A, %d %B %Y') %></time>
+          </div>
+          <div class="timeline-end md:text-end">
+            <%= render partial: 'visit', locals: { visit: visit } %>
           </div>
           <hr />
         </li>

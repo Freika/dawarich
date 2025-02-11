@@ -19,6 +19,11 @@ Rails.application.configure do
   # Enable server timing
   config.server_timing = true
 
+  # Info include generic and useful information about system operation, but avoids logging too much
+  # information to avoid inadvertent exposure of personally identifiable information (PII). If you
+  # want to log everything, leave the level on "debug".
+  config.log_level = ENV.fetch('RAILS_LOG_LEVEL', 'debug')
+
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
   if Rails.root.join('tmp/caching-dev.txt').exist?
@@ -74,7 +79,7 @@ Rails.application.configure do
   # config.i18n.raise_on_missing_translations = true
 
   # Annotate rendered view with file names.
-  # config.action_view.annotate_rendered_view_with_filenames = true
+  config.action_view.annotate_rendered_view_with_filenames = true
 
   # Uncomment if you wish to allow Action Cable access from any origin.
   # config.action_cable.disable_request_forgery_protection = true
@@ -84,9 +89,8 @@ Rails.application.configure do
 
   hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
 
-  config.action_mailer.default_url_options = { host: hosts[0], port: 3000 }
-
-  config.hosts << hosts
+  config.action_mailer.default_url_options = { host: hosts.first, port: 3000 }
+  config.hosts.concat(hosts) if hosts.present?
 
   config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'
 

@@ -1,8 +1,9 @@
 # config/database.ci.yml
 test:
-  adapter: postgresql
+  adapter: postgis
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: localhost
   database: <%= ENV["POSTGRES_DB"] %>
   username: <%= ENV['POSTGRES_USER'] %>
   password: <%= ENV["POSTGRES_PASSWORD"] %>

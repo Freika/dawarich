@@ -31,7 +31,7 @@ class SettingsController < ApplicationController
     params.require(:settings).permit(
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
-      :immich_url, :immich_api_key
+      :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key
     )
   end
 end

@@ -1,5 +1,5 @@
 default: &default
-  adapter: postgresql
+  adapter: postgis
   encoding: unicode
   database: <%= ENV['DATABASE_NAME'] %>
   username: <%= ENV['DATABASE_USERNAME'] %>
@@ -20,4 +20,3 @@ test:
 production:
   <<: *default
   database: <%= ENV['DATABASE_NAME'] || 'dawarich_production' %>
-  url: <%= ENV['DATABASE_URL'] %>

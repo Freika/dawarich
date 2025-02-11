@@ -7,7 +7,7 @@ if !Rails.env.test? && ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
   # This reports stats per request like HTTP status and timings
   Rails.application.middleware.unshift PrometheusExporter::Middleware
 
-  # this reports basic process stats like RSS and GC info
+  # This reports basic process stats like RSS and GC info
   PrometheusExporter::Instrumentation::Process.start(type: 'web')
 
   # Add ActiveRecord instrumentation

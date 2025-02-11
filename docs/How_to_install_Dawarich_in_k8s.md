@@ -1,5 +1,7 @@
 # How to install Dawarich on Kubernetes
 
+> An **unofficial Helm chart** is available [here](https://github.com/Cogitri/charts/tree/master/charts/dawarich). For a manual installation using YAML manifests, see below.
+
 ## Prerequisites
 
 - Kubernetes cluster and basic kubectl knowledge.
@@ -7,6 +9,7 @@
 - Working Postgres and Redis instances. In this example Postgres lives in 'db' namespace and Redis in 'redis' namespace.
 - Ngingx ingress controller with Letsencrypt integeation.
 - This example uses 'example.com' as a domain name, you want to change it to your own.
+- This will work on IPv4 and IPv6 Single Stack clusters, as well as Dual Stack deployments.
 
 ## Installation
 
@@ -33,37 +36,7 @@ spec:
   storageClassName: longhorn
   resources:
     requests:
-      storage: 15Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  namespace: dawarich
-  name: gem-cache
-  labels:
-    storage.k8s.io/name: longhorn
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn
-  resources:
-    requests:
-      storage: 15Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  namespace: dawarich
-  name: gem-sidekiq
-  labels:
-    storage.k8s.io/name: longhorn
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn
-  resources:
-    requests:
-      storage: 15Gi
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -78,7 +51,7 @@ spec:
   storageClassName: longhorn
   resources:
     requests:
-      storage: 15Gi
+      storage: 1Gi
 ```
 
 ### Deployment
@@ -140,16 +113,14 @@ spec:
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /usr/local/bundle/gems_app
-              name: gem-cache
             - mountPath: /var/app/public
               name: public
             - mountPath: /var/app/tmp/imports/watched
               name: watched
           command:
-            - "dev-entrypoint.sh"
+            - "web-entrypoint.sh"
           args:
-            - "bin/rails server -p 3000 -b 0.0.0.0"
+            - "bin/rails server -p 3000 -b ::"
           resources:
             requests:
               memory: "1Gi"
@@ -196,16 +167,14 @@ spec:
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /usr/local/bundle/gems_sidekiq
-              name: gem-sidekiq
             - mountPath: /var/app/public
               name: public
             - mountPath: /var/app/tmp/imports/watched
               name: watched
           command:
-            - "dev-entrypoint.sh"
+            - "sidekiq-entrypoint.sh"
           args:
-            - "sidekiq"
+            - "bundle exec sidekiq"
           resources:
             requests:
               memory: "1Gi"
@@ -213,6 +182,22 @@ spec:
             limits:
               memory: "3Gi"
               cpu: "1500m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
       volumes:
         - name: gem-cache
           persistentVolumeClaim:
