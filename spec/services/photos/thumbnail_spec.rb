@@ -70,7 +70,7 @@ RSpec.describe Photos::Thumbnail do
       let(:source) { 'unsupported' }
 
       it 'raises an error' do
-        expect { subject }.to raise_error(RuntimeError, 'Unsupported source: unsupported')
+        expect { subject }.to raise_error(ArgumentError, 'Unsupported source: unsupported')
       end
     end
   end

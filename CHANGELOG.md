@@ -4,7 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.24.0 - 2025-02-09
+# 0.24.1 - 2025-02-11
+
+## Custom map tiles
+
+In the user settings, you can now set a custom tile URL for the map. This is useful if you want to use a custom map tile provider or if you want to use a map tile provider that is not listed in the dropdown.
+
+To set a custom tile URL, go to the user settings and set the `Maps` section to your liking. Be mindful that currently, only raster tiles are supported. The URL should be a valid tile URL, like `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`. You, as the user, are responsible for any extra costs that may occur due to using a custom tile URL.
+
+### Added
+
+- Safe settings for user with default values.
+- In the user settings, you can now set a custom tile URL for the map. #429 #715
+- If you have Prometheus exporter enabled, you can now see a `ruby_dawarich_map_tiles` metric in Prometheus, which shows the total number of map tiles loaded. Example:
+
+```
+# HELP ruby_dawarich_map_tiles_usage
+# TYPE ruby_dawarich_map_tiles_usage counter
+ruby_dawarich_map_tiles_usage 99
+```
+
+### Fixed
+
+- Speed on the Points page is now being displayed in kilometers per hour. #700
+
+# 0.24.0 - 2025-02-10
 
 ## Points speed units
 
