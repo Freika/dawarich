@@ -3,7 +3,7 @@
 class DawarichSettings
   class << self
     def reverse_geocoding_enabled?
-      @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled?
+      @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled? || nominatim_enabled?
     end
 
     def photon_enabled?
@@ -23,6 +23,10 @@ class DawarichSettings
         ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true' &&
         ENV['PROMETHEUS_EXPORTER_HOST'].present? &&
         ENV['PROMETHEUS_EXPORTER_PORT'].present?
+    end
+
+    def nominatim_enabled?
+      @nominatim_enabled ||= NOMINATIM_API_HOST.present?
     end
   end
 end
