@@ -18,7 +18,7 @@ RSpec.describe Maps::TileUsage::Track do
       expect(prometheus_client).to receive(:send_json).with(
         {
           type: 'counter',
-          name: 'dawarich_map_tiles',
+          name: 'dawarich_map_tiles_usage',
           value: tile_count
         }
       )

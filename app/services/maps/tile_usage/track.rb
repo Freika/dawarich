@@ -8,7 +8,7 @@ class Maps::TileUsage::Track
   def call
     metric_data = {
       type: 'counter',
-      name: 'dawarich_map_tiles',
+      name: 'dawarich_map_tiles_usage',
       value: @count
     }
 
