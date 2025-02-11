@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class TileUsage::Track
+class Maps::TileUsage::Track
   def initialize(count = 1)
     @count = count
   end

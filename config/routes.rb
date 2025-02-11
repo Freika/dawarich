@@ -97,7 +97,9 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :tile_usages, only: [:create]
+      namespace :maps do
+        resources :tile_usage, only: [:create]
+      end
     end
   end
 end

@@ -40,14 +40,16 @@ export class TileMonitor {
     const currentCount = this.tileQueue;
     console.log('Sending tile usage batch:', currentCount);
 
-    fetch('/api/v1/tile_usages', {
+    fetch('/api/v1/maps/tile_usage', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`
       },
       body: JSON.stringify({
-        tile_count: currentCount
+        tile_usage: {
+          count: currentCount
+        }
       })
     })
     .then(response => {
