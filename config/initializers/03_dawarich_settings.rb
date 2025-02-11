@@ -18,12 +18,11 @@ class DawarichSettings
       @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
     end
 
-    def meters_between_tracks
-      @meters_between_tracks ||= 300
-    end
-
-    def minutes_between_tracks
-      @minutes_between_tracks ||= 20
+    def prometheus_exporter_enabled?
+      @prometheus_exporter_enabled ||=
+        ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true' &&
+        ENV['PROMETHEUS_EXPORTER_HOST'].present? &&
+        ENV['PROMETHEUS_EXPORTER_PORT'].present?
     end
   end
 end

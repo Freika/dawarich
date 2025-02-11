@@ -16,6 +16,13 @@ To set a custom tile URL, go to the user settings and set the `Maps` section to 
 
 - Safe settings for user with default values.
 - In the user settings, you can now set a custom tile URL for the map. #429 #715
+- If you have Prometheus exporter enabled, you can now see a `ruby_dawarich_map_tiles` metric in Prometheus, which shows the total number of map tiles loaded. Example:
+
+```
+# HELP ruby_dawarich_map_tiles
+# TYPE ruby_dawarich_map_tiles gauge
+ruby_dawarich_map_tiles 99
+```
 
 # 0.24.0 - 2025-02-10
 

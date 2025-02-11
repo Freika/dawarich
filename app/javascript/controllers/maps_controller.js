@@ -8,9 +8,7 @@ import { createMarkersArray } from "../maps/markers";
 import {
   createPolylinesLayer,
   updatePolylinesOpacity,
-  updatePolylinesColors,
-  calculateSpeed,
-  getSpeedColor
+  updatePolylinesColors
 } from "../maps/polylines";
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
@@ -32,9 +30,13 @@ import { countryCodesMap } from "../maps/country_codes";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
+import { TileMonitor } from "../maps/tile_monitor";
 
 export default class extends Controller {
   static targets = ["container"];
+  static values = {
+    monitoringEnabled: Boolean
+  }
 
   settingsButtonAdded = false;
   layerControl = null;
@@ -245,6 +247,19 @@ export default class extends Controller {
     if (this.liveMapEnabled) {
       this.setupSubscription();
     }
+
+    // Initialize tile monitor
+    this.tileMonitor = new TileMonitor(this.monitoringEnabledValue, this.apiKey);
+
+    // Add tile load event handlers to each base layer
+    Object.entries(this.baseMaps()).forEach(([name, layer]) => {
+      layer.on('tileload', () => {
+        this.tileMonitor.recordTileLoad(name);
+      });
+    });
+
+    // Start monitoring
+    this.tileMonitor.startMonitoring();
   }
 
   disconnect() {
@@ -259,6 +274,11 @@ export default class extends Controller {
     }
     if (this.map) {
       this.map.remove();
+    }
+
+    // Stop tile monitoring
+    if (this.tileMonitor) {
+      this.tileMonitor.stopMonitoring();
     }
   }
 

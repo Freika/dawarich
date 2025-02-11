@@ -53,6 +53,7 @@
         data-coordinates="<%= @coordinates %>"
         data-distance="<%= @distance %>"
         data-points_number="<%= @points_number %>"
+        data-maps-monitoring-enabled-value="<%= DawarichSettings.prometheus_exporter_enabled? %>"
         data-timezone="<%= Rails.configuration.time_zone %>">
         <div data-maps-target="container" class="h-[25rem] rounded-lg w-full min-h-screen">
           <div id="fog" class="fog"></div>

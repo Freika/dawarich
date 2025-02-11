@@ -96,6 +96,8 @@ Rails.application.routes.draw do
           get 'thumbnail', constraints: { id: %r{[^/]+} }
         end
       end
+
+      resources :tile_usages, only: [:create]
     end
   end
 end
