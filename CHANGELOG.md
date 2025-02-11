@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.24.1 - 2025-02-10
+# 0.24.1 - 2025-02-11
 
 ## Custom map tiles
 
@@ -23,6 +23,10 @@ To set a custom tile URL, go to the user settings and set the `Maps` section to 
 # TYPE ruby_dawarich_map_tiles_usage counter
 ruby_dawarich_map_tiles_usage 99
 ```
+
+### Fixed
+
+- Speed on the Points page is now being displayed in kilometers per hour.
 
 # 0.24.0 - 2025-02-10
 
