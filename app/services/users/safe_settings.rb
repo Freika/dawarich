@@ -62,7 +62,9 @@ class Users::SafeSettings
   end
 
   def live_map_enabled
-    settings['live_map_enabled'] || true
+    return settings['live_map_enabled'] if settings.key?('live_map_enabled')
+
+    true
   end
 
   def route_opacity
