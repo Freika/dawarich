@@ -26,7 +26,7 @@ ruby_dawarich_map_tiles_usage 99
 
 ### Fixed
 
-- Speed on the Points page is now being displayed in kilometers per hour.
+- Speed on the Points page is now being displayed in kilometers per hour. #700
 
 # 0.24.0 - 2025-02-10
 
