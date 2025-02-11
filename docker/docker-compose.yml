@@ -3,6 +3,7 @@ networks:
 services:
   dawarich_redis:
     image: redis:7.0-alpine
+    container_name: dawarich_redis
     command: redis-server
     networks:
       - dawarich
@@ -38,6 +39,7 @@ services:
     # command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config, uncomment if you want to use a custom config
   dawarich_app:
     image: freikin/dawarich:latest
+    container_name: dawarich_app
     volumes:
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
@@ -90,6 +92,7 @@ services:
           memory: '4G'    # Limit memory usage to 4GB
   dawarich_sidekiq:
     image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
     volumes:
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
