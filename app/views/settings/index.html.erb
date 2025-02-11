@@ -9,20 +9,20 @@
       <%= form_for :settings, url: settings_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
         <div class="form-control my-2">
           <%= f.label :immich_url %>
-          <%= f.text_field :immich_url, value: current_user.settings['immich_url'], class: "input input-bordered", placeholder: 'http://192.168.0.1:2283' %>
+          <%= f.text_field :immich_url, value: current_user.safe_settings.immich_url, class: "input input-bordered", placeholder: 'http://192.168.0.1:2283' %>
         </div>
         <div class="form-control my-2">
           <%= f.label :immich_api_key %>
-          <%= f.text_field :immich_api_key, value: current_user.settings['immich_api_key'], class: "input input-bordered", placeholder: 'xxxxxxxxxxxxxx' %>
+          <%= f.text_field :immich_api_key, value: current_user.safe_settings.immich_api_key, class: "input input-bordered", placeholder: 'xxxxxxxxxxxxxx' %>
         </div>
         <div class="divider"></div>
         <div class="form-control my-2">
           <%= f.label :photoprism_url %>
-          <%= f.text_field :photoprism_url, value: current_user.settings['photoprism_url'], class: "input input-bordered", placeholder: 'http://192.168.0.1:2342' %>
+          <%= f.text_field :photoprism_url, value: current_user.safe_settings.photoprism_url, class: "input input-bordered", placeholder: 'http://192.168.0.1:2342' %>
         </div>
         <div class="form-control my-2">
           <%= f.label :photoprism_api_key %>
-          <%= f.text_field :photoprism_api_key, value: current_user.settings['photoprism_api_key'], class: "input input-bordered", placeholder: 'xxxxxxxxxxxxxx' %>
+          <%= f.text_field :photoprism_api_key, value: current_user.safe_settings.photoprism_api_key, class: "input input-bordered", placeholder: 'xxxxxxxxxxxxxx' %>
         </div>
 
         <div class="form-control my-2">

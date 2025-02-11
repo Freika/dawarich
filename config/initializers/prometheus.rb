@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-if !Rails.env.test? && ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
+if !Rails.env.test? && DawarichSettings.prometheus_exporter_enabled?
   require 'prometheus_exporter/middleware'
   require 'prometheus_exporter/instrumentation'
 
