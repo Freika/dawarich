@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.24.1 - 2025-02-11
+# 0.24.1 - 2025-02-13
 
 ## Custom map tiles
 
@@ -15,7 +15,9 @@ To set a custom tile URL, go to the user settings and set the `Maps` section to 
 ### Added
 
 - Safe settings for user with default values.
+- Nominatim API is now supported as a reverse geocoding provider.
 - In the user settings, you can now set a custom tile URL for the map. #429 #715
+- In the user map settings, you can now see a chart of map tiles usage.
 - If you have Prometheus exporter enabled, you can now see a `ruby_dawarich_map_tiles` metric in Prometheus, which shows the total number of map tiles loaded. Example:
 
 ```
@@ -27,6 +29,11 @@ ruby_dawarich_map_tiles_usage 99
 ### Fixed
 
 - Speed on the Points page is now being displayed in kilometers per hour. #700
+- Fog of war displacement #774
+
+### Reverted
+
+- #748
 
 # 0.24.0 - 2025-02-10
 

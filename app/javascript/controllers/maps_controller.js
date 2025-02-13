@@ -34,9 +34,6 @@ import { TileMonitor } from "../maps/tile_monitor";
 
 export default class extends Controller {
   static targets = ["container"];
-  static values = {
-    monitoringEnabled: Boolean
-  }
 
   settingsButtonAdded = false;
   layerControl = null;
@@ -249,7 +246,7 @@ export default class extends Controller {
     }
 
     // Initialize tile monitor
-    this.tileMonitor = new TileMonitor(this.monitoringEnabledValue, this.apiKey);
+    this.tileMonitor = new TileMonitor(this.apiKey);
 
     // Add tile load event handlers to each base layer
     Object.entries(this.baseMaps()).forEach(([name, layer]) => {
