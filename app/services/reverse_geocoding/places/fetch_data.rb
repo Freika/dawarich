@@ -96,7 +96,13 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def reverse_geocoded_places
-    data = Geocoder.search([place.latitude, place.longitude], limit: 10, distance_sort: true, radius: 10)
+    data = Geocoder.search(
+      [place.latitude, place.longitude],
+      limit: 10,
+      distance_sort: true,
+      radius: 1,
+      units: DISTANCE_UNITS
+    )
 
     data.reject do |place|
       place.data['properties']['osm_value'].in?(IGNORED_OSM_VALUES) ||
