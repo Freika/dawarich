@@ -36,7 +36,7 @@ services:
       start_period: 30s
       timeout: 10s
   dawarich_app:
-    image: dawarich:local
+    image: freikin/dawarich:latest
     container_name: dawarich_app
     volumes:
       - dawarich_public:/var/app/public
@@ -91,7 +91,7 @@ services:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
           memory: '4G'    # Limit memory usage to 4GB
   dawarich_sidekiq:
-    image: dawarich:local
+    image: freikin/dawarich:latest
     container_name: dawarich_sidekiq
     volumes:
       - dawarich_public:/var/app/public
