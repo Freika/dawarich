@@ -36,7 +36,7 @@ COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 # Install all gems into the image
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle install --jobs 4 --retry 3 \
-    && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
+    && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
 
 # Copy the rest of the application
 COPY ../. ./

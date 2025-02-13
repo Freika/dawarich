@@ -16,14 +16,13 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
-  dawarich_db:
-    image: postgis/postgis:14-3.5-alpine
+  dawarich_db_pg_17:
+    image: postgis/postgis:17-3.5-alpine
     shm_size: 1G
-    container_name: dawarich_db
+    container_name: dawarich_db_pg_17
     volumes:
-      - dawarich_db_data:/var/lib/postgresql/data
+      - dawarich_db_data_pg_17:/var/lib/postgresql/data
       - dawarich_shared:/var/shared
-      # - ./postgresql.conf:/etc/postgresql/postgresql.conf # Optional, uncomment if you want to use a custom config
     networks:
       - dawarich
     environment:
@@ -36,9 +35,8 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
-    # command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config, uncomment if you want to use a custom config
   dawarich_app:
-    image: freikin/dawarich:latest
+    image: dawarich:local
     container_name: dawarich_app
     volumes:
       - dawarich_public:/var/app/public
@@ -56,7 +54,7 @@ services:
     environment:
       RAILS_ENV: development
       REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
+      DATABASE_HOST: dawarich_db_pg_17
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
@@ -81,7 +79,7 @@ services:
       start_period: 30s
       timeout: 10s
     depends_on:
-      dawarich_db:
+      dawarich_db_pg_17:
         condition: service_healthy
         restart: true
       dawarich_redis:
@@ -93,7 +91,7 @@ services:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
           memory: '4G'    # Limit memory usage to 4GB
   dawarich_sidekiq:
-    image: freikin/dawarich:latest
+    image: dawarich:local
     container_name: dawarich_sidekiq
     volumes:
       - dawarich_public:/var/app/public
@@ -108,7 +106,7 @@ services:
     environment:
       RAILS_ENV: development
       REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
+      DATABASE_HOST: dawarich_db_pg_17
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
@@ -132,7 +130,7 @@ services:
       start_period: 30s
       timeout: 10s
     depends_on:
-      dawarich_db:
+      dawarich_db_pg_17:
         condition: service_healthy
         restart: true
       dawarich_redis:
@@ -152,3 +150,4 @@ volumes:
   dawarich_shared:
   dawarich_public:
   dawarich_watched:
+  dawarich_db_data_pg_17:
