@@ -49,7 +49,7 @@
         data-points-target="map"
         data-distance_unit="<%= DISTANCE_UNIT %>"
         data-api_key="<%= current_user.api_key %>"
-        data-user_settings=<%= current_user.settings.to_json %>
+        data-user_settings='<%= current_user.settings.to_json.html_safe %>'
         data-coordinates="<%= @coordinates %>"
         data-distance="<%= @distance %>"
         data-points_number="<%= @points_number %>"

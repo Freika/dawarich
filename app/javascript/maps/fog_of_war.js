@@ -85,15 +85,12 @@ export function createFogOverlay() {
     onAdd: (map) => {
       initializeFogCanvas(map);
 
-      // Add drag event handlers to update fog during marker movement
-      map.on('drag', () => {
-        const fog = document.getElementById('fog');
-        if (fog) {
-          // Update fog canvas position to match map position
-          const mapPos = map.getContainer().getBoundingClientRect();
-          fog.style.left = `${mapPos.left}px`;
-          fog.style.top = `${mapPos.top}px`;
-        }
+      // Add resize event handlers to update fog size
+      map.on('resize', () => {
+       // Set canvas size to match map container
+       const mapSize = map.getSize();
+       fog.width = mapSize.x;
+       fog.height = mapSize.y;
       });
     },
     onRemove: (map) => {
@@ -102,7 +99,7 @@ export function createFogOverlay() {
         fog.remove();
       }
       // Clean up event listener
-      map.off('drag');
+      map.off('resize');
     }
   });
 }

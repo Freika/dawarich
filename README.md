@@ -28,6 +28,7 @@ Donate using crypto: [0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4](https://ethers
 - Explore statistics like the number of countries and cities visited, total distance traveled, and more!
 
 📄 **Changelog**: Find the latest updates [here](CHANGELOG.md).
+
 👩‍💻 **Contribute**: See [CONTRIBUTING.md](CONTRIBUTING.md) for how to contribute to Dawarich.
 ---
 

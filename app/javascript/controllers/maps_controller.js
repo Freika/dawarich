@@ -8,9 +8,7 @@ import { createMarkersArray } from "../maps/markers";
 import {
   createPolylinesLayer,
   updatePolylinesOpacity,
-  updatePolylinesColors,
-  calculateSpeed,
-  getSpeedColor
+  updatePolylinesColors
 } from "../maps/polylines";
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
@@ -32,6 +30,7 @@ import { countryCodesMap } from "../maps/country_codes";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
+import { TileMonitor } from "../maps/tile_monitor";
 
 export default class extends Controller {
   static targets = ["container"];
@@ -245,6 +244,19 @@ export default class extends Controller {
     if (this.liveMapEnabled) {
       this.setupSubscription();
     }
+
+    // Initialize tile monitor
+    this.tileMonitor = new TileMonitor(this.apiKey);
+
+    // Add tile load event handlers to each base layer
+    Object.entries(this.baseMaps()).forEach(([name, layer]) => {
+      layer.on('tileload', () => {
+        this.tileMonitor.recordTileLoad(name);
+      });
+    });
+
+    // Start monitoring
+    this.tileMonitor.startMonitoring();
   }
 
   disconnect() {
@@ -259,6 +271,11 @@ export default class extends Controller {
     }
     if (this.map) {
       this.map.remove();
+    }
+
+    // Stop tile monitoring
+    if (this.tileMonitor) {
+      this.tileMonitor.stopMonitoring();
     }
   }
 
@@ -385,8 +402,7 @@ export default class extends Controller {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-
-    return {
+    let maps = {
       OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
       "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
       OPNV: OPNVMapLayer(this.map, selectedLayerName),
@@ -397,6 +413,33 @@ export default class extends Controller {
       esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
       esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
     };
+
+    // Add custom map if it exists in settings
+    if (this.userSettings.maps && this.userSettings.maps.url) {
+      const customLayer = L.tileLayer(this.userSettings.maps.url, {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      });
+
+      // If this is the preferred layer, add it to the map immediately
+      if (selectedLayerName === this.userSettings.maps.name) {
+        customLayer.addTo(this.map);
+        // Remove any other base layers that might be active
+        Object.values(maps).forEach(layer => {
+          if (this.map.hasLayer(layer)) {
+            this.map.removeLayer(layer);
+          }
+        });
+      }
+
+      maps[this.userSettings.maps.name] = customLayer;
+    } else {
+      // If no custom map is set, ensure a default layer is added
+      const defaultLayer = maps[selectedLayerName] || maps["OpenStreetMap"];
+      defaultLayer.addTo(this.map);
+    }
+
+    return maps;
   }
 
   removeEventListeners() {

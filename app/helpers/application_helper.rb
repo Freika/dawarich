@@ -120,4 +120,10 @@ module ApplicationHelper
 
     'text-red-500'
   end
+
+  def point_speed(speed)
+    return speed if speed.to_i <= 0
+
+    speed * 3.6
+  end
 end
