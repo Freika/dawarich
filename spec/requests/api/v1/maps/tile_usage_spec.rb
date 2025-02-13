@@ -6,21 +6,20 @@ RSpec.describe 'Api::V1::Maps::TileUsage', type: :request do
   describe 'POST /api/v1/maps/tile_usage' do
     let(:tile_count) { 5 }
     let(:track_service) { instance_double(Maps::TileUsage::Track) }
+    let(:user) { create(:user) }
 
     before do
-      allow(Maps::TileUsage::Track).to receive(:new).with(tile_count).and_return(track_service)
+      allow(Maps::TileUsage::Track).to receive(:new).with(user.id, tile_count).and_return(track_service)
       allow(track_service).to receive(:call)
     end
 
     context 'when user is authenticated' do
-      let(:user) { create(:user) }
-
       it 'tracks tile usage' do
         post '/api/v1/maps/tile_usage',
              params: { tile_usage: { count: tile_count } },
              headers: { 'Authorization' => "Bearer #{user.api_key}" }
 
-        expect(Maps::TileUsage::Track).to have_received(:new).with(tile_count)
+        expect(Maps::TileUsage::Track).to have_received(:new).with(user.id, tile_count)
         expect(track_service).to have_received(:call)
         expect(response).to have_http_status(:ok)
       end

@@ -22,35 +22,46 @@
     <span>Please remember, that using a custom tile URL may result in extra costs. Check your map tile provider's terms of service for more information.</span>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5" data-controller="map-preview">
-    <%= form_for :maps,
-        url: settings_maps_path,
-        method: :patch,
-        autocomplete: "off",
-        data: { turbo_method: :patch, turbo: false },
-        class: "lg:col-span-1" do |f| %>
-      <div class="form-control my-2">
-        <%= f.label :name %>
-        <%= f.text_field :name, value: @maps['name'], placeholder: 'Example: OpenStreetMap', class: "input input-bordered" %>
-      </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5" data-controller="map-preview">
+    <div class="flex flex-col gap-4">
+      <%= form_for :maps,
+          url: settings_maps_path,
+          method: :patch,
+          autocomplete: "off",
+          data: { turbo_method: :patch, turbo: false } do |f| %>
+        <div class="form-control my-2">
+          <%= f.label :name %>
+          <%= f.text_field :name, value: @maps['name'], placeholder: 'Example: OpenStreetMap', class: "input input-bordered" %>
+        </div>
 
-      <div class="form-control my-2">
-        <%= f.label :url, 'URL' %>
-        <%= f.text_field :url,
-            value: @maps['url'],
-            autocomplete: "off",
-            placeholder: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            class: "input input-bordered",
-            data: {
-              map_preview_target: "urlInput",
-              action: "input->map-preview#updatePreview"
-            } %>
-      </div>
+        <div class="form-control my-2">
+          <%= f.label :url, 'URL' %>
+          <%= f.text_field :url,
+              value: @maps['url'],
+              autocomplete: "off",
+              placeholder: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              class: "input input-bordered",
+              data: {
+                map_preview_target: "urlInput",
+                action: "input->map-preview#updatePreview"
+              } %>
+        </div>
 
-      <%= f.submit 'Save', class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>
-    <% end %>
+        <%= f.submit 'Save', class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>
+      <% end %>
 
-    <div class="lg:col-span-2" style="height: 500px;">
+      <h2 class="text-lg font-bold">Tile usage</h2>
+
+      <%= line_chart(
+        @tile_usage,
+        height: '200px',
+        xtitle: 'Days',
+        ytitle: 'Tiles',
+        suffix: ' tiles loaded'
+      ) %>
+    </div>
+
+    <div style="height: 500px;">
       <div
         data-map-preview-target="mapContainer"
         class="w-full h-full rounded-lg border"

@@ -1,15 +1,11 @@
 export class TileMonitor {
-  constructor(monitoringEnabled, apiKey) {
-    this.monitoringEnabled = monitoringEnabled;
+  constructor(apiKey) {
     this.apiKey = apiKey;
     this.tileQueue = 0;
     this.tileUpdateInterval = null;
   }
 
   startMonitoring() {
-    // Only start the interval if monitoring is enabled
-    if (!this.monitoringEnabled) return;
-
     // Clear any existing interval
     if (this.tileUpdateInterval) {
       clearInterval(this.tileUpdateInterval);
@@ -29,13 +25,11 @@ export class TileMonitor {
   }
 
   recordTileLoad() {
-    if (!this.monitoringEnabled) return;
     this.tileQueue += 1;
   }
 
   sendTileUsage() {
-    // Don't send if monitoring is disabled or queue is empty
-    if (!this.monitoringEnabled || this.tileQueue === 0) return;
+    if (this.tileQueue === 0) return;
 
     const currentCount = this.tileQueue;
     console.log('Sending tile usage batch:', currentCount);
