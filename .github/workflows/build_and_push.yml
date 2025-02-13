@@ -11,11 +11,8 @@ on:
     types: [created]
 
 jobs:
-  build-and-push:
+  build-and-push-docker:
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        platform: ["linux/amd64", "linux/arm64", "linux/arm/v7", "linux/arm/v6"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,7 +51,10 @@ jobs:
           # Add :rc tag for pre-releases
           if [ "${{ github.event.release.prerelease }}" = "true" ]; then
             TAGS="${TAGS},freikin/dawarich:rc"
-          else
+          fi
+
+          # Add :latest tag only if release is not a pre-release
+          if [ "${{ github.event.release.prerelease }}" != "true" ]; then
             TAGS="${TAGS},freikin/dawarich:latest"
           fi
 
@@ -67,7 +67,7 @@ jobs:
           file: ./docker/Dockerfile.dev
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           provenance: false
