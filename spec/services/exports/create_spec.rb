@@ -14,6 +14,8 @@ RSpec.describe Exports::Create do
     let(:export)          { create(:export, user:, name: export_name, status: :created) }
     let(:export_content)  { Points::GeojsonSerializer.new(points).call }
     let(:reverse_geocoded_at) { Time.zone.local(2021, 1, 1) }
+    let(:country) { create(:country, name: 'Germany') }
+    let(:city) { create(:city, name: 'Berlin', country:) }
     let!(:points) do
       10.times.map do |i|
         create(:point, :with_known_location,
