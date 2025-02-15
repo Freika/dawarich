@@ -393,7 +393,7 @@ export default class extends BaseController {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-    let maps; createAllMapLayers(this.map, selectedLayerName);
+    let maps = createAllMapLayers(this.map, selectedLayerName);
 
     // Add custom map if it exists in settings
     if (this.userSettings.maps && this.userSettings.maps.url) {
@@ -517,13 +517,13 @@ export default class extends BaseController {
       if (this.layerControl) {
         this.map.removeControl(this.layerControl);
         const controlsLayer = {
-          Points: this.markersLayer,
-          Routes: this.polylinesLayer,
-          Heatmap: this.heatmapLayer,
-          "Fog of War": this.fogOverlay,
-          "Scratch map": this.scratchLayer,
-          Areas: this.areasLayer,
-          Photos: this.photoMarkers
+          Points: this.markersLayer || L.layerGroup(),
+          Routes: this.polylinesLayer || L.layerGroup(),
+          Heatmap: this.heatmapLayer || L.layerGroup(),
+          "Fog of War": new this.fogOverlay(),
+          "Scratch map": this.scratchLayer || L.layerGroup(),
+          Areas: this.areasLayer || L.layerGroup(),
+          Photos: this.photoMarkers || L.layerGroup()
         };
         this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
       }
