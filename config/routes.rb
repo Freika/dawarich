@@ -6,7 +6,7 @@ Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
-  authenticate :user, ->(u) { u.admin? } do
+  authenticate :user, ->(u) { u.admin? && DawarichSettings.self_hosted? } do
     mount Sidekiq::Web => '/sidekiq'
   end
 
