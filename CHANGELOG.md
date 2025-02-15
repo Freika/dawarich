@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Fixed a bug where background jobs to import Immich and Photoprism geolocation data data could not be created by non-admin users.
 - Fixed a bug where upon point deletion there was an error it was not being removed from the map, while it was actually deleted from the database. #883
+- Fixed a bug where upon import deletion stats were not being recalculated. #824
 
 ### Changed
 
