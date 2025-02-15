@@ -14,18 +14,6 @@ import {
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
 import { showFlashMessage, fetchAndDisplayPhotos } from "../maps/helpers";
-
-import {
-  osmMapLayer,
-  osmHotMapLayer,
-  OPNVMapLayer,
-  openTopoMapLayer,
-  cyclOsmMapLayer,
-  esriWorldStreetMapLayer,
-  esriWorldTopoMapLayer,
-  esriWorldImageryMapLayer,
-  esriWorldGrayCanvasMapLayer
-} from "../maps/layers";
 import { countryCodesMap } from "../maps/country_codes";
 
 import "leaflet-draw";

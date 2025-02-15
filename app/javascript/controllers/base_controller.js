@@ -19,7 +19,5 @@ export default class extends Controller {
       const selfHosted = document.documentElement.dataset.selfHosted === 'true'
       this.selfHostedValue = selfHosted
     }
-
-    console.log(`Self-hosted mode in base controller: ${this.selfHostedValue}`)
   }
 }
