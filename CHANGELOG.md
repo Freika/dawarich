@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fixed a bug where upon point deletion there was an error it was not being removed from the map, while it was actually deleted from the database. #883
 - Fixed a bug where upon import deletion stats were not being recalculated. #824
 
+### Changed
+
+- Restrict access to Sidekiq in non self-hosted mode.
+- Restrict access to background jobs in non self-hosted mode.
+- Restrict access to users management in non self-hosted mode.
+
 ### Removed
 
 ENV vars removed from the docker-compose.yml:
@@ -20,22 +26,11 @@ ENV vars removed from the docker-compose.yml:
 TIME_ZONE: Europe/London
 APPLICATION_PROTOCOL: http
 DISTANCE_UNIT: km
-PHOTON_API_HOST: photon.komoot.io
-PHOTON_API_USE_HTTPS: true
 MIN_MINUTES_SPENT_IN_CITY: 60
-APPLICATION_HOST: localhost
 ```
 
 Link to the https://dawarich.app/docs/environment-variables-and-settings page added instead, and the app itself is now using defaults that can be changed if env vars are provided.
 
-
-### Changed
-
-- Restrict access to Sidekiq in non self-hosted mode.
-- Restrict access to background jobs in non self-hosted mode.
-- Restrict access to users management in non self-hosted mode.
-- The `docker-compose.yml` file was refactored to use new container names.
-- Default path for redis volume was changed from `/var/shared/redis` to `/data` to fix persistence issues. #148
 
 # 0.24.1 - 2025-02-13
 
