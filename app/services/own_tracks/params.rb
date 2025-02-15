@@ -16,7 +16,7 @@ class OwnTracks::Params
       altitude:           params[:alt],
       accuracy:           params[:acc],
       vertical_accuracy:  params[:vac],
-      velocity:           params[:vel],
+      velocity:           speed,
       ssid:               params[:SSID],
       bssid:              params[:BSSID],
       tracker_id:         params[:tid],
@@ -68,5 +68,17 @@ class OwnTracks::Params
     when 'o' then 'offline'
     else 'unknown'
     end
+  end
+
+  def speed
+    return params[:vel] unless owntracks_point?
+
+    # OwnTracks speed is in km/h, so we need to convert it to m/s
+    # Reference: https://owntracks.org/booklet/tech/json/
+    ((params[:vel].to_f * 1000) / 3600).round(1).to_s
+  end
+
+  def owntracks_point?
+    params[:topic].present?
   end
 end

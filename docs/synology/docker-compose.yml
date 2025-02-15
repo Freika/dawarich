@@ -10,7 +10,7 @@ services:
       - ./redis:/var/shared/redis
 
   dawarich_db:
-    image: postgres:14.2-alpine
+    image: postgis/postgis:14-3.5-alpine
     container_name: dawarich_db
     restart: unless-stopped
     environment:
@@ -28,7 +28,7 @@ services:
       - dawarich_redis
     stdin_open: true
     tty: true
-    entrypoint: dev-entrypoint.sh
+    entrypoint: web-entrypoint.sh
     command: ['bin/dev']
     restart: unless-stopped
     env_file:
@@ -45,7 +45,7 @@ services:
       - dawarich_db
       - dawarich_redis
       - dawarich_app
-    entrypoint: dev-entrypoint.sh
+    entrypoint: sidekiq-entrypoint.sh
     command: ['sidekiq']
     restart: unless-stopped
     env_file:

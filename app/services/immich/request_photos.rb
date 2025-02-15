@@ -5,15 +5,15 @@ class Immich::RequestPhotos
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
     @user = user
-    @immich_api_base_url = URI.parse("#{user.settings['immich_url']}/api/search/metadata")
-    @immich_api_key = user.settings['immich_api_key']
+    @immich_api_base_url = URI.parse("#{user.safe_settings.immich_url}/api/search/metadata")
+    @immich_api_key = user.safe_settings.immich_api_key
     @start_date = start_date
     @end_date = end_date
   end
 
   def call
     raise ArgumentError, 'Immich API key is missing' if immich_api_key.blank?
-    raise ArgumentError, 'Immich URL is missing'     if user.settings['immich_url'].blank?
+    raise ArgumentError, 'Immich URL is missing'     if user.safe_settings.immich_url.blank?
 
     data = retrieve_immich_data
 

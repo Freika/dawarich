@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<gpx creator="Arc App" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<wpt lat="16.822590884135522" lon="100.26450188975753">
+		<time>2024-12-17T19:40:05+07:00</time>
+		<ele>89.9031832732575</ele>
+		<name>Topland Hotel &amp; Convention Center</name>
+	</wpt>
+	<trk>
+		<type>walking</type>
+		<trkseg />
+	</trk>
+	<trk>
+		<type>taxi</type>
+		<trkseg>
+			<trkpt lat="16.82179723266299" lon="100.26501096574162">
+				<ele>49.96302288016834</ele>
+				<time>2024-12-18T08:44:09+07:00</time>
+			</trkpt>
+			<trkpt lat="16.821804657654933" lon="100.26501263671403">
+				<ele>49.884678590538186</ele>
+				<time>2024-12-18T08:44:16+07:00</time>
+			</trkpt>
+			<trkpt lat="16.821831929143876" lon="100.26500741687741">
+				<ele>49.71960135141746</ele>
+				<time>2024-12-18T08:44:21+07:00</time>
+			</trkpt>
+			<trkpt lat="16.821889949418637" lon="100.26494683052165">
+				<ele>49.91594081568717</ele>
+				<time>2024-12-18T08:44:29+07:00</time>
+			</trkpt>
+			<trkpt lat="16.821914934283804" lon="100.26485762911803">
+				<ele>50.344669848377556</ele>
+				<time>2024-12-18T08:44:38+07:00</time>
+			</trkpt>
+			<trkpt lat="16.821949486294397" lon="100.26482772930362">
+				<ele>50.12800953488726</ele>
+				<time>2024-12-18T08:44:45+07:00</time>
+			</trkpt>
+		</trkseg>
+	</trk>
+</gpx>

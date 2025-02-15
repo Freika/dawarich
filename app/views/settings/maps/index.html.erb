@@ -1,0 +1,71 @@
+<% content_for :title, "Map settings" %>
+
+<div class="min-h-content w-full my-5">
+  <%= render 'settings/navigation' %>
+
+  <div class="flex justify-between items-center my-5">
+    <h1 class="font-bold text-4xl">Maps settings</h1>
+  </div>
+
+  <div role="alert" class="alert alert-info">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      class="h-6 w-6 shrink-0 stroke-current">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <span>Please remember, that using a custom tile URL may result in extra costs. Check your map tile provider's terms of service for more information.</span>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5" data-controller="map-preview">
+    <div class="flex flex-col gap-4">
+      <%= form_for :maps,
+          url: settings_maps_path,
+          method: :patch,
+          autocomplete: "off",
+          data: { turbo_method: :patch, turbo: false } do |f| %>
+        <div class="form-control my-2">
+          <%= f.label :name %>
+          <%= f.text_field :name, value: @maps['name'], placeholder: 'Example: OpenStreetMap', class: "input input-bordered" %>
+        </div>
+
+        <div class="form-control my-2">
+          <%= f.label :url, 'URL' %>
+          <%= f.text_field :url,
+              value: @maps['url'],
+              autocomplete: "off",
+              placeholder: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              class: "input input-bordered",
+              data: {
+                map_preview_target: "urlInput",
+                action: "input->map-preview#updatePreview"
+              } %>
+        </div>
+
+        <%= f.submit 'Save', class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>
+      <% end %>
+
+      <h2 class="text-lg font-bold">Tile usage</h2>
+
+      <%= line_chart(
+        @tile_usage,
+        height: '200px',
+        xtitle: 'Days',
+        ytitle: 'Tiles',
+        suffix: ' tiles loaded'
+      ) %>
+    </div>
+
+    <div style="height: 500px;">
+      <div
+        data-map-preview-target="mapContainer"
+        class="w-full h-full rounded-lg border"
+      ></div>
+    </div>
+  </div>
+</div>

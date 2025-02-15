@@ -6,7 +6,11 @@ RSpec.describe Points::GpxSerializer do
   describe '#call' do
     subject(:serializer) { described_class.new(points, 'some_name').call }
 
-    let(:points) { create_list(:point, 3) }
+    let(:points) do
+      (1..3).map do |i|
+        create(:point, timestamp: 1.day.ago + i.minutes)
+      end
+    end
 
     it 'returns GPX file' do
       expect(serializer).to be_a(GPX::GPXFile)

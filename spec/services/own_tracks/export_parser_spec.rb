@@ -26,7 +26,7 @@ RSpec.describe OwnTracks::ExportParser do
           'altitude' => 36,
           'accuracy' => 10,
           'vertical_accuracy' => 4,
-          'velocity' => '0',
+          'velocity' => '1.4',
           'connection' => 'wifi',
           'ssid' => 'Home Wifi',
           'bssid' => 'b0:f2:8:45:94:33',
@@ -51,7 +51,7 @@ RSpec.describe OwnTracks::ExportParser do
             'tid' => 'RO',
             'tst' => 1_709_283_789,
             'vac' => 4,
-            'vel' => 0,
+            'vel' => 5,
             'SSID' => 'Home Wifi',
             'batt' => 94,
             'conn' => 'w',
@@ -63,6 +63,12 @@ RSpec.describe OwnTracks::ExportParser do
             'inregions' => ['home']
           }
         )
+      end
+
+      it 'correctly converts speed' do
+        parser
+
+        expect(Point.first.velocity).to eq('1.4')
       end
     end
   end

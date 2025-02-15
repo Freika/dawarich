@@ -27,5 +27,6 @@
         <pdop>8.8</pdop>
       </trkpt>
     </trkseg>
+    <trkseg></trkseg>
   </trk>
 </gpx>

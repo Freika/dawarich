@@ -20,6 +20,8 @@ Rails.application.routes.draw do
   namespace :settings do
     resources :background_jobs, only: %i[index create destroy]
     resources :users, only: %i[index create destroy edit update]
+    resources :maps, only: %i[index]
+    patch 'maps', to: 'maps#update'
   end
 
   patch 'settings', to: 'settings#update'
@@ -70,9 +72,10 @@ Rails.application.routes.draw do
       get   'health', to: 'health#index'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index create update destroy]
-      resources :points,    only: %i[index destroy]
+      resources :points,    only: %i[index create update destroy]
       resources :visits,    only: %i[update]
       resources :stats,     only: :index
 
@@ -97,6 +100,10 @@ Rails.application.routes.draw do
         member do
           get 'thumbnail', constraints: { id: %r{[^/]+} }
         end
+      end
+
+      namespace :maps do
+        resources :tile_usage, only: [:create]
       end
     end
   end

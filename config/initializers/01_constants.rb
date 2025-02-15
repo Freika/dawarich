@@ -15,5 +15,9 @@ PHOTON_API_HOST = ENV.fetch('PHOTON_API_HOST', nil)
 PHOTON_API_KEY = ENV.fetch('PHOTON_API_KEY', nil)
 PHOTON_API_USE_HTTPS = ENV.fetch('PHOTON_API_USE_HTTPS', 'false') == 'true'
 
+NOMINATIM_API_HOST = ENV.fetch('NOMINATIM_API_HOST', nil)
+NOMINATIM_API_KEY = ENV.fetch('NOMINATIM_API_KEY', nil)
+NOMINATIM_API_USE_HTTPS = ENV.fetch('NOMINATIM_API_USE_HTTPS', 'true') == 'true'
+
 GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
 # /Reverse geocoding settings
