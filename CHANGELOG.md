@@ -18,6 +18,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Restrict access to background jobs in non self-hosted mode.
 - Restrict access to users management in non self-hosted mode.
 
+### Removed
+
+ENV vars removed from the docker-compose.yml:
+
+```
+TIME_ZONE: Europe/London
+APPLICATION_PROTOCOL: http
+DISTANCE_UNIT: km
+MIN_MINUTES_SPENT_IN_CITY: 60
+```
+
+Link to the https://dawarich.app/docs/environment-variables-and-settings page added instead, and the app itself is now using defaults that can be changed if env vars are provided.
+
+
 # 0.24.1 - 2025-02-13
 
 ## Custom map tiles
