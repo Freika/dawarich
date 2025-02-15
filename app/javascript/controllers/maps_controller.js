@@ -13,7 +13,7 @@ import {
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
-import { showFlashMessage, fetchAndDisplayPhotos, debounce } from "../maps/helpers";
+import { showFlashMessage, fetchAndDisplayPhotos } from "../maps/helpers";
 
 import {
   osmMapLayer,
@@ -31,8 +31,9 @@ import { countryCodesMap } from "../maps/country_codes";
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
 import { TileMonitor } from "../maps/tile_monitor";
+import BaseController from "./base_controller";
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["container"];
 
   settingsButtonAdded = false;
@@ -41,6 +42,7 @@ export default class extends Controller {
   trackedMonthsCache = null;
 
   connect() {
+    super.connect();
     console.log("Map controller connected");
 
     this.apiKey = this.element.dataset.api_key;

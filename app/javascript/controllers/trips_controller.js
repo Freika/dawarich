@@ -3,7 +3,7 @@
 // - trips/edit
 // - trips/new
 
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 import L from "leaflet"
 import {
   osmMapLayer,
@@ -22,7 +22,7 @@ import {
   showFlashMessage
 } from '../maps/helpers';
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["container", "startedAt", "endedAt"]
   static values = { }
 

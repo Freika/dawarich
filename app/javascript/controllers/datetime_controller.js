@@ -2,9 +2,9 @@
 // - trips/new
 // - trips/edit
 
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["startedAt", "endedAt", "apiKey"]
   static values = { tripsId: String }
 
