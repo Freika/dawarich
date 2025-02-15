@@ -32,6 +32,7 @@ import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
 import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
+import { createMapLayer, createAllMapLayers } from "../maps/layers";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -404,17 +405,15 @@ export default class extends BaseController {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-    let maps = {
-      OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
-      "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
-      OPNV: OPNVMapLayer(this.map, selectedLayerName),
-      openTopo: openTopoMapLayer(this.map, selectedLayerName),
-      cyclOsm: cyclOsmMapLayer(this.map, selectedLayerName),
-      esriWorldStreet: esriWorldStreetMapLayer(this.map, selectedLayerName),
-      esriWorldTopo: esriWorldTopoMapLayer(this.map, selectedLayerName),
-      esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
-      esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
-    };
+    let maps; // Declare the variable first
+
+    if (this.selfHostedValue) {
+      maps = createAllMapLayers(this.map, selectedLayerName);
+    } else {
+      maps = {
+        OpenStreetMap: createMapLayer(this.map, selectedLayerName, "OpenStreetMap")
+      };
+    }
 
     // Add custom map if it exists in settings
     if (this.userSettings.maps && this.userSettings.maps.url) {
