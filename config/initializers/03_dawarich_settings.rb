@@ -18,6 +18,10 @@ class DawarichSettings
       @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
     end
 
+    def self_hosted?
+      @self_hosted ||= SELF_HOSTED
+    end
+
     def prometheus_exporter_enabled?
       @prometheus_exporter_enabled ||=
         ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true' &&

@@ -1,6 +1,6 @@
 <div role="tablist" class="tabs tabs-lifted tabs-lg">
   <%= link_to 'Integrations', settings_path, role: 'tab', class: "tab #{active_tab?(settings_path)}" %>
-  <% if current_user.admin? %>
+  <% if DawarichSettings.self_hosted? && current_user.admin? %>
     <%= link_to 'Users', settings_users_path, role: 'tab', class: "tab #{active_tab?(settings_users_path)}" %>
     <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab #{active_tab?(settings_background_jobs_path)}" %>
   <% end %>

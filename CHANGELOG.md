@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.24.2 - 2025-02-15
+
+## Fixed
+
+- Fixed a bug where background jobs to import Immich and Photoprism geolocation data data could not be created by non-admin users.
+- Fixed a bug where upon point deletion there was an error it was not being removed from the map, while it was actually deleted from the database. #883
+
+### Changed
+
+- Restrict access to Sidekiq in non self-hosted mode.
+- Restrict access to background jobs in non self-hosted mode.
+- Restrict access to users management in non self-hosted mode.
+
 # 0.24.1 - 2025-02-13
 
 ## Custom map tiles

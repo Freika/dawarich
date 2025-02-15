@@ -1,8 +1,8 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 import L from "leaflet"
 import { showFlashMessage } from "../maps/helpers"
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["urlInput", "mapContainer", "saveButton"]
 
   DEFAULT_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
