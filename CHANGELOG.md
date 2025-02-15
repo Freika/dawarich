@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.24.2 - 2025-02-15
+
+## Fixed
+
+- Fixed a bug where background jobs to import Immich and Photoprism geolocation data data could not be created by non-admin users.
+
 # 0.24.1 - 2025-02-13
 
 ## Custom map tiles

@@ -2,7 +2,9 @@
 
 class Settings::BackgroundJobsController < ApplicationController
   before_action :authenticate_user!
-  before_action :authenticate_admin!
+  before_action :authenticate_admin!, unless: lambda {
+    %w[start_immich_import start_photoprism_import].include?(params[:job_name])
+  }
 
   def index
     @queues = Sidekiq::Queue.all
@@ -13,7 +15,15 @@ class Settings::BackgroundJobsController < ApplicationController
 
     flash.now[:notice] = 'Job was successfully created.'
 
-    redirect_to settings_background_jobs_path, notice: 'Job was successfully created.'
+    redirect_path =
+      case params[:job_name]
+      when 'start_immich_import', 'start_photoprism_import'
+        imports_path
+      else
+        settings_background_jobs_path
+      end
+
+    redirect_to redirect_path, notice: 'Job was successfully created.'
   end
 
   def destroy

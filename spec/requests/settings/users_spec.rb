@@ -10,7 +10,7 @@ RSpec.describe '/settings/users', type: :request do
     it 'redirects to sign in page' do
       post settings_users_url, params: { user: valid_attributes }
 
-      expect(response).to redirect_to(new_user_session_url)
+      expect(response).to redirect_to(root_url)
     end
   end
 

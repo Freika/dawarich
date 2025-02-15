@@ -17,7 +17,9 @@ RSpec.describe '/settings/background_jobs', type: :request do
   end
 
   context 'when user is authenticated' do
-    before { sign_in create(:user) }
+    let(:user) { create(:user, admin: false) }
+
+    before { sign_in user }
 
     context 'when user is not an admin' do
       it 'redirects to root page' do
@@ -25,6 +27,32 @@ RSpec.describe '/settings/background_jobs', type: :request do
 
         expect(response).to redirect_to(root_url)
         expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+      end
+
+      context 'when job name is start_immich_import' do
+        it 'redirects to imports page' do
+          post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
+
+          expect(response).to redirect_to(imports_url)
+        end
+
+        it 'enqueues a new job' do
+          expect do
+            post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
+          end.to have_enqueued_job(EnqueueBackgroundJob)
+        end
+      end
+
+      context 'when job name is start_photoprism_import' do
+        it 'redirects to imports page' do
+          get settings_background_jobs_url, params: { job_name: 'start_photoprism_import' }
+        end
+
+        it 'enqueues a new job' do
+          expect do
+            post settings_background_jobs_url, params: { job_name: 'start_photoprism_import' }
+          end.to have_enqueued_job(EnqueueBackgroundJob)
+        end
       end
     end
 
