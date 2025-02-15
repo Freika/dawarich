@@ -21,5 +21,3 @@ NOMINATIM_API_USE_HTTPS = ENV.fetch('NOMINATIM_API_USE_HTTPS', 'true') == 'true'
 
 GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
 # /Reverse geocoding settings
-
-DEFAULT_MAP_TILES_URL = ENV.fetch('DEFAULT_MAP_TILES_URL', nil)
