@@ -17,7 +17,8 @@ RSpec.describe '/settings/background_jobs', type: :request do
       it 'redirects to sign in page' do
         get settings_background_jobs_url
 
-        expect(response).to redirect_to(new_user_session_url)
+        expect(response).to redirect_to(root_url)
+        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
       end
     end
 

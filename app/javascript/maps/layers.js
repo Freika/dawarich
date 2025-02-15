@@ -1,6 +1,5 @@
-// Yeah I know it should be DRY but this is me doing a KISS at 21:00 on a Sunday night
-
 // Import the maps configuration
+// In non-self-hosted mode, we need to mount external maps_config.js to the container
 import { mapsConfig } from './maps_config';
 
 export function createMapLayer(map, selectedLayerName, layerKey) {

@@ -20,7 +20,7 @@ import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
 import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
-import { createMapLayer, createAllMapLayers } from "../maps/layers";
+import { createAllMapLayers } from "../maps/layers";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -393,15 +393,7 @@ export default class extends BaseController {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-    let maps; // Declare the variable first
-
-    if (this.selfHostedValue) {
-      maps = createAllMapLayers(this.map, selectedLayerName);
-    } else {
-      maps = {
-        OpenStreetMap: createMapLayer(this.map, selectedLayerName, "OpenStreetMap")
-      };
-    }
+    let maps; createAllMapLayers(this.map, selectedLayerName);
 
     // Add custom map if it exists in settings
     if (this.userSettings.maps && this.userSettings.maps.url) {
