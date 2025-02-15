@@ -53,7 +53,7 @@ class ImportsController < ApplicationController
   end
 
   def destroy
-    @import.destroy!
+    Imports::Destroy.new(current_user, @import).call
 
     redirect_to imports_url, notice: 'Import was successfully destroyed.', status: :see_other
   end

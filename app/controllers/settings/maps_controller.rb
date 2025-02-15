@@ -5,6 +5,13 @@ class Settings::MapsController < ApplicationController
 
   def index
     @maps = current_user.safe_settings.maps
+
+    @tile_usage = 7.days.ago.to_date.upto(Time.zone.today).map do |date|
+      [
+        date.to_s,
+        Rails.cache.read("dawarich_map_tiles_usage:#{current_user.id}:#{date}") || 0
+      ]
+    end
   end
 
   def update

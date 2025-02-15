@@ -1,12 +1,12 @@
-import { Controller } from "@hotwired/stimulus"
-import L, { latLng } from "leaflet";
-import { osmMapLayer } from "../maps/layers";
+import BaseController from "./base_controller"
+import L from "leaflet"
+import { osmMapLayer } from "../maps/layers"
 
 // This controller is used to display a map of all coordinates for a visit
 // on the "Map" modal of a visit on the Visits page
 
-export default class extends Controller {
-  static targets = ["container"];
+export default class extends BaseController {
+  static targets = ["container"]
 
   connect() {
     this.coordinates = JSON.parse(this.element.dataset.coordinates);

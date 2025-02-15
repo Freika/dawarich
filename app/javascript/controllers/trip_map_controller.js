@@ -1,10 +1,10 @@
 // This controller is being used on:
 // - trips/index
 
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 import L from "leaflet"
 
-export default class extends Controller {
+export default class extends BaseController {
   static values = {
     tripId: Number,
     path: String,

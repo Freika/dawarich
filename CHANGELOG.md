@@ -4,12 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.24.2 - 2025-02-11
+# 0.24.2 - 2025-02-15
 
-### Changed
+## Fixed
 
-- The `docker-compose.yml` file was refactored to use new container names.
-- Default path for redis volume was changed from `/var/shared/redis` to `/data` to fix persistence issues. #148
+- Fixed a bug where background jobs to import Immich and Photoprism geolocation data data could not be created by non-admin users.
+- Fixed a bug where upon point deletion there was an error it was not being removed from the map, while it was actually deleted from the database. #883
+- Fixed a bug where upon import deletion stats were not being recalculated. #824
 
 ### Removed
 
@@ -27,7 +28,16 @@ APPLICATION_HOST: localhost
 
 Link to the https://dawarich.app/docs/environment-variables-and-settings page added instead, and the app itself is now using defaults that can be changed if env vars are provided.
 
-# 0.24.1 - 2025-02-11
+
+### Changed
+
+- Restrict access to Sidekiq in non self-hosted mode.
+- Restrict access to background jobs in non self-hosted mode.
+- Restrict access to users management in non self-hosted mode.
+- The `docker-compose.yml` file was refactored to use new container names.
+- Default path for redis volume was changed from `/var/shared/redis` to `/data` to fix persistence issues. #148
+
+# 0.24.1 - 2025-02-13
 
 ## Custom map tiles
 
@@ -38,7 +48,9 @@ To set a custom tile URL, go to the user settings and set the `Maps` section to 
 ### Added
 
 - Safe settings for user with default values.
+- Nominatim API is now supported as a reverse geocoding provider.
 - In the user settings, you can now set a custom tile URL for the map. #429 #715
+- In the user map settings, you can now see a chart of map tiles usage.
 - If you have Prometheus exporter enabled, you can now see a `ruby_dawarich_map_tiles` metric in Prometheus, which shows the total number of map tiles loaded. Example:
 
 ```
@@ -50,6 +62,11 @@ ruby_dawarich_map_tiles_usage 99
 ### Fixed
 
 - Speed on the Points page is now being displayed in kilometers per hour. #700
+- Fog of war displacement #774
+
+### Reverted
+
+- #748
 
 # 0.24.0 - 2025-02-10
 

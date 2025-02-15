@@ -13,30 +13,17 @@ import {
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
-import { showFlashMessage, fetchAndDisplayPhotos, debounce } from "../maps/helpers";
-
-import {
-  osmMapLayer,
-  osmHotMapLayer,
-  OPNVMapLayer,
-  openTopoMapLayer,
-  cyclOsmMapLayer,
-  esriWorldStreetMapLayer,
-  esriWorldTopoMapLayer,
-  esriWorldImageryMapLayer,
-  esriWorldGrayCanvasMapLayer
-} from "../maps/layers";
+import { showFlashMessage, fetchAndDisplayPhotos } from "../maps/helpers";
 import { countryCodesMap } from "../maps/country_codes";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
 import { TileMonitor } from "../maps/tile_monitor";
+import BaseController from "./base_controller";
+import { createAllMapLayers } from "../maps/layers";
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["container"];
-  static values = {
-    monitoringEnabled: Boolean
-  }
 
   settingsButtonAdded = false;
   layerControl = null;
@@ -44,6 +31,7 @@ export default class extends Controller {
   trackedMonthsCache = null;
 
   connect() {
+    super.connect();
     console.log("Map controller connected");
 
     this.apiKey = this.element.dataset.api_key;
@@ -249,7 +237,7 @@ export default class extends Controller {
     }
 
     // Initialize tile monitor
-    this.tileMonitor = new TileMonitor(this.monitoringEnabledValue, this.apiKey);
+    this.tileMonitor = new TileMonitor(this.apiKey);
 
     // Add tile load event handlers to each base layer
     Object.entries(this.baseMaps()).forEach(([name, layer]) => {
@@ -405,17 +393,7 @@ export default class extends Controller {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-    let maps = {
-      OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
-      "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
-      OPNV: OPNVMapLayer(this.map, selectedLayerName),
-      openTopo: openTopoMapLayer(this.map, selectedLayerName),
-      cyclOsm: cyclOsmMapLayer(this.map, selectedLayerName),
-      esriWorldStreet: esriWorldStreetMapLayer(this.map, selectedLayerName),
-      esriWorldTopo: esriWorldTopoMapLayer(this.map, selectedLayerName),
-      esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
-      esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
-    };
+    let maps = createAllMapLayers(this.map, selectedLayerName);
 
     // Add custom map if it exists in settings
     if (this.userSettings.maps && this.userSettings.maps.url) {
@@ -539,13 +517,13 @@ export default class extends Controller {
       if (this.layerControl) {
         this.map.removeControl(this.layerControl);
         const controlsLayer = {
-          Points: this.markersLayer,
-          Routes: this.polylinesLayer,
-          Heatmap: this.heatmapLayer,
-          "Fog of War": this.fogOverlay,
-          "Scratch map": this.scratchLayer,
-          Areas: this.areasLayer,
-          Photos: this.photoMarkers
+          Points: this.markersLayer || L.layerGroup(),
+          Routes: this.polylinesLayer || L.layerGroup(),
+          Heatmap: this.heatmapLayer || L.layerGroup(),
+          "Fog of War": new this.fogOverlay(),
+          "Scratch map": this.scratchLayer || L.layerGroup(),
+          Areas: this.areasLayer || L.layerGroup(),
+          Photos: this.photoMarkers || L.layerGroup()
         };
         this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
       }

@@ -1,11 +1,12 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 import consumer from "../channels/consumer"
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["badge", "list"]
   static values = { userId: Number }
 
   initialize() {
+    super.initialize()
     this.subscription = null
   }
 
