@@ -61,8 +61,10 @@ FactoryBot.define do
     end
 
     trait :reverse_geocoded do
-      country { FFaker::Address.country }
-      city { FFaker::Address.city }
+      country { create(:country) }
+      state   { create(:state) }
+      county  { create(:county) }
+      city    { create(:city) }
       reverse_geocoded_at { Time.current }
     end
   end

@@ -7,12 +7,24 @@ class Point < ApplicationRecord
   belongs_to :visit, optional: true
   belongs_to :user
 
+  belongs_to :country, optional: true
+  belongs_to :state, optional: true
+  belongs_to :county, optional: true
+  belongs_to :city, optional: true
+
   validates :latitude, :longitude, :timestamp, presence: true
+
+  delegate :name, to: :city, prefix: true, allow_nil: true
+  delegate :name, to: :country, prefix: true, allow_nil: true
+  delegate :name, to: :state, prefix: true, allow_nil: true
+  delegate :name, to: :county, prefix: true, allow_nil: true
+
   validates :timestamp, uniqueness: {
     scope: %i[latitude longitude user_id],
     message: 'already has a point at this location and time for this user',
     index: true
   }
+
   enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3 }, suffix: true
   enum :trigger, {
     unknown: 0, background_event: 1, circular_region_event: 2, beacon_event: 3,
@@ -60,7 +72,7 @@ class Point < ApplicationRecord
         timestamp.to_s,
         velocity.to_s,
         id.to_s,
-        country.to_s
+        country_name.to_s
       ]
     )
   end
