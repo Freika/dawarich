@@ -16,12 +16,40 @@ RSpec.describe User, type: :model do
     it { is_expected.to have_many(:trips).dependent(:destroy) }
   end
 
+  describe 'enums' do
+    it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1) }
+  end
+
   describe 'callbacks' do
     describe '#create_api_key' do
       let(:user) { create(:user) }
 
       it 'creates api key' do
         expect(user.api_key).to be_present
+      end
+    end
+
+    describe '#activate' do
+      let(:user) { create(:user) }
+
+      context 'when self-hosted' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        end
+
+        it 'activates user' do
+          expect { user.send(:activate) }.to change(user, :status).to('active')
+        end
+      end
+
+      context 'when not self-hosted' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        end
+
+        it 'does not activate user' do
+          expect { user.send(:activate) }.to_not change(user, :status)
+        end
       end
     end
   end
