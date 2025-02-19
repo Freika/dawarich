@@ -69,6 +69,19 @@ RSpec.describe '/stats', type: :request do
           end
         end
       end
+
+      context 'when user is inactive' do
+        before do
+          user.update(status: :inactive)
+        end
+
+        it 'returns an unauthorized response' do
+          put update_year_month_stats_url(year: '2024', month: '1')
+
+          expect(response).to redirect_to(root_path)
+          expect(flash[:notice]).to eq('Your account is not active.')
+        end
+      end
     end
 
     describe 'PUT /update_all' do
@@ -82,6 +95,19 @@ RSpec.describe '/stats', type: :request do
         expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2024, 1)
         expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2024, 2)
         expect(Stats::CalculatingJob).to_not have_been_enqueued.with(user.id, 2024, 3)
+      end
+
+      context 'when user is inactive' do
+        before do
+          user.update(status: :inactive)
+        end
+
+        it 'returns an unauthorized response' do
+          put update_all_stats_url
+
+          expect(response).to redirect_to(root_path)
+          expect(flash[:notice]).to eq('Your account is not active.')
+        end
       end
     end
   end

@@ -53,6 +53,19 @@ RSpec.describe '/trips', type: :request do
 
       expect(response).to be_successful
     end
+
+    context 'when user is inactive' do
+      before do
+        user.update(status: :inactive)
+      end
+
+      it 'redirects to the root path' do
+        get new_trip_url
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account is not active.')
+      end
+    end
   end
 
   describe 'GET /edit' do
@@ -76,6 +89,19 @@ RSpec.describe '/trips', type: :request do
       it 'redirects to the created trip' do
         post trips_url, params: { trip: valid_attributes }
         expect(response).to redirect_to(trip_url(Trip.last))
+      end
+
+      context 'when user is inactive' do
+        before do
+          user.update(status: :inactive)
+        end
+
+        it 'redirects to the root path' do
+          post trips_url, params: { trip: valid_attributes }
+
+          expect(response).to redirect_to(root_path)
+          expect(flash[:notice]).to eq('Your account is not active.')
+        end
       end
     end
 

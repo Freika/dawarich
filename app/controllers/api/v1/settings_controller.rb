@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::SettingsController < ApiController
+  before_action :authenticate_active_api_user!, only: %i[update]
+
   def index
     render json: {
       settings: current_api_user.settings,

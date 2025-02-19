@@ -2,6 +2,7 @@
 
 class TripsController < ApplicationController
   before_action :authenticate_user!
+  before_action :authenticate_active_user!, only: %i[new create]
   before_action :set_trip, only: %i[show edit update destroy]
   before_action :set_coordinates, only: %i[show edit]
 

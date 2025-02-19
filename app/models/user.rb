@@ -24,6 +24,8 @@ class User < ApplicationRecord
 
   attribute :admin, :boolean, default: false
 
+  enum :status, { inactive: 0, active: 1 }
+
   def safe_settings
     Users::SafeSettings.new(settings)
   end
@@ -102,6 +104,10 @@ class User < ApplicationRecord
     self.api_key = SecureRandom.hex(16)
 
     save
+  end
+
+  def activate
+    update(state: :active) if DawarichSettings.self_hosted?
   end
 
   def sanitize_input

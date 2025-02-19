@@ -25,6 +25,12 @@ class ApplicationController < ActionController::Base
     redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :see_other
   end
 
+  def authenticate_active_user!
+    return if current_user&.active?
+
+    redirect_to root_path, notice: 'Your account is not active.', status: :see_other
+  end
+
   private
 
   def set_self_hosted_status

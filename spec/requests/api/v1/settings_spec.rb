@@ -25,6 +25,18 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
         expect(response.parsed_body['settings']['route_opacity'].to_f).to eq(0.3)
       end
+
+      context 'when user is inactive' do
+        before do
+          user.update(status: :inactive)
+        end
+
+        it 'returns http unauthorized' do
+          patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
     end
 
     context 'with invalid request' do

@@ -6,6 +6,8 @@ FactoryBot.define do
       "user#{n}@example.com"
     end
 
+    status { :active }
+
     password { SecureRandom.hex(8) }
 
     settings do

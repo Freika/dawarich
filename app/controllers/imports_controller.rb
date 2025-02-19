@@ -2,6 +2,7 @@
 
 class ImportsController < ApplicationController
   before_action :authenticate_user!
+  before_action :authenticate_active_user!, only: %i[new create]
   before_action :set_import, only: %i[show destroy]
 
   def index

@@ -78,6 +78,9 @@ describe 'Points API', type: :request do
               coordinates: [-122.40530871, 37.74430413]
             },
             properties: {
+              battery_state: 'full',
+              battery_level: 0.7,
+              wifi: 'dawarich_home',
               timestamp: '2025-01-17T21:03:01Z',
               horizontal_accuracy: 5,
               vertical_accuracy: -1,
@@ -92,7 +95,7 @@ describe 'Points API', type: :request do
           }
         ]
       }
-      tags 'Batches'
+      tags 'Points'
       consumes 'application/json'
       parameter name: :locations, in: :body, schema: {
         type: :object,
