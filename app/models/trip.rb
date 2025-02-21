@@ -14,7 +14,6 @@ class Trip < ApplicationRecord
     calculate_distance
   end
 
-
   def points
     user.tracked_points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
   end
@@ -52,13 +51,8 @@ class Trip < ApplicationRecord
     self.path = trip_path
   end
 
-
   def calculate_distance
-    distance = 0
-
-    points.each_cons(2) do |point1, point2|
-      distance += DistanceCalculator.new(point1, point2).call
-    end
+    distance = Point.total_distance(points, DISTANCE_UNIT)
 
     self.distance = distance.round
   end
