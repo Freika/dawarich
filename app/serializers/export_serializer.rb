@@ -22,8 +22,8 @@ class ExportSerializer
 
   def export_point(point)
     {
-      lat:        point.latitude,
-      lon:        point.longitude,
+      lat:        point.lat,
+      lon:        point.lon,
       bs:         battery_status(point),
       batt:       point.battery,
       p:          point.ping,

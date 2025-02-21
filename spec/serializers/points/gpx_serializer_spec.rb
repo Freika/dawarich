@@ -24,8 +24,8 @@ RSpec.describe Points::GpxSerializer do
       serializer.tracks[0].points.each_with_index do |track_point, index|
         point = points[index]
 
-        expect(track_point.lat).to eq(point.latitude)
-        expect(track_point.lon).to eq(point.longitude)
+        expect(track_point.lat).to eq(point.lat)
+        expect(track_point.lon).to eq(point.lon)
         expect(track_point.time).to eq(point.recorded_at)
       end
     end

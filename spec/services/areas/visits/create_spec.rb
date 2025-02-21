@@ -23,14 +23,14 @@ RSpec.describe Areas::Visits::Create do
 
     context 'when there are points' do
       let(:home_visit_date) { DateTime.new(2021, 1, 1, 10, 0, 0, Time.zone.formatted_offset) }
-      let!(:home_point1) { create(:point, user:, latitude: 0, longitude: 0, timestamp: home_visit_date) }
-      let!(:home_point2) { create(:point, user:, latitude: 0, longitude: 0, timestamp: home_visit_date + 10.minutes) }
-      let!(:home_point3) { create(:point, user:, latitude: 0, longitude: 0, timestamp: home_visit_date + 20.minutes) }
+      let!(:home_point1) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: home_visit_date) }
+      let!(:home_point2) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: home_visit_date + 10.minutes) }
+      let!(:home_point3) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: home_visit_date + 20.minutes) }
 
       let(:work_visit_date) { DateTime.new(2021, 1, 1, 12, 0, 0, Time.zone.formatted_offset) }
-      let!(:work_point1) { create(:point, user:, latitude: 1, longitude: 1, timestamp: work_visit_date) }
-      let!(:work_point2) { create(:point, user:, latitude: 1, longitude: 1, timestamp: work_visit_date + 10.minutes) }
-      let!(:work_point3) { create(:point, user:, latitude: 1, longitude: 1, timestamp: work_visit_date + 20.minutes) }
+      let!(:work_point1) { create(:point, user:, lonlat: 'POINT(1 1)', timestamp: work_visit_date) }
+      let!(:work_point2) { create(:point, user:, lonlat: 'POINT(1 1)', timestamp: work_visit_date + 10.minutes) }
+      let!(:work_point3) { create(:point, user:, lonlat: 'POINT(1 1)', timestamp: work_visit_date + 20.minutes) }
 
       it 'creates visits' do
         expect { create_visits }.to change { Visit.count }.by(2)
@@ -47,7 +47,7 @@ RSpec.describe Areas::Visits::Create do
       end
 
       context 'when there are points outside the time threshold' do
-        let(:home_point4) { create(:point, user:, latitude: 0, longitude: 0, timestamp: home_visit_date + 40.minutes) }
+        let(:home_point4) { create(:point, user:, lonlat: 'POINT(0 0)', timestamp: home_visit_date + 40.minutes) }
 
         it 'does not create visits' do
           expect { create_visits }.to change { Visit.count }.by(2)

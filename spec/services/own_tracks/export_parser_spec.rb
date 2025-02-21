@@ -17,9 +17,10 @@ RSpec.describe OwnTracks::ExportParser do
       it 'correctly writes attributes' do
         parser
 
-        expect(Point.first.attributes).to include(
-          'latitude' => 52.225,
-          'longitude' => 13.332,
+        point = Point.first
+        expect(point.lonlat.x).to be_within(0.001).of(13.332)
+        expect(point.lonlat.y).to be_within(0.001).of(52.225)
+        expect(point.attributes.except('lonlat')).to include(
           'battery_status' => 'charging',
           'battery' => 94,
           'ping' => '100.266',

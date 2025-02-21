@@ -26,24 +26,21 @@ RSpec.describe Stats::CalculateMonth do
                user:,
                import:,
                timestamp: timestamp1,
-               latitude: 52.107902115161316,
-               longitude: 14.452712811406352)
+               lonlat: 'POINT(14.452712811406352 52.107902115161316)')
       end
       let!(:point2) do
         create(:point,
                user:,
                import:,
                timestamp: timestamp2,
-               latitude: 51.9746598171507,
-               longitude: 12.291519487061901)
+               lonlat: 'POINT(12.291519487061901 51.9746598171507)')
       end
       let!(:point3) do
         create(:point,
                user:,
                import:,
                timestamp: timestamp3,
-               latitude: 52.72859111523629,
-               longitude: 9.77973105800526)
+               lonlat: 'POINT(9.77973105800526 52.72859111523629)')
       end
 
       context 'when units are kilometers' do

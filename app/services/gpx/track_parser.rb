@@ -36,8 +36,7 @@ class Gpx::TrackParser
     return if point_exists?(point)
 
     Point.create(
-      latitude:   point['lat'].to_d,
-      longitude:  point['lon'].to_d,
+      lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
       altitude:   point['ele'].to_i,
       timestamp:  Time.parse(point['time']).to_i,
       import_id:  import.id,
@@ -51,8 +50,7 @@ class Gpx::TrackParser
 
   def point_exists?(point)
     Point.exists?(
-      latitude:   point['lat'].to_d,
-      longitude:  point['lon'].to_d,
+      lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
       timestamp:  Time.parse(point['time']).to_i,
       user_id:
     )

@@ -1,18 +1,7 @@
-GIT
-  remote: https://github.com/StoneGod/activerecord-postgis-adapter.git
-  revision: 147fd43191ef703e2a1b3654f31d9139201a87e8
-  branch: rails-8
+PATH
+  remote: ../../geocoder
   specs:
-    activerecord-postgis-adapter (10.0.1)
-      activerecord (~> 8.0.0)
-      rgeo-activerecord (~> 8.0.0)
-
-GIT
-  remote: https://github.com/alexreisner/geocoder.git
-  revision: 04ee2936a30b30a23ded5231d7faf6cf6c27c099
-  ref: 04ee293
-  specs:
-    geocoder (1.8.3)
+    geocoder (1.8.5)
       base64 (>= 0.1.0)
       csv (>= 3.0.0)
 
@@ -71,6 +60,9 @@ GEM
       activemodel (= 8.0.1)
       activesupport (= 8.0.1)
       timeout (>= 0.4.0)
+    activerecord-postgis-adapter (11.0.0)
+      activerecord (~> 8.0.0)
+      rgeo-activerecord (~> 8.0.0)
     activestorage (8.0.1)
       actionpack (= 8.0.1)
       activejob (= 8.0.1)
@@ -192,7 +184,7 @@ GEM
       kaminari-core (= 1.2.2)
     kaminari-core (1.2.2)
     language_server-protocol (3.17.0.4)
-    logger (1.6.5)
+    logger (1.6.6)
     lograge (0.14.0)
       actionpack (>= 4)
       activesupport (>= 4)
@@ -461,7 +453,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  activerecord-postgis-adapter!
+  activerecord-postgis-adapter
   bootsnap
   chartkick
   data_migrate
@@ -490,6 +482,7 @@ DEPENDENCIES
   rails (~> 8.0)
   redis
   rgeo
+  rgeo-activerecord
   rspec-rails
   rswag-api
   rswag-specs

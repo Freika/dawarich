@@ -18,8 +18,8 @@ RSpec.describe ExportSerializer do
         user_email => {
           'dawarich-export' => [
             {
-              lat: points.first.latitude,
-              lon: points.first.longitude,
+              lat: points.first.lat,
+              lon: points.first.lon,
               bs: 'u',
               batt: points.first.battery,
               p: points.first.ping,
@@ -39,8 +39,8 @@ RSpec.describe ExportSerializer do
               raw_data: points.first.raw_data
             },
             {
-              lat: points.second.latitude,
-              lon: points.second.longitude,
+              lat: points.second.lat,
+              lon: points.second.lon,
               bs: 'u',
               batt: points.second.battery,
               p: points.second.ping,

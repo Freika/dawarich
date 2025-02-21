@@ -16,9 +16,8 @@ class OwnTracks::ExportParser
 
     points_data.each.with_index(1) do |point_data, index|
       next if Point.exists?(
+        lonlat: point_data[:lonlat],
         timestamp: point_data[:timestamp],
-        latitude: point_data[:latitude],
-        longitude: point_data[:longitude],
         user_id:
       )
 

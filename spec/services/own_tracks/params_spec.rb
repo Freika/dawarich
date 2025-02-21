@@ -13,8 +13,7 @@ RSpec.describe OwnTracks::Params do
 
     let(:expected_json) do
       {
-        latitude: 52.225,
-        longitude: 13.332,
+        lonlat: 'POINT(13.332 52.225)',
         battery: 94,
         ping: 100.266,
         altitude: 36,

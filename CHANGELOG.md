@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.24.2 - 2025-02-15
 
+## TODO:
+
+- Data migration to convert `latitude` and `longitude` to `lonlat` column.
+- Frontend update to use `lonlat` column.
+
 ## Fixed
 
 - Fixed a bug where background jobs to import Immich and Photoprism geolocation data data could not be created by non-admin users.
@@ -17,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Restrict access to Sidekiq in non self-hosted mode.
 - Restrict access to background jobs in non self-hosted mode.
 - Restrict access to users management in non self-hosted mode.
+- Points are now using `lonlat` column for storing longitude and latitude.
+- Semantic history points are now being imported much faster.
 
 # 0.24.1 - 2025-02-13
 
