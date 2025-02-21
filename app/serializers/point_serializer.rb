@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class PointSerializer
-  EXCLUDED_ATTRIBUTES = %w[created_at updated_at visit_id id import_id user_id raw_data lonlat].freeze
+  EXCLUDED_ATTRIBUTES = %w[
+    created_at updated_at visit_id id import_id user_id raw_data lonlat
+    reverse_geocoded_at
+  ].freeze
 
   def initialize(point)
     @point = point

@@ -50,11 +50,11 @@ class Point < ApplicationRecord
   end
 
   def lon
-    lonlat.x
+    lonlat.x.to_s
   end
 
   def lat
-    lonlat.y
+    lonlat.y.to_s
   end
 
   private

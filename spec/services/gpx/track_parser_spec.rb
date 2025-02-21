@@ -53,8 +53,8 @@ RSpec.describe Gpx::TrackParser do
       it 'creates points with correct data' do
         parser
 
-        expect(Point.first.lat).to eq(37.1722103)
-        expect(Point.first.lon).to eq(-3.55468)
+        expect(Point.first.lat).to eq('37.1722103')
+        expect(Point.first.lon).to eq('-3.55468')
         expect(Point.first.altitude).to eq(1066)
         expect(Point.first.timestamp).to eq(Time.zone.parse('2024-04-21T10:19:55Z').to_i)
         expect(Point.first.velocity).to eq('2.9')
@@ -67,8 +67,8 @@ RSpec.describe Gpx::TrackParser do
       it 'creates points with correct data' do
         parser
 
-        expect(Point.first.lat).to eq(10.758321212464024)
-        expect(Point.first.lon).to eq(106.64234449272531)
+        expect(Point.first.lat).to eq('10.758321212464024')
+        expect(Point.first.lon).to eq('106.64234449272531')
         expect(Point.first.altitude).to eq(17)
         expect(Point.first.timestamp).to eq(1_730_626_211)
         expect(Point.first.velocity).to eq('2.8')

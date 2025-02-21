@@ -6,8 +6,15 @@ RSpec.describe Api::SlimPointSerializer do
   describe '#call' do
     subject(:serializer) { described_class.new(point).call }
 
-    let(:point) { create(:point) }
-    let(:expected_json) { point.attributes.slice('id', 'latitude', 'longitude', 'timestamp') }
+    let!(:point) { create(:point, :with_known_location) }
+    let(:expected_json) do
+      {
+        id:        point.id,
+        latitude:  point.lat,
+        longitude: point.lon,
+        timestamp: point.timestamp
+      }
+    end
 
     it 'returns JSON with correct attributes' do
       expect(serializer.to_json).to eq(expected_json.to_json)
