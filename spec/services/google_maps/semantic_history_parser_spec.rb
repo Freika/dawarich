@@ -80,7 +80,7 @@ RSpec.describe GoogleMaps::SemanticHistoryParser do
               {
                 'activitySegment' => {
                   'startLocation' => { 'latitudeE7' => 123_456_789, 'longitudeE7' => 123_456_789 },
-                  'duration' => { 'startTimestamp' => (time.to_i).to_s }
+                  'duration' => { 'startTimestamp' => time.to_i.to_s }
                 }
               }
             end

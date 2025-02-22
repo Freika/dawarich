@@ -8,15 +8,37 @@ RSpec.describe PointSerializer do
 
     let(:point) { create(:point) }
     let(:expected_json) do
-      point.attributes.except(*PointSerializer::EXCLUDED_ATTRIBUTES)
+      {
+        'battery_status' => point.battery_status,
+        'ping' => point.ping,
+        'battery' => point.battery,
+        'tracker_id' => point.tracker_id,
+        'topic' => point.topic,
+        'altitude' => point.altitude,
+        'longitude' => point.lon.to_s,
+        'velocity' => point.velocity,
+        'trigger' => point.trigger,
+        'bssid' => point.bssid,
+        'ssid' => point.ssid,
+        'connection' => point.connection,
+        'vertical_accuracy' => point.vertical_accuracy,
+        'accuracy' => point.accuracy,
+        'timestamp' => point.timestamp,
+        'latitude' => point.lat.to_s,
+        'mode' => point.mode,
+        'inrids' => point.inrids,
+        'in_regions' => point.in_regions,
+        'city' => point.city,
+        'country' => point.country,
+        'geodata' => point.geodata,
+        'course' => point.course,
+        'course_accuracy' => point.course_accuracy,
+        'external_track_id' => point.external_track_id
+      }
     end
 
-    it 'returns JSON' do
+    it 'returns JSON with correct attributes' do
       expect(serializer.to_json).to eq(expected_json.to_json)
-    end
-
-    it 'does not include excluded attributes' do
-      expect(serializer).not_to include(*PointSerializer::EXCLUDED_ATTRIBUTES)
     end
   end
 end

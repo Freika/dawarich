@@ -37,7 +37,7 @@ class Stat < ApplicationRecord
   def calculate_daily_distances(monthly_points)
     timespan.to_a.map.with_index(1) do |day, index|
       daily_points = filter_points_for_day(monthly_points, day)
-      distance = calculate_distance(daily_points)
+      distance = Point.total_distance(daily_points, DISTANCE_UNIT)
       [index, distance.round(2)]
     end
   end
@@ -47,11 +47,5 @@ class Stat < ApplicationRecord
     end_of_day = day.end_of_day.to_i
 
     points.select { |p| p.timestamp.between?(beginning_of_day, end_of_day) }
-  end
-
-  def calculate_distance(points)
-    points.each_cons(2).sum do |point1, point2|
-      DistanceCalculator.new(point1, point2).call
-    end
   end
 end

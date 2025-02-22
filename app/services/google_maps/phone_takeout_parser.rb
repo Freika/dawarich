@@ -16,14 +16,12 @@ class GoogleMaps::PhoneTakeoutParser
     points_data.compact.each.with_index(1) do |point_data, index|
       next if Point.exists?(
         timestamp:  point_data[:timestamp],
-        latitude:   point_data[:latitude],
-        longitude:  point_data[:longitude],
+        lonlat:     point_data[:lonlat],
         user_id:
       )
 
       Point.create(
-        latitude:   point_data[:latitude],
-        longitude:  point_data[:longitude],
+        lonlat:     point_data[:lonlat],
         timestamp:  point_data[:timestamp],
         raw_data:   point_data[:raw_data],
         accuracy:   point_data[:accuracy],
@@ -72,8 +70,7 @@ class GoogleMaps::PhoneTakeoutParser
 
   def point_hash(lat, lon, timestamp, raw_data)
     {
-      latitude: lat.to_f,
-      longitude: lon.to_f,
+      lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
       raw_data:,
       accuracy: raw_data['accuracyMeters'],

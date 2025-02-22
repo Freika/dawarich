@@ -3,87 +3,135 @@
 class GoogleMaps::SemanticHistoryParser
   include Imports::Broadcaster
 
+  BATCH_SIZE = 1000
   attr_reader :import, :user_id
 
   def initialize(import, user_id)
     @import = import
     @user_id = user_id
+    @current_index = 0
   end
 
   def call
     points_data = parse_json
 
-    points_data.each.with_index(1) do |point_data, index|
-      next if Point.exists?(
-        timestamp: point_data[:timestamp],
-        latitude: point_data[:latitude],
-        longitude: point_data[:longitude],
-        user_id:
-      )
-
-      Point.create(
-        latitude: point_data[:latitude],
-        longitude: point_data[:longitude],
-        timestamp: point_data[:timestamp],
-        raw_data: point_data[:raw_data],
-        topic: 'Google Maps Timeline Export',
-        tracker_id: 'google-maps-timeline-export',
-        import_id: import.id,
-        user_id:
-      )
-
-      broadcast_import_progress(import, index)
+    points_data.each_slice(BATCH_SIZE) do |batch|
+      @current_index += batch.size
+      process_batch(batch)
+      broadcast_import_progress(import, @current_index)
     end
   end
 
   private
 
+  def process_batch(batch)
+    records = batch.map { |point_data| prepare_point_data(point_data) }
+
+    # rubocop:disable Rails/SkipsModelValidations
+    Point.upsert_all(
+      records,
+      unique_by: %i[lonlat timestamp user_id],
+      returning: false,
+      on_duplicate: :skip
+    )
+    # rubocop:enable Rails/SkipsModelValidations
+  rescue StandardError => e
+    create_notification("Failed to process location batch: #{e.message}")
+  end
+
+  def prepare_point_data(point_data)
+    {
+      lonlat: point_data[:lonlat],
+      timestamp: point_data[:timestamp],
+      raw_data: point_data[:raw_data],
+      topic: 'Google Maps Timeline Export',
+      tracker_id: 'google-maps-timeline-export',
+      import_id: import.id,
+      user_id: user_id,
+      created_at: Time.current,
+      updated_at: Time.current
+    }
+  end
+
+  def create_notification(message)
+    Notification.create!(
+      user_id: user_id,
+      title: 'Google Maps Timeline Import Error',
+      content: message,
+      kind: :error
+    )
+  end
+
   def parse_json
     import.raw_data['timelineObjects'].flat_map do |timeline_object|
-      if timeline_object['activitySegment'].present?
-        if timeline_object['activitySegment']['startLocation'].blank?
-          next if timeline_object['activitySegment']['waypointPath'].blank?
+      parse_timeline_object(timeline_object)
+    end.compact
+  end
 
-          timeline_object['activitySegment']['waypointPath']['waypoints'].map do |waypoint|
-            {
-              latitude: waypoint['latE7'].to_f / 10**7,
-              longitude: waypoint['lngE7'].to_f / 10**7,
-              timestamp: Timestamps.parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
-              raw_data: timeline_object
-            }
-          end
-        else
-          {
-            latitude: timeline_object['activitySegment']['startLocation']['latitudeE7'].to_f / 10**7,
-            longitude: timeline_object['activitySegment']['startLocation']['longitudeE7'].to_f / 10**7,
-            timestamp: Timestamps.parse_timestamp(timeline_object['activitySegment']['duration']['startTimestamp'] || timeline_object['activitySegment']['duration']['startTimestampMs']),
-            raw_data: timeline_object
-          }
-        end
-      elsif timeline_object['placeVisit'].present?
-        if timeline_object.dig('placeVisit', 'location', 'latitudeE7').present? &&
-           timeline_object.dig('placeVisit', 'location', 'longitudeE7').present?
-          {
-            latitude: timeline_object['placeVisit']['location']['latitudeE7'].to_f / 10**7,
-            longitude: timeline_object['placeVisit']['location']['longitudeE7'].to_f / 10**7,
-            timestamp: Timestamps.parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
-            raw_data: timeline_object
-          }
-        elsif timeline_object.dig('placeVisit', 'otherCandidateLocations')&.any?
-          point = timeline_object['placeVisit']['otherCandidateLocations'][0]
+  def parse_timeline_object(timeline_object)
+    if timeline_object['activitySegment'].present?
+      parse_activity_segment(timeline_object['activitySegment'])
+    elsif timeline_object['placeVisit'].present?
+      parse_place_visit(timeline_object['placeVisit'])
+    end
+  end
 
-          next unless point['latitudeE7'].present? && point['longitudeE7'].present?
+  def parse_activity_segment(activity)
+    if activity['startLocation'].blank?
+      parse_waypoints(activity)
+    else
+      build_point_from_location(
+        longitude: activity['startLocation']['longitudeE7'],
+        latitude: activity['startLocation']['latitudeE7'],
+        timestamp: activity['duration']['startTimestamp'] || activity['duration']['startTimestampMs'],
+        raw_data: activity
+      )
+    end
+  end
 
-          {
-            latitude: point['latitudeE7'].to_f / 10**7,
-            longitude: point['longitudeE7'].to_f / 10**7,
-            timestamp: Timestamps.parse_timestamp(timeline_object['placeVisit']['duration']['startTimestamp'] || timeline_object['placeVisit']['duration']['startTimestampMs']),
-            raw_data: timeline_object
-          }
-        else
-          next
-        end
-      end
-    end.reject(&:blank?)
+  def parse_waypoints(activity)
+    return if activity['waypointPath'].blank?
+
+    activity['waypointPath']['waypoints'].map do |waypoint|
+      build_point_from_location(
+        longitude: waypoint['lngE7'],
+        latitude: waypoint['latE7'],
+        timestamp: activity['duration']['startTimestamp'] || activity['duration']['startTimestampMs'],
+        raw_data: activity
+      )
+    end
+  end
+
+  def parse_place_visit(place_visit)
+    if place_visit.dig('location', 'latitudeE7').present? &&
+       place_visit.dig('location', 'longitudeE7').present?
+      build_point_from_location(
+        longitude: place_visit['location']['longitudeE7'],
+        latitude: place_visit['location']['latitudeE7'],
+        timestamp: place_visit['duration']['startTimestamp'] || place_visit['duration']['startTimestampMs'],
+        raw_data: place_visit
+      )
+    elsif (candidate = place_visit.dig('otherCandidateLocations', 0))
+      parse_candidate_location(candidate, place_visit)
+    end
+  end
+
+  def parse_candidate_location(candidate, place_visit)
+    return unless candidate['latitudeE7'].present? && candidate['longitudeE7'].present?
+
+    build_point_from_location(
+      longitude: candidate['longitudeE7'],
+      latitude: candidate['latitudeE7'],
+      timestamp: place_visit['duration']['startTimestamp'] || place_visit['duration']['startTimestampMs'],
+      raw_data: place_visit
+    )
+  end
+
+  def build_point_from_location(longitude:, latitude:, timestamp:, raw_data:)
+    {
+      lonlat: "POINT(#{longitude.to_f / 10**7} #{latitude.to_f / 10**7})",
+      timestamp: Timestamps.parse_timestamp(timestamp),
+      raw_data: raw_data
+    }
   end
 end

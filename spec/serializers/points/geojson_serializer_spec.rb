@@ -20,7 +20,7 @@ RSpec.describe Points::GeojsonSerializer do
             type: 'Feature',
             geometry: {
               type: 'Point',
-              coordinates: [point.longitude, point.latitude]
+              coordinates: [point.lon.to_s, point.lat.to_s]
             },
             properties: PointSerializer.new(point).call
           }

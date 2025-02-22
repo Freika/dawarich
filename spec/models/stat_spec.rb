@@ -25,11 +25,11 @@ RSpec.describe Stat, type: :model do
 
       context 'when there are points' do
         let!(:points) do
-          create(:point, user:, latitude: 1, longitude: 1, timestamp: DateTime.new(year, 1, 1, 1))
-          create(:point, user:, latitude: 2, longitude: 2, timestamp: DateTime.new(year, 1, 1, 2))
+          create(:point, user:, lonlat: 'POINT(1 1)', timestamp: DateTime.new(year, 1, 1, 1))
+          create(:point, user:, lonlat: 'POINT(2 2)', timestamp: DateTime.new(year, 1, 1, 2))
         end
 
-        before { expected_distance[0][1] = 157.23 }
+        before { expected_distance[0][1] = 156.88 }
 
         it 'returns distance by day' do
           expect(subject).to eq(expected_distance)

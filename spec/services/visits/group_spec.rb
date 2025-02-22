@@ -14,21 +14,21 @@ RSpec.describe Visits::Group do
     context 'when points are too far apart' do
       it 'groups points into separate visits' do
         points = [
-          build(:point, latitude: 0, longitude: 0, timestamp: 1.day.ago),
-          build(:point, latitude: 0.00001, longitude: 0.00001, timestamp: 1.day.ago + 5.minutes),
-          build(:point, latitude: 0.00002, longitude: 0.00002, timestamp: 1.day.ago + 10.minutes),
-          build(:point, latitude: 0.00003, longitude: 0.00003, timestamp: 1.day.ago + 15.minutes),
-          build(:point, latitude: 0.00004, longitude: 0.00004, timestamp: 1.day.ago + 20.minutes),
-          build(:point, latitude: 0.00005, longitude: 0.00005, timestamp: 1.day.ago + 25.minutes),
-          build(:point, latitude: 0.00006, longitude: 0.00006, timestamp: 1.day.ago + 30.minutes),
-          build(:point, latitude: 0.00007, longitude: 0.00007, timestamp: 1.day.ago + 35.minutes),
-          build(:point, latitude: 0.00008, longitude: 0.00008, timestamp: 1.day.ago + 40.minutes),
-          build(:point, latitude: 0.00009, longitude: 0.00009, timestamp: 1.day.ago + 45.minutes),
-          build(:point, latitude: 0.0001,  longitude: 0.0001,  timestamp: 1.day.ago + 50.minutes),
-          build(:point, latitude: 0.00011, longitude: 0.00011, timestamp: 1.day.ago + 55.minutes),
-          build(:point, latitude: 0.00011, longitude: 0.00011, timestamp: 1.day.ago + 95.minutes),
-          build(:point, latitude: 0.00011, longitude: 0.00011, timestamp: 1.day.ago + 100.minutes),
-          build(:point, latitude: 0.00011, longitude: 0.00011, timestamp: 1.day.ago + 105.minutes)
+          build(:point, lonlat: 'POINT(0 0)', timestamp: 1.day.ago),
+          build(:point, lonlat: 'POINT(0.00001 0.00001)', timestamp: 1.day.ago + 5.minutes),
+          build(:point, lonlat: 'POINT(0.00002 0.00002)', timestamp: 1.day.ago + 10.minutes),
+          build(:point, lonlat: 'POINT(0.00003 0.00003)', timestamp: 1.day.ago + 15.minutes),
+          build(:point, lonlat: 'POINT(0.00004 0.00004)', timestamp: 1.day.ago + 20.minutes),
+          build(:point, lonlat: 'POINT(0.00005 0.00005)', timestamp: 1.day.ago + 25.minutes),
+          build(:point, lonlat: 'POINT(0.00006 0.00006)', timestamp: 1.day.ago + 30.minutes),
+          build(:point, lonlat: 'POINT(0.00007 0.00007)', timestamp: 1.day.ago + 35.minutes),
+          build(:point, lonlat: 'POINT(0.00008 0.00008)', timestamp: 1.day.ago + 40.minutes),
+          build(:point, lonlat: 'POINT(0.00009 0.00009)', timestamp: 1.day.ago + 45.minutes),
+          build(:point, lonlat: 'POINT(0.0001 0.0001)', timestamp: 1.day.ago + 50.minutes),
+          build(:point, lonlat: 'POINT(0.00011 0.00011)', timestamp: 1.day.ago + 55.minutes),
+          build(:point, lonlat: 'POINT(0.00011 0.00011)', timestamp: 1.day.ago + 95.minutes),
+          build(:point, lonlat: 'POINT(0.00011 0.00011)', timestamp: 1.day.ago + 100.minutes),
+          build(:point, lonlat: 'POINT(0.00011 0.00011)', timestamp: 1.day.ago + 105.minutes)
         ]
         expect(group.call(points)).to \
           eq({

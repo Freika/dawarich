@@ -27,8 +27,7 @@ class Geojson::ImportParser
 
   def point_exists?(params, user_id)
     Point.exists?(
-      latitude:  params[:latitude],
-      longitude: params[:longitude],
+      lonlat: params[:lonlat],
       timestamp: params[:timestamp],
       user_id:
     )

@@ -46,7 +46,7 @@ class Stats::CalculateMonth
               .tracked_points
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:latitude, :longitude, :timestamp, :city, :country)
+              .select(:lonlat, :timestamp, :city, :country)
               .order(timestamp: :asc)
   end
 

@@ -7,7 +7,7 @@ class Tracks::BuildPath
 
   def call
     factory.line_string(
-      coordinates.map { |point| factory.point(point[1].to_f.round(5), point[0].to_f.round(5)) }
+      coordinates.map { |point| factory.point(point.lon.to_f.round(5), point.lat.to_f.round(5)) }
     )
   end
 

@@ -26,7 +26,7 @@ RSpec.describe ImportJob, type: :job do
 
     context 'when there is an error' do
       before do
-        allow_any_instance_of(OwnTracks::ExportParser).to receive(:call).and_raise(StandardError)
+        allow_any_instance_of(OwnTracks::Importer).to receive(:call).and_raise(StandardError)
       end
 
       it 'does not create points' do

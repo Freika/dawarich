@@ -16,7 +16,9 @@ class Visits::Prepare
       grouped_points = Visits::GroupPoints.new(day_points).group_points_by_radius
       day_result     = prepare_day_result(grouped_points)
 
-      # Iterate through the day_result, check if there are any points outside of visits that are between two consecutive visits. If there are none, merge the visits.
+      # Iterate through the day_result, check if there are any points outside
+      # of visits that are between two consecutive visits. If there are none,
+      # merge the visits.
 
       day_result.each_cons(2) do |visit1, visit2|
         next if visit1[:points].last == visit2[:points].first
@@ -65,8 +67,8 @@ class Visits::Prepare
       center_point = group.first
 
       {
-        latitude: center_point.latitude,
-        longitude: center_point.longitude,
+        latitude: center_point.lat,
+        longitude: center_point.lon,
         radius: calculate_radius(center_point, group),
         points: group,
         duration: (group.last.timestamp - group.first.timestamp).to_i / 60,

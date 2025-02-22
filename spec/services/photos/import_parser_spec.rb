@@ -23,13 +23,13 @@ RSpec.describe Photos::ImportParser do
       it 'creates points with correct attributes' do
         service
 
-        expect(Point.first.latitude.to_f).to eq(59.0000)
-        expect(Point.first.longitude.to_f).to eq(30.0000)
+        expect(Point.first.lat.to_f).to eq(59.0000)
+        expect(Point.first.lon.to_f).to eq(30.0000)
         expect(Point.first.timestamp).to eq(978_296_400)
         expect(Point.first.import_id).to eq(import.id)
 
-        expect(Point.second.latitude.to_f).to eq(55.0001)
-        expect(Point.second.longitude.to_f).to eq(37.0001)
+        expect(Point.second.lat.to_f).to eq(55.0001)
+        expect(Point.second.lon.to_f).to eq(37.0001)
         expect(Point.second.timestamp).to eq(978_296_400)
         expect(Point.second.import_id).to eq(import.id)
       end
@@ -37,7 +37,7 @@ RSpec.describe Photos::ImportParser do
 
     context 'when there are points with the same coordinates' do
       let!(:existing_point) do
-        create(:point, latitude: 59.0000, longitude: 30.0000, timestamp: 978_296_400, user:)
+        create(:point, lonlat: 'POINT(30.0000 59.0000)', timestamp: 978_296_400, user:)
       end
 
       it 'creates only new points' do

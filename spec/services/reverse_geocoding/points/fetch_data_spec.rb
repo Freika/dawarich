@@ -27,7 +27,7 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
       it 'calls Geocoder' do
         fetch_data
 
-        expect(Geocoder).to have_received(:search).with([point.latitude, point.longitude])
+        expect(Geocoder).to have_received(:search).with([point.lat, point.lon])
       end
     end
 

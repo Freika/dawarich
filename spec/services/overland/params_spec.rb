@@ -11,8 +11,7 @@ RSpec.describe Overland::Params do
 
     let(:expected_json) do
       {
-        latitude: 37.3318,
-        longitude: -122.030581,
+        lonlat: 'POINT(-122.030581 37.3318)',
         battery_status: 'charging',
         battery: 89,
         altitude: 0,
@@ -31,8 +30,6 @@ RSpec.describe Overland::Params do
     it 'returns a hash with the correct keys' do
       expect(params[0].keys).to match_array(
         %i[
-          latitude
-          longitude
           battery_status
           battery
           altitude
@@ -43,6 +40,7 @@ RSpec.describe Overland::Params do
           tracker_id
           timestamp
           raw_data
+          lonlat
         ]
       )
     end

@@ -33,8 +33,7 @@ class Geojson::Params
 
   def build_point(feature)
     {
-      latitude:           feature[:geometry][:coordinates][1],
-      longitude:          feature[:geometry][:coordinates][0],
+      lonlat: "POINT(#{feature[:geometry][:coordinates][0]} #{feature[:geometry][:coordinates][1]})",
       battery_status:     feature[:properties][:battery_state],
       battery:            battery_level(feature[:properties][:battery_level]),
       timestamp:          timestamp(feature),
@@ -64,8 +63,7 @@ class Geojson::Params
 
   def build_line_point(point)
     {
-      latitude:  point[1],
-      longitude: point[0],
+      lonlat: "POINT(#{point[0]} #{point[1]})",
       timestamp: timestamp(point),
       raw_data:  point
     }

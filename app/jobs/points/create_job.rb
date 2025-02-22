@@ -9,7 +9,7 @@ class Points::CreateJob < ApplicationJob
     data.each_slice(1000) do |location_batch|
       Point.upsert_all(
         location_batch,
-        unique_by: %i[latitude longitude timestamp user_id],
+        unique_by: %i[lonlat timestamp user_id],
         returning: false
       )
     end

@@ -9,9 +9,8 @@ RSpec.describe Point, type: :model do
   end
 
   describe 'validations' do
-    it { is_expected.to validate_presence_of(:latitude) }
-    it { is_expected.to validate_presence_of(:longitude) }
     it { is_expected.to validate_presence_of(:timestamp) }
+    it { is_expected.to validate_presence_of(:lonlat) }
   end
 
   describe 'scopes' do
@@ -61,6 +60,22 @@ RSpec.describe Point, type: :model do
         it 'enqueues ReverseGeocodeJob' do
           expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
         end
+      end
+    end
+
+    describe '#lon' do
+      let(:point) { create(:point, lonlat: 'POINT(1 2)') }
+
+      it 'returns longitude' do
+        expect(point.lon).to eq(1)
+      end
+    end
+
+    describe '#lat' do
+      let(:point) { create(:point, lonlat: 'POINT(1 2)') }
+
+      it 'returns latitude' do
+        expect(point.lat).to eq(2)
       end
     end
   end
