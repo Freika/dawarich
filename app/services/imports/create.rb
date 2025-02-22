@@ -26,8 +26,8 @@ class Imports::Create
     case source
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryParser
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutParser
-    when 'owntracks'                    then OwnTracks::ExportParser
-    when 'gpx'                          then Gpx::TrackParser
+    when 'owntracks'                    then OwnTracks::Importer
+    when 'gpx'                          then Gpx::TrackImporter
     when 'geojson'                      then Geojson::ImportParser
     when 'immich_api', 'photoprism_api' then Photos::ImportParser
     end

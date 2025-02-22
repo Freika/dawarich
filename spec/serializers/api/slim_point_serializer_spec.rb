@@ -10,8 +10,8 @@ RSpec.describe Api::SlimPointSerializer do
     let(:expected_json) do
       {
         id:        point.id,
-        latitude:  point.lat,
-        longitude: point.lon,
+        latitude:  point.lat.to_s,
+        longitude: point.lon.to_s,
         timestamp: point.timestamp
       }
     end

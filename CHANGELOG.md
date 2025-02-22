@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## TODO:
 
-- Data migration to convert `latitude` and `longitude` to `lonlat` column.
+- Realtime broadcast for importing progress
 - Frontend update to use `lonlat` column.
 
 ## Fixed
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Restrict access to users management in non self-hosted mode.
 - Points are now using `lonlat` column for storing longitude and latitude.
 - Semantic history points are now being imported much faster.
+- GPX files are now being imported much faster.
 
 # 0.24.1 - 2025-02-13
 

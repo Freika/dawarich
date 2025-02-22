@@ -17,8 +17,8 @@ class Points::GpxSerializer
 
     points.each do |point|
       track_segment.points << GPX::TrackPoint.new(
-        lat: point.lat.to_f,
-        lon: point.lon.to_f,
+        lat: point.lat,
+        lon: point.lon,
         elevation: point.altitude.to_f,
         time: point.recorded_at
       )

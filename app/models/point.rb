@@ -50,21 +50,22 @@ class Point < ApplicationRecord
   end
 
   def lon
-    lonlat.x.to_s
+    lonlat.x
   end
 
   def lat
-    lonlat.y.to_s
+    lonlat.y
   end
 
   private
 
+  # rubocop:disable Metrics/MethodLength Metrics/AbcSize
   def broadcast_coordinates
     PointsChannel.broadcast_to(
       user,
       [
-        latitude.to_f,
-        longitude.to_f,
+        lat,
+        lon,
         battery.to_s,
         altitude.to_s,
         timestamp.to_s,
@@ -74,4 +75,5 @@ class Point < ApplicationRecord
       ]
     )
   end
+  # rubocop:enable Metrics/MethodLength
 end

@@ -9,7 +9,7 @@ gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'data_migrate'
 gem 'devise'
-gem 'geocoder', path: '../../geocoder'
+gem 'geocoder'
 gem 'gpx'
 gem 'groupdate'
 gem 'httparty'

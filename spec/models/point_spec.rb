@@ -62,5 +62,21 @@ RSpec.describe Point, type: :model do
         end
       end
     end
+
+    describe '#lon' do
+      let(:point) { create(:point, lonlat: 'POINT(1 2)') }
+
+      it 'returns longitude' do
+        expect(point.lon).to eq(1)
+      end
+    end
+
+    describe '#lat' do
+      let(:point) { create(:point, lonlat: 'POINT(1 2)') }
+
+      it 'returns latitude' do
+        expect(point.lat).to eq(2)
+      end
+    end
   end
 end

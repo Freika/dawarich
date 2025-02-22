@@ -30,8 +30,8 @@ RSpec.describe Imports::Create do
     context 'when source is owntracks' do
       let(:import) { create(:import, source: 'owntracks') }
 
-      it 'calls the OwnTracks::ExportParser' do
-        expect(OwnTracks::ExportParser).to \
+      it 'calls the OwnTracks::Importer' do
+        expect(OwnTracks::Importer).to \
           receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
@@ -59,7 +59,7 @@ RSpec.describe Imports::Create do
 
       context 'when import fails' do
         before do
-          allow(OwnTracks::ExportParser).to receive(:new).with(import, user.id).and_raise(StandardError)
+          allow(OwnTracks::Importer).to receive(:new).with(import, user.id).and_raise(StandardError)
         end
 
         it 'creates a failed notification' do
@@ -73,8 +73,8 @@ RSpec.describe Imports::Create do
     context 'when source is gpx' do
       let(:import) { create(:import, source: 'gpx') }
 
-      it 'calls the Gpx::TrackParser' do
-        expect(Gpx::TrackParser).to \
+      it 'calls the Gpx::TrackImporter' do
+        expect(Gpx::TrackImporter).to \
           receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end

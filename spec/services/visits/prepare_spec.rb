@@ -33,8 +33,8 @@ RSpec.describe Visits::Prepare do
           date: static_time.to_date.to_s,
           visits: [
             {
-              latitude: '0.0',
-              longitude: '0.0',
+              latitude: 0.0,
+              longitude: 0.0,
               radius: 10,
               points:,
               duration: 105,

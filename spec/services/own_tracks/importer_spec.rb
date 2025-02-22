@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe OwnTracks::ExportParser do
+RSpec.describe OwnTracks::Importer do
   describe '#call' do
     subject(:parser) { described_class.new(import, user.id).call }
 
