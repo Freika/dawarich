@@ -6,21 +6,23 @@ class Overland::BatchCreatingJob < ApplicationJob
   def perform(params, user_id)
     data = Overland::Params.new(params).call
 
-    data.each do |location|
-      next if point_exists?(location, user_id)
-
-      Point.create!(location.merge(user_id:))
+    records = data.map do |location|
+      {
+        lonlat: location[:lonlat],
+        timestamp: location[:timestamp],
+        user_id: user_id,
+        created_at: Time.current,
+        updated_at: Time.current
+      }
     end
-  end
 
-  private
-
-  def point_exists?(params, user_id)
-    Point.exists?(
-      latitude: params[:latitude],
-      longitude: params[:longitude],
-      timestamp: params[:timestamp],
-      user_id:
+    # rubocop:disable Rails/SkipsModelValidations
+    Point.upsert_all(
+      records,
+      unique_by: %i[lonlat timestamp user_id],
+      returning: false,
+      on_duplicate: :skip
     )
+    # rubocop:enable Rails/SkipsModelValidations
   end
 end

@@ -46,7 +46,7 @@ class Trip < ApplicationRecord
   end
 
   def calculate_path
-    trip_path = Tracks::BuildPath.new(points.pluck(:latitude, :longitude)).call
+    trip_path = Tracks::BuildPath.new(points.pluck(:lonlat)).call
 
     self.path = trip_path
   end
