@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## TODO:
 
 - Realtime broadcast for importing progress
-- Frontend update to use `lonlat` column.
 
 ## Fixed
 
@@ -25,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Points are now using `lonlat` column for storing longitude and latitude.
 - Semantic history points are now being imported much faster.
 - GPX files are now being imported much faster.
+- Distance calculation are now using Postgis functions and expected to be more accurate.
 
 # 0.24.1 - 2025-02-13
 

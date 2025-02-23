@@ -105,8 +105,6 @@ module Distanceable
       RGeo::Geographic.spherical_factory(srid: 4326).point(point[1], point[0])
     when self.class
       point.lonlat
-    else
-      nil
     end
   end
 end
