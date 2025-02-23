@@ -17,7 +17,7 @@ RSpec.describe Gpx::TrackImporter do
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(10).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(1).time
 
         parser
       end
@@ -31,7 +31,7 @@ RSpec.describe Gpx::TrackImporter do
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(43).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(1).time
 
         parser
       end
@@ -45,7 +45,7 @@ RSpec.describe Gpx::TrackImporter do
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(34).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(1).time
 
         parser
       end

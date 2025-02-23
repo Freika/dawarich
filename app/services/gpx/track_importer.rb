@@ -59,6 +59,8 @@ class Gpx::TrackImporter
       on_duplicate: :skip
     )
     # rubocop:enable Rails/SkipsModelValidations
+
+    broadcast_import_progress(import, unique_batch.size)
   rescue StandardError => e
     create_notification("Failed to process GPX track: #{e.message}")
   end
