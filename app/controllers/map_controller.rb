@@ -8,7 +8,7 @@ class MapController < ApplicationController
 
     @coordinates =
       @points.pluck(:lonlat, :battery, :altitude, :timestamp, :velocity, :id, :country)
-             .map { |lonlat, *rest| [lonlat.y.to_f, lonlat.x.to_f, *rest.map(&:to_s)] }
+             .map { |lonlat, *rest| [lonlat.y, lonlat.x, *rest.map(&:to_s)] }
     @distance = distance
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
