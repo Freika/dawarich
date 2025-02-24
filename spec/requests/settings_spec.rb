@@ -82,6 +82,19 @@ RSpec.describe 'Settings', type: :request do
 
       expect(user.reload.settings).to eq(params[:settings])
     end
+
+    context 'when user is inactive' do
+      before do
+        user.update(status: :inactive)
+      end
+
+      it 'redirects to the root path' do
+        patch '/settings', params: params
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account is not active.')
+      end
+    end
   end
 
   describe 'GET /settings/users' do

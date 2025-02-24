@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.24.2 - 2025-02-24
 
+## Added
+
+- Status field to the User model. Inactive users are now being restricted from accessing some of the functionality, which is mostly about writing data to the database. Reading is remaining unrestricted.
+
 ## Fixed
 
 - Fixed a bug where non-admin users could not import Immich and Photoprism geolocation data.

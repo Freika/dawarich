@@ -2,7 +2,7 @@
 
 class SettingsController < ApplicationController
   before_action :authenticate_user!
-
+  before_action :authenticate_active_user!, only: %i[update]
   def index; end
 
   def update

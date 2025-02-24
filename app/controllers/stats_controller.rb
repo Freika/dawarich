@@ -2,6 +2,7 @@
 
 class StatsController < ApplicationController
   before_action :authenticate_user!
+  before_action :authenticate_active_user!, only: %i[update update_all]
 
   def index
     @stats = current_user.stats.group_by(&:year).sort.reverse

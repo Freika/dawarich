@@ -30,5 +30,17 @@ RSpec.describe VisitSuggestingJob, type: :job do
         expect(Visits::Suggest).to have_received(:new)
       end
     end
+
+    context 'when user is inactive' do
+      before do
+        users.first.update(status: :inactive)
+      end
+
+      it 'does not suggest visits' do
+        subject
+
+        expect(Visits::Suggest).not_to have_received(:new)
+      end
+    end
   end
 end

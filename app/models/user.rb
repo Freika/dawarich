@@ -16,6 +16,7 @@ class User < ApplicationRecord
   has_many :trips,  dependent: :destroy
 
   after_create :create_api_key
+  after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
   before_save :sanitize_input
 
   validates :email, presence: true
@@ -23,6 +24,8 @@ class User < ApplicationRecord
   validates :reset_password_token, uniqueness: true, allow_nil: true
 
   attribute :admin, :boolean, default: false
+
+  enum :status, { inactive: 0, active: 1 }
 
   def safe_settings
     Users::SafeSettings.new(settings)
@@ -102,6 +105,10 @@ class User < ApplicationRecord
     self.api_key = SecureRandom.hex(16)
 
     save
+  end
+
+  def activate
+    update(status: :active)
   end
 
   def sanitize_input

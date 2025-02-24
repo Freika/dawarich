@@ -31,6 +31,18 @@ RSpec.describe 'Api::V1::Owntracks::Points', type: :request do
           end.to have_enqueued_job(Owntracks::PointCreatingJob)
         end
       end
+
+      context 'when user is inactive' do
+        before do
+          user.update(status: :inactive)
+        end
+
+        it 'returns http unauthorized' do
+          post api_v1_owntracks_points_path(api_key: user.api_key), params: params
+
+          expect(response).to have_http_status(:unauthorized)
+        end
+      end
     end
   end
 end

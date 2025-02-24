@@ -8,6 +8,7 @@ class VisitSuggestingJob < ApplicationJob
     users = user_ids.any? ? User.where(id: user_ids) : User.all
 
     users.find_each do |user|
+      next unless user.active?
       next if user.tracked_points.empty?
 
       Visits::Suggest.new(user, start_at:, end_at:).call
