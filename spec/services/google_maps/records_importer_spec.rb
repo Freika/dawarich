@@ -56,8 +56,7 @@ RSpec.describe GoogleMaps::RecordsImporter do
           :point,
           user: import.user,
           import: import,
-          latitude: 12.3456789,
-          longitude: 12.3456789,
+          lonlat: 'POINT(12.3456789 12.3456789)',
           timestamp: time.to_i
         )
       end

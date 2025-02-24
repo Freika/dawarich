@@ -4,12 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.24.2 - 2025-02-15
+# 0.24.2 - 2025-02-24
 
 ## Fixed
 
-- Fixed a bug where background jobs to import Immich and Photoprism geolocation data data could not be created by non-admin users.
-- Fixed a bug where upon point deletion there was an error it was not being removed from the map, while it was actually deleted from the database. #883
+- Fixed a bug where non-admin users could not import Immich and Photoprism geolocation data.
+- Fixed a bug where upon point deletion it was not being removed from the map, while it was actually deleted from the database. #883
 - Fixed a bug where upon import deletion stats were not being recalculated. #824
 
 ### Changed
@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Restrict access to Sidekiq in non self-hosted mode.
 - Restrict access to background jobs in non self-hosted mode.
 - Restrict access to users management in non self-hosted mode.
+- Points are now using `lonlat` column for storing longitude and latitude.
+- Semantic history points are now being imported much faster.
+- GPX files are now being imported much faster.
+- Distance calculation are now using Postgis functions and expected to be more accurate.
 
 # 0.24.1 - 2025-02-13
 

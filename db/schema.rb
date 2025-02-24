@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
+ActiveRecord::Schema[8.0].define(version: 2025_02_21_194509) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -160,6 +160,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.decimal "course", precision: 8, scale: 5
     t.decimal "course_accuracy", precision: 8, scale: 5
     t.string "external_track_id"
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -169,8 +170,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
-    t.index ["latitude", "longitude", "timestamp", "user_id"], name: "unique_points_lat_long_timestamp_user_id_index", unique: true
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
+    t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
+    t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
@@ -201,7 +203,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.geometry "path", limit: {:srid=>3857, :type=>"line_string"}
+    t.geometry "path", limit: {srid: 3857, type: "line_string"}
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -215,7 +217,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_23_151657) do
     t.datetime "updated_at", null: false
     t.string "api_key", default: "", null: false
     t.string "theme", default: "dark", null: false
-    t.jsonb "settings", default: {"fog_of_war_meters"=>"100", "meters_between_routes"=>"1000", "minutes_between_routes"=>"60"}
+    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
     t.boolean "admin", default: false
     t.integer "sign_in_count", default: 0, null: false
     t.datetime "current_sign_in_at"

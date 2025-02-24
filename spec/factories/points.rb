@@ -29,11 +29,11 @@ FactoryBot.define do
     course          { nil }
     course_accuracy { nil }
     external_track_id { nil }
+    lonlat { "POINT(#{FFaker::Geolocation.lng} #{FFaker::Geolocation.lat})" }
     user
 
     trait :with_known_location do
-      latitude  { 55.755826 }
-      longitude { 37.6173 }
+      lonlat { 'POINT(37.6173 55.755826)' }
     end
 
     trait :with_geodata do

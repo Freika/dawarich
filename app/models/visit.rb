@@ -29,7 +29,7 @@ class Visit < ApplicationRecord
     return area&.radius if area.present?
 
     radius = points.map do |point|
-      Geocoder::Calculations.distance_between(center, [point.latitude, point.longitude])
+      Geocoder::Calculations.distance_between(center, [point.lat, point.lon])
     end.max
 
     radius && radius >= 15 ? radius : 15
