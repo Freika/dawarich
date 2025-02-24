@@ -107,7 +107,7 @@ class User < ApplicationRecord
   end
 
   def activate
-    update(state: :active) if DawarichSettings.self_hosted?
+    update(status: :active) if DawarichSettings.self_hosted?
   end
 
   def sanitize_input
