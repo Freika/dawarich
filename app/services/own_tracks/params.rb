@@ -7,10 +7,11 @@ class OwnTracks::Params
     @params = params.to_h.deep_symbolize_keys
   end
 
+  # rubocop:disable Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize
   def call
     {
-      latitude:           params[:lat],
-      longitude:          params[:lon],
+      lonlat: "POINT(#{params[:lon]} #{params[:lat]})",
       battery:            params[:batt],
       ping:               params[:p],
       altitude:           params[:alt],
@@ -30,6 +31,8 @@ class OwnTracks::Params
       raw_data:           params.deep_stringify_keys
     }
   end
+  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/MethodLength
 
   private
 
