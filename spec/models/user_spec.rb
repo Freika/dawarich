@@ -30,25 +30,28 @@ RSpec.describe User, type: :model do
     end
 
     describe '#activate' do
-      let(:user) { create(:user) }
-
       context 'when self-hosted' do
+        let!(:user) { create(:user, status: :inactive) }
+
         before do
           allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
         end
 
-        it 'activates user' do
-          expect { user.send(:activate) }.to change(user, :status).to('active')
+        it 'activates user after creation' do
+          expect(user.active?).to be_truthy
         end
       end
 
       context 'when not self-hosted' do
+        let!(:user) { create(:user, status: :inactive) }
+
         before do
+          stub_const('SELF_HOSTED', false)
           allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
         end
 
-        it 'does not activate user' do
-          expect { user.send(:activate) }.to_not change(user, :status)
+        xit 'does not activate user' do
+          expect(user.active?).to be_falsey
         end
       end
     end

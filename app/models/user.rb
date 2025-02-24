@@ -16,6 +16,7 @@ class User < ApplicationRecord
   has_many :trips,  dependent: :destroy
 
   after_create :create_api_key
+  after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
   before_save :sanitize_input
 
   validates :email, presence: true
@@ -107,7 +108,7 @@ class User < ApplicationRecord
   end
 
   def activate
-    update(status: :active) if DawarichSettings.self_hosted?
+    update(status: :active)
   end
 
   def sanitize_input
