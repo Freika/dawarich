@@ -99,6 +99,20 @@ class User < ApplicationRecord
     end
   end
 
+  # Generates a secure token for cross-application authentication with the subscription app
+  # @return [String] JWT token containing user identity information
+  def generate_subscription_token
+    payload = {
+      user_id: id,
+      email: email,
+      exp: 30.minutes.from_now.to_i
+    }
+
+    secret_key = ENV['JWT_SECRET_KEY']
+
+    JWT.encode(payload, secret_key, 'HS256')
+  end
+
   private
 
   def create_api_key
