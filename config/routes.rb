@@ -22,6 +22,7 @@ Rails.application.routes.draw do
     resources :users, only: %i[index create destroy edit update]
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
+    resources :subscriptions, only: %i[index]
   end
 
   patch 'settings', to: 'settings#update'

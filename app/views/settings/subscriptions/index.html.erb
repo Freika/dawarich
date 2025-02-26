@@ -1,0 +1,30 @@
+<% content_for :title, "Subscriptions" %>
+
+<div class="min-h-content w-full my-5">
+  <%= render 'settings/navigation' %>
+
+  <div class="hero bg-base-200 min-h-80">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-5xl font-bold">Hello there!</h1>
+        <% if current_user.active? %>
+          <p class="py-6">
+            You are currently subscribed to Dawarich, hurray!
+          </p>
+
+          <p>
+            Your subscription will be valid for the next <span class="text-accent"><%= 365 %> days</span> and will be <span class="text-accent"><%= current_user.active? ? 'renewed automatically' : 'renewed manually' %></span>.
+          </p>
+
+          <%= link_to 'Manage subscription', '#', class: 'btn btn-primary my-4' %>
+        <% else %>
+          <p class="py-6">
+            You are currently not subscribed to Dawarich. How about we fix that?
+          </p>
+
+          <%= link_to 'Manage subscription', '#', class: 'btn btn-primary my-4' %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
