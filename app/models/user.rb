@@ -99,8 +99,6 @@ class User < ApplicationRecord
     end
   end
 
-  # Generates a secure token for cross-application authentication with the subscription app
-  # @return [String] JWT token containing user identity information
   def generate_subscription_token
     payload = {
       user_id: id,
