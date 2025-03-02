@@ -101,7 +101,7 @@ class ReverseGeocoding::Places::FetchData
       limit: 10,
       distance_sort: true,
       radius: 1,
-      units: DISTANCE_UNITS
+      units: ::DISTANCE_UNITS
     )
 
     data.reject do |place|

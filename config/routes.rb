@@ -76,7 +76,7 @@ Rails.application.routes.draw do
 
       resources :areas,     only: %i[index create update destroy]
       resources :points,    only: %i[index create update destroy]
-      resources :visits,    only: %i[update]
+      resources :visits,    only: %i[index update]
       resources :stats,     only: :index
 
       namespace :overland do

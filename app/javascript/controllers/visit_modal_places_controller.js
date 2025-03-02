@@ -46,4 +46,9 @@ export default class extends BaseController {
       element.textContent = newName;
     });
   }
+
+  updateAll(event) {
+    const newName = event.detail.name;
+    this.updateVisitNameOnPage(newName);
+  }
 }

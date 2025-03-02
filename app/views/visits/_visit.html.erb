@@ -1,4 +1,8 @@
-<div class="group relative timeline-box">
+<div class="group relative timeline-box"
+     data-action="mouseenter->visits-map#highlightVisit mouseleave->visits-map#unhighlightVisit"
+     data-visit-id="<%= visit.id %>"
+     data-center-lat="<%= visit.center[0] %>"
+     data-center-lon="<%= visit.center[1] %>">
   <div class="flex items-center justify-between">
     <div>
       <%= render 'visits/name', visit: visit %>

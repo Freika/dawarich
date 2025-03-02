@@ -29,6 +29,8 @@ export default class extends BaseController {
   layerControl = null;
   visitedCitiesCache = new Map();
   trackedMonthsCache = null;
+  drawerOpen = false;
+  visitCircles = L.layerGroup();
 
   connect() {
     super.connect();
@@ -248,6 +250,12 @@ export default class extends BaseController {
 
     // Start monitoring
     this.tileMonitor.startMonitoring();
+
+    // Add the drawer button
+    this.addDrawerButton();
+
+    // Fetch and display visits when map loads
+    this.fetchAndDisplayVisits();
   }
 
   disconnect() {
@@ -1322,11 +1330,294 @@ export default class extends BaseController {
   formatDuration(seconds) {
     const days = Math.floor(seconds / (24 * 60 * 60));
     const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((seconds % (60 * 60)) / 60);
 
-    if (days > 0) {
-      return `${days}d ${hours}h`;
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 && days === 0) parts.push(`${minutes}m`); // Only show minutes if less than a day
+
+    return parts.join(' ') || '< 1m';
+  }
+
+  addDrawerButton() {
+    const DrawerControl = L.Control.extend({
+      onAdd: (map) => {
+        const button = L.DomUtil.create('button', 'leaflet-control-button drawer-button');
+        button.innerHTML = '⬅️'; // Left arrow icon
+        button.style.width = '32px';
+        button.style.height = '32px';
+        button.style.border = 'none';
+        button.style.cursor = 'pointer';
+        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        button.style.borderRadius = '4px';
+        button.style.padding = '0';
+        button.style.lineHeight = '32px';
+        button.style.textAlign = 'center';
+
+        L.DomEvent.disableClickPropagation(button);
+        L.DomEvent.on(button, 'click', () => {
+          this.toggleDrawer();
+        });
+
+        return button;
+      }
+    });
+
+    this.map.addControl(new DrawerControl({ position: 'topright' }));
+  }
+
+  toggleDrawer() {
+    this.drawerOpen = !this.drawerOpen;
+
+    let drawer = document.querySelector('.leaflet-drawer');
+    if (!drawer) {
+      drawer = this.createDrawer();
     }
-    return `${hours}h`;
+
+    drawer.classList.toggle('open');
+
+    const drawerButton = document.querySelector('.drawer-button');
+    if (drawerButton) {
+      drawerButton.innerHTML = this.drawerOpen ? '➡️' : '⬅️';
+    }
+
+    const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel');
+    controls.forEach(control => {
+      control.classList.toggle('controls-shifted');
+    });
+
+    // Update the drawer content if it's being opened
+    if (this.drawerOpen) {
+      this.fetchAndDisplayVisits();
+    }
+  }
+
+  createDrawer() {
+    const drawer = document.createElement('div');
+    drawer.className = 'leaflet-drawer';
+
+    // Add styles to make the drawer scrollable
+    drawer.style.overflowY = 'auto';
+    drawer.style.maxHeight = '100vh';
+
+    drawer.innerHTML = `
+      <div class="p-4">
+        <h2 class="text-xl font-bold mb-4">Recent Visits</h2>
+        <div id="visits-list" class="space-y-2">
+          <p class="text-gray-500">Loading visits...</p>
+        </div>
+      </div>
+    `;
+
+    // Prevent map zoom when scrolling the drawer
+    L.DomEvent.disableScrollPropagation(drawer);
+    // Prevent map pan/interaction when interacting with drawer
+    L.DomEvent.disableClickPropagation(drawer);
+
+    this.map.getContainer().appendChild(drawer);
+    return drawer;
+  }
+
+  async fetchAndDisplayVisits() {
+    try {
+      // Get current timeframe from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const startAt = urlParams.get('start_at') || new Date().toISOString();
+      const endAt = urlParams.get('end_at') || new Date().toISOString();
+
+      const response = await fetch(
+        `/api/v1/visits?start_at=${encodeURIComponent(startAt)}&end_at=${encodeURIComponent(endAt)}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const visits = await response.json();
+      this.displayVisits(visits);
+    } catch (error) {
+      console.error('Error fetching visits:', error);
+      const container = document.getElementById('visits-list');
+      if (container) {
+        container.innerHTML = '<p class="text-red-500">Error loading visits</p>';
+      }
+    }
+  }
+
+  displayVisits(visits) {
+    const container = document.getElementById('visits-list');
+    if (!container) return;
+
+    if (!visits || visits.length === 0) {
+      container.innerHTML = '<p class="text-gray-500">No visits found in selected timeframe</p>';
+      return;
+    }
+
+    // Clear existing circles
+    this.visitCircles.clearLayers();
+
+    // Draw circles only for confirmed visits
+    visits
+      .filter(visit => visit.status === 'confirmed')
+      .forEach(visit => {
+        if (visit.place?.latitude && visit.place?.longitude) {
+          const circle = L.circle([visit.place.latitude, visit.place.longitude], {
+            color: '#4A90E2',
+            fillColor: '#4A90E2',
+            fillOpacity: 0.2,
+            radius: 100,
+            weight: 2
+          });
+          this.visitCircles.addLayer(circle);
+        }
+      });
+
+    const html = visits
+      // Filter out declined visits
+      .filter(visit => visit.status !== 'declined')
+      .map(visit => {
+        const startDate = new Date(visit.started_at);
+        const endDate = new Date(visit.ended_at);
+        const isSameDay = startDate.toDateString() === endDate.toDateString();
+
+        let timeDisplay;
+        if (isSameDay) {
+          timeDisplay = `
+            ${startDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
+            ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+          `;
+        } else {
+          timeDisplay = `
+            ${startDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
+            ${endDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+          `;
+        }
+
+        const durationText = this.formatDuration(visit.duration * 60);
+
+        // Add opacity class for suggested visits
+        const bgClass = visit.status === 'suggested' ? 'bg-neutral border-dashed border-2 border-red-500' : 'bg-base-200';
+
+        return `
+          <div class="p-3 rounded-lg hover:bg-base-300 transition-colors visit-item ${bgClass}"
+               data-lat="${visit.place?.latitude || ''}"
+               data-lng="${visit.place?.longitude || ''}"
+               data-id="${visit.id}">
+            <div class="font-semibold">${visit.name}</div>
+            <div class="text-sm text-gray-600">
+              ${timeDisplay.trim()}
+              <span class="text-gray-500">(${durationText})</span>
+            </div>
+            ${visit.place?.city ? `<div class="text-sm">${visit.place.city}, ${visit.place.country}</div>` : ''}
+            ${visit.status !== 'confirmed' ? `
+              <div class="flex gap-2 mt-2">
+                <button class="btn btn-xs btn-success confirm-visit" data-id="${visit.id}">
+                  Confirm
+                </button>
+                <button class="btn btn-xs btn-error decline-visit" data-id="${visit.id}">
+                  Decline
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+    container.innerHTML = html;
+
+    // Add the circles layer to the map
+    this.visitCircles.addTo(this.map);
+
+    // Add click handlers to visit items and buttons
+    const visitItems = container.querySelectorAll('.visit-item');
+    visitItems.forEach(item => {
+      // Location click handler
+      item.addEventListener('click', (event) => {
+        // Don't trigger if clicking on buttons
+        if (event.target.classList.contains('btn')) return;
+
+        const lat = parseFloat(item.dataset.lat);
+        const lng = parseFloat(item.dataset.lng);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          this.map.setView([lat, lng], 15, {
+            animate: true,
+            duration: 1
+          });
+        }
+      });
+
+      // Confirm button handler
+      const confirmBtn = item.querySelector('.confirm-visit');
+      confirmBtn?.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        const visitId = event.target.dataset.id;
+        try {
+          const response = await fetch(`/api/v1/visits/${visitId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              visit: {
+                status: 'confirmed'
+              }
+            })
+          });
+
+          if (!response.ok) throw new Error('Failed to confirm visit');
+
+          // Refresh visits list
+          this.fetchAndDisplayVisits();
+          showFlashMessage('notice', 'Visit confirmed successfully');
+        } catch (error) {
+          console.error('Error confirming visit:', error);
+          showFlashMessage('error', 'Failed to confirm visit');
+        }
+      });
+
+      // Decline button handler
+      const declineBtn = item.querySelector('.decline-visit');
+      declineBtn?.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        const visitId = event.target.dataset.id;
+        try {
+          const response = await fetch(`/api/v1/visits/${visitId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              visit: {
+                status: 'declined'
+              }
+            })
+          });
+
+          if (!response.ok) throw new Error('Failed to decline visit');
+
+          // Refresh visits list
+          this.fetchAndDisplayVisits();
+          showFlashMessage('notice', 'Visit declined successfully');
+        } catch (error) {
+          console.error('Error declining visit:', error);
+          showFlashMessage('error', 'Failed to decline visit');
+        }
+      });
+    });
   }
 }
 
