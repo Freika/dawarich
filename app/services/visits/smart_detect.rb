@@ -1,5 +1,5 @@
 class Visits::SmartDetect
-  MINIMUM_VISIT_DURATION = 10.minutes
+  MINIMUM_VISIT_DURATION = 5.minutes
   MAXIMUM_VISIT_GAP = 30.minutes
   MINIMUM_POINTS_FOR_VISIT = 3
   SIGNIFICANT_PLACE_VISITS = 2 # Number of visits to consider a place significant
@@ -321,12 +321,70 @@ class Visits::SmartDetect
     )
 
     unless place.persisted?
-      place.name = visit_data[:suggested_name] || Place::DEFAULT_NAME
-      place.source = Place.sources[:manual]
+      # Get reverse geocoding data
+      geocoded_data = Geocoder.search([lat, lon])
+
+      if geocoded_data.present?
+        first_result = geocoded_data.first
+        data = first_result.data
+        properties = data['properties'] || {}
+
+        # Build a descriptive name from available components
+        name_components = [
+          properties['name'],
+          properties['street'],
+          properties['housenumber'],
+          properties['postcode'],
+          properties['city']
+        ].compact.uniq
+
+        place.name = name_components.any? ? name_components.join(', ') : Place::DEFAULT_NAME
+        place.city = properties['city']
+        place.country = properties['country']
+        place.geodata = data
+        place.source = :photon
+
+        # Fetch nearby organizations
+        nearby_organizations = fetch_nearby_organizations(geocoded_data.drop(1))
+
+        # Save each organization as a possible place
+        nearby_organizations.each do |org|
+          Place.create!(
+            name: org[:name],
+            latitude: org[:latitude],
+            longitude: org[:longitude],
+            city: org[:city],
+            country: org[:country],
+            geodata: org[:geodata],
+            source: :suggested,
+            status: :possible
+          )
+        end
+      else
+        place.name = visit_data[:suggested_name] || Place::DEFAULT_NAME
+        place.source = :manual
+      end
+
       place.save!
     end
 
     place
+  end
+
+  def fetch_nearby_organizations(geocoded_results)
+    geocoded_results.map do |result|
+      data = result.data
+      properties = data['properties'] || {}
+
+      {
+        name: properties['name'] || 'Unknown Organization',
+        latitude: result.latitude,
+        longitude: result.longitude,
+        city: properties['city'],
+        country: properties['country'],
+        geodata: data
+      }
+    end
   end
 
   def generate_visit_name(area, place, suggested_name)

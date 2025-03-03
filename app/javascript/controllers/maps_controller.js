@@ -31,6 +31,7 @@ export default class extends BaseController {
   trackedMonthsCache = null;
   drawerOpen = false;
   visitCircles = L.layerGroup();
+  currentPopup = null;
 
   connect() {
     super.connect();
@@ -102,6 +103,11 @@ export default class extends BaseController {
     this.map.createPane('areasPane');
     this.map.getPane('areasPane').style.zIndex = 650;
     this.map.getPane('areasPane').style.pointerEvents = 'all';
+
+    // Create custom pane for visits
+    this.map.createPane('visitsPane');
+    this.map.getPane('visitsPane').style.zIndex = 600;
+    this.map.getPane('visitsPane').style.pointerEvents = 'all';
 
     // Initialize areasLayer as a feature group and add it to the map immediately
     this.areasLayer = new L.FeatureGroup();
@@ -1382,7 +1388,7 @@ export default class extends BaseController {
       drawerButton.innerHTML = this.drawerOpen ? '➡️' : '⬅️';
     }
 
-    const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel');
+    const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel .drawer-button');
     controls.forEach(control => {
       control.classList.toggle('controls-shifted');
     });
@@ -1402,7 +1408,7 @@ export default class extends BaseController {
     drawer.style.maxHeight = '100vh';
 
     drawer.innerHTML = `
-      <div class="p-4">
+      <div class="p-4 drawer">
         <h2 class="text-xl font-bold mb-4">Recent Visits</h2>
         <div id="visits-list" class="space-y-2">
           <p class="text-gray-500">Loading visits...</p>
@@ -1426,6 +1432,7 @@ export default class extends BaseController {
       const startAt = urlParams.get('start_at') || new Date().toISOString();
       const endAt = urlParams.get('end_at') || new Date().toISOString();
 
+      console.log('Fetching visits for:', startAt, endAt);
       const response = await fetch(
         `/api/v1/visits?start_at=${encodeURIComponent(startAt)}&end_at=${encodeURIComponent(endAt)}`,
         {
@@ -1461,22 +1468,215 @@ export default class extends BaseController {
       return;
     }
 
-    // Clear existing circles
+    // Clear existing visit circles
     this.visitCircles.clearLayers();
 
-    // Draw circles only for confirmed visits
+    // Draw circles for all visits
     visits
-      .filter(visit => visit.status === 'confirmed')
+      .filter(visit => visit.status !== 'declined')
       .forEach(visit => {
         if (visit.place?.latitude && visit.place?.longitude) {
+          const isSuggested = visit.status === 'suggested';
           const circle = L.circle([visit.place.latitude, visit.place.longitude], {
-            color: '#4A90E2',
-            fillColor: '#4A90E2',
-            fillOpacity: 0.2,
+            color: isSuggested ? '#FFA500' : '#4A90E2', // Border color
+            fillColor: isSuggested ? '#FFD700' : '#4A90E2', // Fill color
+            fillOpacity: isSuggested ? 0.4 : 0.6,
             radius: 100,
-            weight: 2
+            weight: 2,
+            interactive: true,
+            bubblingMouseEvents: false,
+            pane: 'visitsPane',
+            dashArray: isSuggested ? '4' : null // Dotted border for suggested
           });
+
+          // Add the circle to the map
           this.visitCircles.addLayer(circle);
+
+          // Fetch possible places for the visit
+          const fetchPossiblePlaces = async () => {
+            try {
+              // Close any existing popup before opening a new one
+              if (this.currentPopup) {
+                this.map.closePopup(this.currentPopup);
+                this.currentPopup = null;
+              }
+
+              const response = await fetch(`/api/v1/visits/${visit.id}/possible_places`, {
+                headers: {
+                  'Accept': 'application/json',
+                  'Authorization': `Bearer ${this.apiKey}`,
+                }
+              });
+
+              if (!response.ok) throw new Error('Failed to fetch possible places');
+
+              const possiblePlaces = await response.json();
+
+              // Create popup content with form and dropdown
+              const defaultName = visit.name;
+              const popupContent = `
+                <div class="p-3">
+                  <form class="visit-name-form" data-visit-id="${visit.id}">
+                    <div class="form-control">
+                      <input type="text"
+                             class="input input-bordered input-sm w-full"
+                             value="${defaultName}"
+                             placeholder="Enter visit name">
+                    </div>
+                    <div class="form-control mt-2">
+                      <select class="select select-bordered select-sm w-full" name="place">
+                        ${possiblePlaces.map(place => `
+                          <option value="${place.id}" ${place.id === visit.place.id ? 'selected' : ''}>
+                            ${place.name}
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                      <button type="submit" class="btn btn-xs btn-primary">Save</button>
+                      ${visit.status !== 'confirmed' ? `
+                        <button type="button" class="btn btn-xs btn-success confirm-visit" data-id="${visit.id}">Confirm</button>
+                        <button type="button" class="btn btn-xs btn-error decline-visit" data-id="${visit.id}">Decline</button>
+                      ` : ''}
+                    </div>
+                  </form>
+                </div>
+              `;
+
+              // Create and store the popup
+              const popup = L.popup({
+                closeButton: true,
+                closeOnClick: false,
+                autoClose: false,
+                maxWidth: 300, // Set maximum width
+                minWidth: 200  // Set minimum width
+              })
+                .setLatLng([visit.place.latitude, visit.place.longitude])
+                .setContent(popupContent);
+
+              // Store the current popup
+              this.currentPopup = popup;
+
+              // Open the popup
+              popup.openOn(this.map);
+
+              // Add form submit handler
+              const form = document.querySelector(`.visit-name-form[data-visit-id="${visit.id}"]`);
+              if (form) {
+                form.addEventListener('submit', async (event) => {
+                  event.preventDefault(); // Prevent form submission
+                  event.stopPropagation(); // Stop event bubbling
+                  const newName = event.target.querySelector('input').value;
+                  const selectedPlaceId = event.target.querySelector('select[name="place"]').value;
+
+                  // Get the selected place name from the dropdown
+                  const selectedOption = event.target.querySelector(`select[name="place"] option[value="${selectedPlaceId}"]`);
+                  const selectedPlaceName = selectedOption ? selectedOption.textContent.trim() : '';
+
+                  console.log('Selected new place:', selectedPlaceName);
+
+                  try {
+                    const response = await fetch(`/api/v1/visits/${visit.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiKey}`,
+                      },
+                      body: JSON.stringify({
+                        visit: {
+                          name: newName,
+                          place_id: selectedPlaceId
+                        }
+                      })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to update visit');
+
+                    // Get the updated visit data from the response
+                    const updatedVisit = await response.json();
+
+                    // Update the local visit object with the latest data
+                    // This ensures that if the popup is opened again, it will show the updated values
+                    visit.name = updatedVisit.name || newName;
+                    visit.place = updatedVisit.place;
+
+                    // Use the selected place name for the update
+                    const updatedName = selectedPlaceName || newName;
+                    console.log('Updating visit name in drawer to:', updatedName);
+
+                    // Update the visit name in the drawer panel
+                    const drawerVisitItem = document.querySelector(`.drawer .visit-item[data-id="${visit.id}"]`);
+                    if (drawerVisitItem) {
+                      const nameElement = drawerVisitItem.querySelector('.font-semibold');
+                      if (nameElement) {
+                        console.log('Previous name in drawer:', nameElement.textContent);
+                        nameElement.textContent = updatedName;
+
+                        // Add a highlight effect to make the change visible
+                        nameElement.style.backgroundColor = 'rgba(255, 255, 0, 0.3)';
+                        setTimeout(() => {
+                          nameElement.style.backgroundColor = '';
+                        }, 2000);
+
+                        console.log('Updated name in drawer to:', nameElement.textContent);
+                      }
+                    }
+
+                    // Close the popup
+                    this.map.closePopup(popup);
+                    this.currentPopup = null;
+                    showFlashMessage('notice', 'Visit updated successfully');
+                  } catch (error) {
+                    console.error('Error updating visit:', error);
+                    showFlashMessage('error', 'Failed to update visit');
+                  }
+                });
+
+                // Unified handler for confirm/decline
+                const handleStatusChange = async (event, status) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  try {
+                    const response = await fetch(`/api/v1/visits/${visit.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiKey}`,
+                      },
+                      body: JSON.stringify({
+                        visit: {
+                          status: status
+                        }
+                      })
+                    });
+
+                    if (!response.ok) throw new Error(`Failed to ${status} visit`);
+
+                    this.map.closePopup(this.currentPopup);
+                    this.currentPopup = null;
+                    this.fetchAndDisplayVisits();
+                    showFlashMessage('notice', `Visit ${status}d successfully`);
+                  } catch (error) {
+                    console.error(`Error ${status}ing visit:`, error);
+                    showFlashMessage('error', `Failed to ${status} visit`);
+                  }
+                };
+
+                // Add event listeners for confirm and decline buttons
+                const confirmBtn = form.querySelector('.confirm-visit');
+                const declineBtn = form.querySelector('.decline-visit');
+
+                confirmBtn?.addEventListener('click', (event) => handleStatusChange(event, 'confirmed'));
+                declineBtn?.addEventListener('click', (event) => handleStatusChange(event, 'declined'));
+              }
+            } catch (error) {
+              console.error('Error fetching possible places:', error);
+              showFlashMessage('error', 'Failed to load possible places');
+            }
+          };
+
+          // Attach click event to the circle
+          circle.on('click', fetchPossiblePlaces);
         }
       });
 
@@ -1507,14 +1707,16 @@ export default class extends BaseController {
         const durationText = this.formatDuration(visit.duration * 60);
 
         // Add opacity class for suggested visits
-        const bgClass = visit.status === 'suggested' ? 'bg-neutral border-dashed border-2 border-red-500' : 'bg-base-200';
+        const bgClass = visit.status === 'suggested' ? 'bg-neutral border-dashed border-2 border-sky-500' : 'bg-base-200';
+        const visitStyle = visit.status === 'suggested' ? 'border: 2px dashed #60a5fa;' : '';
 
         return `
-          <div class="p-3 rounded-lg hover:bg-base-300 transition-colors visit-item ${bgClass}"
+          <div class="w-full p-3 rounded-lg hover:bg-base-300 transition-colors visit-item ${bgClass}"
+               style="${visitStyle}"
                data-lat="${visit.place?.latitude || ''}"
                data-lng="${visit.place?.longitude || ''}"
                data-id="${visit.id}">
-            <div class="font-semibold">${visit.name}</div>
+            <div class="font-semibold overflow-hidden">${visit.name}</div>
             <div class="text-sm text-gray-600">
               ${timeDisplay.trim()}
               <span class="text-gray-500">(${durationText})</span>
@@ -1617,6 +1819,21 @@ export default class extends BaseController {
           showFlashMessage('error', 'Failed to decline visit');
         }
       });
+    });
+  }
+
+  truncateVisitNames() {
+    // Find all visit name elements in the drawer
+    const visitNameElements = document.querySelectorAll('.drawer .visit-item .font-semibold');
+
+    visitNameElements.forEach(element => {
+      // Add CSS classes for truncation
+      element.classList.add('truncate', 'max-w-[200px]', 'inline-block');
+
+      // Add tooltip with full name for hover
+      if (element.textContent) {
+        element.setAttribute('title', element.textContent);
+      }
     });
   }
 }

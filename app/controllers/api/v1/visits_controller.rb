@@ -31,7 +31,7 @@ class Api::V1::VisitsController < ApiController
     visit = current_api_user.visits.find(params[:id])
     visit = update_visit(visit)
 
-    render json: visit
+    render json: Api::VisitSerializer.new(visit).call
   end
 
   private
