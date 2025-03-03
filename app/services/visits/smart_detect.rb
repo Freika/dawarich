@@ -318,20 +318,31 @@ class Visits::SmartDetect
     # Define the search radius in meters
     search_radius = 100 # Adjust this value as needed
 
-    # Use the Nearable module to find existing places within the search radius
-    existing_place = Place.near([lat, lon], search_radius, :m).where(name: name).first
+    # First check by exact coordinates
+    existing_place = Place.where('ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), 1)', lon, lat).first
+
+    # If no exact match, check by name within radius
+    existing_place ||= Place.where(name: name)
+                            .where('ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)', lon, lat, search_radius)
+                            .first
 
     return existing_place if existing_place
 
-    # If no existing place is found, create a new one
-    place = Place.find_or_initialize_by(
-      lonlat: "POINT(#{lon} #{lat})"
-    )
+    # Use a database transaction with a lock to prevent race conditions
+    Place.transaction do
+      # Check again within transaction to prevent race conditions
+      existing_place = Place.where('ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), 50)', lon, lat)
+                            .lock(true)
+                            .first
 
-    unless place.persisted?
-      # Set latitude and longitude if needed
-      place.latitude = lat
-      place.longitude = lon
+      return existing_place if existing_place
+
+      # If no existing place is found, create a new one
+      place = Place.new(
+        lonlat: "POINT(#{lon} #{lat})",
+        latitude: lat,
+        longitude: lon
+      )
 
       # Get reverse geocoding data
       geocoded_data = Geocoder.search([lat, lon])
@@ -356,34 +367,53 @@ class Visits::SmartDetect
         place.geodata = data
         place.source = :photon
 
-        # Fetch nearby organizations
-        nearby_organizations = fetch_nearby_organizations(geocoded_data.drop(1))
+        place.save!
 
-        # Save each organization as a possible place
-        nearby_organizations.each do |org|
-          Place.create!(
-            name: org[:name],
-            lonlat: "POINT(#{org[:longitude]} #{org[:latitude]})",
-            city: org[:city],
-            country: org[:country],
-            geodata: org[:geodata],
-            source: :suggested,
-            status: :possible
-          )
-        end
+        # Process nearby organizations outside the main transaction
+        process_nearby_organizations(geocoded_data.drop(1))
       else
         place.name = visit_data[:suggested_name] || Place::DEFAULT_NAME
         place.source = :manual
+        place.save!
       end
 
-      place.save!
+      place
     end
-
-    place
   end
 
-  def fetch_nearby_organizations(geocoded_results)
-    geocoded_results.map do |result|
+  # Extract nearby organizations processing to a separate method
+  def process_nearby_organizations(geocoded_data)
+    # Fetch nearby organizations
+    nearby_organizations = fetch_nearby_organizations(geocoded_data)
+
+    # Save each organization as a possible place
+    nearby_organizations.each do |org|
+      lon = org[:longitude]
+      lat = org[:latitude]
+
+      # Check if a similar place already exists
+      existing = Place.where(name: org[:name])
+                      .where('ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), 1)', lon, lat)
+                      .first
+
+      next if existing
+
+      Place.create!(
+        name: org[:name],
+        lonlat: "POINT(#{lon} #{lat})",
+        latitude: lat,
+        longitude: lon,
+        city: org[:city],
+        country: org[:country],
+        geodata: org[:geodata],
+        source: :suggested,
+        status: :possible
+      )
+    end
+  end
+
+  def fetch_nearby_organizations(geocoded_data)
+    geocoded_data.map do |result|
       data = result.data
       properties = data['properties'] || {}
 
