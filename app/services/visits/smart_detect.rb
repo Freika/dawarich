@@ -297,7 +297,7 @@ class Visits::SmartDetect
           status: :suggested
         )
 
-        visit_data[:points].each { |point| point.update!(visit_id: visit.id) }
+        Point.where(id: visit_data[:points].map(&:id)).update_all(visit_id: visit.id)
 
         visit
       end
@@ -311,16 +311,28 @@ class Visits::SmartDetect
   end
 
   def find_or_create_place(visit_data)
-    # Round coordinates to reduce duplicate places
     lat = visit_data[:center_lat].round(5)
     lon = visit_data[:center_lon].round(5)
+    name = visit_data[:suggested_name]
 
+    # Define the search radius in meters
+    search_radius = 100 # Adjust this value as needed
+
+    # Use the Nearable module to find existing places within the search radius
+    existing_place = Place.near([lat, lon], search_radius, :m).where(name: name).first
+
+    return existing_place if existing_place
+
+    # If no existing place is found, create a new one
     place = Place.find_or_initialize_by(
-      latitude: lat,
-      longitude: lon
+      lonlat: "POINT(#{lon} #{lat})"
     )
 
     unless place.persisted?
+      # Set latitude and longitude if needed
+      place.latitude = lat
+      place.longitude = lon
+
       # Get reverse geocoding data
       geocoded_data = Geocoder.search([lat, lon])
 

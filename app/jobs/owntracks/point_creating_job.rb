@@ -13,8 +13,7 @@ class Owntracks::PointCreatingJob < ApplicationJob
 
   def point_exists?(params, user_id)
     Point.exists?(
-      latitude: params[:latitude],
-      longitude: params[:longitude],
+      lonlat: "POINT(#{params[:longitude]} #{params[:latitude]})",
       timestamp: params[:timestamp],
       user_id:
     )

@@ -32,8 +32,7 @@ class ReverseGeocoding::Places::FetchData
 
     place.update!(
       name:       place_name(data),
-      latitude:   data['geometry']['coordinates'][1],
-      longitude:  data['geometry']['coordinates'][0],
+      lonlat:     "POINT(#{data['geometry']['coordinates'][0]} #{data['geometry']['coordinates'][1]})",
       city:       data['properties']['city'],
       country:    data['properties']['country'],
       geodata:    data,
@@ -79,7 +78,9 @@ class ReverseGeocoding::Places::FetchData
     return found_place if found_place.present?
 
     Place.find_or_initialize_by(
-      lonlat: "POINT(#{place_data['geometry']['coordinates'][0].to_f.round(5)} #{place_data['geometry']['coordinates'][1].to_f.round(5)})"
+      lonlat: "POINT(#{place_data['geometry']['coordinates'][0].to_f.round(5)} #{place_data['geometry']['coordinates'][1].to_f.round(5)})",
+      latitude: place_data['geometry']['coordinates'][1].to_f.round(5),
+      longitude: place_data['geometry']['coordinates'][0].to_f.round(5)
     )
   end
 

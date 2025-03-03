@@ -14,8 +14,7 @@ class Points::Params
       next unless params_valid?(point)
 
       {
-        latitude:           point[:geometry][:coordinates][1],
-        longitude:          point[:geometry][:coordinates][0],
+        lonlat: "POINT(#{point[:geometry][:coordinates][0]} #{point[:geometry][:coordinates][1]})",
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
         timestamp:          DateTime.parse(point[:properties][:timestamp]),

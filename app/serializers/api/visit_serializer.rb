@@ -16,8 +16,8 @@ class Api::VisitSerializer
       name: name,
       status: status,
       place: {
-        latitude: visit.place&.latitude || visit.area&.latitude,
-        longitude: visit.place&.longitude || visit.area&.longitude,
+        latitude: visit.place&.lat || visit.area&.latitude,
+        longitude: visit.place&.lon || visit.area&.longitude,
         id: visit.place&.id
       }
     }

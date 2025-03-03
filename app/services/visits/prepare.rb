@@ -67,8 +67,7 @@ class Visits::Prepare
       center_point = group.first
 
       {
-        latitude: center_point.lat,
-        longitude: center_point.lon,
+        lonlat: "POINT(#{center_point.lon} #{center_point.lat})",
         radius: calculate_radius(center_point, group),
         points: group,
         duration: (group.last.timestamp - group.first.timestamp).to_i / 60,

@@ -9,8 +9,8 @@ class Api::PlaceSerializer
     {
       id: place.id,
       name: place.name,
-      longitude: place.longitude,
-      latitude: place.latitude,
+      longitude: place.lon,
+      latitude: place.lat,
       city: place.city,
       country: place.country,
       source: place.source,
