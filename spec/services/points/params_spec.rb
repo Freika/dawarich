@@ -10,8 +10,7 @@ RSpec.describe Points::Params do
     let(:json) { JSON.parse(file.read) }
     let(:expected_json) do
       {
-        latitude:           37.74430413,
-        longitude:          -122.40530871,
+        lonlat:             'POINT(-122.40530871 37.74430413)',
         battery_status:     nil,
         battery:            nil,
         timestamp:          DateTime.parse('2025-01-17T21:03:01Z'),

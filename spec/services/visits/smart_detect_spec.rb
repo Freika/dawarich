@@ -4,8 +4,8 @@ require 'rails_helper'
 
 RSpec.describe Visits::SmartDetect do
   let(:user) { create(:user) }
-  let(:start_at) { 1.day.ago }
-  let(:end_at) { Time.current }
+  let(:start_at) { DateTime.new(2025, 3, 1, 12, 0, 0) }
+  let(:end_at) { DateTime.new(2025, 3, 1, 13, 0, 0) }
 
   subject(:detector) { described_class.new(user, start_at:, end_at:) }
 
@@ -19,9 +19,9 @@ RSpec.describe Visits::SmartDetect do
     context 'with a simple visit' do
       let!(:points) do
         [
-          create(:point, user:, lonlat: 'POINT(0 0)', timestamp: 1.hour.ago),
-          create(:point, user:, lonlat: 'POINT(0.00001 0.00001)', timestamp: 50.minutes.ago),
-          create(:point, user:, lonlat: 'POINT(0.00002 0.00002)', timestamp: 40.minutes.ago)
+          create(:point, user:, lonlat: 'POINT(0 0)', timestamp: start_at),
+          create(:point, user:, lonlat: 'POINT(0.00001 0.00001)', timestamp: start_at + 5.minutes),
+          create(:point, user:, lonlat: 'POINT(0.00002 0.00002)', timestamp: start_at + 10.minutes)
         ]
       end
 
