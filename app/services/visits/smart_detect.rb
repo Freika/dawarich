@@ -232,13 +232,17 @@ class Visits::SmartDetect
 
   def filter_significant_visits(visits)
     # Group nearby visits to identify significant places
-    grouped_visits = group_nearby_visits(visits)
+    grouped_visits = group_nearby_visits(visits).flatten
 
-    grouped_visits.select do |group|
-      group.size >= SIGNIFICANT_PLACE_VISITS ||
-        significant_duration?(group) ||
-        near_known_place?(group.first)
-    end.flatten
+    # grouped_visits.flat_map do |group|
+    #   is_significant = group.size >= SIGNIFICANT_PLACE_VISITS ||
+    #                    significant_duration?(group) ||
+    #                    near_known_place?(group.first)
+
+    #   group.each do |visit|
+    #     visit[:status] = is_significant ? :significant : :suggested
+    #   end
+    # end
   end
 
   def group_nearby_visits(visits)
@@ -294,7 +298,7 @@ class Visits::SmartDetect
           ended_at: Time.zone.at(visit_data[:end_time]),
           duration: visit_data[:duration] / 60, # Convert to minutes
           name: generate_visit_name(area, place, visit_data[:suggested_name]),
-          status: :suggested
+          status: :suggested # Use the new status
         )
 
         Point.where(id: visit_data[:points].map(&:id)).update_all(visit_id: visit.id)
@@ -349,7 +353,7 @@ class Visits::SmartDetect
 
       if geocoded_data.present?
         first_result = geocoded_data.first
-        data = first_result.data
+        data = first_result.data.with_indifferent_access
         properties = data['properties'] || {}
 
         # Build a descriptive name from available components
@@ -406,8 +410,7 @@ class Visits::SmartDetect
         city: org[:city],
         country: org[:country],
         geodata: org[:geodata],
-        source: :suggested,
-        status: :possible
+        source: :photon
       )
     end
   end
