@@ -351,8 +351,7 @@ class Visits::SmartDetect
         nearby_organizations.each do |org|
           Place.create!(
             name: org[:name],
-            latitude: org[:latitude],
-            longitude: org[:longitude],
+            lonlat: "POINT(#{org[:longitude]} #{org[:latitude]})",
             city: org[:city],
             country: org[:country],
             geodata: org[:geodata],

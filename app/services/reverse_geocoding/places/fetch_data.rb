@@ -79,8 +79,7 @@ class ReverseGeocoding::Places::FetchData
     return found_place if found_place.present?
 
     Place.find_or_initialize_by(
-      latitude: place_data['geometry']['coordinates'][1].to_f.round(5),
-      longitude: place_data['geometry']['coordinates'][0].to_f.round(5)
+      lonlat: "POINT(#{place_data['geometry']['coordinates'][0].to_f.round(5)} #{place_data['geometry']['coordinates'][1].to_f.round(5)})"
     )
   end
 
@@ -97,7 +96,7 @@ class ReverseGeocoding::Places::FetchData
 
   def reverse_geocoded_places
     data = Geocoder.search(
-      [place.latitude, place.longitude],
+      [place.lat, place.lon],
       limit: 10,
       distance_sort: true,
       radius: 1,
