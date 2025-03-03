@@ -973,12 +973,17 @@ export default class extends BaseController {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
         button.innerHTML = '📅';
 
-        button.style.backgroundColor = 'white';
         button.style.width = '48px';
         button.style.height = '48px';
         button.style.border = 'none';
         button.style.cursor = 'pointer';
         button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        button.style.backgroundColor = 'white';
+        button.style.borderRadius = '4px';
+        button.style.padding = '0';
+        button.style.lineHeight = '48px';
+        button.style.fontSize = '18px';
+        button.style.textAlign = 'center';
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
@@ -1351,14 +1356,16 @@ export default class extends BaseController {
       onAdd: (map) => {
         const button = L.DomUtil.create('button', 'leaflet-control-button drawer-button');
         button.innerHTML = '⬅️'; // Left arrow icon
-        button.style.width = '32px';
-        button.style.height = '32px';
+        button.style.width = '48px';
+        button.style.height = '48px';
         button.style.border = 'none';
         button.style.cursor = 'pointer';
         button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
-        button.style.lineHeight = '32px';
+        button.style.lineHeight = '48px';
+        button.style.fontSize = '18px';
         button.style.textAlign = 'center';
 
         L.DomEvent.disableClickPropagation(button);
@@ -1388,7 +1395,7 @@ export default class extends BaseController {
       drawerButton.innerHTML = this.drawerOpen ? '➡️' : '⬅️';
     }
 
-    const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel .drawer-button');
+    const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel, .drawer-button');
     controls.forEach(control => {
       control.classList.toggle('controls-shifted');
     });
@@ -1401,7 +1408,8 @@ export default class extends BaseController {
 
   createDrawer() {
     const drawer = document.createElement('div');
-    drawer.className = 'leaflet-drawer';
+    drawer.id = 'visits-drawer';
+    drawer.className = 'fixed top-0 right-0 h-full w-64 bg-base-100 shadow-lg transform translate-x-full transition-transform duration-300 ease-in-out z-50 overflow-y-auto leaflet-drawer';
 
     // Add styles to make the drawer scrollable
     drawer.style.overflowY = 'auto';
@@ -1409,7 +1417,7 @@ export default class extends BaseController {
 
     drawer.innerHTML = `
       <div class="p-4 drawer">
-        <h2 class="text-xl font-bold mb-4">Recent Visits</h2>
+        <h2 class="text-xl font-bold mb-4 text-accent-content">Recent Visits</h2>
         <div id="visits-list" class="space-y-2">
           <p class="text-gray-500">Loading visits...</p>
         </div>
@@ -1716,7 +1724,7 @@ export default class extends BaseController {
                data-lat="${visit.place?.latitude || ''}"
                data-lng="${visit.place?.longitude || ''}"
                data-id="${visit.id}">
-            <div class="font-semibold overflow-hidden">${visit.name}</div>
+            <div class="font-semibold overflow-hidden text-ellipsis whitespace-nowrap" title="${visit.name}">${this.truncateText(visit.name, 30)}</div>
             <div class="text-sm text-gray-600">
               ${timeDisplay.trim()}
               <span class="text-gray-500">(${durationText})</span>
@@ -1822,19 +1830,9 @@ export default class extends BaseController {
     });
   }
 
-  truncateVisitNames() {
-    // Find all visit name elements in the drawer
-    const visitNameElements = document.querySelectorAll('.drawer .visit-item .font-semibold');
-
-    visitNameElements.forEach(element => {
-      // Add CSS classes for truncation
-      element.classList.add('truncate', 'max-w-[200px]', 'inline-block');
-
-      // Add tooltip with full name for hover
-      if (element.textContent) {
-        element.setAttribute('title', element.textContent);
-      }
-    });
+  truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   }
 }
 

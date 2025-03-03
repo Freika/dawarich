@@ -51,7 +51,7 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: 300px;
+  width: 320px;
   height: 100%;
   background: rgba(255, 255, 255, 0.5);
   transform: translateX(100%);
@@ -73,5 +73,5 @@
 }
 
 .controls-shifted {
-  right: 300px !important;
+  right: 320px !important;
 }
