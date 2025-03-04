@@ -21,8 +21,9 @@ class Visits::SmartDetect
 
     potential_visits = detect_potential_visits
     merged_visits = merge_consecutive_visits(potential_visits)
-    significant_visits = filter_significant_visits(merged_visits)
-    create_visits(significant_visits)
+    grouped_visits = group_nearby_visits(merged_visits).flatten
+
+    create_visits(grouped_visits)
   end
 
   private
@@ -228,21 +229,6 @@ class Visits::SmartDetect
       properties['city'],
       properties['state']
     ].compact.uniq.join(', ')
-  end
-
-  def filter_significant_visits(visits)
-    # Group nearby visits to identify significant places
-    grouped_visits = group_nearby_visits(visits).flatten
-
-    # grouped_visits.flat_map do |group|
-    #   is_significant = group.size >= SIGNIFICANT_PLACE_VISITS ||
-    #                    significant_duration?(group) ||
-    #                    near_known_place?(group.first)
-
-    #   group.each do |visit|
-    #     visit[:status] = is_significant ? :significant : :suggested
-    #   end
-    # end
   end
 
   def group_nearby_visits(visits)

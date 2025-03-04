@@ -262,12 +262,6 @@ RSpec.describe Visits::SmartDetect do
         ]
       end
 
-      before do
-        # Override the factory's random coordinates
-        allow_any_instance_of(Point).to receive(:latitude).and_return(0)
-        allow_any_instance_of(Point).to receive(:longitude).and_return(0)
-      end
-
       it 'assigns correct points to each visit' do
         visits = detector.call
 
@@ -287,19 +281,8 @@ RSpec.describe Visits::SmartDetect do
         ]
       end
 
-      before do
-        # Ensure points are within the area's radius
-        allow_any_instance_of(Point).to receive(:latitude).and_return(0)
-        allow_any_instance_of(Point).to receive(:longitude).and_return(0)
-      end
-
       it 'associates the visit with the area' do
         visits = detector.call
-        puts "Found #{visits.count} visits"
-        visits.each_with_index do |v, i|
-          puts "Visit #{i + 1} points: #{v.points.map(&:timestamp)}"
-          puts "Visit #{i + 1} area: #{v.area&.name}"
-        end
 
         visit = visits.first
         expect(visit).not_to be_nil
@@ -338,12 +321,6 @@ RSpec.describe Visits::SmartDetect do
 
         it 'prefers area name over geodata' do
           visits = detector.call
-          puts "Found #{visits.count} visits"
-          puts "Area coordinates: #{area.latitude}, #{area.longitude}"
-          visits.each_with_index do |v, i|
-            puts "Visit #{i + 1} points: #{v.points.map { |p| [p.latitude, p.longitude] }}"
-            puts "Visit #{i + 1} area: #{v.area&.name}"
-          end
 
           visit = visits.first
           expect(visit).not_to be_nil
@@ -355,71 +332,47 @@ RSpec.describe Visits::SmartDetect do
     context 'with points too far apart' do
       let!(:points) do
         [
-          create(:point, user:, lonlat: 'POINT(0 0)',
-             timestamp: start_at + 10.minutes),
-          create(:point, user:, lonlat: 'POINT(10 10)',
-             timestamp: start_at + 15.minutes),
-          create(:point, user:, lonlat: 'POINT(0 0)',
-             timestamp: start_at + 20.minutes)
+          create(:point, user:, lonlat: 'POINT(0 0)', timestamp: start_at),
+          create(:point, user:, lonlat: 'POINT(0 0)', timestamp: start_at + 5.minutes),
+          create(:point, user:, lonlat: 'POINT(0 0)', timestamp: start_at + 10.minutes),
+
+          create(:point, user:, lonlat: 'POINT(10 10)', timestamp: start_at + 15.minutes),
+          create(:point, user:, lonlat: 'POINT(10 10)', timestamp: start_at + 20.minutes),
+          create(:point, user:, lonlat: 'POINT(10 10)', timestamp: start_at + 25.minutes)
         ]
       end
 
-      before do
-        # Don't override coordinates, but ensure they're consistent
-        first_point = points.first
-        allow(first_point).to receive(:latitude).and_return(0)
-        allow(first_point).to receive(:longitude).and_return(0)
-
-        middle_point = points.second
-        allow(middle_point).to receive(:latitude).and_return(10)
-        allow(middle_point).to receive(:longitude).and_return(10)
-
-        last_point = points.last
-        allow(last_point).to receive(:latitude).and_return(0)
-        allow(last_point).to receive(:longitude).and_return(0)
-      end
-
       it 'creates separate visits' do
-        visits = detector.call
-        puts "Found #{visits.count} visits"
-        puts 'Points coordinates:'
-        points.each { |p| puts "  #{p.latitude}, #{p.longitude}" }
-        visits.each_with_index do |v, i|
-          puts "Visit #{i + 1} points: #{v.points.map { |p| [p.latitude, p.longitude] }}"
-        end
-
-        expect(visits.count).to eq(2)
+        expect { detector.call }.to change(Visit, :count).by(2)
       end
     end
 
     context 'with points too far apart in time' do
-      # Extend end_at to accommodate the later point
-      let(:end_at) { start_at + 3.hours }
+      # Use a wider time range to ensure all points are within the detector's window
+      let(:end_at) { DateTime.new(2025, 3, 1, 15, 0, 0) }
 
       let!(:points) do
         [
+          # First visit with more points to ensure it's significant
           create(:point, user:, lonlat: 'POINT(0 0)',
-             timestamp: start_at + 10.minutes),
+                 timestamp: DateTime.new(2025, 3, 1, 12, 0, 0)),
           create(:point, user:, lonlat: 'POINT(0 0)',
-             timestamp: start_at + 2.hours)
+                 timestamp: DateTime.new(2025, 3, 1, 12, 5, 0)),
+          create(:point, user:, lonlat: 'POINT(0 0)',
+                 timestamp: DateTime.new(2025, 3, 1, 12, 10, 0)),
+
+          # Second visit - with a gap of 40 minutes (beyond MAXIMUM_VISIT_GAP)
+          create(:point, user:, lonlat: 'POINT(0 0)',
+                 timestamp: DateTime.new(2025, 3, 1, 12, 50, 0)),
+          create(:point, user:, lonlat: 'POINT(0 0)',
+                 timestamp: DateTime.new(2025, 3, 1, 12, 55, 0)),
+          create(:point, user:, lonlat: 'POINT(0 0)',
+                 timestamp: DateTime.new(2025, 3, 1, 13, 0, 0))
         ]
       end
 
-      before do
-        allow_any_instance_of(Point).to receive(:latitude).and_return(0)
-        allow_any_instance_of(Point).to receive(:longitude).and_return(0)
-      end
-
       it 'creates separate visits' do
-        visits = detector.call
-        puts "Found #{visits.count} visits"
-        puts 'Points timestamps:'
-        points.each { |p| puts "  #{p.timestamp}" }
-        visits.each_with_index do |v, i|
-          puts "Visit #{i + 1} timestamps: #{v.points.map(&:timestamp)}"
-        end
-
-        expect(visits.count).to eq(2)
+        expect { detector.call }.to change(Visit, :count).by(2)
       end
     end
 
@@ -436,22 +389,10 @@ RSpec.describe Visits::SmartDetect do
         ]
       end
 
-      before do
-        # Ensure points are within the place's location
-        allow_any_instance_of(Point).to receive(:latitude).and_return(0)
-        allow_any_instance_of(Point).to receive(:longitude).and_return(0)
-      end
-
       it 'associates the visit with the place' do
         visits = detector.call
-        puts "Found #{visits.count} visits"
-        puts "Points count: #{Point.count}"
-        puts "Place coordinates: #{place.latitude}, #{place.longitude}"
-        visits.each_with_index do |v, i|
-          puts "Visit #{i + 1} coordinates: #{v.points.map { |p| [p.latitude, p.longitude] }}"
-        end
-
         visit = visits.first
+
         expect(visit).not_to be_nil
         expect(visit.place).to eq(place)
         expect(visit.name).to eq('Coffee Shop')
@@ -488,45 +429,12 @@ RSpec.describe Visits::SmartDetect do
 
         it 'prefers existing place name over geodata' do
           visits = detector.call
-          puts "Found #{visits.count} visits"
-          puts "Place coordinates: #{place.latitude}, #{place.longitude}"
-          visits.each_with_index do |v, i|
-            puts "Visit #{i + 1} coordinates: #{v.points.map { |p| [p.latitude, p.longitude] }}"
-            puts "Visit #{i + 1} place: #{v.place&.name}"
-          end
-
           visit = visits.first
+
           expect(visit).not_to be_nil
           expect(visit.place).to eq(place)
           expect(visit.name).to eq('Coffee Shop')
         end
-      end
-    end
-
-    context 'with different geocoder results' do
-      before do
-        allow(Geocoder).to \
-          receive(:search).with([40.123, -74.456]) \
-                          .and_return(
-                            [
-                              double(
-                                data: {
-                                  'address' => {
-                                    'road' => 'Different Street',
-                                    'house_number' => '456',
-                                    'postcode' => '67890',
-                                    'city' => 'Different City',
-                                    'country' => 'Different Country'
-                                  },
-                                    'name' => 'Different Place'
-                                }
-                              )
-                            ]
-                          )
-      end
-
-      it 'uses the stubbed geocoder results' do
-        # Your test that relies on these specific geocoder results
       end
     end
   end
