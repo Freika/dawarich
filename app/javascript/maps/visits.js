@@ -1,0 +1,575 @@
+import L from "leaflet";
+import { showFlashMessage } from "./helpers";
+
+/**
+ * Manages visits functionality including displaying, fetching, and interacting with visits
+ */
+export class VisitsManager {
+  constructor(map, apiKey) {
+    this.map = map;
+    this.apiKey = apiKey;
+    this.visitCircles = L.layerGroup();
+    this.currentPopup = null;
+    this.drawerOpen = false;
+  }
+
+  /**
+   * Formats a duration in seconds to a human-readable string
+   * @param {number} seconds - Duration in seconds
+   * @returns {string} Formatted duration string
+   */
+  formatDuration(seconds) {
+    const days = Math.floor(seconds / (24 * 60 * 60));
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((seconds % (60 * 60)) / 60);
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 && days === 0) parts.push(`${minutes}m`); // Only show minutes if less than a day
+
+    return parts.join(' ') || '< 1m';
+  }
+
+  /**
+   * Adds a button to toggle the visits drawer
+   */
+  addDrawerButton() {
+    const DrawerControl = L.Control.extend({
+      onAdd: (map) => {
+        const button = L.DomUtil.create('button', 'leaflet-control-button drawer-button');
+        button.innerHTML = '⬅️'; // Left arrow icon
+        button.style.width = '48px';
+        button.style.height = '48px';
+        button.style.border = 'none';
+        button.style.cursor = 'pointer';
+        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        button.style.backgroundColor = 'white';
+        button.style.borderRadius = '4px';
+        button.style.padding = '0';
+        button.style.lineHeight = '48px';
+        button.style.fontSize = '18px';
+        button.style.textAlign = 'center';
+
+        L.DomEvent.disableClickPropagation(button);
+        L.DomEvent.on(button, 'click', () => {
+          this.toggleDrawer();
+        });
+
+        return button;
+      }
+    });
+
+    this.map.addControl(new DrawerControl({ position: 'topright' }));
+  }
+
+  /**
+   * Toggles the visibility of the visits drawer
+   */
+  toggleDrawer() {
+    this.drawerOpen = !this.drawerOpen;
+
+    let drawer = document.querySelector('.leaflet-drawer');
+    if (!drawer) {
+      drawer = this.createDrawer();
+    }
+
+    drawer.classList.toggle('open');
+
+    const drawerButton = document.querySelector('.drawer-button');
+    if (drawerButton) {
+      drawerButton.innerHTML = this.drawerOpen ? '➡️' : '⬅️';
+    }
+
+    const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel, .drawer-button');
+    controls.forEach(control => {
+      control.classList.toggle('controls-shifted');
+    });
+
+    // Update the drawer content if it's being opened
+    if (this.drawerOpen) {
+      this.fetchAndDisplayVisits();
+    }
+  }
+
+  /**
+   * Creates the drawer element for displaying visits
+   * @returns {HTMLElement} The created drawer element
+   */
+  createDrawer() {
+    const drawer = document.createElement('div');
+    drawer.id = 'visits-drawer';
+    drawer.className = 'fixed top-0 right-0 h-full w-64 bg-base-100 shadow-lg transform translate-x-full transition-transform duration-300 ease-in-out z-50 overflow-y-auto leaflet-drawer';
+
+    // Add styles to make the drawer scrollable
+    drawer.style.overflowY = 'auto';
+    drawer.style.maxHeight = '100vh';
+
+    drawer.innerHTML = `
+      <div class="p-4 drawer">
+        <h2 class="text-xl font-bold mb-4 text-accent-content">Recent Visits</h2>
+        <div id="visits-list" class="space-y-2">
+          <p class="text-gray-500">Loading visits...</p>
+        </div>
+      </div>
+    `;
+
+    // Prevent map zoom when scrolling the drawer
+    L.DomEvent.disableScrollPropagation(drawer);
+    // Prevent map pan/interaction when interacting with drawer
+    L.DomEvent.disableClickPropagation(drawer);
+
+    this.map.getContainer().appendChild(drawer);
+    return drawer;
+  }
+
+  /**
+   * Fetches visits data from the API and displays them
+   */
+  async fetchAndDisplayVisits() {
+    try {
+      // Get current timeframe from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const startAt = urlParams.get('start_at') || new Date().toISOString();
+      const endAt = urlParams.get('end_at') || new Date().toISOString();
+
+      console.log('Fetching visits for:', startAt, endAt);
+      const response = await fetch(
+        `/api/v1/visits?start_at=${encodeURIComponent(startAt)}&end_at=${encodeURIComponent(endAt)}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const visits = await response.json();
+      this.displayVisits(visits);
+    } catch (error) {
+      console.error('Error fetching visits:', error);
+      const container = document.getElementById('visits-list');
+      if (container) {
+        container.innerHTML = '<p class="text-red-500">Error loading visits</p>';
+      }
+    }
+  }
+
+  /**
+   * Displays visits on the map and in the drawer
+   * @param {Array} visits - Array of visit objects
+   */
+  displayVisits(visits) {
+    const container = document.getElementById('visits-list');
+    if (!container) return;
+
+    if (!visits || visits.length === 0) {
+      container.innerHTML = '<p class="text-gray-500">No visits found in selected timeframe</p>';
+      return;
+    }
+
+    // Clear existing visit circles
+    this.visitCircles.clearLayers();
+
+    // Draw circles for all visits
+    visits
+      .filter(visit => visit.status !== 'declined')
+      .forEach(visit => {
+        if (visit.place?.latitude && visit.place?.longitude) {
+          const isSuggested = visit.status === 'suggested';
+          const circle = L.circle([visit.place.latitude, visit.place.longitude], {
+            color: isSuggested ? '#FFA500' : '#4A90E2', // Border color
+            fillColor: isSuggested ? '#FFD700' : '#4A90E2', // Fill color
+            fillOpacity: isSuggested ? 0.4 : 0.6,
+            radius: 100,
+            weight: 2,
+            interactive: true,
+            bubblingMouseEvents: false,
+            pane: 'visitsPane',
+            dashArray: isSuggested ? '4' : null // Dotted border for suggested
+          });
+
+          // Add the circle to the map
+          this.visitCircles.addLayer(circle);
+
+          // Attach click event to the circle
+          circle.on('click', () => this.fetchPossiblePlaces(visit));
+        }
+      });
+
+    const html = visits
+      // Filter out declined visits
+      .filter(visit => visit.status !== 'declined')
+      .map(visit => {
+        const startDate = new Date(visit.started_at);
+        const endDate = new Date(visit.ended_at);
+        const isSameDay = startDate.toDateString() === endDate.toDateString();
+
+        let timeDisplay;
+        if (isSameDay) {
+          timeDisplay = `
+            ${startDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
+            ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+          `;
+        } else {
+          timeDisplay = `
+            ${startDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
+            ${endDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+          `;
+        }
+
+        const durationText = this.formatDuration(visit.duration * 60);
+
+        // Add opacity class for suggested visits
+        const bgClass = visit.status === 'suggested' ? 'bg-neutral border-dashed border-2 border-sky-500' : 'bg-base-200';
+        const visitStyle = visit.status === 'suggested' ? 'border: 2px dashed #60a5fa;' : '';
+
+        return `
+          <div class="w-full p-3 rounded-lg hover:bg-base-300 transition-colors visit-item ${bgClass}"
+               style="${visitStyle}"
+               data-lat="${visit.place?.latitude || ''}"
+               data-lng="${visit.place?.longitude || ''}"
+               data-id="${visit.id}">
+            <div class="font-semibold overflow-hidden text-ellipsis whitespace-nowrap" title="${visit.name}">${this.truncateText(visit.name, 30)}</div>
+            <div class="text-sm text-gray-600">
+              ${timeDisplay.trim()}
+              <span class="text-gray-500">(${durationText})</span>
+            </div>
+            ${visit.place?.city ? `<div class="text-sm">${visit.place.city}, ${visit.place.country}</div>` : ''}
+            ${visit.status !== 'confirmed' ? `
+              <div class="flex gap-2 mt-2">
+                <button class="btn btn-xs btn-success confirm-visit" data-id="${visit.id}">
+                  Confirm
+                </button>
+                <button class="btn btn-xs btn-error decline-visit" data-id="${visit.id}">
+                  Decline
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+    container.innerHTML = html;
+
+    // Add the circles layer to the map
+    this.visitCircles.addTo(this.map);
+
+    // Add click handlers to visit items and buttons
+    this.addVisitItemEventListeners(container);
+  }
+
+  /**
+   * Adds event listeners to visit items in the drawer
+   * @param {HTMLElement} container - The container element with visit items
+   */
+  addVisitItemEventListeners(container) {
+    const visitItems = container.querySelectorAll('.visit-item');
+    visitItems.forEach(item => {
+      // Location click handler
+      item.addEventListener('click', (event) => {
+        // Don't trigger if clicking on buttons
+        if (event.target.classList.contains('btn')) return;
+
+        const lat = parseFloat(item.dataset.lat);
+        const lng = parseFloat(item.dataset.lng);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          this.map.setView([lat, lng], 15, {
+            animate: true,
+            duration: 1
+          });
+        }
+      });
+
+      // Confirm button handler
+      const confirmBtn = item.querySelector('.confirm-visit');
+      confirmBtn?.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        const visitId = event.target.dataset.id;
+        try {
+          const response = await fetch(`/api/v1/visits/${visitId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              visit: {
+                status: 'confirmed'
+              }
+            })
+          });
+
+          if (!response.ok) throw new Error('Failed to confirm visit');
+
+          // Refresh visits list
+          this.fetchAndDisplayVisits();
+          showFlashMessage('notice', 'Visit confirmed successfully');
+        } catch (error) {
+          console.error('Error confirming visit:', error);
+          showFlashMessage('error', 'Failed to confirm visit');
+        }
+      });
+
+      // Decline button handler
+      const declineBtn = item.querySelector('.decline-visit');
+      declineBtn?.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        const visitId = event.target.dataset.id;
+        try {
+          const response = await fetch(`/api/v1/visits/${visitId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              visit: {
+                status: 'declined'
+              }
+            })
+          });
+
+          if (!response.ok) throw new Error('Failed to decline visit');
+
+          // Refresh visits list
+          this.fetchAndDisplayVisits();
+          showFlashMessage('notice', 'Visit declined successfully');
+        } catch (error) {
+          console.error('Error declining visit:', error);
+          showFlashMessage('error', 'Failed to decline visit');
+        }
+      });
+    });
+  }
+
+  /**
+   * Fetches possible places for a visit and displays them in a popup
+   * @param {Object} visit - The visit object
+   */
+  async fetchPossiblePlaces(visit) {
+    try {
+      // Close any existing popup before opening a new one
+      if (this.currentPopup) {
+        this.map.closePopup(this.currentPopup);
+        this.currentPopup = null;
+      }
+
+      const response = await fetch(`/api/v1/visits/${visit.id}/possible_places`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch possible places');
+
+      const possiblePlaces = await response.json();
+
+      // Create popup content with form and dropdown
+      const defaultName = visit.name;
+      const popupContent = `
+        <div class="p-3">
+          <form class="visit-name-form" data-visit-id="${visit.id}">
+            <div class="form-control">
+              <input type="text"
+                     class="input input-bordered input-sm w-full"
+                     value="${defaultName}"
+                     placeholder="Enter visit name">
+            </div>
+            <div class="form-control mt-2">
+              <select class="select select-bordered select-sm w-full" name="place">
+                ${possiblePlaces.map(place => `
+                  <option value="${place.id}" ${place.id === visit.place.id ? 'selected' : ''}>
+                    ${place.name}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+            <div class="flex gap-2 mt-2">
+              <button type="submit" class="btn btn-xs btn-primary">Save</button>
+              ${visit.status !== 'confirmed' ? `
+                <button type="button" class="btn btn-xs btn-success confirm-visit" data-id="${visit.id}">Confirm</button>
+                <button type="button" class="btn btn-xs btn-error decline-visit" data-id="${visit.id}">Decline</button>
+              ` : ''}
+            </div>
+          </form>
+        </div>
+      `;
+
+      // Create and store the popup
+      const popup = L.popup({
+        closeButton: true,
+        closeOnClick: false,
+        autoClose: false,
+        maxWidth: 300, // Set maximum width
+        minWidth: 200  // Set minimum width
+      })
+        .setLatLng([visit.place.latitude, visit.place.longitude])
+        .setContent(popupContent);
+
+      // Store the current popup
+      this.currentPopup = popup;
+
+      // Open the popup
+      popup.openOn(this.map);
+
+      // Add form submit handler
+      this.addPopupFormEventListeners(visit);
+    } catch (error) {
+      console.error('Error fetching possible places:', error);
+      showFlashMessage('error', 'Failed to load possible places');
+    }
+  }
+
+  /**
+   * Adds event listeners to the popup form
+   * @param {Object} visit - The visit object
+   */
+  addPopupFormEventListeners(visit) {
+    const form = document.querySelector(`.visit-name-form[data-visit-id="${visit.id}"]`);
+    if (form) {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault(); // Prevent form submission
+        event.stopPropagation(); // Stop event bubbling
+        const newName = event.target.querySelector('input').value;
+        const selectedPlaceId = event.target.querySelector('select[name="place"]').value;
+
+        // Get the selected place name from the dropdown
+        const selectedOption = event.target.querySelector(`select[name="place"] option[value="${selectedPlaceId}"]`);
+        const selectedPlaceName = selectedOption ? selectedOption.textContent.trim() : '';
+
+        console.log('Selected new place:', selectedPlaceName);
+
+        try {
+          const response = await fetch(`/api/v1/visits/${visit.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+              visit: {
+                name: newName,
+                place_id: selectedPlaceId
+              }
+            })
+          });
+
+          if (!response.ok) throw new Error('Failed to update visit');
+
+          // Get the updated visit data from the response
+          const updatedVisit = await response.json();
+
+          // Update the local visit object with the latest data
+          // This ensures that if the popup is opened again, it will show the updated values
+          visit.name = updatedVisit.name || newName;
+          visit.place = updatedVisit.place;
+
+          // Use the selected place name for the update
+          const updatedName = selectedPlaceName || newName;
+          console.log('Updating visit name in drawer to:', updatedName);
+
+          // Update the visit name in the drawer panel
+          const drawerVisitItem = document.querySelector(`.drawer .visit-item[data-id="${visit.id}"]`);
+          if (drawerVisitItem) {
+            const nameElement = drawerVisitItem.querySelector('.font-semibold');
+            if (nameElement) {
+              console.log('Previous name in drawer:', nameElement.textContent);
+              nameElement.textContent = updatedName;
+
+              // Add a highlight effect to make the change visible
+              nameElement.style.backgroundColor = 'rgba(255, 255, 0, 0.3)';
+              setTimeout(() => {
+                nameElement.style.backgroundColor = '';
+              }, 2000);
+
+              console.log('Updated name in drawer to:', nameElement.textContent);
+            }
+          }
+
+          // Close the popup
+          this.map.closePopup(this.currentPopup);
+          this.currentPopup = null;
+          showFlashMessage('notice', 'Visit updated successfully');
+        } catch (error) {
+          console.error('Error updating visit:', error);
+          showFlashMessage('error', 'Failed to update visit');
+        }
+      });
+
+      // Add event listeners for confirm and decline buttons
+      const confirmBtn = form.querySelector('.confirm-visit');
+      const declineBtn = form.querySelector('.decline-visit');
+
+      confirmBtn?.addEventListener('click', (event) => this.handleStatusChange(event, visit.id, 'confirmed'));
+      declineBtn?.addEventListener('click', (event) => this.handleStatusChange(event, visit.id, 'declined'));
+    }
+  }
+
+  /**
+   * Handles status change for a visit (confirm/decline)
+   * @param {Event} event - The click event
+   * @param {string} visitId - The visit ID
+   * @param {string} status - The new status ('confirmed' or 'declined')
+   */
+  async handleStatusChange(event, visitId, status) {
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      const response = await fetch(`/api/v1/visits/${visitId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          visit: {
+            status: status
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error(`Failed to ${status} visit`);
+
+      if (this.currentPopup) {
+        this.map.closePopup(this.currentPopup);
+        this.currentPopup = null;
+      }
+
+      this.fetchAndDisplayVisits();
+      showFlashMessage('notice', `Visit ${status}d successfully`);
+    } catch (error) {
+      console.error(`Error ${status}ing visit:`, error);
+      showFlashMessage('error', `Failed to ${status} visit`);
+    }
+  }
+
+  /**
+   * Truncates text to a specified length and adds ellipsis if needed
+   * @param {string} text - The text to truncate
+   * @param {number} maxLength - The maximum length
+   * @returns {string} Truncated text
+   */
+  truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  }
+
+  /**
+   * Gets the visits layer group for adding to the map controls
+   * @returns {L.LayerGroup} The visits layer group
+   */
+  getVisitCirclesLayer() {
+    return this.visitCircles;
+  }
+}

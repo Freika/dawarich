@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.24.2 - 2025-02-24
 
+TODO:
+
+- [ ] Allow user to see all suggested visits in specific area on the map regardless of time period. (clustering?) #921
+- [ ] Allow user to merge visits #909
+- [ ] Accepted Visits are not remembered #848
+- [ ] Flash z-index is under visits drawer
+- [ ] There are still duplicates in the visits places?
+
 ## Added
 
 - Status field to the User model. Inactive users are now being restricted from accessing some of the functionality, which is mostly about writing data to the database. Reading is remaining unrestricted.
