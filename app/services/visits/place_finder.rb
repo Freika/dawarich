@@ -17,13 +17,9 @@ module Visits
       # Define the search radius in meters
       search_radius = 100 # Adjust this value as needed
 
-      # First check by exact coordinates
-      existing_place = Place.where('ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), 1)', lon, lat).first
-
-      # If no exact match, check by name within radius
-      existing_place ||= Place.where(name: name)
-                              .where('ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)', lon, lat, search_radius)
-                              .first
+      existing_place = Place.where(name: name)
+                            .near([lon, lat], search_radius, :m)
+                            .first
 
       return existing_place if existing_place
 

@@ -103,10 +103,20 @@ export default class extends BaseController {
     this.map.getPane('areasPane').style.zIndex = 650;
     this.map.getPane('areasPane').style.pointerEvents = 'all';
 
-    // Create custom pane for visits
+    // Create custom panes for visits
+    // Note: We'll still create visitsPane for backward compatibility
     this.map.createPane('visitsPane');
     this.map.getPane('visitsPane').style.zIndex = 600;
     this.map.getPane('visitsPane').style.pointerEvents = 'all';
+
+    // Create separate panes for confirmed and suggested visits
+    this.map.createPane('confirmedVisitsPane');
+    this.map.getPane('confirmedVisitsPane').style.zIndex = 450;
+    this.map.getPane('confirmedVisitsPane').style.pointerEvents = 'all';
+
+    this.map.createPane('suggestedVisitsPane');
+    this.map.getPane('suggestedVisitsPane').style.zIndex = 460;
+    this.map.getPane('suggestedVisitsPane').style.pointerEvents = 'all';
 
     // Initialize areasLayer as a feature group and add it to the map immediately
     this.areasLayer = new L.FeatureGroup();

@@ -210,11 +210,11 @@ export class VisitsManager {
             color: isSuggested ? '#FFA500' : '#4A90E2', // Border color
             fillColor: isSuggested ? '#FFD700' : '#4A90E2', // Fill color
             fillOpacity: isSuggested ? 0.4 : 0.6,
-            radius: 100,
+            radius: isConfirmed ? 110 : 80, // Increased size for confirmed visits
             weight: 2,
             interactive: true,
             bubblingMouseEvents: false,
-            pane: 'visitsPane',
+            pane: isConfirmed ? 'confirmedVisitsPane' : 'suggestedVisitsPane', // Use appropriate pane
             dashArray: isSuggested ? '4' : null // Dotted border for suggested
           });
 
@@ -677,10 +677,50 @@ export class VisitsManager {
 
       const possiblePlaces = await response.json();
 
+      // Format date and time
+      const startDate = new Date(visit.started_at);
+      const endDate = new Date(visit.ended_at);
+      const isSameDay = startDate.toDateString() === endDate.toDateString();
+
+      let dateTimeDisplay;
+      if (isSameDay) {
+        dateTimeDisplay = `
+          ${startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })},
+          ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
+          ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+        `;
+      } else {
+        dateTimeDisplay = `
+          ${startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })},
+          ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
+          ${endDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })},
+          ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+        `;
+      }
+
+      // Format duration
+      const durationText = this.formatDuration(visit.duration * 60);
+
+      // Status with color coding
+      const statusColorClass = visit.status === 'confirmed' ? 'text-success' : 'text-warning';
+
       // Create popup content with form and dropdown
       const defaultName = visit.name;
       const popupContent = `
         <div class="p-3">
+          <div class="mb-3">
+            <div class="text-sm mb-1">
+              ${dateTimeDisplay.trim()}
+            </div>
+            <div>
+              <span class="text-sm text-gray-500">
+                Duration: ${durationText},
+              </span>
+              <span class="text-sm mb-1 ${statusColorClass} font-semibold">
+                status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}
+              </span>
+            </div>
+          </div>
           <form class="visit-name-form" data-visit-id="${visit.id}">
             <div class="form-control">
               <input type="text"
@@ -711,10 +751,10 @@ export class VisitsManager {
       // Create and store the popup
       const popup = L.popup({
         closeButton: true,
-        closeOnClick: false,
-        autoClose: false,
-        maxWidth: 300, // Set maximum width
-        minWidth: 200  // Set minimum width
+        closeOnClick: true,
+        autoClose: true,
+        maxWidth: 450, // Set maximum width
+        minWidth: 300  // Set minimum width
       })
         .setLatLng([visit.place.latitude, visit.place.longitude])
         .setContent(popupContent);
