@@ -129,7 +129,9 @@ export default class extends BaseController {
       "Fog of War": new this.fogOverlay(),
       "Scratch map": this.scratchLayer,
       Areas: this.areasLayer,
-      Photos: this.photoMarkers
+      Photos: this.photoMarkers,
+      "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
+      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
     };
 
     // Initialize layer control first
@@ -1340,4 +1342,3 @@ export default class extends BaseController {
     container.innerHTML = html;
   }
 }
-

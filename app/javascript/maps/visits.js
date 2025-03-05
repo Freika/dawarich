@@ -9,6 +9,7 @@ export class VisitsManager {
     this.map = map;
     this.apiKey = apiKey;
     this.visitCircles = L.layerGroup();
+    this.confirmedVisitCircles = L.layerGroup().addTo(map); // Always visible layer for confirmed visits
     this.currentPopup = null;
     this.drawerOpen = false;
   }
@@ -68,8 +69,8 @@ export class VisitsManager {
    */
   toggleDrawer() {
     this.drawerOpen = !this.drawerOpen;
+    let drawer = document.getElementById('visits-drawer');
 
-    let drawer = document.querySelector('.leaflet-drawer');
     if (!drawer) {
       drawer = this.createDrawer();
     }
@@ -89,6 +90,15 @@ export class VisitsManager {
     // Update the drawer content if it's being opened
     if (this.drawerOpen) {
       this.fetchAndDisplayVisits();
+      // Show the suggested visits layer when drawer is open
+      if (!this.map.hasLayer(this.visitCircles)) {
+        this.map.addLayer(this.visitCircles);
+      }
+    } else {
+      // Hide the suggested visits layer when drawer is closed
+      if (this.map.hasLayer(this.visitCircles)) {
+        this.map.removeLayer(this.visitCircles);
+      }
     }
   }
 
@@ -99,7 +109,7 @@ export class VisitsManager {
   createDrawer() {
     const drawer = document.createElement('div');
     drawer.id = 'visits-drawer';
-    drawer.className = 'fixed top-0 right-0 h-full w-64 bg-base-100 shadow-lg transform translate-x-full transition-transform duration-300 ease-in-out z-50 overflow-y-auto leaflet-drawer';
+    drawer.className = 'fixed top-0 right-0 h-full w-64 bg-base-100 shadow-lg transform translate-x-full transition-transform duration-300 ease-in-out z-39 overflow-y-auto leaflet-drawer';
 
     // Add styles to make the drawer scrollable
     drawer.style.overflowY = 'auto';
@@ -151,6 +161,17 @@ export class VisitsManager {
 
       const visits = await response.json();
       this.displayVisits(visits);
+
+      // Ensure the suggested visits layer visibility matches the drawer state
+      if (this.drawerOpen) {
+        if (!this.map.hasLayer(this.visitCircles)) {
+          this.map.addLayer(this.visitCircles);
+        }
+      } else {
+        if (this.map.hasLayer(this.visitCircles)) {
+          this.map.removeLayer(this.visitCircles);
+        }
+      }
     } catch (error) {
       console.error('Error fetching visits:', error);
       const container = document.getElementById('visits-list');
@@ -175,13 +196,16 @@ export class VisitsManager {
 
     // Clear existing visit circles
     this.visitCircles.clearLayers();
+    this.confirmedVisitCircles.clearLayers();
 
     // Draw circles for all visits
     visits
       .filter(visit => visit.status !== 'declined')
       .forEach(visit => {
         if (visit.place?.latitude && visit.place?.longitude) {
+          const isConfirmed = visit.status === 'confirmed';
           const isSuggested = visit.status === 'suggested';
+
           const circle = L.circle([visit.place.latitude, visit.place.longitude], {
             color: isSuggested ? '#FFA500' : '#4A90E2', // Border color
             fillColor: isSuggested ? '#FFD700' : '#4A90E2', // Fill color
@@ -194,8 +218,12 @@ export class VisitsManager {
             dashArray: isSuggested ? '4' : null // Dotted border for suggested
           });
 
-          // Add the circle to the map
-          this.visitCircles.addLayer(circle);
+          // Add the circle to the appropriate layer
+          if (isConfirmed) {
+            this.confirmedVisitCircles.addLayer(circle);
+          } else {
+            this.visitCircles.addLayer(circle);
+          }
 
           // Attach click event to the circle
           circle.on('click', () => this.fetchPossiblePlaces(visit));
@@ -233,15 +261,18 @@ export class VisitsManager {
         const visitStyle = visit.status === 'suggested' ? 'border: 2px dashed #60a5fa;' : '';
 
         return `
-          <div class="w-full p-3 rounded-lg hover:bg-base-300 transition-colors visit-item ${bgClass}"
+          <div class="w-full p-3 rounded-lg hover:bg-base-300 transition-colors visit-item relative ${bgClass}"
                style="${visitStyle}"
                data-lat="${visit.place?.latitude || ''}"
                data-lng="${visit.place?.longitude || ''}"
                data-id="${visit.id}">
-            <div class="font-semibold overflow-hidden text-ellipsis whitespace-nowrap" title="${visit.name}">${this.truncateText(visit.name, 30)}</div>
+            <div class="absolute top-2 left-2 opacity-0 transition-opacity duration-200 visit-checkbox-container">
+              <input type="checkbox" class="checkbox checkbox-sm visit-checkbox" data-id="${visit.id}">
+            </div>
+            <div class="font-semibold overflow-hidden text-ellipsis whitespace-nowrap pl-6" title="${visit.name}">${this.truncateText(visit.name, 30)}</div>
             <div class="text-sm text-gray-600">
               ${timeDisplay.trim()}
-              <span class="text-gray-500">(${durationText})</span>
+              <div class="text-gray-500">(${durationText})</div>
             </div>
             ${visit.place?.city ? `<div class="text-sm">${visit.place.city}, ${visit.place.country}</div>` : ''}
             ${visit.status !== 'confirmed' ? `
@@ -265,6 +296,273 @@ export class VisitsManager {
 
     // Add click handlers to visit items and buttons
     this.addVisitItemEventListeners(container);
+
+    // Add merge functionality
+    this.setupMergeFunctionality(container);
+
+    // Ensure all checkboxes are hidden by default
+    container.querySelectorAll('.visit-checkbox-container').forEach(checkboxContainer => {
+      checkboxContainer.style.opacity = '0';
+      checkboxContainer.style.pointerEvents = 'none';
+    });
+  }
+
+  /**
+   * Sets up the merge functionality for visits
+   * @param {HTMLElement} container - The container with visit items
+   */
+  setupMergeFunctionality(container) {
+    const visitItems = container.querySelectorAll('.visit-item');
+
+    // Add hover event to show checkboxes
+    visitItems.forEach(item => {
+      // Show checkbox on hover only if no checkboxes are currently checked
+      item.addEventListener('mouseenter', () => {
+        const allChecked = container.querySelectorAll('.visit-checkbox:checked');
+        if (allChecked.length === 0) {
+          const checkbox = item.querySelector('.visit-checkbox-container');
+          if (checkbox) {
+            checkbox.style.opacity = '1';
+            checkbox.style.pointerEvents = 'auto';
+          }
+        }
+      });
+
+      // Hide checkbox on mouse leave if not checked and if no other checkboxes are checked
+      item.addEventListener('mouseleave', () => {
+        const allChecked = container.querySelectorAll('.visit-checkbox:checked');
+        if (allChecked.length === 0) {
+          const checkbox = item.querySelector('.visit-checkbox-container');
+          const checkboxInput = item.querySelector('.visit-checkbox');
+          if (checkbox && checkboxInput && !checkboxInput.checked) {
+            checkbox.style.opacity = '0';
+            checkbox.style.pointerEvents = 'none';
+          }
+        }
+      });
+    });
+
+    // Add change event to checkboxes
+    const checkboxes = container.querySelectorAll('.visit-checkbox');
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        this.updateMergeUI(container);
+      });
+    });
+  }
+
+  /**
+   * Updates the merge UI based on selected checkboxes
+   * @param {HTMLElement} container - The container with visit items
+   */
+  updateMergeUI(container) {
+    // Remove any existing action buttons
+    const existingActionButtons = container.querySelector('.visit-bulk-actions');
+    if (existingActionButtons) {
+      existingActionButtons.remove();
+    }
+
+    // Get all checked checkboxes
+    const checkedBoxes = container.querySelectorAll('.visit-checkbox:checked');
+
+    // Hide all checkboxes first
+    container.querySelectorAll('.visit-checkbox-container').forEach(checkboxContainer => {
+      checkboxContainer.style.opacity = '0';
+      checkboxContainer.style.pointerEvents = 'none';
+    });
+
+    // If no checkboxes are checked, we're done
+    if (checkedBoxes.length === 0) {
+      return;
+    }
+
+    // Get all visit items and their data
+    const visitItems = Array.from(container.querySelectorAll('.visit-item'));
+
+    // For each checked visit, show checkboxes for adjacent visits
+    Array.from(checkedBoxes).forEach(checkbox => {
+      const visitItem = checkbox.closest('.visit-item');
+      const visitId = checkbox.dataset.id;
+      const index = visitItems.indexOf(visitItem);
+
+      // Show checkbox for the current visit
+      const currentCheckbox = visitItem.querySelector('.visit-checkbox-container');
+      if (currentCheckbox) {
+        currentCheckbox.style.opacity = '1';
+        currentCheckbox.style.pointerEvents = 'auto';
+      }
+
+      // Show checkboxes for visits above and below
+      // Above visit
+      if (index > 0) {
+        const aboveVisitItem = visitItems[index - 1];
+        const aboveCheckbox = aboveVisitItem.querySelector('.visit-checkbox-container');
+        if (aboveCheckbox) {
+          aboveCheckbox.style.opacity = '1';
+          aboveCheckbox.style.pointerEvents = 'auto';
+        }
+      }
+
+      // Below visit
+      if (index < visitItems.length - 1) {
+        const belowVisitItem = visitItems[index + 1];
+        const belowCheckbox = belowVisitItem.querySelector('.visit-checkbox-container');
+        if (belowCheckbox) {
+          belowCheckbox.style.opacity = '1';
+          belowCheckbox.style.pointerEvents = 'auto';
+        }
+      }
+    });
+
+    // If 2 or more checkboxes are checked, show action buttons
+    if (checkedBoxes.length >= 2) {
+      // Find the lowest checked visit item
+      let lowestVisitItem = null;
+      let lowestPosition = -1;
+
+      checkedBoxes.forEach(checkbox => {
+        const visitItem = checkbox.closest('.visit-item');
+        const position = visitItems.indexOf(visitItem);
+
+        if (lowestPosition === -1 || position > lowestPosition) {
+          lowestPosition = position;
+          lowestVisitItem = visitItem;
+        }
+      });
+
+      // Create action buttons container
+      if (lowestVisitItem) {
+        // Create a container for the action buttons to ensure proper spacing
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'w-full p-2 visit-bulk-actions';
+
+        // Create button grid
+        const buttonGrid = document.createElement('div');
+        buttonGrid.className = 'grid grid-cols-3 gap-2';
+
+        // Merge button
+        const mergeButton = document.createElement('button');
+        mergeButton.className = 'btn btn-xs btn-primary';
+        mergeButton.textContent = 'Merge';
+        mergeButton.addEventListener('click', () => {
+          this.mergeVisits(Array.from(checkedBoxes).map(cb => cb.dataset.id));
+        });
+
+        // Confirm button
+        const confirmButton = document.createElement('button');
+        confirmButton.className = 'btn btn-xs btn-success';
+        confirmButton.textContent = 'Confirm';
+        confirmButton.addEventListener('click', () => {
+          this.bulkUpdateVisitStatus(Array.from(checkedBoxes).map(cb => cb.dataset.id), 'confirmed');
+        });
+
+        // Decline button
+        const declineButton = document.createElement('button');
+        declineButton.className = 'btn btn-xs btn-error';
+        declineButton.textContent = 'Decline';
+        declineButton.addEventListener('click', () => {
+          this.bulkUpdateVisitStatus(Array.from(checkedBoxes).map(cb => cb.dataset.id), 'declined');
+        });
+
+        // Add buttons to grid
+        buttonGrid.appendChild(mergeButton);
+        buttonGrid.appendChild(confirmButton);
+        buttonGrid.appendChild(declineButton);
+
+        // Add selection count text
+        const selectionText = document.createElement('div');
+        selectionText.className = 'text-sm text-center mt-1 text-gray-500';
+        selectionText.textContent = `${checkedBoxes.length} visits selected`;
+
+        // Add elements to container
+        actionsContainer.appendChild(buttonGrid);
+        actionsContainer.appendChild(selectionText);
+
+        // Insert after the lowest visit item
+        lowestVisitItem.insertAdjacentElement('afterend', actionsContainer);
+      }
+    }
+
+    // Show all checkboxes when at least one is checked
+    const checkboxContainers = container.querySelectorAll('.visit-checkbox-container');
+    checkboxContainers.forEach(checkboxContainer => {
+      checkboxContainer.style.opacity = '1';
+      checkboxContainer.style.pointerEvents = 'auto';
+    });
+  }
+
+  /**
+   * Sends a request to merge the selected visits
+   * @param {Array} visitIds - Array of visit IDs to merge
+   */
+  async mergeVisits(visitIds) {
+    if (!visitIds || visitIds.length < 2) {
+      showFlashMessage('error', 'At least 2 visits must be selected for merging');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/v1/visits/merge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          visit_ids: visitIds
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to merge visits');
+      }
+
+      showFlashMessage('notice', 'Visits merged successfully');
+
+      // Refresh the visits list
+      this.fetchAndDisplayVisits();
+    } catch (error) {
+      console.error('Error merging visits:', error);
+      showFlashMessage('error', 'Failed to merge visits');
+    }
+  }
+
+  /**
+   * Sends a request to update status for multiple visits
+   * @param {Array} visitIds - Array of visit IDs to update
+   * @param {string} status - The new status ('confirmed' or 'declined')
+   */
+  async bulkUpdateVisitStatus(visitIds, status) {
+    if (!visitIds || visitIds.length === 0) {
+      showFlashMessage('error', 'No visits selected');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/v1/visits/bulk_update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          visit_ids: visitIds,
+          status: status
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${status} visits`);
+      }
+
+      showFlashMessage('notice', `${visitIds.length} visits ${status === 'confirmed' ? 'confirmed' : 'declined'} successfully`);
+
+      // Refresh the visits list
+      this.fetchAndDisplayVisits();
+    } catch (error) {
+      console.error(`Error ${status}ing visits:`, error);
+      showFlashMessage('error', `Failed to ${status} visits`);
+    }
   }
 
   /**
@@ -276,8 +574,12 @@ export class VisitsManager {
     visitItems.forEach(item => {
       // Location click handler
       item.addEventListener('click', (event) => {
-        // Don't trigger if clicking on buttons
-        if (event.target.classList.contains('btn')) return;
+        // Don't trigger if clicking on buttons or checkboxes
+        if (event.target.classList.contains('btn') ||
+            event.target.classList.contains('checkbox') ||
+            event.target.closest('.visit-checkbox-container')) {
+          return;
+        }
 
         const lat = parseFloat(item.dataset.lat);
         const lng = parseFloat(item.dataset.lng);
@@ -382,12 +684,12 @@ export class VisitsManager {
           <form class="visit-name-form" data-visit-id="${visit.id}">
             <div class="form-control">
               <input type="text"
-                     class="input input-bordered input-sm w-full"
+                     class="input input-bordered input-sm w-full text-neutral-content"
                      value="${defaultName}"
                      placeholder="Enter visit name">
             </div>
             <div class="form-control mt-2">
-              <select class="select select-bordered select-sm w-full" name="place">
+              <select class="select text-neutral-content select-bordered select-sm w-full h-fit" name="place">
                 ${possiblePlaces.map(place => `
                   <option value="${place.id}" ${place.id === visit.place.id ? 'selected' : ''}>
                     ${place.name}
@@ -571,5 +873,13 @@ export class VisitsManager {
    */
   getVisitCirclesLayer() {
     return this.visitCircles;
+  }
+
+  /**
+   * Gets the confirmed visits layer group that's always visible
+   * @returns {L.LayerGroup} The confirmed visits layer group
+   */
+  getConfirmedVisitCirclesLayer() {
+    return this.confirmedVisitCircles;
   }
 }

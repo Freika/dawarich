@@ -78,6 +78,10 @@ Rails.application.routes.draw do
       resources :points,    only: %i[index create update destroy]
       resources :visits,    only: %i[index update] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
+        collection do
+          post 'merge', to: 'visits#merge'
+          post 'bulk_update', to: 'visits#bulk_update'
+        end
       end
       resources :stats, only: :index
 
