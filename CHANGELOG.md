@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+TODO:
+
+- Selecting a visit should put it above other visits on the map to make it easier to edit it. If many visits are on the same place, we should be able to click on them
+
 # 0.24.2 - 2025-02-24
 
 ## Added
