@@ -2,23 +2,43 @@
 
 class Api::V1::VisitsController < ApiController
   def index
-    start_time = begin
-      Time.zone.parse(params[:start_at])
-    rescue StandardError
-      Time.zone.now.beginning_of_day
-    end
-    end_time = begin
-      Time.zone.parse(params[:end_at])
-    rescue StandardError
-      Time.zone.now.end_of_day
-    end
+    # If selection is true, filter by coordinates instead of time
+    if params[:selection] == 'true' && params[:sw_lat].present? && params[:sw_lng].present? && params[:ne_lat].present? && params[:ne_lng].present?
+      sw_lat = params[:sw_lat].to_f
+      sw_lng = params[:sw_lng].to_f
+      ne_lat = params[:ne_lat].to_f
+      ne_lng = params[:ne_lng].to_f
 
-    visits =
-      Visit
-      .includes(:place)
-      .where(user: current_api_user)
-      .where('started_at >= ? AND ended_at <= ?', start_time, end_time)
-      .order(started_at: :desc)
+      # Create the PostGIS bounding box polygon
+      bounding_box = "ST_MakeEnvelope(#{sw_lng}, #{sw_lat}, #{ne_lng}, #{ne_lat}, 4326)"
+
+      visits =
+        Visit
+        .includes(:place)
+        .where(user: current_api_user)
+        .joins(:place)
+        .where("ST_Contains(#{bounding_box}, ST_SetSRID(places.lonlat::geometry, 4326))")
+        .order(started_at: :desc)
+    else
+      # Regular time-based filtering
+      start_time = begin
+        Time.zone.parse(params[:start_at])
+      rescue StandardError
+        Time.zone.now.beginning_of_day
+      end
+      end_time = begin
+        Time.zone.parse(params[:end_at])
+      rescue StandardError
+        Time.zone.now.end_of_day
+      end
+
+      visits =
+        Visit
+        .includes(:place)
+        .where(user: current_api_user)
+        .where('started_at >= ? AND ended_at <= ?', start_time, end_time)
+        .order(started_at: :desc)
+    end
 
     serialized_visits = visits.map do |visit|
       Api::VisitSerializer.new(visit).call

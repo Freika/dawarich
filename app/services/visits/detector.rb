@@ -3,10 +3,9 @@
 module Visits
   # Detects potential visits from a collection of tracked points
   class Detector
-    MINIMUM_VISIT_DURATION = 5.minutes
+    MINIMUM_VISIT_DURATION = 3.minutes
     MAXIMUM_VISIT_GAP = 30.minutes
     MINIMUM_POINTS_FOR_VISIT = 3
-    SIGNIFICANT_MOVEMENT_THRESHOLD = 50 # meters
 
     attr_reader :points
 
@@ -103,7 +102,7 @@ module Visits
 
     def calculate_visit_radius(points, center)
       max_distance = points.map do |point|
-        Geocoder::Calculations.distance_between(center, [point.lat, point.lon])
+        Geocoder::Calculations.distance_between(center, [point.lat, point.lon], units: :km)
       end.max
 
       # Convert to meters and ensure minimum radius
@@ -140,7 +139,7 @@ module Visits
                                    .transform_values(&:size)
       most_common_name = name_counts.max_by { |_, count| count }&.first
 
-      return unless most_common_name.present?
+      return if most_common_name.blank?
 
       # If we have a name, try to get additional context
       feature = common_features.find { |f| f.dig('properties', 'name') == most_common_name }

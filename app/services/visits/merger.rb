@@ -18,7 +18,7 @@ module Visits
       merged = []
       current_merged = visits.first
 
-      visits[1..-1].each do |visit|
+      visits[1..].each do |visit|
         if can_merge_visits?(current_merged, visit)
           # Merge the visits
           current_merged[:end_time] = visit[:end_time]
@@ -70,7 +70,8 @@ module Visits
       max_distance = between_points.map do |point|
         Geocoder::Calculations.distance_between(
           visit_center,
-          [point.lat, point.lon]
+          [point.lat, point.lon],
+          units: :km
         )
       end.max
 

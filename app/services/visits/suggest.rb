@@ -14,12 +14,19 @@ class Visits::Suggest
 
   def call
     visits = Visits::SmartDetect.new(user, start_at:, end_at:).call
-    create_visits_notification(user) if visits.any?
+    # create_visits_notification(user) if visits.any?
 
     return nil unless DawarichSettings.reverse_geocoding_enabled?
 
     visits.each(&:async_reverse_geocode)
     visits
+  rescue StandardError => e
+    # create a notification with stacktrace and what arguments were used
+    user.notifications.create!(
+      kind: :error,
+      title: 'Error suggesting visits',
+      content: "Error suggesting visits: #{e.message}\n#{e.backtrace.join("\n")}"
+    )
   end
 
   private

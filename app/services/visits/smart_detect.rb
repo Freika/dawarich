@@ -3,11 +3,9 @@
 module Visits
   # Coordinates the process of detecting and creating visits from tracked points
   class SmartDetect
-    MINIMUM_VISIT_DURATION = 5.minutes
+    MINIMUM_VISIT_DURATION = 3.minutes
     MAXIMUM_VISIT_GAP = 30.minutes
     MINIMUM_POINTS_FOR_VISIT = 3
-    SIGNIFICANT_PLACE_VISITS = 2 # Number of visits to consider a place significant
-    SIGNIFICANT_MOVEMENT_THRESHOLD = 50 # meters
 
     attr_reader :user, :start_at, :end_at, :points
 

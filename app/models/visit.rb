@@ -37,9 +37,9 @@ class Visit < ApplicationRecord
 
   def center
     if area.present?
-      area.to_coordinates
+      [area.lat, area.lon]
     elsif place.present?
-      place.to_coordinates
+      [place.lat, place.lon]
     else
       center_from_points
     end

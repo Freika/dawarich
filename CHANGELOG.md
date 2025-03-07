@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 TODO:
 
 - Selecting a visit should put it above other visits on the map to make it easier to edit it. If many visits are on the same place, we should be able to click on them
+- Do we need to reverse geocode places if we already got their data with address during visit suggestion?
 
 # 0.24.2 - 2025-02-24
 

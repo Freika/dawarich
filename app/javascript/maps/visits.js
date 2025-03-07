@@ -12,6 +12,9 @@ export class VisitsManager {
     this.confirmedVisitCircles = L.layerGroup().addTo(map); // Always visible layer for confirmed visits
     this.currentPopup = null;
     this.drawerOpen = false;
+    this.selectionMode = false;
+    this.selectionRect = null;
+    this.isSelectionActive = false;
   }
 
   /**
@@ -62,6 +65,187 @@ export class VisitsManager {
     });
 
     this.map.addControl(new DrawerControl({ position: 'topright' }));
+
+    // Add the selection tool button
+    this.addSelectionButton();
+  }
+
+  /**
+   * Adds a button to enable/disable the area selection tool
+   */
+  addSelectionButton() {
+    const SelectionControl = L.Control.extend({
+      onAdd: (map) => {
+        const button = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
+        button.innerHTML = '<i class="fas fa-draw-polygon"></i>';
+        button.title = 'Select Area';
+        button.id = 'selection-tool-button';
+        button.onclick = () => this.toggleSelectionMode();
+        return button;
+      }
+    });
+
+    new SelectionControl({ position: 'topright' }).addTo(this.map);
+  }
+
+  /**
+   * Toggles the area selection mode
+   */
+  toggleSelectionMode() {
+    if (this.selectionMode) {
+      // Disable selection mode
+      this.selectionMode = false;
+      this.map.dragging.enable();
+      document.getElementById('selection-tool-button').classList.remove('active');
+      this.map.off('mousedown', this.onMouseDown, this);
+    } else {
+      // Enable selection mode
+      this.selectionMode = true;
+      document.getElementById('selection-tool-button').classList.add('active');
+      this.map.dragging.disable();
+      this.map.on('mousedown', this.onMouseDown, this);
+
+      showFlashMessage('info', 'Selection mode enabled. Click and drag to select an area.');
+    }
+  }
+
+  /**
+   * Handles the mousedown event to start the selection
+   */
+  onMouseDown(e) {
+    // Clear any existing selection
+    this.clearSelection();
+
+    // Store start point and create rectangle
+    this.startPoint = e.latlng;
+
+    // Add mousemove and mouseup listeners
+    this.map.on('mousemove', this.onMouseMove, this);
+    this.map.on('mouseup', this.onMouseUp, this);
+  }
+
+  /**
+   * Handles the mousemove event to update the selection rectangle
+   */
+  onMouseMove(e) {
+    if (!this.startPoint) return;
+
+    // If we already have a rectangle, update its bounds
+    if (this.selectionRect) {
+      const bounds = L.latLngBounds(this.startPoint, e.latlng);
+      this.selectionRect.setBounds(bounds);
+    } else {
+      // Create a new rectangle
+      this.selectionRect = L.rectangle(
+        L.latLngBounds(this.startPoint, e.latlng),
+        { color: '#3388ff', weight: 2, fillOpacity: 0.1 }
+      ).addTo(this.map);
+    }
+  }
+
+  /**
+   * Handles the mouseup event to complete the selection
+   */
+  onMouseUp(e) {
+    // Remove the mouse event listeners
+    this.map.off('mousemove', this.onMouseMove, this);
+    this.map.off('mouseup', this.onMouseUp, this);
+
+    if (!this.selectionRect) return;
+
+    // Finalize the selection
+    this.isSelectionActive = true;
+
+    // Re-enable map dragging
+    this.map.dragging.enable();
+
+    // Disable selection mode
+    this.selectionMode = false;
+    document.getElementById('selection-tool-button').classList.remove('active');
+    this.map.off('mousedown', this.onMouseDown, this);
+
+    // Fetch visits within the selection
+    this.fetchVisitsInSelection();
+  }
+
+  /**
+   * Clears the current area selection
+   */
+  clearSelection() {
+    if (this.selectionRect) {
+      this.map.removeLayer(this.selectionRect);
+      this.selectionRect = null;
+    }
+    this.isSelectionActive = false;
+    this.startPoint = null;
+
+    // If the drawer is open, refresh with time-based visits
+    if (this.drawerOpen) {
+      this.fetchAndDisplayVisits();
+    }
+  }
+
+  /**
+   * Fetches visits within the selected area
+   */
+  async fetchVisitsInSelection() {
+    if (!this.selectionRect) return;
+
+    const bounds = this.selectionRect.getBounds();
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+
+    try {
+      const response = await fetch(
+        `/api/v1/visits?selection=true&sw_lat=${sw.lat}&sw_lng=${sw.lng}&ne_lat=${ne.lat}&ne_lng=${ne.lng}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const visits = await response.json();
+      this.displayVisits(visits);
+
+      // Make sure the drawer is open
+      if (!this.drawerOpen) {
+        this.toggleDrawer();
+      }
+
+      // Add cancel selection button to the drawer
+      this.addSelectionCancelButton();
+
+    } catch (error) {
+      console.error('Error fetching visits in selection:', error);
+      showFlashMessage('error', 'Failed to load visits in selected area');
+    }
+  }
+
+  /**
+   * Adds a cancel button to the drawer to clear the selection
+   */
+  addSelectionCancelButton() {
+    const container = document.getElementById('visits-list');
+    if (!container) return;
+
+    // Add cancel button at the top of the drawer if it doesn't exist
+    if (!document.getElementById('cancel-selection-button')) {
+      const cancelButton = document.createElement('button');
+      cancelButton.id = 'cancel-selection-button';
+      cancelButton.className = 'btn btn-sm btn-warning mb-4 w-full';
+      cancelButton.textContent = 'Cancel Area Selection';
+      cancelButton.onclick = () => this.clearSelection();
+
+      // Insert at the beginning of the container
+      container.insertBefore(cancelButton, container.firstChild);
+    }
   }
 
   /**
@@ -138,6 +322,12 @@ export class VisitsManager {
    */
   async fetchAndDisplayVisits() {
     try {
+      // If there's an active selection, don't perform time-based fetch
+      if (this.isSelectionActive && this.selectionRect) {
+        this.fetchVisitsInSelection();
+        return;
+      }
+
       // Get current timeframe from URL parameters
       const urlParams = new URLSearchParams(window.location.search);
       const startAt = urlParams.get('start_at') || new Date().toISOString();
@@ -753,6 +943,7 @@ export class VisitsManager {
         closeButton: true,
         closeOnClick: true,
         autoClose: true,
+        closeOnEscapeKey: true,
         maxWidth: 450, // Set maximum width
         minWidth: 300  // Set minimum width
       })

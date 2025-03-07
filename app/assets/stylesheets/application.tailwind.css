@@ -75,3 +75,31 @@
 .controls-shifted {
   right: 338px !important;
 }
+
+/* Selection Tool Styles */
+.leaflet-control-custom {
+  background-color: white;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-control-custom:hover {
+  background-color: #f3f4f6;
+}
+
+#selection-tool-button.active {
+  background-color: #60a5fa;
+  color: white;
+}
+
+/* Cancel Selection Button */
+#cancel-selection-button {
+  margin-bottom: 1rem;
+  width: 100%;
+}
