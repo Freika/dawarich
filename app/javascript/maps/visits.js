@@ -15,6 +15,7 @@ export class VisitsManager {
     this.selectionMode = false;
     this.selectionRect = null;
     this.isSelectionActive = false;
+    this.selectedPoints = [];
   }
 
   /**
@@ -80,6 +81,17 @@ export class VisitsManager {
         button.innerHTML = '<i class="fas fa-draw-polygon"></i>';
         button.title = 'Select Area';
         button.id = 'selection-tool-button';
+        button.style.width = '48px';
+        button.style.height = '48px';
+        button.style.border = 'none';
+        button.style.cursor = 'pointer';
+        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        button.style.backgroundColor = 'white';
+        button.style.borderRadius = '4px';
+        button.style.padding = '0';
+        button.style.lineHeight = '48px';
+        button.style.fontSize = '18px';
+        button.style.textAlign = 'center';
         button.onclick = () => this.toggleSelectionMode();
         return button;
       }
@@ -169,7 +181,7 @@ export class VisitsManager {
   }
 
   /**
-   * Clears the current area selection
+   * Clears the selection rectangle and resets selection state
    */
   clearSelection() {
     if (this.selectionRect) {
@@ -178,6 +190,7 @@ export class VisitsManager {
     }
     this.isSelectionActive = false;
     this.startPoint = null;
+    this.selectedPoints = [];
 
     // If the drawer is open, refresh with time-based visits
     if (this.drawerOpen) {
@@ -212,6 +225,13 @@ export class VisitsManager {
       }
 
       const visits = await response.json();
+
+      // Filter points in the selected area from DOM data
+      this.filterPointsInSelection(bounds);
+
+      // Set selection as active to ensure date summary is displayed
+      this.isSelectionActive = true;
+
       this.displayVisits(visits);
 
       // Make sure the drawer is open
@@ -226,6 +246,155 @@ export class VisitsManager {
       console.error('Error fetching visits in selection:', error);
       showFlashMessage('error', 'Failed to load visits in selected area');
     }
+  }
+
+  /**
+   * Filters points from DOM data that are within the selection bounds
+   * @param {L.LatLngBounds} bounds - The bounds of the selection rectangle
+   */
+  filterPointsInSelection(bounds) {
+    if (!bounds) {
+      this.selectedPoints = [];
+      return;
+    }
+
+    // Get points from the DOM
+    const allPoints = this.getPointsData();
+    if (!allPoints || !allPoints.length) {
+      this.selectedPoints = [];
+      return;
+    }
+
+    // Filter points that are within the bounds
+    this.selectedPoints = allPoints.filter(point => {
+      // Point format is expected to be [lat, lng, ...other data]
+      const lat = parseFloat(point[0]);
+      const lng = parseFloat(point[1]);
+
+      if (isNaN(lat) || isNaN(lng)) return false;
+
+      return bounds.contains([lat, lng]);
+    });
+  }
+
+  /**
+   * Gets points data from the DOM
+   * @returns {Array} Array of points with coordinates and timestamps
+   */
+  getPointsData() {
+    const mapElement = document.getElementById('map');
+    if (!mapElement) return [];
+
+    // Get coordinates data from the data attribute
+    const coordinatesAttr = mapElement.getAttribute('data-coordinates');
+    if (!coordinatesAttr) return [];
+
+    try {
+      return JSON.parse(coordinatesAttr);
+    } catch (e) {
+      console.error('Error parsing coordinates data:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Groups visits by date
+   * @param {Array} visits - Array of visit objects
+   * @returns {Object} Object with dates as keys and counts as values
+   */
+  groupVisitsByDate(visits) {
+    const dateGroups = {};
+
+    visits.forEach(visit => {
+      const startDate = new Date(visit.started_at);
+      const dateStr = startDate.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      if (!dateGroups[dateStr]) {
+        dateGroups[dateStr] = {
+          count: 0,
+          points: 0,
+          date: startDate
+        };
+      }
+
+      dateGroups[dateStr].count++;
+    });
+
+    // If we have selected points, count them by date
+    if (this.selectedPoints && this.selectedPoints.length > 0) {
+      this.selectedPoints.forEach(point => {
+        // Point timestamp is at index 4
+        const timestamp = point[4];
+        if (!timestamp) return;
+
+        // Convert timestamp to date string
+        const pointDate = new Date(parseInt(timestamp) * 1000);
+        const dateStr = pointDate.toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        if (!dateGroups[dateStr]) {
+          dateGroups[dateStr] = {
+            count: 0,
+            points: 0,
+            date: pointDate
+          };
+        }
+
+        dateGroups[dateStr].points++;
+      });
+    }
+
+    return dateGroups;
+  }
+
+  /**
+   * Creates HTML for date summary panel
+   * @param {Object} dateGroups - Object with dates as keys and count/points values
+   * @returns {string} HTML string for date summary panel
+   */
+  createDateSummaryHtml(dateGroups) {
+    // If there are no date groups, return empty string
+    if (Object.keys(dateGroups).length === 0) {
+      return '';
+    }
+
+    // Sort dates chronologically
+    const sortedDates = Object.keys(dateGroups).sort((a, b) => {
+      return dateGroups[a].date - dateGroups[b].date;
+    });
+
+    // Create HTML for each date group
+    const dateItems = sortedDates.map(dateStr => {
+      const pointsCount = dateGroups[dateStr].points || 0;
+      const visitsCount = dateGroups[dateStr].count || 0;
+
+      return `
+        <div class="flex justify-between items-center py-1 border-b border-base-300 last:border-0">
+          <div class="font-medium">${dateStr}</div>
+          <div class="flex gap-2">
+            ${pointsCount > 0 ? `<div class="badge badge-secondary">${pointsCount} points</div>` : ''}
+            ${visitsCount > 0 ? `<div class="badge badge-primary">${visitsCount} visits</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Create the whole panel
+    return `
+      <div class="bg-base-100 rounded-lg p-3 mb-4 shadow-sm">
+        <h3 class="text-lg font-bold mb-2">Data in Selected Area</h3>
+        <div class="divide-y divide-base-300">
+          ${dateItems}
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -266,7 +435,7 @@ export class VisitsManager {
       drawerButton.innerHTML = this.drawerOpen ? '➡️' : '⬅️';
     }
 
-    const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel, .drawer-button');
+    const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel, .drawer-button, #selection-tool-button');
     controls.forEach(control => {
       control.classList.toggle('controls-shifted');
     });
@@ -379,8 +548,19 @@ export class VisitsManager {
     const container = document.getElementById('visits-list');
     if (!container) return;
 
+    // Group visits by date and count
+    const dateGroups = this.groupVisitsByDate(visits || []);
+
+    // If we have points data and are in selection mode, calculate points per date
+    let dateGroupsHtml = '';
+    if (this.isSelectionActive && this.selectionRect) {
+      // Create a date summary panel
+      dateGroupsHtml = this.createDateSummaryHtml(dateGroups);
+    }
+
     if (!visits || visits.length === 0) {
-      container.innerHTML = '<p class="text-gray-500">No visits found in selected timeframe</p>';
+      let noVisitsHtml = '<p class="text-gray-500">No visits found in selected timeframe</p>';
+      container.innerHTML = dateGroupsHtml + noVisitsHtml;
       return;
     }
 
@@ -420,7 +600,7 @@ export class VisitsManager {
         }
       });
 
-    const html = visits
+    const visitsHtml = visits
       // Filter out declined visits
       .filter(visit => visit.status !== 'declined')
       .map(visit => {
@@ -479,7 +659,8 @@ export class VisitsManager {
         `;
       }).join('');
 
-    container.innerHTML = html;
+    // Combine date summary and visits HTML
+    container.innerHTML = dateGroupsHtml + visitsHtml;
 
     // Add the circles layer to the map
     this.visitCircles.addTo(this.map);
