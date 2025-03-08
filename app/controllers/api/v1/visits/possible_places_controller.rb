@@ -3,7 +3,6 @@
 class Api::V1::Visits::PossiblePlacesController < ApiController
   def index
     visit = current_api_user.visits.find(params[:id])
-    # Assuming you have a method to fetch possible places
     possible_places = visit.suggested_places
 
     render json: possible_places

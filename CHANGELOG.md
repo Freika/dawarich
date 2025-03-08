@@ -6,8 +6,49 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 TODO:
 
-- Selecting a visit should put it above other visits on the map to make it easier to edit it. If many visits are on the same place, we should be able to click on them
-- Do we need to reverse geocode places if we already got their data with address during visit suggestion?
+- Specs for app/controllers/api/v1/visits/possible_places_controller.rb
+- Specs for app/controllers/api/v1/visits_controller.rb
+- Move code from app/controllers/api/v1/visits/possible_places_controller.rb to services
+- Move code from app/jobs/bulk_visits_suggesting_job.rb to services
+- Specs for app/models/concerns/point_validation.rb
+- Specs for app/models/place.rb
+- Specs for app/serializers/api/place_serializer.rb
+- Specs for app/serializers/api/visit_serializer.rb
+- ActiveModel::Serializer
+- Specs for app/services/visits/bulk_update_service.rb
+- Specs for app/services/visits/creator.rb
+- Specs for app/services/visits/detector.rb
+- Specs for app/services/visits/merge_service.rb and rename it probably
+- Specs for app/services/visits/merger.rb
+- Specs for app/services/visits/place_finder.rb
+- Specs for app/services/visits/smart_detect.rb
+- Specs for app/services/visits/suggest.rb
+- Remove Stimulus controllers for visits on the Visits page
+- Revert changes to Visits page
+
+
+# 0.25.0 - 2025-03-08
+
+This release is focused on improving the visits experience.
+
+## Added
+
+- A new button to open the visits drawer.
+- User can now confirm or decline visits directly from the visits drawer.
+- Visits are now being shown on the map: orange circles for suggested visits and slightly bigger blue circles for confirmed visits.
+- User can click on a visit circle to rename it and select a place for it.
+- User can click on a visit card in the drawer panel to move to it on the map.
+- User can select click on the "Select area" button in the top right corner of the map to select an area on the map. Once area is selected, visits for all times in that area will be shown on the map, regardless of whether they are in the selected time range or not.
+- User can now select two or more visits in the visits drawer and merge them into a single visit. This operation is not reversible.
+- User can now select two or more visits in the visits drawer and confirm or decline them at once. This operation is not reversible.
+
+## Changed
+
+- Links to Points, Visits & Places, Imports and Exports were moved under "My data" section in the navbar.
+
+## Fixed
+
+
 
 # 0.24.2 - 2025-02-24
 
