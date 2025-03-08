@@ -38,7 +38,7 @@ module Visits
 
       {
         main_place: main_place,
-        suggested_places: all_suggested_places.uniq { |place| place.name }
+        suggested_places: all_suggested_places.uniq(&:name)
       }
     end
 

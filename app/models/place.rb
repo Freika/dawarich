@@ -31,4 +31,20 @@ class Place < ApplicationRecord
   def reverse_geocoded?
     geodata.present?
   end
+
+  def osm_id
+    geodata['properties']['osm_id']
+  end
+
+  def osm_key
+    geodata['properties']['osm_key']
+  end
+
+  def osm_value
+    geodata['properties']['osm_value']
+  end
+
+  def osm_type
+    geodata['properties']['osm_type']
+  end
 end

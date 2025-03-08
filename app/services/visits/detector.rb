@@ -5,7 +5,7 @@ module Visits
   class Detector
     MINIMUM_VISIT_DURATION = 3.minutes
     MAXIMUM_VISIT_GAP = 30.minutes
-    MINIMUM_POINTS_FOR_VISIT = 3
+    MINIMUM_POINTS_FOR_VISIT = 2
 
     attr_reader :points
 
@@ -57,7 +57,8 @@ module Visits
       # Calculate distance from visit center
       distance = Geocoder::Calculations.distance_between(
         [visit[:center_lat], visit[:center_lon]],
-        [point.lat, point.lon]
+        [point.lat, point.lon],
+        units: :km
       )
 
       # Dynamically adjust radius based on visit duration
