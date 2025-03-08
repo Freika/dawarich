@@ -46,7 +46,8 @@ module Visits
     def same_location?(first_visit, second_visit)
       distance = Geocoder::Calculations.distance_between(
         [first_visit[:center_lat], first_visit[:center_lon]],
-        [second_visit[:center_lat], second_visit[:center_lon]]
+        [second_visit[:center_lat], second_visit[:center_lon]],
+        units: :km
       )
 
       # Convert to meters and check if within threshold

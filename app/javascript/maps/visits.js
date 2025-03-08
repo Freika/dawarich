@@ -16,6 +16,17 @@ export class VisitsManager {
     this.selectionRect = null;
     this.isSelectionActive = false;
     this.selectedPoints = [];
+    this.highlightedVisitId = null;
+    this.highlightedCircles = []; // Track multiple circles instead of just one
+
+    // Add CSS for visit highlighting
+    const style = document.createElement('style');
+    style.textContent = `
+      .visit-highlighted {
+        transition: all 0.3s ease-in-out;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   /**
@@ -104,6 +115,10 @@ export class VisitsManager {
    * Toggles the area selection mode
    */
   toggleSelectionMode() {
+    // Clear any existing highlight
+    this.clearVisitHighlight();
+
+    this.isSelectionActive = !this.isSelectionActive;
     if (this.selectionMode) {
       // Disable selection mode
       this.selectionMode = false;
@@ -436,6 +451,9 @@ export class VisitsManager {
    * Toggles the visibility of the visits drawer
    */
   toggleDrawer() {
+    // Clear any existing highlight when drawer is toggled
+    this.clearVisitHighlight();
+
     this.drawerOpen = !this.drawerOpen;
     let drawer = document.getElementById('visits-drawer');
 
@@ -506,6 +524,9 @@ export class VisitsManager {
    */
   async fetchAndDisplayVisits() {
     try {
+      // Clear any existing highlight before fetching new visits
+      this.clearVisitHighlight();
+
       // If there's an active selection, don't perform time-based fetch
       if (this.isSelectionActive && this.selectionRect) {
         this.fetchVisitsInSelection();
@@ -972,6 +993,10 @@ export class VisitsManager {
    */
   addVisitItemEventListeners(container) {
     const visitItems = container.querySelectorAll('.visit-item');
+
+    // Remove existing highlight if any
+    this.clearVisitHighlight();
+
     visitItems.forEach(item => {
       // Location click handler
       item.addEventListener('click', (event) => {
@@ -982,8 +1007,12 @@ export class VisitsManager {
           return;
         }
 
+        const visitId = item.dataset.id;
         const lat = parseFloat(item.dataset.lat);
         const lng = parseFloat(item.dataset.lng);
+
+        // Highlight the clicked visit
+        this.highlightVisit(visitId, item, [lat, lng]);
 
         if (!isNaN(lat) && !isNaN(lng)) {
           this.map.setView([lat, lng], 15, {
@@ -1056,6 +1085,102 @@ export class VisitsManager {
   }
 
   /**
+   * Highlights a visit both in the panel and on the map
+   * @param {string} visitId - The ID of the visit to highlight
+   * @param {HTMLElement} item - The visit item element in the drawer
+   * @param {Array} coords - The coordinates [lat, lng] of the visit
+   */
+  highlightVisit(visitId, item, coords) {
+    // Clear existing highlight
+    this.clearVisitHighlight();
+
+    // Store the current highlighted visit ID
+    this.highlightedVisitId = visitId;
+
+    // Highlight in the drawer panel
+    if (item) {
+      item.classList.add('visit-highlighted');
+      item.style.border = '2px solid #60a5fa';
+      item.style.boxShadow = '0 0 0 2px #60a5fa';
+    }
+
+    // Find and highlight the circle on the map
+    if (coords && !isNaN(coords[0]) && !isNaN(coords[1])) {
+      console.log(`Highlighting visit ID: ${visitId} at coordinates [${coords[0]}, ${coords[1]}]`);
+
+      // Create a Leaflet LatLng object from the coords
+      const targetLatLng = L.latLng(coords[0], coords[1]);
+
+      // Helper function to find and highlight circles that are very close to the coords
+      const findAndHighlightCircles = (layerGroup) => {
+        layerGroup.eachLayer(layer => {
+          if (layer instanceof L.Circle) {
+            // Calculate the distance between circle center and target coordinates
+            const distance = targetLatLng.distanceTo(layer.getLatLng());
+
+            // Use a small distance threshold (2 meters)
+            if (distance < 2) {
+              console.log(`Found matching circle at distance: ${distance.toFixed(2)}m`);
+
+              // Store original style for restoration
+              const originalStyle = {
+                color: layer.options.color,
+                weight: layer.options.weight,
+                fillOpacity: layer.options.fillOpacity
+              };
+
+              layer._originalStyle = originalStyle;
+
+              // Apply highlighting
+              layer.setStyle({
+                color: '#f59e0b', // Amber color for highlighting
+                weight: 4,
+                fillOpacity: 0.7
+              });
+
+              // Add to the tracked highlights
+              this.highlightedCircles.push(layer);
+            }
+          }
+        });
+      };
+
+      // Check in both layer groups
+      findAndHighlightCircles(this.visitCircles);
+      findAndHighlightCircles(this.confirmedVisitCircles);
+
+      console.log(`Found ${this.highlightedCircles.length} circles to highlight`);
+    }
+  }
+
+  /**
+   * Clears any existing visit highlight
+   */
+  clearVisitHighlight() {
+    // Clear panel highlight
+    const highlightedItems = document.querySelectorAll('.visit-highlighted');
+    highlightedItems.forEach(el => {
+      el.classList.remove('visit-highlighted');
+      el.style.border = '';
+      el.style.boxShadow = '';
+    });
+
+    // Restore original circle styles for all highlighted circles
+    console.log(`Clearing ${this.highlightedCircles.length} highlighted circles`);
+    this.highlightedCircles.forEach(circle => {
+      if (circle && circle._originalStyle) {
+        circle.setStyle(circle._originalStyle);
+      } else if (circle) {
+        console.warn('Circle missing original style during cleanup');
+      }
+    });
+
+    // Clear the array of highlighted circles
+    this.highlightedCircles = [];
+    this.highlightedVisitId = null;
+  }
+
+  /**
    * Fetches possible places for a visit and displays them in a popup
    * @param {Object} visit - The visit object
    */
@@ -1065,6 +1190,14 @@ export class VisitsManager {
       if (this.currentPopup) {
         this.map.closePopup(this.currentPopup);
         this.currentPopup = null;
+      }
+
+      // Find and highlight the corresponding visit item in the drawer
+      if (visit.id) {
+        const visitItem = document.querySelector(`.visit-item[data-id="${visit.id}"]`);
+        if (visitItem && visit.place?.latitude && visit.place?.longitude) {
+          this.highlightVisit(visit.id, visitItem, [visit.place.latitude, visit.place.longitude]);
+        }
       }
 
       const response = await fetch(`/api/v1/visits/${visit.id}/possible_places`, {
