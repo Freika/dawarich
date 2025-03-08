@@ -192,9 +192,24 @@ export class VisitsManager {
     this.startPoint = null;
     this.selectedPoints = [];
 
+    // Clear all visit circles immediately
+    this.visitCircles.clearLayers();
+    this.confirmedVisitCircles.clearLayers();
+
     // If the drawer is open, refresh with time-based visits
     if (this.drawerOpen) {
       this.fetchAndDisplayVisits();
+    } else {
+      // If drawer is closed, we should hide all visits
+      if (this.map.hasLayer(this.visitCircles)) {
+        this.map.removeLayer(this.visitCircles);
+      }
+    }
+
+    // Reset drawer title
+    const drawerTitle = document.querySelector('#visits-drawer .drawer h2');
+    if (drawerTitle) {
+      drawerTitle.textContent = 'Recent Visits';
     }
   }
 
@@ -376,7 +391,7 @@ export class VisitsManager {
       const visitsCount = dateGroups[dateStr].count || 0;
 
       return `
-        <div class="flex justify-between items-center py-1 border-b border-base-300 last:border-0">
+        <div class="flex justify-between items-center py-1 border-b border-base-300 last:border-0 my-2">
           <div class="font-medium">${dateStr}</div>
           <div class="flex gap-2">
             ${pointsCount > 0 ? `<div class="badge badge-secondary">${pointsCount} points</div>` : ''}
@@ -548,6 +563,21 @@ export class VisitsManager {
     const container = document.getElementById('visits-list');
     if (!container) return;
 
+    // Update the drawer title if selection is active
+    if (this.isSelectionActive && this.selectionRect) {
+      const visitsCount = visits ? visits.filter(visit => visit.status !== 'declined').length : 0;
+      const drawerTitle = document.querySelector('#visits-drawer .drawer h2');
+      if (drawerTitle) {
+        drawerTitle.textContent = `${visitsCount} visits found`;
+      }
+    } else {
+      // Reset title to default when not in selection mode
+      const drawerTitle = document.querySelector('#visits-drawer .drawer h2');
+      if (drawerTitle) {
+        drawerTitle.textContent = 'Recent Visits';
+      }
+    }
+
     // Group visits by date and count
     const dateGroups = this.groupVisitsByDate(visits || []);
 
@@ -579,7 +609,7 @@ export class VisitsManager {
           const circle = L.circle([visit.place.latitude, visit.place.longitude], {
             color: isSuggested ? '#FFA500' : '#4A90E2', // Border color
             fillColor: isSuggested ? '#FFD700' : '#4A90E2', // Fill color
-            fillOpacity: isSuggested ? 0.4 : 0.6,
+            fillOpacity: isSuggested ? 0.3 : 0.5,
             radius: isConfirmed ? 110 : 80, // Increased size for confirmed visits
             weight: 2,
             interactive: true,
