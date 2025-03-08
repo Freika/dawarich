@@ -909,6 +909,7 @@ export class VisitsManager {
               <span class="text-sm mb-1 ${statusColorClass} font-semibold">
                 status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}
               </span>
+              <span>${visit.place.latitude}, ${visit.place.longitude}</span>
             </div>
           </div>
           <form class="visit-name-form" data-visit-id="${visit.id}">

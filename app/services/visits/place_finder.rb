@@ -5,7 +5,7 @@ module Visits
   class PlaceFinder
     attr_reader :user
 
-    SEARCH_RADIUS = 500 # meters
+    SEARCH_RADIUS = 100 # meters
     SIMILARITY_RADIUS = 50 # meters
 
     def initialize(user)
@@ -13,8 +13,8 @@ module Visits
     end
 
     def find_or_create_place(visit_data)
-      lat = visit_data[:center_lat].round(5)
-      lon = visit_data[:center_lon].round(5)
+      lat = visit_data[:center_lat]
+      lon = visit_data[:center_lon]
 
       # First check if there's an existing place
       existing_place = find_existing_place(lat, lon, visit_data[:suggested_name])
@@ -23,7 +23,7 @@ module Visits
       if existing_place
         return {
           main_place: existing_place,
-          suggested_places: find_suggested_places(lat, lon, existing_place.id)
+          suggested_places: find_suggested_places(lat, lon)
         }
       end
 
@@ -60,8 +60,8 @@ module Visits
 
     # Step 2: Collect potential places from all sources
     def collect_potential_places(visit_data)
-      lat = visit_data[:center_lat].round(5)
-      lon = visit_data[:center_lon].round(5)
+      lat = visit_data[:center_lat]
+      lon = visit_data[:center_lon]
 
       # Get places from points' geodata
       places_from_points = extract_places_from_points(visit_data[:points], lat, lon)
@@ -143,7 +143,7 @@ module Visits
     # Step 5: Fetch places from API
     def fetch_places_from_api(lat, lon)
       # Get broader search results from Geocoder
-      geocoder_results = Geocoder.search([lat, lon], radius: (SEARCH_RADIUS / 1000.0), units: :km)
+      geocoder_results = Geocoder.search([lat, lon], units: :km, limit: 20, distance_sort: true)
       return [] if geocoder_results.blank?
 
       places = []
@@ -221,10 +221,8 @@ module Visits
     end
 
     # Step 9: Find suggested places
-    def find_suggested_places(lat, lon, exclude_id = nil)
-      query = Place.near([lat, lon], SEARCH_RADIUS, :m).with_distance([lat, lon], :m)
-      query = query.where.not(id: exclude_id) if exclude_id
-      query.limit(5)
+    def find_suggested_places(lat, lon)
+      Place.near([lat, lon], SEARCH_RADIUS, :m).with_distance([lat, lon], :m)
     end
 
     # Helper methods
