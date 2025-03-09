@@ -1,0 +1,17 @@
+.visit-checkbox-container {
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+.visit-item {
+  position: relative;
+}
+.visit-item:hover .visit-checkbox-container {
+  opacity: 1 !important;
+}
+.leaflet-drawer.open {
+  transform: translateX(0);
+}
+.merge-visits-button {
+  margin: 8px 0;
+}

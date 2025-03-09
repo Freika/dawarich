@@ -11,11 +11,10 @@ class VisitsController < ApplicationController
     visits = current_user
              .visits
              .where(status:)
-             .includes(%i[suggested_places area])
+             .includes(%i[suggested_places area points])
              .order(started_at: order_by)
 
     @suggested_visits_count = current_user.visits.suggested.count
-
     @visits = visits.page(params[:page]).per(10)
   end
 

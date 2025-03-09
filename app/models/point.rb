@@ -36,7 +36,7 @@ class Point < ApplicationRecord
   end
 
   def recorded_at
-    Time.zone.at(timestamp)
+    @recorded_at ||= Time.zone.at(timestamp)
   end
 
   def async_reverse_geocode

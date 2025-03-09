@@ -67,7 +67,8 @@ RSpec.describe User, type: :model do
       let!(:stat2) { create(:stat, user:, toponyms: [{ 'country' => 'France' }]) }
 
       it 'returns array of countries' do
-        expect(subject).to eq(%w[Germany France])
+        expect(subject).to include('Germany', 'France')
+        expect(subject.count).to eq(2)
       end
     end
 

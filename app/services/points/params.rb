@@ -14,8 +14,7 @@ class Points::Params
       next unless params_valid?(point)
 
       {
-        latitude:           point[:geometry][:coordinates][1],
-        longitude:          point[:geometry][:coordinates][0],
+        lonlat: lonlat(point),
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
         timestamp:          DateTime.parse(point[:properties][:timestamp]),
@@ -45,5 +44,9 @@ class Points::Params
     point[:geometry].present? &&
       point[:geometry][:coordinates].present? &&
       point.dig(:properties, :timestamp).present?
+  end
+
+  def lonlat(point)
+    "POINT(#{point[:geometry][:coordinates][0]} #{point[:geometry][:coordinates][1]})"
   end
 end

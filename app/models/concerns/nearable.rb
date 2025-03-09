@@ -12,6 +12,9 @@ module Nearable
   }.freeze
 
   class_methods do
+    # It accepts an array of coordinates [latitude, longitude]
+    # and an optional radius and distance unit
+
     # rubocop:disable Metrics/MethodLength
     def near(*args)
       latitude, longitude, radius, unit = extract_coordinates_and_options(*args)
