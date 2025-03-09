@@ -117,7 +117,9 @@ RSpec.describe Visits::Finder do
           sw_lat: '48.8534',
           sw_lng: '2.3380',
           ne_lat: '48.8667',
-          ne_lng: '2.3580'
+          ne_lng: '2.3580',
+          start_at: Time.zone.now.beginning_of_day.iso8601,
+          end_at: Time.zone.now.end_of_day.iso8601
         }
       end
 

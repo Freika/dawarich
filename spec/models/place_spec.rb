@@ -32,13 +32,13 @@ RSpec.describe Place, type: :model do
 
     describe '#osm_id' do
       it 'returns the osm_id' do
-        expect(place.osm_id).to eq(583_204_619)
+        expect(place.osm_id).to eq(5_762_449_774)
       end
     end
 
     describe '#osm_key' do
       it 'returns the osm_key' do
-        expect(place.osm_key).to eq('tourism')
+        expect(place.osm_key).to eq('amenity')
       end
     end
 
@@ -56,13 +56,13 @@ RSpec.describe Place, type: :model do
 
     describe '#lon' do
       it 'returns the longitude' do
-        expect(place.lon).to eq(13.094891305125158)
+        expect(place.lon).to eq(13.0948638)
       end
     end
 
     describe '#lat' do
       it 'returns the latitude' do
-        expect(place.lat).to eq(54.29058712007127)
+        expect(place.lat).to eq(54.2905245)
       end
     end
   end

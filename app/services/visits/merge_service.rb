@@ -28,7 +28,7 @@ module Visits
 
     def merge_visits
       Visit.transaction do
-        update_base_visit(base_visit, visits)
+        update_base_visit(base_visit)
         reassign_points(base_visit, visits)
 
         visits.drop(1).each(&:destroy!)
