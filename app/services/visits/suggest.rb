@@ -14,7 +14,7 @@ class Visits::Suggest
 
   def call
     visits = Visits::SmartDetect.new(user, start_at:, end_at:).call
-    # create_visits_notification(user) if visits.any?
+    create_visits_notification(user) if visits.any?
 
     return nil unless DawarichSettings.reverse_geocoding_enabled?
 

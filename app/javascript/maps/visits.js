@@ -8,6 +8,18 @@ export class VisitsManager {
   constructor(map, apiKey) {
     this.map = map;
     this.apiKey = apiKey;
+
+    // Create custom panes for different visit types
+    if (!map.getPane('confirmedVisitsPane')) {
+      map.createPane('confirmedVisitsPane');
+      map.getPane('confirmedVisitsPane').style.zIndex = 450; // Above default overlay pane (400)
+    }
+
+    if (!map.getPane('suggestedVisitsPane')) {
+      map.createPane('suggestedVisitsPane');
+      map.getPane('suggestedVisitsPane').style.zIndex = 430; // Below confirmed visits but above base layers
+    }
+
     this.visitCircles = L.layerGroup();
     this.confirmedVisitCircles = L.layerGroup().addTo(map); // Always visible layer for confirmed visits
     this.currentPopup = null;

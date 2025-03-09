@@ -3,10 +3,11 @@
 module Visits
   # Service to handle merging multiple visits into one
   class MergeService
-    attr_reader :visits, :errors
+    attr_reader :visits, :errors, :base_visit
 
     def initialize(visits)
       @visits = visits
+      @base_visit = visits.first
       @errors = []
     end
 
@@ -27,36 +28,10 @@ module Visits
 
     def merge_visits
       Visit.transaction do
-        # Use the first visit as the base for the merged visit
-        base_visit = visits.first
+        update_base_visit(base_visit, visits)
+        reassign_points(base_visit, visits)
 
-        # Calculate the new start and end times
-        earliest_start = visits.min_by(&:started_at).started_at
-        latest_end = visits.max_by(&:ended_at).ended_at
-
-        # Calculate the total duration (sum of all visit durations)
-        total_duration = ((latest_end - earliest_start) / 60).round
-
-        # Create a combined name
-        combined_name = "Combined Visit (#{earliest_start.strftime('%b %d')} - #{latest_end.strftime('%b %d')})"
-
-        # Update the base visit with the new data
-        base_visit.update!(
-          started_at: earliest_start,
-          ended_at: latest_end,
-          duration: total_duration,
-          name: combined_name,
-          status: 'confirmed' # Set status to confirmed for the merged visit
-        )
-
-        # Move all points from other visits to the base visit
-        visits[1..].each do |visit|
-          # Update points to associate with the base visit
-          visit.points.update_all(visit_id: base_visit.id) # rubocop:disable Rails/SkipsModelValidations
-
-          # Delete the other visit
-          visit.destroy!
-        end
+        visits.drop(1).each(&:destroy!)
 
         base_visit
       end
@@ -64,6 +39,38 @@ module Visits
       Rails.logger.error("Failed to merge visits: #{e.message}")
       add_error(e.record.errors.full_messages.join(', '))
       nil
+    end
+
+    def prepare_base_visit
+      earliest_start = visits.min_by(&:started_at).started_at
+      latest_end     = visits.max_by(&:ended_at).ended_at
+      total_duration = ((latest_end - earliest_start) / 60).round
+      combined_name  = "Combined Visit (#{visits.map(&:name).join(', ')})"
+
+      {
+        earliest_start:,
+        latest_end:,
+        total_duration:,
+        combined_name:
+      }
+    end
+
+    def update_base_visit(base_visit)
+      base_visit_data = prepare_base_visit
+
+      base_visit.update!(
+        started_at: base_visit_data[:earliest_start],
+        ended_at: base_visit_data[:latest_end],
+        duration: base_visit_data[:total_duration],
+        name: base_visit_data[:combined_name],
+        status: 'confirmed'
+      )
+    end
+
+    def reassign_points(base_visit, visits)
+      visits[1..].each do |visit|
+        visit.points.update_all(visit_id: base_visit.id) # rubocop:disable Rails/SkipsModelValidations
+      end
     end
   end
 end

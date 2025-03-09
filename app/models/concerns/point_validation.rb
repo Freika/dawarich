@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module PointValidation
   extend ActiveSupport::Concern
 

@@ -3,7 +3,9 @@
 class Api::V1::Visits::PossiblePlacesController < ApiController
   def index
     visit = current_api_user.visits.find(params[:id])
-    possible_places = visit.suggested_places
+    possible_places = visit.suggested_places.map do |place|
+      Api::PlaceSerializer.new(place).call
+    end
 
     render json: possible_places
   rescue ActiveRecord::RecordNotFound

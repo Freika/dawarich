@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Visits
-  class BulkUpdateService
+  class BulkUpdate
     attr_reader :user, :visit_ids, :status, :errors
 
     def initialize(user, visit_ids, status)
@@ -26,7 +26,7 @@ module Visits
         return
       end
 
-      return if %w[confirmed declined].include?(status)
+      return if Visit.statuses.keys.include?(status)
 
       errors << 'Invalid status'
     end
@@ -39,7 +39,9 @@ module Visits
         return false
       end
 
+      # rubocop:disable Rails/SkipsModelValidations
       updated_count = visits.update_all(status: status)
+      # rubocop:enable Rails/SkipsModelValidations
 
       { count: updated_count, visits: visits }
     end

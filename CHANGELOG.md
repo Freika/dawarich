@@ -6,23 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 TODO:
 
-- Specs for app/controllers/api/v1/visits/possible_places_controller.rb
-- Specs for app/controllers/api/v1/visits_controller.rb
-- Move code from app/controllers/api/v1/visits/possible_places_controller.rb to services
-- Move code from app/jobs/bulk_visits_suggesting_job.rb to services
-- Specs for app/models/concerns/point_validation.rb
-- Specs for app/models/place.rb
-- Specs for app/serializers/api/place_serializer.rb
-- Specs for app/serializers/api/visit_serializer.rb
-- ActiveModel::Serializer
-- Specs for app/services/visits/bulk_update_service.rb
-- Specs for app/services/visits/creator.rb
-- Specs for app/services/visits/detector.rb
 - Specs for app/services/visits/merge_service.rb and rename it probably
-- Specs for app/services/visits/merger.rb
-- Specs for app/services/visits/place_finder.rb
-- Specs for app/services/visits/smart_detect.rb
-- Specs for app/services/visits/suggest.rb
 - Remove Stimulus controllers for visits on the Visits page
 - Revert changes to Visits page
 
