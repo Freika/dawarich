@@ -10,11 +10,10 @@ area_visits_calculation_scheduling_job:
   class: "AreaVisitsCalculationSchedulingJob"
   queue: visit_suggesting
 
-# Disabled until fixed
-# visit_suggesting_job:
-#   cron: "0 1 * * *" # every day at 1:00
-#   class: "VisitSuggestingJob"
-#   queue: visit_suggesting
+visit_suggesting_job:
+  cron: "5 0 * * *" # every day at 00:05
+  class: "BulkVisitsSuggestingJob"
+  queue: visit_suggesting
 
 watcher_job:
   cron: "0 */1 * * *" # every 1 hour

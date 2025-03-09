@@ -4,15 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-TODO:
-
-- Specs for app/services/visits/merge_service.rb and rename it probably
-- Remove Stimulus controllers for visits on the Visits page
-- Revert changes to Visits page
-- Decide on how to suggest visits for the past
-- Should visits be disabled for non-reverse-geocoded instances?
-
-# 0.25.0 - 2025-03-08
+# 0.25.0 - 2025-03-09
 
 This release is focused on improving the visits experience.
 
@@ -26,29 +18,12 @@ This release is focused on improving the visits experience.
 - User can select click on the "Select area" button in the top right corner of the map to select an area on the map. Once area is selected, visits for all times in that area will be shown on the map, regardless of whether they are in the selected time range or not.
 - User can now select two or more visits in the visits drawer and merge them into a single visit. This operation is not reversible.
 - User can now select two or more visits in the visits drawer and confirm or decline them at once. This operation is not reversible.
+- Status field to the User model. Inactive users are now being restricted from accessing some of the functionality, which is mostly about writing data to the database. Reading is remaining unrestricted.
+
 
 ## Changed
 
 - Links to Points, Visits & Places, Imports and Exports were moved under "My data" section in the navbar.
-
-## Fixed
-
-
-
-# 0.24.2 - 2025-02-24
-
-## Added
-
-- Status field to the User model. Inactive users are now being restricted from accessing some of the functionality, which is mostly about writing data to the database. Reading is remaining unrestricted.
-
-## Fixed
-
-- Fixed a bug where non-admin users could not import Immich and Photoprism geolocation data.
-- Fixed a bug where upon point deletion it was not being removed from the map, while it was actually deleted from the database. #883
-- Fixed a bug where upon import deletion stats were not being recalculated. #824
-
-### Changed
-
 - Restrict access to Sidekiq in non self-hosted mode.
 - Restrict access to background jobs in non self-hosted mode.
 - Restrict access to users management in non self-hosted mode.
@@ -56,6 +31,12 @@ This release is focused on improving the visits experience.
 - Semantic history points are now being imported much faster.
 - GPX files are now being imported much faster.
 - Distance calculation are now using Postgis functions and expected to be more accurate.
+
+## Fixed
+
+- Fixed a bug where non-admin users could not import Immich and Photoprism geolocation data.
+- Fixed a bug where upon point deletion it was not being removed from the map, while it was actually deleted from the database. #883
+- Fixed a bug where upon import deletion stats were not being recalculated. #824
 
 # 0.24.1 - 2025-02-13
 
