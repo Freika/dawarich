@@ -5,7 +5,7 @@ FactoryBot.define do
     name { 'MyString' }
     latitude { 54.2905245 }
     longitude { 13.0948638 }
-    lonlat { "POINT(#{longitude} #{latitude})" }
+    lonlat { "SRID=4326;POINT(#{longitude} #{latitude})" }
 
     trait :with_geodata do
       geodata do
@@ -37,6 +37,15 @@ FactoryBot.define do
             "state": 'Mecklenburg-Vorpommern'
           }
         }
+      end
+    end
+
+    # Special trait for testing with nil lonlat
+    trait :without_lonlat do
+      # Skip validation to create an invalid record for testing
+      to_create { |instance| instance.save(validate: false) }
+      after(:build) do |place|
+        place.lonlat = nil
       end
     end
   end

@@ -72,20 +72,19 @@ RSpec.describe VisitSuggestingJob, type: :job do
     end
 
     context 'with string dates' do
-      it 'handles string date parameters correctly' do
+      let(:string_start) { start_at.to_s }
+      let(:string_end) { end_at.to_s }
+      let(:parsed_start) { start_at.to_datetime }
+      let(:parsed_end) { end_at.to_datetime }
+
+      before do
         allow(Visits::Suggest).to receive(:new).and_call_original
         allow_any_instance_of(Visits::Suggest).to receive(:call)
-
-        string_start = start_at.to_s
-        string_end = end_at.to_s
-
-        # We'll mock the Time.zone.parse method to return predictable values
-        parsed_start = start_at.to_datetime
-        parsed_end = end_at.to_datetime
-
         allow(Time.zone).to receive(:parse).with(string_start).and_return(parsed_start)
         allow(Time.zone).to receive(:parse).with(string_end).and_return(parsed_end)
+      end
 
+      it 'handles string date parameters correctly' do
         # At minimum we expect one call to Suggest
         expect(Visits::Suggest).to receive(:new).at_least(:once).and_call_original
 
@@ -100,6 +99,7 @@ RSpec.describe VisitSuggestingJob, type: :job do
     context 'when user is inactive' do
       before do
         user.update(status: :inactive)
+
         allow(Visits::Suggest).to receive(:new).and_call_original
         allow_any_instance_of(Visits::Suggest).to receive(:call)
       end
@@ -107,6 +107,7 @@ RSpec.describe VisitSuggestingJob, type: :job do
       it 'still processes the job for the specified user' do
         # The job doesn't check for user active status, it just processes whatever user is passed
         expect(Visits::Suggest).to receive(:new).at_least(:once).and_call_original
+
         subject
       end
     end

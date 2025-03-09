@@ -9,7 +9,8 @@ TODO:
 - Specs for app/services/visits/merge_service.rb and rename it probably
 - Remove Stimulus controllers for visits on the Visits page
 - Revert changes to Visits page
-
+- Decide on how to suggest visits for the past
+- Should visits be disabled for non-reverse-geocoded instances?
 
 # 0.25.0 - 2025-03-08
 

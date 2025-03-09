@@ -22,8 +22,8 @@ module Visits
       return [] if points.empty?
 
       potential_visits = Visits::Detector.new(points).detect_potential_visits
-      merged_visits = Visits::Merger.new(points).merge_visits(potential_visits)
-      grouped_visits = group_nearby_visits(merged_visits).flatten
+      merged_visits    = Visits::Merger.new(points).merge_visits(potential_visits)
+      grouped_visits   = group_nearby_visits(merged_visits).flatten
 
       Visits::Creator.new(user).create_visits(grouped_visits)
     end

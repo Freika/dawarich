@@ -11,16 +11,8 @@ module Visits
     def call
       # If the start date is in the future or equal to the end date,
       # handle as a special case extending to the end of the start's year
-      if start_at >= end_at
-        year_end = start_at.end_of_year
-        return [start_at...year_end]
-      end
-
-      # Special case for dates within the same year
-      if start_at.year == end_at.year
-        year_end = start_at.end_of_year
-        return [start_at...year_end]
-      end
+      # or if the start and end are in the same year, return the year chunk
+      return [start_at..start_at.end_of_year] if start_in_future? || same_year?
 
       # First chunk: from start_at to end of that year
       first_end = start_at.end_of_year
@@ -43,5 +35,13 @@ module Visits
     private
 
     attr_reader :start_at, :end_at, :time_chunks
+
+    def start_in_future?
+      start_at >= end_at
+    end
+
+    def same_year?
+      start_at.year == end_at.year
+    end
   end
 end

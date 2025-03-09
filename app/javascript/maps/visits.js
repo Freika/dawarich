@@ -101,7 +101,7 @@ export class VisitsManager {
     const SelectionControl = L.Control.extend({
       onAdd: (map) => {
         const button = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
-        button.innerHTML = '<i class="fas fa-draw-polygon"></i>';
+        button.innerHTML = '📌';
         button.title = 'Select Area';
         button.id = 'selection-tool-button';
         button.style.width = '48px';

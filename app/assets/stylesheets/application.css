@@ -14,17 +14,6 @@
  *= require_self
  */
 
-/* Leaflet map container styles */
-[data-controller="visits-map"] {
-  height: 100%;
-  width: 100%;
-}
-
-[data-visits-map-target="container"] {
-  height: 100%;
-  width: 100%;
-}
-
 /* Loading spinner animation */
 @keyframes spinner {
   to {
