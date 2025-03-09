@@ -13,7 +13,7 @@
             <summary>My data</summary>
             <ul class="p-2 bg-base-100">
               <li><%= link_to 'Points', points_url, class: "#{active_class?(points_url)}" %></li>
-              <li><%= link_to 'Visits & Places<sup>α</sup>'.html_safe, visits_url(status: :confirmed), class: "#{active_class?(visits_url)}" %></li>
+              <li><%= link_to 'Visits&nbsp;&amp;&nbsp;Places<sup>α</sup>'.html_safe, visits_url(status: :confirmed), class: "#{active_class?(visits_url)}" %></li>
               <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
               <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
             </ul>
@@ -56,7 +56,7 @@
           <summary>My data</summary>
           <ul class="p-2 bg-base-100 rounded-box shadow-md z-10">
             <li><%= link_to 'Points', points_url, class: "mx-1 #{active_class?(points_url)}" %></li>
-            <li><%= link_to 'Visits & Places<sup>α</sup>'.html_safe, visits_url(status: :confirmed), class: "mx-1 #{active_class?(visits_url)}" %></li>
+            <li><%= link_to 'Visits&nbsp;&amp;&nbsp;Places<sup>α</sup>'.html_safe, visits_url(status: :confirmed), class: "mx-1 #{active_class?(visits_url)}" %></li>
             <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
             <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
           </ul>

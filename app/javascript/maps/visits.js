@@ -101,7 +101,7 @@ export class VisitsManager {
     const SelectionControl = L.Control.extend({
       onAdd: (map) => {
         const button = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
-        button.innerHTML = '📌';
+        button.innerHTML = '⚓️';
         button.title = 'Select Area';
         button.id = 'selection-tool-button';
         button.style.width = '48px';
@@ -121,6 +121,16 @@ export class VisitsManager {
     });
 
     new SelectionControl({ position: 'topright' }).addTo(this.map);
+
+    // Add CSS for selection button active state
+    const style = document.createElement('style');
+    style.textContent = `
+      #selection-tool-button.active {
+        border: 2px dashed #3388ff !important;
+        box-shadow: 0 0 8px rgba(51, 136, 255, 0.5) !important;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   /**
@@ -351,7 +361,7 @@ export class VisitsManager {
       const startDate = new Date(visit.started_at);
       const dateStr = startDate.toLocaleDateString(undefined, {
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric'
       });
 
@@ -377,7 +387,7 @@ export class VisitsManager {
         const pointDate = new Date(parseInt(timestamp) * 1000);
         const dateStr = pointDate.toLocaleDateString(undefined, {
           year: 'numeric',
-          month: 'long',
+          month: 'short',
           day: 'numeric'
         });
 
@@ -418,10 +428,10 @@ export class VisitsManager {
       const visitsCount = dateGroups[dateStr].count || 0;
 
       return `
-        <div class="flex justify-between items-center py-1 border-b border-base-300 last:border-0 my-2">
+        <div class="flex justify-between items-center py-1 border-b border-base-300 last:border-0 my-2 hover:bg-accent hover:text-accent-content transition-colors">
           <div class="font-medium">${dateStr}</div>
           <div class="flex gap-2">
-            ${pointsCount > 0 ? `<div class="badge badge-secondary">${pointsCount} points</div>` : ''}
+            ${pointsCount > 0 ? `<div class="badge badge-secondary">${pointsCount} pts</div>` : ''}
             ${visitsCount > 0 ? `<div class="badge badge-primary">${visitsCount} visits</div>` : ''}
           </div>
         </div>
@@ -514,7 +524,7 @@ export class VisitsManager {
     drawer.style.maxHeight = '100vh';
 
     drawer.innerHTML = `
-      <div class="p-4 drawer">
+      <div class="p-3 drawer">
         <h2 class="text-xl font-bold mb-4 text-accent-content">Recent Visits</h2>
         <div id="visits-list" class="space-y-2">
           <p class="text-gray-500">Loading visits...</p>
@@ -674,15 +684,15 @@ export class VisitsManager {
         let timeDisplay;
         if (isSameDay) {
           timeDisplay = `
-            ${startDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })},
             ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
             ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
           `;
         } else {
           timeDisplay = `
-            ${startDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })},
             ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
-            ${endDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })},
+            ${endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })},
             ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
           `;
         }
@@ -694,7 +704,7 @@ export class VisitsManager {
         const visitStyle = visit.status === 'suggested' ? 'border: 2px dashed #60a5fa;' : '';
 
         return `
-          <div class="w-full p-3 rounded-lg hover:bg-base-300 transition-colors visit-item relative ${bgClass}"
+          <div class="w-full p-3 m-2 rounded-lg hover:bg-base-300 transition-colors visit-item relative ${bgClass}"
                style="${visitStyle}"
                data-lat="${visit.place?.latitude || ''}"
                data-lng="${visit.place?.longitude || ''}"
@@ -1231,15 +1241,15 @@ export class VisitsManager {
       let dateTimeDisplay;
       if (isSameDay) {
         dateTimeDisplay = `
-          ${startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })},
+          ${startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })},
           ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
           ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
         `;
       } else {
         dateTimeDisplay = `
-          ${startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })},
+          ${startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })},
           ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
-          ${endDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })},
+          ${endDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })},
           ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
         `;
       }
