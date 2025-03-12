@@ -918,9 +918,23 @@ export class VisitsManager {
         selectionText.className = 'text-sm text-center mt-1 text-gray-500';
         selectionText.textContent = `${checkedBoxes.length} visits selected`;
 
+        // Add cancel selection button
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'btn btn-xs btn-neutral w-full mt-2';
+        cancelButton.textContent = 'Cancel Selection';
+        cancelButton.addEventListener('click', () => {
+          // Uncheck all checkboxes
+          checkedBoxes.forEach(checkbox => {
+            checkbox.checked = false;
+          });
+          // Update UI to remove action buttons
+          this.updateMergeUI(container);
+        });
+
         // Add elements to container
         actionsContainer.appendChild(buttonGrid);
         actionsContainer.appendChild(selectionText);
+        actionsContainer.appendChild(cancelButton);
 
         // Insert after the lowest visit item
         lowestVisitItem.insertAdjacentElement('afterend', actionsContainer);
