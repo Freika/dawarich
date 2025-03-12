@@ -58,23 +58,21 @@ RSpec.describe User, type: :model do
 
     describe '#import_sample_points' do
       before do
-        stub_const('IMPORT_SAMPLE_POINTS', true)
+        ENV['IMPORT_SAMPLE_POINTS'] = 'true'
+      end
+
+      after do
+        ENV['IMPORT_SAMPLE_POINTS'] = nil
       end
 
       it 'creates a sample import and enqueues an import job' do
-        expect do
-          user = create(:user)
-          # Explicitly call the method since the callback is disabled in test env
-          user.send(:import_sample_points)
+        user = create(:user)
 
-          # Check if an import was created with the expected name
-          expect(user.imports.count).to eq(1)
-          expect(user.imports.first.name).to eq('DELETE_ME_this_is_a_demo_import_DELETE_ME')
-          expect(user.imports.first.source).to eq('gpx')
+        expect(user.imports.count).to eq(1)
+        expect(user.imports.first.name).to eq('DELETE_ME_this_is_a_demo_import_DELETE_ME')
+        expect(user.imports.first.source).to eq('gpx')
 
-          # Check if the ImportJob was enqueued with correct parameters
-          expect(ImportJob).to have_been_enqueued.with(user.id, user.imports.first.id)
-        end.to change(Import, :count).by(1)
+        expect(ImportJob).to have_been_enqueued.with(user.id, user.imports.first.id)
       end
     end
   end
