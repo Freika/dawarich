@@ -19,6 +19,7 @@ This release is focused on improving the visits experience.
 - User can now select two or more visits in the visits drawer and merge them into a single visit. This operation is not reversible.
 - User can now select two or more visits in the visits drawer and confirm or decline them at once. This operation is not reversible.
 - Status field to the User model. Inactive users are now being restricted from accessing some of the functionality, which is mostly about writing data to the database. Reading is remaining unrestricted.
+- After user is created, a sample import is being created for them to demonstrate how to use the app.
 
 
 ## Changed
