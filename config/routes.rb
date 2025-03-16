@@ -6,7 +6,7 @@ Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
-  authenticate :user, ->(u) { u.admin? } do
+  authenticate :user, ->(u) { u.admin? && DawarichSettings.self_hosted? } do
     mount Sidekiq::Web => '/sidekiq'
   end
 
@@ -53,10 +53,15 @@ Rails.application.routes.draw do
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
 
   root to: 'home#index'
-  devise_for :users, skip: [:registrations]
-  as :user do
-    get 'users/edit' => 'devise/registrations#edit', :as => 'edit_user_registration'
-    put 'users' => 'devise/registrations#update', :as => 'user_registration'
+
+  if SELF_HOSTED
+    devise_for :users, skip: [:registrations]
+    as :user do
+      get 'users/edit' => 'devise/registrations#edit', :as => 'edit_user_registration'
+      put 'users' => 'devise/registrations#update', :as => 'user_registration'
+    end
+  else
+    devise_for :users
   end
 
   get 'map', to: 'map#index'
@@ -71,8 +76,14 @@ Rails.application.routes.draw do
 
       resources :areas,     only: %i[index create update destroy]
       resources :points,    only: %i[index create update destroy]
-      resources :visits,    only: %i[update]
-      resources :stats,     only: :index
+      resources :visits,    only: %i[index update] do
+        get 'possible_places', to: 'visits/possible_places#index', on: :member
+        collection do
+          post 'merge', to: 'visits#merge'
+          post 'bulk_update', to: 'visits#bulk_update'
+        end
+      end
+      resources :stats, only: :index
 
       namespace :overland do
         resources :batches, only: :create

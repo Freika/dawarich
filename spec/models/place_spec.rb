@@ -11,8 +11,7 @@ RSpec.describe Place, type: :model do
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
-    it { is_expected.to validate_presence_of(:latitude) }
-    it { is_expected.to validate_presence_of(:longitude) }
+    it { is_expected.to validate_presence_of(:lonlat) }
   end
 
   describe 'enums' do
@@ -20,13 +19,50 @@ RSpec.describe Place, type: :model do
   end
 
   describe 'methods' do
-    describe '#async_reverse_geocode' do
-      let(:place) { create(:place) }
+    let(:place) { create(:place, :with_geodata) }
 
+    describe '#async_reverse_geocode' do
+      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
       before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
 
       it 'updates address' do
         expect { place.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob).with('Place', place.id)
+      end
+    end
+
+    describe '#osm_id' do
+      it 'returns the osm_id' do
+        expect(place.osm_id).to eq(5_762_449_774)
+      end
+    end
+
+    describe '#osm_key' do
+      it 'returns the osm_key' do
+        expect(place.osm_key).to eq('amenity')
+      end
+    end
+
+    describe '#osm_value' do
+      it 'returns the osm_value' do
+        expect(place.osm_value).to eq('restaurant')
+      end
+    end
+
+    describe '#osm_type' do
+      it 'returns the osm_type' do
+        expect(place.osm_type).to eq('N')
+      end
+    end
+
+    describe '#lon' do
+      it 'returns the longitude' do
+        expect(place.lon).to eq(13.0948638)
+      end
+    end
+
+    describe '#lat' do
+      it 'returns the latitude' do
+        expect(place.lat).to eq(54.2905245)
       end
     end
   end

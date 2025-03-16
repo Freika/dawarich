@@ -18,8 +18,7 @@ RSpec.describe Geojson::Params do
 
     it 'returns the correct data for each point' do
       expect(subject.first).to eq(
-        latitude: '0.0',
-        longitude: '0.0',
+        lonlat: 'POINT(0.1 0.1)',
         battery_status: nil,
         battery: nil,
         timestamp: Time.zone.at(1_609_459_201),
@@ -34,8 +33,8 @@ RSpec.describe Geojson::Params do
           'geometry' => {
             'type' => 'Point',
             'coordinates' => [
-              '0.0',
-              '0.0'
+              '0.1',
+              '0.1'
             ]
           },
           'properties' => {
@@ -72,8 +71,7 @@ RSpec.describe Geojson::Params do
 
       it 'returns the correct data for each point' do
         expect(subject.first).to eq(
-          latitude: 10.758321212464024,
-          longitude: 106.64234449272531,
+          lonlat: 'POINT(106.64234449272531 10.758321212464024)',
           battery_status: nil,
           battery: nil,
           timestamp: Time.parse('2024-11-03T16:30:11.331+07:00').to_i,

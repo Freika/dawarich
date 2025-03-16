@@ -38,7 +38,7 @@ class Areas::Visits::Create
       end
 
     points = Point.where(user_id: user.id)
-                  .near([area.latitude, area.longitude], area_radius, units: DISTANCE_UNIT)
+                  .near([area.latitude, area.longitude], area_radius, DISTANCE_UNIT)
                   .order(timestamp: :asc)
 
     # check if all points within the area are assigned to a visit

@@ -16,6 +16,8 @@ class User < ApplicationRecord
   has_many :trips,  dependent: :destroy
 
   after_create :create_api_key
+  after_create :import_sample_points
+  after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
   before_save :sanitize_input
 
   validates :email, presence: true
@@ -23,6 +25,8 @@ class User < ApplicationRecord
   validates :reset_password_token, uniqueness: true, allow_nil: true
 
   attribute :admin, :boolean, default: false
+
+  enum :status, { inactive: 0, active: 1 }
 
   def safe_settings
     Users::SafeSettings.new(settings)
@@ -104,9 +108,31 @@ class User < ApplicationRecord
     save
   end
 
+  def activate
+    update(status: :active)
+  end
+
   def sanitize_input
     settings['immich_url']&.gsub!(%r{/+\z}, '')
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
+  end
+
+  def import_sample_points
+    return unless Rails.env.development? ||
+                  Rails.env.production? ||
+                  (Rails.env.test? && ENV['IMPORT_SAMPLE_POINTS'])
+
+    raw_data = Hash.from_xml(
+      File.read(Rails.root.join('lib/assets/sample_points.gpx'))
+    )
+
+    import = imports.create(
+      name: 'DELETE_ME_this_is_a_demo_import_DELETE_ME',
+      source: 'gpx',
+      raw_data:
+    )
+
+    ImportJob.perform_later(id, import.id)
   end
 end

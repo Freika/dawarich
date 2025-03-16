@@ -13,34 +13,27 @@ import {
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
-import { showFlashMessage, fetchAndDisplayPhotos, debounce } from "../maps/helpers";
-
-import {
-  osmMapLayer,
-  osmHotMapLayer,
-  OPNVMapLayer,
-  openTopoMapLayer,
-  cyclOsmMapLayer,
-  esriWorldStreetMapLayer,
-  esriWorldTopoMapLayer,
-  esriWorldImageryMapLayer,
-  esriWorldGrayCanvasMapLayer
-} from "../maps/layers";
+import { showFlashMessage, fetchAndDisplayPhotos } from "../maps/helpers";
 import { countryCodesMap } from "../maps/country_codes";
+import { VisitsManager } from "../maps/visits";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
 import { TileMonitor } from "../maps/tile_monitor";
+import BaseController from "./base_controller";
+import { createAllMapLayers } from "../maps/layers";
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["container"];
 
   settingsButtonAdded = false;
   layerControl = null;
   visitedCitiesCache = new Map();
   trackedMonthsCache = null;
+  currentPopup = null;
 
   connect() {
+    super.connect();
     console.log("Map controller connected");
 
     this.apiKey = this.element.dataset.api_key;
@@ -110,6 +103,21 @@ export default class extends Controller {
     this.map.getPane('areasPane').style.zIndex = 650;
     this.map.getPane('areasPane').style.pointerEvents = 'all';
 
+    // Create custom panes for visits
+    // Note: We'll still create visitsPane for backward compatibility
+    this.map.createPane('visitsPane');
+    this.map.getPane('visitsPane').style.zIndex = 600;
+    this.map.getPane('visitsPane').style.pointerEvents = 'all';
+
+    // Create separate panes for confirmed and suggested visits
+    this.map.createPane('confirmedVisitsPane');
+    this.map.getPane('confirmedVisitsPane').style.zIndex = 450;
+    this.map.getPane('confirmedVisitsPane').style.pointerEvents = 'all';
+
+    this.map.createPane('suggestedVisitsPane');
+    this.map.getPane('suggestedVisitsPane').style.zIndex = 460;
+    this.map.getPane('suggestedVisitsPane').style.pointerEvents = 'all';
+
     // Initialize areasLayer as a feature group and add it to the map immediately
     this.areasLayer = new L.FeatureGroup();
     this.photoMarkers = L.layerGroup();
@@ -120,6 +128,9 @@ export default class extends Controller {
       this.addSettingsButton();
     }
 
+    // Initialize the visits manager
+    this.visitsManager = new VisitsManager(this.map, this.apiKey);
+
     // Initialize layers for the layer control
     const controlsLayer = {
       Points: this.markersLayer,
@@ -128,7 +139,9 @@ export default class extends Controller {
       "Fog of War": new this.fogOverlay(),
       "Scratch map": this.scratchLayer,
       Areas: this.areasLayer,
-      Photos: this.photoMarkers
+      Photos: this.photoMarkers,
+      "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
+      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
     };
 
     // Initialize layer control first
@@ -257,6 +270,12 @@ export default class extends Controller {
 
     // Start monitoring
     this.tileMonitor.startMonitoring();
+
+    // Add the drawer button for visits
+    this.visitsManager.addDrawerButton();
+
+    // Fetch and display visits when map loads
+    this.visitsManager.fetchAndDisplayVisits();
   }
 
   disconnect() {
@@ -402,17 +421,7 @@ export default class extends Controller {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-    let maps = {
-      OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
-      "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
-      OPNV: OPNVMapLayer(this.map, selectedLayerName),
-      openTopo: openTopoMapLayer(this.map, selectedLayerName),
-      cyclOsm: cyclOsmMapLayer(this.map, selectedLayerName),
-      esriWorldStreet: esriWorldStreetMapLayer(this.map, selectedLayerName),
-      esriWorldTopo: esriWorldTopoMapLayer(this.map, selectedLayerName),
-      esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
-      esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
-    };
+    let maps = createAllMapLayers(this.map, selectedLayerName);
 
     // Add custom map if it exists in settings
     if (this.userSettings.maps && this.userSettings.maps.url) {
@@ -536,13 +545,13 @@ export default class extends Controller {
       if (this.layerControl) {
         this.map.removeControl(this.layerControl);
         const controlsLayer = {
-          Points: this.markersLayer,
-          Routes: this.polylinesLayer,
-          Heatmap: this.heatmapLayer,
-          "Fog of War": this.fogOverlay,
-          "Scratch map": this.scratchLayer,
-          Areas: this.areasLayer,
-          Photos: this.photoMarkers
+          Points: this.markersLayer || L.layerGroup(),
+          Routes: this.polylinesLayer || L.layerGroup(),
+          Heatmap: this.heatmapLayer || L.layerGroup(),
+          "Fog of War": new this.fogOverlay(),
+          "Scratch map": this.scratchLayer || L.layerGroup(),
+          Areas: this.areasLayer || L.layerGroup(),
+          Photos: this.photoMarkers || L.layerGroup()
         };
         this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
       }
@@ -978,12 +987,17 @@ export default class extends Controller {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
         button.innerHTML = '📅';
 
-        button.style.backgroundColor = 'white';
         button.style.width = '48px';
         button.style.height = '48px';
         button.style.border = 'none';
         button.style.cursor = 'pointer';
         button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        button.style.backgroundColor = 'white';
+        button.style.borderRadius = '4px';
+        button.style.padding = '0';
+        button.style.lineHeight = '48px';
+        button.style.fontSize = '18px';
+        button.style.textAlign = 'center';
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
@@ -1337,15 +1351,4 @@ export default class extends Controller {
 
     container.innerHTML = html;
   }
-
-  formatDuration(seconds) {
-    const days = Math.floor(seconds / (24 * 60 * 60));
-    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
-
-    if (days > 0) {
-      return `${days}d ${hours}h`;
-    }
-    return `${hours}h`;
-  }
 }
-

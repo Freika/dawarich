@@ -119,4 +119,66 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
   end
+
+  describe 'POST /create' do
+    it 'returns a successful response' do
+      post "/api/v1/points?api_key=#{user.api_key}", params: { point: { latitude: 1.0, longitude: 1.0 } }
+
+      expect(response).to have_http_status(:success)
+    end
+
+    context 'when user is inactive' do
+      before do
+        user.update(status: :inactive)
+      end
+
+      it 'returns an unauthorized response' do
+        post "/api/v1/points?api_key=#{user.api_key}", params: { point: { latitude: 1.0, longitude: 1.0 } }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
+  describe 'PUT /update' do
+    it 'returns a successful response' do
+      put "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}",
+          params: { point: { latitude: 1.0, longitude: 1.1 } }
+
+      expect(response).to have_http_status(:success)
+    end
+
+    context 'when user is inactive' do
+      before do
+        user.update(status: :inactive)
+      end
+
+      it 'returns an unauthorized response' do
+        put "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}",
+            params: { point: { latitude: 1.0, longitude: 1.1 } }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
+  describe 'DELETE /destroy' do
+    it 'returns a successful response' do
+      delete "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}"
+
+      expect(response).to have_http_status(:success)
+    end
+
+    context 'when user is inactive' do
+      before do
+        user.update(status: :inactive)
+      end
+
+      it 'returns an unauthorized response' do
+        delete "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

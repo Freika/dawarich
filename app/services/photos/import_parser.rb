@@ -20,8 +20,7 @@ class Photos::ImportParser
     return 0 if point_exists?(point, point['timestamp'])
 
     Point.create(
-      latitude:   point['latitude'].to_d,
-      longitude:  point['longitude'].to_d,
+      lonlat: "POINT(#{point['longitude']} #{point['latitude']})",
       timestamp:  point['timestamp'],
       raw_data:   point,
       import_id:  import.id,
@@ -33,8 +32,7 @@ class Photos::ImportParser
 
   def point_exists?(point, timestamp)
     Point.exists?(
-      latitude:   point['latitude'].to_d,
-      longitude:  point['longitude'].to_d,
+      lonlat: "POINT(#{point['longitude']} #{point['latitude']})",
       timestamp:,
       user_id:
     )

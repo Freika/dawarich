@@ -63,3 +63,5 @@
 .ash_history
 .cache/
 .dotnet/
+.cursorrules
+.cursormemory.md

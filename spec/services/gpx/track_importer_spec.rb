@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Gpx::TrackParser do
+RSpec.describe Gpx::TrackImporter do
   describe '#call' do
     subject(:parser) { described_class.new(import, user.id).call }
 
@@ -17,7 +17,7 @@ RSpec.describe Gpx::TrackParser do
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(10).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(1).time
 
         parser
       end
@@ -31,7 +31,7 @@ RSpec.describe Gpx::TrackParser do
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(43).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(1).time
 
         parser
       end
@@ -45,7 +45,7 @@ RSpec.describe Gpx::TrackParser do
       end
 
       it 'broadcasts importing progress' do
-        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(34).times
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).exactly(1).time
 
         parser
       end
@@ -53,8 +53,8 @@ RSpec.describe Gpx::TrackParser do
       it 'creates points with correct data' do
         parser
 
-        expect(Point.first.latitude).to eq(37.17221.to_d)
-        expect(Point.first.longitude).to eq(-3.55468.to_d)
+        expect(Point.first.lat).to eq(37.1722103)
+        expect(Point.first.lon).to eq(-3.55468)
         expect(Point.first.altitude).to eq(1066)
         expect(Point.first.timestamp).to eq(Time.zone.parse('2024-04-21T10:19:55Z').to_i)
         expect(Point.first.velocity).to eq('2.9')
@@ -67,8 +67,8 @@ RSpec.describe Gpx::TrackParser do
       it 'creates points with correct data' do
         parser
 
-        expect(Point.first.latitude).to eq(10.758321.to_d)
-        expect(Point.first.longitude).to eq(106.642344.to_d)
+        expect(Point.first.lat).to eq(10.758321212464024)
+        expect(Point.first.lon).to eq(106.64234449272531)
         expect(Point.first.altitude).to eq(17)
         expect(Point.first.timestamp).to eq(1_730_626_211)
         expect(Point.first.velocity).to eq('2.8')

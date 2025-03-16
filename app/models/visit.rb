@@ -29,14 +29,30 @@ class Visit < ApplicationRecord
     return area&.radius if area.present?
 
     radius = points.map do |point|
-      Geocoder::Calculations.distance_between(center, [point.latitude, point.longitude])
+      Geocoder::Calculations.distance_between(center, [point.lat, point.lon])
     end.max
 
     radius && radius >= 15 ? radius : 15
   end
 
   def center
-    area.present? ? area.to_coordinates : place.to_coordinates
+    if area.present?
+      [area.lat, area.lon]
+    elsif place.present?
+      [place.lat, place.lon]
+    else
+      center_from_points
+    end
+  end
+
+  def center_from_points
+    return [0, 0] if points.empty?
+
+    lat_sum = points.sum(&:lat)
+    lon_sum = points.sum(&:lon)
+    count = points.size.to_f
+
+    [lat_sum / count, lon_sum / count]
   end
 
   def async_reverse_geocode

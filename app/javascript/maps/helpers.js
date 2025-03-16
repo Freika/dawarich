@@ -87,10 +87,19 @@ export function haversineDistance(lat1, lon1, lat2, lon2, unit = 'km') {
 }
 
 export function showFlashMessage(type, message) {
-  // Create the outer flash container div
+  // Get or create the flash container
+  let flashContainer = document.getElementById('flash-messages');
+  if (!flashContainer) {
+    flashContainer = document.createElement('div');
+    flashContainer.id = 'flash-messages';
+    flashContainer.className = 'fixed top-5 right-5 flex flex-col-reverse gap-2 z-50';
+    document.body.appendChild(flashContainer);
+  }
+
+  // Create the flash message div
   const flashDiv = document.createElement('div');
   flashDiv.setAttribute('data-controller', 'removals');
-  flashDiv.className = `flex items-center fixed top-5 right-5 ${classesForFlash(type)} py-3 px-5 rounded-lg`;
+  flashDiv.className = `flex items-center justify-between ${classesForFlash(type)} py-3 px-5 rounded-lg z-50`;
 
   // Create the message div
   const messageDiv = document.createElement('div');
@@ -101,6 +110,7 @@ export function showFlashMessage(type, message) {
   const closeButton = document.createElement('button');
   closeButton.setAttribute('type', 'button');
   closeButton.setAttribute('data-action', 'click->removals#remove');
+  closeButton.className = 'ml-auto'; // Ensures button stays on the right
 
   // Create the SVG icon for the close button
   const closeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -116,21 +126,22 @@ export function showFlashMessage(type, message) {
   closeIconPath.setAttribute('stroke-width', '2');
   closeIconPath.setAttribute('d', 'M6 18L18 6M6 6l12 12');
 
-  // Append the path to the SVG
+  // Append all elements
   closeIcon.appendChild(closeIconPath);
-  // Append the SVG to the close button
   closeButton.appendChild(closeIcon);
-
-  // Append the message and close button to the flash div
   flashDiv.appendChild(messageDiv);
   flashDiv.appendChild(closeButton);
+  flashContainer.appendChild(flashDiv);
 
-  // Append the flash message to the body or a specific flash container
-  document.body.appendChild(flashDiv);
-
-  // Optional: Automatically remove the flash message after 5 seconds
+  // Automatically remove after 5 seconds
   setTimeout(() => {
-    flashDiv.remove();
+    if (flashDiv && flashDiv.parentNode) {
+      flashDiv.remove();
+      // Remove container if empty
+      if (flashContainer && !flashContainer.hasChildNodes()) {
+        flashContainer.remove();
+      }
+    }
   }, 5000);
 }
 

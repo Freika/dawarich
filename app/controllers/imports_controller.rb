@@ -2,6 +2,7 @@
 
 class ImportsController < ApplicationController
   before_action :authenticate_user!
+  before_action :authenticate_active_user!, only: %i[new create]
   before_action :set_import, only: %i[show destroy]
 
   def index
@@ -53,7 +54,7 @@ class ImportsController < ApplicationController
   end
 
   def destroy
-    @import.destroy!
+    Imports::Destroy.new(current_user, @import).call
 
     redirect_to imports_url, notice: 'Import was successfully destroyed.', status: :see_other
   end

@@ -7,7 +7,7 @@ RSpec.describe Trips::CreatePathJob, type: :job do
   let(:points) { trip.points }
   let(:trip_path) do
     "LINESTRING (#{points.map do |point|
-      "#{point.longitude.to_f.round(5)} #{point.latitude.to_f.round(5)}"
+      "#{point.lon.to_f.round(5)} #{point.lat.to_f.round(5)}"
     end.join(', ')})"
   end
 

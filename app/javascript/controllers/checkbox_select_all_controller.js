@@ -1,7 +1,7 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 
 // Connects to data-controller="checkbox-select-all"
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["parent", "child"]
 
   connect() {
