@@ -14,9 +14,90 @@
  *= require_self
  */
 
-/* Loading spinner animation */
-@keyframes spinner {
-  to {
-    transform: rotate(360deg);
-  }
+ .emoji-icon {
+  font-size: 36px; /* Adjust size as needed */
+  text-align: center;
+  line-height: 36px; /* Same as font-size for perfect centering */
+}
+
+.timeline-box {
+  overflow: visible !important;
+}
+
+/* Style for the settings panel */
+.leaflet-settings-panel {
+  background-color: white;
+  padding: 10px;
+  border: 1px solid #ccc;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-settings-panel label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.leaflet-settings-panel input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.leaflet-settings-panel button {
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.leaflet-settings-panel button:hover {
+  background-color: #0056b3;
+}
+
+.photo-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+}
+
+.photo-marker img {
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+}
+
+.leaflet-loading-control {
+  padding: 5px;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+  margin: 10px;
+  width: 32px;
+  height: 32px;
+  background: white;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  color: gray;
+}
+
+.loading-spinner::before {
+  content: '🔵';
+  font-size: 18px;
+  animation: spinner 1s linear infinite;
+}
+
+.loading-spinner.done::before {
+  content: '✅';
+  animation: none;
 }

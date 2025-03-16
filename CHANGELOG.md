@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 This release is focused on improving the visits experience.
 
+Since previous implementation of visits was not working as expected, this release introduces a new approach. It is recommended to remove all _non-confirmed_ visits before or after updating to this version.
+
+There is a known issue when data migrations are not being run automatically on some systems. If you're experiencing issues when opening map page, trips page or when trying to see visits, try executing the following command in the [Console](https://dawarich.app/docs/FAQ/#how-to-enter-dawarich-console):
+
+```ruby
+User.includes(:tracked_points, visits: :places).find_each do |user|
+  places_to_update = user.places.where(lonlat: nil)
+
+  # For each place, set the lonlat value based on longitude and latitude
+  places_to_update.find_each do |place|
+    next if place.longitude.nil? || place.latitude.nil?
+
+    # Set the lonlat to a PostGIS point with the proper SRID
+    # rubocop:disable Rails/SkipsModelValidations
+    place.update_column(:lonlat, "SRID=4326;POINT(#{place.longitude} #{place.latitude})")
+    # rubocop:enable Rails/SkipsModelValidations
+  end
+
+  user.tracked_points.update_all('lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)')
+end
+```
+
+With any errors, don't hesitate to ask for help in the [Discord server](https://discord.gg/pHsBjpt5J8).
+
+
+
 ## Added
 
 - A new button to open the visits drawer.
@@ -28,9 +54,12 @@ This release is focused on improving the visits experience.
 - Restrict access to Sidekiq in non self-hosted mode.
 - Restrict access to background jobs in non self-hosted mode.
 - Restrict access to users management in non self-hosted mode.
+- Restrict access to API for inactive users.
+- All users in self-hosted mode are active by default.
 - Points are now using `lonlat` column for storing longitude and latitude.
 - Semantic history points are now being imported much faster.
 - GPX files are now being imported much faster.
+- Trips, places and points are now using PostGIS' database attributes for storing longitude and latitude.
 - Distance calculation are now using Postgis functions and expected to be more accurate.
 
 ## Fixed

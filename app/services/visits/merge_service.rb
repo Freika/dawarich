@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Visits
-  # Service to handle merging multiple visits into one
+  # Service to handle merging multiple visits into one from the visits drawer
   class MergeService
     attr_reader :visits, :errors, :base_visit
 

@@ -17,7 +17,7 @@ export class VisitsManager {
 
     if (!map.getPane('suggestedVisitsPane')) {
       map.createPane('suggestedVisitsPane');
-      map.getPane('suggestedVisitsPane').style.zIndex = 430; // Below confirmed visits but above base layers
+      map.getPane('suggestedVisitsPane').style.zIndex = 460; // Below confirmed visits but above base layers
     }
 
     this.visitCircles = L.layerGroup();

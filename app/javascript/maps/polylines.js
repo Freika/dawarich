@@ -3,46 +3,6 @@ import { formatDistance } from "../maps/helpers";
 import { minutesToDaysHoursMinutes } from "../maps/helpers";
 import { haversineDistance } from "../maps/helpers";
 
-function pointToLineDistance(point, lineStart, lineEnd) {
-  const x = point.lat;
-  const y = point.lng;
-  const x1 = lineStart.lat;
-  const y1 = lineStart.lng;
-  const x2 = lineEnd.lat;
-  const y2 = lineEnd.lng;
-
-  const A = x - x1;
-  const B = y - y1;
-  const C = x2 - x1;
-  const D = y2 - y1;
-
-  const dot = A * C + B * D;
-  const lenSq = C * C + D * D;
-  let param = -1;
-
-  if (lenSq !== 0) {
-    param = dot / lenSq;
-  }
-
-  let xx, yy;
-
-  if (param < 0) {
-    xx = x1;
-    yy = y1;
-  } else if (param > 1) {
-    xx = x2;
-    yy = y2;
-  } else {
-    xx = x1 + param * C;
-    yy = y1 + param * D;
-  }
-
-  const dx = x - xx;
-  const dy = y - yy;
-
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
 export function calculateSpeed(point1, point2) {
   if (!point1 || !point2 || !point1[4] || !point2[4]) {
     console.warn('Invalid points for speed calculation:', { point1, point2 });
