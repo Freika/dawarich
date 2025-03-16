@@ -179,7 +179,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_03_194043) do
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["trigger"], name: "index_points_on_trigger"
-    t.index ["user_id", "timestamp", "tracker_id"], name: "index_points_on_user_id_timestamp_tracker_id", unique: true
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
