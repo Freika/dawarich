@@ -11,7 +11,7 @@ class OwnTracks::Params
   # rubocop:disable Metrics/AbcSize
   def call
     {
-      lonlat: "POINT(#{params[:lon]} #{params[:lat]})",
+      lonlat:             "POINT(#{params[:lon]} #{params[:lat]})",
       battery:            params[:batt],
       ping:               params[:p],
       altitude:           params[:alt],
