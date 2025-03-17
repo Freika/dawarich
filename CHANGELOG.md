@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.25.1 - 2025-03-17
+
+## Fixed
+
+- Coordinates on the Points page are now being displayed correctly.
+
 # 0.25.0 - 2025-03-09
 
 This release is focused on improving the visits experience.
@@ -31,8 +37,6 @@ end
 ```
 
 With any errors, don't hesitate to ask for help in the [Discord server](https://discord.gg/pHsBjpt5J8).
-
-
 
 ## Added
 
