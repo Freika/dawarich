@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_02_21_194509) do
+ActiveRecord::Schema[8.0].define(version: 2025_03_03_194043) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -125,6 +125,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_02_21_194509) do
     t.datetime "reverse_geocoded_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.index "name, st_astext(lonlat)", name: "index_places_on_name_and_lonlat", unique: true
+    t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
   end
 
   create_table "points", force: :cascade do |t|

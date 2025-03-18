@@ -92,14 +92,14 @@ export function showFlashMessage(type, message) {
   if (!flashContainer) {
     flashContainer = document.createElement('div');
     flashContainer.id = 'flash-messages';
-    flashContainer.className = 'fixed top-5 right-5 flex flex-col-reverse gap-2 z-40';
+    flashContainer.className = 'fixed top-5 right-5 flex flex-col-reverse gap-2 z-50';
     document.body.appendChild(flashContainer);
   }
 
   // Create the flash message div
   const flashDiv = document.createElement('div');
   flashDiv.setAttribute('data-controller', 'removals');
-  flashDiv.className = `flex items-center justify-between ${classesForFlash(type)} py-3 px-5 rounded-lg z-40`;
+  flashDiv.className = `flex items-center justify-between ${classesForFlash(type)} py-3 px-5 rounded-lg z-50`;
 
   // Create the message div
   const messageDiv = document.createElement('div');

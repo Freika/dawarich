@@ -20,3 +20,86 @@
     transition: opacity 150ms ease-in-out;
   }
 }
+
+/* Leaflet Panel Styles */
+.leaflet-right-panel {
+  margin-top: 80px; /* Give space for controls above */
+  margin-right: 10px;
+  transform: none;
+  transition: right 0.3s ease-in-out;
+  z-index: 400;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-right-panel.controls-shifted {
+  right: 310px;
+}
+
+.leaflet-control-button {
+  background-color: white !important;
+  color: #374151 !important;
+}
+
+.leaflet-control-button:hover {
+  background-color: #f3f4f6 !important;
+}
+
+/* Drawer Panel Styles */
+.leaflet-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 338px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 450;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-drawer.open {
+  transform: translateX(0);
+}
+
+/* Controls transition */
+.leaflet-control-layers,
+.leaflet-control-button,
+.toggle-panel-button {
+  transition: right 0.3s ease-in-out;
+  z-index: 500;
+}
+
+.controls-shifted {
+  right: 338px !important;
+}
+
+/* Selection Tool Styles */
+.leaflet-control-custom {
+  background-color: white;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-control-custom:hover {
+  background-color: #f3f4f6;
+}
+
+#selection-tool-button.active {
+  background-color: #60a5fa;
+  color: white;
+}
+
+/* Cancel Selection Button */
+#cancel-selection-button {
+  margin-bottom: 1rem;
+  width: 100%;
+}

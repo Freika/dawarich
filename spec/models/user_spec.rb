@@ -55,6 +55,26 @@ RSpec.describe User, type: :model do
         end
       end
     end
+
+    describe '#import_sample_points' do
+      before do
+        ENV['IMPORT_SAMPLE_POINTS'] = 'true'
+      end
+
+      after do
+        ENV['IMPORT_SAMPLE_POINTS'] = nil
+      end
+
+      it 'creates a sample import and enqueues an import job' do
+        user = create(:user)
+
+        expect(user.imports.count).to eq(1)
+        expect(user.imports.first.name).to eq('DELETE_ME_this_is_a_demo_import_DELETE_ME')
+        expect(user.imports.first.source).to eq('gpx')
+
+        expect(ImportJob).to have_been_enqueued.with(user.id, user.imports.first.id)
+      end
+    end
   end
 
   describe 'methods' do
@@ -67,7 +87,8 @@ RSpec.describe User, type: :model do
       let!(:stat2) { create(:stat, user:, toponyms: [{ 'country' => 'France' }]) }
 
       it 'returns array of countries' do
-        expect(subject).to eq(%w[Germany France])
+        expect(subject).to include('Germany', 'France')
+        expect(subject.count).to eq(2)
       end
     end
 

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class Settings::UsersController < ApplicationController
-  before_action :authenticate_admin!
   before_action :authenticate_self_hosted!
+  before_action :authenticate_admin!
 
   def index
     @users = User.order(created_at: :desc)

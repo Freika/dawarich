@@ -14,7 +14,7 @@
  *= require_self
  */
 
-.emoji-icon {
+ .emoji-icon {
   font-size: 36px; /* Adjust size as needed */
   text-align: center;
   line-height: 36px; /* Same as font-size for perfect centering */
@@ -100,10 +100,4 @@
 .loading-spinner.done::before {
   content: '✅';
   animation: none;
-}
-
-@keyframes spinner {
-  to {
-    transform: rotate(360deg);
-  }
 }

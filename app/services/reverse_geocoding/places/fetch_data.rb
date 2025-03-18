@@ -19,7 +19,6 @@ class ReverseGeocoding::Places::FetchData
 
     first_place = reverse_geocoded_places.shift
     update_place(first_place)
-    add_suggested_place_to_a_visit
     reverse_geocoded_places.each { |reverse_geocoded_place| fetch_and_create_place(reverse_geocoded_place) }
   end
 
@@ -32,8 +31,7 @@ class ReverseGeocoding::Places::FetchData
 
     place.update!(
       name:       place_name(data),
-      latitude:   data['geometry']['coordinates'][1],
-      longitude:  data['geometry']['coordinates'][0],
+      lonlat:     "POINT(#{data['geometry']['coordinates'][0]} #{data['geometry']['coordinates'][1]})",
       city:       data['properties']['city'],
       country:    data['properties']['country'],
       geodata:    data,
@@ -53,22 +51,10 @@ class ReverseGeocoding::Places::FetchData
     new_place.source = :photon
 
     new_place.save!
-
-    add_suggested_place_to_a_visit(suggested_place: new_place)
   end
 
   def reverse_geocoded?
     place.geodata.present?
-  end
-
-  def add_suggested_place_to_a_visit(suggested_place: place)
-    visits = Place.near([suggested_place.latitude, suggested_place.longitude], 0.1).flat_map(&:visits)
-
-    visits.each do |visit|
-      next if visit.suggested_places.include?(suggested_place)
-
-      visit.suggested_places << suggested_place
-    end
   end
 
   def find_place(place_data)
@@ -79,6 +65,7 @@ class ReverseGeocoding::Places::FetchData
     return found_place if found_place.present?
 
     Place.find_or_initialize_by(
+      lonlat: "POINT(#{place_data['geometry']['coordinates'][0].to_f.round(5)} #{place_data['geometry']['coordinates'][1].to_f.round(5)})",
       latitude: place_data['geometry']['coordinates'][1].to_f.round(5),
       longitude: place_data['geometry']['coordinates'][0].to_f.round(5)
     )
@@ -97,11 +84,11 @@ class ReverseGeocoding::Places::FetchData
 
   def reverse_geocoded_places
     data = Geocoder.search(
-      [place.latitude, place.longitude],
+      [place.lat, place.lon],
       limit: 10,
       distance_sort: true,
       radius: 1,
-      units: DISTANCE_UNITS
+      units: ::DISTANCE_UNIT,
     )
 
     data.reject do |place|

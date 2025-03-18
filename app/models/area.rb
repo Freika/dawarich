@@ -8,5 +8,8 @@ class Area < ApplicationRecord
 
   validates :name, :latitude, :longitude, :radius, presence: true
 
+  alias_attribute :lon, :longitude
+  alias_attribute :lat, :latitude
+
   def center = [latitude.to_f, longitude.to_f]
 end

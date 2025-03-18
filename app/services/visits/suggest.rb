@@ -13,60 +13,23 @@ class Visits::Suggest
   end
 
   def call
-    prepared_visits = Visits::Prepare.new(points).call
-
-    visited_places = create_places(prepared_visits)
-    visits = create_visits(visited_places)
-
-    create_visits_notification(user)
+    visits = Visits::SmartDetect.new(user, start_at:, end_at:).call
+    create_visits_notification(user) if visits.any?
 
     return nil unless DawarichSettings.reverse_geocoding_enabled?
 
-    reverse_geocode(visits)
+    visits.each(&:async_reverse_geocode)
+    visits
+  rescue StandardError => e
+    # create a notification with stacktrace and what arguments were used
+    user.notifications.create!(
+      kind: :error,
+      title: 'Error suggesting visits',
+      content: "Error suggesting visits: #{e.message}\n#{e.backtrace.join("\n")}"
+    )
   end
 
   private
-
-  def create_places(prepared_visits)
-    prepared_visits.flat_map do |date|
-      date[:visits] = handle_visits(date[:visits])
-
-      date
-    end
-  end
-
-  def create_visits(visited_places)
-    visited_places.flat_map do |date|
-      date[:visits].map do |visit_data|
-        ActiveRecord::Base.transaction do
-          search_params = {
-            user_id:    user.id,
-            duration:   visit_data[:duration],
-            started_at: Time.zone.at(visit_data[:points].first.timestamp)
-          }
-
-          if visit_data[:area].present?
-            search_params[:area_id] = visit_data[:area].id
-          elsif visit_data[:place].present?
-            search_params[:place_id] = visit_data[:place].id
-          end
-
-          visit = Visit.find_or_initialize_by(search_params)
-          visit.name = visit_data[:place]&.name || visit_data[:area]&.name if visit.name.blank?
-          visit.ended_at = Time.zone.at(visit_data[:points].last.timestamp)
-          visit.save!
-
-          visit_data[:points].each { |point| point.update!(visit_id: visit.id) }
-
-          visit
-        end
-      end
-    end
-  end
-
-  def reverse_geocode(visits)
-    visits.each(&:async_reverse_geocode)
-  end
 
   def create_visits_notification(user)
     content = <<~CONTENT
@@ -78,33 +41,5 @@ class Visits::Suggest
       title: 'New visits suggested',
       content:
     )
-  end
-
-  def create_place(visit)
-    place = Place.find_or_initialize_by(
-      latitude: visit[:latitude].to_f.round(5),
-      longitude: visit[:longitude].to_f.round(5)
-    )
-
-    place.name = Place::DEFAULT_NAME
-    place.source = Place.sources[:manual]
-
-    place.save!
-
-    place
-  end
-
-  def handle_visits(visits)
-    visits.map do |visit|
-      area = Area.near([visit[:latitude], visit[:longitude]], 0.100).first
-
-      if area.present?
-        visit.merge(area:)
-      else
-        place = create_place(visit)
-
-        visit.merge(place:)
-      end
-    end
   end
 end

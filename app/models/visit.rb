@@ -36,7 +36,23 @@ class Visit < ApplicationRecord
   end
 
   def center
-    area.present? ? area.to_coordinates : place.to_coordinates
+    if area.present?
+      [area.lat, area.lon]
+    elsif place.present?
+      [place.lat, place.lon]
+    else
+      center_from_points
+    end
+  end
+
+  def center_from_points
+    return [0, 0] if points.empty?
+
+    lat_sum = points.sum(&:lat)
+    lon_sum = points.sum(&:lon)
+    count = points.size.to_f
+
+    [lat_sum / count, lon_sum / count]
   end
 
   def async_reverse_geocode

@@ -4,27 +4,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.24.2 - 2025-02-24
+# 0.25.0 - 2025-03-09
+
+This release is focused on improving the visits experience.
+
+Since previous implementation of visits was not working as expected, this release introduces a new approach. It is recommended to remove all _non-confirmed_ visits before or after updating to this version.
+
+There is a known issue when data migrations are not being run automatically on some systems. If you're experiencing issues when opening map page, trips page or when trying to see visits, try executing the following command in the [Console](https://dawarich.app/docs/FAQ/#how-to-enter-dawarich-console):
+
+```ruby
+User.includes(:tracked_points, visits: :places).find_each do |user|
+  places_to_update = user.places.where(lonlat: nil)
+
+  # For each place, set the lonlat value based on longitude and latitude
+  places_to_update.find_each do |place|
+    next if place.longitude.nil? || place.latitude.nil?
+
+    # Set the lonlat to a PostGIS point with the proper SRID
+    # rubocop:disable Rails/SkipsModelValidations
+    place.update_column(:lonlat, "SRID=4326;POINT(#{place.longitude} #{place.latitude})")
+    # rubocop:enable Rails/SkipsModelValidations
+  end
+
+  user.tracked_points.update_all('lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)')
+end
+```
+
+With any errors, don't hesitate to ask for help in the [Discord server](https://discord.gg/pHsBjpt5J8).
+
+
 
 ## Added
 
+- A new button to open the visits drawer.
+- User can now confirm or decline visits directly from the visits drawer.
+- Visits are now being shown on the map: orange circles for suggested visits and slightly bigger blue circles for confirmed visits.
+- User can click on a visit circle to rename it and select a place for it.
+- User can click on a visit card in the drawer panel to move to it on the map.
+- User can select click on the "Select area" button in the top right corner of the map to select an area on the map. Once area is selected, visits for all times in that area will be shown on the map, regardless of whether they are in the selected time range or not.
+- User can now select two or more visits in the visits drawer and merge them into a single visit. This operation is not reversible.
+- User can now select two or more visits in the visits drawer and confirm or decline them at once. This operation is not reversible.
 - Status field to the User model. Inactive users are now being restricted from accessing some of the functionality, which is mostly about writing data to the database. Reading is remaining unrestricted.
+- After user is created, a sample import is being created for them to demonstrate how to use the app.
+
+
+## Changed
+
+- Links to Points, Visits & Places, Imports and Exports were moved under "My data" section in the navbar.
+- Restrict access to Sidekiq in non self-hosted mode.
+- Restrict access to background jobs in non self-hosted mode.
+- Restrict access to users management in non self-hosted mode.
+- Restrict access to API for inactive users.
+- All users in self-hosted mode are active by default.
+- Points are now using `lonlat` column for storing longitude and latitude.
+- Semantic history points are now being imported much faster.
+- GPX files are now being imported much faster.
+- Trips, places and points are now using PostGIS' database attributes for storing longitude and latitude.
+- Distance calculation are now using Postgis functions and expected to be more accurate.
 
 ## Fixed
 
 - Fixed a bug where non-admin users could not import Immich and Photoprism geolocation data.
 - Fixed a bug where upon point deletion it was not being removed from the map, while it was actually deleted from the database. #883
 - Fixed a bug where upon import deletion stats were not being recalculated. #824
-
-### Changed
-
-- Restrict access to Sidekiq in non self-hosted mode.
-- Restrict access to background jobs in non self-hosted mode.
-- Restrict access to users management in non self-hosted mode.
-- Points are now using `lonlat` column for storing longitude and latitude.
-- Semantic history points are now being imported much faster.
-- GPX files are now being imported much faster.
-- Distance calculation are now using Postgis functions and expected to be more accurate.
 
 # 0.24.1 - 2025-02-13
 
