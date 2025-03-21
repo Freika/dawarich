@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Added
 
-- `rake data:cleanup:remove_duplicate_points` task added to remove duplicate points from the database and export them to a CSV file.
-- `rake data:cleanup:update_points_to_use_lonlat` task added for convenient manual migration of points to the new `lonlat` column.
+- `rake data_cleanup:remove_duplicate_points` task added to remove duplicate points from the database and export them to a CSV file.
+- `rake points:migrate_to_lonlat` task added for convenient manual migration of points to the new `lonlat` column.
 - `rake users:activate` task added to activate all users.
 
 ## Changed

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'csv'
 
 namespace :data_cleanup do
@@ -99,21 +101,5 @@ namespace :data_cleanup do
     else
       puts 'No duplicate points to remove'
     end
-  end
-
-  desc 'Update points to use lonlat field from latitude and longitude'
-  task update_points_to_use_lonlat: :environment do
-    puts 'Updating points to use lonlat...'
-
-    # Use PostGIS functions to properly create geography type
-    result = ActiveRecord::Base.connection.execute(<<~SQL)
-      UPDATE points
-      SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
-      WHERE lonlat IS NULL
-        AND longitude IS NOT NULL
-        AND latitude IS NOT NULL;
-    SQL
-
-    puts "Successfully updated #{result.cmd_tuples} points with lonlat values"
   end
 end
