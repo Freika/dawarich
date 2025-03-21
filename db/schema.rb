@@ -126,7 +126,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_03_194043) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
-    t.index "name, st_astext(lonlat)", name: "index_places_on_name_and_lonlat", unique: true
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
   end
 
