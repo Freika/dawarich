@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.25.2 - 2025-03-21
+
+## Fixed
+
+- Migration to add unique index to points now contains code to remove duplicates from the database.
+- Issue with ESRI maps not being displayed correctly. #956
+
+## Added
+
+- `rake data_cleanup:remove_duplicate_points` task added to remove duplicate points from the database and export them to a CSV file.
+- `rake points:migrate_to_lonlat` task added for convenient manual migration of points to the new `lonlat` column.
+- `rake users:activate` task added to activate all users.
+
+## Changed
+
+- Merged visits now use the combined name of the merged visits.
+
 # 0.25.1 - 2025-03-17
 
 ## Fixed

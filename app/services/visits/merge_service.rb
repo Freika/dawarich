@@ -45,7 +45,7 @@ module Visits
       earliest_start = visits.min_by(&:started_at).started_at
       latest_end     = visits.max_by(&:ended_at).ended_at
       total_duration = ((latest_end - earliest_start) / 60).round
-      combined_name  = "Combined Visit (#{visits.map(&:name).join(', ')})"
+      combined_name  = visits.map(&:name).join(', ')
 
       {
         earliest_start:,
