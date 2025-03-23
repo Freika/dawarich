@@ -63,9 +63,13 @@ class GoogleMaps::SemanticHistoryParser
   end
 
   def parse_json
-    import.raw_data['timelineObjects'].flat_map do |timeline_object|
-      parse_timeline_object(timeline_object)
-    end.compact
+    import.file.download do |f|
+      json = Oj.load(f)
+
+      json['timelineObjects'].flat_map do |timeline_object|
+        parse_timeline_object(timeline_object)
+      end.compact
+    end
   end
 
   def parse_timeline_object(timeline_object)

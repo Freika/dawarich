@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## TODO:
 
 - Migrate existing imports from `raw_data` to the new file storage.
-- Delete import files when import is deleted.
 - Stream import files for parsing instead of downloading them.
+- Add randomized name to the import files before attaching them to the import record.
 
 ## Changed
 

@@ -9,6 +9,7 @@ class Import < ApplicationRecord
   has_one_attached :file
 
   after_commit -> { Import::ProcessJob.perform_later(id) }, on: :create
+  after_commit -> { file.purge }, on: :destroy
 
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,
