@@ -23,18 +23,16 @@ class ImportsController < ApplicationController
   def create
     files = import_params[:files].reject(&:blank?)
 
-    import_ids = files.map do |file|
-      import = current_user.imports.create(
+    files.each do |file|
+      import = current_user.imports.build(
         name: file.original_filename,
         source: params[:import][:source]
       )
 
-      import.file.attach(file)
+      import.file.attach(io: file, filename: file.original_filename, content_type: file.content_type)
 
-      import.id
+      import.save!
     end
-
-    import_ids.each { Import::ProcessJob.perform_later(_1) }
 
     redirect_to imports_url, notice: "#{files.size} files are queued to be imported in background", status: :see_other
   rescue StandardError => e

@@ -14,7 +14,7 @@ class Imports::Create
     create_import_finished_notification(import, user)
 
     schedule_stats_creating(user.id)
-    # schedule_visit_suggesting(user.id, import) # Disabled until places & visits are reworked
+    schedule_visit_suggesting(user.id, import)
   rescue StandardError => e
     create_import_failed_notification(import, user, e)
   end
@@ -44,7 +44,7 @@ class Imports::Create
     start_at = Time.zone.at(points.first.timestamp)
     end_at = Time.zone.at(points.last.timestamp)
 
-    VisitSuggestingJob.perform_later(user_ids: [user_id], start_at:, end_at:)
+    VisitSuggestingJob.perform_later(user_id:, start_at:, end_at:)
   end
 
   def create_import_finished_notification(import, user)
