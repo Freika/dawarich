@@ -8,11 +8,15 @@ RSpec.describe GoogleMaps::PhoneTakeoutParser do
 
     let(:user) { create(:user) }
 
+    before do
+      import.file.attach(io: File.open(file_path), filename: 'phone_takeout.json', content_type: 'application/json')
+    end
+
     context 'when file content is an object' do
       # This file contains 3 duplicates
       let(:file_path) { Rails.root.join('spec/fixtures/files/google/phone-takeout.json') }
-      let(:raw_data) { JSON.parse(File.read(file_path)) }
-      let(:import) { create(:import, user:, name: 'phone_takeout.json', raw_data:) }
+      let(:file) { Rack::Test::UploadedFile.new(file_path, 'application/json') }
+      let(:import) { create(:import, user:, name: 'phone_takeout.json', file:) }
 
       context 'when file exists' do
         it 'creates points' do
@@ -24,8 +28,8 @@ RSpec.describe GoogleMaps::PhoneTakeoutParser do
     context 'when file content is an array' do
       # This file contains 4 duplicates
       let(:file_path) { Rails.root.join('spec/fixtures/files/google/location-history.json') }
-      let(:raw_data) { JSON.parse(File.read(file_path)) }
-      let(:import) { create(:import, user:, name: 'phone_takeout.json', raw_data:) }
+      let(:file) { Rack::Test::UploadedFile.new(file_path, 'application/json') }
+      let(:import) { create(:import, user:, name: 'phone_takeout.json', file:) }
 
       context 'when file exists' do
         it 'creates points' do
