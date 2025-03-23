@@ -23,7 +23,7 @@ class Immich::ImportGeodata
     import.raw_data = immich_data_json
     import.save!
 
-    ImportJob.perform_later(user.id, import.id)
+    Import::ProcessJob.perform_later(import.id)
   end
 
   private

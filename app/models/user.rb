@@ -15,6 +15,8 @@ class User < ApplicationRecord
   has_many :places, through: :visits
   has_many :trips,  dependent: :destroy
 
+  has_many_attached :import_files
+
   after_create :create_api_key
   after_create :import_sample_points
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
@@ -123,16 +125,15 @@ class User < ApplicationRecord
                   Rails.env.production? ||
                   (Rails.env.test? && ENV['IMPORT_SAMPLE_POINTS'])
 
-    raw_data = Hash.from_xml(
-      File.read(Rails.root.join('lib/assets/sample_points.gpx'))
-    )
-
     import = imports.create(
       name: 'DELETE_ME_this_is_a_demo_import_DELETE_ME',
-      source: 'gpx',
-      raw_data:
+      source: 'gpx'
     )
 
-    ImportJob.perform_later(id, import.id)
+    import.file.attach(
+      Rack::Test::UploadedFile.new(
+        Rails.root.join('lib/assets/sample_points.gpx'), 'application/xml'
+      )
+    )
   end
 end

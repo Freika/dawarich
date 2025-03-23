@@ -72,7 +72,7 @@ RSpec.describe User, type: :model do
         expect(user.imports.first.name).to eq('DELETE_ME_this_is_a_demo_import_DELETE_ME')
         expect(user.imports.first.source).to eq('gpx')
 
-        expect(ImportJob).to have_been_enqueued.with(user.id, user.imports.first.id)
+        expect(Import::ProcessJob).to have_been_enqueued.with(user.imports.first.id)
       end
     end
   end

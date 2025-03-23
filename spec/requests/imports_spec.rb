@@ -46,7 +46,7 @@ RSpec.describe 'Imports', type: :request do
         it 'queues import job' do
           expect do
             post imports_path, params: { import: { source: 'owntracks', files: [file] } }
-          end.to have_enqueued_job(ImportJob).on_queue('imports').at_least(1).times
+          end.to have_enqueued_job(Import::ProcessJob).on_queue('imports').at_least(1).times
         end
 
         it 'creates a new import' do
@@ -64,7 +64,7 @@ RSpec.describe 'Imports', type: :request do
         it 'queues import job' do
           expect do
             post imports_path, params: { import: { source: 'gpx', files: [file] } }
-          end.to have_enqueued_job(ImportJob).on_queue('imports').at_least(1).times
+          end.to have_enqueued_job(Import::ProcessJob).on_queue('imports').at_least(1).times
         end
 
         it 'creates a new import' do

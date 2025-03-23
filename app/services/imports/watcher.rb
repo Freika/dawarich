@@ -51,7 +51,7 @@ class Imports::Watcher
 
     import.save!
 
-    ImportJob.perform_later(user.id, import.id)
+    Import::ProcessJob.perform_later(import.id)
   end
 
   def find_or_initialize_import(user, file_name)

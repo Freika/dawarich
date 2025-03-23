@@ -29,20 +29,12 @@ class ImportsController < ApplicationController
         source: params[:import][:source]
       )
 
-      file = File.read(file)
+      import.file.attach(file)
 
-      raw_data =
-        case params[:import][:source]
-        when 'gpx' then Hash.from_xml(file)
-        when 'owntracks' then OwnTracks::RecParser.new(file).call
-        else JSON.parse(file)
-        end
-
-      import.update(raw_data:)
       import.id
     end
 
-    import_ids.each { ImportJob.perform_later(current_user.id, _1) }
+    import_ids.each { Import::ProcessJob.perform_later(_1) }
 
     redirect_to imports_url, notice: "#{files.size} files are queued to be imported in background", status: :see_other
   rescue StandardError => e

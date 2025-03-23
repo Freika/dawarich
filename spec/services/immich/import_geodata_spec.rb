@@ -88,8 +88,8 @@ RSpec.describe Immich::ImportGeodata do
       expect { service }.to change { Import.count }.by(1)
     end
 
-    it 'enqueues ImportJob' do
-      expect(ImportJob).to receive(:perform_later)
+    it 'enqueues Import::ProcessJob' do
+      expect(Import::ProcessJob).to receive(:perform_later)
 
       service
     end
@@ -101,8 +101,8 @@ RSpec.describe Immich::ImportGeodata do
         expect { service }.not_to(change { Import.count })
       end
 
-      it 'does not enqueue ImportJob' do
-        expect(ImportJob).to_not receive(:perform_later)
+      it 'does not enqueue Import::ProcessJob' do
+        expect(Import::ProcessJob).to_not receive(:perform_later)
 
         service
       end

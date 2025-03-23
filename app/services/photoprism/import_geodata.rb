@@ -24,7 +24,7 @@ class Photoprism::ImportGeodata
     return create_import_failed_notification(import.name) unless import.new_record?
 
     import.update!(raw_data: json_data)
-    ImportJob.perform_later(user.id, import.id)
+    Import::ProcessJob.perform_later(import.id)
   end
 
   def find_or_create_import(json_data)

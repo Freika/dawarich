@@ -6,7 +6,9 @@ class Import < ApplicationRecord
 
   delegate :count, to: :points, prefix: true
 
-  include ImportUploader::Attachment(:raw)
+  has_one_attached :file
+
+  after_commit -> { Import::ProcessJob.perform_later(id) }, on: :create
 
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,
