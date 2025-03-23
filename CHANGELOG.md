@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# Unreleased
+
+## TODO:
+
+- Migrate existing imports from `raw_data` to the new file storage.
+- Delete import files when import is deleted.
+- Stream import files for parsing instead of downloading them.
+
+## Changed
+
+- Import files are now being attached to the import record instead of being stored in the `raw_data` database column.
+
 # 0.25.3 - 2025-03-22
 
 ## Fixed
