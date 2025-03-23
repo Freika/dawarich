@@ -7,7 +7,13 @@ RSpec.describe OwnTracks::Importer do
     subject(:parser) { described_class.new(import, user.id).call }
 
     let(:user) { create(:user) }
-    let(:import) { create(:import, user:, name: 'owntracks_export.json') }
+    let(:import) { create(:import, user:, name: '2024-03.rec') }
+    let(:file_path) { Rails.root.join('spec/fixtures/files/owntracks/2024-03.rec') }
+    let(:file) { Rack::Test::UploadedFile.new(file_path, 'text/plain') }
+
+    before do
+      import.file.attach(io: File.open(file_path), filename: '2024-03.rec', content_type: 'text/plain')
+    end
 
     context 'when file exists' do
       it 'creates points' do

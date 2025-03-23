@@ -11,7 +11,7 @@ class Gpx::TrackImporter
   end
 
   def call
-    import.file.open do |file|
+    import.file.download do |file|
       json = Hash.from_xml(file)
 
       tracks = json['gpx']['trk']
