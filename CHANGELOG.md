@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.25.4 - 2025-03-24
+
+## Fixed
+
+- Moving points on the map now works correctly. #957
+
 # 0.25.3 - 2025-03-22
 
 ## Fixed
