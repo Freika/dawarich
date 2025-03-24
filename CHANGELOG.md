@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Moving points on the map now works correctly. #957
+- `rake points:migrate_to_lonlat` task now also reindexes the points table.
 
 # 0.25.3 - 2025-03-22
 

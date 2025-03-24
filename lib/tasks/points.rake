@@ -5,15 +5,25 @@ namespace :points do
   task migrate_to_lonlat: :environment do
     puts 'Updating points to use lonlat...'
 
-    # Use PostGIS functions to properly create geography type
-    result = ActiveRecord::Base.connection.execute(<<~SQL)
-      UPDATE points
-      SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
-      WHERE lonlat IS NULL
-        AND longitude IS NOT NULL
-        AND latitude IS NOT NULL;
-    SQL
+    ActiveRecord::Base.connection.execute('REINDEX TABLE points;')
 
-    puts "Successfully updated #{result.cmd_tuples} points with lonlat values"
+    ActiveRecord::Base.transaction do
+      ActiveRecord::Base.connection.execute('ALTER TABLE points DISABLE TRIGGER ALL;')
+
+      # Update the data
+      result = ActiveRecord::Base.connection.execute(<<~SQL)
+        UPDATE points
+        SET lonlat = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
+        WHERE lonlat IS NULL
+          AND longitude IS NOT NULL
+          AND latitude IS NOT NULL;
+      SQL
+
+      ActiveRecord::Base.connection.execute('ALTER TABLE points ENABLE TRIGGER ALL;')
+
+      puts "Successfully updated #{result.cmd_tuples} points with lonlat values"
+    end
+
+    ActiveRecord::Base.connection.execute('ANALYZE points;')
   end
 end
