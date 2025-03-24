@@ -13,9 +13,7 @@ class GoogleMaps::SemanticHistoryParser
   end
 
   def call
-    points_data = parse_json
-
-    points_data.each_slice(BATCH_SIZE) do |batch|
+    parsed_json.each_slice(BATCH_SIZE) do |batch|
       @current_index += batch.size
       process_batch(batch)
       broadcast_import_progress(import, @current_index)
@@ -62,14 +60,18 @@ class GoogleMaps::SemanticHistoryParser
     )
   end
 
-  def parse_json
+  def parsed_json
+    data = nil
+
     import.file.download do |f|
       json = Oj.load(f)
 
-      json['timelineObjects'].flat_map do |timeline_object|
+      data = json['timelineObjects'].flat_map do |timeline_object|
         parse_timeline_object(timeline_object)
       end.compact
     end
+
+    data
   end
 
   def parse_timeline_object(timeline_object)

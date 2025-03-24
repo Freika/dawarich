@@ -11,9 +11,13 @@ class ExportsController < ApplicationController
   def create
     export_name =
       "export_from_#{params[:start_at].to_date}_to_#{params[:end_at].to_date}.#{params[:file_format]}"
-    export = current_user.exports.create(name: export_name, status: :created)
-
-    ExportJob.perform_later(export.id, params[:start_at], params[:end_at], file_format: params[:file_format])
+    export = current_user.exports.create(
+      name: export_name,
+      status: :created,
+      format: params[:file_format],
+      start_at: params[:start_at],
+      end_at: params[:end_at]
+    )
 
     redirect_to exports_url, notice: 'Export was successfully initiated. Please wait until it\'s finished.'
   rescue StandardError => e
@@ -23,11 +27,7 @@ class ExportsController < ApplicationController
   end
 
   def destroy
-    ActiveRecord::Base.transaction do
-      @export.destroy
-
-      File.delete(Rails.root.join('public', 'exports', @export.name))
-    end
+    @export.destroy
 
     redirect_to exports_url, notice: 'Export was successfully destroyed.', status: :see_other
   end
@@ -39,6 +39,6 @@ class ExportsController < ApplicationController
   end
 
   def export_params
-    params.require(:export).permit(:name, :url, :status)
+    params.require(:export).permit(:name, :url, :status, :format)
   end
 end

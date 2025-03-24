@@ -1,0 +1,10 @@
+{
+  "timelineObjects": [
+    {
+      "placeVisit": {
+        "location": { "latitudeE7": 123477777, "longitudeE7": 123477777 },
+        "duration": { "startTimestamp": "1742844232" }
+      }
+    }
+  ]
+}

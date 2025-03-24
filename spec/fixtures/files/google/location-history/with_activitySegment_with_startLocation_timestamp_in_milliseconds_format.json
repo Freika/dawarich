@@ -1,0 +1,10 @@
+{
+  "timelineObjects": [
+    {
+      "activitySegment": {
+        "startLocation": { "latitudeE7": 123455555, "longitudeE7": 123455555 },
+        "duration": { "startTimestamp": "1742844232" }
+      }
+    }
+  ]
+}

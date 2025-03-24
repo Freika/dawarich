@@ -10,13 +10,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Migrate existing imports from `raw_data` to the new file storage.
 - Stream import files for parsing instead of downloading them.
-- Add randomized name to the import files before attaching them to the import record.
-- Export files should also be stored in the S3-compatible storage and be available for download.
 
 ## Changed
 
 - Import files are now being attached to the import record instead of being stored in the `raw_data` database column.
 - Import files can now be stored in S3-compatible storage.
+- Export files are now being attached to the export record instead of being stored in the file system.
+- Export files can now be stored in S3-compatible storage.
 
 # 0.25.3 - 2025-03-22
 

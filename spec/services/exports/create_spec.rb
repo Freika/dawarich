@@ -4,15 +4,17 @@ require 'rails_helper'
 
 RSpec.describe Exports::Create do
   describe '#call' do
-    subject(:create_export) { described_class.new(export:, start_at:, end_at:, file_format:).call }
+    subject(:create_export) { described_class.new(export:).call }
 
     let(:file_format)     { :json }
     let(:user)            { create(:user) }
     let(:start_at)        { DateTime.new(2021, 1, 1).to_s }
     let(:end_at)          { DateTime.new(2021, 1, 2).to_s }
     let(:export_name)     { "#{start_at.to_date}_#{end_at.to_date}.#{file_format}" }
-    let(:export)          { create(:export, user:, name: export_name, status: :created) }
-    let(:export_content)  { Points::GeojsonSerializer.new(points).call }
+    let(:export) do
+      create(:export, user:, name: export_name, status: :created, format: file_format, start_at:, end_at:)
+    end
+    let(:export_content) { Points::GeojsonSerializer.new(points).call }
     let(:reverse_geocoded_at) { Time.zone.local(2021, 1, 1) }
     let!(:points) do
       10.times.map do |i|
@@ -35,10 +37,10 @@ RSpec.describe Exports::Create do
       expect(File.read(file_path).strip).to eq(export_content)
     end
 
-    it 'sets the export url' do
+    it 'sets the export file' do
       create_export
 
-      expect(export.reload.url).to eq("exports/#{export.name}")
+      expect(export.reload.file.attached?).to be_truthy
     end
 
     it 'updates the export status to completed' do
@@ -53,7 +55,7 @@ RSpec.describe Exports::Create do
 
     context 'when an error occurs' do
       before do
-        allow(File).to receive(:open).and_raise(StandardError)
+        allow_any_instance_of(Points::GeojsonSerializer).to receive(:call).and_raise(StandardError)
       end
 
       it 'updates the export status to failed' do
