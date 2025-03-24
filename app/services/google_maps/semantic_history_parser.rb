@@ -13,7 +13,7 @@ class GoogleMaps::SemanticHistoryParser
   end
 
   def call
-    parsed_json.each_slice(BATCH_SIZE) do |batch|
+    points_data.each_slice(BATCH_SIZE) do |batch|
       @current_index += batch.size
       process_batch(batch)
       broadcast_import_progress(import, @current_index)
@@ -60,7 +60,7 @@ class GoogleMaps::SemanticHistoryParser
     )
   end
 
-  def parsed_json
+  def points_data
     data = nil
 
     import.file.download do |f|

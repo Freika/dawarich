@@ -37,8 +37,4 @@ class ExportsController < ApplicationController
   def set_export
     @export = current_user.exports.find(params[:id])
   end
-
-  def export_params
-    params.require(:export).permit(:name, :url, :status, :format)
-  end
 end

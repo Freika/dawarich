@@ -118,6 +118,7 @@ class User < ApplicationRecord
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
   end
 
+  # rubocop:disable Metrics/MethodLength
   def import_sample_points
     return unless Rails.env.development? ||
                   Rails.env.production? ||
@@ -134,4 +135,5 @@ class User < ApplicationRecord
       )
     )
   end
+  # rubocop:enable Metrics/MethodLength
 end

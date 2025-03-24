@@ -21,10 +21,10 @@ class Exports::Create
 
       export.update!(status: :completed)
 
-      create_export_finished_notification
+      notify_export_finished
     end
   rescue StandardError => e
-    create_failed_export_notification(e)
+    notify_export_failed(e)
 
     export.update!(status: :failed)
   end
@@ -40,7 +40,7 @@ class Exports::Create
       .order(timestamp: :asc)
   end
 
-  def create_export_finished_notification
+  def notify_export_finished
     Notifications::Create.new(
       user:,
       kind: :info,
@@ -49,7 +49,7 @@ class Exports::Create
     ).call
   end
 
-  def create_failed_export_notification(error)
+  def notify_export_failed(error)
     Notifications::Create.new(
       user:,
       kind: :error,
