@@ -6,12 +6,15 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
+# Only load S3 config if not in test environment
+<% unless Rails.env.test? %>
 s3:
   service: S3
   access_key_id: <%= ENV.fetch("AWS_ACCESS_KEY_ID") %>
   secret_access_key: <%= ENV.fetch("AWS_SECRET_ACCESS_KEY") %>
   region: <%= ENV.fetch("AWS_REGION") %>
   bucket: <%= ENV.fetch("AWS_BUCKET") %>
+<% end %>
 
 # Remember not to checkin your GCS keyfile to a repository
 # google:
