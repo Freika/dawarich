@@ -87,7 +87,7 @@ class ReverseGeocoding::Places::FetchData
       [place.lat, place.lon],
       limit: 10,
       distance_sort: true,
-      radius: 1,
+      radius: 10,
       units: ::DISTANCE_UNIT,
     )
 
