@@ -501,10 +501,11 @@ export default class extends BaseController {
   }
 
   deletePoint(id, apiKey) {
-    fetch(`/api/v1/points/${id}?api_key=${apiKey}`, {
+    fetch(`/api/v1/points/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
       }
     })
     .then(response => {
