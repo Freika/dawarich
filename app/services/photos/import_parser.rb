@@ -2,7 +2,7 @@
 
 class Photos::ImportParser
   include Imports::Broadcaster
-
+  include PointValidation
   attr_reader :import, :json, :user_id
 
   def initialize(import, user_id)
@@ -28,13 +28,5 @@ class Photos::ImportParser
     )
 
     broadcast_import_progress(import, index)
-  end
-
-  def point_exists?(point, timestamp)
-    Point.exists?(
-      lonlat: "POINT(#{point['longitude']} #{point['latitude']})",
-      timestamp:,
-      user_id:
-    )
   end
 end

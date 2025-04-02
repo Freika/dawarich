@@ -1,0 +1,14 @@
+{
+  "timelineObjects": [
+    {
+      "activitySegment": {
+        "waypointPath": {
+          "waypoints": [
+            { "latE7": 123411111, "lngE7": 123411111 }
+          ]
+        },
+        "duration": { "startTimestamp": "2025-03-24 20:07:24 +0100" }
+      }
+    }
+  ]
+}

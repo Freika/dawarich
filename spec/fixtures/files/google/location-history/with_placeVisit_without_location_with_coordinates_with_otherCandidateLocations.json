@@ -1,0 +1,10 @@
+{
+  "timelineObjects": [
+    {
+      "placeVisit": {
+        "otherCandidateLocations": [{ "latitudeE7": 123533333, "longitudeE7": 123533333 }],
+        "duration": { "startTimestamp": "2025-03-24 20:25:02 +0100" }
+      }
+    }
+  ]
+}

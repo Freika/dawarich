@@ -41,7 +41,11 @@
                 <td><%= export.status %></td>
                 <td>
                   <% if export.completed? %>
-                    <%= link_to 'Download', export.url, class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
+                    <% if export.url.present? %>
+                      <%= link_to 'Download', export.url, class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
+                    <% else %>
+                      <%= link_to 'Download', export.file.url, class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
+                    <% end %>
                   <% end %>
                   <%= link_to 'Delete', export, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
                 </td>

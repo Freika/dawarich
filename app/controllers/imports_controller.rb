@@ -23,26 +23,16 @@ class ImportsController < ApplicationController
   def create
     files = import_params[:files].reject(&:blank?)
 
-    import_ids = files.map do |file|
-      import = current_user.imports.create(
+    files.each do |file|
+      import = current_user.imports.build(
         name: file.original_filename,
         source: params[:import][:source]
       )
 
-      file = File.read(file)
+      import.file.attach(io: file, filename: file.original_filename, content_type: file.content_type)
 
-      raw_data =
-        case params[:import][:source]
-        when 'gpx' then Hash.from_xml(file)
-        when 'owntracks' then OwnTracks::RecParser.new(file).call
-        else JSON.parse(file)
-        end
-
-      import.update(raw_data:)
-      import.id
+      import.save!
     end
-
-    import_ids.each { ImportJob.perform_later(current_user.id, _1) }
 
     redirect_to imports_url, notice: "#{files.size} files are queued to be imported in background", status: :see_other
   rescue StandardError => e

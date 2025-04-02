@@ -2,34 +2,28 @@
 
 class Geojson::ImportParser
   include Imports::Broadcaster
+  include PointValidation
 
-  attr_reader :import, :json, :user_id
+  attr_reader :import, :user_id
 
   def initialize(import, user_id)
     @import  = import
-    @json    = import.raw_data
     @user_id = user_id
   end
 
   def call
-    data = Geojson::Params.new(json).call
+    import.file.download do |file|
+      json = Oj.load(file)
 
-    data.each.with_index(1) do |point, index|
-      next if point_exists?(point, user_id)
+      data = Geojson::Params.new(json).call
 
-      Point.create!(point.merge(user_id:, import_id: import.id))
+      data.each.with_index(1) do |point, index|
+        next if point_exists?(point, user_id)
 
-      broadcast_import_progress(import, index)
+        Point.create!(point.merge(user_id:, import_id: import.id))
+
+        broadcast_import_progress(import, index)
+      end
     end
-  end
-
-  private
-
-  def point_exists?(params, user_id)
-    Point.exists?(
-      lonlat: params[:lonlat],
-      timestamp: params[:timestamp],
-      user_id:
-    )
   end
 end

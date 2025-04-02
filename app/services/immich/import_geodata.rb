@@ -20,10 +20,13 @@ class Immich::ImportGeodata
 
     create_import_failed_notification(import.name) and return unless import.new_record?
 
-    import.raw_data = immich_data_json
-    import.save!
+    import.file.attach(
+      io: StringIO.new(immich_data_json.to_json),
+      filename: file_name,
+      content_type: 'application/json'
+    )
 
-    ImportJob.perform_later(user.id, import.id)
+    import.save!
   end
 
   private

@@ -3,22 +3,25 @@
 class Gpx::TrackImporter
   include Imports::Broadcaster
 
-  attr_reader :import, :json, :user_id
+  attr_reader :import, :user_id
 
   def initialize(import, user_id)
     @import = import
-    @json = import.raw_data
     @user_id = user_id
   end
 
   def call
-    tracks = json['gpx']['trk']
-    tracks_arr = tracks.is_a?(Array) ? tracks : [tracks]
+    import.file.download do |file|
+      json = Hash.from_xml(file)
 
-    points = tracks_arr.map { parse_track(_1) }.flatten.compact
-    points_data = points.map.with_index(1) { |point, index| prepare_point(point, index) }.compact
+      tracks = json['gpx']['trk']
+      tracks_arr = tracks.is_a?(Array) ? tracks : [tracks]
 
-    bulk_insert_points(points_data)
+      points = tracks_arr.map { parse_track(_1) }.flatten.compact
+      points_data = points.map { prepare_point(_1) }.compact
+
+      bulk_insert_points(points_data)
+    end
   end
 
   private
@@ -32,7 +35,7 @@ class Gpx::TrackImporter
     segments_array.compact.map { |segment| segment['trkpt'] }
   end
 
-  def prepare_point(point, index)
+  def prepare_point(point)
     return if point['lat'].blank? || point['lon'].blank? || point['time'].blank?
 
     {

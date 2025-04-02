@@ -3,25 +3,28 @@
 class OwnTracks::Importer
   include Imports::Broadcaster
 
-  attr_reader :import, :data, :user_id
+  attr_reader :import, :user_id
 
   def initialize(import, user_id)
     @import = import
-    @data = import.raw_data
     @user_id = user_id
   end
 
   def call
-    points_data = data.map.with_index(1) do |point, index|
-      OwnTracks::Params.new(point).call.merge(
-        import_id: import.id,
-        user_id: user_id,
-        created_at: Time.current,
-        updated_at: Time.current
-      )
-    end
+    import.file.download do |file|
+      parsed_data = OwnTracks::RecParser.new(file).call
 
-    bulk_insert_points(points_data)
+      points_data = parsed_data.map do |point|
+        OwnTracks::Params.new(point).call.merge(
+          import_id: import.id,
+          user_id: user_id,
+          created_at: Time.current,
+          updated_at: Time.current
+        )
+      end
+
+      bulk_insert_points(points_data)
+    end
   end
 
   private
