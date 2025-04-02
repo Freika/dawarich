@@ -74,7 +74,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_24_180755) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.integer "format", default: 0
+    t.integer "file_format", default: 0
     t.datetime "start_at"
     t.datetime "end_at"
     t.index ["status"], name: "index_exports_on_status"

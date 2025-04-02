@@ -6,7 +6,7 @@ class Exports::Create
     @user         = export.user
     @start_at     = export.start_at
     @end_at       = export.end_at
-    @file_format  = export.format
+    @file_format  = export.file_format
   end
 
   def call

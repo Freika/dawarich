@@ -14,7 +14,7 @@ class ExportsController < ApplicationController
     export = current_user.exports.create(
       name: export_name,
       status: :created,
-      format: params[:file_format],
+      file_format: params[:file_format],
       start_at: params[:start_at],
       end_at: params[:end_at]
     )

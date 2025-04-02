@@ -4,7 +4,7 @@ FactoryBot.define do
   factory :export do
     name { 'export' }
     status { :created }
-    format { :json }
+    file_format { :json }
     user
   end
 end

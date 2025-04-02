@@ -9,6 +9,6 @@ RSpec.describe Export, type: :model do
 
   describe 'enums' do
     it { is_expected.to define_enum_for(:status).with_values(created: 0, processing: 1, completed: 2, failed: 3) }
-    it { is_expected.to define_enum_for(:format).with_values(json: 0, gpx: 1) }
+    it { is_expected.to define_enum_for(:file_format).with_values(json: 0, gpx: 1) }
   end
 end

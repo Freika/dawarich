@@ -12,7 +12,7 @@ RSpec.describe Exports::Create do
     let(:end_at)          { DateTime.new(2021, 1, 2).to_s }
     let(:export_name)     { "#{start_at.to_date}_#{end_at.to_date}.#{file_format}" }
     let(:export) do
-      create(:export, user:, name: export_name, status: :created, format: file_format, start_at:, end_at:)
+      create(:export, user:, name: export_name, status: :created, file_format: file_format, start_at:, end_at:)
     end
     let(:export_content) { Points::GeojsonSerializer.new(points).call }
     let(:reverse_geocoded_at) { Time.zone.local(2021, 1, 1) }
