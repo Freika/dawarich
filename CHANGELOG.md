@@ -4,12 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# Unreleased
+# 0.25.4 - 2025-04-02
 
-## TODO:
+In this release we're changing the way import files are being stored. Previously, they were being stored in the `raw_data` column of the `imports` table. Now, they are being attached to the import record. All new imports will be using the new storage, to migrate existing imports, you can use the `rake imports:migrate_to_new_storage` task. Run it in the container shell.
 
-- Migrate existing imports from `raw_data` to the new file storage.
-- Stream import files for parsing instead of downloading them.
+This is an optional task, that will not affect your points or other data.
+Big imports might take a while to migrate, so be patient.
+
+If your hardware doesn't have enough memory to migrate the imports, you can delete your imports and re-import them.
 
 ## Changed
 
@@ -17,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Import files can now be stored in S3-compatible storage.
 - Export files are now being attached to the export record instead of being stored in the file system.
 - Export files can now be stored in S3-compatible storage.
+
 
 # 0.25.3 - 2025-03-22
 

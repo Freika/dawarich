@@ -36,4 +36,23 @@ RSpec.describe Import, type: :model do
       expect(import.years_and_months_tracked).to eq([[2024, 11]])
     end
   end
+
+  describe '#migrate_to_new_storage' do
+    let(:raw_data) { Rails.root.join('spec/fixtures/files/geojson/export.json') }
+    let(:import) { create(:import, source: 'geojson', raw_data:) }
+
+    it 'attaches the file to the import' do
+      import.migrate_to_new_storage
+
+      expect(import.file.attached?).to be_truthy
+    end
+
+    context 'when file is attached' do
+      it 'is a importable file' do
+        import.migrate_to_new_storage
+
+        expect { import.process! }.to change(Point, :count).by(10)
+      end
+    end
+  end
 end

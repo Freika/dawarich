@@ -30,4 +30,12 @@ class Import < ApplicationRecord
       [time.year, time.month]
     end.uniq
   end
+
+  def migrate_to_new_storage
+    return if file.attached?
+
+    raw_file = File.new(raw_data)
+
+    file.attach(io: raw_file, filename: name, content_type: 'application/json')
+  end
 end
