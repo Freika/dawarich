@@ -20,12 +20,6 @@ class Export < ApplicationRecord
   private
 
   def remove_attached_file
-    storage_config = Rails.application.config.active_storage
-
-    if storage_config.service == :local
-      file.purge_later
-    else
-      file.purge
-    end
+    file.purge_later
   end
 end
