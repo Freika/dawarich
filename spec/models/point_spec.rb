@@ -79,4 +79,14 @@ RSpec.describe Point, type: :model do
       end
     end
   end
+
+  describe 'callbacks' do
+    describe '#update_import_points_count' do
+      let(:point) { create(:point, import_id: 1) }
+
+      it 'updates the import points count' do
+        expect { point.destroy }.to have_enqueued_job(Import::UpdatePointsCountJob).with(1)
+      end
+    end
+  end
 end

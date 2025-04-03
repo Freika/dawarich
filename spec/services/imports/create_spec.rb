@@ -22,6 +22,10 @@ RSpec.describe Imports::Create do
           receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
+
+      it 'updates the import points count' do
+        expect { service.call }.to have_enqueued_job(Import::UpdatePointsCountJob).with(import.id)
+      end
     end
 
     context 'when source is google_phone_takeout' do

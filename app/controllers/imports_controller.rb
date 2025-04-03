@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ImportsController < ApplicationController
+  include ActiveStorage::SetCurrent
+
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create]
   before_action :set_import, only: %i[show destroy]
@@ -9,7 +11,7 @@ class ImportsController < ApplicationController
     @imports =
       current_user
       .imports
-      .select(:id, :name, :source, :created_at, :points_count)
+      .select(:id, :name, :source, :created_at, :processed)
       .order(created_at: :desc)
       .page(params[:page])
   end

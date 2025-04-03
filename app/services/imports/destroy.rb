@@ -11,6 +11,6 @@ class Imports::Destroy
   def call
     @import.destroy!
 
-    BulkStatsCalculatingJob.perform_later(@user.id)
+    Stats::BulkCalculator.new(@user.id).call
   end
 end

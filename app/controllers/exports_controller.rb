@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ExportsController < ApplicationController
+  include ActiveStorage::SetCurrent
+
   before_action :authenticate_user!
   before_action :set_export, only: %i[destroy]
 
