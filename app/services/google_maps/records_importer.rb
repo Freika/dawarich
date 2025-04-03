@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# This class is used to import Google's Records.json file
+# via the CLI, vs the UI, which uses the `GoogleMaps::RecordsStorage  Importer` class.
+
 class GoogleMaps::RecordsImporter
   include Imports::Broadcaster
 

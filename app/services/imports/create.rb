@@ -15,6 +15,7 @@ class Imports::Create
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
+    update_import_points_count(import)
   rescue StandardError => e
     create_import_failed_notification(import, user, e)
   end
@@ -26,11 +27,16 @@ class Imports::Create
     case source
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryParser
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutParser
+    when 'google_records'               then GoogleMaps::RecordsStorageImporter
     when 'owntracks'                    then OwnTracks::Importer
     when 'gpx'                          then Gpx::TrackImporter
     when 'geojson'                      then Geojson::ImportParser
     when 'immich_api', 'photoprism_api' then Photos::ImportParser
     end
+  end
+
+  def update_import_points_count(import)
+    Import::UpdatePointsCountJob.perform_later(import.id)
   end
 
   def schedule_stats_creating(user_id)

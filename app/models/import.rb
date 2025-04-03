@@ -4,12 +4,10 @@ class Import < ApplicationRecord
   belongs_to :user
   has_many :points, dependent: :destroy
 
-  delegate :count, to: :points, prefix: true
-
   has_one_attached :file
 
   after_commit -> { Import::ProcessJob.perform_later(id) }, on: :create
-  after_commit -> { file.purge }, on: :destroy
+  after_commit :remove_attached_file, on: :destroy
 
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,
@@ -37,5 +35,11 @@ class Import < ApplicationRecord
     raw_file = File.new(raw_data)
 
     file.attach(io: raw_file, filename: name, content_type: 'application/json')
+  end
+
+  private
+
+  def remove_attached_file
+    file.purge_later
   end
 end

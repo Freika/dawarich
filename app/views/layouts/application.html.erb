@@ -15,6 +15,7 @@
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
     <%= render 'application/favicon' %>
+    <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
   </head>
 
   <body class='min-h-screen'>

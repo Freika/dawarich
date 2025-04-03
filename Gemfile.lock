@@ -383,6 +383,12 @@ GEM
       rubocop-ast (>= 1.38.0, < 2.0)
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
+    sentry-rails (5.23.0)
+      railties (>= 5.0)
+      sentry-ruby (~> 5.23.0)
+    sentry-ruby (5.23.0)
+      bigdecimal
+      concurrent-ruby (~> 1.0, >= 1.0.2)
     shoulda-matchers (6.4.0)
       activesupport (>= 5.2.0)
     sidekiq (7.3.9)
@@ -501,6 +507,8 @@ DEPENDENCIES
   rswag-specs
   rswag-ui
   rubocop-rails
+  sentry-rails
+  sentry-ruby
   shoulda-matchers
   sidekiq
   sidekiq-cron

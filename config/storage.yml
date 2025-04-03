@@ -7,7 +7,7 @@ local:
   root: <%= Rails.root.join("storage") %>
 
 # Only load S3 config if not in test environment
-<% unless Rails.env.test? %>
+<% if !Rails.env.test? && ENV['AWS_ACCESS_KEY_ID'] && ENV['AWS_SECRET_ACCESS_KEY'] && ENV['AWS_REGION'] && ENV['AWS_BUCKET'] %>
 s3:
   service: S3
   access_key_id: <%= ENV.fetch("AWS_ACCESS_KEY_ID") %>
