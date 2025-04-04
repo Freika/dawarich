@@ -137,4 +137,17 @@ module ApplicationHelper
 
     speed * 3.6
   end
+
+  def days_left(active_until)
+    return unless active_until
+
+    time_words = distance_of_time_in_words(Time.zone.now, active_until)
+
+    content_tag(
+      :span,
+      time_words,
+      class: 'tooltip',
+      data: { tip: "Expires on #{active_until.iso8601}" }
+    )
+  end
 end
