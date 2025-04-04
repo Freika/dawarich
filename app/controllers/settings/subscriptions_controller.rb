@@ -2,6 +2,7 @@
 
 class Settings::SubscriptionsController < ApplicationController
   before_action :authenticate_user!
+  before_action :authenticate_non_self_hosted!
 
   def index; end
 
@@ -16,13 +17,12 @@ class Settings::SubscriptionsController < ApplicationController
         { algorithm: 'HS256' }
       ).first.symbolize_keys
 
-      # Verify this is for the current user
       unless decoded_token[:user_id] == current_user.id
         redirect_to settings_subscriptions_path, alert: 'Invalid subscription update request.'
         return
       end
 
-      current_user.update!(status: decoded_token[:status])
+      current_user.update!(status: decoded_token[:status], active_until: decoded_token[:active_until])
 
       redirect_to settings_subscriptions_path, notice: 'Your subscription has been updated successfully!'
     rescue JWT::DecodeError

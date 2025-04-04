@@ -31,7 +31,7 @@ RSpec.describe User, type: :model do
 
     describe '#activate' do
       context 'when self-hosted' do
-        let!(:user) { create(:user, status: :inactive, active_until: 1.day.ago) }
+        let!(:user) { create(:user, :inactive) }
 
         before do
           allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
@@ -49,7 +49,7 @@ RSpec.describe User, type: :model do
         end
 
         it 'does not activate user' do
-          user = create(:user, status: :inactive, active_until: 1.day.ago)
+          user = create(:user, :inactive)
 
           expect(user.active?).to be_falsey
           expect(user.active_until).to be_within(1.minute).of(1.day.ago)
@@ -194,7 +194,7 @@ RSpec.describe User, type: :model do
         end
 
         context 'when user is inactive' do
-          let(:user) { create(:user, status: :inactive, active_until: 1.day.ago) }
+          let(:user) { create(:user, :inactive) }
 
           it 'returns false' do
             expect(user.can_subscribe?).to be_falsey
@@ -216,7 +216,7 @@ RSpec.describe User, type: :model do
         end
 
         context 'when user is inactive' do
-          let(:user) { create(:user, status: :inactive, active_until: 1.day.ago) }
+          let(:user) { create(:user, :inactive) }
 
           it 'returns true' do
             expect(user.can_subscribe?).to be_truthy

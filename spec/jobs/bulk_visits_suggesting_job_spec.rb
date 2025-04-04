@@ -7,7 +7,7 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
     let(:start_at) { 1.day.ago.beginning_of_day }
     let(:end_at) { 1.day.ago.end_of_day }
     let(:user) { create(:user) }
-    let(:inactive_user) { create(:user, status: :inactive) }
+    let(:inactive_user) { create(:user, :inactive) }
     let(:user_with_points) { create(:user) }
     let(:time_chunks) { [[start_at, end_at]] }
 
