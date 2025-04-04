@@ -67,6 +67,7 @@ If your hardware doesn't have enough memory to migrate the imports, you can dele
 - `rake points:migrate_to_lonlat` task now also reindexes the points table.
 - Fixed filling `lonlat` column for old places after reverse geocoding.
 - Deleting an import now correctly recalculates stats.
+- Datetime across the app is now being displayed in human readable format, i.e 26 Dec 2024, 13:49. Hover over the datetime to see the ISO 8601 timestamp.
 
 
 # 0.25.3 - 2025-03-22
