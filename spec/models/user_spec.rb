@@ -186,7 +186,7 @@ RSpec.describe User, type: :model do
         end
 
         context 'when user is active' do
-          let(:user) { create(:user, status: :active) }
+          let!(:user) { create(:user, status: :active, active_until: 1000.years.from_now) }
 
           it 'returns false' do
             expect(user.can_subscribe?).to be_falsey
@@ -194,7 +194,7 @@ RSpec.describe User, type: :model do
         end
 
         context 'when user is inactive' do
-          let(:user) { create(:user, status: :inactive) }
+          let(:user) { create(:user, status: :inactive, active_until: 1.day.ago) }
 
           it 'returns false' do
             expect(user.can_subscribe?).to be_falsey
@@ -208,7 +208,7 @@ RSpec.describe User, type: :model do
         end
 
         context 'when user is active' do
-          let(:user) { create(:user, status: :active) }
+          let(:user) { create(:user, status: :active, active_until: 1000.years.from_now) }
 
           it 'returns false' do
             expect(user.can_subscribe?).to be_falsey
@@ -216,7 +216,7 @@ RSpec.describe User, type: :model do
         end
 
         context 'when user is inactive' do
-          let(:user) { create(:user, status: :inactive) }
+          let(:user) { create(:user, status: :inactive, active_until: 1.day.ago) }
 
           it 'returns true' do
             expect(user.can_subscribe?).to be_truthy

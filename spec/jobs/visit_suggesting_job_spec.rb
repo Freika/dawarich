@@ -98,7 +98,7 @@ RSpec.describe VisitSuggestingJob, type: :job do
 
     context 'when user is inactive' do
       before do
-        user.update(status: :inactive)
+        user.update(status: :inactive, active_until: 1.day.ago)
 
         allow(Visits::Suggest).to receive(:new).and_call_original
         allow_any_instance_of(Visits::Suggest).to receive(:call)

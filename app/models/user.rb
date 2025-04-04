@@ -100,6 +100,10 @@ class User < ApplicationRecord
     end
   end
 
+  def can_subscribe?
+    active_until&.past? && !DawarichSettings.self_hosted?
+  end
+
   def generate_subscription_token
     payload = {
       user_id: id,
@@ -149,8 +153,4 @@ class User < ApplicationRecord
     )
   end
   # rubocop:enable Metrics/MethodLength
-
-  def can_subscribe?
-    active_until&.past? && !DawarichSettings.self_hosted?
-  end
 end
