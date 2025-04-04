@@ -32,7 +32,7 @@ class Api::V1::PointsController < ApiController
   def update
     point = current_api_user.tracked_points.find(params[:id])
 
-    point.update(point_params)
+    point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
 
     render json: point_serializer.new(point).call
   end

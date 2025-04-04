@@ -48,13 +48,15 @@ class GoogleMaps::PhoneTakeoutParser
     raw_signals       = []
     raw_array         = []
 
-    if import.raw_data.is_a?(Array)
-      raw_array = parse_raw_array(import.raw_data)
-    else
-      if import.raw_data['semanticSegments']
-        semantic_segments = parse_semantic_segments(import.raw_data['semanticSegments'])
+    import.file.download do |file|
+      json = Oj.load(file)
+
+      if json.is_a?(Array)
+        raw_array = parse_raw_array(json)
+      else
+        semantic_segments = parse_semantic_segments(json['semanticSegments']) if json['semanticSegments']
+        raw_signals = parse_raw_signals(json['rawSignals']) if json['rawSignals']
       end
-      raw_signals = parse_raw_signals(import.raw_data['rawSignals']) if import.raw_data['rawSignals']
     end
 
     semantic_segments + raw_signals + raw_array

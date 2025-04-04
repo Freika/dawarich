@@ -108,6 +108,10 @@ export function cyclOsmMapLayer(map, selectedLayerName) {
 export function esriWorldStreetMapLayer(map, selectedLayerName) {
   let layerName = 'esriWorldStreet';
   let layer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    minZoom: 1,
+    maxZoom: 19,
+    bounds: [[-90, -180], [90, 180]],
+    noWrap: true,
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
   });
 
@@ -121,6 +125,10 @@ export function esriWorldStreetMapLayer(map, selectedLayerName) {
 export function esriWorldTopoMapLayer(map, selectedLayerName) {
   let layerName = 'esriWorldTopo';
   let layer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+    minZoom: 1,
+    maxZoom: 19,
+    bounds: [[-90, -180], [90, 180]],
+    noWrap: true,
     attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
   });
 
@@ -134,6 +142,10 @@ export function esriWorldTopoMapLayer(map, selectedLayerName) {
 export function esriWorldImageryMapLayer(map, selectedLayerName) {
   let layerName = 'esriWorldImagery';
   let layer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    minZoom: 1,
+    maxZoom: 19,
+    bounds: [[-90, -180], [90, 180]],
+    noWrap: true,
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
   });
 
@@ -147,8 +159,11 @@ export function esriWorldImageryMapLayer(map, selectedLayerName) {
 export function esriWorldGrayCanvasMapLayer(map, selectedLayerName) {
   let layerName = 'esriWorldGrayCanvas';
   let layer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-    maxZoom: 16
+    minZoom: 1,
+    maxZoom: 16,
+    bounds: [[-90, -180], [90, 180]],
+    noWrap: true,
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
   });
 
   if (selectedLayerName === layerName) {

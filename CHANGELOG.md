@@ -4,6 +4,100 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
+# 0.25.4 - 2025-04-02
+
+⚠️ This release includes a breaking change. ⚠️
+
+Make sure to add `dawarich_storage` volume to your `docker-compose.yml` file. Example:
+
+```diff
+...
+
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
++     - dawarich_storage:/var/app/storage
+
+...
+
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    volumes:
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
++     - dawarich_storage:/var/app/storage
+
+volumes:
+  dawarich_db_data:
+  dawarich_shared:
+  dawarich_public:
+  dawarich_watched:
++ dawarich_storage:
+```
+
+
+In this release we're changing the way import files are being stored. Previously, they were being stored in the `raw_data` column of the `imports` table. Now, they are being attached to the import record. All new imports will be using the new storage, to migrate existing imports, you can use the `rake imports:migrate_to_new_storage` task. Run it in the container shell.
+
+This is an optional task, that will not affect your points or other data.
+Big imports might take a while to migrate, so be patient.
+
+If your hardware doesn't have enough memory to migrate the imports, you can delete your imports and re-import them.
+
+## Added
+
+- Sentry is now can be used for error tracking.
+
+## Changed
+
+- Import files are now being attached to the import record instead of being stored in the `raw_data` database column.
+- Import files can now be stored in S3-compatible storage.
+- Export files are now being attached to the export record instead of being stored in the file system.
+- Export files can now be stored in S3-compatible storage.
+- Users can now import Google's Records.json file via the UI instead of using the CLI.
+- Optional telemetry sending is now disabled and will be removed in the future.
+
+## Fixed
+
+- Moving points on the map now works correctly. #957
+- `rake points:migrate_to_lonlat` task now also reindexes the points table.
+- Fixed filling `lonlat` column for old places after reverse geocoding.
+- Deleting an import now correctly recalculates stats.
+
+
+# 0.25.3 - 2025-03-22
+
+## Fixed
+
+- Fixed missing `rake points:migrate_to_lonlat` task.
+
+# 0.25.2 - 2025-03-21
+
+## Fixed
+
+- Migration to add unique index to points now contains code to remove duplicates from the database.
+- Issue with ESRI maps not being displayed correctly. #956
+
+## Added
+
+- `rake data_cleanup:remove_duplicate_points` task added to remove duplicate points from the database and export them to a CSV file.
+- `rake points:migrate_to_lonlat` task added for convenient manual migration of points to the new `lonlat` column.
+- `rake users:activate` task added to activate all users.
+
+## Changed
+
+- Merged visits now use the combined name of the merged visits.
+
+# 0.25.1 - 2025-03-17
+
+## Fixed
+
+- Coordinates on the Points page are now being displayed correctly.
+
 # 0.25.0 - 2025-03-09
 
 This release is focused on improving the visits experience.
@@ -31,8 +125,6 @@ end
 ```
 
 With any errors, don't hesitate to ask for help in the [Discord server](https://discord.gg/pHsBjpt5J8).
-
-
 
 ## Added
 

@@ -13,7 +13,8 @@ RSpec.describe Imports::Destroy do
     end
 
     it 'enqueues a BulkStatsCalculatingJob' do
-      expect(BulkStatsCalculatingJob).to receive(:perform_later).with(user.id)
+      expect(Stats::BulkCalculator).to receive(:new).with(user.id).and_return(double(call: nil))
+
       service.call
     end
   end

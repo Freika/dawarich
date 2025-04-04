@@ -1,28 +1,30 @@
 # frozen_string_literal: true
 
 class Exports::Create
-  def initialize(export:, start_at:, end_at:, file_format: :json)
+  def initialize(export:)
     @export       = export
     @user         = export.user
-    @start_at     = start_at.to_datetime
-    @end_at       = end_at.to_datetime
-    @file_format  = file_format
+    @start_at     = export.start_at
+    @end_at       = export.end_at
+    @file_format  = export.file_format
   end
 
   def call
-    export.update!(status: :processing)
+    ActiveRecord::Base.transaction do
+      export.update!(status: :processing)
 
-    points = time_framed_points
+      points = time_framed_points
 
-    data = points_data(points)
+      data = points_data(points)
 
-    create_export_file(data)
+      attach_export_file(data)
 
-    export.update!(status: :completed, url: "exports/#{export.name}")
+      export.update!(status: :completed)
 
-    create_export_finished_notification
+      notify_export_finished
+    end
   rescue StandardError => e
-    create_failed_export_notification(e)
+    notify_export_failed(e)
 
     export.update!(status: :failed)
   end
@@ -38,7 +40,7 @@ class Exports::Create
       .order(timestamp: :asc)
   end
 
-  def create_export_finished_notification
+  def notify_export_finished
     Notifications::Create.new(
       user:,
       kind: :info,
@@ -47,7 +49,7 @@ class Exports::Create
     ).call
   end
 
-  def create_failed_export_notification(error)
+  def notify_export_failed(error)
     Notifications::Create.new(
       user:,
       kind: :error,
@@ -72,18 +74,18 @@ class Exports::Create
     Points::GpxSerializer.new(points, export.name).call
   end
 
-  def create_export_file(data)
-    dir_path = Rails.root.join('public/exports')
-
-    FileUtils.mkdir_p(dir_path) unless Dir.exist?(dir_path)
-
-    file_path = dir_path.join(export.name)
-
-    Rails.logger.info("Creating export file at: #{file_path}")
-
-    File.open(file_path, 'w') { |file| file.write(data) }
+  def attach_export_file(data)
+    export.file.attach(io: StringIO.new(data.to_s), filename: export.name, content_type:)
   rescue StandardError => e
     Rails.logger.error("Failed to create export file: #{e.message}")
     raise
+  end
+
+  def content_type
+    case file_format.to_sym
+    when :json then 'application/json'
+    when :gpx  then 'application/gpx+xml'
+    else raise ArgumentError, "Unsupported file format: #{file_format}"
+    end
   end
 end

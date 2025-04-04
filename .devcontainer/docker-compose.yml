@@ -7,9 +7,9 @@ services:
       dockerfile: Dockerfile
     container_name: dawarich_dev
     volumes:
-      - "${PWD}:/var/app:cached"
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
+      - dawarich_storage:/var/app/storage
     networks:
       - dawarich
     ports:

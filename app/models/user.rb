@@ -130,21 +130,26 @@ class User < ApplicationRecord
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
   end
 
+  # rubocop:disable Metrics/MethodLength
   def import_sample_points
     return unless Rails.env.development? ||
                   Rails.env.production? ||
                   (Rails.env.test? && ENV['IMPORT_SAMPLE_POINTS'])
 
-    raw_data = Hash.from_xml(
-      File.read(Rails.root.join('lib/assets/sample_points.gpx'))
-    )
-
     import = imports.create(
       name: 'DELETE_ME_this_is_a_demo_import_DELETE_ME',
-      source: 'gpx',
-      raw_data:
+      source: 'gpx'
     )
 
-    ImportJob.perform_later(id, import.id)
+    import.file.attach(
+      Rack::Test::UploadedFile.new(
+        Rails.root.join('lib/assets/sample_points.gpx'), 'application/xml'
+      )
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  def can_subscribe?
+    !active? && !DawarichSettings.self_hosted?
   end
 end

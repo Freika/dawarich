@@ -12,8 +12,12 @@ RSpec.describe Geojson::ImportParser do
 
     context 'when file content is an object' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/geojson/export.json') }
-      let(:raw_data) { JSON.parse(File.read(file_path)) }
-      let(:import) { create(:import, user:, name: 'geojson.json', raw_data:) }
+      let(:file) { Rack::Test::UploadedFile.new(file_path, 'application/json') }
+      let(:import) { create(:import, user:, name: 'geojson.json', file:) }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'geojson.json', content_type: 'application/json')
+      end
 
       it 'creates new points' do
         expect { service }.to change { Point.count }.by(10)

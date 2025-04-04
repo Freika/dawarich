@@ -8,8 +8,8 @@ RSpec.describe ExportJob, type: :job do
   let(:end_at) { Time.zone.now }
 
   it 'calls the Exports::Create service class' do
-    expect(Exports::Create).to receive(:new).with(export:, start_at:, end_at:, file_format: :json).and_call_original
+    expect(Exports::Create).to receive(:new).with(export:).and_call_original
 
-    described_class.perform_now(export.id, start_at, end_at)
+    described_class.perform_now(export.id)
   end
 end

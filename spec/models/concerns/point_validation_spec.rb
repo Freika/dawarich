@@ -16,23 +16,23 @@ RSpec.describe PointValidation do
   describe '#point_exists?' do
     context 'with invalid coordinates' do
       it 'returns false for zero coordinates' do
-        params = { longitude: '0', latitude: '0', timestamp: Time.now.to_i }
+        params = { lonlat: 'POINT(0 0)', timestamp: Time.now.to_i }
         expect(validator.point_exists?(params, user.id)).to be false
       end
 
       it 'returns false for longitude outside valid range' do
-        params = { longitude: '181', latitude: '45', timestamp: Time.now.to_i }
+        params = { lonlat: 'POINT(181 45)', timestamp: Time.now.to_i }
         expect(validator.point_exists?(params, user.id)).to be false
 
-        params = { longitude: '-181', latitude: '45', timestamp: Time.now.to_i }
+        params = { lonlat: 'POINT(-181 45)', timestamp: Time.now.to_i }
         expect(validator.point_exists?(params, user.id)).to be false
       end
 
       it 'returns false for latitude outside valid range' do
-        params = { longitude: '45', latitude: '91', timestamp: Time.now.to_i }
+        params = { lonlat: 'POINT(45 91)', timestamp: Time.now.to_i }
         expect(validator.point_exists?(params, user.id)).to be false
 
-        params = { longitude: '45', latitude: '-91', timestamp: Time.now.to_i }
+        params = { lonlat: 'POINT(45 -91)', timestamp: Time.now.to_i }
         expect(validator.point_exists?(params, user.id)).to be false
       end
     end
@@ -41,7 +41,7 @@ RSpec.describe PointValidation do
       let(:longitude) { 10.0 }
       let(:latitude) { 50.0 }
       let(:timestamp) { Time.now.to_i }
-      let(:params) { { longitude: longitude.to_s, latitude: latitude.to_s, timestamp: timestamp } }
+      let(:params) { { lonlat: "POINT(#{longitude} #{latitude})", timestamp: timestamp } }
 
       context 'when point does not exist' do
         before do
@@ -54,8 +54,9 @@ RSpec.describe PointValidation do
 
         it 'queries the database with correct parameters' do
           expect(Point).to receive(:where).with(
-            'ST_SetSRID(ST_MakePoint(?, ?), 4326) = lonlat AND timestamp = ? AND user_id = ?',
-            longitude, latitude, timestamp, user.id
+            lonlat: "POINT(#{longitude} #{latitude})",
+            timestamp: timestamp,
+            user_id: user.id
           ).and_return(double(exists?: false))
 
           validator.point_exists?(params, user.id)
@@ -75,11 +76,12 @@ RSpec.describe PointValidation do
 
     context 'with string parameters' do
       it 'converts string coordinates to float values' do
-        params = { longitude: '10.5', latitude: '50.5', timestamp: '1650000000' }
+        params = { lonlat: 'POINT(10.5 50.5)', timestamp: '1650000000' }
 
         expect(Point).to receive(:where).with(
-          'ST_SetSRID(ST_MakePoint(?, ?), 4326) = lonlat AND timestamp = ? AND user_id = ?',
-          10.5, 50.5, 1_650_000_000, user.id
+          lonlat: 'POINT(10.5 50.5)',
+          timestamp: 1_650_000_000,
+          user_id: user.id
         ).and_return(double(exists?: false))
 
         validator.point_exists?(params, user.id)
@@ -88,14 +90,14 @@ RSpec.describe PointValidation do
 
     context 'with different boundary values' do
       it 'accepts maximum valid coordinate values' do
-        params = { longitude: '180', latitude: '90', timestamp: Time.now.to_i }
+        params = { lonlat: 'POINT(180 90)', timestamp: Time.now.to_i }
 
         expect(Point).to receive(:where).and_return(double(exists?: false))
         expect(validator.point_exists?(params, user.id)).to be false
       end
 
       it 'accepts minimum valid coordinate values' do
-        params = { longitude: '-180', latitude: '-90', timestamp: Time.now.to_i }
+        params = { lonlat: 'POINT(-180 -90)', timestamp: Time.now.to_i }
 
         expect(Point).to receive(:where).and_return(double(exists?: false))
         expect(validator.point_exists?(params, user.id)).to be false
@@ -109,8 +111,7 @@ RSpec.describe PointValidation do
       let(:existing_timestamp) { 1_650_000_000 }
       let(:existing_point_params) do
         {
-          longitude: 10.5,
-          latitude: 50.5,
+          lonlat: 'POINT(10.5 50.5)',
           timestamp: existing_timestamp,
           user_id: user.id
         }
@@ -130,8 +131,7 @@ RSpec.describe PointValidation do
 
       it 'returns true when a point with same coordinates and timestamp exists' do
         params = {
-          longitude: existing_point_params[:longitude].to_s,
-          latitude: existing_point_params[:latitude].to_s,
+          lonlat: 'POINT(10.5 50.5)',
           timestamp: existing_timestamp
         }
 
@@ -140,8 +140,7 @@ RSpec.describe PointValidation do
 
       it 'returns false when a point with different coordinates exists' do
         params = {
-          longitude: (existing_point_params[:longitude] + 0.1).to_s,
-          latitude: existing_point_params[:latitude].to_s,
+          lonlat: 'POINT(10.6 50.5)',
           timestamp: existing_timestamp
         }
 
@@ -150,8 +149,7 @@ RSpec.describe PointValidation do
 
       it 'returns false when a point with different timestamp exists' do
         params = {
-          longitude: existing_point_params[:longitude].to_s,
-          latitude: existing_point_params[:latitude].to_s,
+          lonlat: 'POINT(10.5 50.5)',
           timestamp: existing_timestamp + 1
         }
 

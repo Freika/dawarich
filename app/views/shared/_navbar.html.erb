@@ -19,6 +19,9 @@
             </ul>
           </details>
         </li>
+        <%# if user_signed_in? && current_user.can_subscribe? %>
+          <li><%= link_to 'Subscribe', "#{ENV['SUBSCRIPTION_URL']}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %></li>
+        <%# end %>
       </ul>
     </div>
     <%= link_to 'Dawarich', root_path, class: 'btn btn-ghost normal-case text-xl'%>
@@ -67,6 +70,10 @@
   <div class="navbar-end">
     <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
       <% if user_signed_in? %>
+        <%# if current_user.can_subscribe? %>
+          <li><%= link_to 'Subscribe', "#{ENV['SUBSCRIPTION_URL']}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %></li>
+        <%# end %>
+
         <div class="dropdown dropdown-end dropdown-bottom dropdown-hover"
           data-controller="notifications"
           data-notifications-user-id-value="<%= current_user.id %>">

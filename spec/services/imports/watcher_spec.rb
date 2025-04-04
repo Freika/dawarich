@@ -23,7 +23,7 @@ RSpec.describe Imports::Watcher do
       end
 
       it 'enqueues importing jobs for the user' do
-        expect { service }.to have_enqueued_job(ImportJob).exactly(6).times
+        expect { service }.to have_enqueued_job(Import::ProcessJob).exactly(6).times
       end
 
       context 'when the import already exists' do
@@ -41,8 +41,8 @@ RSpec.describe Imports::Watcher do
     end
 
     context 'when user does not exist' do
-      it 'does not call ImportJob' do
-        expect(ImportJob).not_to receive(:perform_later)
+      it 'does not call Import::ProcessJob' do
+        expect(Import::ProcessJob).not_to receive(:perform_later)
 
         service
       end

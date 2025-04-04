@@ -58,7 +58,7 @@ RSpec.describe Visits::MergeService do
         service = described_class.new([visit1, visit2])
         result = service.call
 
-        expected_name = "Combined Visit (#{visit1_name}, #{visit2_name})"
+        expected_name = "#{visit1_name}, #{visit2_name}"
         expect(result.name).to eq(expected_name)
       end
 

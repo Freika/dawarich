@@ -43,6 +43,7 @@ services:
     volumes:
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
+      - dawarich_storage:/var/app/storage
     networks:
       - dawarich
     ports:
@@ -98,6 +99,7 @@ services:
     volumes:
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
+      - dawarich_storage:/var/app/storage
     networks:
       - dawarich
     stdin_open: true
@@ -152,3 +154,4 @@ volumes:
   dawarich_shared:
   dawarich_public:
   dawarich_watched:
+  dawarich_storage:
