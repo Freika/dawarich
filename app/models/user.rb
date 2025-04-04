@@ -109,7 +109,8 @@ class User < ApplicationRecord
   end
 
   def activate
-    update(status: :active)
+    # TODO: Remove the `status` column in the future.
+    update(status: :active, active_until: 1000.years.from_now)
   end
 
   def sanitize_input
