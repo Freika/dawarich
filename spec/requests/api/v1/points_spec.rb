@@ -129,7 +129,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
     context 'when user is inactive' do
       before do
-        user.update(status: :inactive)
+        user.update(status: :inactive, active_until: 1.day.ago)
       end
 
       it 'returns an unauthorized response' do
@@ -150,7 +150,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
     context 'when user is inactive' do
       before do
-        user.update(status: :inactive)
+        user.update(status: :inactive, active_until: 1.day.ago)
       end
 
       it 'returns an unauthorized response' do
@@ -171,7 +171,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
     context 'when user is inactive' do
       before do
-        user.update(status: :inactive)
+        user.update(status: :inactive, active_until: 1.day.ago)
       end
 
       it 'returns an unauthorized response' do

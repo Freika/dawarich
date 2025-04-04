@@ -26,7 +26,7 @@
                 <%= number_with_delimiter user.tracked_points.count %>
               </td>
               <td>
-                <%= user.created_at.strftime('%Y-%m-%d %H:%M:%S') %>
+                <%= human_datetime(user.created_at) %>
               </td>
             </tr>
           <% end %>

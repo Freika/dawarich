@@ -13,7 +13,7 @@ class ApiController < ApplicationController
   end
 
   def authenticate_active_api_user!
-    render json: { error: 'User is not active' }, status: :unauthorized unless current_api_user&.active?
+    render json: { error: 'User is not active' }, status: :unauthorized unless current_api_user&.active_until&.future?
 
     true
   end

@@ -121,7 +121,8 @@ class User < ApplicationRecord
   end
 
   def activate
-    update(status: :active)
+    # TODO: Remove the `status` column in the future.
+    update(status: :active, active_until: 1000.years.from_now)
   end
 
   def sanitize_input
@@ -150,6 +151,6 @@ class User < ApplicationRecord
   # rubocop:enable Metrics/MethodLength
 
   def can_subscribe?
-    !active? && !DawarichSettings.self_hosted?
+    active_until&.past? && !DawarichSettings.self_hosted?
   end
 end
