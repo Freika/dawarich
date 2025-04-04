@@ -100,6 +100,22 @@ class User < ApplicationRecord
     end
   end
 
+  def can_subscribe?
+    active_until&.past? && !DawarichSettings.self_hosted?
+  end
+
+  def generate_subscription_token
+    payload = {
+      user_id: id,
+      email: email,
+      exp: 30.minutes.from_now.to_i
+    }
+
+    secret_key = ENV['JWT_SECRET_KEY']
+
+    JWT.encode(payload, secret_key, 'HS256')
+  end
+
   private
 
   def create_api_key

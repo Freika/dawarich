@@ -31,7 +31,7 @@ RSpec.describe User, type: :model do
 
     describe '#activate' do
       context 'when self-hosted' do
-        let!(:user) { create(:user, status: :inactive, active_until: 1.day.ago) }
+        let!(:user) { create(:user, :inactive) }
 
         before do
           allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
@@ -49,7 +49,7 @@ RSpec.describe User, type: :model do
         end
 
         it 'does not activate user' do
-          user = create(:user, status: :inactive, active_until: 1.day.ago)
+          user = create(:user, :inactive)
 
           expect(user.active?).to be_falsey
           expect(user.active_until).to be_within(1.minute).of(1.day.ago)
@@ -176,6 +176,52 @@ RSpec.describe User, type: :model do
 
       it 'returns years tracked' do
         expect(user.years_tracked).to eq([{ year: 2024, months: ['Jan'] }])
+      end
+    end
+
+    describe '#can_subscribe?' do
+      context 'when Dawarich is self-hosted' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        end
+
+        context 'when user is active' do
+          let!(:user) { create(:user, status: :active, active_until: 1000.years.from_now) }
+
+          it 'returns false' do
+            expect(user.can_subscribe?).to be_falsey
+          end
+        end
+
+        context 'when user is inactive' do
+          let(:user) { create(:user, :inactive) }
+
+          it 'returns false' do
+            expect(user.can_subscribe?).to be_falsey
+          end
+        end
+      end
+
+      context 'when Dawarich is not self-hosted' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        end
+
+        context 'when user is active' do
+          let(:user) { create(:user, status: :active, active_until: 1000.years.from_now) }
+
+          it 'returns false' do
+            expect(user.can_subscribe?).to be_falsey
+          end
+        end
+
+        context 'when user is inactive' do
+          let(:user) { create(:user, :inactive) }
+
+          it 'returns true' do
+            expect(user.can_subscribe?).to be_truthy
+          end
+        end
       end
     end
   end

@@ -12,13 +12,17 @@ module Visits
     end
 
     def call
-      bounding_box = "ST_MakeEnvelope(#{sw_lng}, #{sw_lat}, #{ne_lng}, #{ne_lat}, 4326)"
-
       Visit
         .includes(:place)
         .where(user:)
         .joins(:place)
-        .where("ST_Contains(#{bounding_box}, ST_SetSRID(places.lonlat::geometry, 4326))")
+        .where(
+          'ST_Contains(ST_MakeEnvelope(?, ?, ?, ?, 4326), ST_SetSRID(places.lonlat::geometry, 4326))',
+          sw_lng,
+          sw_lat,
+          ne_lng,
+          ne_lat
+        )
         .order(started_at: :desc)
     end
 

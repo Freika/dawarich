@@ -5,4 +5,7 @@
     <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab #{active_tab?(settings_background_jobs_path)}" %>
   <% end %>
   <%= link_to 'Map', settings_maps_path, role: 'tab', class: "tab #{active_tab?(settings_maps_path)}" %>
+  <% if !DawarichSettings.self_hosted? %>
+    <%= link_to 'Subscriptions', settings_subscriptions_path, role: 'tab', class: "tab #{active_tab?(settings_subscriptions_path)}" %>
+  <% end %>
 </div>
