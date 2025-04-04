@@ -26,7 +26,7 @@ class ApplicationController < ActionController::Base
   end
 
   def authenticate_active_user!
-    return if current_user&.active?
+    return if current_user&.active_until&.future?
 
     redirect_to root_path, notice: 'Your account is not active.', status: :see_other
   end

@@ -109,7 +109,7 @@ class User < ApplicationRecord
   end
 
   def activate
-    update(status: :active)
+    update(status: :active, active_until: 1000.years.from_now)
   end
 
   def sanitize_input
