@@ -68,11 +68,16 @@
                 <td data-reverse-geocoded-points-count>
                   <%= number_with_delimiter import.reverse_geocoded_points_count %>
                 </td>
-                <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
+                <td><%= human_datetime(import.created_at) %></td>
               </tr>
             <% end %>
           </tbody>
         </table>
+      </div>
+      <div class="flex justify-center my-5">
+        <div class='flex'>
+          <%= paginate @imports %>
+        </div>
       </div>
     <% end %>
   </div>

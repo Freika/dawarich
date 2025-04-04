@@ -115,6 +115,17 @@ module ApplicationHelper
     date.strftime('%e %B %Y')
   end
 
+  def human_datetime(datetime)
+    return unless datetime
+
+    content_tag(
+      :span,
+      datetime.strftime('%e %b %Y, %H:%M'),
+      class: 'tooltip',
+      data: { tip: datetime.iso8601 }
+    )
+  end
+
   def speed_text_color(speed)
     return 'text-default' if speed.to_i >= 0
 

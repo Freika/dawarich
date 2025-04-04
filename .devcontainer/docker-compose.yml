@@ -71,3 +71,4 @@ volumes:
   dawarich_shared:
   dawarich_public:
   dawarich_watched:
+  dawarich_storage:
