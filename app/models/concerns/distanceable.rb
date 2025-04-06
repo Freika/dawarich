@@ -59,12 +59,11 @@ module Distanceable
       return 0 if points.length < 2
 
       total_meters = points.each_cons(2).sum do |point1, point2|
-        connection.select_value(<<-SQL.squish)
-          SELECT ST_Distance(
-            ST_GeomFromEWKT('#{point1.lonlat}')::geography,
-            ST_GeomFromEWKT('#{point2.lonlat}')::geography
-          )
-        SQL
+        connection.select_value(
+          'SELECT ST_Distance(ST_GeomFromEWKT($1)::geography, ST_GeomFromEWKT($2)::geography)',
+          nil,
+          [point1.lonlat, point2.lonlat]
+        )
       end
 
       total_meters.to_f / DISTANCE_UNITS[unit.to_sym]

@@ -19,6 +19,7 @@ class ReverseGeocoding::Places::FetchData
 
     first_place = reverse_geocoded_places.shift
     update_place(first_place)
+
     reverse_geocoded_places.each { |reverse_geocoded_place| fetch_and_create_place(reverse_geocoded_place) }
   end
 
@@ -49,6 +50,9 @@ class ReverseGeocoding::Places::FetchData
     new_place.country = data['properties']['country']
     new_place.geodata = data
     new_place.source = :photon
+    if new_place.lonlat.blank?
+      new_place.lonlat = "POINT(#{data['geometry']['coordinates'][0]} #{data['geometry']['coordinates'][1]})"
+    end
 
     new_place.save!
   end
@@ -88,7 +92,7 @@ class ReverseGeocoding::Places::FetchData
       limit: 10,
       distance_sort: true,
       radius: 1,
-      units: ::DISTANCE_UNIT,
+      units: ::DISTANCE_UNIT
     )
 
     data.reject do |place|

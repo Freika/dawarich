@@ -115,6 +115,17 @@ module ApplicationHelper
     date.strftime('%e %B %Y')
   end
 
+  def human_datetime(datetime)
+    return unless datetime
+
+    content_tag(
+      :span,
+      datetime.strftime('%e %b %Y, %H:%M'),
+      class: 'tooltip',
+      data: { tip: datetime.iso8601 }
+    )
+  end
+
   def speed_text_color(speed)
     return 'text-default' if speed.to_i >= 0
 
@@ -125,5 +136,18 @@ module ApplicationHelper
     return speed if speed.to_i <= 0
 
     speed * 3.6
+  end
+
+  def days_left(active_until)
+    return unless active_until
+
+    time_words = distance_of_time_in_words(Time.zone.now, active_until)
+
+    content_tag(
+      :span,
+      time_words,
+      class: 'tooltip',
+      data: { tip: "Expires on #{active_until.iso8601}" }
+    )
   end
 end

@@ -98,4 +98,6 @@ Rails.application.configure do
   config.logger = Logger.new($stdout)
   config.lograge.enabled = true
   config.lograge.formatter = Lograge::Formatters::Json.new
+
+  config.active_storage.service = ENV['SELF_HOSTED'] == 'true' ? :local : :s3
 end

@@ -8,8 +8,12 @@ RSpec.describe Gpx::TrackImporter do
 
     let(:user) { create(:user) }
     let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/gpx_track_single_segment.gpx') }
-    let(:raw_data) { Hash.from_xml(File.read(file_path)) }
-    let(:import) { create(:import, user:, name: 'gpx_track.gpx', raw_data:) }
+    let(:file) { Rack::Test::UploadedFile.new(file_path, 'application/xml') }
+    let(:import) { create(:import, user:, name: 'gpx_track.gpx', source: 'gpx') }
+
+    before do
+      import.file.attach(file)
+    end
 
     context 'when file has a single segment' do
       it 'creates points' do

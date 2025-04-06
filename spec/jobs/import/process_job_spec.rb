@@ -2,12 +2,17 @@
 
 require 'rails_helper'
 
-RSpec.describe ImportJob, type: :job do
+RSpec.describe Import::ProcessJob, type: :job do
   describe '#perform' do
-    subject(:perform) { described_class.new.perform(user.id, import.id) }
+    subject(:perform) { described_class.new.perform(import.id) }
 
     let(:user) { create(:user) }
-    let!(:import) { create(:import, user:, name: 'owntracks_export.json') }
+    let!(:import) { create(:import, user:, name: '2024-03.rec') }
+    let(:file_path) { Rails.root.join('spec/fixtures/files/owntracks/2024-03.rec') }
+
+    before do
+      import.file.attach(io: File.open(file_path), filename: '2024-03.rec', content_type: 'application/octet-stream')
+    end
 
     it 'creates points' do
       expect { perform }.to change { Point.count }.by(9)

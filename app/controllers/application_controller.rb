@@ -26,9 +26,15 @@ class ApplicationController < ActionController::Base
   end
 
   def authenticate_active_user!
-    return if current_user&.active?
+    return if current_user&.active_until&.future?
 
     redirect_to root_path, notice: 'Your account is not active.', status: :see_other
+  end
+
+  def authenticate_non_self_hosted!
+    return unless DawarichSettings.self_hosted?
+
+    redirect_to root_path, notice: 'You are not authorized to perform this action.', status: :see_other
   end
 
   private

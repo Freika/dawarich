@@ -3,9 +3,9 @@
 class ExportJob < ApplicationJob
   queue_as :exports
 
-  def perform(export_id, start_at, end_at, file_format: :json)
+  def perform(export_id)
     export = Export.find(export_id)
 
-    Exports::Create.new(export:, start_at:, end_at:, file_format:).call
+    Exports::Create.new(export:).call
   end
 end

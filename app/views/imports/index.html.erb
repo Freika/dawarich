@@ -53,7 +53,7 @@
             <% @imports.each do |import| %>
               <tr data-import-id="<%= import.id %>"
                   id="import-<%= import.id %>"
-                  data-points-total="<%= import.points_count %>">
+                  data-points-total="<%= import.processed %>">
                 <td>
                   <%= link_to import.name, import, class: 'underline hover:no-underline' %>
                   (<%= import.source %>)
@@ -63,16 +63,21 @@
                   <%= link_to '📋', points_path(import_id: import.id) %>
                 </td>
                 <td data-points-count>
-                  <%= number_with_delimiter import.points_count %>
+                  <%= number_with_delimiter import.processed %>
                 </td>
                 <td data-reverse-geocoded-points-count>
                   <%= number_with_delimiter import.reverse_geocoded_points_count %>
                 </td>
-                <td><%= import.created_at.strftime("%d.%m.%Y, %H:%M") %></td>
+                <td><%= human_datetime(import.created_at) %></td>
               </tr>
             <% end %>
           </tbody>
         </table>
+      </div>
+      <div class="flex justify-center my-5">
+        <div class='flex'>
+          <%= paginate @imports %>
+        </div>
       </div>
     <% end %>
   </div>

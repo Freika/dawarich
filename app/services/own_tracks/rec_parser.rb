@@ -10,11 +10,8 @@ class OwnTracks::RecParser
   def call
     file.split("\n").map do |line|
       parts = line.split("\t")
-      if parts.size > 2 && parts[1].strip == '*'
-        JSON.parse(parts[2])
-      else
-        nil
-      end
+
+      Oj.load(parts[2]) if parts.size > 2 && parts[1].strip == '*'
     end.compact
   end
 end

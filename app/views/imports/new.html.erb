@@ -3,36 +3,6 @@
 <div class="mx-auto md:w-2/3 w-full">
   <h1 class="font-bold text-4xl">New import</h1>
 
-  <div role="alert" class="alert alert-info my-5">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-    <span>
-      <p>To import <code>Records.json</code> file from your Google Takeout Archive, use rake task.</p>
-
-      <p class='mb-3'>Import takes a while to finish, so you might want to run it in <code>screen</code> session.</p>
-
-      <p class='mt-5 mb-2'>1. Upload your Records.json file to your server</p>
-      <p class='mt-5 mb-2'>2. Copy you Records.json to the <code>tmp</code> folder:
-        <div class="mockup-code">
-          <pre data-prefix="$"><code>docker cp Records.json dawarich_app:/var/app/tmp/imports/Records.json</code></pre>
-        </div>
-      </p>
-      <p class='mt-5 mb-2'>3. Attach to the docker container:
-        <div class="mockup-code">
-          <pre data-prefix="$"><code>docker exec -it dawarich_app sh</code></pre>
-        </div>
-      </p>
-      <p class='mt-5 mb-2'>4. Run the rake task:
-        <div class="mockup-code">
-          <pre data-prefix="$"><code>bundle exec rake import:big_file['tmp/imports/Records.json','user@example.com']</code>
-          </pre>
-        </div>
-      </p>
-      <p class='mt-5 mb-2'>5. Wait patiently for process to finish</p>
-
-      <p class='mt-3'>You can monitor progress in <a href="/sidekiq" class="underline">Sidekiq UI</a></p>
-    </span>
-  </div>
-
   <%= render "form", import: @import %>
 
   <%= link_to "Back to imports", imports_path, class: "btn mx-5 mb-5" %>

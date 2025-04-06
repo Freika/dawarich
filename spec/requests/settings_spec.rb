@@ -85,7 +85,7 @@ RSpec.describe 'Settings', type: :request do
 
     context 'when user is inactive' do
       before do
-        user.update(status: :inactive)
+        user.update(status: :inactive, active_until: 1.day.ago)
       end
 
       it 'redirects to the root path' do

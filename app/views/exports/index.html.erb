@@ -37,11 +37,15 @@
             <% @exports.each do |export| %>
               <tr>
                 <td><%= export.name %></td>
-                <td><%= export.created_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
+                <td><%= human_datetime(export.created_at) %></td>
                 <td><%= export.status %></td>
                 <td>
                   <% if export.completed? %>
-                    <%= link_to 'Download', export.url, class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
+                    <% if export.file.present? %>
+                      <%= link_to 'Download', rails_blob_path(export.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
+                    <% else %>
+                      <%= link_to 'Download', export.url, class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
+                    <% end %>
                   <% end %>
                   <%= link_to 'Delete', export, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
                 </td>
