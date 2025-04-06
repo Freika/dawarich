@@ -25,7 +25,7 @@ export function calculateSpeed(point1, point2) {
 }
 
 // Optimize getSpeedColor by pre-calculating color stops
-const colorStops = [
+const colorStopsFallback = [
   { speed: 0, color: '#00ff00' },    // Stationary/very slow (green)
   { speed: 15, color: '#00ffff' },   // Walking/jogging (cyan)
   { speed: 30, color: '#ff00ff' },   // Cycling/slow driving (magenta)
@@ -36,9 +36,33 @@ const colorStops = [
   rgb: hexToRGB(stop.color)
 }));
 
-export function getSpeedColor(speedKmh, useSpeedColors) {
+export function colorFormatEncode(arr) {
+  return arr.map(item => `${item.speed}:${item.color}`).join('|');
+}
+
+export function colorFormatDecode(str) {
+  return str.split('|').map(segment => {
+    const [speed, color] = segment.split(':');
+    return { speed: Number(speed), color };
+  });
+}
+
+export function getSpeedColor(speedKmh, useSpeedColors, speedColorScale) {
   if (!useSpeedColors) {
     return '#0000ff';
+  }
+
+  let colorStops;
+
+  try {
+    colorStops = colorFormatDecode(speedColorScale).map(stop => ({
+      ...stop,
+      rgb: hexToRGB(stop.color)
+    }));;
+    console.log("yes");
+  } catch (error) { // If user has given invalid values
+    colorStops = colorStopsFallback;
+    console.log("oof\n" + speedColorScale);
   }
 
   // Find the appropriate color segment
@@ -388,7 +412,7 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
 
       for (let i = 0; i < polylineCoordinates.length - 1; i++) {
         const speed = calculateSpeed(polylineCoordinates[i], polylineCoordinates[i + 1]);
-        const color = getSpeedColor(speed, userSettings.speed_colored_routes);
+        const color = getSpeedColor(speed, userSettings.speed_colored_routes, userSettings.speed_color_scale);
 
         const segment = L.polyline(
           [
@@ -466,7 +490,7 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
   return layerGroup;
 }
 
-export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
+export function updatePolylinesColors(polylinesLayer, useSpeedColors, speedColorScale) {
   const defaultStyle = {
     color: '#0000ff',
     originalColor: '#0000ff'
@@ -496,7 +520,7 @@ export function updatePolylinesColors(polylinesLayer, useSpeedColors) {
       }
 
       const speed = segment.options.speed || 0;
-      const newColor = getSpeedColor(speed, true);
+      const newColor = getSpeedColor(speed, true, speedColorScale);
 
       // Reuse style object
       styleObj.color = newColor;

@@ -8,7 +8,8 @@ import { createMarkersArray } from "../maps/markers";
 import {
   createPolylinesLayer,
   updatePolylinesOpacity,
-  updatePolylinesColors
+  updatePolylinesColors,
+  colorFormatEncode
 } from "../maps/polylines";
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
@@ -36,6 +37,14 @@ export default class extends BaseController {
     super.connect();
     console.log("Map controller connected");
 
+    const speedColorScaleDefault = [
+      { speed: 0, color: '#00ff00' },
+      { speed: 15, color: '#00ffff' },
+      { speed: 30, color: '#ff00ff' },
+      { speed: 50, color: '#ffff00' },
+      { speed: 100, color: '#ff3300' }
+    ];
+
     this.apiKey = this.element.dataset.api_key;
     this.markers = JSON.parse(this.element.dataset.coordinates);
     this.timezone = this.element.dataset.timezone;
@@ -47,6 +56,7 @@ export default class extends BaseController {
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
     this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
+    this.speedColorScale = this.userSettings.speed_color_scale || colorFormatEncode(speedColorScaleDefault);
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -699,7 +709,7 @@ export default class extends BaseController {
 
       // Form HTML
       div.innerHTML = `
-        <form id="settings-form" class="w-48">
+        <form id="settings-form" class="w-48 h-144 overflow-y-auto">
           <label for="route-opacity">Route Opacity</label>
           <div class="join">
             <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="0" max="1" step="0.1" value="${this.routeOpacity}">
@@ -768,6 +778,13 @@ export default class extends BaseController {
             <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class='w-4' style="width: 20px;" ${this.speedColoredRoutesChecked()} />
           </label>
 
+          <label for="speed_color_scale">Speed color scale</label>
+          <div class="join">
+            <input type="text" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="speed_color_scale" name="speed_color_scale" min="5" max="100" step="1" value="${this.speedColorScale}">
+            <label for="speed_color_scale_info" class="btn-xs join-item">?</label>
+          </div>
+
+
           <button type="submit">Update</button>
         </form>
       `;
@@ -829,7 +846,8 @@ export default class extends BaseController {
           merge_threshold_minutes: event.target.merge_threshold_minutes.value,
           points_rendering_mode: event.target.points_rendering_mode.value,
           live_map_enabled: event.target.live_map_enabled.checked,
-          speed_colored_routes: event.target.speed_colored_routes.checked
+          speed_colored_routes: event.target.speed_colored_routes.checked,
+          speed_color_scale: event.target.speed_color_scale.value
         },
       }),
     })
@@ -866,7 +884,18 @@ export default class extends BaseController {
         if (this.polylinesLayer) {
           updatePolylinesColors(
             this.polylinesLayer,
-            newSettings.speed_colored_routes
+            newSettings.speed_colored_routes,
+            newSettings.speed_color_scale
+          );
+        }
+      }
+
+      if (newSettings.speed_color_scale !== this.userSettings.speed_color_scale) {
+        if (this.polylinesLayer) {
+          updatePolylinesColors(
+            this.polylinesLayer,
+            newSettings.speed_colored_routes,
+            newSettings.speed_color_scale
           );
         }
       }
