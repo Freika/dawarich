@@ -17,9 +17,22 @@ class Export < ApplicationRecord
     Exports::Create.new(export: self).call
   end
 
+  def migrate_to_new_storage
+    file.attach(io: File.open("public/#{url}"), filename: name)
+    update!(url: nil)
+
+    File.delete("public/#{url}")
+  rescue StandardError => e
+    Rails.logger.debug("Error migrating export #{id}: #{e.message}")
+  end
+
   private
 
   def remove_attached_file
     file.purge_later
+
+    File.delete("public/#{url}")
+  rescue StandardError => e
+    Rails.logger.debug("Error removing export #{id}: #{e.message}")
   end
 end

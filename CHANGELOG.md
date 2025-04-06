@@ -46,11 +46,14 @@ In this release we're changing the way import files are being stored. Previously
 This is an optional task, that will not affect your points or other data.
 Big imports might take a while to migrate, so be patient.
 
+Also, you can now migrate existing exports to the new storage using the `rake exports:migrate_to_new_storage` task (in the container shell) or just delete them.
+
 If your hardware doesn't have enough memory to migrate the imports, you can delete your imports and re-import them.
 
 ## Added
 
 - Sentry is now can be used for error tracking.
+- Subscription management is now available in non self-hosted mode.
 
 ## Changed
 
