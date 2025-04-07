@@ -59,10 +59,8 @@ export function getSpeedColor(speedKmh, useSpeedColors, speedColorScale) {
       ...stop,
       rgb: hexToRGB(stop.color)
     }));;
-    console.log("yes");
   } catch (error) { // If user has given invalid values
     colorStops = colorStopsFallback;
-    console.log("oof\n" + speedColorScale);
   }
 
   // Find the appropriate color segment
