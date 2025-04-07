@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ⚠️ This release includes a breaking change. ⚠️
 
-Make sure to add `dawarich_storage` volume to your `docker-compose.yml` file. Example:
+Make sure to add `dawarich_storage` volume and `SELF_HOSTED: "true"` to your `docker-compose.yml` file. Example:
 
 ```diff
 ...
@@ -21,6 +21,9 @@ Make sure to add `dawarich_storage` volume to your `docker-compose.yml` file. Ex
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
 +     - dawarich_storage:/var/app/storage
+...
+    environment:
++     SELF_HOSTED: "true"
 
 ...
 
@@ -31,6 +34,10 @@ Make sure to add `dawarich_storage` volume to your `docker-compose.yml` file. Ex
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
 +     - dawarich_storage:/var/app/storage
+...
+    environment:
++     SELF_HOSTED: "true"
+
 
 volumes:
   dawarich_db_data:
