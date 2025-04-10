@@ -25,16 +25,13 @@ export function calculateSpeed(point1, point2) {
 }
 
 // Optimize getSpeedColor by pre-calculating color stops
-const colorStopsFallback = [
+export const colorStopsFallback = [
   { speed: 0, color: '#00ff00' },    // Stationary/very slow (green)
   { speed: 15, color: '#00ffff' },   // Walking/jogging (cyan)
   { speed: 30, color: '#ff00ff' },   // Cycling/slow driving (magenta)
   { speed: 50, color: '#ffff00' },   // Urban driving (yellow)
   { speed: 100, color: '#ff3300' }   // Highway driving (red)
-].map(stop => ({
-  ...stop,
-  rgb: hexToRGB(stop.color)
-}));
+];
 
 export function colorFormatEncode(arr) {
   return arr.map(item => `${item.speed}:${item.color}`).join('|');
@@ -60,7 +57,10 @@ export function getSpeedColor(speedKmh, useSpeedColors, speedColorScale) {
       rgb: hexToRGB(stop.color)
     }));;
   } catch (error) { // If user has given invalid values
-    colorStops = colorStopsFallback;
+    colorStops = colorStopsFallback.map(stop => ({
+      ...stop,
+      rgb: hexToRGB(stop.color)
+    }));;
   }
 
   // Find the appropriate color segment
