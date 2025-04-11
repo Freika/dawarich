@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+# 0.25.5 - UNRELEASED
+
+## Removed
+
+- Optional telemetry was removed from the app.
+- Sidekiq Web UI is now protected by basic auth in non-self-hosted mode. (Needs to be tested)
+
+
 # 0.25.4 - 2025-04-02
 
 ⚠️ This release includes a breaking change. ⚠️

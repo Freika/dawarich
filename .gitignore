@@ -65,3 +65,6 @@
 .dotnet/
 .cursorrules
 .cursormemory.md
+
+/config/credentials/production.key
+/config/credentials/production.yml.enc

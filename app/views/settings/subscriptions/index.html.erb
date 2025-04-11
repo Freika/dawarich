@@ -16,13 +16,13 @@
             Your subscription will be valid for the next <span class="text-accent"><%= days_left(current_user.active_until) %></span>.
           </p>
 
-          <%= link_to 'Manage subscription', "#{ENV['SUBSCRIPTION_URL']}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
+          <%= link_to 'Manage subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
         <% else %>
           <p class="py-6">
             You are currently not subscribed to Dawarich. How about we fix that?
           </p>
 
-          <%= link_to 'Manage subscription', "#{ENV['SUBSCRIPTION_URL']}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
+          <%= link_to 'Manage subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
         <% end %>
       </div>
     </div>
