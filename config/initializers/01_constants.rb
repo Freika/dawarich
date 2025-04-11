@@ -20,4 +20,4 @@ GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
 # /Reverse geocoding settings
 
 SENTRY_DSN = ENV.fetch('SENTRY_DSN', nil)
-MANAGER_URL = SELF_HOSTED ? nil : ENV.fetch('MANAGER_URL', raise('MANAGER_URL is not set'))
+MANAGER_URL = SELF_HOSTED ? nil : ENV.fetch('MANAGER_URL', nil)
