@@ -7,7 +7,7 @@
     <div class="hero-content text-center">
       <div class="max-w-md">
         <h1 class="text-5xl font-bold">Hello there!</h1>
-        <% if current_user.active_until.future? %>
+        <% if current_user.active_until&.future? %>
           <p class="py-6">
             You are currently subscribed to Dawarich, hurray!
           </p>
