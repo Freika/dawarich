@@ -29,16 +29,16 @@ rm -f $APP_PATH/tmp/pids/server.pid
 
 # Wait for the database to become available
 echo "⏳ Waiting for database to be ready..."
-until PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -c '\q'; do
+until PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" -c '\q'; do
   >&2 echo "Postgres is unavailable - retrying..."
   sleep 2
 done
 echo "✅ PostgreSQL is ready!"
 
 # Create database if it doesn't exist
-if ! PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -c "SELECT 1 FROM pg_database WHERE datname='$DATABASE_NAME'" | grep -q 1; then
+if ! PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" -c "SELECT 1 FROM pg_database WHERE datname='$DATABASE_NAME'" | grep -q 1; then
   echo "Creating database $DATABASE_NAME..."
-  bundle exec rails db:create
+  PGPASSWORD=$DATABASE_PASSWORD createdb -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" "$DATABASE_NAME"
 fi
 
 # Run database migrations

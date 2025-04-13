@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'rexml/document'
+
 class Gpx::TrackImporter
   include Imports::Broadcaster
 

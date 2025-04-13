@@ -5,7 +5,9 @@ class RunInitialVisitSuggestion < ActiveRecord::Migration[7.1]
     start_at = 30.years.ago
     end_at = Time.current
 
-    VisitSuggestingJob.perform_later(start_at:, end_at:)
+    User.find_each do |user|
+      VisitSuggestingJob.perform_later(user_id: user.id, start_at:, end_at:)
+    end
   end
 
   def down

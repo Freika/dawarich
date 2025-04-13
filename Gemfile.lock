@@ -506,6 +506,7 @@ DEPENDENCIES
   pundit
   rails (~> 8.0)
   redis
+  rexml
   rgeo
   rgeo-activerecord
   rspec-rails
