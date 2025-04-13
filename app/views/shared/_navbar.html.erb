@@ -98,8 +98,8 @@
           </div>
           <ul tabindex="0" class="dropdown-content z-[5000] menu p-2 shadow-lg bg-base-100 rounded-box min-w-52" data-notifications-target="list">
             <li><%= link_to 'See all', notifications_path %></li>
-            <div class="divider p-0 m-0"></div>
             <% @unread_notifications.first(10).each do |notification| %>
+              <div class="divider p-0 m-0"></div>
               <li class='notification-item'>
                 <%= link_to notification do %>
                   <%= notification.title %>
@@ -126,7 +126,7 @@
         </li>
       <% else %>
         <li><%= link_to 'Login', new_user_session_path %></li>
-        <% if !SELF_HOSTED && devise_mapping.registerable? && controller_name != 'registrations' %>
+        <% if !SELF_HOSTED && devise_mapping&.registerable? %>
           <li><%= link_to 'Register', new_user_registration_path %></li>
         <% end %>
       <% end %>

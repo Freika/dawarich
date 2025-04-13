@@ -3,16 +3,19 @@
 class Photos::ImportParser
   include Imports::Broadcaster
   include PointValidation
-  attr_reader :import, :json, :user_id
+  attr_reader :import, :user_id
 
   def initialize(import, user_id)
     @import = import
-    @json = import.raw_data
     @user_id = user_id
   end
 
   def call
-    json.each.with_index(1) { |point, index| create_point(point, index) }
+    import.file.download do |file|
+      json = Oj.load(file)
+
+      json.each.with_index(1) { |point, index| create_point(point, index) }
+    end
   end
 
   def create_point(point, index)

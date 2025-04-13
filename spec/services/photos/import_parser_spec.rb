@@ -13,7 +13,14 @@ RSpec.describe Photos::ImportParser do
     let(:immich_data) do
       JSON.parse(File.read(Rails.root.join('spec/fixtures/files/immich/geodata.json')))
     end
-    let(:import) { create(:import, user:, raw_data: immich_data) }
+    let(:import) { create(:import, user:) }
+
+    let(:file_path) { Rails.root.join('spec/fixtures/files/immich/geodata.json') }
+    let(:file) { Rack::Test::UploadedFile.new(file_path, 'text/plain') }
+
+    before do
+      import.file.attach(io: File.open(file_path), filename: 'immich_geodata.json', content_type: 'application/json')
+    end
 
     context 'when there are no points' do
       it 'creates new points' do

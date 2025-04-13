@@ -5,12 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# 0.25.5 - UNRELEASED
+# 0.25.5 - 2025-04-13
 
 ## Removed
 
 - Optional telemetry was removed from the app.
 - Sidekiq Web UI is now protected by basic auth in non-self-hosted mode. (Needs to be tested)
+
+## Changed
+
+- `rake points:migrate_to_lonlat` task now also tries to extract latitude and longitude from `raw_data` column before using `longitude` and `latitude` columns to fill `lonlat` column.
 
 
 # 0.25.4 - 2025-04-02
