@@ -5,7 +5,7 @@
     </div>
   <% end %>
 
-  <% if !SELF_HOSTED && devise_mapping.registerable? && controller_name != 'registrations' %>
+  <% if !SELF_HOSTED && devise_mapping&.registerable? && controller_name != 'registrations' %>
     <div class='my-2'>
       <%= link_to "Register", new_registration_path(resource_name) %>
     </div>
