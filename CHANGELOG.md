@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# 0.25.5 - 2025-04-13
+# 0.25.5 - 2025-04-15
 
 ## Removed
 
@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - `rake points:migrate_to_lonlat` task now also tries to extract latitude and longitude from `raw_data` column before using `longitude` and `latitude` columns to fill `lonlat` column.
 - Docker entrypoints are now using `DATABASE_NAME` environment variable to check if Postgres is existing/available.
+
+## Added
+
+- You can now provide SMTP settings in ENV vars to send emails.
 
 
 # 0.25.4 - 2025-04-02
