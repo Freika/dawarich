@@ -5,7 +5,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# 0.25.5 - 2025-04-13
+# 0.25.5 - 2025-04-15
+
+This release introduces a new way to send transactional emails using SMTP. Example may include password reset, email confirmation, etc.
+
+To enable SMTP mailing, you need to set the following environment variables:
+
+- `SMTP_SERVER` - SMTP server address.
+- `SMTP_PORT` - SMTP server port.
+- `SMTP_DOMAIN` - SMTP server domain.
+- `SMTP_USERNAME` - SMTP server username.
+- `SMTP_PASSWORD` - SMTP server password.
+- `SMTP_FROM` - Email address to send emails from.
+
+This is optional feature and is not required for the app to work.
 
 ## Removed
 
@@ -16,6 +29,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - `rake points:migrate_to_lonlat` task now also tries to extract latitude and longitude from `raw_data` column before using `longitude` and `latitude` columns to fill `lonlat` column.
 - Docker entrypoints are now using `DATABASE_NAME` environment variable to check if Postgres is existing/available.
+
+## Added
+
+- You can now provide SMTP settings in ENV vars to send emails.
 
 
 # 0.25.4 - 2025-04-02

@@ -126,7 +126,7 @@
         </li>
       <% else %>
         <li><%= link_to 'Login', new_user_session_path %></li>
-        <% if !SELF_HOSTED && devise_mapping&.registerable? %>
+        <% if !SELF_HOSTED && defined?(devise_mapping) && devise_mapping&.registerable? %>
           <li><%= link_to 'Register', new_user_registration_path %></li>
         <% end %>
       <% end %>
