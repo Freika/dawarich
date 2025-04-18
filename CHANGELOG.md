@@ -33,6 +33,7 @@ This is optional feature and is not required for the app to work.
 ## Added
 
 - You can now provide SMTP settings in ENV vars to send emails.
+- You can now edit imports. #1044 #623
 
 
 # 0.25.4 - 2025-04-02
