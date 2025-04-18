@@ -77,4 +77,65 @@ RSpec.describe 'Imports', type: :request do
       end
     end
   end
+
+  describe 'GET /imports/new' do
+    context 'when user is logged in' do
+      let(:user) { create(:user) }
+
+      before { sign_in user }
+
+      it 'returns http success' do
+        get new_import_path
+
+        expect(response).to have_http_status(200)
+      end
+    end
+  end
+
+  describe 'DELETE /imports/:id' do
+    context 'when user is logged in' do
+      let(:user) { create(:user) }
+      let!(:import) { create(:import, user:) }
+
+      before { sign_in user }
+
+      it 'deletes the import' do
+        expect do
+          delete import_path(import)
+        end.to change(user.imports, :count).by(-1)
+
+        expect(response).to redirect_to(imports_path)
+      end
+    end
+  end
+
+  describe 'GET /imports/:id/edit' do
+    context 'when user is logged in' do
+      let(:user) { create(:user) }
+      let(:import) { create(:import, user:) }
+
+      before { sign_in user }
+
+      it 'returns http success' do
+        get edit_import_path(import)
+
+        expect(response).to have_http_status(200)
+      end
+    end
+  end
+
+  describe 'PATCH /imports/:id' do
+    context 'when user is logged in' do
+      let(:user) { create(:user) }
+      let(:import) { create(:import, user:) }
+
+      before { sign_in user }
+
+      it 'updates the import' do
+        patch import_path(import), params: { import: { name: 'New Name' } }
+
+        expect(response).to redirect_to(imports_path)
+      end
+    end
+  end
 end

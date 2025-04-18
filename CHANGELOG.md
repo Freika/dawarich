@@ -5,11 +5,46 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+# 0.25.5 - 2025-04-18
+
+This release introduces a new way to send transactional emails using SMTP. Example may include password reset, email confirmation, etc.
+
+To enable SMTP mailing, you need to set the following environment variables:
+
+- `SMTP_SERVER` - SMTP server address.
+- `SMTP_PORT` - SMTP server port.
+- `SMTP_DOMAIN` - SMTP server domain.
+- `SMTP_USERNAME` - SMTP server username.
+- `SMTP_PASSWORD` - SMTP server password.
+- `SMTP_FROM` - Email address to send emails from.
+
+This is optional feature and is not required for the app to work.
+
+## Removed
+
+- Optional telemetry was removed from the app. The `ENABLE_TELEMETRY` env var can be safely removed from docker compose.
+
+## Changed
+
+- `rake points:migrate_to_lonlat` task now also tries to extract latitude and longitude from `raw_data` column before using `longitude` and `latitude` columns to fill `lonlat` column.
+- Docker entrypoints are now using `DATABASE_NAME` environment variable to check if Postgres is existing/available.
+- Sidekiq web UI is now protected by basic auth. Use `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD` environment variables to set the credentials.
+
+## Added
+
+- You can now provide SMTP settings in ENV vars to send emails.
+- You can now edit imports. #1044 #623
+
+## Fixed
+
+- Importing data from Immich now works correctly. #1019
+
+
 # 0.25.4 - 2025-04-02
 
 ⚠️ This release includes a breaking change. ⚠️
 
-Make sure to add `dawarich_storage` volume to your `docker-compose.yml` file. Example:
+Make sure to add `dawarich_storage` volume and `SELF_HOSTED: "true"` to your `docker-compose.yml` file. Example:
 
 ```diff
 ...
@@ -21,6 +56,9 @@ Make sure to add `dawarich_storage` volume to your `docker-compose.yml` file. Ex
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
 +     - dawarich_storage:/var/app/storage
+...
+    environment:
++     SELF_HOSTED: "true"
 
 ...
 
@@ -31,6 +69,10 @@ Make sure to add `dawarich_storage` volume to your `docker-compose.yml` file. Ex
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
 +     - dawarich_storage:/var/app/storage
+...
+    environment:
++     SELF_HOSTED: "true"
+
 
 volumes:
   dawarich_db_data:

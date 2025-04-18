@@ -5,7 +5,7 @@ class ImportsController < ApplicationController
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create]
-  before_action :set_import, only: %i[show destroy]
+  before_action :set_import, only: %i[show edit update destroy]
 
   def index
     @imports =
@@ -18,8 +18,16 @@ class ImportsController < ApplicationController
 
   def show; end
 
+  def edit; end
+
   def new
     @import = Import.new
+  end
+
+  def update
+    @import.update(import_params)
+
+    redirect_to imports_url, notice: 'Import was successfully updated.', status: :see_other
   end
 
   def create
