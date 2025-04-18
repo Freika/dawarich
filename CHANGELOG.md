@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# 0.25.5 - 2025-04-15
+# 0.25.5 - 2025-04-18
 
 This release introduces a new way to send transactional emails using SMTP. Example may include password reset, email confirmation, etc.
 
