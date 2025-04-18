@@ -6,7 +6,22 @@ Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
-  authenticate :user, ->(u) { u.admin? && DawarichSettings.self_hosted? } do
+
+  Sidekiq::Web.use(Rack::Auth::Basic) do |username, password|
+    ActiveSupport::SecurityUtils.secure_compare(
+      ::Digest::SHA256.hexdigest(username),
+      ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_USERNAME'])
+    ) &
+      ActiveSupport::SecurityUtils.secure_compare(
+        ::Digest::SHA256.hexdigest(password),
+        ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_PASSWORD'])
+      )
+  end
+
+  authenticate :user, lambda { |u|
+    (u.admin? && DawarichSettings.self_hosted?) ||
+      (u.admin? && ENV['SIDEKIQ_USERNAME'].present? && ENV['SIDEKIQ_PASSWORD'].present?)
+  } do
     mount Sidekiq::Web => '/sidekiq'
   end
 

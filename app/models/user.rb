@@ -101,7 +101,7 @@ class User < ApplicationRecord
   end
 
   def can_subscribe?
-    active_until&.past? && !DawarichSettings.self_hosted?
+    (active_until.nil? || active_until&.past?) && !DawarichSettings.self_hosted?
   end
 
   def generate_subscription_token

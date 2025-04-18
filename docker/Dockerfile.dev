@@ -6,6 +6,7 @@ ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 ENV RAILS_ENV=development
+ENV SELF_HOSTED=true
 
 # Install dependencies for application
 RUN apk -U add --no-cache \

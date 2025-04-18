@@ -20,7 +20,7 @@
           </details>
         </li>
         <% if user_signed_in? && current_user.can_subscribe? %>
-          <li><%= link_to 'Subscribe', "#{ENV['SUBSCRIPTION_URL']}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %></li>
+          <li><%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %></li>
         <% end %>
       </ul>
     </div>
@@ -71,7 +71,7 @@
     <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
       <% if user_signed_in? %>
         <% if current_user.can_subscribe? %>
-          <li><%= link_to 'Subscribe', "#{ENV['SUBSCRIPTION_URL']}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %></li>
+          <li><%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %></li>
         <% end %>
 
         <div class="dropdown dropdown-end dropdown-bottom dropdown-hover"
@@ -98,8 +98,8 @@
           </div>
           <ul tabindex="0" class="dropdown-content z-[5000] menu p-2 shadow-lg bg-base-100 rounded-box min-w-52" data-notifications-target="list">
             <li><%= link_to 'See all', notifications_path %></li>
-            <div class="divider p-0 m-0"></div>
             <% @unread_notifications.first(10).each do |notification| %>
+              <div class="divider p-0 m-0"></div>
               <li class='notification-item'>
                 <%= link_to notification do %>
                   <%= notification.title %>
@@ -126,6 +126,9 @@
         </li>
       <% else %>
         <li><%= link_to 'Login', new_user_session_path %></li>
+        <% if !SELF_HOSTED && defined?(devise_mapping) && devise_mapping&.registerable? %>
+          <li><%= link_to 'Register', new_user_registration_path %></li>
+        <% end %>
       <% end %>
     </ul>
   </div>
