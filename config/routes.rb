@@ -37,11 +37,6 @@ Rails.application.routes.draw do
     resources :users, only: %i[index create destroy edit update]
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
-    resources :subscriptions, only: %i[index] do
-      collection do
-        get :subscription_callback
-      end
-    end
   end
 
   patch 'settings', to: 'settings#update'
@@ -131,6 +126,8 @@ Rails.application.routes.draw do
       namespace :maps do
         resources :tile_usage, only: [:create]
       end
+
+      post 'subscriptions/callback', to: 'subscriptions#callback'
     end
   end
 end

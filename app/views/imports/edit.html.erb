@@ -1,8 +1,20 @@
 <div class="mx-auto md:w-2/3 w-full">
   <h1 class="font-bold text-4xl">Editing import</h1>
 
-  <%= render "form", import: @import %>
+  <%= form_with model: @import, class: 'form-body mt-4' do |form| %>
+    <div class="form-control">
+      <%= form.label :name %>
+      <%= form.text_field :name, class: 'input input-bordered' %>
+    </div>
 
-  <%= link_to "Show this import", @import, class: "ml-2 rounded-lg py-3 px-5 bg-gray-100 inline-block font-medium" %>
-  <%= link_to "Back to imports", imports_path, class: "ml-2 rounded-lg py-3 px-5 bg-gray-100 inline-block font-medium" %>
+    <div class="form-control">
+      <%= form.label :source %>
+      <%= form.select :source, options_for_select(Import.sources.keys.map { |source| [source.humanize, source] }, @import.source), {}, class: 'select select-bordered' %>
+    </div>
+
+    <div class='my-4'>
+      <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back to imports", imports_path, class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+    </div>
+  <% end %>
 </div>

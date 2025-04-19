@@ -11,8 +11,6 @@ class Imports::Create
   def call
     parser(import.source).new(import, user.id).call
 
-    create_import_finished_notification(import, user)
-
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
     update_import_points_count(import)
@@ -53,21 +51,22 @@ class Imports::Create
     VisitSuggestingJob.perform_later(user_id:, start_at:, end_at:)
   end
 
-  def create_import_finished_notification(import, user)
-    Notifications::Create.new(
-      user:,
-      kind: :info,
-      title: 'Import finished',
-      content: "Import \"#{import.name}\" successfully finished."
-    ).call
-  end
-
   def create_import_failed_notification(import, user, error)
+    message = import_failed_message(import, error)
+
     Notifications::Create.new(
       user:,
       kind: :error,
       title: 'Import failed',
-      content: "Import \"#{import.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+      content: message
     ).call
+  end
+
+  def import_failed_message(import, error)
+    if DawarichSettings.self_hosted?
+      "Import \"#{import.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+    else
+      "Import \"#{import.name}\" failed, please contact us at hi@dawarich.com"
+    end
   end
 end

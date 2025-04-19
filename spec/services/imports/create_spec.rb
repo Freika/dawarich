@@ -39,7 +39,7 @@ RSpec.describe Imports::Create do
     end
 
     context 'when source is owntracks' do
-      let(:import) { create(:import, source: 'owntracks') }
+      let(:import) { create(:import, source: 'owntracks', name: '2024-03.rec') }
       let(:file_path) { Rails.root.join('spec/fixtures/files/owntracks/2024-03.rec') }
       let(:file) { Rack::Test::UploadedFile.new(file_path, 'application/octet-stream') }
 
@@ -54,12 +54,6 @@ RSpec.describe Imports::Create do
       end
 
       context 'when import is successful' do
-        it 'creates a finished notification' do
-          service.call
-
-          expect(user.notifications.last.kind).to eq('info')
-        end
-
         it 'schedules stats creating' do
           Sidekiq::Testing.inline! do
             expect { service.call }.to \
@@ -79,10 +73,38 @@ RSpec.describe Imports::Create do
           allow(OwnTracks::Importer).to receive(:new).with(import, user.id).and_raise(StandardError)
         end
 
-        it 'creates a failed notification' do
-          service.call
+        context 'when self-hosted' do
+          before do
+            allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          end
 
-          expect(user.notifications.last.kind).to eq('error')
+          after do
+            allow(DawarichSettings).to receive(:self_hosted?).and_call_original
+          end
+
+          it 'creates a failed notification' do
+            service.call
+
+            expect(user.notifications.last.content).to \
+              include('Import "2024-03.rec" failed: StandardError, stacktrace: ')
+          end
+        end
+
+        context 'when not self-hosted' do
+          before do
+            allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+          end
+
+          after do
+            allow(DawarichSettings).to receive(:self_hosted?).and_call_original
+          end
+
+          it 'does not create a failed notification' do
+            service.call
+
+            expect(user.notifications.last.content).to \
+              include('Import "2024-03.rec" failed, please contact us at hi@dawarich.com')
+          end
         end
       end
     end
