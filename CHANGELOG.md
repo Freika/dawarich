@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.25.6 - 2025-04-23
 
+## Added
+
+- In the map settings (top left corner of the map), you can now select colors for your colored routes. #682
+
 ## Changed
 
 - Import edit page now allows to edit import name.
