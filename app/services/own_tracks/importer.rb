@@ -11,20 +11,19 @@ class OwnTracks::Importer
   end
 
   def call
-    import.file.download do |file|
-      parsed_data = OwnTracks::RecParser.new(file).call
+    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+    parsed_data = OwnTracks::RecParser.new(file_content).call
 
-      points_data = parsed_data.map do |point|
-        OwnTracks::Params.new(point).call.merge(
-          import_id: import.id,
-          user_id: user_id,
-          created_at: Time.current,
-          updated_at: Time.current
-        )
-      end
-
-      bulk_insert_points(points_data)
+    points_data = parsed_data.map do |point|
+      OwnTracks::Params.new(point).call.merge(
+        import_id: import.id,
+        user_id: user_id,
+        created_at: Time.current,
+        updated_at: Time.current
+      )
     end
+
+    bulk_insert_points(points_data)
   end
 
   private

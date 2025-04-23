@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Photos::ImportParser do
+RSpec.describe Photos::Importer do
   describe '#call' do
     subject(:service) { described_class.new(import, user.id).call }
 

@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Geojson::ImportParser do
+RSpec.describe Geojson::Importer do
   describe '#call' do
     subject(:service) { described_class.new(import, user.id).call }
 

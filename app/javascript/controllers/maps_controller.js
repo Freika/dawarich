@@ -444,7 +444,7 @@ export default class extends BaseController {
       maps[this.userSettings.maps.name] = customLayer;
     } else {
       // If no custom map is set, ensure a default layer is added
-      const defaultLayer = maps[selectedLayerName] || maps["OpenStreetMap"];
+      const defaultLayer = maps[selectedLayerName] || maps["OpenStreetMap"] || maps["Atlas"];
       defaultLayer.addTo(this.map);
     }
 

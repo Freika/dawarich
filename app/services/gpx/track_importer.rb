@@ -13,17 +13,16 @@ class Gpx::TrackImporter
   end
 
   def call
-    import.file.download do |file|
-      json = Hash.from_xml(file)
+    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+    json = Hash.from_xml(file_content)
 
-      tracks = json['gpx']['trk']
-      tracks_arr = tracks.is_a?(Array) ? tracks : [tracks]
+    tracks = json['gpx']['trk']
+    tracks_arr = tracks.is_a?(Array) ? tracks : [tracks]
 
-      points = tracks_arr.map { parse_track(_1) }.flatten.compact
-      points_data = points.map { prepare_point(_1) }.compact
+    points = tracks_arr.map { parse_track(_1) }.flatten.compact
+    points_data = points.map { prepare_point(_1) }.compact
 
-      bulk_insert_points(points_data)
-    end
+    bulk_insert_points(points_data)
   end
 
   private

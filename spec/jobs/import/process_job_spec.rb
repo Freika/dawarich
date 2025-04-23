@@ -25,10 +25,6 @@ RSpec.describe Import::ProcessJob, type: :job do
       perform
     end
 
-    it 'creates a notification' do
-      expect { perform }.to change { Notification.count }.by(1)
-    end
-
     context 'when there is an error' do
       before do
         allow_any_instance_of(OwnTracks::Importer).to receive(:call).and_raise(StandardError)

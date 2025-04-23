@@ -6,6 +6,6 @@
   <% end %>
   <%= link_to 'Map', settings_maps_path, role: 'tab', class: "tab #{active_tab?(settings_maps_path)}" %>
   <% if !DawarichSettings.self_hosted? %>
-    <%= link_to 'Subscriptions', settings_subscriptions_path, role: 'tab', class: "tab #{active_tab?(settings_subscriptions_path)}" %>
+    <%= link_to 'Subscriptions', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", role: 'tab', class: "tab" %>
   <% end %>
 </div>

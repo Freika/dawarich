@@ -145,23 +145,35 @@ RSpec.describe GoogleMaps::RecordsStorageImporter do
 
     context 'with download issues' do
       it 'retries on timeout' do
-        call_count = 0
-        allow(import.file).to receive(:download) do
-          call_count += 1
-          call_count < 3 ? raise(Timeout::Error) : file_content
-        end
+        # Create a mock that will return a successful result
+        # The internal retries are implemented inside SecureFileDownloader,
+        # not in the RecordsStorageImporter
+        downloader = instance_double(Imports::SecureFileDownloader)
 
-        expect(Rails.logger).to receive(:warn).twice
+        # Create the downloader mock before it gets used
+        expect(Imports::SecureFileDownloader).to receive(:new).with(import.file).and_return(downloader)
+
+        # The SecureFileDownloader handles all the retries internally
+        # From the perspective of the importer, it just gets the file content
+        expect(downloader).to receive(:download_with_verification).once.and_return(file_content)
+
+        # Run the method
         subject.call
-        expect(call_count).to eq(3)
       end
 
       it 'fails after max retries' do
-        allow(import.file).to receive(:download).and_raise(Timeout::Error)
+        # The retry mechanism is in SecureFileDownloader, not RecordsStorageImporter
+        # So we need to simulate that the method throws the error after internal retries
+        downloader = instance_double(Imports::SecureFileDownloader)
 
-        expect(Rails.logger).to receive(:warn).exactly(3).times
-        expect(Rails.logger).to receive(:error).with('Download failed after 3 attempts')
+        # Create the downloader mock before it gets used - expect only one call from the importer
+        expect(Imports::SecureFileDownloader).to receive(:new).with(import.file).and_return(downloader)
 
+        # This should be called once, and the internal retries should have been attempted
+        # After the max retries, it will still raise the Timeout::Error that bubbles up
+        expect(downloader).to receive(:download_with_verification).once.and_raise(Timeout::Error)
+
+        # We expect the error to bubble up to the caller
         expect { subject.call }.to raise_error(Timeout::Error)
       end
     end
