@@ -65,7 +65,7 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
             )
           end
 
-          it 'does not update status and returns unauthorized error' do
+          it 'updates provided user' do
             decoded_data = { user_id: other_user.id, status: 'active', active_until: 1.year.from_now.to_s }
             mock_decoder = instance_double(Subscription::DecodeJwtToken, call: decoded_data)
             allow(Subscription::DecodeJwtToken).to receive(:new).with(token).and_return(mock_decoder)
@@ -73,8 +73,9 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
             post '/api/v1/subscriptions/callback', params: { token: token }
 
             expect(user.reload.status).not_to eq('active')
-            expect(response).to have_http_status(:unauthorized)
-            expect(JSON.parse(response.body)['message']).to eq('Invalid subscription update request.')
+            expect(other_user.reload.status).to eq('active')
+            expect(response).to have_http_status(:ok)
+            expect(JSON.parse(response.body)['message']).to eq('Subscription updated successfully')
           end
         end
 

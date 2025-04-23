@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Import edit page now allows to edit import name.
 - Importing data now does not create a notification for the user.
+- Updating stats now does not create a notification for the user.
+
+## Fixed
+
+- Fixed a bug where an import was failing due to partial file download. #1069 #1073 #1024 #1051
 
 # 0.25.5 - 2025-04-18
 

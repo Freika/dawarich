@@ -15,7 +15,7 @@ class SecureFileDownloader
     begin
       Timeout.timeout(DOWNLOAD_TIMEOUT) do
         # Download the file to a string
-        tempfile = Tempfile.new("download_#{Time.now.to_i}")
+        tempfile = Tempfile.new("download_#{Time.now.to_i}", binmode: true)
         begin
           # Try to download block-by-block
           storage_attachment.download do |chunk|

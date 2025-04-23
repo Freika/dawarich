@@ -27,32 +27,42 @@ RSpec.describe SecureFileDownloader do
     end
 
     context 'when timeout occurs but succeeds on retry' do
-      before do
+      it 'retries the download internally and returns success after retries' do
         call_count = 0
+
+        # Mock storage_attachment to fail twice then succeed
         allow(storage_attachment).to receive(:download) do |&block|
           call_count += 1
-          raise Timeout::Error if call_count == 1
+          raise Timeout::Error if call_count < 3
 
           block.call(file_content)
         end
-      end
 
-      it 'retries the download and returns the file content' do
-        expect(Rails.logger).to receive(:warn).with(/Download timeout, attempt 1 of/)
-        expect(subject.download_with_verification).to eq(file_content)
+        # Expect logging for each retry attempt
+        expect(Rails.logger).to receive(:warn).with(/Download timeout, attempt 1 of/).ordered
+        expect(Rails.logger).to receive(:warn).with(/Download timeout, attempt 2 of/).ordered
+
+        # The method should eventually return the content
+        result = subject.download_with_verification
+        expect(result).to eq(file_content)
+        expect(call_count).to eq(3) # Verify retry attempts
       end
     end
 
     context 'when all download attempts timeout' do
-      before do
+      it 'raises the error after max retries' do
+        # Make download always raise Timeout::Error
         allow(storage_attachment).to receive(:download).and_raise(Timeout::Error)
-      end
 
-      it 'raises an error after max retries' do
+        # Expect warnings for each retry
         described_class::MAX_RETRIES.times do |i|
-          expect(Rails.logger).to receive(:warn).with(/Download timeout, attempt #{i + 1} of/)
+          expect(Rails.logger).to receive(:warn).with(/Download timeout, attempt #{i + 1} of/).ordered
         end
-        expect(Rails.logger).to receive(:error).with(/Download failed after/)
+
+        # Expect error log on final failure
+        expect(Rails.logger).to receive(:error).with(/Download failed after/).ordered
+
+        # It should raise the Timeout::Error
         expect { subject.download_with_verification }.to raise_error(Timeout::Error)
       end
     end
