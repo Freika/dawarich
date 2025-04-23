@@ -23,13 +23,13 @@ class Imports::Create
   def parser(source)
     # Bad classes naming by the way, they are not parsers, they are point creators
     case source
-    when 'google_semantic_history'      then GoogleMaps::SemanticHistoryParser
-    when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutParser
+    when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
+    when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
     when 'owntracks'                    then OwnTracks::Importer
     when 'gpx'                          then Gpx::TrackImporter
-    when 'geojson'                      then Geojson::ImportParser
-    when 'immich_api', 'photoprism_api' then Photos::ImportParser
+    when 'geojson'                      then Geojson::Importer
+    when 'immich_api', 'photoprism_api' then Photos::Importer
     end
   end
 

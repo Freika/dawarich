@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Photos::ImportParser
+class Photos::Importer
   include Imports::Broadcaster
   include PointValidation
   attr_reader :import, :user_id

@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-class GoogleMaps::PhoneTakeoutParser
+class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
-
-  DOWNLOAD_TIMEOUT = 300 # 5 minutes timeout
-  MAX_RETRIES = 3
 
   attr_reader :import, :user_id
 
@@ -45,8 +42,6 @@ class GoogleMaps::PhoneTakeoutParser
   def parse_json
     # location-history.json could contain an array of data points
     # or an object with semanticSegments, rawSignals and rawArray
-    # I guess there are no easy ways with Google since these two are
-    # 3rd and 4th formats of their location data exports
     semantic_segments = []
     raw_signals       = []
     raw_array         = []

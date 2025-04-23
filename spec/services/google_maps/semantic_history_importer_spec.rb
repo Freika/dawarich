@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe GoogleMaps::SemanticHistoryParser do
+RSpec.describe GoogleMaps::SemanticHistoryImporter do
   describe '#call' do
     subject(:parser) { described_class.new(import, user.id).call }
 

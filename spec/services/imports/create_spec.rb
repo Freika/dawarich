@@ -17,8 +17,8 @@ RSpec.describe Imports::Create do
                            content_type: 'application/json')
       end
 
-      it 'calls the GoogleMaps::SemanticHistoryParser' do
-        expect(GoogleMaps::SemanticHistoryParser).to \
+      it 'calls the GoogleMaps::SemanticHistoryImporter' do
+        expect(GoogleMaps::SemanticHistoryImporter).to \
           receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
@@ -31,8 +31,8 @@ RSpec.describe Imports::Create do
     context 'when source is google_phone_takeout' do
       let(:import) { create(:import, source: 'google_phone_takeout') }
 
-      it 'calls the GoogleMaps::PhoneTakeoutParser' do
-        expect(GoogleMaps::PhoneTakeoutParser).to \
+      it 'calls the GoogleMaps::PhoneTakeoutImporter' do
+        expect(GoogleMaps::PhoneTakeoutImporter).to \
           receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
@@ -129,8 +129,8 @@ RSpec.describe Imports::Create do
     context 'when source is geojson' do
       let(:import) { create(:import, source: 'geojson') }
 
-      it 'calls the Geojson::ImportParser' do
-        expect(Geojson::ImportParser).to \
+      it 'calls the Geojson::Importer' do
+        expect(Geojson::Importer).to \
           receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
@@ -139,8 +139,8 @@ RSpec.describe Imports::Create do
     context 'when source is immich_api' do
       let(:import) { create(:import, source: 'immich_api') }
 
-      it 'calls the Photos::ImportParser' do
-        expect(Photos::ImportParser).to \
+      it 'calls the Photos::Importer' do
+        expect(Photos::Importer).to \
           receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end
@@ -149,8 +149,8 @@ RSpec.describe Imports::Create do
     context 'when source is photoprism_api' do
       let(:import) { create(:import, source: 'photoprism_api') }
 
-      it 'calls the Photos::ImportParser' do
-        expect(Photos::ImportParser).to \
+      it 'calls the Photos::Importer' do
+        expect(Photos::Importer).to \
           receive(:new).with(import, user.id).and_return(double(call: true))
         service.call
       end

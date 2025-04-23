@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class GoogleMaps::SemanticHistoryParser
+class GoogleMaps::SemanticHistoryImporter
   include Imports::Broadcaster
 
   BATCH_SIZE = 1000

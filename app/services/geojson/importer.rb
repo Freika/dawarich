@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Geojson::ImportParser
+class Geojson::Importer
   include Imports::Broadcaster
   include PointValidation
 
