@@ -9,7 +9,7 @@ class Subscription::DecodeJwtToken
   # @return [Visit, nil] The merged visit or nil if merge failed
   def call
     JWT.decode(
-      token,
+      @token,
       ENV['JWT_SECRET_KEY'],
       true,
       { algorithm: 'HS256' }

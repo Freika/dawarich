@@ -146,9 +146,17 @@ RSpec.describe GoogleMaps::RecordsStorageImporter do
     context 'with download issues' do
       it 'retries on timeout' do
         call_count = 0
-        allow(import.file).to receive(:download) do
+
+        # Mock the SecureFileDownloader instead of the file's download method
+        mock_downloader = instance_double(SecureFileDownloader)
+        allow(SecureFileDownloader).to receive(:new).and_return(mock_downloader)
+
+        # Set up the mock to raise timeout twice then return content
+        allow(mock_downloader).to receive(:download_with_verification) do
           call_count += 1
-          call_count < 3 ? raise(Timeout::Error) : file_content
+          raise Timeout::Error if call_count < 3
+
+          file_content
         end
 
         expect(Rails.logger).to receive(:warn).twice

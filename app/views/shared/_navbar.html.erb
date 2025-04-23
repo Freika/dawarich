@@ -24,7 +24,7 @@
         <% end %>
       </ul>
     </div>
-    <%= link_to 'Dawarich', root_path, class: 'btn btn-ghost normal-case text-xl'%>
+    <%= link_to 'Dawarich<sup>α</sup>'.html_safe, root_path, class: 'btn btn-ghost normal-case text-xl'%>
     <div class="badge mx-4 <%= 'badge-outline' if new_version_available? %>">
       <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
         <% if new_version_available? %>

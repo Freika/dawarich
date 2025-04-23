@@ -5,17 +5,7 @@
 
 import BaseController from "./base_controller"
 import L from "leaflet"
-import {
-  osmMapLayer,
-  osmHotMapLayer,
-  OPNVMapLayer,
-  openTopoMapLayer,
-  cyclOsmMapLayer,
-  esriWorldStreetMapLayer,
-  esriWorldTopoMapLayer,
-  esriWorldImageryMapLayer,
-  esriWorldGrayCanvasMapLayer
-} from "../maps/layers"
+import { createAllMapLayers } from "../maps/layers"
 import { createPopupContent } from "../maps/popups"
 import {
   fetchAndDisplayPhotos,
@@ -61,7 +51,10 @@ export default class extends BaseController {
     this.map = L.map(this.containerTarget).setView(center, zoom)
 
     // Add base map layer
-    osmMapLayer(this.map, "OpenStreetMap")
+    const selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
+    const maps = this.baseMaps();
+    const defaultLayer = maps[selectedLayerName] || maps["OpenStreetMap"] || maps["Atlas"];
+    defaultLayer.addTo(this.map);
 
     // Add scale control to bottom right
     L.control.scale({
@@ -168,18 +161,30 @@ export default class extends BaseController {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
+    let maps = createAllMapLayers(this.map, selectedLayerName);
 
-    return {
-      OpenStreetMap: osmMapLayer(this.map, selectedLayerName),
-      "OpenStreetMap.HOT": osmHotMapLayer(this.map, selectedLayerName),
-      OPNV: OPNVMapLayer(this.map, selectedLayerName),
-      openTopo: openTopoMapLayer(this.map, selectedLayerName),
-      cyclOsm: cyclOsmMapLayer(this.map, selectedLayerName),
-      esriWorldStreet: esriWorldStreetMapLayer(this.map, selectedLayerName),
-      esriWorldTopo: esriWorldTopoMapLayer(this.map, selectedLayerName),
-      esriWorldImagery: esriWorldImageryMapLayer(this.map, selectedLayerName),
-      esriWorldGrayCanvas: esriWorldGrayCanvasMapLayer(this.map, selectedLayerName)
-    };
+    // Add custom map if it exists in settings
+    if (this.userSettings.maps && this.userSettings.maps.url) {
+      const customLayer = L.tileLayer(this.userSettings.maps.url, {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      });
+
+      // If this is the preferred layer, add it to the map immediately
+      if (selectedLayerName === this.userSettings.maps.name) {
+        customLayer.addTo(this.map);
+        // Remove any other base layers that might be active
+        Object.values(maps).forEach(layer => {
+          if (this.map.hasLayer(layer)) {
+            this.map.removeLayer(layer);
+          }
+        });
+      }
+
+      maps[this.userSettings.maps.name] = customLayer;
+    }
+
+    return maps;
   }
 
   addMarkers() {
