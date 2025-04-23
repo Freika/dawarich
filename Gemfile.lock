@@ -116,7 +116,7 @@ GEM
     cronex (0.15.0)
       tzinfo
       unicode (>= 0.4.4.5)
-    csv (3.3.2)
+    csv (3.3.4)
     data_migrate (11.2.0)
       activerecord (>= 6.1)
       railties (>= 6.1)
@@ -164,7 +164,7 @@ GEM
     groupdate (6.5.1)
       activesupport (>= 7)
     hashdiff (1.1.2)
-    httparty (0.22.0)
+    httparty (0.23.1)
       csv
       mini_mime (>= 1.0.0)
       multi_xml (>= 0.5.2)
