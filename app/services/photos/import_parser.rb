@@ -11,11 +11,10 @@ class Photos::ImportParser
   end
 
   def call
-    import.file.download do |file|
-      json = Oj.load(file)
+    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+    json = Oj.load(file_content)
 
-      json.each.with_index(1) { |point, index| create_point(point, index) }
-    end
+    json.each.with_index(1) { |point, index| create_point(point, index) }
   end
 
   def create_point(point, index)

@@ -51,7 +51,7 @@ class GoogleMaps::PhoneTakeoutParser
     raw_signals       = []
     raw_array         = []
 
-    file_content = SecureFileDownloader.new(import.file).download_with_verification
+    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
 
     json = Oj.load(file_content)
 

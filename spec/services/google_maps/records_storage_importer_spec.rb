@@ -148,10 +148,10 @@ RSpec.describe GoogleMaps::RecordsStorageImporter do
         # Create a mock that will return a successful result
         # The internal retries are implemented inside SecureFileDownloader,
         # not in the RecordsStorageImporter
-        downloader = instance_double(SecureFileDownloader)
+        downloader = instance_double(Imports::SecureFileDownloader)
 
         # Create the downloader mock before it gets used
-        expect(SecureFileDownloader).to receive(:new).with(import.file).and_return(downloader)
+        expect(Imports::SecureFileDownloader).to receive(:new).with(import.file).and_return(downloader)
 
         # The SecureFileDownloader handles all the retries internally
         # From the perspective of the importer, it just gets the file content
@@ -164,10 +164,10 @@ RSpec.describe GoogleMaps::RecordsStorageImporter do
       it 'fails after max retries' do
         # The retry mechanism is in SecureFileDownloader, not RecordsStorageImporter
         # So we need to simulate that the method throws the error after internal retries
-        downloader = instance_double(SecureFileDownloader)
+        downloader = instance_double(Imports::SecureFileDownloader)
 
         # Create the downloader mock before it gets used - expect only one call from the importer
-        expect(SecureFileDownloader).to receive(:new).with(import.file).and_return(downloader)
+        expect(Imports::SecureFileDownloader).to receive(:new).with(import.file).and_return(downloader)
 
         # This should be called once, and the internal retries should have been attempted
         # After the max retries, it will still raise the Timeout::Error that bubbles up

@@ -12,18 +12,17 @@ class Geojson::ImportParser
   end
 
   def call
-    import.file.download do |file|
-      json = Oj.load(file)
+    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+    json = Oj.load(file_content)
 
-      data = Geojson::Params.new(json).call
+    data = Geojson::Params.new(json).call
 
-      data.each.with_index(1) do |point, index|
-        next if point_exists?(point, user_id)
+    data.each.with_index(1) do |point, index|
+      next if point_exists?(point, user_id)
 
-        Point.create!(point.merge(user_id:, import_id: import.id))
+      Point.create!(point.merge(user_id:, import_id: import.id))
 
-        broadcast_import_progress(import, index)
-      end
+      broadcast_import_progress(import, index)
     end
   end
 end

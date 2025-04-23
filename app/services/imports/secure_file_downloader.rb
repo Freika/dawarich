@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class SecureFileDownloader
+class Imports::SecureFileDownloader
   DOWNLOAD_TIMEOUT = 300 # 5 minutes timeout
   MAX_RETRIES = 3
 

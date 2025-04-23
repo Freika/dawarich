@@ -23,7 +23,7 @@ class GoogleMaps::RecordsStorageImporter
   attr_reader :import, :user
 
   def process_file_in_batches
-    file_content = SecureFileDownloader.new(import.file).download_with_verification
+    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
     locations = parse_file(file_content)
     process_locations_in_batches(locations) if locations.present?
   end

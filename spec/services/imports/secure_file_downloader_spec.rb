@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe SecureFileDownloader do
+RSpec.describe Imports::SecureFileDownloader do
   let(:file_content) { 'test content' }
   let(:file_size) { file_content.bytesize }
   let(:checksum) { Base64.strict_encode64(Digest::MD5.digest(file_content)) }
