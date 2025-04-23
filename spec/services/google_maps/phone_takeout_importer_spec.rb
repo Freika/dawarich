@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe GoogleMaps::PhoneTakeoutParser do
+RSpec.describe GoogleMaps::PhoneTakeoutImporter do
   describe '#call' do
     subject(:parser) { described_class.new(import, user.id).call }
 

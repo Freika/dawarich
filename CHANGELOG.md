@@ -5,6 +5,22 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+# 0.25.6 - 2025-04-23
+
+## Added
+
+- In the map settings (top left corner of the map), you can now select colors for your colored routes. #682
+
+## Changed
+
+- Import edit page now allows to edit import name.
+- Importing data now does not create a notification for the user.
+- Updating stats now does not create a notification for the user.
+
+## Fixed
+
+- Fixed a bug where an import was failing due to partial file download. #1069 #1073 #1024 #1051
+
 # 0.25.5 - 2025-04-18
 
 This release introduces a new way to send transactional emails using SMTP. Example may include password reset, email confirmation, etc.
@@ -22,18 +38,22 @@ This is optional feature and is not required for the app to work.
 
 ## Removed
 
-- Optional telemetry was removed from the app.
-- Sidekiq Web UI is now protected by basic auth in non-self-hosted mode.
+- Optional telemetry was removed from the app. The `ENABLE_TELEMETRY` env var can be safely removed from docker compose.
 
 ## Changed
 
 - `rake points:migrate_to_lonlat` task now also tries to extract latitude and longitude from `raw_data` column before using `longitude` and `latitude` columns to fill `lonlat` column.
 - Docker entrypoints are now using `DATABASE_NAME` environment variable to check if Postgres is existing/available.
+- Sidekiq web UI is now protected by basic auth. Use `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD` environment variables to set the credentials.
 
 ## Added
 
 - You can now provide SMTP settings in ENV vars to send emails.
 - You can now edit imports. #1044 #623
+
+## Fixed
+
+- Importing data from Immich now works correctly. #1019
 
 
 # 0.25.4 - 2025-04-02

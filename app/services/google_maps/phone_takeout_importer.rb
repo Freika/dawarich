@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class GoogleMaps::PhoneTakeoutParser
+class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
 
   attr_reader :import, :user_id
@@ -42,21 +42,19 @@ class GoogleMaps::PhoneTakeoutParser
   def parse_json
     # location-history.json could contain an array of data points
     # or an object with semanticSegments, rawSignals and rawArray
-    # I guess there are no easy ways with Google since these two are
-    # 3rd and 4th formats of their location data exports
     semantic_segments = []
     raw_signals       = []
     raw_array         = []
 
-    import.file.download do |file|
-      json = Oj.load(file)
+    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
 
-      if json.is_a?(Array)
-        raw_array = parse_raw_array(json)
-      else
-        semantic_segments = parse_semantic_segments(json['semanticSegments']) if json['semanticSegments']
-        raw_signals = parse_raw_signals(json['rawSignals']) if json['rawSignals']
-      end
+    json = Oj.load(file_content)
+
+    if json.is_a?(Array)
+      raw_array = parse_raw_array(json)
+    else
+      semantic_segments = parse_semantic_segments(json['semanticSegments']) if json['semanticSegments']
+      raw_signals = parse_raw_signals(json['rawSignals']) if json['rawSignals']
     end
 
     semantic_segments + raw_signals + raw_array

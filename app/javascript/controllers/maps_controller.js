@@ -8,7 +8,10 @@ import { createMarkersArray } from "../maps/markers";
 import {
   createPolylinesLayer,
   updatePolylinesOpacity,
-  updatePolylinesColors
+  updatePolylinesColors,
+  colorFormatEncode,
+  colorFormatDecode,
+  colorStopsFallback
 } from "../maps/polylines";
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
@@ -47,6 +50,7 @@ export default class extends BaseController {
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
     this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
+    this.speedColorScale = this.userSettings.speed_color_scale || colorFormatEncode(speedColorScaleDefault);
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
@@ -444,7 +448,7 @@ export default class extends BaseController {
       maps[this.userSettings.maps.name] = customLayer;
     } else {
       // If no custom map is set, ensure a default layer is added
-      const defaultLayer = maps[selectedLayerName] || maps["OpenStreetMap"];
+      const defaultLayer = maps[selectedLayerName] || maps["OpenStreetMap"] || maps["Atlas"];
       defaultLayer.addTo(this.map);
     }
 
@@ -699,7 +703,7 @@ export default class extends BaseController {
 
       // Form HTML
       div.innerHTML = `
-        <form id="settings-form" class="w-48">
+        <form id="settings-form" class="w-48 h-144 overflow-y-auto">
           <label for="route-opacity">Route Opacity</label>
           <div class="join">
             <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="0" max="1" step="0.1" value="${this.routeOpacity}">
@@ -768,7 +772,16 @@ export default class extends BaseController {
             <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class='w-4' style="width: 20px;" ${this.speedColoredRoutesChecked()} />
           </label>
 
-          <button type="submit">Update</button>
+          <label for="speed_color_scale">Speed color scale</label>
+          <div class="join">
+            <input type="text" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="speed_color_scale" name="speed_color_scale" min="5" max="100" step="1" value="${this.speedColorScale}">
+            <label for="speed_color_scale_info" class="btn-xs join-item">?</label>
+          </div>
+          <button type="button" id="edit-gradient-btn" class="btn btn-xs mt-2">Edit Scale</button>
+
+          <hr>
+
+          <button type="submit" class="btn btn-xs mt-2">Update</button>
         </form>
       `;
 
@@ -780,6 +793,12 @@ export default class extends BaseController {
 
       // Prevent map interactions when interacting with the form
       L.DomEvent.disableClickPropagation(div);
+
+       // Attach event listener to the "Edit Gradient" button:
+      const editBtn = div.querySelector("#edit-gradient-btn");
+      if (editBtn) {
+        editBtn.addEventListener("click", this.showGradientEditor.bind(this));
+      }
 
       // Add event listener to the form submission
       div.querySelector('#settings-form').addEventListener(
@@ -829,7 +848,8 @@ export default class extends BaseController {
           merge_threshold_minutes: event.target.merge_threshold_minutes.value,
           points_rendering_mode: event.target.points_rendering_mode.value,
           live_map_enabled: event.target.live_map_enabled.checked,
-          speed_colored_routes: event.target.speed_colored_routes.checked
+          speed_colored_routes: event.target.speed_colored_routes.checked,
+          speed_color_scale: event.target.speed_color_scale.value
         },
       }),
     })
@@ -866,7 +886,18 @@ export default class extends BaseController {
         if (this.polylinesLayer) {
           updatePolylinesColors(
             this.polylinesLayer,
-            newSettings.speed_colored_routes
+            newSettings.speed_colored_routes,
+            newSettings.speed_color_scale
+          );
+        }
+      }
+
+      if (newSettings.speed_color_scale !== this.userSettings.speed_color_scale) {
+        if (this.polylinesLayer) {
+          updatePolylinesColors(
+            this.polylinesLayer,
+            newSettings.speed_colored_routes,
+            newSettings.speed_color_scale
           );
         }
       }
@@ -1351,5 +1382,144 @@ export default class extends BaseController {
     `).join('');
 
     container.innerHTML = html;
+  }
+
+  showGradientEditor() {
+    const modal = document.createElement("div");
+    modal.id = "gradient-editor-modal";
+    Object.assign(modal.style, {
+      position: "fixed",
+      top: "0",
+      left: "0",
+      right: "0",
+      bottom: "0",
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: "100",
+    });
+
+    const content = document.createElement("div");
+    Object.assign(content.style, {
+      backgroundColor: "#fff",
+      padding: "20px",
+      borderRadius: "5px",
+      minWidth: "300px",
+      maxHeight: "80vh",
+      display: "flex",
+      flexDirection: "column",
+    });
+
+    const title = document.createElement("h2");
+    title.textContent = "Edit Speed Color Scale";
+    content.appendChild(title);
+
+    const gradientContainer = document.createElement("div");
+    gradientContainer.id = "gradient-editor-container";
+    Object.assign(gradientContainer.style, {
+      marginTop: "15px",
+      overflowY: "auto",
+      flex: "1",
+      border: "1px solid #ccc",
+      padding: "5px",
+    });
+
+    const createRow = (stop = { speed: 0, color: "#000000" }) => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "10px";
+      row.style.marginBottom = "8px";
+
+      const speedInput = document.createElement("input");
+      speedInput.type = "number";
+      speedInput.value = stop.speed;
+      speedInput.style.width = "70px";
+
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = stop.color;
+      colorInput.style.width = "70px";
+
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "x";
+      removeBtn.style.color = "#cc3311";
+      removeBtn.style.flexShrink = "0";
+      removeBtn.addEventListener("click", () => {
+        if (gradientContainer.childElementCount > 1) {
+          gradientContainer.removeChild(row);
+        } else {
+          showFlashMessage('error', 'At least one gradient stop is required.');
+        }
+      });
+
+      row.appendChild(speedInput);
+      row.appendChild(colorInput);
+      row.appendChild(removeBtn);
+      return row;
+    };
+
+    let stops;
+    try {
+      stops = colorFormatDecode(this.speedColorScale);
+    } catch (error) {
+      stops = colorStopsFallback;
+    }
+    stops.forEach(stop => {
+      const row = createRow(stop);
+      gradientContainer.appendChild(row);
+    });
+
+    content.appendChild(gradientContainer);
+
+    const addRowBtn = document.createElement("button");
+    addRowBtn.textContent = "Add Row";
+    addRowBtn.style.marginTop = "10px";
+    addRowBtn.addEventListener("click", () => {
+      const newRow = createRow({ speed: 0, color: "#000000" });
+      gradientContainer.appendChild(newRow);
+    });
+    content.appendChild(addRowBtn);
+
+    const btnContainer = document.createElement("div");
+    btnContainer.style.display = "flex";
+    btnContainer.style.justifyContent = "flex-end";
+    btnContainer.style.gap = "10px";
+    btnContainer.style.marginTop = "15px";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.addEventListener("click", () => {
+      document.body.removeChild(modal);
+    });
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save";
+    saveBtn.addEventListener("click", () => {
+      const newStops = [];
+      gradientContainer.querySelectorAll("div").forEach(row => {
+        const inputs = row.querySelectorAll("input");
+        const speed = Number(inputs[0].value);
+        const color = inputs[1].value;
+        newStops.push({ speed, color });
+      });
+
+      const newGradient = colorFormatEncode(newStops);
+
+      this.speedColorScale = newGradient;
+      const speedColorScaleInput = document.getElementById("speed_color_scale");
+      if (speedColorScaleInput) {
+        speedColorScaleInput.value = newGradient;
+      }
+
+      document.body.removeChild(modal);
+    });
+
+    btnContainer.appendChild(cancelBtn);
+    btnContainer.appendChild(saveBtn);
+    content.appendChild(btnContainer);
+    modal.appendChild(content);
+    document.body.appendChild(modal);
   }
 }

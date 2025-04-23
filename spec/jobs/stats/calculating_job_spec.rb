@@ -29,12 +29,5 @@ RSpec.describe Stats::CalculatingJob, type: :job do
         expect(Notification.last.kind).to eq('error')
       end
     end
-
-    context 'when Stats::CalculateMonth does not raise an error' do
-      it 'creates an info notification' do
-        expect { subject }.to change { Notification.count }.by(1)
-        expect(Notification.last.kind).to eq('info')
-      end
-    end
   end
 end
