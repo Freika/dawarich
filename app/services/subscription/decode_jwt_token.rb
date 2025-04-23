@@ -5,8 +5,6 @@ class Subscription::DecodeJwtToken
     @token = token
   end
 
-  # Merges multiple visits into one
-  # @return [Visit, nil] The merged visit or nil if merge failed
   def call
     JWT.decode(
       @token,
