@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+# 0.25.7 - 2025-04-24
+
+## Fixed
+
+- Map loading error. #1094
+
 # 0.25.6 - 2025-04-23
 
 ## Added
