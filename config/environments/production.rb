@@ -60,7 +60,7 @@ Rails.application.configure do
   config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'
 
   # Direct logs to STDOUT
-  config.logger = Logger.new($stdout)
+  config.logger = ActiveSupport::Logger.new($stdout)
   config.lograge.enabled = true
   config.lograge.formatter = Lograge::Formatters::Json.new
 
@@ -77,7 +77,9 @@ Rails.application.configure do
   config.cache_store = :redis_cache_store, { url: ENV['REDIS_URL'] }
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
-  # config.active_job.queue_adapter     = :resque
+  config.solid_queue.silence_polling = true
+  config.solid_queue.connects_to = { database: { writing: :queue } }
+  config.solid_queue.logger = ActiveSupport::Logger.new($stdout)
   # config.active_job.queue_name_prefix = "dawarich_production"
 
   config.action_mailer.perform_caching = false

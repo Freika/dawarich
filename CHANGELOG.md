@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.25.7 - UNRELEASED
+
+## TODO:
+
+## Changed
+
+- Background jobs are now using SolidQueue instead of Sidekiq.
+
 
 # 0.25.6 - 2025-04-23
 
