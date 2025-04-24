@@ -71,6 +71,8 @@ services:
       PROMETHEUS_EXPORTER_PORT: 9394
       SELF_HOSTED: "true"
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      SIDEKIQ_USERNAME: sidekiq
+      SIDEKIQ_PASSWORD: password
     logging:
       driver: "json-file"
       options:
@@ -124,6 +126,8 @@ services:
       PROMETHEUS_EXPORTER_PORT: 9394
       SELF_HOSTED: "true"
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      SIDEKIQ_USERNAME: sidekiq
+      SIDEKIQ_PASSWORD: password
     logging:
       driver: "json-file"
       options:
