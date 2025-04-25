@@ -27,19 +27,16 @@ fi
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
 
+echo "Attempting to create database $DATABASE_NAME if it doesn't exist..."
+PGPASSWORD=$DATABASE_PASSWORD createdb -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" "$DATABASE_NAME" 2>/dev/null || echo "Note: Database may already exist or couldn't be created now"
+
 # Wait for the database to become available
 echo "⏳ Waiting for database to be ready..."
-until PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" -c '\q'; do
+until PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" -c '\q' 2>/dev/null; do
   >&2 echo "Postgres is unavailable - retrying..."
   sleep 2
 done
 echo "✅ PostgreSQL is ready!"
-
-# Create database if it doesn't exist
-if ! PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" -c "SELECT 1 FROM pg_database WHERE datname='$DATABASE_NAME'" | grep -q 1; then
-  echo "Creating database $DATABASE_NAME..."
-  PGPASSWORD=$DATABASE_PASSWORD createdb -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" "$DATABASE_NAME"
-fi
 
 # Run database migrations
 echo "PostgreSQL is ready. Running database migrations..."

@@ -5,6 +5,22 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+# 0.25.8 - 2025-04-24
+
+## Fixed
+
+- Database was not being created if it didn't exist. #1076
+
+## Removed
+
+- `RAILS_MASTER_KEY` environment variable is no longer being set. You can safely remove it from your environment variables.
+
+# 0.25.7 - 2025-04-24
+
+## Fixed
+
+- Map loading error. #1094
+
 # 0.25.6 - 2025-04-23
 
 ## Added

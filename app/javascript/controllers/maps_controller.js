@@ -50,7 +50,7 @@ export default class extends BaseController {
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
     this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
-    this.speedColorScale = this.userSettings.speed_color_scale || colorFormatEncode(speedColorScaleDefault);
+    this.speedColorScale = this.userSettings.speed_color_scale || colorFormatEncode(colorStopsFallback);
 
     this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
 
