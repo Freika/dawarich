@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.25.9 - 2025-04-29
+
+## Fixed
+
+- `rake points:migrate_to_lonlat` task now works properly.
 
 # 0.25.8 - 2025-04-24
 
