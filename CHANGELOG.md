@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - Vector maps are supported in non-self-hosted mode.
+- Credentials for Sidekiq UI are now being set via environment variables: `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD`. Default credentials are `sidekiq` and `password`.
 
 ## Removed
 
