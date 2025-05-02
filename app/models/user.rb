@@ -16,7 +16,6 @@ class User < ApplicationRecord
   has_many :trips,  dependent: :destroy
 
   after_create :create_api_key
-  after_create :import_sample_points
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
   before_save :sanitize_input
 
@@ -134,23 +133,4 @@ class User < ApplicationRecord
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
   end
-
-  # rubocop:disable Metrics/MethodLength
-  def import_sample_points
-    return unless Rails.env.development? ||
-                  Rails.env.production? ||
-                  (Rails.env.test? && ENV['IMPORT_SAMPLE_POINTS'])
-
-    import = imports.create(
-      name: 'DELETE_ME_this_is_a_demo_import_DELETE_ME',
-      source: 'gpx'
-    )
-
-    import.file.attach(
-      Rack::Test::UploadedFile.new(
-        Rails.root.join('lib/assets/sample_points.gpx'), 'application/xml'
-      )
-    )
-  end
-  # rubocop:enable Metrics/MethodLength
 end

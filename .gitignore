@@ -68,5 +68,7 @@
 
 /config/credentials/production.key
 /config/credentials/production.yml.enc
+/config/credentials/staging.key
+/config/credentials/staging.yml.enc
 
 Makefile

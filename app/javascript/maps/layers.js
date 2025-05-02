@@ -1,20 +1,34 @@
 // Import the maps configuration
 // In non-self-hosted mode, we need to mount external maps_config.js to the container
-import { mapsConfig } from './maps_config';
+import { mapsConfig as vectorMapsConfig } from './vector_maps_config';
+import { mapsConfig as rasterMapsConfig } from './raster_maps_config';
 
-export function createMapLayer(map, selectedLayerName, layerKey) {
-  const config = mapsConfig[layerKey];
+export function createMapLayer(map, selectedLayerName, layerKey, selfHosted) {
+  const config = selfHosted === "true" ? rasterMapsConfig[layerKey] : vectorMapsConfig[layerKey];
 
   if (!config) {
     console.warn(`No configuration found for layer: ${layerKey}`);
     return null;
   }
 
-  let layer = L.tileLayer(config.url, {
-    maxZoom: config.maxZoom,
-    attribution: config.attribution,
-    // Add any other config properties that might be needed
-  });
+  let layer;
+  console.log("isSelfhosted: ", selfHosted)
+  if (selfHosted === "true") {
+    layer = L.tileLayer(config.url, {
+      maxZoom: config.maxZoom,
+      attribution: config.attribution,
+      crossOrigin: true,
+      // Add any other config properties that might be needed
+    });
+  } else {
+    layer = protomapsL.leafletLayer(
+      {
+        url: config.url,
+        flavor: config.flavor,
+        crossOrigin: true,
+      }
+    )
+  }
 
   if (selectedLayerName === layerKey) {
     return layer.addTo(map);
@@ -24,11 +38,11 @@ export function createMapLayer(map, selectedLayerName, layerKey) {
 }
 
 // Helper function to create all map layers
-export function createAllMapLayers(map, selectedLayerName) {
+export function createAllMapLayers(map, selectedLayerName, selfHosted) {
   const layers = {};
-
+  const mapsConfig = selfHosted === "true" ? rasterMapsConfig : vectorMapsConfig;
   Object.keys(mapsConfig).forEach(layerKey => {
-    layers[layerKey] = createMapLayer(map, selectedLayerName, layerKey);
+    layers[layerKey] = createMapLayer(map, selectedLayerName, layerKey, selfHosted);
   });
 
   return layers;

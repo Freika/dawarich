@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.25.10 - 2025-05-02
+
+## Added
+
+- Vector maps are supported in non-self-hosted mode.
+
+## Removed
+
+- Sample points are no longer being imported automatically for new users.
+
 # 0.25.9 - 2025-04-29
 
 ## Fixed

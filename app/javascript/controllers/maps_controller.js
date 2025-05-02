@@ -40,6 +40,7 @@ export default class extends BaseController {
     console.log("Map controller connected");
 
     this.apiKey = this.element.dataset.api_key;
+    this.selfHosted = this.element.dataset.self_hosted === "true";
     this.markers = JSON.parse(this.element.dataset.coordinates);
     this.timezone = this.element.dataset.timezone;
     this.userSettings = JSON.parse(this.element.dataset.user_settings);
@@ -425,7 +426,7 @@ export default class extends BaseController {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-    let maps = createAllMapLayers(this.map, selectedLayerName);
+    let maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted);
 
     // Add custom map if it exists in settings
     if (this.userSettings.maps && this.userSettings.maps.url) {
@@ -448,8 +449,28 @@ export default class extends BaseController {
       maps[this.userSettings.maps.name] = customLayer;
     } else {
       // If no custom map is set, ensure a default layer is added
-      const defaultLayer = maps[selectedLayerName] || maps["OpenStreetMap"] || maps["Atlas"];
-      defaultLayer.addTo(this.map);
+      // First check if maps object has any entries
+      if (Object.keys(maps).length === 0) {
+        // Fallback to OSM if no maps are configured
+        maps["OpenStreetMap"] = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>"
+        });
+      }
+
+      // Now try to get the selected layer or fall back to alternatives
+      const defaultLayer = maps[selectedLayerName] || Object.values(maps)[0];
+
+      if (defaultLayer) {
+        defaultLayer.addTo(this.map);
+      } else {
+        console.error("Could not find any default map layer");
+        // Ultimate fallback - create and add OSM layer directly
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>"
+        }).addTo(this.map);
+      }
     }
 
     return maps;
