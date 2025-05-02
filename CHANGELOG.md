@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+# 0.25.9 - UNRELEASED
+
+## Removed
+
+- Sample points are no longer being imported automatically for new users.
+
 # 0.25.8 - 2025-04-24
 
 ## Fixed
