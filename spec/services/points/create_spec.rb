@@ -50,7 +50,7 @@ RSpec.describe Points::Create do
         .with(
           processed_data,
           unique_by: %i[lonlat timestamp user_id],
-          returning: %i[id lonlat timestamp]
+          returning: Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
         )
         .and_return(upsert_result)
 
@@ -205,7 +205,7 @@ RSpec.describe Points::Create do
           .with(
             all_processed_data,
             unique_by: %i[lonlat timestamp user_id],
-            returning: %i[id lonlat timestamp]
+            returning: Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
           )
           .and_return(expected_results)
       end

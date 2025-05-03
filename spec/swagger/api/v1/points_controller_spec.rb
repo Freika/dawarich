@@ -100,76 +100,84 @@ describe 'Points API', type: :request do
       parameter name: :locations, in: :body, schema: {
         type: :object,
         properties: {
-          type: { type: :string },
-          geometry: {
-            type: :object,
-            properties: {
-              type: {
-                type: :string,
-                example: 'Point',
-                description: 'the geometry type, always Point'
-              },
-              coordinates: {
-                type: :array,
-                items: {
-                  type: :number,
-                  example: [-122.40530871, 37.74430413],
-                  description: 'the coordinates of the point, longitude and latitude'
+          locations: {
+            type: :array,
+            items: {
+              type: :object,
+              properties: {
+                type: { type: :string },
+                geometry: {
+                  type: :object,
+                  properties: {
+                    type: {
+                      type: :string,
+                      example: 'Point',
+                      description: 'the geometry type, always Point'
+                    },
+                    coordinates: {
+                      type: :array,
+                      items: {
+                        type: :number,
+                        example: [-122.40530871, 37.74430413],
+                        description: 'the coordinates of the point, longitude and latitude'
+                      }
+                    }
+                  }
+                },
+                properties: {
+                  type: :object,
+                  properties: {
+                    timestamp: {
+                      type: :string,
+                      example: '2025-01-17T21:03:01Z',
+                      description: 'the timestamp of the point'
+                    },
+                    horizontal_accuracy: {
+                      type: :number,
+                      example: 5,
+                      description: 'the horizontal accuracy of the point in meters'
+                    },
+                    vertical_accuracy: {
+                      type: :number,
+                      example: -1,
+                      description: 'the vertical accuracy of the point in meters'
+                    },
+                    altitude: {
+                      type: :number,
+                      example: 0,
+                      description: 'the altitude of the point in meters'
+                    },
+                    speed: {
+                      type: :number,
+                      example: 92.088,
+                      description: 'the speed of the point in meters per second'
+                    },
+                    speed_accuracy: {
+                      type: :number,
+                      example: 0,
+                      description: 'the speed accuracy of the point in meters per second'
+                    },
+                    course_accuracy: {
+                      type: :number,
+                      example: 0,
+                      description: 'the course accuracy of the point in degrees'
+                    },
+                    track_id: {
+                      type: :string,
+                      example: '799F32F5-89BB-45FB-A639-098B1B95B09F',
+                      description: 'the track id of the point set by the device'
+                    },
+                    device_id: {
+                      type: :string,
+                      example: '8D5D4197-245B-4619-A88B-2049100ADE46',
+                      description: 'the device id of the point set by the device'
+                    }
+                  }
                 }
-              }
+              },
+              required: %w[geometry properties]
             }
-          },
-          properties: {
-            type: :object,
-            properties: {
-              timestamp: {
-                type: :string,
-                example: '2025-01-17T21:03:01Z',
-                description: 'the timestamp of the point'
-              },
-              horizontal_accuracy: {
-                type: :number,
-                example: 5,
-                description: 'the horizontal accuracy of the point in meters'
-              },
-              vertical_accuracy: {
-                type: :number,
-                example: -1,
-                description: 'the vertical accuracy of the point in meters'
-              },
-              altitude: {
-                type: :number,
-                example: 0,
-                description: 'the altitude of the point in meters'
-              },
-              speed: {
-                type: :number,
-                example: 92.088,
-                description: 'the speed of the point in meters per second'
-              },
-              speed_accuracy: {
-                type: :number,
-                example: 0,
-                description: 'the speed accuracy of the point in meters per second'
-              },
-              course_accuracy: {
-                type: :number,
-                example: 0,
-                description: 'the course accuracy of the point in degrees'
-              },
-              track_id: {
-                type: :string,
-                example: '799F32F5-89BB-45FB-A639-098B1B95B09F',
-                description: 'the track id of the point set by the device'
-              },
-              device_id: {
-                type: :string,
-                example: '8D5D4197-245B-4619-A88B-2049100ADE46',
-                description: 'the device id of the point set by the device'
-              }
-            }
-          },
-          required: %w[geometry properties]
+          }
         }
       }
 
@@ -179,8 +187,7 @@ describe 'Points API', type: :request do
         let(:file_path) { 'spec/fixtures/files/points/geojson_example.json' }
         let(:file) { File.open(file_path) }
         let(:json) { JSON.parse(file.read) }
-        let(:params) { json }
-        let(:locations) { params['locations'] }
+        let(:locations) { json }
         let(:api_key) { create(:user).api_key }
 
         run_test!
@@ -190,8 +197,7 @@ describe 'Points API', type: :request do
         let(:file_path) { 'spec/fixtures/files/points/geojson_example.json' }
         let(:file) { File.open(file_path) }
         let(:json) { JSON.parse(file.read) }
-        let(:params) { json }
-        let(:locations) { params['locations'] }
+        let(:locations) { json }
         let(:api_key) { 'invalid_api_key' }
 
         run_test!

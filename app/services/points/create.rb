@@ -5,10 +5,9 @@ class Points::Create
 
   def initialize(user, params)
     @user = user
-    @params = params
+    @params = params.to_h
   end
 
-  # rubocop:disable Metrics/MethodLength
   def call
     data = Points::Params.new(params, user.id).call
 
@@ -19,7 +18,7 @@ class Points::Create
       result = Point.upsert_all(
         location_batch,
         unique_by: %i[lonlat timestamp user_id],
-        returning: %i[id lonlat timestamp]
+        returning: Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
       )
       # rubocop:enable Rails/SkipsModelValidations
 
@@ -28,5 +27,4 @@ class Points::Create
 
     created_points
   end
-  # rubocop:enable Metrics/MethodLength
 end
