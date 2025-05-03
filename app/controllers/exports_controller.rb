@@ -25,6 +25,8 @@ class ExportsController < ApplicationController
   rescue StandardError => e
     export&.destroy
 
+    ExceptionReporter.call(e)
+
     redirect_to exports_url, alert: "Export failed to initiate: #{e.message}", status: :unprocessable_entity
   end
 

@@ -31,26 +31,43 @@ class ImportsController < ApplicationController
   end
 
   def create
-    files = import_params[:files].reject(&:blank?)
+    files_params = params.dig(:import, :files)
+    raw_files = Array(files_params).reject(&:blank?)
 
-    files.each do |file|
-      import = current_user.imports.build(
-        name: file.original_filename,
-        source: params[:import][:source]
-      )
-
-      import.file.attach(io: file, filename: file.original_filename, content_type: file.content_type)
-
-      import.save!
+    if raw_files.empty?
+      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_entity
+      return
     end
 
-    redirect_to imports_url, notice: "#{files.size} files are queued to be imported in background", status: :see_other
+    created_imports = []
+
+    raw_files.each do |item|
+      next if item.is_a?(ActionDispatch::Http::UploadedFile)
+
+      import = create_import_from_signed_id(item)
+      created_imports << import if import.present?
+    end
+
+    if created_imports.any?
+      redirect_to imports_url,
+                  notice: "#{created_imports.size} files are queued to be imported in background",
+                  status: :see_other
+    else
+      redirect_to new_import_path,
+                  alert: 'No valid file references were found. Please upload files using the file selector.',
+                  status: :unprocessable_entity
+    end
   rescue StandardError => e
-    Import.where(user: current_user, name: files.map(&:original_filename)).destroy_all
+    if created_imports.present?
+      import_ids = created_imports.map(&:id).compact
+      Import.where(id: import_ids).destroy_all if import_ids.any?
+    end
 
-    flash.now[:error] = e.message
+    Rails.logger.error "Import error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+    ExceptionReporter.call(e)
 
-    redirect_to new_import_path, notice: e.message, status: :unprocessable_entity
+    redirect_to new_import_path, alert: e.message, status: :unprocessable_entity
   end
 
   def destroy
@@ -67,5 +84,22 @@ class ImportsController < ApplicationController
 
   def import_params
     params.require(:import).permit(:source, files: [])
+  end
+
+  def create_import_from_signed_id(signed_id)
+    Rails.logger.debug "Creating import from signed ID: #{signed_id[0..20]}..."
+
+    blob = ActiveStorage::Blob.find_signed(signed_id)
+
+    import = current_user.imports.build(
+      name: blob.filename.to_s,
+      source: params[:import][:source]
+    )
+
+    import.file.attach(blob)
+
+    import.save!
+
+    import
   end
 end
