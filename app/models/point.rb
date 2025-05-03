@@ -30,7 +30,6 @@ class Point < ApplicationRecord
 
   after_create :async_reverse_geocode
   after_create_commit :broadcast_coordinates
-  # after_commit -> { Import::UpdatePointsCountJob.perform_later(import_id) }, on: :destroy, if: -> { import_id.present? }
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
