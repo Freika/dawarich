@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Vector maps are supported in non-self-hosted mode.
 - Credentials for Sidekiq UI are now being set via environment variables: `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD`. Default credentials are `sidekiq` and `password`.
+- New import page now shows progress of the upload.
 
 ## Changed
 
 - Datetime is now being displayed with seconds in the Points page. #1088
+- Imported files are now being uploaded via direct uploads.
 
 ## Removed
 
