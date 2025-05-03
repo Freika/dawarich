@@ -1,4 +1,4 @@
-<%= form_with model: import, class: "contents" do |form| %>
+<%= form_with model: import, class: "contents", data: { controller: "direct-upload", direct_upload_url_value: rails_direct_uploads_url } do |form| %>
   <div class="form-control w-full">
     <label class="label">
       <span class="label-text">Select source</span>
@@ -65,10 +65,14 @@
     <div class="label">
       <span class="label-text">Select one or multiple files</span>
     </div>
-    <%= form.file_field :files, multiple: true, class: "file-input file-input-bordered w-full max-w-xs" %>
+    <%= form.file_field :files,
+        multiple: true,
+        class: "file-input file-input-bordered w-full max-w-xs",
+        data: { direct_upload_target: "input" } %>
   </label>
 
   <div class="inline">
-    <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+    <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer",
+        data: { direct_upload_target: "submit" } %>
   </div>
 <% end %>

@@ -48,6 +48,8 @@ class ImportsController < ApplicationController
   rescue StandardError => e
     Import.where(user: current_user, name: files.map(&:original_filename)).destroy_all
 
+    ExceptionReporter.call(e)
+
     flash.now[:error] = e.message
 
     redirect_to new_import_path, notice: e.message, status: :unprocessable_entity
