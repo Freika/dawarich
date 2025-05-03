@@ -42,16 +42,22 @@ RSpec.describe 'Imports', type: :request do
 
       context 'when importing owntracks data' do
         let(:file) { fixture_file_upload('owntracks/2024-03.rec', 'text/plain') }
+        let(:blob) { create_blob_for_file(file) }
+        let(:signed_id) { generate_signed_id_for_blob(blob) }
 
         it 'queues import job' do
+          allow(ActiveStorage::Blob).to receive(:find_signed).with(signed_id).and_return(blob)
+
           expect do
-            post imports_path, params: { import: { source: 'owntracks', files: [file] } }
+            post imports_path, params: { import: { source: 'owntracks', files: [signed_id] } }
           end.to have_enqueued_job(Import::ProcessJob).on_queue('imports').at_least(1).times
         end
 
         it 'creates a new import' do
+          allow(ActiveStorage::Blob).to receive(:find_signed).with(signed_id).and_return(blob)
+
           expect do
-            post imports_path, params: { import: { source: 'owntracks', files: [file] } }
+            post imports_path, params: { import: { source: 'owntracks', files: [signed_id] } }
           end.to change(user.imports, :count).by(1)
 
           expect(response).to redirect_to(imports_path)
@@ -60,16 +66,22 @@ RSpec.describe 'Imports', type: :request do
 
       context 'when importing gpx data' do
         let(:file) { fixture_file_upload('gpx/gpx_track_single_segment.gpx', 'application/gpx+xml') }
+        let(:blob) { create_blob_for_file(file) }
+        let(:signed_id) { generate_signed_id_for_blob(blob) }
 
         it 'queues import job' do
+          allow(ActiveStorage::Blob).to receive(:find_signed).with(signed_id).and_return(blob)
+
           expect do
-            post imports_path, params: { import: { source: 'gpx', files: [file] } }
+            post imports_path, params: { import: { source: 'gpx', files: [signed_id] } }
           end.to have_enqueued_job(Import::ProcessJob).on_queue('imports').at_least(1).times
         end
 
         it 'creates a new import' do
+          allow(ActiveStorage::Blob).to receive(:find_signed).with(signed_id).and_return(blob)
+
           expect do
-            post imports_path, params: { import: { source: 'gpx', files: [file] } }
+            post imports_path, params: { import: { source: 'gpx', files: [signed_id] } }
           end.to change(user.imports, :count).by(1)
 
           expect(response).to redirect_to(imports_path)
@@ -137,5 +149,18 @@ RSpec.describe 'Imports', type: :request do
         expect(response).to redirect_to(imports_path)
       end
     end
+  end
+
+  # Helper methods for creating ActiveStorage blobs and signed IDs in tests
+  def create_blob_for_file(file)
+    ActiveStorage::Blob.create_and_upload!(
+      io: file.open,
+      filename: file.original_filename,
+      content_type: file.content_type
+    )
+  end
+
+  def generate_signed_id_for_blob(blob)
+    blob.signed_id
   end
 end
