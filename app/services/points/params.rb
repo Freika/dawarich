@@ -41,8 +41,7 @@ class Points::Params
   end
 
   def params_valid?(point)
-    point[:geometry].present? &&
-      point[:geometry][:coordinates].present? &&
+    point.dig(:geometry, :coordinates).present? &&
       point.dig(:properties, :timestamp).present?
   end
 

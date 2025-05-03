@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Datetime is now being displayed with seconds in the Points page. #1088
 - Imported files are now being uploaded via direct uploads.
+- `/api/v1/points` endpoint now creates accepted points synchronously.
 
 ## Removed
 

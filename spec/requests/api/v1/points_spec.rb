@@ -9,6 +9,16 @@ RSpec.describe 'Api::V1::Points', type: :request do
       create(:point, user:, timestamp: 1.day.ago + i.minutes)
     end
   end
+  let(:point_params) do
+    {
+      locations: [
+        {
+          geometry: { type: 'Point', coordinates: [1.0, 1.0] },
+          properties: { timestamp: '2025-01-17T21:03:01Z' }
+        }
+      ]
+    }
+  end
 
   describe 'GET /index' do
     context 'when regular version of points is requested' do
@@ -122,9 +132,16 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
   describe 'POST /create' do
     it 'returns a successful response' do
-      post "/api/v1/points?api_key=#{user.api_key}", params: { point: { latitude: 1.0, longitude: 1.0 } }
+      post "/api/v1/points?api_key=#{user.api_key}", params: point_params
 
-      expect(response).to have_http_status(:success)
+      expect(response).to have_http_status(:ok)
+
+      json_response = JSON.parse(response.body)['data']
+
+      expect(json_response.size).to be_positive
+      expect(json_response.first['latitude']).to eq(1.0)
+      expect(json_response.first['longitude']).to eq(1.0)
+      expect(json_response.first['timestamp']).to be_an_instance_of(Integer)
     end
 
     context 'when user is inactive' do
@@ -133,7 +150,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
 
       it 'returns an unauthorized response' do
-        post "/api/v1/points?api_key=#{user.api_key}", params: { point: { latitude: 1.0, longitude: 1.0 } }
+        post "/api/v1/points?api_key=#{user.api_key}", params: point_params
 
         expect(response).to have_http_status(:unauthorized)
       end
