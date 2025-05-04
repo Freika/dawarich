@@ -40,7 +40,7 @@ export default class extends BaseController {
     console.log("Map controller connected");
 
     this.apiKey = this.element.dataset.api_key;
-    this.selfHosted = this.element.dataset.self_hosted === "true";
+    this.selfHosted = this.element.dataset.self_hosted;
     this.markers = JSON.parse(this.element.dataset.coordinates);
     this.timezone = this.element.dataset.timezone;
     this.userSettings = JSON.parse(this.element.dataset.user_settings);
