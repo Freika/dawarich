@@ -37,7 +37,7 @@ COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle config set --local without 'development test' \
     && bundle install --jobs 4 --retry 3 \
-    && rm -rf vendor/bundle/ruby/3.3.0/cache/*.gem
+    && rm -rf vendor/bundle/ruby/3.4.1/cache/*.gem
 
 COPY ../. ./
 
