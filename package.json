@@ -2,11 +2,13 @@
   "dependencies": {
     "@hotwired/turbo-rails": "^7.3.0",
     "@rails/actiontext": "^8.0.0",
+    "daisyui": "^4.7.3",
     "leaflet": "^1.9.4",
     "postcss": "^8.4.49",
     "trix": "^2.1.8"
   },
-  "devDependencies": {
-    "daisyui": "^4.7.3"
+  "engines": {
+    "node": "18.17.1",
+    "npm": "9.6.7"
   }
 }

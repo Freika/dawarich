@@ -7,6 +7,8 @@ ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 ENV RAILS_ENV=development
 ENV SELF_HOSTED=true
+ENV SIDEKIQ_USERNAME=sidekiq
+ENV SIDEKIQ_PASSWORD=password
 
 # Install dependencies for application
 RUN apk -U add --no-cache \

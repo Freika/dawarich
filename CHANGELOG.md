@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.25.10 - 2025-05-02
+
+## Added
+
+- Vector maps are supported in non-self-hosted mode.
+- Credentials for Sidekiq UI are now being set via environment variables: `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD`. Default credentials are `sidekiq` and `password`. If you don't set them, in self-hosted mode, Sidekiq UI will not be protected by basic auth.
+- New import page now shows progress of the upload.
+
+## Changed
+
+- Datetime is now being displayed with seconds in the Points page. #1088
+- Imported files are now being uploaded via direct uploads.
+- `/api/v1/points` endpoint now creates accepted points synchronously.
+
+## Removed
+
+- Sample points are no longer being imported automatically for new users.
+
 # 0.25.9 - 2025-04-29
 
 ## Fixed

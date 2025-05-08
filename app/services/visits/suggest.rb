@@ -27,6 +27,8 @@ class Visits::Suggest
       title: 'Error suggesting visits',
       content: "Error suggesting visits: #{e.message}\n#{e.backtrace.join("\n")}"
     )
+
+    ExceptionReporter.call(e)
   end
 
   private

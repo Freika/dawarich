@@ -7,15 +7,17 @@ Rails.application.routes.draw do
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
 
-  Sidekiq::Web.use(Rack::Auth::Basic) do |username, password|
-    ActiveSupport::SecurityUtils.secure_compare(
-      ::Digest::SHA256.hexdigest(username),
-      ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_USERNAME'])
-    ) &
+  unless DawarichSettings.self_hosted?
+    Sidekiq::Web.use(Rack::Auth::Basic) do |username, password|
       ActiveSupport::SecurityUtils.secure_compare(
-        ::Digest::SHA256.hexdigest(password),
-        ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_PASSWORD'])
-      )
+        ::Digest::SHA256.hexdigest(username),
+        ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_USERNAME'])
+      ) &
+        ActiveSupport::SecurityUtils.secure_compare(
+          ::Digest::SHA256.hexdigest(password),
+          ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_PASSWORD'])
+        )
+    end
   end
 
   authenticate :user, lambda { |u|

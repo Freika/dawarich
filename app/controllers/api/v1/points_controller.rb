@@ -24,9 +24,9 @@ class Api::V1::PointsController < ApiController
   end
 
   def create
-    Points::CreateJob.perform_later(batch_params, current_api_user.id)
+    points = Points::Create.new(current_api_user, batch_params).call
 
-    render json: { message: 'Points are being processed' }
+    render json: { data: points }
   end
 
   def update

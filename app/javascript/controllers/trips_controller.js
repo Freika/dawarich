@@ -53,7 +53,7 @@ export default class extends BaseController {
     // Add base map layer
     const selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
     const maps = this.baseMaps();
-    const defaultLayer = maps[selectedLayerName] || maps["OpenStreetMap"] || maps["Atlas"];
+    const defaultLayer = maps[selectedLayerName] || Object.values(maps)[0];
     defaultLayer.addTo(this.map);
 
     // Add scale control to bottom right

@@ -10,10 +10,10 @@ class Api::V1::SubscriptionsController < ApiController
 
     render json: { message: 'Subscription updated successfully' }
   rescue JWT::DecodeError => e
-    Sentry.capture_exception(e)
+    ExceptionReporter.call(e)
     render json: { message: 'Failed to verify subscription update.' }, status: :unauthorized
   rescue ArgumentError => e
-    Sentry.capture_exception(e)
+    ExceptionReporter.call(e)
     render json: { message: 'Invalid subscription data received.' }, status: :unprocessable_entity
   end
 end
