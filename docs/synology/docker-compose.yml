@@ -10,7 +10,7 @@ services:
       - ./redis:/var/shared/redis
 
   dawarich_db:
-    image: postgis/postgis:14-3.5-alpine
+    image: postgis/postgis:17-3.5-alpine
     container_name: dawarich_db
     restart: unless-stopped
     environment:

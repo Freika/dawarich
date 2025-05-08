@@ -46,6 +46,7 @@ Donate using crypto: [0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4](https://ethers
 
 You can track your location with the following apps:
 
+- 💫 [Dawarich for iOS](https://dawarich.app/docs/dawarich-for-ios/)
 - 🌍 [Overland](https://dawarich.app/docs/tutorials/track-your-location#overland)
 - 🛰️ [OwnTracks](https://dawarich.app/docs/tutorials/track-your-location#owntracks)
 - 🗺️ [GPSLogger](https://dawarich.app/docs/tutorials/track-your-location#gps-logger)
@@ -76,7 +77,7 @@ Simply install one of the supported apps on your device and configure it to send
 🆕 **Default Credentials**
 - **Username**: `demo@dawarich.app`
 - **Password**: `password`
-(Feel free to change them in the account settings.)
+Feel free to change them in the account settings.
 
 ---
 
@@ -100,6 +101,10 @@ Simply install one of the supported apps on your device and configure it to send
 
 ### 📊 Statistics
 - Analyze your travel history: number of countries/cities visited, distance traveled, and time spent, broken down by year and month.
+
+### ✈️ Trips
+
+- Create a trip to visualize your travels between two points in time. You'll be able to see the route, distance, and time spent, and also add notes to your trip. If you have Immich or Photoprism integration, you'll also be able to see photos from your trips!
 
 ### 📸 Integrations
 - Provide credentials for Immich or Photoprism (or both!) and Dawarich will automatically import geodata from your photos.
