@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.26.1 - UNRELEASED
+
+## Fixed
+
+- Importing GeoJSON files now saves velocity if it was stored in either `velocity` or `speed` property.
+
 # 0.26.0 - 2025-05-08
 
 ⚠️ This release includes a breaking change. ⚠️

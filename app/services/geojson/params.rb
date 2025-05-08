@@ -95,7 +95,9 @@ class Geojson::Params
   end
 
   def speed(feature)
-    feature.dig(:properties, :speed).to_f.round(1)
+    value = feature.dig(:properties, :speed) || feature.dig(:properties, :velocity)
+
+    value.to_f.round(1)
   end
 
   def accuracy(feature)
