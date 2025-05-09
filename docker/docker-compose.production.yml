@@ -70,6 +70,8 @@ services:
       PROMETHEUS_EXPORTER_PORT: 9394
       SECRET_KEY_BASE: 1234567890
       RAILS_LOG_TO_STDOUT: "true"
+      SIDEKIQ_USERNAME: sidekiq
+      SIDEKIQ_PASSWORD: password
     logging:
       driver: "json-file"
       options:
@@ -124,6 +126,8 @@ services:
       PROMETHEUS_EXPORTER_PORT: 9394
       SECRET_KEY_BASE: 1234567890
       RAILS_LOG_TO_STDOUT: "true"
+      SIDEKIQ_USERNAME: sidekiq
+      SIDEKIQ_PASSWORD: password
     logging:
       driver: "json-file"
       options:
