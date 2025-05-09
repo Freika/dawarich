@@ -277,6 +277,20 @@ With any errors, don't hesitate to ask for help in the [Discord server](https://
 - Fixed a bug where upon point deletion it was not being removed from the map, while it was actually deleted from the database. #883
 - Fixed a bug where upon import deletion stats were not being recalculated. #824
 
+### Removed
+
+ENV vars removed from the docker-compose.yml:
+
+```
+TIME_ZONE: Europe/London
+APPLICATION_PROTOCOL: http
+DISTANCE_UNIT: km
+MIN_MINUTES_SPENT_IN_CITY: 60
+```
+
+Link to the https://dawarich.app/docs/environment-variables-and-settings page added instead, and the app itself is now using defaults that can be changed if env vars are provided.
+
+
 # 0.24.1 - 2025-02-13
 
 ## Custom map tiles

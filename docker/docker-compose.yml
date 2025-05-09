@@ -55,17 +55,15 @@ services:
     command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: on-failure
     environment:
+      # All env vars with their defaults can be found here:
+      # https://dawarich.app/docs/environment-variables-and-settings
       RAILS_ENV: development
       REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOSTS: localhost
-      TIME_ZONE: Europe/London
-      APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
@@ -108,6 +106,8 @@ services:
     command: ['sidekiq']
     restart: on-failure
     environment:
+      # All env vars with their defaults can be found here:
+      # https://dawarich.app/docs/environment-variables-and-settings
       RAILS_ENV: development
       REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
@@ -116,8 +116,6 @@ services:
       DATABASE_NAME: dawarich_development
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
-      APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: dawarich_app
       PROMETHEUS_EXPORTER_PORT: 9394
