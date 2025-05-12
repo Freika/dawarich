@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Visits::PlaceNameSuggester do
+RSpec.describe Visits::Names::Suggester do
   subject(:suggester) { described_class.new(points) }
 
   describe '#call' do

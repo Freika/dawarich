@@ -11,7 +11,7 @@ module Visits
 
     def initialize(points)
       @points = points
-      @place_name_suggester = PlaceNameSuggester
+      @place_name_suggester = Visits::Names::Suggester
     end
 
     def detect_potential_visits
@@ -90,7 +90,7 @@ module Visits
         center_lat: center[0],
         center_lon: center[1],
         radius: calculate_visit_radius(points, center),
-        suggested_name: suggest_place_name(points)
+        suggested_name: suggest_place_name(points) || fetch_place_name(center)
       )
     end
 
@@ -113,6 +113,10 @@ module Visits
 
     def suggest_place_name(points)
       place_name_suggester.new(points).call
+    end
+
+    def fetch_place_name(center)
+      Visits::Names::Fetcher.new(center).call
     end
   end
 end
