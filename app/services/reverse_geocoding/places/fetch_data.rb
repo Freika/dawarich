@@ -57,10 +57,6 @@ class ReverseGeocoding::Places::FetchData
     new_place.save!
   end
 
-  def reverse_geocoded?
-    place.geodata.present?
-  end
-
   def find_place(place_data)
     found_place = Place.where(
       "geodata->'properties'->>'osm_id' = ?", place_data['properties']['osm_id'].to_s

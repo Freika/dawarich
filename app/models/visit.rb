@@ -12,10 +12,6 @@ class Visit < ApplicationRecord
 
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
 
-  def reverse_geocoded?
-    place.geodata.present?
-  end
-
   def coordinates
     points.pluck(:latitude, :longitude).map { [_1[0].to_f, _1[1].to_f] }
   end

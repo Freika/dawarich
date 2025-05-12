@@ -22,10 +22,6 @@ class Place < ApplicationRecord
     lonlat.y
   end
 
-  def reverse_geocoded?
-    geodata.present?
-  end
-
   def osm_id
     geodata['properties']['osm_id']
   end

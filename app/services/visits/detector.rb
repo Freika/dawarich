@@ -7,10 +7,11 @@ module Visits
     MAXIMUM_VISIT_GAP = 30.minutes
     MINIMUM_POINTS_FOR_VISIT = 2
 
-    attr_reader :points
+    attr_reader :points, :place_name_suggester
 
     def initialize(points)
       @points = points
+      @place_name_suggester = PlaceNameSuggester
     end
 
     def detect_potential_visits
@@ -111,48 +112,7 @@ module Visits
     end
 
     def suggest_place_name(points)
-      # Get points with geodata
-      geocoded_points = points.select { |p| p.geodata.present? && !p.geodata.empty? }
-      return nil if geocoded_points.empty?
-
-      # Extract all features from points' geodata
-      features = geocoded_points.flat_map do |point|
-        next [] unless point.geodata['features'].is_a?(Array)
-
-        point.geodata['features']
-      end.compact
-
-      return nil if features.empty?
-
-      # Group features by type and count occurrences
-      feature_counts = features.group_by { |f| f.dig('properties', 'type') }
-                               .transform_values(&:size)
-
-      # Find the most common feature type
-      most_common_type = feature_counts.max_by { |_, count| count }&.first
-      return nil unless most_common_type
-
-      # Get all features of the most common type
-      common_features = features.select { |f| f.dig('properties', 'type') == most_common_type }
-
-      # Group these features by name and get the most common one
-      name_counts = common_features.group_by { |f| f.dig('properties', 'name') }
-                                   .transform_values(&:size)
-      most_common_name = name_counts.max_by { |_, count| count }&.first
-
-      return if most_common_name.blank?
-
-      # If we have a name, try to get additional context
-      feature = common_features.find { |f| f.dig('properties', 'name') == most_common_name }
-      properties = feature['properties']
-
-      # Build a more descriptive name if possible
-      [
-        most_common_name,
-        properties['street'],
-        properties['city'],
-        properties['state']
-      ].compact.uniq.join(', ')
+      place_name_suggester.new(points).call
     end
   end
 end
