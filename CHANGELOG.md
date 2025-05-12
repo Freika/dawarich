@@ -4,12 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 # 0.26.1 - 2025-05-12
 
 ## Fixed
 
 - Fixed a bug with an attempt to write points with same lonlat and timestamp from iOS app. #1170
-
+- Importing GeoJSON files now saves velocity if it was stored in either `velocity` or `speed` property.
 
 
 # 0.26.0 - 2025-05-08
@@ -25,7 +26,6 @@ If you have encountered problems with moving to a PostGIS image while still on P
 ## Changed
 
 - Dawarich now uses PostgreSQL 17 with PostGIS 3.5 by default.
-
 
 
 # 0.25.10 - 2025-05-08
