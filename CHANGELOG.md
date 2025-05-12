@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.26.1 - 2025-05-12
+
+## Fixed
+
+- Fixed a bug with an attempt to write points with same lonlat and timestamp from iOS app. #1170
+
+
+
 # 0.26.0 - 2025-05-08
 
 ⚠️ This release includes a breaking change. ⚠️
