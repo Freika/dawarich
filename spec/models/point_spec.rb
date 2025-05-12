@@ -45,7 +45,10 @@ RSpec.describe Point, type: :model do
     describe '#async_reverse_geocode' do
       let(:point) { build(:point) }
 
-      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+      end
 
       it 'enqueues ReverseGeocodeJob with correct arguments' do
         point.save
@@ -59,6 +62,16 @@ RSpec.describe Point, type: :model do
 
         it 'enqueues ReverseGeocodeJob' do
           expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
+        end
+      end
+
+      context 'when reverse geocoding is disabled' do
+        before do
+          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        end
+
+        it 'does not enqueue ReverseGeocodeJob' do
+          expect { point.save }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
       end
     end

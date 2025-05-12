@@ -22,12 +22,6 @@ class Place < ApplicationRecord
     lonlat.y
   end
 
-  def async_reverse_geocode
-    return unless DawarichSettings.reverse_geocoding_enabled?
-
-    ReverseGeocodingJob.perform_later(self.class.to_s, id)
-  end
-
   def reverse_geocoded?
     geodata.present?
   end

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.26.1 - 2025-05-12
 
+Geodata on demand
+
+- [x] Introduce a `STORE_GEODATA` environment variable to control whether to store geodata in the database.
+- [ ] When `STORE_GEODATA` is disabled, each feature that uses geodata will now make a direct request to the geocoding service to calculate required data.
+- [ ] When `STORE_GEODATA` is disabled, points are not being reverse geocoded on creation.
+- [ ] When `STORE_GEODATA` is enabled, points are being reverse geocoded upon creation and stored in the database.
+- [ ] Each feature that uses geodata will check if an entity (point, place, etc.) has geodata stored in the database and use it if available. If not, it will make a direct request to the geocoding service to calculate required data.
+
+## Changed
+
+- Reverse geocoding is now working as on-demand job instead of storing the result in the database.
+
 ## Fixed
 
 - Fixed a bug with an attempt to write points with same lonlat and timestamp from iOS app. #1170
