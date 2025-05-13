@@ -29,32 +29,18 @@ RSpec.describe Trips::Countries do
     allow(File).to receive(:read).with(Trips::Countries::FILE_PATH).and_return(geo_json_content)
 
     # Explicitly stub all Geocoder calls with specific coordinates
-    stub_request(:get, 'https://photon.dawarich.app/reverse?lang=en&lat=50.0&limit=1&lon=10.0')
-      .to_return(
-        status: 200,
-        body: {
-          type: 'FeatureCollection',
-          features: [{ type: 'Feature', properties: { countrycode: 'DE' } }]
-        }.to_json
-      )
-
-    stub_request(:get, 'https://photon.dawarich.app/reverse?lang=en&lat=60.0&limit=1&lon=20.0')
-      .to_return(
-        status: 200,
-        body: {
-          type: 'FeatureCollection',
-          features: [{ type: 'Feature', properties: { countrycode: 'SE' } }]
-        }.to_json
-      )
-
-    stub_request(:get, 'https://photon.dawarich.app/reverse?lang=en&lat=70.0&limit=1&lon=30.0')
-      .to_return(
-        status: 200,
-        body: {
-          type: 'FeatureCollection',
-          features: [{ type: 'Feature', properties: { countrycode: 'FI' } }]
-        }.to_json
-      )
+    allow(Geocoder).to receive(:search).and_return(
+      [double(data: { 'properties' => { 'countrycode' => 'DE' } })]
+    )
+    allow(Geocoder).to receive(:search).with([50.0, 10.0], limit: 1).and_return(
+      [double(data: { 'properties' => { 'countrycode' => 'DE' } })]
+    )
+    allow(Geocoder).to receive(:search).with([60.0, 20.0], limit: 1).and_return(
+      [double(data: { 'properties' => { 'countrycode' => 'SE' } })]
+    )
+    allow(Geocoder).to receive(:search).with([70.0, 30.0], limit: 1).and_return(
+      [double(data: { 'properties' => { 'countrycode' => 'FI' } })]
+    )
 
     allow(Rails.logger).to receive(:info)
     allow(Rails.logger).to receive(:error)
@@ -88,16 +74,6 @@ RSpec.describe Trips::Countries do
     it 'sorts countries by count in descending order' do
       allow(Thread).to receive(:new).and_yield
       allow(points).to receive(:to_a).and_return([point1, point1, point2, point3, point4])
-
-      # Make sure we have a stub for the duplicated point
-      stub_request(:get, 'https://photon.dawarich.app/reverse?lang=en&lat=50.0&limit=1&lon=10.0')
-        .to_return(
-          status: 200,
-          body: {
-            type: 'FeatureCollection',
-            features: [{ type: 'Feature', properties: { countrycode: 'DE' } }]
-          }.to_json
-        )
 
       result = described_class.new(trip).call
 

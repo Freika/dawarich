@@ -34,17 +34,19 @@ RSpec.describe Visits::Names::Suggester do
     context 'when features exist but with different types' do
       let(:points) do
         [
-          double('Point', geodata: {
-                   'features' => [
-                     { 'properties' => { 'type' => 'cafe', 'name' => 'Coffee Shop' } },
-                     { 'properties' => { 'type' => 'restaurant', 'name' => 'Pizza Place' } }
-                   ]
-                 })
+          double(
+            'Point',
+            geodata: {
+              'features' => [
+                { 'properties' => { 'type' => 'cafe', 'name' => 'Coffee Shop' } },
+                { 'properties' => { 'type' => 'restaurant', 'name' => 'Pizza Place' } }
+              ]
+            }
+          )
         ]
       end
 
       it 'returns the name of the most common type' do
-        # Since both types appear once, it will pick the first one alphabetically in practice
         expect(suggester.call).to eq('Coffee Shop')
       end
     end
@@ -52,21 +54,30 @@ RSpec.describe Visits::Names::Suggester do
     context 'when features have a common type but different names' do
       let(:points) do
         [
-          double('Point', geodata: {
-                   'features' => [
-                     { 'properties' => { 'type' => 'park', 'name' => 'Central Park' } }
-                   ]
-                 }),
-          double('Point', geodata: {
-                   'features' => [
-                     { 'properties' => { 'type' => 'park', 'name' => 'City Park' } }
-                   ]
-                 }),
-          double('Point', geodata: {
-                   'features' => [
-                     { 'properties' => { 'type' => 'park', 'name' => 'Central Park' } }
-                   ]
-                 })
+          double(
+            'Point',
+            geodata: {
+              'features' => [
+                { 'properties' => { 'type' => 'park', 'name' => 'Central Park' } }
+              ]
+            }
+          ),
+          double(
+            'Point',
+            geodata: {
+              'features' => [
+                { 'properties' => { 'type' => 'park', 'name' => 'City Park' } }
+              ]
+            }
+          ),
+          double(
+            'Point',
+            geodata: {
+              'features' => [
+                { 'properties' => { 'type' => 'park', 'name' => 'Central Park' } }
+              ]
+            }
+          )
         ]
       end
 
@@ -78,19 +89,22 @@ RSpec.describe Visits::Names::Suggester do
     context 'when a complete place can be built' do
       let(:points) do
         [
-          double('Point', geodata: {
-                   'features' => [
-                     {
-                       'properties' => {
-                         'type' => 'cafe',
-                         'name' => 'Starbucks',
-                         'street' => '123 Main St',
-                         'city' => 'San Francisco',
-                         'state' => 'CA'
-                       }
-                     }
-                   ]
-                 })
+          double(
+            'Point',
+            geodata: {
+              'features' => [
+                {
+                  'properties' => {
+                    'type' => 'cafe',
+                    'name' => 'Starbucks',
+                    'street' => '123 Main St',
+                    'city' => 'San Francisco',
+                    'state' => 'CA'
+                  }
+                }
+              ]
+            }
+          )
         ]
       end
 
@@ -102,18 +116,21 @@ RSpec.describe Visits::Names::Suggester do
     context 'when only partial place details are available' do
       let(:points) do
         [
-          double('Point', geodata: {
-                   'features' => [
-                     {
-                       'properties' => {
-                         'type' => 'cafe',
-                         'name' => 'Starbucks',
-                         'city' => 'San Francisco'
-                         # No street or state
-                       }
-                     }
-                   ]
-                 })
+          double(
+            'Point',
+            geodata: {
+              'features' => [
+                {
+                  'properties' => {
+                    'type' => 'cafe',
+                    'name' => 'Starbucks',
+                    'city' => 'San Francisco'
+                    # No street or state
+                  }
+                }
+              ]
+            }
+          )
         ]
       end
 
@@ -137,11 +154,14 @@ RSpec.describe Visits::Names::Suggester do
     context 'when most common name is blank' do
       let(:points) do
         [
-          double('Point', geodata: {
-                   'features' => [
-                     { 'properties' => { 'type' => 'road', 'name' => '' } }
-                   ]
-                 })
+          double(
+            'Point',
+            geodata: {
+              'features' => [
+                { 'properties' => { 'type' => 'road', 'name' => '' } }
+              ]
+            }
+          )
         ]
       end
 

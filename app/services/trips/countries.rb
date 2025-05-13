@@ -1,10 +1,5 @@
 # frozen_string_literal: true
 
-require 'rgeo/geo_json'
-require 'rgeo'
-require 'json'
-require 'geocoder'
-
 class Trips::Countries
   FILE_PATH = Rails.root.join('lib/assets/countries.json')
 
@@ -123,6 +118,9 @@ class Trips::Countries
     result.data['properties']['countrycode']
   rescue StandardError => e
     Rails.logger.error("Error geocoding point: #{e.message}")
+
+    ExceptionReporter.call(e)
+
     nil
   end
 end
