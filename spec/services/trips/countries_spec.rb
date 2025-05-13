@@ -80,5 +80,17 @@ RSpec.describe Trips::Countries do
       expect(result.keys.first).to eq('DE')
       expect(result['DE']).to eq(2)
     end
+
+    context 'when an error occurs' do
+      before do
+        allow(Geocoder).to receive(:search).and_raise(Geocoder::Error, 'Error')
+      end
+
+      it 'calls the exception reporter' do
+        expect(ExceptionReporter).to receive(:call).with(Geocoder::Error).at_least(3).times
+
+        described_class.new(trip).call
+      end
+    end
   end
 end
