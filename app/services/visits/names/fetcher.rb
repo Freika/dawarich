@@ -27,8 +27,7 @@ module Visits
       def build_place_name
         return nil if geocoder_results.first&.data.blank?
 
-        properties = geocoder_results.first.data['properties']
-        return nil unless properties.present?
+        return nil if properties.blank?
 
         # First try the direct properties approach
         name = Visits::Names::Builder.build_from_properties(properties)
@@ -50,6 +49,10 @@ module Visits
             'properties' => result.data['properties']
           }
         end.compact
+      end
+
+      def properties
+        @properties ||= geocoder_results.first.data['properties']
       end
     end
   end

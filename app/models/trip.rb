@@ -7,11 +7,12 @@ class Trip < ApplicationRecord
 
   validates :name, :started_at, :ended_at, presence: true
 
-  before_save :calculate_path_and_distance
+  before_save :calculate_trip_data
 
-  def calculate_path_and_distance
+  def calculate_trip_data
     calculate_path
     calculate_distance
+    calculate_countries
   end
 
   def points
@@ -19,7 +20,9 @@ class Trip < ApplicationRecord
   end
 
   def countries
-    points.pluck(:country).uniq.compact
+    return points.pluck(:country).uniq.compact if DawarichSettings.store_geodata?
+
+    visited_countries
   end
 
   def photo_previews
@@ -55,5 +58,11 @@ class Trip < ApplicationRecord
     distance = Point.total_distance(points, DISTANCE_UNIT)
 
     self.distance = distance.round
+  end
+
+  def calculate_countries
+    countries = Trips::Countries.new(self).call
+
+    self.visited_countries = countries
   end
 end
