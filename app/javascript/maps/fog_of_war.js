@@ -33,38 +33,61 @@ export function drawFogCanvas(map, markers, clearFogRadius) {
 
   const size = map.getSize();
 
-  // Clear the canvas
+  // 1) Paint base fog
   ctx.clearRect(0, 0, size.x, size.y);
-
-  // Keep the light fog for unexplored areas
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
   ctx.fillRect(0, 0, size.x, size.y);
 
-  // Set up for "cutting" holes
+  // 2) Cut out holes
   ctx.globalCompositeOperation = 'destination-out';
 
-  // Draw clear circles for each point
-  markers.forEach(point => {
-    const latLng = L.latLng(point[0], point[1]);
-    const pixelPoint = map.latLngToContainerPoint(latLng);
-    const radiusInPixels = metersToPixels(map, clearFogRadius);
+  // 3) Build & sort points
+  const thresholdSec = 90; // points will be joined if < 1m30 of time difference
+  const pts = markers
+    .map(pt => {
+      const pixel = map.latLngToContainerPoint(L.latLng(pt[0], pt[1]));
+      return { pixel, time: parseInt(pt[4], 10) };
+    })
+    .sort((a, b) => a.time - b.time);
 
-    // Make explored areas completely transparent
-    const gradient = ctx.createRadialGradient(
-      pixelPoint.x, pixelPoint.y, 0,
-      pixelPoint.x, pixelPoint.y, radiusInPixels
-    );
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');      // 100% transparent
-    gradient.addColorStop(0.85, 'rgba(255, 255, 255, 1)');   // Still 100% transparent
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');      // Fade to fog at edge
+  const radiusPx = Math.max(metersToPixels(map, clearFogRadius), 2);
+  console.log(radiusPx);
 
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(pixelPoint.x, pixelPoint.y, radiusInPixels, 0, Math.PI * 2);
-    ctx.fill();
+  // 4) Mark which pts are part of a line
+  const connected = new Array(pts.length).fill(false);
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (pts[i + 1].time - pts[i].time <= thresholdSec) {
+      connected[i]     = true;
+      connected[i + 1] = true;
+    }
+  }
+
+  // 5) Draw circles only for “alone” points
+  pts.forEach((pt, i) => {
+    if (!connected[i]) {
+      ctx.fillStyle = 'rgba(255,255,255,1)';
+      ctx.beginPath();
+      ctx.arc(pt.pixel.x, pt.pixel.y, radiusPx, 0, Math.PI * 2);
+      ctx.fill();
+    }
   });
 
-  // Reset composite operation
+  // 6) Draw rounded lines
+  ctx.lineWidth = radiusPx * 2;
+  ctx.lineCap   = 'round';
+  ctx.lineJoin  = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,1)';
+
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (pts[i + 1].time - pts[i].time <= thresholdSec) {
+      ctx.beginPath();
+      ctx.moveTo(pts[i].pixel.x, pts[i].pixel.y);
+      ctx.lineTo(pts[i + 1].pixel.x, pts[i + 1].pixel.y);
+      ctx.stroke();
+    }
+  }
+
+  // 7) Reset composite operation
   ctx.globalCompositeOperation = 'source-over';
 }
 
