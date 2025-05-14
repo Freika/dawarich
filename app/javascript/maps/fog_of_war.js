@@ -23,7 +23,7 @@ export function initializeFogCanvas(map) {
   return fog;
 }
 
-export function drawFogCanvas(map, markers, clearFogRadius) {
+export function drawFogCanvas(map, markers, clearFogRadius, fogLinethreshold) {
   const fog = document.getElementById('fog');
   // Return early if fog element doesn't exist or isn't a canvas
   if (!fog || !(fog instanceof HTMLCanvasElement)) return;
@@ -42,7 +42,6 @@ export function drawFogCanvas(map, markers, clearFogRadius) {
   ctx.globalCompositeOperation = 'destination-out';
 
   // 3) Build & sort points
-  const thresholdSec = 90; // points will be joined if < 1m30 of time difference
   const pts = markers
     .map(pt => {
       const pixel = map.latLngToContainerPoint(L.latLng(pt[0], pt[1]));
@@ -56,7 +55,7 @@ export function drawFogCanvas(map, markers, clearFogRadius) {
   // 4) Mark which pts are part of a line
   const connected = new Array(pts.length).fill(false);
   for (let i = 0; i < pts.length - 1; i++) {
-    if (pts[i + 1].time - pts[i].time <= thresholdSec) {
+    if (pts[i + 1].time - pts[i].time <= fogLinethreshold) {
       connected[i]     = true;
       connected[i + 1] = true;
     }
@@ -79,7 +78,7 @@ export function drawFogCanvas(map, markers, clearFogRadius) {
   ctx.strokeStyle = 'rgba(255,255,255,1)';
 
   for (let i = 0; i < pts.length - 1; i++) {
-    if (pts[i + 1].time - pts[i].time <= thresholdSec) {
+    if (pts[i + 1].time - pts[i].time <= fogLinethreshold) {
       ctx.beginPath();
       ctx.moveTo(pts[i].pixel.x, pts[i].pixel.y);
       ctx.lineTo(pts[i + 1].pixel.x, pts[i + 1].pixel.y);
