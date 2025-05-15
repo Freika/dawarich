@@ -10,12 +10,6 @@ class Trip < ApplicationRecord
   after_create :enqueue_calculation_jobs
   after_update :enqueue_calculation_jobs, if: -> { saved_change_to_started_at? || saved_change_to_ended_at? }
 
-  def calculate_trip_data
-    calculate_path
-    calculate_distance
-    calculate_countries
-  end
-
   def enqueue_calculation_jobs
     Trips::CalculateAllJob.perform_later(id)
   end
