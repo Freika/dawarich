@@ -15,9 +15,9 @@ class Api::PlaceSerializer
       country:    place.country,
       source:     place.source,
       geodata:    place.geodata,
-      reverse_geocoded_at: place.reverse_geocoded_at,
       created_at: place.created_at,
-      updated_at: place.updated_at
+      updated_at: place.updated_at,
+      reverse_geocoded_at: place.reverse_geocoded_at
     }
   end
 

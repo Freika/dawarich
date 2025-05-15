@@ -32,7 +32,10 @@
               <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
               <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
-            <%= link_to '[Update]', update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
+            <div class="gap-2">
+              <span class='text-xs text-gray-500'>Last updated: <%= human_date(stats.first.updated_at) %></span>
+              <%= link_to '🔄', update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
+            </div>
           </h2>
           <p>
             <% cache [current_user, 'year_distance_stat', year], skip_digest: true do %>

@@ -9,8 +9,11 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
   context 'when Geocoder returns city and country' do
     before do
-      allow(Geocoder).to receive(:search).and_return([double(city: 'City', country: 'Country',
-                                                             data: { 'address' => 'Address' })])
+      allow(Geocoder).to receive(:search).and_return(
+        [
+          double(city: 'City', country: 'Country',data: { 'address' => 'Address' })
+        ]
+      )
     end
 
     context 'when point does not have city and country' do

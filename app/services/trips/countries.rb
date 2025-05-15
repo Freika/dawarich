@@ -21,10 +21,8 @@ class Trips::Countries
 
     batches = split_into_batches(all_points, @batch_count)
     threads_results = process_batches_in_threads(batches, total_points)
-    country_counts = merge_thread_results(threads_results)
 
-    log_results(country_counts, total_points)
-    country_counts.sort_by { |_country, count| -count }.to_h
+    merge_thread_results(threads_results).uniq.compact
   end
 
   private
@@ -39,10 +37,9 @@ class Trips::Countries
     threads_results = []
     threads = []
 
-    batches.each_with_index do |batch, batch_index|
-      start_index = batch_index * batch.size + 1
+    batches.each do |batch|
       threads << Thread.new do
-        threads_results << process_batch(batch, start_index, total_points)
+        threads_results << process_batch(batch)
       end
     end
 
@@ -51,63 +48,32 @@ class Trips::Countries
   end
 
   def merge_thread_results(threads_results)
-    country_counts = {}
+    countries = []
 
     threads_results.each do |result|
-      result.each do |country, count|
-        country_counts[country] ||= 0
-        country_counts[country] += count
-      end
+      countries.concat(result)
     end
 
-    country_counts
+    countries
   end
 
-  def log_results(country_counts, total_points)
-    total_counted = country_counts.values.sum
-    Rails.logger.info("Processed #{total_points} points and found #{country_counts.size} countries")
-    Rails.logger.info("Points counted: #{total_counted} out of #{total_points}")
-  end
-
-  def process_batch(points, start_index, total_points)
-    country_counts = {}
-
-    points.each_with_index do |point, idx|
-      current_index = start_index + idx
-      country_code = geocode_point(point, current_index, total_points)
+  def process_batch(points)
+    points.map do |point|
+      country_code = geocode_point(point)
       next unless country_code
 
-      country_counts[country_code] ||= 0
-      country_counts[country_code] += 1
+      country_code
     end
-
-    country_counts
   end
 
-  def geocode_point(point, current_index, total_points)
+  def geocode_point(point)
     lonlat = point.lonlat
     return nil unless lonlat
 
     latitude = lonlat.y
     longitude = lonlat.x
 
-    log_processing_point(current_index, total_points, latitude, longitude)
-    country_code = fetch_country_code(latitude, longitude)
-    log_found_country(country_code, latitude, longitude) if country_code
-
-    country_code
-  end
-
-  def log_processing_point(current_index, total_points, latitude, longitude)
-    thread_id = Thread.current.object_id
-    Rails.logger.info(
-      "Thread #{thread_id}: Processing point #{current_index} of #{total_points}: lat=#{latitude}, lon=#{longitude}"
-    )
-  end
-
-  def log_found_country(country_code, latitude, longitude)
-    thread_id = Thread.current.object_id
-    Rails.logger.info("Thread #{thread_id}: Found country: #{country_code} for point at #{latitude}, #{longitude}")
+    fetch_country_code(latitude, longitude)
   end
 
   def fetch_country_code(latitude, longitude)

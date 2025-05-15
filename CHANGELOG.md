@@ -5,24 +5,32 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# 0.26.1 - 2025-05-12
+# 0.26.1 - 2025-05-15
 
-Geodata on demand
+## Geodata on demand
 
-- [x] Introduce a `STORE_GEODATA` environment variable to control whether to store geodata in the database.
-- [ ] When `STORE_GEODATA` is disabled, each feature that uses geodata will now make a direct request to the geocoding service to calculate required data.
-  Geodata is being used:
-    - [ ] Fetching places geodata
-    - [x] Fetching countries for a trip
-    - [x] Suggesting place name for a visit
-- [x] When `STORE_GEODATA` is disabled, points are not being reverse geocoded on creation.
-- [x] When `STORE_GEODATA` is disabled, countries for a trip are being pulled from the geocoding service.
-- [x] When `STORE_GEODATA` is enabled, points are being reverse geocoded upon creation and stored in the database.
-- [ ] Each feature that uses geodata will check if an entity (point, place, etc.) has geodata stored in the database and use it if available. If not, it will make a direct request to the geocoding service to calculate required data.
+This release introduces a new environment variable `STORE_GEODATA` to control whether to store geodata in the database.
+
+When `STORE_GEODATA` is disabled, each feature that uses geodata will now make a direct request to the geocoding service to calculate required data.
+
+Geodata is being used:
+
+- Fetching places geodata
+- Fetching countries for a trip
+- Suggesting place name for a visit
+
+If you prefer to keep the old behavior, you can set `STORE_GEODATA` to `true`. By default, starting this release, it's set to `false`.
+
+If you're running your own Photon instance, you can safely set `STORE_GEODATA` to `false`, otherwise it'd be better to keep it enabled, because that way Dawarich will be using existing geodata for its calculations.
+
+## Added
+
+- Map page now has a button to go to the previous and next day. #296 #631 #904
 
 ## Changed
 
 - Reverse geocoding is now working as on-demand job instead of storing the result in the database.
+- Stats cards now show the last update time. #733
 
 ## Fixed
 
