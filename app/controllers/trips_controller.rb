@@ -15,6 +15,9 @@ class TripsController < ApplicationController
       @trip.photo_previews
     end
     @photo_sources = @trip.photo_sources
+
+    # Trigger calculation jobs if data is missing
+    Trips::CalculateAllJob.perform_later(@trip.id) unless @trip.path.present? && @trip.distance.present? && @trip.visited_countries.present?
   end
 
   def new
@@ -28,7 +31,7 @@ class TripsController < ApplicationController
     @trip = current_user.trips.build(trip_params)
 
     if @trip.save
-      redirect_to @trip, notice: 'Trip was successfully created.'
+      redirect_to @trip, notice: 'Trip was successfully created. Data is being calculated in the background.'
     else
       render :new, status: :unprocessable_entity
     end
@@ -36,6 +39,7 @@ class TripsController < ApplicationController
 
   def update
     if @trip.update(trip_params)
+      # Only recalculate if date range changed (handled by model callback)
       redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
     else
       render :edit, status: :unprocessable_entity

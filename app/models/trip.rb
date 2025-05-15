@@ -7,12 +7,17 @@ class Trip < ApplicationRecord
 
   validates :name, :started_at, :ended_at, presence: true
 
-  before_save :calculate_trip_data
+  after_create :enqueue_calculation_jobs
+  after_update :enqueue_calculation_jobs, if: -> { saved_change_to_started_at? || saved_change_to_ended_at? }
 
   def calculate_trip_data
     calculate_path
     calculate_distance
     calculate_countries
+  end
+
+  def enqueue_calculation_jobs
+    Trips::CalculateAllJob.perform_later(id)
   end
 
   def points
@@ -33,21 +38,7 @@ class Trip < ApplicationRecord
     @photo_sources ||= photos.map { _1[:source] }.uniq
   end
 
-  private
-
-  def photos
-    @photos ||= Trips::Photos.new(self, user).call
-  end
-
-  def select_dominant_orientation(photos)
-    vertical_photos = photos.select { |photo| photo[:orientation] == 'portrait' }
-    horizontal_photos = photos.select { |photo| photo[:orientation] == 'landscape' }
-
-    # this is ridiculous, but I couldn't find my way around frontend
-    # to show all photos in the same height
-    vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
-  end
-
+  # These methods are now public since they're called from jobs
   def calculate_path
     trip_path = Tracks::BuildPath.new(points.pluck(:lonlat)).call
 
@@ -64,5 +55,20 @@ class Trip < ApplicationRecord
     countries = Trips::Countries.new(self).call
 
     self.visited_countries = countries
+  end
+
+  private
+
+  def photos
+    @photos ||= Trips::Photos.new(self, user).call
+  end
+
+  def select_dominant_orientation(photos)
+    vertical_photos = photos.select { |photo| photo[:orientation] == 'portrait' }
+    horizontal_photos = photos.select { |photo| photo[:orientation] == 'landscape' }
+
+    # this is ridiculous, but I couldn't find my way around frontend
+    # to show all photos in the same height
+    vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
   end
 end
