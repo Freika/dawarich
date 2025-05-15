@@ -39,7 +39,6 @@ class TripsController < ApplicationController
 
   def update
     if @trip.update(trip_params)
-      # Only recalculate if date range changed (handled by model callback)
       redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
     else
       render :edit, status: :unprocessable_entity

@@ -20,17 +20,18 @@ RSpec.describe Trip, type: :model do
   describe 'callbacks' do
     let(:user) { create(:user) }
     let(:trip) { create(:trip, :with_points, user:) }
-    let(:calculated_distance) { trip.send(:calculate_distance) }
 
-    it 'sets the distance' do
-      expect(trip.distance).to eq(calculated_distance)
+    context 'when the trip is created' do
+      let(:trip) { build(:trip, :with_points, user:) }
+
+      it 'enqueues the calculation jobs' do
+        expect(Trips::CalculateAllJob).to receive(:perform_later)
+
+        trip.save
+      end
     end
 
-    it 'sets the path' do
-      expect(trip.path).to be_present
-    end
-
-    context 'when DawarichSettings.store_geodata is enabled' do
+    context 'when DawarichSettings.store_geodata? is enabled' do
       before do
         allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
       end
@@ -40,11 +41,17 @@ RSpec.describe Trip, type: :model do
       end
     end
 
-    context 'when DawarichSettings.store_geodata is disabled' do
+    context 'when DawarichSettings.store_geodata? is disabled' do
+      let(:countries_service) { instance_double(Trips::Countries, call: []) }
+      let(:trip) { build(:trip, :with_points, user:) }
+
+      before do
+        allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
+      end
+
       it 'sets the visited countries' do
-        countries_service = instance_double(Trips::Countries, call: [])
         expect(Trips::Countries).to receive(:new).with(trip).and_return(countries_service)
-        expect(countries_service).to receive(:call)
+        expect(any_instance_of(Trips::Countries)).to receive(:call)
 
         trip.save
       end
