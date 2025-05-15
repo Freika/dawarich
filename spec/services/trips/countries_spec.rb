@@ -52,9 +52,7 @@ RSpec.describe Trips::Countries do
 
       result = described_class.new(trip).call
 
-      expect(result).to be_a(Hash)
-      expect(result.keys).to match_array(%w[DE SE FI])
-      expect(result.values.sum).to eq(3)
+      expect(result).to match_array(%w[DE SE FI])
     end
 
     it 'handles points without coordinates' do
@@ -62,7 +60,7 @@ RSpec.describe Trips::Countries do
 
       result = described_class.new(trip).call
 
-      expect(result.values.sum).to eq(3) # Should only count the 3 valid points
+      expect(result.size).to eq(3) # Should only count the 3 valid points
     end
 
     it 'processes batches in multiple threads' do
@@ -77,8 +75,7 @@ RSpec.describe Trips::Countries do
 
       result = described_class.new(trip).call
 
-      expect(result.keys.first).to eq('DE')
-      expect(result['DE']).to eq(2)
+      expect(result.first).to eq('DE')
     end
 
     context 'when an error occurs' do
