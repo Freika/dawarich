@@ -45,6 +45,7 @@ export default class extends BaseController {
     this.timezone = this.element.dataset.timezone;
     this.userSettings = JSON.parse(this.element.dataset.user_settings);
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
+    this.fogLinethreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.element.dataset.distance_unit || "km";
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
@@ -175,13 +176,13 @@ export default class extends BaseController {
     // Update event handlers
     this.map.on('moveend', () => {
       if (document.getElementById('fog')) {
-        this.updateFog(this.markers, this.clearFogRadius);
+        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
       }
     });
 
     this.map.on('zoomend', () => {
       if (document.getElementById('fog')) {
-        this.updateFog(this.markers, this.clearFogRadius);
+        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
       }
     });
 
@@ -198,7 +199,7 @@ export default class extends BaseController {
       if (e.name === 'Fog of War') {
         fogEnabled = true;
         document.getElementById('fog').style.display = 'block';
-        this.updateFog(this.markers, this.clearFogRadius);
+        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
       }
     });
 
@@ -212,7 +213,7 @@ export default class extends BaseController {
     // Update fog circles on zoom and move
     this.map.on('zoomend moveend', () => {
       if (fogEnabled) {
-        this.updateFog(this.markers, this.clearFogRadius);
+        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
       }
     });
 
@@ -350,7 +351,7 @@ export default class extends BaseController {
 
     // Update fog of war if enabled
     if (this.map.hasLayer(this.fogOverlay)) {
-      this.updateFog(this.markers, this.clearFogRadius);
+      this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
     }
 
     // Update the last marker
@@ -587,7 +588,7 @@ export default class extends BaseController {
 
       // Update fog if enabled
       if (this.map.hasLayer(this.fogOverlay)) {
-        this.updateFog(this.markers, this.clearFogRadius);
+        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
       }
     })
     .catch(error => {
@@ -623,12 +624,12 @@ export default class extends BaseController {
     }
   }
 
-  updateFog(markers, clearFogRadius) {
+  updateFog(markers, clearFogRadius, fogLinethreshold) {
     const fog = document.getElementById('fog');
     if (!fog) {
       initializeFogCanvas(this.map);
     }
-    requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius));
+    requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius, fogLinethreshold));
   }
 
   initializeDrawControl() {
@@ -724,7 +725,7 @@ export default class extends BaseController {
 
       // Form HTML
       div.innerHTML = `
-        <form id="settings-form" class="w-48 h-144 overflow-y-auto">
+        <form id="settings-form" style="overflow-y: auto; height: 36rem; width: 12rem;">
           <label for="route-opacity">Route Opacity</label>
           <div class="join">
             <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="0" max="1" step="0.1" value="${this.routeOpacity}">
@@ -736,6 +737,12 @@ export default class extends BaseController {
           <div class="join">
             <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="fog_of_war_meters" name="fog_of_war_meters" min="5" max="100" step="1" value="${this.clearFogRadius}">
             <label for="fog_of_war_meters_info" class="btn-xs join-item">?</label>
+          </div>
+
+          <label for="fog_of_war_threshold">Seconds between Fog of War lines</label>
+          <div class="join">
+            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="fog_of_war_threshold" name="fog_of_war_threshold" step="1" value="${this.userSettings.fog_of_war_threshold}">
+            <label for="fog_of_war_threshold_info" class="btn-xs join-item">?</label>
           </div>
 
 
@@ -863,6 +870,7 @@ export default class extends BaseController {
         settings: {
           route_opacity: event.target.route_opacity.value,
           fog_of_war_meters: event.target.fog_of_war_meters.value,
+          fog_of_war_threshold: event.target.fog_of_war_threshold.value,
           meters_between_routes: event.target.meters_between_routes.value,
           minutes_between_routes: event.target.minutes_between_routes.value,
           time_threshold_minutes: event.target.time_threshold_minutes.value,
