@@ -5,9 +5,7 @@ namespace :points do
   task migrate_to_lonlat: :environment do
     puts 'Updating points to use lonlat...'
 
-    points =
-      Point.where(longitude: nil, latitude: nil)
-           .select(:id, :longitude, :latitude, :raw_data, :user_id, :timestamp)
+    points = Point.where(longitude: nil, latitude: nil).without_raw_data
 
     points.find_each do |point|
       Points::RawDataLonlatExtractor.new(point).call

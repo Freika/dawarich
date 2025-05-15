@@ -32,5 +32,9 @@ class DawarichSettings
     def nominatim_enabled?
       @nominatim_enabled ||= NOMINATIM_API_HOST.present?
     end
+
+    def store_geodata?
+      @store_geodata ||= STORE_GEODATA
+    end
   end
 end

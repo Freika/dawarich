@@ -51,7 +51,7 @@ module Visits
       return existing_by_location if existing_by_location
 
       # Then try by name if available
-      return nil unless name.present?
+      return nil if name.blank?
 
       Place.where(name: name)
            .near([lat, lon], SEARCH_RADIUS, :m)
@@ -64,16 +64,13 @@ module Visits
       lon = visit_data[:center_lon]
 
       # Get places from points' geodata
-      places_from_points = extract_places_from_points(visit_data[:points], lat, lon)
-
-      # Get places from external API
-      places_from_api = fetch_places_from_api(lat, lon)
+      places_from_points = extract_places_from_points(visit_data[:points])
 
       # Combine and deduplicate by name
       combined_places = []
 
       # Add API places first (usually better quality)
-      places_from_api.each do |api_place|
+      reverse_geocoded_places(lat, lon).each do |api_place|
         combined_places << api_place unless place_name_exists?(combined_places, api_place.name)
       end
 
@@ -86,7 +83,7 @@ module Visits
     end
 
     # Step 3: Extract places from points
-    def extract_places_from_points(points, center_lat, center_lon)
+    def extract_places_from_points(points)
       return [] if points.blank?
 
       # Filter points with geodata
@@ -101,7 +98,7 @@ module Visits
         places << place if place
       end
 
-      places.uniq { |place| place.name }
+      places.uniq(&:name)
     end
 
     # Step 4: Create place from point
@@ -141,7 +138,7 @@ module Visits
     end
 
     # Step 5: Fetch places from API
-    def fetch_places_from_api(lat, lon)
+    def reverse_geocoded_places(lat, lon)
       # Get broader search results from Geocoder
       geocoder_results = Geocoder.search([lat, lon], units: :km, limit: 20, distance_sort: true)
       return [] if geocoder_results.blank?
@@ -228,15 +225,22 @@ module Visits
     # Helper methods
 
     def build_place_name(properties)
-      name_components = [
-        properties['name'],
-        properties['street'],
-        properties['housenumber'],
-        properties['postcode'],
-        properties['city']
-      ].compact.reject(&:empty?).uniq
+      # First try building with our name builder
+      built_name = Visits::Names::Builder.build_from_properties(properties)
+      return built_name if built_name.present?
 
-      name_components.any? ? name_components.join(', ') : Place::DEFAULT_NAME
+      # Try using the instance-based approach as a fallback
+      features = [{ 'properties' => properties }]
+      feature_type = properties['type'] || properties['osm_value']
+      name = properties['name']
+
+      if feature_type.present? && name.present?
+        built_name = Visits::Names::Builder.new(features, feature_type, name).call
+        return built_name if built_name.present?
+      end
+
+      # Fallback to the default name if all else fails
+      Place::DEFAULT_NAME
     end
 
     def place_name_exists?(places, name)

@@ -28,7 +28,7 @@ class Point < ApplicationRecord
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
 
-  after_create :async_reverse_geocode
+  after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? }
   after_create_commit :broadcast_coordinates
 
   def self.without_raw_data

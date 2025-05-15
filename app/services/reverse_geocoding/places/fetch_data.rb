@@ -17,10 +17,19 @@ class ReverseGeocoding::Places::FetchData
       return
     end
 
-    first_place = reverse_geocoded_places.shift
+    places = reverse_geocoded_places
+    first_place = places.shift
     update_place(first_place)
 
-    reverse_geocoded_places.each { |reverse_geocoded_place| fetch_and_create_place(reverse_geocoded_place) }
+    # Extract all osm_ids for preloading
+    osm_ids = places.map { |place| place.data['properties']['osm_id'].to_s }
+
+    # Preload all existing places with these osm_ids in a single query
+    existing_places = Place.where("geodata->'properties'->>'osm_id' IN (?)", osm_ids)
+                           .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
+
+    # Process with preloaded data
+    places.each { |reverse_geocoded_place| fetch_and_create_place(reverse_geocoded_place, existing_places) }
   end
 
   private
@@ -41,9 +50,9 @@ class ReverseGeocoding::Places::FetchData
     )
   end
 
-  def fetch_and_create_place(reverse_geocoded_place)
+  def fetch_and_create_place(reverse_geocoded_place, existing_places = nil)
     data = reverse_geocoded_place.data
-    new_place = find_place(data)
+    new_place = find_place(data, existing_places)
 
     new_place.name = place_name(data)
     new_place.city = data['properties']['city']
@@ -57,16 +66,17 @@ class ReverseGeocoding::Places::FetchData
     new_place.save!
   end
 
-  def reverse_geocoded?
-    place.geodata.present?
-  end
+  def find_place(place_data, existing_places = nil)
+    osm_id = place_data['properties']['osm_id'].to_s
 
-  def find_place(place_data)
-    found_place = Place.where(
-      "geodata->'properties'->>'osm_id' = ?", place_data['properties']['osm_id'].to_s
-    ).first
-
-    return found_place if found_place.present?
+    # Use the preloaded data if available
+    if existing_places
+      return existing_places[osm_id] if existing_places[osm_id].present?
+    else
+      # Fall back to individual query if no preloaded data
+      found_place = Place.where("geodata->'properties'->>'osm_id' = ?", osm_id).first
+      return found_place if found_place.present?
+    end
 
     Place.find_or_initialize_by(
       lonlat: "POINT(#{place_data['geometry']['coordinates'][0].to_f.round(5)} #{place_data['geometry']['coordinates'][1].to_f.round(5)})",
