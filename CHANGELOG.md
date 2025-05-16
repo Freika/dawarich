@@ -9,17 +9,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Geodata on demand
 
-This release introduces a new environment variable `STORE_GEODATA` to control whether to store geodata in the database.
-
-When `STORE_GEODATA` is disabled, each feature that uses geodata will now make a direct request to the geocoding service to calculate required data.
-
-Geodata is being used:
+This release introduces a new environment variable `STORE_GEODATA` with default value `true` to control whether to store geodata in the database or not. Currently, geodata is being used when:
 
 - Fetching places geodata
 - Fetching countries for a trip
 - Suggesting place name for a visit
 
-If you prefer to keep the old behavior, you can set `STORE_GEODATA` to `true`. By default, starting this release, it's set to `false`.
+Opting out of storing geodata will make each feature that uses geodata to make a direct request to the geocoding service to calculate required data instead of using existing geodata from the database. Setting `STORE_GEODATA` to `false` can also use you some database space.
+
+If you decide to opt out, you can safely delete your existing geodata from the database:
+
+1. Get into the [console](https://dawarich.app/docs/FAQ/#how-to-enter-dawarich-console)
+2. Run the following commands:
+
+```ruby
+Point.update_all(geodata: {}) # to remove existing geodata
+
+ActiveRecord::Base.connection.execute("VACUUM FULL") # to free up some space
+```
+
+Note, that this will take some time to complete, depending on the number of points you have. This is not a required step.
 
 If you're running your own Photon instance, you can safely set `STORE_GEODATA` to `false`, otherwise it'd be better to keep it enabled, because that way Dawarich will be using existing geodata for its calculations.
 
