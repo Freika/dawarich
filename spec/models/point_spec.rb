@@ -13,6 +13,21 @@ RSpec.describe Point, type: :model do
     it { is_expected.to validate_presence_of(:lonlat) }
   end
 
+  describe 'callbacks' do
+    describe '#set_country' do
+      let(:point) { build(:point, lonlat: 'POINT(-79.85581250721961 15.854775993302411)') }
+      let(:country) { create(:country) }
+
+      it 'sets the country' do
+        expect(Country).to receive(:containing_point).with(-79.85581250721961, 15.854775993302411).and_return(country)
+
+        point.save!
+
+        expect(point.country_id).to eq(country.id)
+      end
+    end
+  end
+
   describe 'scopes' do
     describe '.reverse_geocoded' do
       let(:point) { create(:point, :reverse_geocoded) }

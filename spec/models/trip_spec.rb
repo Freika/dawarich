@@ -3,10 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe Trip, type: :model do
-  before do
-    allow_any_instance_of(Trips::Countries).to receive(:call).and_return([])
-  end
-
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:started_at) }
@@ -38,22 +34,6 @@ RSpec.describe Trip, type: :model do
 
       it 'sets the countries' do
         expect(trip.countries).to eq(trip.points.pluck(:country).uniq.compact)
-      end
-    end
-
-    context 'when DawarichSettings.store_geodata? is disabled' do
-      let(:countries_service) { instance_double(Trips::Countries, call: []) }
-      let(:trip) { build(:trip, :with_points, user:) }
-
-      before do
-        allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
-      end
-
-      it 'sets the visited countries' do
-        expect(Trips::Countries).to receive(:new).with(trip).and_return(countries_service)
-        expect(any_instance_of(Trips::Countries)).to receive(:call)
-
-        trip.save
       end
     end
   end

@@ -2,6 +2,7 @@
 
 class Api::V1::SubscriptionsController < ApiController
   skip_before_action :authenticate_api_key, only: %i[callback]
+
   def callback
     decoded_token = Subscription::DecodeJwtToken.new(params[:token]).call
 

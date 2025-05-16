@@ -46,7 +46,8 @@ class Trip < ApplicationRecord
   end
 
   def calculate_countries
-    countries = Trips::Countries.new(self).call
+    countries =
+      Country.where(id: points.pluck(:country_id).compact.uniq).pluck(:name)
 
     self.visited_countries = countries
   end
