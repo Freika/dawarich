@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class DawarichSettings
+  BASIC_PAID_PLAN_LIMIT = 10_000_000 # 10 million points
+
   class << self
+
     def reverse_geocoding_enabled?
       @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled? || nominatim_enabled?
     end

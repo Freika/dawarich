@@ -56,7 +56,7 @@ class ReverseGeocoding::Places::FetchData
 
     new_place.name = place_name(data)
     new_place.city = data['properties']['city']
-    new_place.country = data['properties']['country']
+    new_place.country = data['properties']['country'] # TODO: Use country id
     new_place.geodata = data
     new_place.source = :photon
     if new_place.lonlat.blank?

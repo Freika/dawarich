@@ -391,7 +391,7 @@ export default class extends BaseController {
 
       const visitedCountries = this.getVisitedCountries(countryCodesMap)
       const filteredFeatures = worldData.features.filter(feature =>
-        visitedCountries.includes(feature.properties.ISO_A2)
+        visitedCountries.includes(feature.properties["ISO3166-1-Alpha-2"])
       )
 
       this.scratchLayer.addData({

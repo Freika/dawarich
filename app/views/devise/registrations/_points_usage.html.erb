@@ -1,0 +1,6 @@
+<p class="py-6">
+  <p class='py-2'>
+    You have used <%= number_with_delimiter(current_user.points.count) %> points of <%= number_with_delimiter(DawarichSettings::BASIC_PAID_PLAN_LIMIT) %> available.
+  </p>
+  <progress class="progress progress-primary w-1/2 h-5" value="<%= current_user.points.count %>" max="<%= DawarichSettings::BASIC_PAID_PLAN_LIMIT %>"></progress>
+</p>

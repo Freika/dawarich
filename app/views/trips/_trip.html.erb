@@ -13,7 +13,7 @@
             class="rounded-lg z-0"
             data-controller="trip-map"
             data-trip-map-trip-id-value="<%= trip.id %>"
-            data-trip-map-path-value="<%= trip.path.to_json %>"
+            data-trip-map-path-value="<%= trip.path.coordinates.to_json %>"
             data-trip-map-api-key-value="<%= current_user.api_key %>"
             data-trip-map-user-settings-value="<%= current_user.settings.to_json %>"
             data-trip-map-timezone-value="<%= Rails.configuration.time_zone %>"

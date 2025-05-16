@@ -70,7 +70,7 @@ services:
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
       SELF_HOSTED: "true"
-      STORE_GEODATA: "false"
+      STORE_GEODATA: "true"
     logging:
       driver: "json-file"
       options:
@@ -123,7 +123,7 @@ services:
       PROMETHEUS_EXPORTER_HOST: dawarich_app
       PROMETHEUS_EXPORTER_PORT: 9394
       SELF_HOSTED: "true"
-      STORE_GEODATA: "false"
+      STORE_GEODATA: "true"
     logging:
       driver: "json-file"
       options:

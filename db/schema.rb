@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_13_164521) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_15_192211) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -62,6 +62,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_13_164521) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_areas_on_user_id"
+  end
+
+  create_table "countries", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "iso_a2", null: false
+    t.string "iso_a3", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "multi_polygon"}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["geom"], name: "index_countries_on_geom", using: :gist
+    t.index ["iso_a2"], name: "index_countries_on_iso_a2"
+    t.index ["iso_a3"], name: "index_countries_on_iso_a3"
+    t.index ["name"], name: "index_countries_on_name"
   end
 
   create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
@@ -166,12 +179,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_13_164521) do
     t.decimal "course_accuracy", precision: 8, scale: 5
     t.string "external_track_id"
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.bigint "country_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
     t.index ["city"], name: "index_points_on_city"
     t.index ["connection"], name: "index_points_on_connection"
     t.index ["country"], name: "index_points_on_country"
+    t.index ["country_id"], name: "index_points_on_country_id"
     t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"

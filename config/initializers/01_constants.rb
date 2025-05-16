@@ -17,7 +17,7 @@ NOMINATIM_API_KEY = ENV.fetch('NOMINATIM_API_KEY', nil)
 NOMINATIM_API_USE_HTTPS = ENV.fetch('NOMINATIM_API_USE_HTTPS', 'true') == 'true'
 
 GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
-STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'false') == 'true'
+STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'true') == 'true'
 # /Reverse geocoding settings
 
 SENTRY_DSN = ENV.fetch('SENTRY_DSN', nil)

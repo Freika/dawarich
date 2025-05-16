@@ -1,0 +1,14 @@
+<% if trip.countries.any? %>
+  <p class="text-md text-base-content/60">
+    <%= "#{trip.countries.join(', ')} (#{trip.distance} #{DISTANCE_UNIT})" %>
+  </p>
+<% elsif trip.visited_countries.present? %>
+  <p class="text-md text-base-content/60">
+    <%= "#{trip.visited_countries.join(', ')} (#{trip.distance} #{DISTANCE_UNIT})" %>
+  </p>
+<% else %>
+  <p class="text-md text-base-content/60">
+    <span>Countries are being calculated...</span>
+    <span class="loading loading-dots loading-sm"></span>
+  </p>
+<% end %>

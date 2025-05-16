@@ -1,0 +1,6 @@
+<% if trip.distance.present? %>
+  <span class="text-md"><%= trip.distance %> <%= DISTANCE_UNIT %></span>
+<% else %>
+  <span class="text-md">Calculating...</span>
+  <span class="loading loading-dots loading-sm"></span>
+<% end %>
