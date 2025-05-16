@@ -46,6 +46,7 @@ If you're running your own Photon instance, you can safely set `STORE_GEODATA` t
 - Fixed a bug with an attempt to write points with same lonlat and timestamp from iOS app. #1170
 - Importing GeoJSON files now saves velocity if it was stored in either `velocity` or `speed` property.
 - `rake points:migrate_to_lonlat` should work properly now. #1083 #1161
+- PostGIS extension is now being enabled only if it's not already enabled. #1186
 
 
 # 0.26.0 - 2025-05-08
