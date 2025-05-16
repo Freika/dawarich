@@ -5,7 +5,9 @@
     <div class="text-center lg:text-left">
       <h1 class="text-5xl font-bold mb-5">Edit your account!</h1>
       <%= render 'devise/registrations/api_key' %>
-      <%= render 'devise/registrations/points_usage' %>
+      <% if !DawarichSettings.self_hosted? %>
+        <%= render 'devise/registrations/points_usage' %>
+      <% end %>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
       <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', method: :put, data: { turbo_method: :put, turbo: false }) do |f| %>
