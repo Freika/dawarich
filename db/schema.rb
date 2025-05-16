@@ -224,7 +224,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_15_192211) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.geometry "path", limit: {srid: 3857, type: "line_string"}
-    t.jsonb "visited_countries", default: []
+    t.jsonb "visited_countries", default: {}, null: false
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
