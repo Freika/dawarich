@@ -16,8 +16,9 @@ class TripsController < ApplicationController
     end
     @photo_sources = @trip.photo_sources
 
-    # Trigger calculation jobs if data is missing
-    Trips::CalculateAllJob.perform_later(@trip.id) unless @trip.path.present? && @trip.distance.present? && @trip.visited_countries.present?
+    if @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
+      Trips::CalculateAllJob.perform_later(@trip.id)
+    end
   end
 
   def new

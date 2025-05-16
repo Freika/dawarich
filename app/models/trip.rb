@@ -32,7 +32,6 @@ class Trip < ApplicationRecord
     @photo_sources ||= photos.map { _1[:source] }.uniq
   end
 
-  # These methods are now public since they're called from jobs
   def calculate_path
     trip_path = Tracks::BuildPath.new(points.pluck(:lonlat)).call
 

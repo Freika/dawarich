@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class DataMigrations::SetPointsCountryIdsJob < ApplicationJob
   queue_as :default
 

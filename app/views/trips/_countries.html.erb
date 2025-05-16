@@ -1,9 +1,9 @@
 <% if trip.countries.any? %>
-  <p class="text-lg text-base-content/60">
+  <p class="text-md text-base-content/60">
     <%= "#{trip.countries.join(', ')} (#{trip.distance} #{DISTANCE_UNIT})" %>
   </p>
 <% elsif trip.visited_countries.present? %>
-  <p class="text-lg text-base-content/60">
+  <p class="text-md text-base-content/60">
     <%= "#{trip.visited_countries.join(', ')} (#{trip.distance} #{DISTANCE_UNIT})" %>
   </p>
 <% else %>

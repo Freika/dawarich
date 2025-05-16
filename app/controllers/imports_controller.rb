@@ -106,6 +106,6 @@ class ImportsController < ApplicationController
   def validate_points_limit
     limit_exceeded = PointsLimitExceeded.new(current_user).call
 
-    redirect_to new_import_path, alert: 'Points limit exceeded', status: :unprocessable_entity if limit_exceeded
+    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_entity if limit_exceeded
   end
 end
