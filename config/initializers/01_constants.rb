@@ -3,7 +3,6 @@
 SELF_HOSTED = ENV.fetch('SELF_HOSTED', 'true') == 'true'
 
 MIN_MINUTES_SPENT_IN_CITY = ENV.fetch('MIN_MINUTES_SPENT_IN_CITY', 60).to_i
-DISTANCE_UNIT = ENV.fetch('DISTANCE_UNIT', 'km').to_sym
 
 DISTANCE_UNITS = {
   km: 1000, # to meters

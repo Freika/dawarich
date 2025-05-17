@@ -41,6 +41,7 @@ If you're running your own Photon instance, you can safely set `STORE_GEODATA` t
 - Reverse geocoding is now working as on-demand job instead of storing the result in the database.
 - Stats cards now show the last update time. #733
 - Visit card now shows buttons to confirm or decline a visit only if it's not confirmed or declined yet.
+- Distance unit is now being stored in the user settings. You can choose between kilometers and miles, default is kilometers. The setting is accessible in the user settings -> Maps -> Distance Unit. You might want to recalculate your stats after changing the unit.
 
 ## Fixed
 
@@ -49,6 +50,10 @@ If you're running your own Photon instance, you can safely set `STORE_GEODATA` t
 - `rake points:migrate_to_lonlat` should work properly now. #1083 #1161
 - PostGIS extension is now being enabled only if it's not already enabled. #1186
 - Fixed a bug where visits were returning into Suggested state after being confirmed or declined. #848
+
+## Removed
+
+- Removed `DISTANCE_UNIT` constant. It can be safely removed from your environment variables in docker-compose.yml.
 
 
 # 0.26.0 - 2025-05-08
