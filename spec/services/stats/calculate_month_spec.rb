@@ -71,7 +71,7 @@ RSpec.describe Stats::CalculateMonth do
 
       context 'when units are miles' do
         before do
-          user.update(settings: { distance_unit: 'mi' })
+          user.update(settings: { maps: { distance_unit: 'mi' } })
         end
 
         it 'creates stats' do
