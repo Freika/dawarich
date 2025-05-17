@@ -14,6 +14,16 @@ RSpec.describe Stats::CalculateMonth do
       it 'does not create stats' do
         expect { calculate_stats }.not_to(change { Stat.count })
       end
+
+      context 'when stats already exist for the month' do
+        before do
+          create(:stat, user: user, year: year, month: month)
+        end
+
+        it 'deletes existing stats for that month' do
+          expect { calculate_stats }.to change { Stat.count }.by(-1)
+        end
+      end
     end
 
     context 'when there are points' do

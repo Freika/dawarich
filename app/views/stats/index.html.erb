@@ -44,7 +44,41 @@
           </p>
           <% if DawarichSettings.reverse_geocoding_enabled? %>
             <div class="card-actions justify-end">
-              <%= countries_and_cities_stat_for_year(year, stats) %>
+              <% location_data = countries_and_cities_stat_for_year(year, stats) %>
+              <%= link_to "#{location_data[:countries_count]} countries, #{location_data[:cities_count]} cities",
+                         "##{location_data[:modal_id]}",
+                         class: "link link-primary",
+                         onclick: "document.getElementById('#{location_data[:modal_id]}').checked = true" %>
+
+              <!-- Modal structure -->
+              <div>
+                <input type="checkbox" id="<%= location_data[:modal_id] %>" class="modal-toggle" />
+                <div class="modal" role="dialog">
+                  <div class="modal-box max-w-3xl">
+                    <h3 class="text-lg font-bold mb-4">Countries and Cities visited in <%= location_data[:year] %></h3>
+                    <div class="max-h-96 overflow-y-auto">
+                      <% location_data[:grouped_by_country].each do |country, cities| %>
+                        <div class="mb-4">
+                          <h4 class="font-bold">
+                            <span class="mr-2"><%= country_flag(country) %></span>
+                            <%= country %>
+                          </h4>
+                          <% if cities.any? %>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pl-4">
+                              <% cities.each do |city| %>
+                                <div class="text-sm"><%= city %></div>
+                              <% end %>
+                            </div>
+                          <% else %>
+                            <p class="text-sm text-gray-500 italic pl-4">No specific cities recorded</p>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                  <label class="modal-backdrop" for="<%= location_data[:modal_id] %>"></label>
+                </div>
+              </div>
             </div>
           <% end %>
           <%= column_chart(

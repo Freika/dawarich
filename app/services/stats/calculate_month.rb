@@ -8,7 +8,11 @@ class Stats::CalculateMonth
   end
 
   def call
-    return if points.empty?
+    if points.empty?
+      destroy_month_stats(year, month)
+
+      return
+    end
 
     update_month_stats(year, month)
   rescue StandardError => e
@@ -65,5 +69,9 @@ class Stats::CalculateMonth
       title: 'Stats update failed',
       content: "#{error.message}, stacktrace: #{error.backtrace.join("\n")}"
     ).call
+  end
+
+  def destroy_month_stats(year, month)
+    Stat.where(year:, month:, user:).destroy_all
   end
 end
