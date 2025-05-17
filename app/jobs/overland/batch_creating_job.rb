@@ -9,6 +9,7 @@ class Overland::BatchCreatingJob < ApplicationJob
     data = Overland::Params.new(params).call
 
     data.each do |location|
+      next if location[:lonlat].nil?
       next if point_exists?(location, user_id)
 
       Point.create!(location.merge(user_id:))

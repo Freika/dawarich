@@ -7,4 +7,5 @@ Sentry.init do |config|
   config.dsn = SENTRY_DSN
   config.traces_sample_rate = 1.0
   config.profiles_sample_rate = 1.0
+  config.enable_logs = true
 end

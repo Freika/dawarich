@@ -21,15 +21,18 @@ class ReverseGeocoding::Places::FetchData
     first_place = places.shift
     update_place(first_place)
 
-    # Extract all osm_ids for preloading
     osm_ids = places.map { |place| place.data['properties']['osm_id'].to_s }
 
-    # Preload all existing places with these osm_ids in a single query
-    existing_places = Place.where("geodata->'properties'->>'osm_id' IN (?)", osm_ids)
-                           .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
+    return if osm_ids.empty?
 
-    # Process with preloaded data
-    places.each { |reverse_geocoded_place| fetch_and_create_place(reverse_geocoded_place, existing_places) }
+    existing_places =
+      Place.where("geodata->'properties'->>'osm_id' IN (?)", osm_ids)
+        .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
+        .compact
+
+    places.each do |reverse_geocoded_place|
+      fetch_and_create_place(reverse_geocoded_place, existing_places)
+    end
   end
 
   private
@@ -50,7 +53,7 @@ class ReverseGeocoding::Places::FetchData
     )
   end
 
-  def fetch_and_create_place(reverse_geocoded_place, existing_places = nil)
+  def fetch_and_create_place(reverse_geocoded_place, existing_places)
     data = reverse_geocoded_place.data
     new_place = find_place(data, existing_places)
 
@@ -66,19 +69,14 @@ class ReverseGeocoding::Places::FetchData
     new_place.save!
   end
 
-  def find_place(place_data, existing_places = nil)
+  def find_place(place_data, existing_places)
     osm_id = place_data['properties']['osm_id'].to_s
 
-    # Use the preloaded data if available
-    if existing_places
-      return existing_places[osm_id] if existing_places[osm_id].present?
-    else
-      # Fall back to individual query if no preloaded data
-      found_place = Place.where("geodata->'properties'->>'osm_id' = ?", osm_id).first
-      return found_place if found_place.present?
-    end
+    existing_place = existing_places[osm_id]
+    return existing_place if existing_place.present?
 
-    Place.find_or_initialize_by(
+    # If not found in existing places, initialize a new one
+    Place.new(
       lonlat: "POINT(#{place_data['geometry']['coordinates'][0].to_f.round(5)} #{place_data['geometry']['coordinates'][1].to_f.round(5)})",
       latitude: place_data['geometry']['coordinates'][1].to_f.round(5),
       longitude: place_data['geometry']['coordinates'][0].to_f.round(5)
