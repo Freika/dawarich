@@ -49,7 +49,7 @@ class User < ApplicationRecord
   end
 
   def total_distance
-    # In km or miles, depending on the application settings (DISTANCE_UNIT)
+    # In km or miles, depending on user.safe_settings.distance_unit
     stats.sum(:distance)
   end
 

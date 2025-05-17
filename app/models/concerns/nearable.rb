@@ -3,14 +3,6 @@
 module Nearable
   extend ActiveSupport::Concern
 
-  DISTANCE_UNITS = {
-    km: 1000, # to meters
-    mi: 1609.34, # to meters
-    m: 1, # already in meters
-    ft: 0.3048, # to meters
-    yd: 0.9144 # to meters
-  }.freeze
-
   class_methods do
     # It accepts an array of coordinates [latitude, longitude]
     # and an optional radius and distance unit

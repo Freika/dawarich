@@ -6,7 +6,7 @@
   <%= column_chart(
     Stat.year_distance(year, current_user),
     height: '200px',
-    suffix: " #{DISTANCE_UNIT}",
+    suffix: " #{current_user.safe_settings.distance_unit}",
     xtitle: 'Days',
     ytitle: 'Distance'
   ) %>

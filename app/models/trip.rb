@@ -39,7 +39,7 @@ class Trip < ApplicationRecord
   end
 
   def calculate_distance
-    distance = Point.total_distance(points, DISTANCE_UNIT)
+    distance = Point.total_distance(points, user.safe_settings.distance_unit)
 
     self.distance = distance.round
   end

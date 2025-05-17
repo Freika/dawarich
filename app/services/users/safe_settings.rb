@@ -24,7 +24,8 @@ class Users::SafeSettings
       immich_api_key: immich_api_key,
       photoprism_url: photoprism_url,
       photoprism_api_key: photoprism_api_key,
-      maps: maps
+      maps: maps,
+      distance_unit: distance_unit
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -89,5 +90,9 @@ class Users::SafeSettings
 
   def maps
     settings['maps'] || {}
+  end
+
+  def distance_unit
+    settings['distance_unit'] || 'km'
   end
 end

@@ -12,7 +12,7 @@
         <%= link_to '🔄', update_year_month_stats_path(stat.year, stat.month), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
       </div>
     </div>
-    <p><%= number_with_delimiter stat.distance %><%= DISTANCE_UNIT %></p>
+    <p><%= number_with_delimiter stat.distance %><%= current_user.safe_settings.distance_unit %></p>
     <% if DawarichSettings.reverse_geocoding_enabled? %>
       <div class="card-actions justify-end">
         <%= countries_and_cities_stat_for_month(stat) %>
@@ -22,7 +22,7 @@
       <%= column_chart(
         stat.daily_distance,
         height: '100px',
-        suffix: " #{DISTANCE_UNIT}",
+        suffix: " #{current_user.safe_settings.distance_unit}",
         xtitle: 'Days',
         ytitle: 'Distance'
       ) %>
