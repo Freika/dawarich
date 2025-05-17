@@ -93,6 +93,6 @@ class Users::SafeSettings
   end
 
   def distance_unit
-    settings['distance_unit'] || 'km'
+    settings['maps']['distance_unit'] || 'km'
   end
 end

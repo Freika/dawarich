@@ -37,7 +37,7 @@ class MapController < ApplicationController
 
     @coordinates.each_cons(2) do
       @distance += Geocoder::Calculations.distance_between(
-        [_1[0], _1[1]], [_2[0], _2[1]], units: current_user.safe_settings.distance_unit
+        [_1[0], _1[1]], [_2[0], _2[1]], units: current_user.safe_settings.distance_unit.to_sym
       )
     end
 
