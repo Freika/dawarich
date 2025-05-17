@@ -51,7 +51,7 @@ module ApplicationHelper
   end
 
   def year_distance_stat(year, user)
-    # In km or miles, depending on the application settings (DISTANCE_UNIT)
+    # In km or miles, depending on the user.safe_settings.distance_unit
     Stat.year_distance(year, user).sum { _1[1] }
   end
 
@@ -76,7 +76,7 @@ module ApplicationHelper
   def sidebar_distance(distance)
     return unless distance
 
-    "#{distance} #{DISTANCE_UNIT}"
+    "#{distance} #{current_user.safe_settings.distance_unit}"
   end
 
   def sidebar_points(points)

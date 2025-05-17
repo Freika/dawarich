@@ -47,7 +47,7 @@ export default class extends BaseController {
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.fogLinethreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
-    this.distanceUnit = this.element.dataset.distance_unit || "km";
+    this.distanceUnit = this.userSettings.maps.distance_unit || "km";
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();

@@ -20,7 +20,7 @@ module Visits
 
       def geocoder_results
         @geocoder_results ||= Geocoder.search(
-          center, limit: 10, distance_sort: true, radius: 1, units: ::DISTANCE_UNIT
+          center, limit: 10, distance_sort: true, radius: 1, units: :km
         )
       end
 

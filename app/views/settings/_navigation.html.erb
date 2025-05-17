@@ -1,8 +1,8 @@
-<div role="tablist" class="tabs tabs-lifted tabs-lg">
-  <%= link_to 'Integrations', settings_path, role: 'tab', class: "tab #{active_tab?(settings_path)}" %>
+<div class="tabs tabs-boxed mb-6">
+  <%= link_to 'Integrations', settings_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_path)}" %>
+  <%= link_to 'Map', settings_maps_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_maps_path)}" %>
   <% if DawarichSettings.self_hosted? && current_user.admin? %>
-    <%= link_to 'Users', settings_users_path, role: 'tab', class: "tab #{active_tab?(settings_users_path)}" %>
-    <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab #{active_tab?(settings_background_jobs_path)}" %>
+    <%= link_to 'Users', settings_users_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_users_path)}" %>
+    <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_background_jobs_path)}" %>
   <% end %>
-  <%= link_to 'Map', settings_maps_path, role: 'tab', class: "tab #{active_tab?(settings_maps_path)}" %>
 </div>

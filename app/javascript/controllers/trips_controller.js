@@ -26,7 +26,7 @@ export default class extends BaseController {
     this.apiKey = this.containerTarget.dataset.api_key
     this.userSettings = JSON.parse(this.containerTarget.dataset.user_settings || '{}')
     this.timezone = this.containerTarget.dataset.timezone
-    this.distanceUnit = this.containerTarget.dataset.distance_unit
+    this.distanceUnit = this.userSettings.maps.distance_unit || "km"
 
     // Initialize map and layers
     this.initializeMap()
