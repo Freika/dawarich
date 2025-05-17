@@ -37,10 +37,11 @@ Also, after updating to this version, Dawarich will start a huge background job 
 ## Added
 
 - Map page now has a button to go to the previous and next day. #296 #631 #904
+- Clicking on number of countries and cities in stats cards now opens a modal with a list of countries and cities visited in that year.
 
 ## Changed
 
-- Reverse geocoding is now working as on-demand job instead of storing the result in the database.
+- Reverse geocoding is now working as on-demand job instead of storing the result in the database. #619
 - Stats cards now show the last update time. #733
 - Visit card now shows buttons to confirm or decline a visit only if it's not confirmed or declined yet.
 - Distance unit is now being stored in the user settings. You can choose between kilometers and miles, default is kilometers. The setting is accessible in the user settings -> Maps -> Distance Unit. You might want to recalculate your stats after changing the unit.
@@ -53,6 +54,7 @@ Also, after updating to this version, Dawarich will start a huge background job 
 - `rake points:migrate_to_lonlat` should work properly now. #1083 #1161
 - PostGIS extension is now being enabled only if it's not already enabled. #1186
 - Fixed a bug where visits were returning into Suggested state after being confirmed or declined. #848
+- If no points are found for a month during stats calculation, stats are now being deleted instead of being left empty. #1066 #406
 
 ## Removed
 

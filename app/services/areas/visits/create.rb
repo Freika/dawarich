@@ -32,9 +32,9 @@ class Areas::Visits::Create
   def area_points(area)
     area_radius =
       if user.safe_settings.distance_unit == :km
-        area.radius / DISTANCE_UNITS[:km]
+        area.radius / ::DISTANCE_UNITS[:km]
       else
-        area.radius / DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
+        area.radius / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
       end
 
     points = Point.where(user_id: user.id)

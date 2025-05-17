@@ -41,7 +41,9 @@
             <tr>
               <th>Name</th>
               <th>Imported points</th>
-              <th>Reverse geocoded points</th>
+              <% if DawarichSettings.store_geodata? %>
+                <th>Reverse geocoded points</th>
+              <% end %>
               <th>Created at</th>
             </tr>
           </thead>
@@ -65,9 +67,11 @@
                 <td data-points-count>
                   <%= number_with_delimiter import.processed %>
                 </td>
-                <td data-reverse-geocoded-points-count>
-                  <%= number_with_delimiter import.reverse_geocoded_points_count %>
-                </td>
+                <% if DawarichSettings.store_geodata? %>
+                  <td data-reverse-geocoded-points-count>
+                    <%= number_with_delimiter import.reverse_geocoded_points_count %>
+                  </td>
+                <% end %>
                 <td><%= human_datetime(import.created_at) %></td>
               </tr>
             <% end %>

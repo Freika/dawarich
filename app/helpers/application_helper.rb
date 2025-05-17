@@ -40,7 +40,35 @@ module ApplicationHelper
     data[:cities].flatten!.uniq!
     data[:countries].flatten!.uniq!
 
-    "#{data[:countries].count} countries, #{data[:cities].count} cities"
+    # Group cities by country
+    grouped_by_country = {}
+    stats.select { _1.year == year }.each do |stat|
+      stat.toponyms.flatten.each do |toponym|
+        country = toponym['country']
+        next unless country.present?
+
+        grouped_by_country[country] ||= []
+
+        if toponym['cities'].present?
+          toponym['cities'].each do |city_data|
+            city = city_data['city']
+            grouped_by_country[country] << city if city.present?
+          end
+        end
+      end
+    end
+
+    # Deduplicate cities for each country
+    grouped_by_country.transform_values!(&:uniq)
+
+    # Return data for the template to use
+    {
+      countries_count: data[:countries].count,
+      cities_count: data[:cities].count,
+      grouped_by_country: grouped_by_country.transform_values(&:sort).sort.to_h,
+      year: year,
+      modal_id: "countries_cities_modal_#{year}"
+    }
   end
 
   def countries_and_cities_stat_for_month(stat)
