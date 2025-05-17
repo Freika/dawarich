@@ -11,6 +11,10 @@ module Visits
 
     def create_visits(visits)
       visits.map do |visit_data|
+        # Check for existing confirmed visits at this location
+        existing_confirmed = find_existing_confirmed_visit(visit_data)
+        next existing_confirmed if existing_confirmed
+
         # Variables to store data outside the transaction
         visit_instance = nil
         place_data = nil
@@ -46,10 +50,45 @@ module Visits
         end
 
         visit_instance
-      end
+      end.compact
     end
 
     private
+
+    # Find if there's already a confirmed visit at this location within a similar time
+    def find_existing_confirmed_visit(visit_data)
+      # Define time window to look for existing visits (slightly wider than the visit)
+      start_time = Time.zone.at(visit_data[:start_time]) - 1.hour
+      end_time = Time.zone.at(visit_data[:end_time]) + 1.hour
+
+      # Look for confirmed visits with a similar location
+      user.visits
+          .confirmed
+          .where('(started_at BETWEEN ? AND ?) OR (ended_at BETWEEN ? AND ?)',
+                 start_time, end_time, start_time, end_time)
+          .find_each do |visit|
+        # Skip if the visit doesn't have place or area coordinates
+        next unless visit.place || visit.area
+
+        # Get coordinates to compare
+        visit_lat = visit.place&.lat || visit.area&.latitude
+        visit_lon = visit.place&.lon || visit.area&.longitude
+
+        next unless visit_lat && visit_lon
+
+        # Calculate distance between centers
+        distance = Geocoder::Calculations.distance_between(
+          [visit_data[:center_lat], visit_data[:center_lon]],
+          [visit_lat, visit_lon],
+          units: :km
+        )
+
+        # If this confirmed visit is within 100 meters of the new suggestion
+        return visit if distance <= 0.1
+      end
+
+      nil
+    end
 
     # Create place_visits records directly to avoid deadlocks
     def associate_suggested_places(visit, suggested_places)
