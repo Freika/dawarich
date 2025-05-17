@@ -32,6 +32,8 @@ Note, that this will take some time to complete, depending on the number of poin
 
 If you're running your own Photon instance, you can safely set `STORE_GEODATA` to `false`, otherwise it'd be better to keep it enabled, because that way Dawarich will be using existing geodata for its calculations.
 
+Also, after updating to this version, Dawarich will start a huge background job to calculate countries for all your points. Just let it work.
+
 ## Added
 
 - Map page now has a button to go to the previous and next day. #296 #631 #904
@@ -42,6 +44,7 @@ If you're running your own Photon instance, you can safely set `STORE_GEODATA` t
 - Stats cards now show the last update time. #733
 - Visit card now shows buttons to confirm or decline a visit only if it's not confirmed or declined yet.
 - Distance unit is now being stored in the user settings. You can choose between kilometers and miles, default is kilometers. The setting is accessible in the user settings -> Maps -> Distance Unit. You might want to recalculate your stats after changing the unit.
+- Fog of war is now being displayed as lines instead of dots. Thanks to @MeijiRestored!
 
 ## Fixed
 
