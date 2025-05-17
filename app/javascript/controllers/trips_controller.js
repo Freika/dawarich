@@ -26,7 +26,7 @@ export default class extends BaseController {
     this.apiKey = this.containerTarget.dataset.api_key
     this.userSettings = JSON.parse(this.containerTarget.dataset.user_settings || '{}')
     this.timezone = this.containerTarget.dataset.timezone
-    this.distanceUnit = this.containerTarget.dataset.distance_unit
+    this.distanceUnit = this.userSettings.maps.distance_unit || "km"
 
     // Initialize map and layers
     this.initializeMap()
@@ -133,22 +133,31 @@ export default class extends BaseController {
 
     // After map initialization, add the path if it exists
     if (this.containerTarget.dataset.path) {
-      const pathData = this.containerTarget.dataset.path.replace(/^"|"$/g, ''); // Remove surrounding quotes
-      const coordinates = this.parseLineString(pathData);
+      try {
+        let coordinates;
+        const pathData = this.containerTarget.dataset.path.replace(/^"|"$/g, ''); // Remove surrounding quotes
 
-      const polyline = L.polyline(coordinates, {
-        color: 'blue',
-        opacity: 0.8,
-        weight: 3,
-        zIndexOffset: 400
-      });
+        // Try to parse as JSON first (new format)
+        coordinates = JSON.parse(pathData);
+        // Convert from [lng, lat] to [lat, lng] for Leaflet
+        coordinates = coordinates.map(coord => [coord[1], coord[0]]);
 
-      polyline.addTo(this.polylinesLayer);
-      this.polylinesLayer.addTo(this.map);
+        const polyline = L.polyline(coordinates, {
+          color: 'blue',
+          opacity: 0.8,
+          weight: 3,
+          zIndexOffset: 400
+        });
 
-      // Fit the map to the polyline bounds
-      if (coordinates.length > 0) {
-        this.map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+        polyline.addTo(this.polylinesLayer);
+        this.polylinesLayer.addTo(this.map);
+
+        // Fit the map to the polyline bounds
+        if (coordinates.length > 0) {
+          this.map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+        }
+      } catch (error) {
+        console.error("Error processing path data:", error);
       }
     }
   }
@@ -245,18 +254,5 @@ export default class extends BaseController {
       this.addPolyline()
       this.fitMapToBounds()
     }
-  }
-
-  // Add this method to parse the LineString format
-  parseLineString(lineString) {
-    // Remove LINESTRING and parentheses, then split into coordinate pairs
-    const coordsString = lineString.replace('LINESTRING (', '').replace(')', '');
-    const coords = coordsString.split(', ');
-
-    // Convert each coordinate pair to [lat, lng] format
-    return coords.map(coord => {
-      const [lng, lat] = coord.split(' ').map(Number);
-      return [lat, lng]; // Swap to lat, lng for Leaflet
-    });
   }
 }

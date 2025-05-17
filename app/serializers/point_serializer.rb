@@ -3,7 +3,7 @@
 class PointSerializer
   EXCLUDED_ATTRIBUTES = %w[
     created_at updated_at visit_id id import_id user_id raw_data lonlat
-    reverse_geocoded_at
+    reverse_geocoded_at country_id
   ].freeze
 
   def initialize(point)

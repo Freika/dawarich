@@ -21,8 +21,6 @@ class Jobs::Create
         raise InvalidJobName, 'Invalid job name'
       end
 
-    points.find_each(batch_size: 1_000) do |point|
-      point.async_reverse_geocode
-    end
+    points.find_each(&:async_reverse_geocode)
   end
 end

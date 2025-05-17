@@ -75,7 +75,7 @@ RSpec.describe Visits::PlaceFinder do
 
       before do
         allow(Geocoder).to receive(:search).and_return([])
-        allow(subject).to receive(:fetch_places_from_api).and_return([])
+        allow(subject).to receive(:reverse_geocoded_places).and_return([])
       end
 
       it 'extracts and creates places from point geodata' do

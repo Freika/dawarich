@@ -12,10 +12,6 @@ class Visit < ApplicationRecord
 
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
 
-  def reverse_geocoded?
-    place.geodata.present?
-  end
-
   def coordinates
     points.pluck(:latitude, :longitude).map { [_1[0].to_f, _1[1].to_f] }
   end
@@ -29,7 +25,9 @@ class Visit < ApplicationRecord
     return area&.radius if area.present?
 
     radius = points.map do |point|
-      Geocoder::Calculations.distance_between(center, [point.lat, point.lon])
+      Geocoder::Calculations.distance_between(
+        center, [point.lat, point.lon], units: user.safe_settings.distance_unit.to_sym
+      )
     end.max
 
     radius && radius >= 15 ? radius : 15

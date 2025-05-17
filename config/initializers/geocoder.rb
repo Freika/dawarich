@@ -2,7 +2,7 @@
 
 settings = {
   timeout: 5,
-  units: DISTANCE_UNIT,
+  units: :km,
   cache: Redis.new,
   always_raise: :all,
   use_https: PHOTON_API_USE_HTTPS,

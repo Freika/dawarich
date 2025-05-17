@@ -11,9 +11,12 @@ class Points::Create
   def call
     data = Points::Params.new(params, user.id).call
 
+    # Deduplicate points based on unique constraint
+    deduplicated_data = data.uniq { |point| [point[:lonlat], point[:timestamp], point[:user_id]] }
+
     created_points = []
 
-    data.each_slice(1000) do |location_batch|
+    deduplicated_data.each_slice(1000) do |location_batch|
       # rubocop:disable Rails/SkipsModelValidations
       result = Point.upsert_all(
         location_batch,

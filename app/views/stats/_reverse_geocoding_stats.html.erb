@@ -1,14 +1,16 @@
-<div class="stat text-center">
-  <div class="stat-value text-secondary">
-    <%= number_with_delimiter @points_reverse_geocoded %>
+<% if DawarichSettings.store_geodata? %>
+  <div class="stat text-center">
+    <div class="stat-value text-secondary">
+      <%= number_with_delimiter @points_reverse_geocoded %>
+    </div>
+    <div class="stat-title">Reverse geocoded points</div>
+    <div class="stat-title">
+      <span class="tooltip underline decoration-dotted" data-tip="Points that were reverse geocoded but had no data">
+        <%= number_with_delimiter @points_reverse_geocoded_without_data %> points without data
+      </span>
+    </div>
   </div>
-  <div class="stat-title">Reverse geocoded points</div>
-  <div class="stat-title">
-    <span class="tooltip underline decoration-dotted" data-tip="Points that were reverse geocoded but had no data">
-      <%= number_with_delimiter @points_reverse_geocoded_without_data %> points without data
-    </span>
-  </div>
-</div>
+<% end %>
 
 <div class="stat text-center">
   <div class="stat-value text-warning underline hover:no-underline  hover:cursor-pointer" onclick="countries_visited.showModal()">

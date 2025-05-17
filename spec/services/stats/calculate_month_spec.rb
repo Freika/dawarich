@@ -44,8 +44,6 @@ RSpec.describe Stats::CalculateMonth do
       end
 
       context 'when units are kilometers' do
-        before { stub_const('DISTANCE_UNIT', :km) }
-
         it 'creates stats' do
           expect { calculate_stats }.to change { Stat.count }.by(1)
         end
@@ -72,7 +70,9 @@ RSpec.describe Stats::CalculateMonth do
       end
 
       context 'when units are miles' do
-        before { stub_const('DISTANCE_UNIT', :mi) }
+        before do
+          user.update(settings: { maps: { distance_unit: 'mi' } })
+        end
 
         it 'creates stats' do
           expect { calculate_stats }.to change { Stat.count }.by(1)

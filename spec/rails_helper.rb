@@ -38,6 +38,7 @@ RSpec.configure do |config|
 
   config.before do
     ActiveJob::Base.queue_adapter = :test
+    allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
   end
 
   config.after(:suite) do

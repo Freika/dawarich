@@ -3,14 +3,6 @@
 module Distanceable
   extend ActiveSupport::Concern
 
-  DISTANCE_UNITS = {
-    km: 1000, # to meters
-    mi: 1609.34, # to meters
-    m: 1, # already in meters
-    ft: 0.3048, # to meters
-    yd: 0.9144 # to meters
-  }.freeze
-
   module ClassMethods
     def total_distance(points = nil, unit = :km)
       # Handle method being called directly on relation vs with array

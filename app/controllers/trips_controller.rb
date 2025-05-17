@@ -15,6 +15,10 @@ class TripsController < ApplicationController
       @trip.photo_previews
     end
     @photo_sources = @trip.photo_sources
+
+    if @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
+      Trips::CalculateAllJob.perform_later(@trip.id)
+    end
   end
 
   def new
@@ -28,7 +32,7 @@ class TripsController < ApplicationController
     @trip = current_user.trips.build(trip_params)
 
     if @trip.save
-      redirect_to @trip, notice: 'Trip was successfully created.'
+      redirect_to @trip, notice: 'Trip was successfully created. Data is being calculated in the background.'
     else
       render :new, status: :unprocessable_entity
     end

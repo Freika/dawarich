@@ -18,6 +18,7 @@ class Geojson::Importer
     data = Geojson::Params.new(json).call
 
     data.each.with_index(1) do |point, index|
+      next if point[:lonlat].nil?
       next if point_exists?(point, user_id)
 
       Point.create!(point.merge(user_id:, import_id: import.id))

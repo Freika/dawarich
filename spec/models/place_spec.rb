@@ -21,15 +21,6 @@ RSpec.describe Place, type: :model do
   describe 'methods' do
     let(:place) { create(:place, :with_geodata) }
 
-    describe '#async_reverse_geocode' do
-      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
-      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
-
-      it 'updates address' do
-        expect { place.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob).with('Place', place.id)
-      end
-    end
-
     describe '#osm_id' do
       it 'returns the osm_id' do
         expect(place.osm_id).to eq(5_762_449_774)

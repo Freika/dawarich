@@ -1,2 +1,6 @@
-<%= link_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo_method: :patch }, class: 'btn btn-xs btn-success' %>
-<%= link_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo_method: :patch }, class: 'btn btn-xs btn-error mx-1' %>
+<% if !visit.confirmed? %>
+  <%= link_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), method: :patch, data: { turbo_method: :patch }, class: 'btn btn-xs btn-success' %>
+<% end %>
+<% if !visit.declined? %>
+  <%= link_to 'Decline', visit_path(visit, 'visit[status]': :declined), method: :patch, data: { turbo_method: :patch }, class: 'btn btn-xs btn-error mx-1' %>
+<% end %>

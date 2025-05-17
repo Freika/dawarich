@@ -31,6 +31,7 @@ FactoryBot.define do
     external_track_id { nil }
     lonlat { "POINT(#{FFaker::Geolocation.lng} #{FFaker::Geolocation.lat})" }
     user
+    country_id { nil }
 
     trait :with_known_location do
       lonlat { 'POINT(37.6173 55.755826)' }

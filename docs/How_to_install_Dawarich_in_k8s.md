@@ -100,8 +100,6 @@ spec:
               value: "dawarich.example.com, localhost"
             - name: APPLICATION_PROTOCOL
               value: http
-            - name: DISTANCE_UNIT
-              value: km
             - name: PHOTON_API_HOST
               value: photon.komoot.io
             - name: PHOTON_API_USE_HTTPS
@@ -109,7 +107,7 @@ spec:
             - name: RAILS_MIN_THREADS
               value: "5"
             - name: RAILS_MAX_THREADS
-              value: "10"              
+              value: "10"
           image: freikin/dawarich:0.16.4
           imagePullPolicy: Always
           volumeMounts:
@@ -149,7 +147,7 @@ spec:
             - name: RAILS_MIN_THREADS
               value: "5"
             - name: RAILS_MAX_THREADS
-              value: "10" 
+              value: "10"
             - name: BACKGROUND_PROCESSING_CONCURRENCY
               value: "20"
             - name: APPLICATION_HOST
@@ -158,8 +156,6 @@ spec:
               value: "dawarich.example.com, localhost"
             - name: APPLICATION_PROTOCOL
               value: http
-            - name: DISTANCE_UNIT
-              value: km
             - name: PHOTON_API_HOST
               value: photon.komoot.io
             - name: PHOTON_API_USE_HTTPS

@@ -5,7 +5,7 @@ class StatsController < ApplicationController
   before_action :authenticate_active_user!, only: %i[update update_all]
 
   def index
-    @stats = current_user.stats.group_by(&:year).sort.reverse
+    @stats = current_user.stats.group_by(&:year).transform_values { |stats| stats.sort_by(&:updated_at).reverse }.sort.reverse
     @points_total = current_user.tracked_points.count
     @points_reverse_geocoded = current_user.total_reverse_geocoded_points
     @points_reverse_geocoded_without_data = current_user.total_reverse_geocoded_points_without_data

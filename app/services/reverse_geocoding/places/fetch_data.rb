@@ -17,10 +17,22 @@ class ReverseGeocoding::Places::FetchData
       return
     end
 
-    first_place = reverse_geocoded_places.shift
+    places = reverse_geocoded_places
+    first_place = places.shift
     update_place(first_place)
 
-    reverse_geocoded_places.each { |reverse_geocoded_place| fetch_and_create_place(reverse_geocoded_place) }
+    osm_ids = places.map { |place| place.data['properties']['osm_id'].to_s }
+
+    return if osm_ids.empty?
+
+    existing_places =
+      Place.where("geodata->'properties'->>'osm_id' IN (?)", osm_ids)
+        .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
+        .compact
+
+    places.each do |reverse_geocoded_place|
+      fetch_and_create_place(reverse_geocoded_place, existing_places)
+    end
   end
 
   private
@@ -41,13 +53,13 @@ class ReverseGeocoding::Places::FetchData
     )
   end
 
-  def fetch_and_create_place(reverse_geocoded_place)
+  def fetch_and_create_place(reverse_geocoded_place, existing_places)
     data = reverse_geocoded_place.data
-    new_place = find_place(data)
+    new_place = find_place(data, existing_places)
 
     new_place.name = place_name(data)
     new_place.city = data['properties']['city']
-    new_place.country = data['properties']['country']
+    new_place.country = data['properties']['country'] # TODO: Use country id
     new_place.geodata = data
     new_place.source = :photon
     if new_place.lonlat.blank?
@@ -57,18 +69,14 @@ class ReverseGeocoding::Places::FetchData
     new_place.save!
   end
 
-  def reverse_geocoded?
-    place.geodata.present?
-  end
+  def find_place(place_data, existing_places)
+    osm_id = place_data['properties']['osm_id'].to_s
 
-  def find_place(place_data)
-    found_place = Place.where(
-      "geodata->'properties'->>'osm_id' = ?", place_data['properties']['osm_id'].to_s
-    ).first
+    existing_place = existing_places[osm_id]
+    return existing_place if existing_place.present?
 
-    return found_place if found_place.present?
-
-    Place.find_or_initialize_by(
+    # If not found in existing places, initialize a new one
+    Place.new(
       lonlat: "POINT(#{place_data['geometry']['coordinates'][0].to_f.round(5)} #{place_data['geometry']['coordinates'][1].to_f.round(5)})",
       latitude: place_data['geometry']['coordinates'][1].to_f.round(5),
       longitude: place_data['geometry']['coordinates'][0].to_f.round(5)
@@ -92,7 +100,7 @@ class ReverseGeocoding::Places::FetchData
       limit: 10,
       distance_sort: true,
       radius: 1,
-      units: ::DISTANCE_UNIT
+      units: :km
     )
 
     data.reject do |place|

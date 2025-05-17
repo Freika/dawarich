@@ -23,7 +23,8 @@ RSpec.describe Users::SafeSettings do
             immich_api_key: nil,
             photoprism_url: nil,
             photoprism_api_key: nil,
-            maps: {}
+            maps: {},
+            distance_unit: 'km'
           }
         )
       end
@@ -68,7 +69,8 @@ RSpec.describe Users::SafeSettings do
             immich_api_key: 'immich-key',
             photoprism_url: 'https://photoprism.example.com',
             photoprism_api_key: 'photoprism-key',
-            maps: { 'name' => 'custom', 'url' => 'https://custom.example.com' }
+            maps: { 'name' => 'custom', 'url' => 'https://custom.example.com' },
+            distance_unit: 'km'
           }
         )
       end

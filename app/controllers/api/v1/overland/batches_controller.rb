@@ -2,6 +2,7 @@
 
 class Api::V1::Overland::BatchesController < ApiController
   before_action :authenticate_active_api_user!, only: %i[create]
+  before_action :validate_points_limit, only: %i[create]
 
   def create
     Overland::BatchCreatingJob.perform_later(batch_params, current_api_user.id)

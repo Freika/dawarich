@@ -23,15 +23,15 @@ RSpec.describe Points::Create do
           lonlat: 'POINT(-0.1278 51.5074)',
           timestamp: timestamp,
           user_id: user.id,
-          created_at: anything,
-          updated_at: anything
+          created_at: Time.current,
+          updated_at: Time.current
         },
         {
           lonlat: 'POINT(-74.006 40.7128)',
           timestamp: timestamp + 1.hour,
           user_id: user.id,
-          created_at: anything,
-          updated_at: anything
+          created_at: Time.current,
+          updated_at: Time.current
         }
       ]
     end
@@ -43,20 +43,167 @@ RSpec.describe Points::Create do
       ]
     end
 
-    it 'processes the points and upserts them to the database' do
-      expect(Points::Params).to receive(:new).with(point_params, user.id).and_return(params_service)
-      expect(params_service).to receive(:call).and_return(processed_data)
-      expect(Point).to receive(:upsert_all)
-        .with(
-          processed_data,
-          unique_by: %i[lonlat timestamp user_id],
-          returning: Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
-        )
-        .and_return(upsert_result)
+    describe 'basic point creation' do
+      before do
+        allow(Points::Params).to receive(:new).with(point_params, user.id).and_return(params_service)
+        allow(params_service).to receive(:call).and_return(processed_data)
+      end
 
-      result = described_class.new(user, point_params).call
+      it 'initializes the params service with correct arguments' do
+        expect(Points::Params).to receive(:new).with(point_params, user.id)
+        described_class.new(user, point_params).call
+      end
 
-      expect(result).to eq(upsert_result)
+      it 'calls the params service' do
+        expect(params_service).to receive(:call)
+        described_class.new(user, point_params).call
+      end
+
+      it 'upserts the processed data' do
+        expect(Point).to receive(:upsert_all)
+          .with(
+            processed_data,
+            unique_by: %i[lonlat timestamp user_id],
+            returning: Arel.sql(
+              'id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+            )
+          )
+          .and_return(upsert_result)
+
+        described_class.new(user, point_params).call
+      end
+
+      it 'returns the upsert result' do
+        allow(Point).to receive(:upsert_all).and_return(upsert_result)
+        result = described_class.new(user, point_params).call
+        expect(result).to eq(upsert_result)
+      end
+    end
+
+    context 'with duplicate points' do
+      let(:duplicate_point_params) do
+        {
+          locations: [
+            { lat: 51.5074, lon: -0.1278, timestamp: timestamp.iso8601 },
+            { lat: 51.5074, lon: -0.1278, timestamp: timestamp.iso8601 }, # Duplicate
+            { lat: 40.7128, lon: -74.0060, timestamp: (timestamp + 1.hour).iso8601 }
+          ]
+        }
+      end
+
+      let(:duplicate_processed_data) do
+        current_time = Time.current
+        [
+          {
+            lonlat: 'POINT(-0.1278 51.5074)',
+            timestamp: timestamp,
+            user_id: user.id,
+            created_at: current_time,
+            updated_at: current_time
+          },
+          {
+            lonlat: 'POINT(-0.1278 51.5074)', # Duplicate
+            timestamp: timestamp,
+            user_id: user.id,
+            created_at: current_time,
+            updated_at: current_time
+          },
+          {
+            lonlat: 'POINT(-74.006 40.7128)',
+            timestamp: timestamp + 1.hour,
+            user_id: user.id,
+            created_at: current_time,
+            updated_at: current_time
+          }
+        ]
+      end
+
+      let(:deduplicated_upsert_result) do
+        [
+          Point.new(id: 1, lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp),
+          Point.new(id: 2, lonlat: 'POINT(-74.006 40.7128)', timestamp: timestamp + 1.hour)
+        ]
+      end
+
+      before do
+        allow_any_instance_of(Points::Params).to receive(:call).and_return(duplicate_processed_data)
+      end
+
+      describe 'deduplication behavior' do
+        it 'reduces the number of points to unique combinations' do
+          expect(Point).to receive(:upsert_all) do |data, _options|
+            expect(data.size).to eq(2)
+            deduplicated_upsert_result
+          end
+
+          described_class.new(user, duplicate_point_params).call
+        end
+
+        it 'preserves the correct lonlat values' do
+          expect(Point).to receive(:upsert_all) do |data, _options|
+            expect(data.map { |d| d[:lonlat] }).to match_array(['POINT(-0.1278 51.5074)', 'POINT(-74.006 40.7128)'])
+            deduplicated_upsert_result
+          end
+
+          described_class.new(user, duplicate_point_params).call
+        end
+
+        it 'preserves the correct timestamps' do
+          expect(Point).to receive(:upsert_all) do |data, _options|
+            expect(data.map { |d| d[:timestamp] }).to match_array([timestamp, timestamp + 1.hour])
+            deduplicated_upsert_result
+          end
+
+          described_class.new(user, duplicate_point_params).call
+        end
+
+        it 'maintains the correct user_id for all points' do
+          expect(Point).to receive(:upsert_all) do |data, _options|
+            expect(data.map { |d| d[:user_id] }).to all(eq(user.id))
+            deduplicated_upsert_result
+          end
+
+          described_class.new(user, duplicate_point_params).call
+        end
+
+        it 'uses the correct unique constraint' do
+          expect(Point).to receive(:upsert_all) do |_data, options|
+            expect(options[:unique_by]).to eq(%i[lonlat timestamp user_id])
+            deduplicated_upsert_result
+          end
+
+          described_class.new(user, duplicate_point_params).call
+        end
+
+        it 'uses the correct returning clause' do
+          expect(Point).to receive(:upsert_all) do |_data, options|
+            expect(options[:returning]).to eq(
+              Arel.sql('id, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
+            )
+            deduplicated_upsert_result
+          end
+
+          described_class.new(user, duplicate_point_params).call
+        end
+      end
+
+      describe 'database interaction' do
+        it 'creates only unique points' do
+          expect do
+            described_class.new(user, duplicate_point_params).call
+          end.to change(Point, :count).by(2)
+        end
+
+        it 'creates points with correct coordinates' do
+          described_class.new(user, duplicate_point_params).call
+          points = Point.order(:timestamp).last(2)
+
+          expect(points[0].lonlat.x).to be_within(0.0001).of(-0.1278)
+          expect(points[0].lonlat.y).to be_within(0.0001).of(51.5074)
+          expect(points[1].lonlat.x).to be_within(0.0001).of(-74.006)
+          expect(points[1].lonlat.y).to be_within(0.0001).of(40.7128)
+        end
+      end
     end
 
     context 'with large datasets' do

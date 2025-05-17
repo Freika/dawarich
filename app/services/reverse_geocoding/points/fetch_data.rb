@@ -6,6 +6,8 @@ class ReverseGeocoding::Points::FetchData
   def initialize(point_id)
     @point = Point.find(point_id)
   rescue ActiveRecord::RecordNotFound => e
+    ExceptionReporter.call(e)
+
     Rails.logger.error("Point with id #{point_id} not found: #{e.message}")
   end
 
