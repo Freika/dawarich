@@ -10,17 +10,53 @@ default: &default
   timeout: 5000
 
 development:
-  <<: *default
-  database: <%= ENV['DATABASE_NAME'] || 'dawarich_development' %>
+  primary:
+    <<: *default
+    database: <%= ENV['DATABASE_NAME'] || 'dawarich_development' %>
+  queue:
+    <<: *default
+    database: <%= ENV['DATABASE_QUEUE_NAME'] || 'dawarich_development_queue' %>
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: <%= ENV['DATABASE_CABLE_NAME'] || 'dawarich_development_cable' %>
+    migrations_paths: db/cable_migrate
 
 test:
-  <<: *default
-  database: <%= ENV['DATABASE_NAME'] || 'dawarich_test' %>
+  primary:
+    <<: *default
+    database: <%= ENV['DATABASE_NAME'] || 'dawarich_test' %>
+  queue:
+    <<: *default
+    database: <%= ENV['DATABASE_QUEUE_NAME'] || 'dawarich_test_queue' %>
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: <%= ENV['DATABASE_CABLE_NAME'] || 'dawarich_test_cable' %>
+    migrations_paths: db/cable_migrate
 
 production:
-  <<: *default
-  database: <%= ENV['DATABASE_NAME'] || 'dawarich_production' %>
+  primary:
+    <<: *default
+    database: <%= ENV['DATABASE_NAME'] || 'dawarich_production' %>
+  queue:
+    <<: *default
+    database: <%= ENV['DATABASE_QUEUE_NAME'] || 'dawarich_production_queue' %>
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: <%= ENV['DATABASE_CABLE_NAME'] || 'dawarich_production_cable' %>
+    migrations_paths: db/cable_migrate
 
 staging:
-  <<: *default
-  database: <%= ENV['DATABASE_NAME'] || 'dawarich_staging' %>
+  primary:
+    <<: *default
+    database: <%= ENV['DATABASE_NAME'] || 'dawarich_staging' %>
+  queue:
+    <<: *default
+    database: <%= ENV['DATABASE_QUEUE_NAME'] || 'dawarich_staging_queue' %>
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: <%= ENV['DATABASE_CABLE_NAME'] || 'dawarich_staging_cable' %>
+    migrations_paths: db/cable_migrate

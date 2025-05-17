@@ -6,6 +6,7 @@ Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
+  mount MissionControl::Jobs::Engine, at: '/jobs' # Protec just as sidekiq
 
   unless DawarichSettings.self_hosted?
     Sidekiq::Web.use(Rack::Auth::Basic) do |username, password|

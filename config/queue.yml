@@ -1,0 +1,27 @@
+
+default: &default
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 500
+  workers:
+    - queues: "*"
+      threads: 3
+      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      polling_interval: 2
+    - queues: imports
+      threads: 5
+      processes: 1
+      polling_interval: 1
+    - queues: exports
+      threads: 5
+      processes: 1
+      polling_interval: 2
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

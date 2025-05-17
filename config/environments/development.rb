@@ -68,6 +68,14 @@ Rails.application.configure do
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
 
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.silence_polling = true
+  # :queue is the name of the database connection
+  config.solid_queue.connects_to = { database: { writing: :queue } }
+
+  config.mission_control.jobs.http_basic_auth_enabled = false
+  config.solid_queue.logger = ActiveSupport::Logger.new($stdout)
+
   # Suppress logger output for asset requests.
   config.assets.quiet = true
 
@@ -95,7 +103,7 @@ Rails.application.configure do
   config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'
 
   # Direct logs to STDOUT
-  config.logger = Logger.new($stdout)
+  config.logger = ActiveSupport::Logger.new($stdout)
   config.lograge.enabled = true
   config.lograge.formatter = Lograge::Formatters::Json.new
 
