@@ -11,12 +11,12 @@ module Nearable
     def near(*args)
       latitude, longitude, radius, unit = extract_coordinates_and_options(*args)
 
-      unless DISTANCE_UNITS.key?(unit.to_sym)
-        raise ArgumentError, "Invalid unit. Supported units are: #{DISTANCE_UNITS.keys.join(', ')}"
+      unless ::DISTANCE_UNITS.key?(unit.to_sym)
+        raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
       # Convert radius to meters for ST_DWithin
-      radius_in_meters = radius * DISTANCE_UNITS[unit.to_sym]
+      radius_in_meters = radius * ::DISTANCE_UNITS[unit.to_sym]
 
       # Create a point from the given coordinates
       point = "SRID=4326;POINT(#{longitude} #{latitude})"
@@ -33,12 +33,12 @@ module Nearable
     def with_distance(*args)
       latitude, longitude, unit = extract_coordinates_and_options(*args)
 
-      unless DISTANCE_UNITS.key?(unit.to_sym)
-        raise ArgumentError, "Invalid unit. Supported units are: #{DISTANCE_UNITS.keys.join(', ')}"
+      unless ::DISTANCE_UNITS.key?(unit.to_sym)
+        raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
       point = "SRID=4326;POINT(#{longitude} #{latitude})"
-      conversion_factor = 1.0 / DISTANCE_UNITS[unit.to_sym]
+      conversion_factor = 1.0 / ::DISTANCE_UNITS[unit.to_sym]
 
       select(<<-SQL.squish)
         #{table_name}.*,
