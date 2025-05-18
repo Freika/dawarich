@@ -27,6 +27,20 @@
   <label class="modal-backdrop" for="fog_of_war_meters_info">Close</label>
 </div>
 
+<input type="checkbox" id="fog_of_war_threshold_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Fog of War Line Threshold</h3>
+    <p class="py-4">
+      Value in seconds.
+    </p>
+    <p class="py-4">
+      Points in the fog are connected by lines. This value is the maximum time between two points to be connected by a line. If the time between two points is greater than this value, they will not be connected.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="fog_of_war_threshold_info">Close</label>
+</div>
+
 <input type="checkbox" id="meters_between_routes_info" class="modal-toggle" />
 <div class="modal focus:z-99" role="dialog">
   <div class="modal-box">

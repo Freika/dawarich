@@ -4,6 +4,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
+# 0.26.1 - 2025-05-15
+
+## Geodata on demand
+
+This release introduces a new environment variable `STORE_GEODATA` with default value `true` to control whether to store geodata in the database or not. Currently, geodata is being used when:
+
+- Fetching places geodata
+- Fetching countries for a trip
+- Suggesting place name for a visit
+
+Opting out of storing geodata will make each feature that uses geodata to make a direct request to the geocoding service to calculate required data instead of using existing geodata from the database. Setting `STORE_GEODATA` to `false` can also use you some database space.
+
+If you decide to opt out, you can safely delete your existing geodata from the database:
+
+1. Get into the [console](https://dawarich.app/docs/FAQ/#how-to-enter-dawarich-console)
+2. Run the following commands:
+
+```ruby
+Point.update_all(geodata: {}) # to remove existing geodata
+
+ActiveRecord::Base.connection.execute("VACUUM FULL") # to free up some space
+```
+
+Note, that this will take some time to complete, depending on the number of points you have. This is not a required step.
+
+If you're running your own Photon instance, you can safely set `STORE_GEODATA` to `false`, otherwise it'd be better to keep it enabled, because that way Dawarich will be using existing geodata for its calculations.
+
+Also, after updating to this version, Dawarich will start a huge background job to calculate countries for all your points. Just let it work.
+
+## Added
+
+- Map page now has a button to go to the previous and next day. #296 #631 #904
+- Clicking on number of countries and cities in stats cards now opens a modal with a list of countries and cities visited in that year.
+
+## Changed
+
+- Reverse geocoding is now working as on-demand job instead of storing the result in the database. #619
+- Stats cards now show the last update time. #733
+- Visit card now shows buttons to confirm or decline a visit only if it's not confirmed or declined yet.
+- Distance unit is now being stored in the user settings. You can choose between kilometers and miles, default is kilometers. The setting is accessible in the user settings -> Maps -> Distance Unit. You might want to recalculate your stats after changing the unit. #1126
+- Fog of war is now being displayed as lines instead of dots. Thanks to @MeijiRestored!
+
+## Fixed
+
+- Fixed a bug with an attempt to write points with same lonlat and timestamp from iOS app. #1170
+- Importing GeoJSON files now saves velocity if it was stored in either `velocity` or `speed` property.
+- `rake points:migrate_to_lonlat` should work properly now. #1083 #1161
+- PostGIS extension is now being enabled only if it's not already enabled. #1186
+- Fixed a bug where visits were returning into Suggested state after being confirmed or declined. #848
+- If no points are found for a month during stats calculation, stats are now being deleted instead of being left empty. #1066 #406
+
+## Removed
+
+- Removed `DISTANCE_UNIT` constant. It can be safely removed from your environment variables in docker-compose.yml.
+
+
 # 0.26.0 - 2025-05-08
 
 ⚠️ This release includes a breaking change. ⚠️
@@ -17,7 +74,6 @@ If you have encountered problems with moving to a PostGIS image while still on P
 ## Changed
 
 - Dawarich now uses PostgreSQL 17 with PostGIS 3.5 by default.
-
 
 
 # 0.25.10 - 2025-05-08

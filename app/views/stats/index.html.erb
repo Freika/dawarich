@@ -4,7 +4,7 @@
   <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200">
     <div class="stat text-center">
       <div class="stat-value text-primary">
-        <%= number_with_delimiter(current_user.total_distance) %> <%= DISTANCE_UNIT %>
+        <%= number_with_delimiter(current_user.total_distance) %> <%= current_user.safe_settings.distance_unit %>
       </div>
       <div class="stat-title">Total distance</div>
     </div>
@@ -32,22 +32,59 @@
               <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
               <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
-            <%= link_to '[Update]', update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
+            <div class="gap-2">
+              <span class='text-xs text-gray-500'>Last updated: <%= human_date(stats.first.updated_at) %></span>
+              <%= link_to '🔄', update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
+            </div>
           </h2>
           <p>
             <% cache [current_user, 'year_distance_stat', year], skip_digest: true do %>
-              <%= number_with_delimiter year_distance_stat(year, current_user) %><%= DISTANCE_UNIT %>
+              <%= number_with_delimiter year_distance_stat(year, current_user) %><%= current_user.safe_settings.distance_unit %>
             <% end %>
           </p>
           <% if DawarichSettings.reverse_geocoding_enabled? %>
             <div class="card-actions justify-end">
-              <%= countries_and_cities_stat_for_year(year, stats) %>
+              <% location_data = countries_and_cities_stat_for_year(year, stats) %>
+              <%= link_to "#{location_data[:countries_count]} countries, #{location_data[:cities_count]} cities",
+                         "##{location_data[:modal_id]}",
+                         class: "link link-primary",
+                         onclick: "document.getElementById('#{location_data[:modal_id]}').checked = true" %>
+
+              <!-- Modal structure -->
+              <div>
+                <input type="checkbox" id="<%= location_data[:modal_id] %>" class="modal-toggle" />
+                <div class="modal" role="dialog">
+                  <div class="modal-box max-w-3xl">
+                    <h3 class="text-lg font-bold mb-4">Countries and Cities visited in <%= location_data[:year] %></h3>
+                    <div class="max-h-96 overflow-y-auto">
+                      <% location_data[:grouped_by_country].each do |country, cities| %>
+                        <div class="mb-4">
+                          <h4 class="font-bold">
+                            <span class="mr-2"><%= country_flag(country) %></span>
+                            <%= country %>
+                          </h4>
+                          <% if cities.any? %>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pl-4">
+                              <% cities.each do |city| %>
+                                <div class="text-sm"><%= city %></div>
+                              <% end %>
+                            </div>
+                          <% else %>
+                            <p class="text-sm text-gray-500 italic pl-4">No specific cities recorded</p>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                  <label class="modal-backdrop" for="<%= location_data[:modal_id] %>"></label>
+                </div>
+              </div>
             </div>
           <% end %>
           <%= column_chart(
             Stat.year_distance(year, current_user),
             height: '200px',
-            suffix: " #{DISTANCE_UNIT}",
+            suffix: " #{current_user.safe_settings.distance_unit}",
             xtitle: 'Days',
             ytitle: 'Distance'
           ) %>

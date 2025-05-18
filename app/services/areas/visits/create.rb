@@ -31,14 +31,14 @@ class Areas::Visits::Create
 
   def area_points(area)
     area_radius =
-      if ::DISTANCE_UNIT == :km
-        area.radius / 1000.0
+      if user.safe_settings.distance_unit == :km
+        area.radius / ::DISTANCE_UNITS[:km]
       else
-        area.radius / 1609.344
+        area.radius / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
       end
 
     points = Point.where(user_id: user.id)
-                  .near([area.latitude, area.longitude], area_radius, DISTANCE_UNIT)
+                  .near([area.latitude, area.longitude], area_radius, user.safe_settings.distance_unit)
                   .order(timestamp: :asc)
 
     # check if all points within the area are assigned to a visit

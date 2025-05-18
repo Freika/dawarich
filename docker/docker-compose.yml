@@ -65,11 +65,11 @@ services:
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
       APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
       SELF_HOSTED: "true"
+      STORE_GEODATA: "true"
     logging:
       driver: "json-file"
       options:
@@ -117,11 +117,11 @@ services:
       APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
       APPLICATION_PROTOCOL: http
-      DISTANCE_UNIT: km
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: dawarich_app
       PROMETHEUS_EXPORTER_PORT: 9394
       SELF_HOSTED: "true"
+      STORE_GEODATA: "true"
     logging:
       driver: "json-file"
       options:

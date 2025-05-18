@@ -28,7 +28,8 @@ class Point < ApplicationRecord
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
 
-  after_create :async_reverse_geocode
+  after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? }
+  after_create :set_country
   after_create_commit :broadcast_coordinates
 
   def self.without_raw_data
@@ -57,6 +58,10 @@ class Point < ApplicationRecord
     lonlat.y
   end
 
+  def found_in_country
+    Country.containing_point(lon, lat)
+  end
+
   private
 
   # rubocop:disable Metrics/MethodLength Metrics/AbcSize
@@ -76,4 +81,9 @@ class Point < ApplicationRecord
     )
   end
   # rubocop:enable Metrics/MethodLength
+
+  def set_country
+    self.country_id = found_in_country&.id
+    save! if changed?
+  end
 end

@@ -1,11 +1,8 @@
 <% content_for :title, "Map settings" %>
 
 <div class="min-h-content w-full my-5">
+  <h1 class="text-3xl font-bold mb-6">Map settings</h1>
   <%= render 'settings/navigation' %>
-
-  <div class="flex justify-between items-center my-5">
-    <h1 class="font-bold text-4xl">Maps settings</h1>
-  </div>
 
   <div role="alert" class="alert alert-info">
     <svg
@@ -22,50 +19,106 @@
     <span>Please remember, that using a custom tile URL may result in extra costs. Check your map tile provider's terms of service for more information.</span>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5" data-controller="map-preview">
-    <div class="flex flex-col gap-4">
-      <%= form_for :maps,
-          url: settings_maps_path,
-          method: :patch,
-          autocomplete: "off",
-          data: { turbo_method: :patch, turbo: false } do |f| %>
-        <div class="form-control my-2">
-          <%= f.label :name %>
-          <%= f.text_field :name, value: @maps['name'], placeholder: 'Example: OpenStreetMap', class: "input input-bordered" %>
+  <div class="card bg-base-200 shadow-xl">
+    <%= form_for :maps,
+      url: settings_maps_path,
+      method: :patch,
+      autocomplete: "off",
+      data: { turbo_method: :patch, turbo: false } do |f| %>
+
+      <div class="card-body">
+        <div class="space-y-8 animate-fade-in">
+          <div>
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map mr-2 text-primary">
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
+                <line x1="9" x2="9" y1="3" y2="18"></line>
+                <line x1="15" x2="15" y1="6" y2="21"></line>
+              </svg>Map Configuration
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" data-controller="map-preview">
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control w-full">
+                  <%= f.label :name, class: 'label' do %>
+                    <span class="label-text font-medium">Map Name</span>
+                  <% end %>
+                  <div class="relative">
+                    <%= f.text_field :name, value: @maps['name'], placeholder: 'Example: OpenStreetMap', class: "input input-bordered w-full pr-10" %>
+                  </div>
+                  <span class="label-text-alt mt-1">A descriptive name for your map configuration</span>
+                </div>
+                <div class="form-control w-full">
+                  <%= f.label :url, class: 'label' do %>
+                    <span class="label-text font-medium">Tile URL</span>
+                  <% end %>
+                  <div class="relative">
+                    <%= f.text_field :url,
+                      value: @maps['url'],
+                      autocomplete: "off",
+                      placeholder: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      class: "input input-bordered w-full pr-10",
+                      data: {
+                        map_preview_target: "urlInput",
+                        action: "input->map-preview#updatePreview"
+                      } %>
+                  </div>
+                  <span class="label-text-alt mt-1">URL pattern for map tiles. Must include {x}, {y}, and {z} placeholders</span>
+                </div>
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start">
+                    <span class="label-text mr-4 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-globe mr-2 w-4 h-4">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                        <path d="M2 12h20"></path>
+                      </svg>Distance Unit </span>
+                    <div class="flex items-center space-x-2">
+                      <%= f.label :distance_unit_km, 'Kilometers', class: 'cursor-pointer' %>
+                      <%= f.radio_button :distance_unit, 'km', id: 'maps_distance_unit_km', class: 'radio radio-primary ml-1 mr-4', checked: @maps['distance_unit'] == 'km' %>
+                      <%= f.label :distance_unit_mi, 'Miles', class: 'cursor-pointer' %>
+                      <%= f.radio_button :distance_unit, 'mi', id: 'maps_distance_unit_mi', class: 'radio radio-primary ml-1', checked: @maps['distance_unit'] == 'mi' %>
+                    </div>
+                  </label>
+                </div>
+              </div>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm">
+                <h3 class="font-semibold mb-2">Map Preview</h3>
+                <div class="h-[250px] w-full rounded-lg overflow-hidden border border-base-300">
+                  <div class="h-full w-full relative">
+                    <div style="height: 500px;">
+                      <div
+                        data-map-preview-target="mapContainer"
+                        class="w-full h-full rounded-lg border"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-base-100 p-5 mt-5 rounded-lg shadow-sm">
+            <h3 class="font-semibold mb-4">Tile Usage (Last 7 Days)</h3>
+            <div class="h-[250px]">
+              <%= line_chart(
+                @tile_usage,
+                height: '200px',
+                xtitle: 'Days',
+                ytitle: 'Tiles',
+                suffix: ' tiles loaded'
+              ) %>
+            </div>
+            <div class="mt-4 text-sm text-base-content/70">
+              <p>Total usage this week: <span class="font-semibold"><%= @tile_usage.sum { |_, count| count } %> tiles</span>
+              </p>
+              <!--p>Monthly quota: <span class="font-semibold">100,000 tiles</span-->
+              </p>
+            </div>
+          </div>
         </div>
-
-        <div class="form-control my-2">
-          <%= f.label :url, 'URL' %>
-          <%= f.text_field :url,
-              value: @maps['url'],
-              autocomplete: "off",
-              placeholder: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-              class: "input input-bordered",
-              data: {
-                map_preview_target: "urlInput",
-                action: "input->map-preview#updatePreview"
-              } %>
+        <div class="card-actions justify-end mt-6">
+          <%= f.submit 'Save changes', class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>
         </div>
-
-        <%= f.submit 'Save', class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>
-      <% end %>
-
-      <h2 class="text-lg font-bold">Tile usage</h2>
-
-      <%= line_chart(
-        @tile_usage,
-        height: '200px',
-        xtitle: 'Days',
-        ytitle: 'Tiles',
-        suffix: ' tiles loaded'
-      ) %>
-    </div>
-
-    <div style="height: 500px;">
-      <div
-        data-map-preview-target="mapContainer"
-        class="w-full h-full rounded-lg border"
-      ></div>
-    </div>
+      </div>
+    <% end %>
   </div>
 </div>

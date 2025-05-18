@@ -3,14 +3,6 @@
 module Distanceable
   extend ActiveSupport::Concern
 
-  DISTANCE_UNITS = {
-    km: 1000, # to meters
-    mi: 1609.34, # to meters
-    m: 1, # already in meters
-    ft: 0.3048, # to meters
-    yd: 0.9144 # to meters
-  }.freeze
-
   module ClassMethods
     def total_distance(points = nil, unit = :km)
       # Handle method being called directly on relation vs with array
@@ -24,8 +16,8 @@ module Distanceable
     private
 
     def calculate_distance_for_relation(unit)
-      unless DISTANCE_UNITS.key?(unit.to_sym)
-        raise ArgumentError, "Invalid unit. Supported units are: #{DISTANCE_UNITS.keys.join(', ')}"
+      unless ::DISTANCE_UNITS.key?(unit.to_sym)
+        raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
       distance_in_meters = connection.select_value(<<-SQL.squish)
@@ -48,12 +40,12 @@ module Distanceable
         WHERE prev_lonlat IS NOT NULL
       SQL
 
-      distance_in_meters.to_f / DISTANCE_UNITS[unit.to_sym]
+      distance_in_meters.to_f / ::DISTANCE_UNITS[unit.to_sym]
     end
 
     def calculate_distance_for_array(points, unit = :km)
-      unless DISTANCE_UNITS.key?(unit.to_sym)
-        raise ArgumentError, "Invalid unit. Supported units are: #{DISTANCE_UNITS.keys.join(', ')}"
+      unless ::DISTANCE_UNITS.key?(unit.to_sym)
+        raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
       return 0 if points.length < 2
@@ -66,13 +58,13 @@ module Distanceable
         )
       end
 
-      total_meters.to_f / DISTANCE_UNITS[unit.to_sym]
+      total_meters.to_f / ::DISTANCE_UNITS[unit.to_sym]
     end
   end
 
   def distance_to(other_point, unit = :km)
-    unless DISTANCE_UNITS.key?(unit.to_sym)
-      raise ArgumentError, "Invalid unit. Supported units are: #{DISTANCE_UNITS.keys.join(', ')}"
+    unless ::DISTANCE_UNITS.key?(unit.to_sym)
+      raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
     end
 
     # Extract coordinates based on what type other_point is
@@ -88,7 +80,7 @@ module Distanceable
     SQL
 
     # Convert to requested unit
-    distance_in_meters.to_f / DISTANCE_UNITS[unit.to_sym]
+    distance_in_meters.to_f / ::DISTANCE_UNITS[unit.to_sym]
   end
 
   private

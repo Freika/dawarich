@@ -22,29 +22,19 @@ class Place < ApplicationRecord
     lonlat.y
   end
 
-  def async_reverse_geocode
-    return unless DawarichSettings.reverse_geocoding_enabled?
-
-    ReverseGeocodingJob.perform_later(self.class.to_s, id)
-  end
-
-  def reverse_geocoded?
-    geodata.present?
-  end
-
   def osm_id
-    geodata['properties']['osm_id']
+    geodata.dig('properties', 'osm_id')
   end
 
   def osm_key
-    geodata['properties']['osm_key']
+    geodata.dig('properties', 'osm_key')
   end
 
   def osm_value
-    geodata['properties']['osm_value']
+    geodata.dig('properties', 'osm_value')
   end
 
   def osm_type
-    geodata['properties']['osm_type']
+    geodata.dig('properties', 'osm_type')
   end
 end

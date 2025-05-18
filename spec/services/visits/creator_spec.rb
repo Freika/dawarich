@@ -24,6 +24,76 @@ RSpec.describe Visits::Creator do
       }
     end
 
+    context 'when a confirmed visit already exists at the same location' do
+      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place') }
+      let!(:existing_visit) do
+        create(
+          :visit,
+          user: user,
+          place: place,
+          status: :confirmed,
+          started_at: 1.5.hours.ago,
+          ended_at: 45.minutes.ago,
+          duration: 45
+        )
+      end
+
+      it 'returns the existing confirmed visit instead of creating a duplicate suggested visit' do
+        visits = subject.create_visits([visit_data])
+
+        expect(visits.size).to eq(1)
+        expect(visits.first).to eq(existing_visit)
+        expect(visits.first.status).to eq('confirmed')
+
+        # Verify no new visits were created
+        expect(Visit.count).to eq(1)
+      end
+
+      it 'does not change points associations' do
+        original_visit_id = point1.visit_id
+
+        subject.create_visits([visit_data])
+
+        # Points should remain unassociated
+        expect(point1.reload.visit_id).to eq(original_visit_id)
+        expect(point2.reload.visit_id).to eq(nil)
+      end
+    end
+
+    context 'when a confirmed visit exists but at a different location' do
+      let(:different_place) { create(:place, lonlat: 'POINT(-73.9000 41.0000)', name: 'Different Place') }
+      let!(:existing_visit) do
+        create(
+          :visit,
+          user: user,
+          place: different_place,
+          status: :confirmed,
+          started_at: 1.5.hours.ago,
+          ended_at: 45.minutes.ago,
+          duration: 45
+        )
+      end
+      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'New Place') }
+      let(:place_finder) { instance_double(Visits::PlaceFinder) }
+
+      before do
+        allow(Visits::PlaceFinder).to receive(:new).with(user).and_return(place_finder)
+        allow(place_finder).to receive(:find_or_create_place).and_return({ main_place: place, suggested_places: [] })
+      end
+
+      it 'creates a new suggested visit' do
+        visits = subject.create_visits([visit_data])
+
+        expect(visits.size).to eq(1)
+        expect(visits.first).not_to eq(existing_visit)
+        expect(visits.first.place).to eq(place)
+        expect(visits.first.status).to eq('suggested')
+
+        # Should now have two visits
+        expect(Visit.count).to eq(2)
+      end
+    end
+
     context 'when matching an area' do
       let!(:area) { create(:area, user: user, latitude: 40.7128, longitude: -74.0060, radius: 100) }
 

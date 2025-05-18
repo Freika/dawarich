@@ -13,6 +13,21 @@ RSpec.describe Point, type: :model do
     it { is_expected.to validate_presence_of(:lonlat) }
   end
 
+  describe 'callbacks' do
+    describe '#set_country' do
+      let(:point) { build(:point, lonlat: 'POINT(-79.85581250721961 15.854775993302411)') }
+      let(:country) { create(:country) }
+
+      it 'sets the country' do
+        expect(Country).to receive(:containing_point).with(-79.85581250721961, 15.854775993302411).and_return(country)
+
+        point.save!
+
+        expect(point.country_id).to eq(country.id)
+      end
+    end
+  end
+
   describe 'scopes' do
     describe '.reverse_geocoded' do
       let(:point) { create(:point, :reverse_geocoded) }
@@ -45,7 +60,10 @@ RSpec.describe Point, type: :model do
     describe '#async_reverse_geocode' do
       let(:point) { build(:point) }
 
-      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+      end
 
       it 'enqueues ReverseGeocodeJob with correct arguments' do
         point.save
@@ -59,6 +77,16 @@ RSpec.describe Point, type: :model do
 
         it 'enqueues ReverseGeocodeJob' do
           expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
+        end
+      end
+
+      context 'when reverse geocoding is disabled' do
+        before do
+          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        end
+
+        it 'does not enqueue ReverseGeocodeJob' do
+          expect { point.save }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
       end
     end

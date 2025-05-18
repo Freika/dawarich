@@ -2,6 +2,7 @@
 
 class Api::V1::PointsController < ApiController
   before_action :authenticate_active_api_user!, only: %i[create update destroy]
+  before_action :validate_points_limit, only: %i[create]
 
   def index
     start_at = params[:start_at]&.to_datetime&.to_i

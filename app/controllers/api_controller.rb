@@ -41,4 +41,10 @@ class ApiController < ApplicationController
   def required_params
     []
   end
+
+  def validate_points_limit
+    limit_exceeded = PointsLimitExceeded.new(current_api_user).call
+
+    render json: { error: 'Points limit exceeded' }, status: :unauthorized if limit_exceeded
+  end
 end

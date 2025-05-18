@@ -25,6 +25,7 @@ RUN apk -U add --no-cache \
     less \
     yaml-dev \
     gcompat \
+    geos \
     && mkdir -p $APP_PATH
 
 # Update gem system and install bundler

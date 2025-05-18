@@ -16,14 +16,25 @@ RSpec.describe Trip, type: :model do
   describe 'callbacks' do
     let(:user) { create(:user) }
     let(:trip) { create(:trip, :with_points, user:) }
-    let(:calculated_distance) { trip.send(:calculate_distance) }
 
-    it 'sets the distance' do
-      expect(trip.distance).to eq(calculated_distance)
+    context 'when the trip is created' do
+      let(:trip) { build(:trip, :with_points, user:) }
+
+      it 'enqueues the calculation jobs' do
+        expect(Trips::CalculateAllJob).to receive(:perform_later)
+
+        trip.save
+      end
     end
 
-    it 'sets the path' do
-      expect(trip.path).to be_present
+    context 'when DawarichSettings.store_geodata? is enabled' do
+      before do
+        allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+      end
+
+      it 'sets the countries' do
+        expect(trip.countries).to eq(trip.points.pluck(:country).uniq.compact)
+      end
     end
   end
 

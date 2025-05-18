@@ -7,11 +7,11 @@ class Trip < ApplicationRecord
 
   validates :name, :started_at, :ended_at, presence: true
 
-  before_save :calculate_path_and_distance
+  after_create :enqueue_calculation_jobs
+  after_update :enqueue_calculation_jobs, if: -> { saved_change_to_started_at? || saved_change_to_ended_at? }
 
-  def calculate_path_and_distance
-    calculate_path
-    calculate_distance
+  def enqueue_calculation_jobs
+    Trips::CalculateAllJob.perform_later(id)
   end
 
   def points
@@ -19,7 +19,9 @@ class Trip < ApplicationRecord
   end
 
   def countries
-    points.pluck(:country).uniq.compact
+    return points.pluck(:country).uniq.compact if DawarichSettings.store_geodata?
+
+    visited_countries
   end
 
   def photo_previews
@@ -28,6 +30,25 @@ class Trip < ApplicationRecord
 
   def photo_sources
     @photo_sources ||= photos.map { _1[:source] }.uniq
+  end
+
+  def calculate_path
+    trip_path = Tracks::BuildPath.new(points.pluck(:lonlat)).call
+
+    self.path = trip_path
+  end
+
+  def calculate_distance
+    distance = Point.total_distance(points, user.safe_settings.distance_unit)
+
+    self.distance = distance.round
+  end
+
+  def calculate_countries
+    countries =
+      Country.where(id: points.pluck(:country_id).compact.uniq).pluck(:name)
+
+    self.visited_countries = countries
   end
 
   private
@@ -43,17 +64,5 @@ class Trip < ApplicationRecord
     # this is ridiculous, but I couldn't find my way around frontend
     # to show all photos in the same height
     vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
-  end
-
-  def calculate_path
-    trip_path = Tracks::BuildPath.new(points.pluck(:lonlat)).call
-
-    self.path = trip_path
-  end
-
-  def calculate_distance
-    distance = Point.total_distance(points, DISTANCE_UNIT)
-
-    self.distance = distance.round
   end
 end

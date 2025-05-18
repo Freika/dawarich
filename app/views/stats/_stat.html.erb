@@ -7,11 +7,12 @@
         <% end %>
       </h2>
 
-      <div class="flex items-center gap-2">
-        <%= link_to '[Update]', update_year_month_stats_path(stat.year, stat.month), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
+      <div class="gap-2">
+        <span class='text-xs text-gray-500'>Last update <%= human_date(stat.updated_at) %></span>
+        <%= link_to '🔄', update_year_month_stats_path(stat.year, stat.month), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
       </div>
     </div>
-    <p><%= stat.distance %><%= DISTANCE_UNIT %></p>
+    <p><%= number_with_delimiter stat.distance %><%= current_user.safe_settings.distance_unit %></p>
     <% if DawarichSettings.reverse_geocoding_enabled? %>
       <div class="card-actions justify-end">
         <%= countries_and_cities_stat_for_month(stat) %>
@@ -21,7 +22,7 @@
       <%= column_chart(
         stat.daily_distance,
         height: '100px',
-        suffix: " #{DISTANCE_UNIT}",
+        suffix: " #{current_user.safe_settings.distance_unit}",
         xtitle: 'Days',
         ytitle: 'Distance'
       ) %>
