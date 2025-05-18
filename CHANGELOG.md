@@ -5,7 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# 0.26.1 - 2025-05-15
+# 0.26.2 - 2025-05-18
+
+## Fixed
+
+- Seeds are now working properly. #1207
+- Fixed a bug where France flag was not being displayed correctly. #1204
+- Fix blank map page caused by empty default distance unit. Default distance unit is now kilometers and can be changed in Settings -> Maps. #1206
+
+
+# 0.26.1 - 2025-05-18
 
 ## Geodata on demand
 

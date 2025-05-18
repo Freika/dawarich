@@ -3,16 +3,18 @@
 if User.none?
   puts 'Creating user...'
 
+  email = 'demo@dawarich.app'
+
   User.create!(
-    email: 'demo@dawarich.app',
+    email:,
     password: 'password',
     password_confirmation: 'password',
     admin: true,
-    active: true,
+    status: :active,
     active_until: 100.years.from_now
   )
 
-  puts "User created: #{User.first.email} / password: 'password'"
+  puts "User created: '#{email}' / password: 'password'"
 end
 
 if Country.none?
