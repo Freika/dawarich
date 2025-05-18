@@ -5,7 +5,7 @@ class SetDefaultDistanceUnitForUser < ActiveRecord::Migration[8.0]
     User.find_each do |user|
       map_settings = user.settings['maps']
 
-      next if map_settings['distance_unit'].in?(%w[km mi])
+      next if map_settings.try(:[], 'distance_unit')&.in?(%w[km mi])
 
       if map_settings.blank?
         map_settings = { distance_unit: 'km' }
