@@ -8,4 +8,8 @@ class Country < ApplicationRecord
     .select(:id, :name, :iso_a2, :iso_a3)
     .first
   end
+
+  def self.names_to_iso_a2
+    pluck(:name, :iso_a2).to_h
+  end
 end

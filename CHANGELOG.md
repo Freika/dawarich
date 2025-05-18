@@ -44,7 +44,7 @@ Also, after updating to this version, Dawarich will start a huge background job 
 - Reverse geocoding is now working as on-demand job instead of storing the result in the database. #619
 - Stats cards now show the last update time. #733
 - Visit card now shows buttons to confirm or decline a visit only if it's not confirmed or declined yet.
-- Distance unit is now being stored in the user settings. You can choose between kilometers and miles, default is kilometers. The setting is accessible in the user settings -> Maps -> Distance Unit. You might want to recalculate your stats after changing the unit.
+- Distance unit is now being stored in the user settings. You can choose between kilometers and miles, default is kilometers. The setting is accessible in the user settings -> Maps -> Distance Unit. You might want to recalculate your stats after changing the unit. #1126
 - Fog of war is now being displayed as lines instead of dots. Thanks to @MeijiRestored!
 
 ## Fixed
