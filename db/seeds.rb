@@ -7,7 +7,9 @@ if User.none?
     email: 'demo@dawarich.app',
     password: 'password',
     password_confirmation: 'password',
-    admin: true
+    admin: true,
+    active: true,
+    active_until: 100.years.from_now
   )
 
   puts "User created: #{User.first.email} / password: 'password'"
