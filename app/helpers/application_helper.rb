@@ -40,7 +40,6 @@ module ApplicationHelper
     data[:cities].flatten!.uniq!
     data[:countries].flatten!.uniq!
 
-    # Group cities by country
     grouped_by_country = {}
     stats.select { _1.year == year }.each do |stat|
       stat.toponyms.flatten.each do |toponym|
@@ -58,10 +57,8 @@ module ApplicationHelper
       end
     end
 
-    # Deduplicate cities for each country
     grouped_by_country.transform_values!(&:uniq)
 
-    # Return data for the template to use
     {
       countries_count: data[:countries].count,
       cities_count: data[:cities].count,
