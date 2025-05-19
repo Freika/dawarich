@@ -15,7 +15,7 @@
             <%= human_date(@trip.started_at) %> - <%= human_date(@trip.ended_at) %>
           </p>
 
-          <%= render "trips/countries", trip: @trip, current_user: current_user %>
+          <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
         </div>
 
         <div>
