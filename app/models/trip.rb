@@ -11,7 +11,7 @@ class Trip < ApplicationRecord
   after_update :enqueue_calculation_jobs, if: -> { saved_change_to_started_at? || saved_change_to_ended_at? }
 
   def enqueue_calculation_jobs
-    Trips::CalculateAllJob.perform_later(id)
+    Trips::CalculateAllJob.perform_later(id, user.safe_settings.distance_unit)
   end
 
   def points

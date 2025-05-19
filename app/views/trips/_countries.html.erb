@@ -2,23 +2,23 @@
   <div class="card bg-base-200 shadow-lg">
     <div class="card-body p-4">
       <div class="stat-title text-xs">Distance</div>
-      <div class="stat-value text-lg"><%= @trip.distance %> <%= current_user.safe_settings.distance_unit %></div>
+      <div class="stat-value text-lg"><%= trip.distance %> <%= distance_unit %></div>
     </div>
   </div>
   <div class="card bg-base-200 shadow-lg">
     <div class="card-body p-4">
       <div class="stat-title text-xs">Duration</div>
-      <div class="stat-value text-lg"><%= trip_duration(@trip) %></div>
+      <div class="stat-value text-lg"><%= trip_duration(trip) %></div>
     </div>
   </div>
   <div class="card bg-base-200 shadow-lg">
     <div class="card-body p-4">
       <div class="stat-title text-xs">Countries</div>
       <div class="stat-value text-lg">
-        <% if @trip.countries.any? %>
-          <%= @trip.countries.join(', ') %>
-        <% elsif @trip.visited_countries.present? %>
-          <%= @trip.visited_countries.join(', ') %>
+        <% if trip.countries.any? %>
+          <%= trip.countries.join(', ') %>
+        <% elsif trip.visited_countries.present? %>
+          <%= trip.visited_countries.join(', ') %>
         <% else %>
           <span>Countries are being calculated...</span>
           <span class="loading loading-dots loading-sm"></span>
