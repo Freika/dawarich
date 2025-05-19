@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { DirectUpload } from "@rails/activestorage"
+import { showFlashMessage } from "../maps/helpers"
 
 export default class extends Controller {
   static targets = ["input", "progress", "progressBar", "submit", "form"]
@@ -13,6 +14,12 @@ export default class extends Controller {
     // Add form submission handler to disable the file input
     if (this.hasFormTarget) {
       this.formTarget.addEventListener("submit", this.onSubmit.bind(this))
+    }
+
+    // Initially disable submit button if no files are uploaded
+    if (this.hasSubmitTarget) {
+      const hasUploadedFiles = this.element.querySelectorAll('input[name="import[files][]"][type="hidden"]').length > 0
+      this.submitTarget.disabled = !hasUploadedFiles
     }
   }
 
@@ -48,6 +55,10 @@ export default class extends Controller {
 
     // Disable submit button during upload
     this.submitTarget.disabled = true
+    this.submitTarget.classList.add("opacity-50", "cursor-not-allowed")
+
+    // Show uploading message using flash
+    showFlashMessage('notice', `Uploading ${files.length} files, please wait...`)
 
     // Always remove any existing progress bar to ensure we create a fresh one
     if (this.hasProgressTarget) {
@@ -103,6 +114,8 @@ export default class extends Controller {
 
         if (error) {
           console.error("Error uploading file:", error)
+          // Show error to user using flash
+          showFlashMessage('error', `Error uploading ${file.name}: ${error.message || 'Unknown error'}`)
         } else {
           console.log(`Successfully uploaded ${file.name} with ID: ${blob.signed_id}`)
 
@@ -118,16 +131,26 @@ export default class extends Controller {
 
         // Enable submit button when all uploads are complete
         if (uploadCount === totalFiles) {
-          this.submitTarget.disabled = false
+          // Only enable submit if we have at least one successful upload
+          const successfulUploads = this.element.querySelectorAll('input[name="import[files][]"][type="hidden"]').length
+          this.submitTarget.disabled = successfulUploads === 0
+          this.submitTarget.classList.toggle("opacity-50", successfulUploads === 0)
+          this.submitTarget.classList.toggle("cursor-not-allowed", successfulUploads === 0)
+
+          if (successfulUploads === 0) {
+            showFlashMessage('error', 'No files were successfully uploaded. Please try again.')
+          } else {
+            showFlashMessage('notice', `${successfulUploads} file(s) uploaded successfully. Ready to submit.`)
+          }
           this.isUploading = false
           console.log("All uploads completed")
-          console.log(`Ready to submit with ${this.element.querySelectorAll('input[name="import[files][]"][type="hidden"]').length} files`)
+          console.log(`Ready to submit with ${successfulUploads} files`)
         }
       })
     })
   }
 
-  directUploadWillStoreFileWithXHR(request) {
+    directUploadWillStoreFileWithXHR(request) {
     request.upload.addEventListener("progress", event => {
       if (!this.hasProgressBarTarget) {
         console.warn("Progress bar target not found")

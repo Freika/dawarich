@@ -17,7 +17,7 @@ class TripsController < ApplicationController
     @photo_sources = @trip.photo_sources
 
     if @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
-      Trips::CalculateAllJob.perform_later(@trip.id)
+      Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
     end
   end
 
