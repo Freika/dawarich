@@ -11,6 +11,7 @@ ENV SELF_HOSTED=true
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     build-essential \
     git \
+    postgresql-client \
     libpq-dev \
     libxml2-dev \
     libxslt-dev \
