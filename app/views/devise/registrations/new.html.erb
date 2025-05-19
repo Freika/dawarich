@@ -33,6 +33,10 @@
           <%= f.password_field :password_confirmation, autocomplete: "new-password", class: 'input input-bordered' %>
         </div>
 
+        <% if !DawarichSettings.self_hosted? %>
+          <div class="cf-turnstile" data-sitekey="<%= ENV['TURNSTILE_SITE_KEY'] %>" data-theme="dark"></div>
+        <% end %>
+
         <div class="form-control mt-6">
           <%= f.submit "Sign up", class: 'btn btn-primary' %>
         </div>
