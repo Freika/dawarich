@@ -2,40 +2,30 @@
 
 <%= turbo_stream_from "trip_#{@trip.id}" %>
 
-<div class="container mx-auto px-4 max-w-4xl my-5">
-  <div class="text-center mb-8">
-    <h1 class="text-4xl font-bold mb-2"><%= @trip.name %></h1>
-    <p class="text-md text-base-content/60">
-      <%= human_date(@trip.started_at) %> - <%= human_date(@trip.ended_at) %>
-    </p>
-    <% if @trip.countries.any? || @trip.visited_countries.present? %>
-      <div id="trip_countries">
-        <%= render "trips/countries", trip: @trip %>
-      </div>
-    <% else %>
-      <div id="trip_countries">
-        <p class="text-md text-base-content/60">
-          <span>Countries are being calculated...</span>
-          <span class="loading loading-dots loading-sm"></span>
-        </p>
-      </div>
-    <% end %>
-  </div>
-
-  <div class="bg-base-100 my-8 p-4">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="w-full" id="trip_path">
+<div class="container mx-auto px-4 my-5">
+  <div class="bg-base-100 p-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="w-full block" id="trip_path">
         <%= render "trips/path", trip: @trip, current_user: current_user %>
       </div>
       <div class="w-full">
+        <div class="text-center mb-8">
+          <h1 class="text-4xl font-bold mb-2"><%= @trip.name %></h1>
+          <p class="text-md text-base-content/60 mb-4">
+            <%= human_date(@trip.started_at) %> - <%= human_date(@trip.ended_at) %>
+          </p>
+
+          <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
+        </div>
+
         <div>
           <%= @trip.notes.body %>
         </div>
 
         <!-- Photos Grid Section -->
         <% if @photo_previews.any? %>
-          <% @photo_previews.each_slice(4) do |slice| %>
-            <div class="h-32 flex gap-4 mt-4 justify-center">
+          <% @photo_previews.each_slice(3) do |slice| %>
+            <div class="h-48 flex gap-4 mt-4 justify-center">
               <% slice.each do |photo| %>
                 <div class="flex-1 h-full overflow-hidden rounded-lg transition-transform duration-300 hover:scale-105 hover:shadow-lg">
                   <img
