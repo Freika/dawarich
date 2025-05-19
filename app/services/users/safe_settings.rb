@@ -3,12 +3,30 @@
 class Users::SafeSettings
   attr_reader :settings
 
-  def initialize(settings)
-    @settings = settings
+  DEFAULT_VALUES = {
+    'fog_of_war_meters' => 50,
+    'meters_between_routes' => 500,
+    'preferred_map_layer' => 'OpenStreetMap',
+    'speed_colored_routes' => false,
+    'points_rendering_mode' => 'raw',
+    'minutes_between_routes' => 30,
+    'time_threshold_minutes' => 30,
+    'merge_threshold_minutes' => 15,
+    'live_map_enabled' => true,
+    'route_opacity' => 0.6,
+    'immich_url' => nil,
+    'immich_api_key' => nil,
+    'photoprism_url' => nil,
+    'photoprism_api_key' => nil,
+    'maps' => { 'distance_unit' => 'km' }
+  }.freeze
+
+  def initialize(settings = {})
+    @settings = DEFAULT_VALUES.dup.merge(settings)
   end
 
   # rubocop:disable Metrics/MethodLength
-  def config
+  def default_settings
     {
       fog_of_war_meters: fog_of_war_meters,
       meters_between_routes: meters_between_routes,
@@ -31,45 +49,43 @@ class Users::SafeSettings
   # rubocop:enable Metrics/MethodLength
 
   def fog_of_war_meters
-    settings['fog_of_war_meters'] || 50
+    settings['fog_of_war_meters']
   end
 
   def meters_between_routes
-    settings['meters_between_routes'] || 500
+    settings['meters_between_routes']
   end
 
   def preferred_map_layer
-    settings['preferred_map_layer'] || 'OpenStreetMap'
+    settings['preferred_map_layer']
   end
 
   def speed_colored_routes
-    settings['speed_colored_routes'] || false
+    settings['speed_colored_routes']
   end
 
   def points_rendering_mode
-    settings['points_rendering_mode'] || 'raw'
+    settings['points_rendering_mode']
   end
 
   def minutes_between_routes
-    settings['minutes_between_routes'] || 30
+    settings['minutes_between_routes']
   end
 
   def time_threshold_minutes
-    settings['time_threshold_minutes'] || 30
+    settings['time_threshold_minutes']
   end
 
   def merge_threshold_minutes
-    settings['merge_threshold_minutes'] || 15
+    settings['merge_threshold_minutes']
   end
 
   def live_map_enabled
-    return settings['live_map_enabled'] if settings.key?('live_map_enabled')
-
-    true
+    settings['live_map_enabled']
   end
 
   def route_opacity
-    settings['route_opacity'] || 0.6
+    settings['route_opacity']
   end
 
   def immich_url
@@ -89,10 +105,10 @@ class Users::SafeSettings
   end
 
   def maps
-    settings['maps'] || {}
+    settings['maps']
   end
 
   def distance_unit
-    settings.dig('maps', 'distance_unit') || 'km'
+    settings.dig('maps', 'distance_unit')
   end
 end

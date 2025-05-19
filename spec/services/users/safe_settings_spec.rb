@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 RSpec.describe Users::SafeSettings do
-  describe '#config' do
+  describe '#default_settings' do
     context 'with default values' do
       let(:settings) { {} }
       let(:safe_settings) { described_class.new(settings) }
 
       it 'returns default configuration' do
-        expect(safe_settings.config).to eq(
+        expect(safe_settings.default_settings).to eq(
           {
             fog_of_war_meters: 50,
             meters_between_routes: 500,
@@ -23,7 +23,7 @@ RSpec.describe Users::SafeSettings do
             immich_api_key: nil,
             photoprism_url: nil,
             photoprism_api_key: nil,
-            maps: {},
+            maps: { "distance_unit" => "km" },
             distance_unit: 'km'
           }
         )
@@ -53,24 +53,23 @@ RSpec.describe Users::SafeSettings do
       let(:safe_settings) { described_class.new(settings) }
 
       it 'returns custom configuration' do
-        expect(safe_settings.config).to eq(
+        expect(safe_settings.settings).to eq(
           {
-            fog_of_war_meters: 100,
-            meters_between_routes: 1000,
-            preferred_map_layer: 'Satellite',
-            speed_colored_routes: true,
-            points_rendering_mode: 'simplified',
-            minutes_between_routes: 60,
-            time_threshold_minutes: 45,
-            merge_threshold_minutes: 20,
-            live_map_enabled: false,
-            route_opacity: 0.8,
-            immich_url: 'https://immich.example.com',
-            immich_api_key: 'immich-key',
-            photoprism_url: 'https://photoprism.example.com',
-            photoprism_api_key: 'photoprism-key',
-            maps: { 'name' => 'custom', 'url' => 'https://custom.example.com' },
-            distance_unit: 'km'
+            "fog_of_war_meters" => 100,
+            "meters_between_routes" => 1000,
+            "preferred_map_layer" => "Satellite",
+            "speed_colored_routes" => true,
+            "points_rendering_mode" => "simplified",
+            "minutes_between_routes" => 60,
+            "time_threshold_minutes" => 45,
+            "merge_threshold_minutes" => 20,
+            "live_map_enabled" => false,
+            "route_opacity" => 0.8,
+            "immich_url" => "https://immich.example.com",
+            "immich_api_key" => "immich-key",
+            "photoprism_url" => "https://photoprism.example.com",
+            "photoprism_api_key" => "photoprism-key",
+            "maps" => { "name" => "custom", "url" => "https://custom.example.com" }
           }
         )
       end
@@ -98,7 +97,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.immich_api_key).to be_nil
         expect(safe_settings.photoprism_url).to be_nil
         expect(safe_settings.photoprism_api_key).to be_nil
-        expect(safe_settings.maps).to eq({})
+        expect(safe_settings.maps).to eq({ "distance_unit" => "km" })
       end
     end
 
