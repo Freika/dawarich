@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Docker image is now using slim image to introduce some memory optimizations.
 - The trip page now looks a bit nicer.
 - The "Yesterday" button on the map page was changed to "Today". #1215
+- The "Create Import" button now disabled until files are uploaded.
 
 # 0.26.3 - 2025-05-18
 
