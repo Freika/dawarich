@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.26.5 - 2025-05-20
+
+## Fixed
+
+- Wget is back to fix healthchecks. #1241 #1231
+- Dockerfile.prod is now using slim image. #1245
+- Dockerfiles now use jemalloc with check for architecture. #1235
+
 # 0.26.4 - 2025-05-19
 
 ## Changed
