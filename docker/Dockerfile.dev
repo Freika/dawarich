@@ -11,6 +11,7 @@ ENV SIDEKIQ_USERNAME=sidekiq
 ENV SIDEKIQ_PASSWORD=password
 
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    wget \
     build-essential \
     git \
     postgresql-client \
@@ -28,8 +29,12 @@ RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
-# Use jemalloc
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+# Use jemalloc with check for architecture
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+    echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
+    else \
+    echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
+    fi
 
 # Optional: Set YJIT explicitly (enabled by default in 3.4.1 MRI builds)
 ENV RUBY_YJIT_ENABLE=1

@@ -5,7 +5,13 @@ class DataMigrations::SetPointsCountryIdsJob < ApplicationJob
 
   def perform(point_id)
     point = Point.find(point_id)
-    point.country_id = Country.containing_point(point.lon, point.lat).id
-    point.save!
+    country = Country.containing_point(point.lon, point.lat)
+
+    if country.present?
+      point.country_id = country.id
+      point.save!
+    else
+      Rails.logger.info("No country found for point #{point.id}")
+    end
   end
 end
