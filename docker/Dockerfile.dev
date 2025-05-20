@@ -24,6 +24,7 @@ RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no
     nodejs \
     yarn \
     less \
+    wget \
     libjemalloc2 libjemalloc-dev \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
