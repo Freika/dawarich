@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
+# 0.26.6 - 2025-05-21
+
+## Added
+
+- armv8 to docker build. #1249
+
+## Changed
+
+- Points are now being created in the `points` queue. #1243
+
 # 0.26.5 - 2025-05-20
 
 ## Fixed

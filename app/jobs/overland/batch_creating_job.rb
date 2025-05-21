@@ -3,7 +3,7 @@
 class Overland::BatchCreatingJob < ApplicationJob
   include PointValidation
 
-  queue_as :default
+  queue_as :points
 
   def perform(params, user_id)
     data = Overland::Params.new(params).call
