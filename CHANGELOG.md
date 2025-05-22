@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# 0.26.6 - 2025-05-21
+# 0.26.6 - 2025-05-22
 
 ## Added
 
@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Points are now being created in the `points` queue. #1243
-
+- Route opacity is now being displayed as percentage in the map settings. #462 #1224
+- Exported GeoJSON file now contains coordinates as floats instead of strings, as per RFC 7946. #762
+- Fog of war now can be set to 200 meter per point. #630
 # 0.26.5 - 2025-05-20
 
 ## Fixed
