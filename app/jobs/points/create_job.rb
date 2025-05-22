@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Points::CreateJob < ApplicationJob
-  queue_as :default
+  queue_as :points
 
   def perform(params, user_id)
     data = Points::Params.new(params, user_id).call

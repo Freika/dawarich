@@ -3,7 +3,7 @@
 class Owntracks::PointCreatingJob < ApplicationJob
   include PointValidation
 
-  queue_as :default
+  queue_as :points
 
   def perform(point_params, user_id)
     parsed_params = OwnTracks::Params.new(point_params).call

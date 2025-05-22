@@ -14,7 +14,7 @@ class Points::GeojsonSerializer
           type: 'Feature',
           geometry: {
             type: 'Point',
-            coordinates: [point.lon.to_s, point.lat.to_s]
+            coordinates: [point.lon, point.lat]
           },
           properties: PointSerializer.new(point).call
         }

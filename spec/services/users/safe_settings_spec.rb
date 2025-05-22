@@ -18,7 +18,7 @@ RSpec.describe Users::SafeSettings do
             time_threshold_minutes: 30,
             merge_threshold_minutes: 15,
             live_map_enabled: true,
-            route_opacity: 0.6,
+            route_opacity: 60,
             immich_url: nil,
             immich_api_key: nil,
             photoprism_url: nil,
@@ -42,7 +42,7 @@ RSpec.describe Users::SafeSettings do
           'time_threshold_minutes' => 45,
           'merge_threshold_minutes' => 20,
           'live_map_enabled' => false,
-          'route_opacity' => 0.8,
+          'route_opacity' => 80,
           'immich_url' => 'https://immich.example.com',
           'immich_api_key' => 'immich-key',
           'photoprism_url' => 'https://photoprism.example.com',
@@ -64,7 +64,7 @@ RSpec.describe Users::SafeSettings do
             "time_threshold_minutes" => 45,
             "merge_threshold_minutes" => 20,
             "live_map_enabled" => false,
-            "route_opacity" => 0.8,
+            "route_opacity" => 80,
             "immich_url" => "https://immich.example.com",
             "immich_api_key" => "immich-key",
             "photoprism_url" => "https://photoprism.example.com",
@@ -92,7 +92,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.time_threshold_minutes).to eq(30)
         expect(safe_settings.merge_threshold_minutes).to eq(15)
         expect(safe_settings.live_map_enabled).to be true
-        expect(safe_settings.route_opacity).to eq(0.6)
+        expect(safe_settings.route_opacity).to eq(60)
         expect(safe_settings.immich_url).to be_nil
         expect(safe_settings.immich_api_key).to be_nil
         expect(safe_settings.photoprism_url).to be_nil
@@ -113,7 +113,7 @@ RSpec.describe Users::SafeSettings do
           'time_threshold_minutes' => 45,
           'merge_threshold_minutes' => 20,
           'live_map_enabled' => false,
-          'route_opacity' => 0.8,
+          'route_opacity' => 80,
           'immich_url' => 'https://immich.example.com',
           'immich_api_key' => 'immich-key',
           'photoprism_url' => 'https://photoprism.example.com',
@@ -132,7 +132,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.time_threshold_minutes).to eq(45)
         expect(safe_settings.merge_threshold_minutes).to eq(20)
         expect(safe_settings.live_map_enabled).to be false
-        expect(safe_settings.route_opacity).to eq(0.8)
+        expect(safe_settings.route_opacity).to eq(80)
         expect(safe_settings.immich_url).to eq('https://immich.example.com')
         expect(safe_settings.immich_api_key).to eq('immich-key')
         expect(safe_settings.photoprism_url).to eq('https://photoprism.example.com')
