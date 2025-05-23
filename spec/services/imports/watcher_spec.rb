@@ -10,7 +10,6 @@ RSpec.describe Imports::Watcher do
 
     before do
       stub_const('Imports::Watcher::WATCHED_DIR_PATH', watched_dir_path)
-      Sidekiq::Testing.inline!
     end
 
     after { Sidekiq::Testing.fake! }
