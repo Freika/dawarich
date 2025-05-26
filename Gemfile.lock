@@ -138,7 +138,7 @@ GEM
     dotenv-rails (3.1.7)
       dotenv (= 3.1.7)
       railties (>= 6.1)
-    drb (2.2.1)
+    drb (2.2.3)
     erubi (1.13.1)
     et-orbi (1.2.11)
       tzinfo
@@ -161,8 +161,8 @@ GEM
     gpx (1.2.0)
       nokogiri (~> 1.7)
       rake
-    groupdate (6.5.1)
-      activesupport (>= 7)
+    groupdate (6.6.0)
+      activesupport (>= 7.1)
     hashdiff (1.1.2)
     httparty (0.23.1)
       csv
