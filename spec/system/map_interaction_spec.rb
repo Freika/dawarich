@@ -11,40 +11,34 @@ RSpec.describe 'Map Interaction', type: :system do
       .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
   end
 
-
-
   let!(:points) do
     # Create a series of points that form a route
     [
-      create(:point, user: user, latitude: 52.520008, longitude: 13.404954,
+      create(:point, user: user,
              lonlat: "POINT(13.404954 52.520008)",
              timestamp: 1.hour.ago.to_i, velocity: 10, battery: 80),
-      create(:point, user: user, latitude: 52.521008, longitude: 13.405954,
+      create(:point, user: user,
              lonlat: "POINT(13.405954 52.521008)",
              timestamp: 50.minutes.ago.to_i, velocity: 15, battery: 78),
-      create(:point, user: user, latitude: 52.522008, longitude: 13.406954,
+      create(:point, user: user,
              lonlat: "POINT(13.406954 52.522008)",
              timestamp: 40.minutes.ago.to_i, velocity: 12, battery: 76),
-      create(:point, user: user, latitude: 52.523008, longitude: 13.407954,
+      create(:point, user: user,
              lonlat: "POINT(13.407954 52.523008)",
              timestamp: 30.minutes.ago.to_i, velocity: 8, battery: 74)
     ]
   end
 
-  describe 'Map page interaction' do
-    it 'allows user to sign in and see the map page' do
-      sign_in_user(user)
-      expect(page).to have_current_path(map_path)
-      expect(page).to have_css('#map')
-    end
 
+
+  describe 'Map page interaction' do
     context 'when user is signed in' do
       include_context 'authenticated map user'
       include_examples 'map basic functionality'
       include_examples 'map controls'
     end
 
-        context 'zoom functionality' do
+    context 'zoom functionality' do
       include_context 'authenticated map user'
 
       it 'allows zoom in and zoom out functionality' do
@@ -93,17 +87,17 @@ RSpec.describe 'Map Interaction', type: :system do
       end
     end
 
-                context 'layer controls' do
+    context 'layer controls' do
       include_context 'authenticated map user'
       include_examples 'expandable layer control'
 
-            it 'allows changing map layers between OpenStreetMap and OpenTopo' do
+      it 'allows changing map layers between OpenStreetMap and OpenTopo' do
         expand_layer_control
         test_base_layer_switching
         collapse_layer_control
       end
 
-            it 'allows enabling and disabling map layers' do
+      it 'allows enabling and disabling map layers' do
         expand_layer_control
 
         MapLayerHelpers::OVERLAY_LAYERS.each do |layer_name|
@@ -115,7 +109,7 @@ RSpec.describe 'Map Interaction', type: :system do
     context 'calendar panel' do
       include_context 'authenticated map user'
 
-            it 'has functional calendar button' do
+      it 'has functional calendar button' do
         # Find the calendar button (📅 emoji button)
         calendar_button = find('.toggle-panel-button', wait: 10)
 
@@ -224,16 +218,16 @@ RSpec.describe 'Map Interaction', type: :system do
         let!(:points_for_miles_user) do
           # Create a series of points that form a route for the miles user
           [
-            create(:point, user: user_with_miles, latitude: 52.520008, longitude: 13.404954,
+            create(:point, user: user_with_miles,
                    lonlat: "POINT(13.404954 52.520008)",
                    timestamp: 1.hour.ago.to_i, velocity: 10, battery: 80),
-            create(:point, user: user_with_miles, latitude: 52.521008, longitude: 13.405954,
+            create(:point, user: user_with_miles,
                    lonlat: "POINT(13.405954 52.521008)",
                    timestamp: 50.minutes.ago.to_i, velocity: 15, battery: 78),
-            create(:point, user: user_with_miles, latitude: 52.522008, longitude: 13.406954,
+            create(:point, user: user_with_miles,
                    lonlat: "POINT(13.406954 52.522008)",
                    timestamp: 40.minutes.ago.to_i, velocity: 12, battery: 76),
-            create(:point, user: user_with_miles, latitude: 52.523008, longitude: 13.407954,
+            create(:point, user: user_with_miles,
                    lonlat: "POINT(13.407954 52.523008)",
                    timestamp: 30.minutes.ago.to_i, velocity: 8, battery: 74)
           ]
@@ -299,16 +293,16 @@ RSpec.describe 'Map Interaction', type: :system do
         let!(:points_for_km_user) do
           # Create a series of points that form a route for the km user
           [
-            create(:point, user: user_with_km, latitude: 52.520008, longitude: 13.404954,
+            create(:point, user: user_with_km,
                    lonlat: "POINT(13.404954 52.520008)",
                    timestamp: 1.hour.ago.to_i, velocity: 10, battery: 80),
-            create(:point, user: user_with_km, latitude: 52.521008, longitude: 13.405954,
+            create(:point, user: user_with_km,
                    lonlat: "POINT(13.405954 52.521008)",
                    timestamp: 50.minutes.ago.to_i, velocity: 15, battery: 78),
-            create(:point, user: user_with_km, latitude: 52.522008, longitude: 13.406954,
+            create(:point, user: user_with_km,
                    lonlat: "POINT(13.406954 52.522008)",
                    timestamp: 40.minutes.ago.to_i, velocity: 12, battery: 76),
-            create(:point, user: user_with_km, latitude: 52.523008, longitude: 13.407954,
+            create(:point, user: user_with_km,
                    lonlat: "POINT(13.407954 52.523008)",
                    timestamp: 30.minutes.ago.to_i, velocity: 8, battery: 74)
           ]
@@ -373,16 +367,16 @@ RSpec.describe 'Map Interaction', type: :system do
         let!(:points_for_miles_user) do
           # Create a series of points that form a route for the miles user
           [
-            create(:point, user: user_with_miles, latitude: 52.520008, longitude: 13.404954,
+            create(:point, user: user_with_miles,
                    lonlat: "POINT(13.404954 52.520008)",
                    timestamp: 1.hour.ago.to_i, velocity: 10, battery: 80),
-            create(:point, user: user_with_miles, latitude: 52.521008, longitude: 13.405954,
+            create(:point, user: user_with_miles,
                    lonlat: "POINT(13.405954 52.521008)",
                    timestamp: 50.minutes.ago.to_i, velocity: 15, battery: 78),
-            create(:point, user: user_with_miles, latitude: 52.522008, longitude: 13.406954,
+            create(:point, user: user_with_miles,
                    lonlat: "POINT(13.406954 52.522008)",
                    timestamp: 40.minutes.ago.to_i, velocity: 12, battery: 76),
-            create(:point, user: user_with_miles, latitude: 52.523008, longitude: 13.407954,
+            create(:point, user: user_with_miles,
                    lonlat: "POINT(13.407954 52.523008)",
                    timestamp: 30.minutes.ago.to_i, velocity: 8, battery: 74)
           ]
@@ -689,10 +683,10 @@ RSpec.describe 'Map Interaction', type: :system do
       end
     end
 
-        context 'calendar panel functionality' do
+    context 'calendar panel functionality' do
       include_context 'authenticated map user'
 
-              it 'opens and displays calendar navigation' do
+      it 'opens and displays calendar navigation' do
         # Click calendar button
         calendar_button = find('.toggle-panel-button', wait: 10)
         expect(calendar_button).to be_visible
@@ -706,7 +700,7 @@ RSpec.describe 'Map Interaction', type: :system do
         expect(calendar_button.text).to eq('📅')
       end
 
-            it 'allows year selection and month navigation' do
+      it 'allows year selection and month navigation' do
         # This test is skipped due to calendar panel JavaScript interaction issues
         # The calendar button exists but the panel doesn't open reliably in test environment
         skip "Calendar panel JavaScript interaction needs debugging"

@@ -7,18 +7,23 @@ orbs:
 jobs:
   test:
     docker:
-      - image: cimg/ruby:3.4.1
+      - image: cimg/ruby:3.4.1-browsers
         environment:
           RAILS_ENV: test
+          CI: true
       - image: cimg/postgres:13.3-postgis
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database
           POSTGRES_PASSWORD: mysecretpassword
       - image: redis:7.0
+      - image: selenium/standalone-chrome:latest
+        name: chrome
 
     steps:
       - checkout
+      - browser-tools/install-chrome
+      - browser-tools/install-chromedriver
       - run:
           name: Install Bundler
           command: gem install bundler

@@ -7,11 +7,9 @@ This document tracks all system test scenarios for the Dawarich application. Com
 ### Sign In/Out
 - [x] User can sign in with valid credentials
 - [x] User is redirected to map page after successful sign in
-- [ ] User cannot sign in with invalid credentials
-- [ ] User can sign out successfully
-- [ ] User is redirected to sign in page when accessing protected routes while signed out
-- [ ] User session persists across browser refresh
-- [ ] User session expires after configured timeout
+- [x] User cannot sign in with invalid credentials
+- [x] User can sign out successfully
+- [x] User is redirected to sign in page when accessing protected routes while signed out
 
 ### User Registration
 - [ ] New user can register with valid information

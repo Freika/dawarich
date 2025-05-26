@@ -43,7 +43,23 @@ RSpec.configure do |config|
   end
 
   config.before(:each, type: :system) do
-    driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+    # Configure Capybara for CI environments
+    if ENV['CI']
+      # Setup for CircleCI
+      driven_by :selenium, using: :headless_chrome, options: {
+        browser: :remote,
+        url: "http://localhost:4444/wd/hub",
+        capabilities: {
+          chromeOptions: {
+            args: %w[headless disable-gpu no-sandbox disable-dev-shm-usage]
+          }
+        }
+      }
+    else
+      # Local environment configuration
+      driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+    end
+
     # Disable transactional fixtures for system tests
     self.use_transactional_tests = false
     # Completely disable WebMock for system tests to allow Selenium WebDriver connections
