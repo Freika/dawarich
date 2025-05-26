@@ -2,6 +2,7 @@
   "dependencies": {
     "@hotwired/turbo-rails": "^7.3.0",
     "@rails/actiontext": "^8.0.0",
+    "cypress": "^14.4.0",
     "daisyui": "^4.7.3",
     "leaflet": "^1.9.4",
     "postcss": "^8.4.49",

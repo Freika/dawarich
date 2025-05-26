@@ -33,12 +33,29 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
   config.include Devise::Test::IntegrationHelpers, type: :request
+  config.include Devise::Test::IntegrationHelpers, type: :system
 
   config.rswag_dry_run = false
 
   config.before do
     ActiveJob::Base.queue_adapter = :test
     allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+  end
+
+  config.before(:each, type: :system) do
+    driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+    # Disable transactional fixtures for system tests
+    self.use_transactional_tests = false
+    # Completely disable WebMock for system tests to allow Selenium WebDriver connections
+    WebMock.disable!
+  end
+
+  config.after(:each, type: :system) do
+    # Clean up database after system tests
+    ActiveRecord::Base.connection.truncate_tables(*ActiveRecord::Base.connection.tables)
+    # Re-enable WebMock after system tests
+    WebMock.enable!
+    WebMock.disable_net_connect!
   end
 
   config.after(:suite) do

@@ -22,6 +22,10 @@ module Visits
         @geocoder_results ||= Geocoder.search(
           center, limit: 10, distance_sort: true, radius: 1, units: :km
         )
+      rescue StandardError => e
+        ExceptionReporter.call(e)
+
+        []
       end
 
       def build_place_name
