@@ -1,12 +1,5 @@
 # frozen_string_literal: true
 
-# This shared example is no longer needed since authentication is handled globally
-# RSpec.shared_examples 'a signed in user on map page' do
-#   before do
-#     sign_in_and_visit_map(user)
-#   end
-# end
-
 RSpec.shared_context 'authenticated map user' do
   before do
     sign_in_and_visit_map(user)

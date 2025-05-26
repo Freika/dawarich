@@ -427,8 +427,7 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
             speed: speed,
             interactive: true,
             pane: 'polylinesPane',
-            bubblingMouseEvents: false,
-            smoothFactor: 0.1
+            bubblingMouseEvents: false
           }
         );
 

@@ -67,11 +67,11 @@ export function formatDate(timestamp, timezone) {
 }
 
 export function formatSpeed(speedKmh, unit = 'km') {
-  if (unit === 'mi') {
+  if (unit === 'km') {
+    return `${Math.round(speedKmh)} km/h`;
+  } else {
     const speedMph = speedKmh * 0.621371; // Convert km/h to mph
     return `${Math.round(speedMph)} mph`;
-  } else {
-    return `${Math.round(speedKmh)} km/h`;
   }
 }
 
