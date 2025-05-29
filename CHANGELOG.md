@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Popups now showing distance in the correct distance unit. #1258
 
+## Added
+
+- Bunch of system tests to cover map interactions.
+
 
 # 0.26.6 - 2025-05-22
 
