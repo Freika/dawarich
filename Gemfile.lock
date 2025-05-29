@@ -162,8 +162,8 @@ GEM
     gpx (1.2.0)
       nokogiri (~> 1.7)
       rake
-    groupdate (6.5.1)
-      activesupport (>= 7)
+    groupdate (6.6.0)
+      activesupport (>= 7.1)
     hashdiff (1.1.2)
     httparty (0.23.1)
       csv
