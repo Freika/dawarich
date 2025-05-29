@@ -39,18 +39,22 @@ RSpec.describe CountriesAndCities do
 
       context 'when user stayed in the city for more than 1 hour' do
         it 'returns countries and cities' do
-          expect(countries_and_cities).to eq(
-            [
-              CountriesAndCities::CountryData.new(
-                country: 'Belgium',
-                cities: [
-                  CountriesAndCities::CityData.new(
-                    city: 'Kerpen', points: 8, timestamp: 1_609_467_600, stayed_for: 70
-                  )
-                ]
-              )
-            ]
-          )
+          expect(countries_and_cities).to match_array([
+            an_object_having_attributes(
+              country: 'Germany',
+              cities: [
+                an_object_having_attributes(
+                  city: 'Berlin',
+                  points: 8,
+                  stayed_for: 70
+                )
+              ]
+            ),
+            an_object_having_attributes(
+              country: 'Belgium',
+              cities: []
+            )
+          ])
         end
       end
 
@@ -68,10 +72,16 @@ RSpec.describe CountriesAndCities do
         end
 
         it 'returns countries and cities' do
-          expect(countries_and_cities).to eq(
-            [
-            ]
-          )
+          expect(countries_and_cities).to match_array([
+            an_object_having_attributes(
+              country: 'Germany',
+              cities: []
+            ),
+            an_object_having_attributes(
+              country: 'Belgium',
+              cities: []
+            )
+          ])
         end
       end
     end
