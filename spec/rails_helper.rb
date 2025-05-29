@@ -49,10 +49,8 @@ RSpec.configure do |config|
       driven_by :selenium, using: :headless_chrome, options: {
         browser: :remote,
         url: "http://localhost:4444/wd/hub",
-        capabilities: {
-          chromeOptions: {
-            args: %w[headless disable-gpu no-sandbox disable-dev-shm-usage]
-          }
+        options: {
+          args: %w[headless disable-gpu no-sandbox disable-dev-shm-usage]
         }
       }
     else
