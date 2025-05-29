@@ -7,24 +7,36 @@ orbs:
 jobs:
   test:
     docker:
-      - image: cimg/ruby:3.4.1
+      - image: cimg/ruby:3.4.1-browsers
         environment:
           RAILS_ENV: test
+          CI: true
       - image: cimg/postgres:13.3-postgis
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: test_database
           POSTGRES_PASSWORD: mysecretpassword
       - image: redis:7.0
+      - image: selenium/standalone-chrome:latest
+        name: chrome
+        environment:
+          START_XVFB: 'false'
+          JAVA_OPTS: -Dwebdriver.chrome.whitelistedIps=
 
     steps:
       - checkout
+      - browser-tools/install-chrome
+      - browser-tools/install-chromedriver
       - run:
           name: Install Bundler
           command: gem install bundler
       - run:
           name: Bundle Install
           command: bundle install --jobs=4 --retry=3
+      - run:
+          name: Wait for Selenium Chrome
+          command: |
+            dockerize -wait tcp://chrome:4444 -timeout 1m
       - run:
           name: Database Setup
           command: |
@@ -35,6 +47,8 @@ jobs:
           command: bundle exec rspec
       - store_artifacts:
           path: coverage
+      - store_artifacts:
+          path: tmp/capybara
 
 workflows:
   rspec:

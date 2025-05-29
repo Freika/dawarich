@@ -49,6 +49,7 @@ gem 'jwt'
 
 group :development, :test do
   gem 'brakeman', require: false
+  gem 'bundler-audit', require: false
   gem 'debug', platforms: %i[mri mingw x64_mingw]
   gem 'dotenv-rails'
   gem 'factory_bot_rails'
@@ -60,7 +61,9 @@ group :development, :test do
 end
 
 group :test do
+  gem 'capybara'
   gem 'fakeredis'
+  gem 'selenium-webdriver'
   gem 'shoulda-matchers'
   gem 'simplecov', require: false
   gem 'super_diff'

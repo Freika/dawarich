@@ -66,6 +66,15 @@ export function formatDate(timestamp, timezone) {
   return date.toLocaleString(locale, { timeZone: timezone });
 }
 
+export function formatSpeed(speedKmh, unit = 'km') {
+  if (unit === 'km') {
+    return `${Math.round(speedKmh)} km/h`;
+  } else {
+    const speedMph = speedKmh * 0.621371; // Convert km/h to mph
+    return `${Math.round(speedMph)} mph`;
+  }
+}
+
 export function haversineDistance(lat1, lon1, lat2, lon2, unit = 'km') {
   // Haversine formula to calculate the distance between two points
   const toRad = (x) => (x * Math.PI) / 180;

@@ -33,12 +33,51 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
   config.include Devise::Test::IntegrationHelpers, type: :request
+  config.include Devise::Test::IntegrationHelpers, type: :system
 
   config.rswag_dry_run = false
 
   config.before do
     ActiveJob::Base.queue_adapter = :test
     allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+  end
+
+  config.before(:each, type: :system) do
+    # Configure Capybara for CI environments
+    if ENV['CI']
+      # Setup for CircleCI
+      Capybara.server = :puma, { Silent: true }
+
+      # Make the app accessible to Chrome in the Docker network
+      ip_address = Socket.ip_address_list.detect(&:ipv4_private?).ip_address
+      host! "http://#{ip_address}"
+      Capybara.server_host = ip_address
+      Capybara.app_host = "http://#{ip_address}:#{Capybara.server_port}"
+
+      driven_by :selenium, using: :headless_chrome, options: {
+        browser: :remote,
+        url: "http://chrome:4444/wd/hub",
+        options: {
+          args: %w[headless disable-gpu no-sandbox disable-dev-shm-usage]
+        }
+      }
+    else
+      # Local environment configuration
+      driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+    end
+
+    # Disable transactional fixtures for system tests
+    self.use_transactional_tests = false
+    # Completely disable WebMock for system tests to allow Selenium WebDriver connections
+    WebMock.disable!
+  end
+
+  config.after(:each, type: :system) do
+    # Clean up database after system tests
+    ActiveRecord::Base.connection.truncate_tables(*ActiveRecord::Base.connection.tables)
+    # Re-enable WebMock after system tests
+    WebMock.enable!
+    WebMock.disable_net_connect!
   end
 
   config.after(:suite) do
