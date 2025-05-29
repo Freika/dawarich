@@ -6,10 +6,8 @@ RSpec.describe CountriesAndCities do
   describe '#call' do
     subject(:countries_and_cities) { described_class.new(points).call }
 
-    # we have 15 points in the same city and different country within 2 hour,
-    # 4 points in the differnt city within 10 minutes splitting the country
-    # and we expect to get one country with one city which has 8 points
-
+    # Test with a set of points in the same city (Kerpen) but different countries,
+    # with sufficient points to demonstrate the city grouping logic
     let(:timestamp) { DateTime.new(2021, 1, 1, 0, 0, 0) }
 
     let(:points) do
@@ -39,26 +37,25 @@ RSpec.describe CountriesAndCities do
 
       context 'when user stayed in the city for more than 1 hour' do
         it 'returns countries and cities' do
-          expect(countries_and_cities).to match_array([
-            an_object_having_attributes(
-              country: 'Germany',
-              cities: [
-                an_object_having_attributes(
-                  city: 'Berlin',
-                  points: 8,
-                  stayed_for: 70
-                )
-              ]
-            ),
+          # Only Belgium has cities where the user stayed long enough
+          # Germany is excluded because the consecutive points in Kerpen, Germany
+          # span only 30 minutes (less than MIN_MINUTES_SPENT_IN_CITY)
+          expect(countries_and_cities).to contain_exactly(
             an_object_having_attributes(
               country: 'Belgium',
-              cities: []
+              cities: contain_exactly(
+                an_object_having_attributes(
+                  city: 'Kerpen',
+                  points: 11,
+                  stayed_for: 140
+                )
+              )
             )
-          ])
+          )
         end
       end
 
-      context 'when user stayed in the city for less than 1 hour' do
+      context 'when user stayed in the city for less than 1 hour in some cities but more in others' do
         let(:points) do
           [
             create(:point, city: 'Berlin', country: 'Germany', timestamp:),
@@ -71,17 +68,22 @@ RSpec.describe CountriesAndCities do
           ]
         end
 
-        it 'returns countries and cities' do
-          expect(countries_and_cities).to match_array([
+        it 'returns only countries with cities where the user stayed long enough' do
+          # Only Germany is included because Berlin points span 100 minutes
+          # Belgium is excluded because Brugges points are in separate visits
+          # spanning only 10 and 20 minutes each
+          expect(countries_and_cities).to contain_exactly(
             an_object_having_attributes(
               country: 'Germany',
-              cities: []
-            ),
-            an_object_having_attributes(
-              country: 'Belgium',
-              cities: []
+              cities: contain_exactly(
+                an_object_having_attributes(
+                  city: 'Berlin',
+                  points: 4,
+                  stayed_for: 100
+                )
+              )
             )
-          ])
+          )
         end
       end
     end
