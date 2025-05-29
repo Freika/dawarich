@@ -103,14 +103,14 @@ This document tracks all system test scenarios for the Dawarich application. Com
 
 ### Calendar Display
 - [x] Calendar button is functional
-- [ ] Calendar panel opens and displays correctly
+- [x] Calendar panel opens and displays correctly
 - [ ] Year selection works
 - [ ] Month navigation functions
 - [ ] Visited cities information displays
 
 ### Calendar Interaction
 - [ ] Date selection filters map data
-- [ ] Calendar state persists in localStorage
+- [x] Calendar state persists in localStorage
 - [ ] Calendar navigation with keyboard shortcuts (not implemented yet)
 
 ## 7. Data Import/Export
@@ -276,7 +276,7 @@ This document tracks all system test scenarios for the Dawarich application. Com
 ## 21. Notifications & Alerts
 
 ### System Notifications
-- [ ] Success message display
+- [x] Success message display
 - [ ] Error message display
 - [ ] Warning notifications
 - [ ] Info notifications
@@ -316,9 +316,9 @@ This document tracks all system test scenarios for the Dawarich application. Com
 ## Test Execution Summary
 
 **Total Scenarios:** 180+
-**Completed:** 41 ✅
-**Pending:** 140+ ⏳
-**Coverage:** ~23%
+**Completed:** 51 ✅
+**Pending:** 129+ ⏳
+**Coverage:** ~28%
 
 ### Priority for Next Implementation:
 1. **Authentication flows** (sign out, invalid credentials, registration)
