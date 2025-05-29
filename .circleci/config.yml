@@ -19,6 +19,9 @@ jobs:
       - image: redis:7.0
       - image: selenium/standalone-chrome:latest
         name: chrome
+        environment:
+          START_XVFB: 'false'
+          JAVA_OPTS: -Dwebdriver.chrome.whitelistedIps=
 
     steps:
       - checkout
@@ -31,6 +34,10 @@ jobs:
           name: Bundle Install
           command: bundle install --jobs=4 --retry=3
       - run:
+          name: Wait for Selenium Chrome
+          command: |
+            dockerize -wait tcp://chrome:4444 -timeout 1m
+      - run:
           name: Database Setup
           command: |
             bundle exec rails db:create
@@ -40,6 +47,8 @@ jobs:
           command: bundle exec rspec
       - store_artifacts:
           path: coverage
+      - store_artifacts:
+          path: tmp/capybara
 
 workflows:
   rspec:

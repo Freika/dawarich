@@ -46,6 +46,14 @@ RSpec.configure do |config|
     # Configure Capybara for CI environments
     if ENV['CI']
       # Setup for CircleCI
+      Capybara.server = :puma, { Silent: true }
+
+      # Make the app accessible to Chrome in the Docker network
+      ip_address = Socket.ip_address_list.detect(&:ipv4_private?).ip_address
+      host! "http://#{ip_address}"
+      Capybara.server_host = ip_address
+      Capybara.app_host = "http://#{ip_address}:#{Capybara.server_port}"
+
       driven_by :selenium, using: :headless_chrome, options: {
         browser: :remote,
         url: "http://chrome:4444/wd/hub",
