@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+# 0.26.7 - 2025-05-26
+
+## Fixed
+
+- Popups now showing distance in the correct distance unit. #1258
+
+## Added
+
+- Bunch of system tests to cover map interactions.
+
+
 # 0.26.6 - 2025-05-22
 
 ## Added

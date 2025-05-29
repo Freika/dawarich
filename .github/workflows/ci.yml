@@ -49,14 +49,33 @@ jobs:
       - name: Install Ruby dependencies
         run: bundle install
 
-      - name: Run tests
+      - name: Run bundler audit
+        run: |
+          gem install bundler-audit
+          bundle audit --update
+
+      - name: Setup database
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432
+          REDIS_URL: redis://localhost:6379/1
+        run: bin/rails db:setup
+
+      - name: Run main tests (excluding system tests)
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
           REDIS_URL: redis://localhost:6379/1
         run: |
-          bin/rails db:setup
-          bin/rails spec || (cat log/test.log && exit 1)
+          bundle exec rspec --exclude-pattern "spec/system/**/*_spec.rb" || (cat log/test.log && exit 1)
+
+      - name: Run system tests
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432
+          REDIS_URL: redis://localhost:6379/1
+        run: |
+          bundle exec rspec spec/system/ || (cat log/test.log && exit 1)
 
       - name: Keep screenshots from failed system tests
         uses: actions/upload-artifact@v4

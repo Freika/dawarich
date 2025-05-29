@@ -1,7 +1,7 @@
 <% if trip.path.present? %>
   <div
     id='map'
-    class="w-full h-full md:h-64 rounded-lg z-0"
+    class="w-full h-full md:min-h-64 rounded-lg z-0"
     data-controller="trips"
     data-trips-target="container"
     data-api_key="<%= trip.user.api_key %>"
