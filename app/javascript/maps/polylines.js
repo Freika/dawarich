@@ -1,5 +1,6 @@
 import { formatDate } from "../maps/helpers";
 import { formatDistance } from "../maps/helpers";
+import { formatSpeed } from "../maps/helpers";
 import { minutesToDaysHoursMinutes } from "../maps/helpers";
 import { haversineDistance } from "../maps/helpers";
 
@@ -224,7 +225,7 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
             <strong>End:</strong> ${lastTimestamp}<br>
             <strong>Duration:</strong> ${timeOnRoute}<br>
             <strong>Total Distance:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
-            <strong>Current Speed:</strong> ${Math.round(speed)} km/h
+            <strong>Current Speed:</strong> ${formatSpeed(speed, distanceUnit)}
         `;
 
         if (hoverPopup) {
@@ -318,7 +319,7 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
       <strong>End:</strong> ${lastTimestamp}<br>
       <strong>Duration:</strong> ${timeOnRoute}<br>
       <strong>Total Distance:</strong> ${formatDistance(totalDistance, distanceUnit)}<br>
-      <strong>Current Speed:</strong> ${Math.round(clickedLayer.options.speed || 0)} km/h
+      <strong>Current Speed:</strong> ${formatSpeed(clickedLayer.options.speed || 0, distanceUnit)}
     `;
 
     if (hoverPopup) {

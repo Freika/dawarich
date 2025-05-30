@@ -69,7 +69,7 @@ services:
       PROMETHEUS_EXPORTER_PORT: 9394
       SECRET_KEY_BASE: 1234567890
       RAILS_LOG_TO_STDOUT: "true"
-      STORE_GEODATA: "false"
+      STORE_GEODATA: "true"
     logging:
       driver: "json-file"
       options:
@@ -123,7 +123,7 @@ services:
       PROMETHEUS_EXPORTER_PORT: 9394
       SECRET_KEY_BASE: 1234567890
       RAILS_LOG_TO_STDOUT: "true"
-      STORE_GEODATA: "false"
+      STORE_GEODATA: "true"
     logging:
       driver: "json-file"
       options:

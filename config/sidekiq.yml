@@ -1,6 +1,7 @@
 ---
 :concurrency: <%= ENV.fetch("BACKGROUND_PROCESSING_CONCURRENCY", 10) %>
 :queues:
+  - points
   - default
   - imports
   - exports

@@ -13,12 +13,15 @@ FactoryBot.define do
 
     settings do
       {
-        route_opacity: '0.5',
-        meters_between_routes: '100',
-        minutes_between_routes: '100',
-        fog_of_war_meters: '100',
-        time_threshold_minutes: '100',
-        merge_threshold_minutes: '100'
+        'route_opacity' => '0.5',
+        'meters_between_routes' => '100',
+        'minutes_between_routes' => '100',
+        'fog_of_war_meters' => '100',
+        'time_threshold_minutes' => '100',
+        'merge_threshold_minutes' => '100',
+        'maps' => {
+          'distance_unit' => 'km'
+        }
       }
     end
 

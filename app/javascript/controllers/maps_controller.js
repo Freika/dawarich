@@ -46,8 +46,9 @@ export default class extends BaseController {
     this.userSettings = JSON.parse(this.element.dataset.user_settings);
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.fogLinethreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
+    // Store route opacity as decimal (0-1) internally
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
-    this.distanceUnit = this.userSettings.maps.distance_unit || "km";
+    this.distanceUnit = this.userSettings.maps?.distance_unit || "km";
     this.pointsRenderingMode = this.userSettings.points_rendering_mode || "raw";
     this.liveMapEnabled = this.userSettings.live_map_enabled || false;
     this.countryCodesMap = countryCodesMap();
@@ -726,16 +727,16 @@ export default class extends BaseController {
       // Form HTML
       div.innerHTML = `
         <form id="settings-form" style="overflow-y: auto; height: 36rem; width: 12rem;">
-          <label for="route-opacity">Route Opacity</label>
+          <label for="route-opacity">Route Opacity, %</label>
           <div class="join">
-            <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="0" max="1" step="0.1" value="${this.routeOpacity}">
+            <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="10" max="100" step="10" value="${Math.round(this.routeOpacity * 100)}">
             <label for="route_opacity_info" class="btn-xs join-item ">?</label>
 
           </div>
 
           <label for="fog_of_war_meters">Fog of War radius</label>
           <div class="join">
-            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="fog_of_war_meters" name="fog_of_war_meters" min="5" max="100" step="1" value="${this.clearFogRadius}">
+            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="fog_of_war_meters" name="fog_of_war_meters" min="5" max="200" step="1" value="${this.clearFogRadius}">
             <label for="fog_of_war_meters_info" class="btn-xs join-item">?</label>
           </div>
 
@@ -863,12 +864,16 @@ export default class extends BaseController {
     event.preventDefault();
     console.log('Form submitted');
 
+    // Convert percentage to decimal for route_opacity
+    const opacityValue = event.target.route_opacity.value.replace('%', '');
+    const decimalOpacity = parseFloat(opacityValue) / 100;
+
     fetch(`/api/v1/settings?api_key=${this.apiKey}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         settings: {
-          route_opacity: event.target.route_opacity.value,
+          route_opacity: decimalOpacity.toString(),
           fog_of_war_meters: event.target.fog_of_war_meters.value,
           fog_of_war_threshold: event.target.fog_of_war_threshold.value,
           meters_between_routes: event.target.meters_between_routes.value,
@@ -940,6 +945,7 @@ export default class extends BaseController {
 
       // Update the local settings
       this.userSettings = { ...this.userSettings, ...newSettings };
+      // Store the value as decimal internally, but display as percentage in UI
       this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
       this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
 

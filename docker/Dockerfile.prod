@@ -1,4 +1,4 @@
-FROM ruby:3.4.1-alpine
+FROM ruby:3.4.1-slim
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
@@ -7,23 +7,34 @@ ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 ENV RAILS_ENV=production
 
-# Install dependencies for application
-RUN apk -U add --no-cache \
-    build-base \
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    wget \
+    build-essential \
     git \
-    postgresql-dev \
     postgresql-client \
+    libpq-dev \
     libxml2-dev \
     libxslt-dev \
-    nodejs \
-    yarn \
+    libyaml-dev \
+    libgeos-dev libgeos++-dev \
     imagemagick \
     tzdata \
+    nodejs \
+    yarn \
     less \
-    yaml-dev \
-    gcompat \
-    geos \
-    && mkdir -p $APP_PATH
+    libjemalloc2 libjemalloc-dev \
+    && mkdir -p $APP_PATH \
+    && rm -rf /var/lib/apt/lists/*
+
+# Use jemalloc with check for architecture
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+    echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
+    else \
+    echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
+    fi
+
+# Enable YJIT
+ENV RUBY_YJIT_ENABLE=1
 
 # Update gem system and install bundler
 RUN gem update --system 3.6.2 \

@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'prometheus_exporter/client'
 
-RSpec.describe Maps::TileUsage::Track do
+RSpec.describe Metrics::Maps::TileUsage::Track do
   describe '#call' do
     subject(:track) { described_class.new(user_id, tile_count).call }
 

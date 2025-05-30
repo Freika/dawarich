@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Maps::TileUsage::Track
+class Metrics::Maps::TileUsage::Track
   def initialize(user_id, count = 1)
     @user_id = user_id
     @count = count
