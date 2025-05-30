@@ -4,8 +4,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.26.8 - 2025-05-30
 
-# 0.26.1 - 2025-05-15
+## Fixed
+
+- Enable caching in development for the docker image.
+
+
+# 0.26.7 - 2025-05-29
+
+## Fixed
+
+- Popups now showing distance in the correct distance unit. #1258
+
+## Added
+
+- Bunch of system tests to cover map interactions.
+
+
+# 0.26.6 - 2025-05-22
+
+## Added
+
+- armv8 to docker build. #1249
+
+## Changed
+
+- Points are now being created in the `points` queue. #1243
+- Route opacity is now being displayed as percentage in the map settings. #462 #1224
+- Exported GeoJSON file now contains coordinates as floats instead of strings, as per RFC 7946. #762
+- Fog of war now can be set to 200 meter per point. #630
+# 0.26.5 - 2025-05-20
+
+## Fixed
+
+- Wget is back to fix healthchecks. #1241 #1231
+- Dockerfile.prod is now using slim image. #1245
+- Dockerfiles now use jemalloc with check for architecture. #1235
+
+# 0.26.4 - 2025-05-19
+
+## Changed
+
+- Docker image is now using slim image to introduce some memory optimizations.
+- The trip page now looks a bit nicer.
+- The "Yesterday" button on the map page was changed to "Today". #1215
+- The "Create Import" button now disabled until files are uploaded.
+
+# 0.26.3 - 2025-05-18
+
+## Fixed
+
+- Fixed a bug where default distance unit was not being set for users. #1206
+
+
+# 0.26.2 - 2025-05-18
+
+## Fixed
+
+- Seeds are now working properly. #1207
+- Fixed a bug where France flag was not being displayed correctly. #1204
+- Fix blank map page caused by empty default distance unit. Default distance unit is now kilometers and can be changed in Settings -> Maps. #1206
+
+
+# 0.26.1 - 2025-05-18
 
 ## Geodata on demand
 

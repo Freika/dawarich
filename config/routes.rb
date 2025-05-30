@@ -6,7 +6,6 @@ Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
-  mount MissionControl::Jobs::Engine, at: '/jobs' # Protec just as sidekiq
 
   unless DawarichSettings.self_hosted?
     Sidekiq::Web.use(Rack::Auth::Basic) do |username, password|
@@ -26,10 +25,11 @@ Rails.application.routes.draw do
       (u.admin? && ENV['SIDEKIQ_USERNAME'].present? && ENV['SIDEKIQ_PASSWORD'].present?)
   } do
     mount Sidekiq::Web => '/sidekiq'
+    mount MissionControl::Jobs::Engine, at: '/jobs'
   end
 
-  # We want to return a nice error message if the user is not authorized to access Sidekiq
-  match '/sidekiq' => redirect { |_, request|
+  # We want to return a nice error message if the user is not authorized to access Sidekiq or Jobs
+  match %w[/sidekiq /jobs] => redirect { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
                         '/'
                       }, via: :get

@@ -45,7 +45,9 @@ RUN bundle config set --local path 'vendor/bundle' \
 # Copy the rest of the application
 COPY ../. ./
 
-# Copy entrypoint scripts and grant execution permissions
+# Create caching-dev.txt file to enable Rails caching in development
+RUN mkdir -p $APP_PATH/tmp && touch $APP_PATH/tmp/caching-dev.txt
+
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
 

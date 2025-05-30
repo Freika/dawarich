@@ -15,25 +15,19 @@ development:
     database: <%= ENV['DATABASE_NAME'] || 'dawarich_development' %>
   queue:
     <<: *default
-    database: <%= ENV['DATABASE_QUEUE_NAME'] || 'dawarich_development_queue' %>
+    database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_development_queue' %>
+    password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
     migrations_paths: db/queue_migrate
-  cable:
+  cache:
     <<: *default
-    database: <%= ENV['DATABASE_CABLE_NAME'] || 'dawarich_development_cable' %>
-    migrations_paths: db/cable_migrate
+    database: <%= ENV['CACHE_DATABASE_NAME'] || 'dawarich_development_cache' %>
+    password: <%= ENV['CACHE_DATABASE_PASSWORD'] %>
+    migrations_paths: db/cache_migrate
 
 test:
   primary:
     <<: *default
     database: <%= ENV['DATABASE_NAME'] || 'dawarich_test' %>
-  queue:
-    <<: *default
-    database: <%= ENV['DATABASE_QUEUE_NAME'] || 'dawarich_test_queue' %>
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *default
-    database: <%= ENV['DATABASE_CABLE_NAME'] || 'dawarich_test_cable' %>
-    migrations_paths: db/cable_migrate
 
 production:
   primary:
@@ -41,22 +35,37 @@ production:
     database: <%= ENV['DATABASE_NAME'] || 'dawarich_production' %>
   queue:
     <<: *default
-    database: <%= ENV['DATABASE_QUEUE_NAME'] || 'dawarich_production_queue' %>
+    database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_production_queue' %>
+    password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *default
-    database: <%= ENV['DATABASE_CABLE_NAME'] || 'dawarich_production_cable' %>
+    database: <%= ENV['CABLE_DATABASE_NAME'] || 'dawarich_production_cable' %>
+    password: <%= ENV['CABLE_DATABASE_PASSWORD'] %>
     migrations_paths: db/cable_migrate
+  cache:
+    <<: *default
+    database: <%= ENV['CACHE_DATABASE_NAME'] || 'dawarich_production_cache' %>
+    password: <%= ENV['CACHE_DATABASE_PASSWORD'] %>
+    migrations_paths: db/cache_migrate
 
 staging:
   primary:
     <<: *default
     database: <%= ENV['DATABASE_NAME'] || 'dawarich_staging' %>
+    password: <%= ENV['DATABASE_PASSWORD'] %>
+  cache:
+    <<: *default
+    database: <%= ENV['CACHE_DATABASE_NAME'] || 'dawarich_staging_cache' %>
+    password: <%= ENV['CACHE_DATABASE_PASSWORD'] %>
+    migrations_paths: db/cache_migrate
   queue:
     <<: *default
-    database: <%= ENV['DATABASE_QUEUE_NAME'] || 'dawarich_staging_queue' %>
+    database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_staging_queue' %>
+    password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *default
-    database: <%= ENV['DATABASE_CABLE_NAME'] || 'dawarich_staging_cable' %>
+    database: <%= ENV['CABLE_DATABASE_NAME'] || 'dawarich_staging_cable' %>
+    password: <%= ENV['CABLE_DATABASE_PASSWORD'] %>
     migrations_paths: db/cable_migrate
