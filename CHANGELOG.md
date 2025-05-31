@@ -14,6 +14,27 @@ Moving to SolidQueue and SolidCache will require creating new SQLite databases, 
 
 Background jobs interface is now available at `/jobs` page.
 
+Please, update your `docker-compose.yml` and add the following:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
+      - dawarich_storage:/var/app/storage
++     - dawarich_db_data:/dawarich_db_data
+...
+    environment:
+      ...
+      DATABASE_NAME: dawarich_development
+      # SQLite database paths for secondary databases
++     QUEUE_DATABASE_PATH: /dawarich_db_data/dawarich_development_queue.sqlite3
++     CACHE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cache.sqlite3
++     CABLE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cable.sqlite3
+```
+
 
 ## Fixed
 
