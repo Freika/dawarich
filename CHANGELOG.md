@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ⚠️ This release includes a breaking change. ⚠️
 
-This release introduces a new way to run background jobs and cache data. Before updating, make sure your Sidekiq queues (https://your_dawarich_app/sidekiq) are empty.
+Starting 0.27.0, Dawarich is using SolidQueue and SolidCache to run background jobs and cache data. Before updating, make sure your Sidekiq queues (https://your_dawarich_app/sidekiq) are empty.
 
 Moving to SolidQueue and SolidCache will require creating new SQLite databases, which will be created automatically when you start the app. They will be stored in the `dawarich_db_data` volume.
 
@@ -47,7 +47,7 @@ Please, update your `docker-compose.yml` and add the following:
 - SolidCable is now being used as ActionCable adapter.
 - Background jobs are now being run as Puma plugin instead of separate Docker container.
 - The `rc` docker image is now being built for amd64 architecture only to speed up the build process.
-- Deleting an import now works significantly faster.
+- Deleting an import with many points now works significantly faster.
 
 
 
