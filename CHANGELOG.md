@@ -10,14 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 This release introduces a new way to run background jobs and cache data. Before updating, make sure your Sidekiq queues (https://your_dawarich_app/sidekiq) are empty.
 
-Moving to SolidQueue and SolidCache will require creating new databases, which will be created automatically when you start the app. If that didn't happen, you can create them manually and set the following environment variables:
-
-- `QUEUE_DATABASE_NAME` - name of the queue database (default is `dawarich_development_queue`)
-- `QUEUE_DATABASE_PASSWORD` - password for the queue database
-- `CACHE_DATABASE_NAME` - name of the cache database (default is `dawarich_development_cache`)
-- `CACHE_DATABASE_PASSWORD` - password for the cache database
-- `CABLE_DATABASE_NAME` - name of the cable database (default is `dawarich_development_cable`)
-- `CABLE_DATABASE_PASSWORD` - password for the cable database
+Moving to SolidQueue and SolidCache will require creating new SQLite databases, which will be created automatically when you start the app. They will be stored in the `dawarich_db_data` volume.
 
 
 ## Fixed

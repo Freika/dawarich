@@ -34,7 +34,7 @@ export DATABASE_NAME
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
 
-# Function to check and create a database
+# Function to check and create a PostgreSQL database
 create_database() {
   local db_name=$1
   local db_password=$2
@@ -51,49 +51,49 @@ create_database() {
   echo "✅ PostgreSQL database $db_name is ready!"
 }
 
-# Step 1: Create all databases
-echo "Creating all required databases..."
+# Set up SQLite database directory in the volume
+SQLITE_DB_DIR="/dawarich_db_data"
+mkdir -p $SQLITE_DB_DIR
+echo "Created SQLite database directory at $SQLITE_DB_DIR"
 
-# Create primary database
+# Step 1: Database Setup
+echo "Setting up all required databases..."
+
+# Create primary PostgreSQL database
 create_database "$DATABASE_NAME" "$DATABASE_PASSWORD"
 
-# Create additional databases based on environment
-if [ "$RAILS_ENV" = "development" ] || [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
-  # Setup Queue database
-  QUEUE_DATABASE_NAME=${QUEUE_DATABASE_NAME:-${DATABASE_NAME}_queue}
-  QUEUE_DATABASE_PASSWORD=${QUEUE_DATABASE_PASSWORD:-$DATABASE_PASSWORD}
-  export QUEUE_DATABASE_NAME
-  export QUEUE_DATABASE_PASSWORD
-  create_database "$QUEUE_DATABASE_NAME" "$QUEUE_DATABASE_PASSWORD"
+# Setup SQLite databases based on environment
 
-  # Setup Cache database
-  CACHE_DATABASE_NAME=${CACHE_DATABASE_NAME:-${DATABASE_NAME}_cache}
-  CACHE_DATABASE_PASSWORD=${CACHE_DATABASE_PASSWORD:-$DATABASE_PASSWORD}
-  export CACHE_DATABASE_NAME
-  export CACHE_DATABASE_PASSWORD
-  create_database "$CACHE_DATABASE_NAME" "$CACHE_DATABASE_PASSWORD"
-fi
+# Setup Queue database with SQLite
+QUEUE_DATABASE_PATH=${QUEUE_DATABASE_PATH:-"$SQLITE_DB_DIR/${DATABASE_NAME}_queue.sqlite3"}
+export QUEUE_DATABASE_PATH
+echo "✅ SQLite queue database configured at $QUEUE_DATABASE_PATH"
 
-# Setup Cable database (only for production and staging)
+# Setup Cache database with SQLite
+CACHE_DATABASE_PATH=${CACHE_DATABASE_PATH:-"$SQLITE_DB_DIR/${DATABASE_NAME}_cache.sqlite3"}
+export CACHE_DATABASE_PATH
+echo "✅ SQLite cache database configured at $CACHE_DATABASE_PATH"
+
+# Setup Cable database with SQLite (only for production and staging)
 if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
-  CABLE_DATABASE_NAME=${CABLE_DATABASE_NAME:-${DATABASE_NAME}_cable}
-  CABLE_DATABASE_PASSWORD=${CABLE_DATABASE_PASSWORD:-$DATABASE_PASSWORD}
-  export CABLE_DATABASE_NAME
-  export CABLE_DATABASE_PASSWORD
-  create_database "$CABLE_DATABASE_NAME" "$CABLE_DATABASE_PASSWORD"
+  CABLE_DATABASE_PATH=${CABLE_DATABASE_PATH:-"$SQLITE_DB_DIR/${DATABASE_NAME}_cable.sqlite3"}
+  export CABLE_DATABASE_PATH
+  echo "✅ SQLite cable database configured at $CABLE_DATABASE_PATH"
 fi
 
 # Step 2: Run migrations for all databases
 echo "Running migrations for all databases..."
 
-# Run cache and queue migrations first (needed for app initialization)
-if [ "$RAILS_ENV" = "development" ] || [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
-  echo "Running cache database migrations..."
-  bundle exec rails db:migrate:cache
+# Run primary database migrations first (needed before SQLite migrations)
+echo "Running primary database migrations..."
+bundle exec rails db:migrate
 
-  echo "Running queue database migrations..."
-  bundle exec rails db:migrate:queue
-fi
+# Run SQLite database migrations
+echo "Running cache database migrations..."
+bundle exec rails db:migrate:cache
+
+echo "Running queue database migrations..."
+bundle exec rails db:migrate:queue
 
 # Run cable migrations for production/staging
 if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
@@ -101,18 +101,12 @@ if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
   bundle exec rails db:migrate:cable
 fi
 
-# Run primary database migrations
-echo "Running primary database migrations..."
-bundle exec rails db:migrate
-
 # Run data migrations
 echo "Running DATA migrations..."
 bundle exec rake data:migrate
 
-# if [ "$RAILS_ENV" != "production" ]; then
-  echo "Running seeds..."
-  bundle exec rails db:seed
-# fi
+echo "Running seeds..."
+bundle exec rails db:seed
 
 # run passed commands
 bundle exec ${@}

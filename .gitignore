@@ -72,3 +72,5 @@
 /config/credentials/staging.yml.enc
 
 Makefile
+
+/db/*.sqlite3
