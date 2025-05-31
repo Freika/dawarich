@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
-- Enable caching in development for the docker image.
+- Enable caching in development for the docker image to improve performance.
 
 
 # 0.26.7 - 2025-05-29

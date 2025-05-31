@@ -29,7 +29,12 @@ Rails.application.routes.draw do
   end
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq or Jobs
-  match %w[/sidekiq /jobs] => redirect { |_, request|
+  match '/sidekiq' => redirect { |_, request|
+                        request.flash[:error] = 'You are not authorized to perform this action.'
+                        '/'
+                      }, via: :get
+
+  match '/jobs' => redirect { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
                         '/'
                       }, via: :get
