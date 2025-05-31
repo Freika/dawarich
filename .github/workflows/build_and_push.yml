@@ -51,7 +51,24 @@ jobs:
       - name: Set Docker tags
         id: docker_meta
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
+          # Debug output
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_REF_NAME: $GITHUB_REF_NAME"
+
+          # Extract version from GITHUB_REF or use GITHUB_REF_NAME
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$GITHUB_REF_NAME
+          fi
+
+          # Additional safety check - if VERSION is empty, use a default
+          if [ -z "$VERSION" ]; then
+            VERSION="rc"
+          fi
+
+          echo "Using VERSION: $VERSION"
+
           TAGS="freikin/dawarich:${VERSION}"
 
           # Set platforms based on release type
@@ -68,6 +85,9 @@ jobs:
           if [ "${{ github.event.release.prerelease }}" != "true" ]; then
             TAGS="${TAGS},freikin/dawarich:latest"
           fi
+
+          echo "Final TAGS: $TAGS"
+          echo "PLATFORMS: $PLATFORMS"
 
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "platforms=${PLATFORMS}" >> $GITHUB_OUTPUT
