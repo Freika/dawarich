@@ -4,8 +4,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.27.0 - 2025-05-31
 
-# 0.26.7 - 2025-05-26
+⚠️ This release includes a breaking change. ⚠️
+
+Starting 0.27.0, Dawarich is using SolidQueue and SolidCache to run background jobs and cache data. Before updating, make sure your Sidekiq queues (https://your_dawarich_app/sidekiq) are empty.
+
+Moving to SolidQueue and SolidCache will require creating new SQLite databases, which will be created automatically when you start the app. They will be stored in the `dawarich_db_data` volume.
+
+Background jobs interface is now available at `/jobs` page.
+
+Please, update your `docker-compose.yml` and add the following:
+
+```diff
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
+      - dawarich_storage:/var/app/storage
++     - dawarich_db_data:/dawarich_db_data
+...
+    environment:
+      ...
+      DATABASE_NAME: dawarich_development
+      # SQLite database paths for secondary databases
++     QUEUE_DATABASE_PATH: /dawarich_db_data/dawarich_development_queue.sqlite3
++     CACHE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cache.sqlite3
++     CABLE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cable.sqlite3
+```
+
+
+## Fixed
+
+- Enable caching in development for the docker image to improve performance.
+
+## Changed
+
+- SolidCache is now being used for caching instead of Redis.
+- SolidQueue is now being used for background jobs instead of Sidekiq.
+- SolidCable is now being used as ActionCable adapter.
+- Background jobs are now being run as Puma plugin instead of separate Docker container.
+- The `rc` docker image is now being built for amd64 architecture only to speed up the build process.
+- Deleting an import with many points now works significantly faster.
+
+
+
+# 0.26.7 - 2025-05-29
 
 ## Fixed
 

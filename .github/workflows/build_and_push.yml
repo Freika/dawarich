@@ -51,12 +51,34 @@ jobs:
       - name: Set Docker tags
         id: docker_meta
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
+          # Debug output
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_REF_NAME: $GITHUB_REF_NAME"
+
+          # Extract version from GITHUB_REF or use GITHUB_REF_NAME
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$GITHUB_REF_NAME
+          fi
+
+          # Additional safety check - if VERSION is empty, use a default
+          if [ -z "$VERSION" ]; then
+            VERSION="rc"
+          fi
+
+          echo "Using VERSION: $VERSION"
+
           TAGS="freikin/dawarich:${VERSION}"
+
+          # Set platforms based on release type
+          PLATFORMS="linux/amd64,linux/arm64,linux/arm/v8,linux/arm/v7,linux/arm/v6"
 
           # Add :rc tag for pre-releases
           if [ "${{ github.event.release.prerelease }}" = "true" ]; then
             TAGS="${TAGS},freikin/dawarich:rc"
+            # For RC builds, only use amd64
+            PLATFORMS="linux/amd64"
           fi
 
           # Add :latest tag only if release is not a pre-release
@@ -64,7 +86,11 @@ jobs:
             TAGS="${TAGS},freikin/dawarich:latest"
           fi
 
+          echo "Final TAGS: $TAGS"
+          echo "PLATFORMS: $PLATFORMS"
+
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "platforms=${PLATFORMS}" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -74,6 +100,6 @@ jobs:
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64,linux/arm/v8,linux/arm/v7,linux/arm/v6
+          platforms: ${{ steps.docker_meta.outputs.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache

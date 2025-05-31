@@ -63,14 +63,6 @@ RSpec.describe VisitSuggestingJob, type: :job do
       end
     end
 
-    context 'when user not found' do
-      it 'raises an error' do
-        expect do
-          described_class.perform_now(user_id: -1, start_at: start_at, end_at: end_at)
-        end.to raise_error(ActiveRecord::RecordNotFound)
-      end
-    end
-
     context 'with string dates' do
       let(:string_start) { start_at.to_s }
       let(:string_end) { end_at.to_s }

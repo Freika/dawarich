@@ -1,0 +1,34 @@
+periodic_cleanup:
+  class: "Jobs::CleanFinishedJob"
+  queue: default
+  schedule: every month
+
+bulk_stats_calculating_job:
+  class: "BulkStatsCalculatingJob"
+  queue: stats
+  schedule: every hour
+
+area_visits_calculation_scheduling_job:
+  class: "AreaVisitsCalculationSchedulingJob"
+  queue: visit_suggesting
+  schedule: every day at 0:00
+
+visit_suggesting_job:
+  class: "BulkVisitsSuggestingJob"
+  queue: visit_suggesting
+  schedule: every day at 00:05
+
+watcher_job:
+  class: "Import::WatcherJob"
+  queue: imports
+  schedule: every hour
+
+app_version_checking_job:
+  class: "AppVersionCheckingJob"
+  queue: default
+  schedule: every 6 hours
+
+cache_preheating_job:
+  class: "Cache::PreheatingJob"
+  queue: default
+  schedule: every day at 0:00

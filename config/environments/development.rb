@@ -26,18 +26,18 @@ Rails.application.configure do
 
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
+  config.cache_store = :solid_cache_store
+  config.solid_cache.connects_to = { database: { writing: :cache } }
+
   if Rails.root.join('tmp/caching-dev.txt').exist?
     config.action_controller.perform_caching = true
     config.action_controller.enable_fragment_cache_logging = true
 
-    config.cache_store = :redis_cache_store, { url: ENV['REDIS_URL'] }
     config.public_file_server.headers = {
       'Cache-Control' => "public, max-age=#{2.days.to_i}"
     }
   else
     config.action_controller.perform_caching = false
-
-    config.cache_store = :redis_cache_store, { url: ENV['REDIS_URL'] }
   end
 
   config.public_file_server.enabled = true
@@ -68,6 +68,14 @@ Rails.application.configure do
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
 
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.silence_polling = true
+  # :queue is the name of the database connection
+  config.solid_queue.connects_to = { database: { writing: :queue } }
+
+  config.mission_control.jobs.http_basic_auth_enabled = false
+  config.solid_queue.logger = ActiveSupport::Logger.new($stdout)
+
   # Suppress logger output for asset requests.
   config.assets.quiet = true
 
@@ -95,7 +103,7 @@ Rails.application.configure do
   config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'
 
   # Direct logs to STDOUT
-  config.logger = Logger.new($stdout)
+  config.logger = ActiveSupport::Logger.new($stdout)
   config.lograge.enabled = true
   config.lograge.formatter = Lograge::Formatters::Json.new
 

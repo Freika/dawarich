@@ -45,6 +45,7 @@ services:
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
       - dawarich_storage:/var/app/storage
+      - dawarich_db_data:/dawarich_db_data
     networks:
       - dawarich
     ports:
@@ -62,6 +63,10 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
+      # SQLite database paths for secondary databases
+      QUEUE_DATABASE_PATH: /dawarich_db_data/dawarich_development_queue.sqlite3
+      CACHE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cache.sqlite3
+      CABLE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cable.sqlite3
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London

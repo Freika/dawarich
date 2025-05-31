@@ -25,10 +25,16 @@ Rails.application.routes.draw do
       (u.admin? && ENV['SIDEKIQ_USERNAME'].present? && ENV['SIDEKIQ_PASSWORD'].present?)
   } do
     mount Sidekiq::Web => '/sidekiq'
+    mount MissionControl::Jobs::Engine, at: '/jobs'
   end
 
-  # We want to return a nice error message if the user is not authorized to access Sidekiq
+  # We want to return a nice error message if the user is not authorized to access Sidekiq or Jobs
   match '/sidekiq' => redirect { |_, request|
+                        request.flash[:error] = 'You are not authorized to perform this action.'
+                        '/'
+                      }, via: :get
+
+  match '/jobs' => redirect { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
                         '/'
                       }, via: :get

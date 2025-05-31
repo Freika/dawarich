@@ -21,6 +21,7 @@ class Jobs::Create
         raise InvalidJobName, 'Invalid job name'
       end
 
+    # TODO: bulk enqueue reverse geocoding with ActiveJob
     points.find_each(&:async_reverse_geocode)
   end
 end
