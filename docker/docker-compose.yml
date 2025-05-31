@@ -106,7 +106,6 @@ services:
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
       - dawarich_storage:/var/app/storage
-      - dawarich_db_data:/dawarich_db_data
     networks:
       - dawarich
     stdin_open: true

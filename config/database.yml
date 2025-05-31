@@ -26,6 +26,10 @@ development:
     <<: *sqlite_default
     database: <%= ENV['CACHE_DATABASE_PATH'] || 'db/cache.sqlite3' %>
     migrations_paths: db/cache_migrate
+  cable:
+    <<: *sqlite_default
+    database: <%= ENV['CABLE_DATABASE_PATH'] || 'db/cable.sqlite3' %>
+    migrations_paths: db/cable_migrate
 
 test:
   primary:

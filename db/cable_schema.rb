@@ -11,9 +11,6 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[8.0].define(version: 1) do
-  # These are extensions that must be enabled in order to support this database
-  enable_extension "pg_catalog.plpgsql"
-
   create_table "solid_cable_messages", force: :cascade do |t|
     t.binary "channel", null: false
     t.binary "payload", null: false
@@ -22,5 +19,6 @@ ActiveRecord::Schema[8.0].define(version: 1) do
     t.index ["channel"], name: "index_solid_cable_messages_on_channel"
     t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
     t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
+    t.index ["id"], name: "index_solid_cable_messages_on_id", unique: true
   end
 end

@@ -4,7 +4,12 @@
 # to make the web console appear.
 
 development:
-  adapter: async
+  adapter: solid_cable
+  connects_to:
+    database:
+      writing: cable
+  polling_interval: 0.1.seconds
+  message_retention: 1.day
 
 test:
   adapter: test

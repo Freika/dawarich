@@ -6,7 +6,7 @@ default: &default
   workers:
     - queues: "*"
       threads: 3
-      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      processes: <%= ENV['BACKGROUND_PROCESSING_CONCURRENCY'] || ENV.fetch("JOB_CONCURRENCY", 10) %>
       polling_interval: 2
     - queues: imports
       threads: 5

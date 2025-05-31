@@ -12,6 +12,8 @@ This release introduces a new way to run background jobs and cache data. Before 
 
 Moving to SolidQueue and SolidCache will require creating new SQLite databases, which will be created automatically when you start the app. They will be stored in the `dawarich_db_data` volume.
 
+Background jobs interface is now available at `/jobs` page.
+
 
 ## Fixed
 
@@ -23,6 +25,8 @@ Moving to SolidQueue and SolidCache will require creating new SQLite databases, 
 - SolidQueue is now being used for background jobs instead of Sidekiq.
 - SolidCable is now being used as ActionCable adapter.
 - Background jobs are now being run as Puma plugin instead of separate Docker container.
+- The `rc` docker image is now being built for amd64 architecture only to speed up the build process.
+- Deleting an import now works significantly faster.
 
 
 
