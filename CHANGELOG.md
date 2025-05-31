@@ -4,11 +4,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.26.8 - 2025-05-30
+# 0.27.0 - 2025-05-31
+
+⚠️ This release includes a breaking change. ⚠️
+
+This release introduces a new way to run background jobs and cache data. Before updating, make sure your Sidekiq queues (https://your_dawarich_app/sidekiq) are empty.
+
+Moving to SolidQueue and SolidCache will require creating new databases, which will be created automatically when you start the app. If that didn't happen, you can create them manually and set the following environment variables:
+
+- `QUEUE_DATABASE_NAME` - name of the queue database
+- `QUEUE_DATABASE_PASSWORD` - password for the queue database
+- `CACHE_DATABASE_NAME` - name of the cache database
+- `CACHE_DATABASE_PASSWORD` - password for the cache database
+- `CABLE_DATABASE_NAME` - name of the cable database
+- `CABLE_DATABASE_PASSWORD` - password for the cable database
+
 
 ## Fixed
 
 - Enable caching in development for the docker image to improve performance.
+
+## Changed
+
+- SolidCache is now being used for caching instead of Redis.
+- SolidQueue is now being used for background jobs instead of Sidekiq.
+- SolidCable is now being used as ActionCable adapter.
+- Background jobs are now being run as Puma plugin instead of separate Docker container.
+
 
 
 # 0.26.7 - 2025-05-29
