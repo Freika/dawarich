@@ -232,7 +232,17 @@ GEM
     mini_mime (1.1.5)
     mini_portile2 (2.8.9)
     minitest (5.25.5)
-    msgpack (1.8.0)
+    mission_control-jobs (1.0.2)
+      actioncable (>= 7.1)
+      actionpack (>= 7.1)
+      activejob (>= 7.1)
+      activerecord (>= 7.1)
+      importmap-rails (>= 1.2.1)
+      irb (~> 1.13)
+      railties (>= 7.1)
+      stimulus-rails
+      turbo-rails
+    msgpack (1.7.3)
     multi_json (1.15.0)
     multi_xml (0.7.1)
       bigdecimal (~> 3.1)
@@ -442,6 +452,22 @@ GEM
       simplecov_json_formatter (~> 0.1)
     simplecov-html (0.13.1)
     simplecov_json_formatter (0.1.4)
+    solid_cable (3.0.8)
+      actioncable (>= 7.2)
+      activejob (>= 7.2)
+      activerecord (>= 7.2)
+      railties (>= 7.2)
+    solid_cache (1.0.7)
+      activejob (>= 7.2)
+      activerecord (>= 7.2)
+      railties (>= 7.2)
+    solid_queue (1.1.5)
+      activejob (>= 7.1)
+      activerecord (>= 7.1)
+      concurrent-ruby (>= 1.3.1)
+      fugit (~> 1.11.0)
+      railties (>= 7.1)
+      thor (~> 1.3.1)
     sprockets (4.2.1)
       concurrent-ruby (~> 1.0)
       rack (>= 2.2.4, < 4)
@@ -532,6 +558,7 @@ DEPENDENCIES
   jwt
   kaminari
   lograge
+  mission_control-jobs
   oj
   pg
   prometheus_exporter
@@ -558,6 +585,9 @@ DEPENDENCIES
   sidekiq-cron
   sidekiq-limit_fetch
   simplecov
+  solid_cable (~> 3.0)
+  solid_cache (= 1.0.7)
+  solid_queue (~> 1.1)
   sprockets-rails
   stackprof
   stimulus-rails
