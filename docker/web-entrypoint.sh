@@ -51,10 +51,13 @@ create_database() {
   echo "✅ PostgreSQL database $db_name is ready!"
 }
 
-# Create and check primary database
+# Step 1: Create all databases
+echo "Creating all required databases..."
+
+# Create primary database
 create_database "$DATABASE_NAME" "$DATABASE_PASSWORD"
 
-# Run migrations for additional databases first
+# Create additional databases based on environment
 if [ "$RAILS_ENV" = "development" ] || [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
   # Setup Queue database
   QUEUE_DATABASE_NAME=${QUEUE_DATABASE_NAME:-${DATABASE_NAME}_queue}
@@ -63,18 +66,12 @@ if [ "$RAILS_ENV" = "development" ] || [ "$RAILS_ENV" = "production" ] || [ "$RA
   export QUEUE_DATABASE_PASSWORD
   create_database "$QUEUE_DATABASE_NAME" "$QUEUE_DATABASE_PASSWORD"
 
-  echo "Running queue database migrations..."
-  bundle exec rails db:migrate:queue
-
   # Setup Cache database
   CACHE_DATABASE_NAME=${CACHE_DATABASE_NAME:-${DATABASE_NAME}_cache}
   CACHE_DATABASE_PASSWORD=${CACHE_DATABASE_PASSWORD:-$DATABASE_PASSWORD}
   export CACHE_DATABASE_NAME
   export CACHE_DATABASE_PASSWORD
   create_database "$CACHE_DATABASE_NAME" "$CACHE_DATABASE_PASSWORD"
-
-  echo "Running cache database migrations..."
-  bundle exec rails db:migrate:cache
 fi
 
 # Setup Cable database (only for production and staging)
@@ -84,13 +81,28 @@ if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
   export CABLE_DATABASE_NAME
   export CABLE_DATABASE_PASSWORD
   create_database "$CABLE_DATABASE_NAME" "$CABLE_DATABASE_PASSWORD"
+fi
 
+# Step 2: Run migrations for all databases
+echo "Running migrations for all databases..."
+
+# Run cache and queue migrations first (needed for app initialization)
+if [ "$RAILS_ENV" = "development" ] || [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
+  echo "Running cache database migrations..."
+  bundle exec rails db:migrate:cache
+
+  echo "Running queue database migrations..."
+  bundle exec rails db:migrate:queue
+fi
+
+# Run cable migrations for production/staging
+if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
   echo "Running cable database migrations..."
   bundle exec rails db:migrate:cable
 fi
 
-# Run database migrations for primary database
-echo "PostgreSQL is ready. Running primary database migrations..."
+# Run primary database migrations
+echo "Running primary database migrations..."
 bundle exec rails db:migrate
 
 # Run data migrations
