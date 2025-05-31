@@ -62,6 +62,12 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
+      QUEUE_DATABASE_NAME: dawarich_development_queue
+      QUEUE_DATABASE_PASSWORD: password
+      CACHE_DATABASE_NAME: dawarich_development_cache
+      CACHE_DATABASE_PASSWORD: password
+      CABLE_DATABASE_NAME: dawarich_development_cable
+      CABLE_DATABASE_PASSWORD: password
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London

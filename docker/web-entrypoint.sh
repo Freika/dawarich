@@ -24,6 +24,13 @@ else
   DATABASE_NAME=${DATABASE_NAME}
 fi
 
+# Export main database variables to ensure they're available
+export DATABASE_HOST
+export DATABASE_PORT
+export DATABASE_USERNAME
+export DATABASE_PASSWORD
+export DATABASE_NAME
+
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
 
@@ -47,28 +54,43 @@ create_database() {
 # Create and check primary database
 create_database "$DATABASE_NAME" "$DATABASE_PASSWORD"
 
-# Handle additional databases based on environment
+# Run migrations for additional databases first
 if [ "$RAILS_ENV" = "development" ] || [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
   # Setup Queue database
   QUEUE_DATABASE_NAME=${QUEUE_DATABASE_NAME:-${DATABASE_NAME}_queue}
   QUEUE_DATABASE_PASSWORD=${QUEUE_DATABASE_PASSWORD:-$DATABASE_PASSWORD}
+  export QUEUE_DATABASE_NAME
+  export QUEUE_DATABASE_PASSWORD
   create_database "$QUEUE_DATABASE_NAME" "$QUEUE_DATABASE_PASSWORD"
+
+  echo "Running queue database migrations..."
+  bundle exec rails db:migrate:queue
 
   # Setup Cache database
   CACHE_DATABASE_NAME=${CACHE_DATABASE_NAME:-${DATABASE_NAME}_cache}
   CACHE_DATABASE_PASSWORD=${CACHE_DATABASE_PASSWORD:-$DATABASE_PASSWORD}
+  export CACHE_DATABASE_NAME
+  export CACHE_DATABASE_PASSWORD
   create_database "$CACHE_DATABASE_NAME" "$CACHE_DATABASE_PASSWORD"
+
+  echo "Running cache database migrations..."
+  bundle exec rails db:migrate:cache
 fi
 
 # Setup Cable database (only for production and staging)
 if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
   CABLE_DATABASE_NAME=${CABLE_DATABASE_NAME:-${DATABASE_NAME}_cable}
   CABLE_DATABASE_PASSWORD=${CABLE_DATABASE_PASSWORD:-$DATABASE_PASSWORD}
+  export CABLE_DATABASE_NAME
+  export CABLE_DATABASE_PASSWORD
   create_database "$CABLE_DATABASE_NAME" "$CABLE_DATABASE_PASSWORD"
+
+  echo "Running cable database migrations..."
+  bundle exec rails db:migrate:cable
 fi
 
-# Run database migrations
-echo "PostgreSQL is ready. Running database migrations..."
+# Run database migrations for primary database
+echo "PostgreSQL is ready. Running primary database migrations..."
 bundle exec rails db:migrate
 
 # Run data migrations
