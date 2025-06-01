@@ -9,7 +9,10 @@ class Imports::Destroy
   end
 
   def call
-    @import.destroy!
+    ActiveRecord::Base.transaction do
+      @import.points.delete_all
+      @import.destroy!
+    end
 
     Stats::BulkCalculator.new(@user.id).call
   end

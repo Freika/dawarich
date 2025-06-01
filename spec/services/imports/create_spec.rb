@@ -55,16 +55,12 @@ RSpec.describe Imports::Create do
 
       context 'when import is successful' do
         it 'schedules stats creating' do
-          Sidekiq::Testing.inline! do
-            expect { service.call }.to \
-              have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
-          end
+          expect { service.call }.to \
+            have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
         end
 
         it 'schedules visit suggesting' do
-          Sidekiq::Testing.inline! do
-            expect { service.call }.to have_enqueued_job(VisitSuggestingJob)
-          end
+          expect { service.call }.to have_enqueued_job(VisitSuggestingJob)
         end
       end
 

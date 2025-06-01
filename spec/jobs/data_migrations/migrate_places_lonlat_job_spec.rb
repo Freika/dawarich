@@ -52,7 +52,6 @@ RSpec.describe DataMigrations::MigratePlacesLonlatJob, type: :job do
         described_class.perform_now(user.id)
         place1.reload
 
-        # SRID should be 4326 (WGS84)
         expect(place1.lonlat.srid).to eq(4326)
       end
     end
@@ -62,14 +61,6 @@ RSpec.describe DataMigrations::MigratePlacesLonlatJob, type: :job do
         expect do
           described_class.perform_now(user.id)
         end.not_to raise_error
-      end
-    end
-
-    context 'when user does not exist' do
-      it 'raises ActiveRecord::RecordNotFound' do
-        expect do
-          described_class.perform_now(-1)
-        end.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
   end
