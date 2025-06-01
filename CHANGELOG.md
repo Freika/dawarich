@@ -4,7 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.27.0 - 2025-05-31
+# 0.27.1 - 2025-06-01
+
+## Fixed
+
+- Cache jobs are now being scheduled correctly after app start.
+- `countries.geojson` now have fixed alpha codes for France and Norway
+
+
+
+# 0.27.0 - 2025-06-01
 
 ⚠️ This release includes a breaking change. ⚠️
 
