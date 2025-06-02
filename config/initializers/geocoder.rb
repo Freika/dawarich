@@ -3,7 +3,7 @@
 settings = {
   timeout: 5,
   units: :km,
-  cache: Redis.new,
+  cache: Geocoder::CacheStore::Generic.new(Rails.cache, {}),
   always_raise: :all,
   use_https: PHOTON_API_USE_HTTPS,
   http_headers: { 'User-Agent' => "Dawarich #{APP_VERSION} (https://dawarich.app)" },

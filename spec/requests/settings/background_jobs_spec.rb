@@ -90,23 +90,6 @@ RSpec.describe '/settings/background_jobs', type: :request do
             end
           end
         end
-
-        describe 'DELETE /destroy' do
-          it 'clears the Sidekiq queue' do
-            queue = instance_double(Sidekiq::Queue)
-            allow(Sidekiq::Queue).to receive(:new).and_return(queue)
-
-            expect(queue).to receive(:clear)
-
-            delete settings_background_job_url('queue_name')
-          end
-
-          it 'redirects to the settings_background_jobs list' do
-            delete settings_background_job_url('queue_name')
-
-            expect(response).to redirect_to(settings_background_jobs_url)
-          end
-        end
       end
     end
   end
@@ -185,26 +168,6 @@ RSpec.describe '/settings/background_jobs', type: :request do
             expect(response).to redirect_to(root_url)
             expect(flash[:notice]).to eq('You are not authorized to perform this action.')
           end
-        end
-      end
-
-      describe 'DELETE /destroy' do
-        it 'redirects to root page' do
-          delete settings_background_job_url('queue_name')
-
-          expect(response).to redirect_to(root_url)
-          expect(flash[:notice]).to eq('You are not authorized to perform this action.')
-        end
-      end
-
-      context 'when user is an admin' do
-        before { sign_in create(:user, :admin) }
-
-        it 'redirects to root page' do
-          get settings_background_jobs_url
-
-          expect(response).to redirect_to(root_url)
-          expect(flash[:notice]).to eq('You are not authorized to perform this action.')
         end
       end
     end

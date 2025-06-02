@@ -1,21 +1,6 @@
 networks:
   dawarich:
 services:
-  dawarich_redis:
-    image: redis:7.4-alpine
-    container_name: dawarich_redis
-    command: redis-server
-    networks:
-      - dawarich
-    volumes:
-      - dawarich_redis_data:/var/shared/redis
-    restart: always
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
   dawarich_db:
     image: postgis/postgis:17-3.5-alpine
     shm_size: 1G
@@ -54,7 +39,6 @@ services:
     restart: on-failure
     environment:
       RAILS_ENV: production
-      REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
       DATABASE_PORT: 5432
       DATABASE_USERNAME: postgres
@@ -85,66 +69,6 @@ services:
       dawarich_db:
         condition: service_healthy
         restart: true
-      dawarich_redis:
-        condition: service_healthy
-        restart: true
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'    # Limit CPU usage to 50% of one core
-          memory: '4G'    # Limit memory usage to 2GB
-  dawarich_sidekiq:
-    image: dawarich:prod
-    container_name: dawarich_sidekiq
-    volumes:
-      - dawarich_public:/var/app/public
-      - dawarich_watched:/var/app/tmp/imports/watched
-      - dawarich_storage:/var/app/storage
-    networks:
-      - dawarich
-    stdin_open: true
-    tty: true
-    entrypoint: sidekiq-entrypoint.sh
-    command: ['bundle', 'exec', 'sidekiq']
-    restart: on-failure
-    environment:
-      RAILS_ENV: production
-      REDIS_URL: redis://dawarich_redis:6379/0
-      DATABASE_HOST: dawarich_db
-      DATABASE_PORT: 5432
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_production
-      APPLICATION_HOSTS: localhost,::1,127.0.0.1
-      BACKGROUND_PROCESSING_CONCURRENCY: 10
-      APPLICATION_PROTOCOL: http
-      PROMETHEUS_EXPORTER_ENABLED: false
-      PROMETHEUS_EXPORTER_HOST: dawarich_app
-      PROMETHEUS_EXPORTER_PORT: 9394
-      SECRET_KEY_BASE: 1234567890
-      RAILS_LOG_TO_STDOUT: "true"
-      STORE_GEODATA: "true"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "5"
-    healthcheck:
-      test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep $${HOSTNAME}" ]
-      interval: 10s
-      retries: 30
-      start_period: 30s
-      timeout: 10s
-    depends_on:
-      dawarich_db:
-        condition: service_healthy
-        restart: true
-      dawarich_redis:
-        condition: service_healthy
-        restart: true
-      dawarich_app:
-        condition: service_healthy
-        restart: true
     deploy:
       resources:
         limits:
@@ -153,7 +77,6 @@ services:
 
 volumes:
   dawarich_db_data:
-  dawarich_redis_data:
   dawarich_public:
   dawarich_watched:
   dawarich_storage:

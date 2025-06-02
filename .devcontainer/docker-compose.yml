@@ -19,7 +19,6 @@ services:
     tty: true
     environment:
       RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
       DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
@@ -31,21 +30,6 @@ services:
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
-  dawarich_redis:
-    image: redis:7.4-alpine
-    container_name: dawarich_redis
-    command: redis-server
-    networks:
-      - dawarich
-    volumes:
-      - dawarich_shared:/data
-    restart: always
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
   dawarich_db:
     image: postgis/postgis:17-3.5-alpine
     container_name: dawarich_db
