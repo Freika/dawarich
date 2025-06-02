@@ -6,7 +6,7 @@
 
 - Kubernetes cluster and basic kubectl knowledge.
 - Some persistent storage class prepared, in this example, Longhorn.
-- Working Postgres instances. In this example Postgres lives in 'db' namespace.
+- Working Postgres instance. In this example Postgres lives in 'db' namespace.
 - Ngingx ingress controller with Letsencrypt integeation.
 - This example uses 'example.com' as a domain name, you want to change it to your own.
 - This will work on IPv4 and IPv6 Single Stack clusters, as well as Dual Stack deployments.

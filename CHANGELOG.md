@@ -8,6 +8,90 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 You can now safely remove Redis and Sidekiq from your `docker-compose.yml` file, both containers, related volumes, environment variables and container dependencies.
 
+```diff
+services:
+- dawarich_redis:
+-   image: redis:7.0-alpine
+-   container_name: dawarich_redis
+-   command: redis-server
+-   networks:
+-     - dawarich
+-   volumes:
+-     - dawarich_shared:/data
+-   restart: always
+-   healthcheck:
+-     test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+-     interval: 10s
+-     retries: 5
+-     start_period: 30s
+-     timeout: 10s
+...
+  dawarich_app:
+    image: freikin/dawarich:latest
+    environment:
+      RAILS_ENV: development
+-     REDIS_URL: redis://dawarich_redis:6379/0
+...
+    depends_on:
+      dawarich_db:
+        condition: service_healthy
+        restart: true
+-     dawarich_redis:
+-       condition: service_healthy
+-       restart: true
+...
+- dawarich_sidekiq:
+-   image: freikin/dawarich:latest
+-   container_name: dawarich_sidekiq
+-   volumes:
+-     - dawarich_public:/var/app/public
+-     - dawarich_watched:/var/app/tmp/imports/watched
+-     - dawarich_storage:/var/app/storage
+-   networks:
+-     - dawarich
+-   stdin_open: true
+-   tty: true
+-   entrypoint: sidekiq-entrypoint.sh
+-   command: ['sidekiq']
+-   restart: on-failure
+-   environment:
+-     RAILS_ENV: development
+-     REDIS_URL: redis://dawarich_redis:6379/0
+-     DATABASE_HOST: dawarich_db
+-     DATABASE_USERNAME: postgres
+-     DATABASE_PASSWORD: password
+-     DATABASE_NAME: dawarich_development
+-     APPLICATION_HOSTS: localhost
+-     BACKGROUND_PROCESSING_CONCURRENCY: 10
+-     APPLICATION_PROTOCOL: http
+-     PROMETHEUS_EXPORTER_ENABLED: false
+-     PROMETHEUS_EXPORTER_HOST: dawarich_app
+-     PROMETHEUS_EXPORTER_PORT: 9394
+-     SELF_HOSTED: "true"
+-     STORE_GEODATA: "true"
+-   logging:
+-     driver: "json-file"
+-     options:
+-       max-size: "100m"
+-       max-file: "5"
+-   healthcheck:
+-     test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep $${HOSTNAME}" ]
+-     interval: 10s
+-     retries: 30
+-     start_period: 30s
+-     timeout: 10s
+-   depends_on:
+-     dawarich_db:
+-       condition: service_healthy
+-       restart: true
+-     dawarich_redis:
+-       condition: service_healthy
+-       restart: true
+-     dawarich_app:
+-       condition: service_healthy
+-       restart: true
+```
+
 ## Removed
 
 - Redis and Sidekiq.
