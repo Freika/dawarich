@@ -110,10 +110,4 @@ RSpec.describe VisitSuggestingJob, type: :job do
       expect(described_class.queue_name).to eq('visit_suggesting')
     end
   end
-
-  describe 'sidekiq options' do
-    it 'has retry disabled' do
-      expect(described_class.sidekiq_options_hash['retry']).to be false
-    end
-  end
 end

@@ -7,12 +7,6 @@ Now you can create/prepare the Database (this need to be done once):
 bundle exec rails db:prepare
 ```
 
-Afterwards you can run sidekiq:
-```bash
-bundle exec sidekiq
-
-```
-
 And in a second terminal the dawarich-app:
 ```bash
 bundle exec bin/dev

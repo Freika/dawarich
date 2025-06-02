@@ -17,17 +17,6 @@ dawarich_app:
       APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
 ```
 
-```yaml
-dawarich_sidekiq:
-    image: freikin/dawarich:latest
-    container_name: dawarich_sidekiq
-    ...
-    environment:
-      ...
-      APPLICATION_HOSTS: "yourhost.com,www.yourhost.com,127.0.0.1" <-- Edit this
-      ...
-```
-
 For a Synology install, refer to **[Synology Install Tutorial](How_to_install_Dawarich_on_Synology.md)**. In this page, it is explained how to set the APPLICATION_HOSTS environment variable.
 
 ### Virtual Host

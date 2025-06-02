@@ -4,7 +4,6 @@
 # with the default timespan of 1 day.
 class BulkVisitsSuggestingJob < ApplicationJob
   queue_as :visit_suggesting
-  sidekiq_options retry: false
 
   # Passing timespan of more than 3 years somehow results in duplicated Places
   def perform(start_at: 1.day.ago.beginning_of_day, end_at: 1.day.ago.end_of_day, user_ids: [])

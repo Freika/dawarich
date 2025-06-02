@@ -38,9 +38,6 @@ gem 'sentry-ruby'
 gem 'sentry-rails'
 gem 'sqlite3', '~> 2.6'
 gem 'stackprof'
-gem 'sidekiq'
-gem 'sidekiq-cron'
-gem 'sidekiq-limit_fetch'
 gem 'sprockets-rails'
 gem 'stimulus-rails'
 gem 'strong_migrations'
@@ -67,7 +64,6 @@ end
 
 group :test do
   gem 'capybara'
-  gem 'fakeredis'
   gem 'selenium-webdriver'
   gem 'shoulda-matchers'
   gem 'simplecov', require: false
@@ -80,6 +76,3 @@ group :development do
   gem 'foreman'
   gem 'rubocop-rails', require: false
 end
-
-# Use Redis for Action Cable
-gem 'redis'
