@@ -126,7 +126,7 @@ GEM
       rexml
     crass (1.0.6)
     csv (3.3.4)
-    data_migrate (11.2.0)
+    data_migrate (11.3.0)
       activerecord (>= 6.1)
       railties (>= 6.1)
     database_consistency (2.0.4)
