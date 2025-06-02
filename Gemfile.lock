@@ -125,9 +125,6 @@ GEM
       bigdecimal
       rexml
     crass (1.0.6)
-    cronex (0.15.0)
-      tzinfo
-      unicode (>= 0.4.4.5)
     csv (3.3.4)
     data_migrate (11.2.0)
       activerecord (>= 6.1)
@@ -160,7 +157,6 @@ GEM
     factory_bot_rails (6.4.4)
       factory_bot (~> 6.5)
       railties (>= 5.0.0)
-    fakeredis (0.1.4)
     ffaker (2.24.0)
     foreman (0.88.1)
     fugit (1.11.1)
@@ -348,10 +344,6 @@ GEM
     rdoc (6.14.0)
       erb
       psych (>= 4.0.0)
-    redis (5.4.0)
-      redis-client (>= 0.22.0)
-    redis-client (0.24.0)
-      connection_pool
     regexp_parser (2.10.0)
     reline (0.6.1)
       io-console (~> 0.5)
@@ -433,19 +425,6 @@ GEM
       concurrent-ruby (~> 1.0, >= 1.0.2)
     shoulda-matchers (6.5.0)
       activesupport (>= 5.2.0)
-    sidekiq (7.3.9)
-      base64
-      connection_pool (>= 2.3.0)
-      logger
-      rack (>= 2.2.4)
-      redis-client (>= 0.22.2)
-    sidekiq-cron (2.2.0)
-      cronex (>= 0.13.0)
-      fugit (~> 1.8, >= 1.11.1)
-      globalid (>= 1.0.1)
-      sidekiq (>= 6.5.0)
-    sidekiq-limit_fetch (4.4.1)
-      sidekiq (>= 6)
     simplecov (0.22.0)
       docile (~> 1.1)
       simplecov-html (~> 0.11)
@@ -507,7 +486,6 @@ GEM
       railties (>= 7.1.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
-    unicode (0.4.4.5)
     unicode-display_width (3.1.4)
       unicode-emoji (~> 4.0, >= 4.0.4)
     unicode-emoji (4.0.4)
@@ -553,7 +531,6 @@ DEPENDENCIES
   devise
   dotenv-rails
   factory_bot_rails
-  fakeredis
   ffaker
   foreman
   geocoder
@@ -573,7 +550,6 @@ DEPENDENCIES
   puma
   pundit
   rails (~> 8.0)
-  redis
   rexml
   rgeo
   rgeo-activerecord
@@ -587,9 +563,6 @@ DEPENDENCIES
   sentry-rails
   sentry-ruby
   shoulda-matchers
-  sidekiq
-  sidekiq-cron
-  sidekiq-limit_fetch
   simplecov
   solid_cable (~> 3.0)
   solid_cache (= 1.0.7)

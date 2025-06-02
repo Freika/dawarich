@@ -30,7 +30,7 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Logs**
-If applicable, add logs from containers `dawarich_app` and `dawarich_sidekiq` to help explain your problem.
+If applicable, add logs from the `dawarich_app` container to help explain your problem.
 
 **Additional context**
 Add any other context about the problem here.

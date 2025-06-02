@@ -6,9 +6,7 @@ class Settings::BackgroundJobsController < ApplicationController
     %w[start_immich_import start_photoprism_import].include?(params[:job_name])
   }
 
-  def index
-    @queues = Sidekiq::Queue.all
-  end
+  def index;end
 
   def create
     EnqueueBackgroundJob.perform_later(params[:job_name], current_user.id)
@@ -24,15 +22,5 @@ class Settings::BackgroundJobsController < ApplicationController
       end
 
     redirect_to redirect_path, notice: 'Job was successfully created.'
-  end
-
-  def destroy
-    # Clear all jobs in the queue, params[:id] contains queue name
-    queue = Sidekiq::Queue.new(params[:id])
-
-    queue.clear
-
-    flash.now[:notice] = 'Queue was successfully cleared.'
-    redirect_to settings_background_jobs_path, notice: 'Queue was successfully cleared.'
   end
 end

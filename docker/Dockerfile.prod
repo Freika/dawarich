@@ -61,9 +61,6 @@ RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
 
-COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
-RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
-
 EXPOSE $RAILS_PORT
 
 ENTRYPOINT [ "bundle", "exec" ]

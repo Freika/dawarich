@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.27.2 - 2025-06-02
+
+You can now safely remove Redis and Sidekiq from your `docker-compose.yml` file, both containers, related volumes, environment variables and container dependencies.
+
+## Removed
+
+- Redis and Sidekiq.
+
+
+
 # 0.27.1 - 2025-06-01
 
 ## Fixed

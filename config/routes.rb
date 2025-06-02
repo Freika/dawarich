@@ -1,39 +1,18 @@
 # frozen_string_literal: true
 
-require 'sidekiq/web'
-
 Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
   mount Rswag::Api::Engine => '/api-docs'
   mount Rswag::Ui::Engine => '/api-docs'
 
-  unless DawarichSettings.self_hosted?
-    Sidekiq::Web.use(Rack::Auth::Basic) do |username, password|
-      ActiveSupport::SecurityUtils.secure_compare(
-        ::Digest::SHA256.hexdigest(username),
-        ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_USERNAME'])
-      ) &
-        ActiveSupport::SecurityUtils.secure_compare(
-          ::Digest::SHA256.hexdigest(password),
-          ::Digest::SHA256.hexdigest(ENV['SIDEKIQ_PASSWORD'])
-        )
-    end
-  end
-
   authenticate :user, lambda { |u|
     (u.admin? && DawarichSettings.self_hosted?) ||
       (u.admin? && ENV['SIDEKIQ_USERNAME'].present? && ENV['SIDEKIQ_PASSWORD'].present?)
   } do
-    mount Sidekiq::Web => '/sidekiq'
     mount MissionControl::Jobs::Engine, at: '/jobs'
   end
 
-  # We want to return a nice error message if the user is not authorized to access Sidekiq or Jobs
-  match '/sidekiq' => redirect { |_, request|
-                        request.flash[:error] = 'You are not authorized to perform this action.'
-                        '/'
-                      }, via: :get
-
+  # We want to return a nice error message if the user is not authorized to access Jobs
   match '/jobs' => redirect { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
                         '/'
@@ -41,7 +20,7 @@ Rails.application.routes.draw do
 
   resources :settings, only: :index
   namespace :settings do
-    resources :background_jobs, only: %i[index create destroy]
+    resources :background_jobs, only: %i[index create]
     resources :users, only: %i[index create destroy edit update]
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'

@@ -39,17 +39,15 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <div id="settings_background_jobs" class="min-w-full">
-    <% @queues.each do |queue| %>
-      <div class="card shadow-2xl bg-base-300 p-5 m-5">
-        <h2 class="text-2xl font-bold"><%= queue.name %></h2>
-        <div class="flex justify-between items-center">
-          <p class="text-lg">Jobs in queue: <%= queue.size %></p>
-          <%= link_to 'Clear queue', settings_background_job_path(queue.name), method: :delete, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :delete }, class: 'btn btn-primary' %>
+    <div class="card bg-base-300 w-96 shadow-xl m-5">
+      <div class="card-body">
+        <h2 class="card-title">Background Jobs Dashboard</h2>
+        <p>This will open the background jobs dashboard in a new tab.</p>
+        <div class="card-actions justify-end">
+          <%= link_to 'Open Dashboard', mission_control_jobs_url, target: '_blank', class: 'btn btn-primary' %>
         </div>
       </div>
-    <% end %>
+    </div>
   </div>
 </div>
