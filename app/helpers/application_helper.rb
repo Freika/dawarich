@@ -169,9 +169,9 @@ module ApplicationHelper
   end
 
   def point_speed(speed)
-    return speed if speed.to_i <= 0
-
-    speed * 3.6
+    return "–" if speed.nil? || speed.to_f <= 0
+    speed = speed.to_f
+    "#{(speed * 3.6).round(1)}"
   end
 
   def days_left(active_until)
