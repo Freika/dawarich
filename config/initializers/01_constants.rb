@@ -23,6 +23,8 @@ NOMINATIM_API_HOST = ENV.fetch('NOMINATIM_API_HOST', nil)
 NOMINATIM_API_KEY = ENV.fetch('NOMINATIM_API_KEY', nil)
 NOMINATIM_API_USE_HTTPS = ENV.fetch('NOMINATIM_API_USE_HTTPS', 'true') == 'true'
 
+LOCATIONIQ_API_KEY = ENV.fetch('LOCATIONIQ_API_KEY', nil)
+
 GEOAPIFY_API_KEY = ENV.fetch('GEOAPIFY_API_KEY', nil)
 STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'true') == 'true'
 # /Reverse geocoding settings

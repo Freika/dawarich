@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.27.3 - 2025-06-05
+
+## Changed
+
+- Added `PGSSENCMODE=disable` to the development environment to resolve sqlite3 error. #1326 #1331
+
+## Fixed
+
+- Fixed rake tasks to be run with `bundle exec`. #1320
+- Fixed import name not being set when updating an import. #1269
+
+## Added
+
+- LocationIQ can now be used as a geocoding service. Set `LOCATIONIQ_API_KEY` to configure it. #1334
+
+
 # 0.27.2 - 2025-06-02
 
 You can now safely remove Redis and Sidekiq from your `docker-compose.yml` file, both containers, related volumes, environment variables and container dependencies.
@@ -256,7 +272,7 @@ Also, after updating to this version, Dawarich will start a huge background job 
 
 - Fixed a bug with an attempt to write points with same lonlat and timestamp from iOS app. #1170
 - Importing GeoJSON files now saves velocity if it was stored in either `velocity` or `speed` property.
-- `rake points:migrate_to_lonlat` should work properly now. #1083 #1161
+- `bundle exec rake points:migrate_to_lonlat` should work properly now. #1083 #1161
 - PostGIS extension is now being enabled only if it's not already enabled. #1186
 - Fixed a bug where visits were returning into Suggested state after being confirmed or declined. #848
 - If no points are found for a month during stats calculation, stats are now being deleted instead of being left empty. #1066 #406
@@ -303,7 +319,7 @@ If you have encountered problems with moving to a PostGIS image while still on P
 
 ## Fixed
 
-- `rake points:migrate_to_lonlat` task now works properly.
+- `bundle exec rake points:migrate_to_lonlat` task now works properly.
 
 # 0.25.8 - 2025-04-24
 
@@ -358,7 +374,7 @@ This is optional feature and is not required for the app to work.
 
 ## Changed
 
-- `rake points:migrate_to_lonlat` task now also tries to extract latitude and longitude from `raw_data` column before using `longitude` and `latitude` columns to fill `lonlat` column.
+- `bundle exec rake points:migrate_to_lonlat` task now also tries to extract latitude and longitude from `raw_data` column before using `longitude` and `latitude` columns to fill `lonlat` column.
 - Docker entrypoints are now using `DATABASE_NAME` environment variable to check if Postgres is existing/available.
 - Sidekiq web UI is now protected by basic auth. Use `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD` environment variables to set the credentials.
 
@@ -415,12 +431,12 @@ volumes:
 ```
 
 
-In this release we're changing the way import files are being stored. Previously, they were being stored in the `raw_data` column of the `imports` table. Now, they are being attached to the import record. All new imports will be using the new storage, to migrate existing imports, you can use the `rake imports:migrate_to_new_storage` task. Run it in the container shell.
+In this release we're changing the way import files are being stored. Previously, they were being stored in the `raw_data` column of the `imports` table. Now, they are being attached to the import record. All new imports will be using the new storage, to migrate existing imports, you can use the `bundle exec rake imports:migrate_to_new_storage` task. Run it in the container shell.
 
 This is an optional task, that will not affect your points or other data.
 Big imports might take a while to migrate, so be patient.
 
-Also, you can now migrate existing exports to the new storage using the `rake exports:migrate_to_new_storage` task (in the container shell) or just delete them.
+Also, you can now migrate existing exports to the new storage using the `bundle exec rake exports:migrate_to_new_storage` task (in the container shell) or just delete them.
 
 If your hardware doesn't have enough memory to migrate the imports, you can delete your imports and re-import them.
 
@@ -441,7 +457,7 @@ If your hardware doesn't have enough memory to migrate the imports, you can dele
 ## Fixed
 
 - Moving points on the map now works correctly. #957
-- `rake points:migrate_to_lonlat` task now also reindexes the points table.
+- `bundle exec rake points:migrate_to_lonlat` task now also reindexes the points table.
 - Fixed filling `lonlat` column for old places after reverse geocoding.
 - Deleting an import now correctly recalculates stats.
 - Datetime across the app is now being displayed in human readable format, i.e 26 Dec 2024, 13:49. Hover over the datetime to see the ISO 8601 timestamp.
@@ -451,7 +467,7 @@ If your hardware doesn't have enough memory to migrate the imports, you can dele
 
 ## Fixed
 
-- Fixed missing `rake points:migrate_to_lonlat` task.
+- Fixed missing `bundle exec rake points:migrate_to_lonlat` task.
 
 # 0.25.2 - 2025-03-21
 
@@ -462,9 +478,9 @@ If your hardware doesn't have enough memory to migrate the imports, you can dele
 
 ## Added
 
-- `rake data_cleanup:remove_duplicate_points` task added to remove duplicate points from the database and export them to a CSV file.
-- `rake points:migrate_to_lonlat` task added for convenient manual migration of points to the new `lonlat` column.
-- `rake users:activate` task added to activate all users.
+- `bundle exec rake data_cleanup:remove_duplicate_points` task added to remove duplicate points from the database and export them to a CSV file.
+- `bundle exec rake points:migrate_to_lonlat` task added for convenient manual migration of points to the new `lonlat` column.
+- `bundle exec rake users:activate` task added to activate all users.
 
 ## Changed
 
