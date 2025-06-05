@@ -66,14 +66,17 @@ export function formatDate(timestamp, timezone) {
   return date.toLocaleString(locale, { timeZone: timezone });
 }
 
-export function formatSpeed(speedKmh, unit = 'km') {
+export function formatSpeed(speedMs, unit = 'km') {
+  const speedKmh = speedMs * 3.6;  // Convert m/s to km/h
+
   if (unit === 'km') {
     return `${Math.round(speedKmh)} km/h`;
   } else {
-    const speedMph = speedKmh * 0.621371; // Convert km/h to mph
+    const speedMph = speedKmh * 0.621371;
     return `${Math.round(speedMph)} mph`;
   }
 }
+
 
 export function haversineDistance(lat1, lon1, lat2, lon2, unit = 'km') {
   // Haversine formula to calculate the distance between two points
