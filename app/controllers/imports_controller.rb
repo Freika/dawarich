@@ -83,7 +83,7 @@ class ImportsController < ApplicationController
   end
 
   def import_params
-    params.require(:import).permit(:source, files: [])
+    params.require(:import).permit(:name, :source, files: [])
   end
 
   def create_import_from_signed_id(signed_id)

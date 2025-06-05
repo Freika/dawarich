@@ -177,6 +177,7 @@ RSpec.describe 'Imports', type: :request do
       it 'updates the import' do
         patch import_path(import), params: { import: { name: 'New Name' } }
 
+        expect(import.reload.name).to eq('New Name')
         expect(response).to redirect_to(imports_path)
       end
     end

@@ -23,6 +23,9 @@ elsif NOMINATIM_API_HOST.present?
   settings[:lookup] = :nominatim
   settings[:nominatim] = { use_https: NOMINATIM_API_USE_HTTPS, host: NOMINATIM_API_HOST }
   settings[:api_key] = NOMINATIM_API_KEY if NOMINATIM_API_KEY.present?
+elsif LOCATIONIQ_API_KEY.present?
+  settings[:lookup] = :location_iq
+  settings[:api_key] = LOCATIONIQ_API_KEY
 end
 
 Geocoder.configure(settings)

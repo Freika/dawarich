@@ -9,6 +9,8 @@ ENV RAILS_ENV=development
 ENV SELF_HOSTED=true
 ENV SIDEKIQ_USERNAME=sidekiq
 ENV SIDEKIQ_PASSWORD=password
+# Resolving sqlite3 error
+ENV PGSSENCMODE=disable
 
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \

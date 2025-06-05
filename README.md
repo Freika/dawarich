@@ -51,7 +51,7 @@ You can track your location with the following apps:
 - 🛰️ [OwnTracks](https://dawarich.app/docs/tutorials/track-your-location#owntracks)
 - 🗺️ [GPSLogger](https://dawarich.app/docs/tutorials/track-your-location#gps-logger)
 - 📱 [PhoneTrack](https://dawarich.app/docs/tutorials/track-your-location#phonetrack)
-- 🏡 [Home Assistant](https://dawarich.app/docs/tutorials/track-your-location#homeassistant)
+- 🏡 [Home Assistant](https://dawarich.app/docs/tutorials/track-your-location#home-assistant)
 
 Simply install one of the supported apps on your device and configure it to send location updates to your Dawarich instance.
 
