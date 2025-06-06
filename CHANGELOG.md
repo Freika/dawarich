@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.27.4 - 2025-06-06
+
+## Changed
+
+- SolidQueue is now using PostgreSQL instead of SQLite. Provide `QUEUE_DATABASE_NAME` and `QUEUE_DATABASE_PASSWORD` environment variables to configure it.
+
+```diff
+...
+  dawarich_app:
+    image: freikin/dawarich:latest
+    ...
+    restart: on-failure
+    environment:
+    ...
+      DATABASE_NAME: dawarich_development
++     # PostgreSQL database name for solid_queue
++     QUEUE_DATABASE_NAME: dawarich_development_queue
++     QUEUE_DATABASE_PASSWORD: password
+      # SQLite database paths for cache and cable databases
+-     QUEUE_DATABASE_PATH: /dawarich_db_data/dawarich_development_queue.sqlite3
+      CACHE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cache.sqlite3
+...
+```
+
 # 0.27.3 - 2025-06-05
 
 ## Changed

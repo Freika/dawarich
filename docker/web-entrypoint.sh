@@ -31,6 +31,11 @@ export DATABASE_USERNAME
 export DATABASE_PASSWORD
 export DATABASE_NAME
 
+# Set queue database name
+QUEUE_DATABASE_NAME=${QUEUE_DATABASE_NAME:-"${DATABASE_NAME}_queue"}
+export QUEUE_DATABASE_NAME
+export QUEUE_DATABASE_PASSWORD
+
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
 
@@ -51,7 +56,7 @@ create_database() {
   echo "✅ PostgreSQL database $db_name is ready!"
 }
 
-# Set up SQLite database directory in the volume
+# Set up SQLite database directory in the volume for cache and cable
 SQLITE_DB_DIR="/dawarich_db_data"
 mkdir -p $SQLITE_DB_DIR
 echo "Created SQLite database directory at $SQLITE_DB_DIR"
@@ -62,12 +67,10 @@ echo "Setting up all required databases..."
 # Create primary PostgreSQL database
 create_database "$DATABASE_NAME" "$DATABASE_PASSWORD"
 
-# Setup SQLite databases based on environment
+# Create PostgreSQL queue database for solid_queue
+create_database "$QUEUE_DATABASE_NAME" "$QUEUE_DATABASE_PASSWORD"
 
-# Setup Queue database with SQLite
-QUEUE_DATABASE_PATH=${QUEUE_DATABASE_PATH:-"$SQLITE_DB_DIR/${DATABASE_NAME}_queue.sqlite3"}
-export QUEUE_DATABASE_PATH
-echo "✅ SQLite queue database configured at $QUEUE_DATABASE_PATH"
+# Setup SQLite databases for cache and cable
 
 # Setup Cache database with SQLite
 CACHE_DATABASE_PATH=${CACHE_DATABASE_PATH:-"$SQLITE_DB_DIR/${DATABASE_NAME}_cache.sqlite3"}
@@ -84,16 +87,17 @@ fi
 # Step 2: Run migrations for all databases
 echo "Running migrations for all databases..."
 
-# Run primary database migrations first (needed before SQLite migrations)
+# Run primary database migrations first (needed before other migrations)
 echo "Running primary database migrations..."
 bundle exec rails db:migrate
+
+# Run PostgreSQL queue database migrations
+echo "Running queue database migrations..."
+bundle exec rails db:migrate:queue
 
 # Run SQLite database migrations
 echo "Running cache database migrations..."
 bundle exec rails db:migrate:cache
-
-echo "Running queue database migrations..."
-bundle exec rails db:migrate:queue
 
 # Run cable migrations for production/staging
 if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
