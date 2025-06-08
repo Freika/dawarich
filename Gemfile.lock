@@ -1,3 +1,12 @@
+GIT
+  remote: https://github.com/Freika/geocoder.git
+  revision: 12ac3e659fc5b57c1ffd12f04b8cad2f73d0939c
+  branch: master
+  specs:
+    geocoder (1.8.5)
+      base64 (>= 0.1.0)
+      csv (>= 3.0.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -162,9 +171,6 @@ GEM
     fugit (1.11.1)
       et-orbi (~> 1, >= 1.2.11)
       raabro (~> 1.4)
-    geocoder (1.8.5)
-      base64 (>= 0.1.0)
-      csv (>= 3.0.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
     gpx (1.2.0)
@@ -533,7 +539,7 @@ DEPENDENCIES
   factory_bot_rails
   ffaker
   foreman
-  geocoder
+  geocoder!
   gpx
   groupdate
   httparty

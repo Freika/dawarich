@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 settings = {
+  debug_mode: true,
   timeout: 5,
   units: :km,
   cache: Geocoder::CacheStore::Generic.new(Rails.cache, {}),

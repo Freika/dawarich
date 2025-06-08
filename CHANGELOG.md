@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Fixed a bug where points from Immich and Photoprism did not have lonlat attribute set. #1318
 
+## Changed
+
+- Geocoder is now being installed from a private fork for debugging purposes.
+
 
 # 0.27.4 - 2025-06-06
 

@@ -13,7 +13,7 @@ gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'data_migrate'
 gem 'devise'
-gem 'geocoder'
+gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
 gem 'gpx'
 gem 'groupdate'
 gem 'httparty'
