@@ -60,7 +60,7 @@ create_database() {
 }
 
 # Set up SQLite database directory in the volume for cache and cable
-SQLITE_DB_DIR="/dawarich_db_data"
+SQLITE_DB_DIR="/dawarich_sqlite_data"
 mkdir -p $SQLITE_DB_DIR
 echo "Created SQLite database directory at $SQLITE_DB_DIR"
 
