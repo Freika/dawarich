@@ -49,6 +49,9 @@ services:
       # PostgreSQL database name for solid_queue
       QUEUE_DATABASE_NAME: dawarich_production_queue
       QUEUE_DATABASE_PASSWORD: password
+      QUEUE_DATABASE_USERNAME: postgres
+      QUEUE_DATABASE_HOST: dawarich_db
+      QUEUE_DATABASE_PORT: 5432
       # SQLite database paths for cache and cable databases
       CACHE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_production_cache.sqlite3
       CABLE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_production_cable.sqlite3

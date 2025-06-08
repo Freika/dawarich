@@ -10,6 +10,7 @@ services:
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
       - dawarich_storage:/var/app/storage
+      - dawarich_sqlite_data:/dawarich_sqlite_data
     networks:
       - dawarich
     ports:
@@ -24,8 +25,11 @@ services:
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
       # PostgreSQL database name for solid_queue
-      QUEUE_DATABASE_NAME: dawarich_development_queue
+      QUEUE_DATABASE_HOST: dawarich_db
+      QUEUE_DATABASE_USERNAME: postgres
       QUEUE_DATABASE_PASSWORD: password
+      QUEUE_DATABASE_PORT: 5432
+      QUEUE_DATABASE_NAME: dawarich_development_queue
       # SQLite database paths for cache and cable databases
       CACHE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cache.sqlite3
       CABLE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cable.sqlite3
