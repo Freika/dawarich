@@ -23,6 +23,12 @@ services:
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
+      # PostgreSQL database name for solid_queue
+      QUEUE_DATABASE_NAME: dawarich_development_queue
+      QUEUE_DATABASE_PASSWORD: password
+      # SQLite database paths for cache and cable databases
+      CACHE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cache.sqlite3
+      CABLE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cable.sqlite3
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
@@ -54,3 +60,4 @@ volumes:
   dawarich_public:
   dawarich_watched:
   dawarich_storage:
+  dawarich_sqlite_data:
