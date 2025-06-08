@@ -235,7 +235,7 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
         hoverPopup = L.popup()
             .setLatLng(e.latlng)
             .setContent(popupContent)
-            .openOn(map);
+            .addTo(map);
     }
   }
 
@@ -329,7 +329,7 @@ export function addHighlightOnHover(polylineGroup, map, polylineCoordinates, use
     hoverPopup = L.popup()
         .setLatLng(e.latlng)
         .setContent(popupContent)
-        .openOn(map);
+        .addTo(map);
 
     // Prevent the click event from propagating to the map
     L.DomEvent.stopPropagation(e);
