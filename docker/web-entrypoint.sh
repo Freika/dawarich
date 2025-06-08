@@ -31,8 +31,13 @@ export DATABASE_USERNAME
 export DATABASE_PASSWORD
 export DATABASE_NAME
 
-# Set queue database name
+# Set queue database name and connection parameters with defaults
 QUEUE_DATABASE_NAME=${QUEUE_DATABASE_NAME:-"${DATABASE_NAME}_queue"}
+QUEUE_DATABASE_PASSWORD=${QUEUE_DATABASE_PASSWORD:-"$DATABASE_PASSWORD"}
+QUEUE_DATABASE_USERNAME=${QUEUE_DATABASE_USERNAME:-"$DATABASE_USERNAME"}
+QUEUE_DATABASE_PORT=${QUEUE_DATABASE_PORT:-"$DATABASE_PORT"}
+QUEUE_DATABASE_HOST=${QUEUE_DATABASE_HOST:-"$DATABASE_HOST"}
+
 export QUEUE_DATABASE_NAME
 export QUEUE_DATABASE_PASSWORD
 export QUEUE_DATABASE_USERNAME
@@ -46,13 +51,16 @@ rm -f $APP_PATH/tmp/pids/server.pid
 create_database() {
   local db_name=$1
   local db_password=$2
+  local db_host=$3
+  local db_port=$4
+  local db_username=$5
 
   echo "Attempting to create database $db_name if it doesn't exist..."
-  PGPASSWORD=$db_password createdb -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" "$db_name" 2>/dev/null || echo "Note: Database $db_name may already exist or couldn't be created now"
+  PGPASSWORD=$db_password createdb -h "$db_host" -p "$db_port" -U "$db_username" "$db_name" 2>/dev/null || echo "Note: Database $db_name may already exist or couldn't be created now"
 
   # Wait for the database to become available
   echo "⏳ Waiting for database $db_name to be ready..."
-  until PGPASSWORD=$db_password psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USERNAME" -d "$db_name" -c '\q' 2>/dev/null; do
+  until PGPASSWORD=$db_password psql -h "$db_host" -p "$db_port" -U "$db_username" -d "$db_name" -c '\q' 2>/dev/null; do
     >&2 echo "Postgres database $db_name is unavailable - retrying..."
     sleep 2
   done
@@ -68,10 +76,10 @@ echo "Created SQLite database directory at $SQLITE_DB_DIR"
 echo "Setting up all required databases..."
 
 # Create primary PostgreSQL database
-create_database "$DATABASE_NAME" "$DATABASE_PASSWORD"
+create_database "$DATABASE_NAME" "$DATABASE_PASSWORD" "$DATABASE_HOST" "$DATABASE_PORT" "$DATABASE_USERNAME"
 
 # Create PostgreSQL queue database for solid_queue
-create_database "$QUEUE_DATABASE_NAME" "$QUEUE_DATABASE_PASSWORD"
+create_database "$QUEUE_DATABASE_NAME" "$QUEUE_DATABASE_PASSWORD" "$QUEUE_DATABASE_HOST" "$QUEUE_DATABASE_PORT" "$QUEUE_DATABASE_USERNAME"
 
 # Setup SQLite databases for cache and cable
 
