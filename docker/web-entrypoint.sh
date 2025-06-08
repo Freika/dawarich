@@ -35,6 +35,9 @@ export DATABASE_NAME
 QUEUE_DATABASE_NAME=${QUEUE_DATABASE_NAME:-"${DATABASE_NAME}_queue"}
 export QUEUE_DATABASE_NAME
 export QUEUE_DATABASE_PASSWORD
+export QUEUE_DATABASE_USERNAME
+export QUEUE_DATABASE_PORT
+export QUEUE_DATABASE_HOST
 
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
