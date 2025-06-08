@@ -18,17 +18,25 @@ class Photos::Importer
   end
 
   def create_point(point, index)
-    return 0 if point['latitude'].blank? || point['longitude'].blank? || point['timestamp'].blank?
+    return 0 unless valid?(point)
     return 0 if point_exists?(point, point['timestamp'])
 
     Point.create(
-      lonlat: "POINT(#{point['longitude']} #{point['latitude']})",
-      timestamp:  point['timestamp'],
-      raw_data:   point,
-      import_id:  import.id,
+      lonlat:    point['lonlat'],
+      longitude: point['longitude'],
+      latitude:  point['latitude'],
+      timestamp: point['timestamp'].to_i,
+      raw_data:  point,
+      import_id: import.id,
       user_id:
     )
 
     broadcast_import_progress(import, index)
+  end
+
+  def valid?(point)
+    point['latitude'].present? &&
+      point['longitude'].present? &&
+      point['timestamp'].present?
   end
 end

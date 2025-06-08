@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.27.5 - 2025-06-08
+
+## Fixed
+
+- Fixed a bug where points from Immich and Photoprism did not have lonlat attribute set. #1318
+
+
 # 0.27.4 - 2025-06-06
 
 ⚠️ This release includes a breaking change. ⚠️
