@@ -22,6 +22,9 @@ development:
     <<: *default
     database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_development_queue' %>
     password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
+    username: <%= ENV['QUEUE_DATABASE_USERNAME'] %>
+    port: <%= ENV['QUEUE_DATABASE_PORT'] || '5432' %>
+    host: <%= ENV['QUEUE_DATABASE_HOST'] %>
     migrations_paths: db/queue_migrate
   cache:
     <<: *sqlite_default
@@ -41,6 +44,9 @@ test:
     <<: *default
     database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_test_queue' %>
     password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
+    username: <%= ENV['QUEUE_DATABASE_USERNAME'] %>
+    port: <%= ENV['QUEUE_DATABASE_PORT'] || '5432' %>
+    host: <%= ENV['QUEUE_DATABASE_HOST'] %>
     migrations_paths: db/queue_migrate
 
 production:
@@ -51,6 +57,9 @@ production:
     <<: *default
     database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_production_queue' %>
     password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
+    username: <%= ENV['QUEUE_DATABASE_USERNAME'] %>
+    port: <%= ENV['QUEUE_DATABASE_PORT'] || '5432' %>
+    host: <%= ENV['QUEUE_DATABASE_HOST'] %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *sqlite_default
@@ -70,6 +79,9 @@ staging:
     <<: *default
     database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_staging_queue' %>
     password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
+    username: <%= ENV['QUEUE_DATABASE_USERNAME'] %>
+    port: <%= ENV['QUEUE_DATABASE_PORT'] || '5432' %>
+    host: <%= ENV['QUEUE_DATABASE_HOST'] %>
     migrations_paths: db/queue_migrate
   cache:
     <<: *sqlite_default
