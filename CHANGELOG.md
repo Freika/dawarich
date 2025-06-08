@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - SolidQueue is now using PostgreSQL instead of SQLite. Provide `QUEUE_DATABASE_NAME`, `QUEUE_DATABASE_PASSWORD`, `QUEUE_DATABASE_USERNAME`, `QUEUE_DATABASE_PORT` and `QUEUE_DATABASE_HOST` environment variables to configure it. #1331
-- SQLite databases are now being stored in the `dawarich_sqlite_data` volume. #1361
+- SQLite databases are now being stored in the `dawarich_sqlite_data` volume. #1361 #1357
 
 ```diff
 ...
