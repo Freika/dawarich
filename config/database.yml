@@ -12,16 +12,19 @@ default: &default
 sqlite_default: &sqlite_default
   adapter: sqlite3
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 10 } %>
-  retries: 100
-  default_transaction_mode: IMMEDIATE
+  timeout: 5000
 
 development:
   primary:
     <<: *default
     database: <%= ENV['DATABASE_NAME'] || 'dawarich_development' %>
   queue:
-    <<: *sqlite_default
-    database: <%= ENV['QUEUE_DATABASE_PATH'] || 'db/queue.sqlite3' %>
+    <<: *default
+    database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_development_queue' %>
+    password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
+    username: <%= ENV['QUEUE_DATABASE_USERNAME'] %>
+    port: <%= ENV['QUEUE_DATABASE_PORT'] || '5432' %>
+    host: <%= ENV['QUEUE_DATABASE_HOST'] %>
     migrations_paths: db/queue_migrate
   cache:
     <<: *sqlite_default
@@ -36,14 +39,27 @@ test:
   primary:
     <<: *default
     database: <%= ENV['DATABASE_NAME'] || 'dawarich_test' %>
+    password: <%= ENV['DATABASE_PASSWORD'] %>
+  queue:
+    <<: *default
+    database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_test_queue' %>
+    password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
+    username: <%= ENV['QUEUE_DATABASE_USERNAME'] %>
+    port: <%= ENV['QUEUE_DATABASE_PORT'] || '5432' %>
+    host: <%= ENV['QUEUE_DATABASE_HOST'] %>
+    migrations_paths: db/queue_migrate
 
 production:
   primary:
     <<: *default
     database: <%= ENV['DATABASE_NAME'] || 'dawarich_production' %>
   queue:
-    <<: *sqlite_default
-    database: <%= ENV['QUEUE_DATABASE_PATH'] || 'db/queue.sqlite3' %>
+    <<: *default
+    database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_production_queue' %>
+    password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
+    username: <%= ENV['QUEUE_DATABASE_USERNAME'] %>
+    port: <%= ENV['QUEUE_DATABASE_PORT'] || '5432' %>
+    host: <%= ENV['QUEUE_DATABASE_HOST'] %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *sqlite_default
@@ -59,14 +75,18 @@ staging:
     <<: *default
     database: <%= ENV['DATABASE_NAME'] || 'dawarich_staging' %>
     password: <%= ENV['DATABASE_PASSWORD'] %>
+  queue:
+    <<: *default
+    database: <%= ENV['QUEUE_DATABASE_NAME'] || 'dawarich_staging_queue' %>
+    password: <%= ENV['QUEUE_DATABASE_PASSWORD'] %>
+    username: <%= ENV['QUEUE_DATABASE_USERNAME'] %>
+    port: <%= ENV['QUEUE_DATABASE_PORT'] || '5432' %>
+    host: <%= ENV['QUEUE_DATABASE_HOST'] %>
+    migrations_paths: db/queue_migrate
   cache:
     <<: *sqlite_default
     database: <%= ENV['CACHE_DATABASE_PATH'] || 'db/cache.sqlite3' %>
     migrations_paths: db/cache_migrate
-  queue:
-    <<: *sqlite_default
-    database: <%= ENV['QUEUE_DATABASE_PATH'] || 'db/queue.sqlite3' %>
-    migrations_paths: db/queue_migrate
   cable:
     <<: *sqlite_default
     database: <%= ENV['CABLE_DATABASE_PATH'] || 'db/cable.sqlite3' %>

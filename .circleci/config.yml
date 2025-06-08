@@ -11,10 +11,20 @@ jobs:
         environment:
           RAILS_ENV: test
           CI: true
+          DATABASE_HOST: localhost
+          DATABASE_NAME: dawarich_test
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: mysecretpassword
+          DATABASE_PORT: 5432
+          QUEUE_DATABASE_HOST: localhost
+          QUEUE_DATABASE_NAME: dawarich_test_queue
+          QUEUE_DATABASE_USERNAME: postgres
+          QUEUE_DATABASE_PASSWORD: mysecretpassword
+          QUEUE_DATABASE_PORT: 5432
       - image: cimg/postgres:13.3-postgis
         environment:
           POSTGRES_USER: postgres
-          POSTGRES_DB: test_database
+          POSTGRES_DB: dawarich_test
           POSTGRES_PASSWORD: mysecretpassword
       - image: selenium/standalone-chrome:latest
         name: chrome
@@ -39,8 +49,10 @@ jobs:
       - run:
           name: Database Setup
           command: |
-            bundle exec rails db:create
-            bundle exec rails db:schema:load
+            bundle exec rails db:create RAILS_ENV=test
+            bundle exec rails db:schema:load RAILS_ENV=test
+            # Create the queue database manually if it doesn't exist
+            PGPASSWORD=mysecretpassword createdb -h localhost -U postgres dawarich_test_queue || true
       - run:
           name: Run RSpec tests
           command: bundle exec rspec

@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.27.4 - 2025-06-06
+
+⚠️ This release includes a breaking change. ⚠️
+
+## Changed
+
+- SolidQueue is now using PostgreSQL instead of SQLite. Provide `QUEUE_DATABASE_NAME`, `QUEUE_DATABASE_PASSWORD`, `QUEUE_DATABASE_USERNAME`, `QUEUE_DATABASE_PORT` and `QUEUE_DATABASE_HOST` environment variables to configure it. #1331
+- SQLite databases are now being stored in the `dawarich_sqlite_data` volume. #1361 #1357
+
+```diff
+...
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
+      - dawarich_storage:/var/app/storage
+      - dawarich_db_data:/dawarich_db_data
++     - dawarich_sqlite_data:/dawarich_sqlite_data
+    ...
+    restart: on-failure
+    environment:
+    ...
+      DATABASE_NAME: dawarich_development
++     # PostgreSQL database name for solid_queue
++     QUEUE_DATABASE_NAME: dawarich_development_queue
++     QUEUE_DATABASE_PASSWORD: password
++     QUEUE_DATABASE_USERNAME: postgres
++     QUEUE_DATABASE_PORT: 5432
++     QUEUE_DATABASE_HOST: dawarich_db
+      # SQLite database paths for cache and cable databases
+-     QUEUE_DATABASE_PATH: /dawarich_db_data/dawarich_development_queue.sqlite3
+-     CACHE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cache.sqlite3
+-     CABLE_DATABASE_PATH: /dawarich_db_data/dawarich_development_cable.sqlite3
++     CACHE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cache.sqlite3
++     CABLE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cable.sqlite3
+
+volumes:
+  dawarich_db_data:
++ dawarich_sqlite_data:
+  dawarich_shared:
+  dawarich_public:
+  dawarich_watched:
+  dawarich_storage:
+...
+```
+
 # 0.27.3 - 2025-06-05
 
 ## Changed
