@@ -11,12 +11,16 @@ jobs:
         environment:
           RAILS_ENV: test
           CI: true
+          DATABASE_HOST: localhost
           DATABASE_NAME: dawarich_test
-          QUEUE_DATABASE_NAME: dawarich_test_queue
-          QUEUE_DATABASE_PASSWORD: mysecretpassword
           DATABASE_USERNAME: postgres
           DATABASE_PASSWORD: mysecretpassword
-          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          QUEUE_DATABASE_HOST: localhost
+          QUEUE_DATABASE_NAME: dawarich_test_queue
+          QUEUE_DATABASE_USERNAME: postgres
+          QUEUE_DATABASE_PASSWORD: mysecretpassword
+          QUEUE_DATABASE_PORT: 5432
       - image: cimg/postgres:13.3-postgis
         environment:
           POSTGRES_USER: postgres
