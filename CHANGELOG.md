@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # 0.27.4 - 2025-06-06
 
+⚠️ This release includes a breaking change. ⚠️
+
 ## Changed
 
 - SolidQueue is now using PostgreSQL instead of SQLite. Provide `QUEUE_DATABASE_NAME`, `QUEUE_DATABASE_PASSWORD`, `QUEUE_DATABASE_USERNAME`, `QUEUE_DATABASE_PORT` and `QUEUE_DATABASE_HOST` environment variables to configure it. #1331
