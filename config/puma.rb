@@ -43,15 +43,6 @@ preload_app!
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
-# If env var is set or we're in development, solid_queue will run in puma
-if ENV['SOLID_QUEUE_IN_PUMA'] || ENV.fetch('RAILS_ENV', 'development') == 'development'
-  begin
-    plugin :solid_queue
-  rescue => e
-    puts "Failed to load solid_queue plugin: #{e.message}"
-  end
-end
-
 # Prometheus exporter
 if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
   require 'prometheus_exporter/instrumentation'

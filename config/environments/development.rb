@@ -26,8 +26,7 @@ Rails.application.configure do
 
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
-  config.cache_store = :solid_cache_store
-  config.solid_cache.connects_to = { database: { writing: :cache } }
+  config.cache_store = :redis_cache_store, { url: ENV['REDIS_URL'] }
 
   if Rails.root.join('tmp/caching-dev.txt').exist?
     config.action_controller.perform_caching = true

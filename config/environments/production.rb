@@ -73,15 +73,10 @@ Rails.application.configure do
   config.log_level = ENV.fetch('RAILS_LOG_LEVEL', 'info')
 
   # Use a different cache store in production.
-  config.cache_store = :solid_cache_store
-  config.solid_cache.connects_to = { database: { writing: :cache } }
+  config.cache_store = :redis_cache_store, { url: ENV['REDIS_URL'] }
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
-  config.active_job.queue_adapter = :solid_queue
-  config.solid_queue.connects_to = { database: { writing: :queue } }
-  config.solid_queue.silence_polling = true
-  config.solid_queue.logger = ActiveSupport::Logger.new($stdout)
-  # config.active_job.queue_name_prefix = "dawarich_production"
+  config.active_job.queue_adapter = :sidekiq
 
   config.action_mailer.perform_caching = false
 
