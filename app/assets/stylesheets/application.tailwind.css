@@ -103,8 +103,3 @@
   margin-bottom: 1rem;
   width: 100%;
 }
-
-.map-container-full-height {
-    /* 100vh - navbar height - footer height */
-    height: calc(100vh - 165px - 120px);
-}
