@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Fixed a bug where points from Immich and Photoprism did not have lonlat attribute set. #1318
+- Added minimum password length to 6 characters. #1373
 
 ## Changed
 
