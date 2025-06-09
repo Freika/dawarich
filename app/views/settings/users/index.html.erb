@@ -47,11 +47,11 @@
         <% end %>
         <%= f.email_field :email, value: '', class: "input input-bordered" %>
       </div>
-      <div class="form-control">
+      <div class="form-control mt-5">
         <%= f.label :password do %>
           Password
         <% end %>
-        <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: "input input-bordered" %>
+        <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: "input input-bordered", minlength: 6 %>
       </div>
       <div class="form-control mt-5">
         <%= f.submit "Create", class: "btn btn-primary" %>

@@ -9,7 +9,7 @@ class Imports::Create
   end
 
   def call
-    parser(import.source).new(import, user.id).call
+    importer(import.source).new(import, user.id).call
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
@@ -20,8 +20,7 @@ class Imports::Create
 
   private
 
-  def parser(source)
-    # Bad classes naming by the way, they are not parsers, they are point creators
+  def importer(source)
     case source
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter

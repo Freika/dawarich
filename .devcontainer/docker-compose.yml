@@ -10,7 +10,6 @@ services:
       - dawarich_public:/var/app/public
       - dawarich_watched:/var/app/tmp/imports/watched
       - dawarich_storage:/var/app/storage
-      - dawarich_sqlite_data:/dawarich_sqlite_data
     networks:
       - dawarich
     ports:
@@ -20,19 +19,11 @@ services:
     tty: true
     environment:
       RAILS_ENV: development
+      REDIS_URL: redis://dawarich_redis:6379
       DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: dawarich_development
-      # PostgreSQL database name for solid_queue
-      QUEUE_DATABASE_HOST: dawarich_db
-      QUEUE_DATABASE_USERNAME: postgres
-      QUEUE_DATABASE_PASSWORD: password
-      QUEUE_DATABASE_PORT: 5432
-      QUEUE_DATABASE_NAME: dawarich_development_queue
-      # SQLite database paths for cache and cable databases
-      CACHE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cache.sqlite3
-      CABLE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cable.sqlite3
       MIN_MINUTES_SPENT_IN_CITY: 60
       APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
@@ -40,6 +31,21 @@ services:
       PROMETHEUS_EXPORTER_ENABLED: false
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
       PROMETHEUS_EXPORTER_PORT: 9394
+  dawarich_redis:
+    image: redis:7.4-alpine
+    container_name: dawarich_redis
+    command: redis-server
+    networks:
+      - dawarich
+    volumes:
+      - dawarich_shared:/data
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
   dawarich_db:
     image: postgis/postgis:17-3.5-alpine
     container_name: dawarich_db
@@ -64,4 +70,3 @@ volumes:
   dawarich_public:
   dawarich_watched:
   dawarich_storage:
-  dawarich_sqlite_data:

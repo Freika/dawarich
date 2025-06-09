@@ -53,9 +53,10 @@ class Immich::ImportGeodata
 
   def extract_geodata(asset)
     {
-      latitude: asset.dig('exifInfo', 'latitude'),
-      longitude: asset.dig('exifInfo', 'longitude'),
-      timestamp: Time.zone.parse(asset.dig('exifInfo', 'dateTimeOriginal')).to_i
+      latitude: asset['exifInfo']['latitude'],
+      longitude: asset['exifInfo']['longitude'],
+      lonlat: "SRID=4326;POINT(#{asset['exifInfo']['longitude']} #{asset['exifInfo']['latitude']})",
+      timestamp: Time.zone.parse(asset['exifInfo']['dateTimeOriginal']).to_i
     }
   end
 

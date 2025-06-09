@@ -9,8 +9,11 @@ RSpec.describe Imports::Watcher do
     let(:watched_dir_path) { Rails.root.join('spec/fixtures/files/watched') }
 
     before do
+      Sidekiq::Testing.inline!
       stub_const('Imports::Watcher::WATCHED_DIR_PATH', watched_dir_path)
     end
+
+    after { Sidekiq::Testing.fake! }
 
     context 'when user exists' do
       let!(:user) { create(:user, email: 'user@domain.com') }
