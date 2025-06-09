@@ -12,6 +12,8 @@ _yet another, yay!_
 
 Well, we're moving back to Sidekiq and Redis for background jobs and caching. Unfortunately, SolidQueue and SolidCache brought more problems than they solved. Please update your `docker-compose.yml` to use Redis and Sidekiq.
 
+Before updating, you can remove `dawarich_development_queue` database from your postgres. All *.sqlite3 files in `dawarich_sqlite_data` volume can be removed as well.
+
 ```diff
 networks:
   dawarich:
@@ -126,7 +128,6 @@ volumes:
   dawarich_public:
   dawarich_watched:
   dawarich_storage:
-
 ```
 
 _I understand the confusion, probably even anger, caused by so many breaking changes in the recent days._
