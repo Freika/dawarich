@@ -1,6 +1,13 @@
 version: '3'
 
 services:
+  dawarich_redis:
+    image: redis:7.4-alpine
+    container_name: dawarich_redis
+    command: redis-server
+    restart: unless-stopped
+    volumes:
+      - ./redis:/var/shared/redis
   dawarich_db:
     image: postgis/postgis:17-3.5-alpine
     container_name: dawarich_db
@@ -17,6 +24,7 @@ services:
     container_name: dawarich_app
     depends_on:
       - dawarich_db
+      - dawarich_redis
     stdin_open: true
     tty: true
     entrypoint: web-entrypoint.sh
@@ -29,3 +37,19 @@ services:
       - ./app_storage:/var/app/storage
     ports:
       - 32568:3000
+
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    depends_on:
+      - dawarich_db
+      - dawarich_redis
+      - dawarich_app
+    entrypoint: sidekiq-entrypoint.sh
+    command: ['sidekiq']
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./public:/var/app/public
+      - ./app_storage:/var/app/storage

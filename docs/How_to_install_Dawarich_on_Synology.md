@@ -29,7 +29,7 @@ If you don't want to use dedicated share for projects installed by docker skip i
 ### Dawarich root folder
 1. Open your [Docker root folder](#docker-root-share) in **File station**.
 2. Create new folder **dawarich** and open it.
-3. Create folders **db_data**, **db_shared** and **public** in **dawarich** folder.
+3. Create folders **redis**, **db_data**, **db_shared** and **public** in **dawarich** folder.
 4. Copy [docker compose](synology/docker-compose.yml) and [.env](synology/.env) files form **synology** repo folder into **dawarich** folder on your synology.
 
 # Installation

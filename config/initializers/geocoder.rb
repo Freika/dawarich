@@ -4,7 +4,7 @@ settings = {
   debug_mode: true,
   timeout: 5,
   units: :km,
-  cache: Geocoder::CacheStore::Generic.new(Rails.cache, {}),
+  cache: cache: Redis.new,
   always_raise: :all,
   http_headers: {
     'User-Agent' => "Dawarich #{APP_VERSION} (https://dawarich.app)"

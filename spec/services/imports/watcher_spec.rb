@@ -12,6 +12,8 @@ RSpec.describe Imports::Watcher do
       stub_const('Imports::Watcher::WATCHED_DIR_PATH', watched_dir_path)
     end
 
+    after { Sidekiq::Testing.fake! }
+
     context 'when user exists' do
       let!(:user) { create(:user, email: 'user@domain.com') }
 

@@ -2,6 +2,7 @@
 
 class Import::GoogleTakeoutJob < ApplicationJob
   queue_as :imports
+  sidekiq_options retry: false
 
   def perform(import_id, locations, current_index)
     locations_batch = Oj.load(locations)

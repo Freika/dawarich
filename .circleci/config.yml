@@ -16,16 +16,12 @@ jobs:
           DATABASE_USERNAME: postgres
           DATABASE_PASSWORD: mysecretpassword
           DATABASE_PORT: 5432
-          QUEUE_DATABASE_HOST: localhost
-          QUEUE_DATABASE_NAME: dawarich_test_queue
-          QUEUE_DATABASE_USERNAME: postgres
-          QUEUE_DATABASE_PASSWORD: mysecretpassword
-          QUEUE_DATABASE_PORT: 5432
       - image: cimg/postgres:13.3-postgis
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: dawarich_test
           POSTGRES_PASSWORD: mysecretpassword
+      - image: redis:7.0
       - image: selenium/standalone-chrome:latest
         name: chrome
         environment:

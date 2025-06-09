@@ -6,7 +6,7 @@
 
 - Kubernetes cluster and basic kubectl knowledge.
 - Some persistent storage class prepared, in this example, Longhorn.
-- Working Postgres instance. In this example Postgres lives in 'db' namespace.
+- Working Postgres and Redis instances. In this example Postgres lives in 'db' namespace and Redis in 'redis' namespace.
 - Ngingx ingress controller with Letsencrypt integeation.
 - This example uses 'example.com' as a domain name, you want to change it to your own.
 - This will work on IPv4 and IPv6 Single Stack clusters, as well as Dual Stack deployments.
@@ -80,6 +80,8 @@ spec:
               value: "Europe/Prague"
             - name: RAILS_ENV
               value: development
+            - name: REDIS_URL
+              value: redis://redis-master.redis.svc.cluster.local:6379/10
             - name: DATABASE_HOST
               value: postgres-postgresql.db.svc.cluster.local
             - name: DATABASE_PORT
@@ -126,10 +128,73 @@ spec:
               cpu: "2000m"
           ports:
           - containerPort: 3000
+        - name: dawarich-sidekiq
+          env:
+            - name: RAILS_ENV
+              value: development
+            - name: REDIS_URL
+              value: redis://redis-master.redis.svc.cluster.local:6379/10
+            - name: DATABASE_HOST
+              value: postgres-postgresql.db.svc.cluster.local
+            - name: DATABASE_PORT
+              value: "5432"
+            - name: DATABASE_USERNAME
+              value: postgres
+            - name: DATABASE_PASSWORD
+              value: Password123!
+            - name: DATABASE_NAME
+              value: dawarich_development
+            - name: RAILS_MIN_THREADS
+              value: "5"
+            - name: RAILS_MAX_THREADS
+              value: "10"
+            - name: BACKGROUND_PROCESSING_CONCURRENCY
+              value: "20"
+            - name: APPLICATION_HOST
+              value: localhost
+            - name: APPLICATION_HOSTS
+              value: "dawarich.example.com, localhost"
+            - name: APPLICATION_PROTOCOL
+              value: http
+            - name: PHOTON_API_HOST
+              value: photon.komoot.io
+            - name: PHOTON_API_USE_HTTPS
+              value: "true"
+          image: freikin/dawarich:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /var/app/public
+              name: public
+            - mountPath: /var/app/tmp/imports/watched
+              name: watched
+          command:
+            - "sidekiq-entrypoint.sh"
+          args:
+            - "bundle exec sidekiq"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+            limits:
+              memory: "3Gi"
+              cpu: "1500m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
       volumes:
-        - name: gem-cache
-          persistentVolumeClaim:
-            claimName: gem-cache
         - name: public
           persistentVolumeClaim:
             claimName: public
