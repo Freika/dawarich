@@ -20,7 +20,7 @@
         <% elsif trip.visited_countries.present? %>
           <%= trip.visited_countries.join(', ') %>
         <% else %>
-          <span>Countries are being calculated...</span>
+          <span class="text-xs">Countries are being calculated...</span>
           <span class="loading loading-dots loading-sm"></span>
         <% end %>
       </div>
