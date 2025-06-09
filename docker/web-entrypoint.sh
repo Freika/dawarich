@@ -31,19 +31,6 @@ export DATABASE_USERNAME
 export DATABASE_PASSWORD
 export DATABASE_NAME
 
-# Set queue database name and connection parameters with defaults
-QUEUE_DATABASE_NAME=${QUEUE_DATABASE_NAME:-"${DATABASE_NAME}_queue"}
-QUEUE_DATABASE_PASSWORD=${QUEUE_DATABASE_PASSWORD:-"$DATABASE_PASSWORD"}
-QUEUE_DATABASE_USERNAME=${QUEUE_DATABASE_USERNAME:-"$DATABASE_USERNAME"}
-QUEUE_DATABASE_PORT=${QUEUE_DATABASE_PORT:-"$DATABASE_PORT"}
-QUEUE_DATABASE_HOST=${QUEUE_DATABASE_HOST:-"$DATABASE_HOST"}
-
-export QUEUE_DATABASE_NAME
-export QUEUE_DATABASE_PASSWORD
-export QUEUE_DATABASE_USERNAME
-export QUEUE_DATABASE_PORT
-export QUEUE_DATABASE_HOST
-
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
 
@@ -67,33 +54,11 @@ create_database() {
   echo "✅ PostgreSQL database $db_name is ready!"
 }
 
-# Set up SQLite database directory in the volume for cache and cable
-SQLITE_DB_DIR="/dawarich_sqlite_data"
-mkdir -p $SQLITE_DB_DIR
-echo "Created SQLite database directory at $SQLITE_DB_DIR"
-
 # Step 1: Database Setup
 echo "Setting up all required databases..."
 
 # Create primary PostgreSQL database
 create_database "$DATABASE_NAME" "$DATABASE_PASSWORD" "$DATABASE_HOST" "$DATABASE_PORT" "$DATABASE_USERNAME"
-
-# Create PostgreSQL queue database for solid_queue
-create_database "$QUEUE_DATABASE_NAME" "$QUEUE_DATABASE_PASSWORD" "$QUEUE_DATABASE_HOST" "$QUEUE_DATABASE_PORT" "$QUEUE_DATABASE_USERNAME"
-
-# Setup SQLite databases for cache and cable
-
-# Setup Cache database with SQLite
-CACHE_DATABASE_PATH=${CACHE_DATABASE_PATH:-"$SQLITE_DB_DIR/${DATABASE_NAME}_cache.sqlite3"}
-export CACHE_DATABASE_PATH
-echo "✅ SQLite cache database configured at $CACHE_DATABASE_PATH"
-
-# Setup Cable database with SQLite (only for production and staging)
-if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
-  CABLE_DATABASE_PATH=${CABLE_DATABASE_PATH:-"$SQLITE_DB_DIR/${DATABASE_NAME}_cable.sqlite3"}
-  export CABLE_DATABASE_PATH
-  echo "✅ SQLite cable database configured at $CABLE_DATABASE_PATH"
-fi
 
 # Step 2: Run migrations for all databases
 echo "Running migrations for all databases..."
@@ -101,20 +66,6 @@ echo "Running migrations for all databases..."
 # Run primary database migrations first (needed before other migrations)
 echo "Running primary database migrations..."
 bundle exec rails db:migrate
-
-# Run PostgreSQL queue database migrations
-echo "Running queue database migrations..."
-bundle exec rails db:migrate:queue
-
-# Run SQLite database migrations
-echo "Running cache database migrations..."
-bundle exec rails db:migrate:cache
-
-# Run cable migrations for production/staging
-if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then
-  echo "Running cable database migrations..."
-  bundle exec rails db:migrate:cable
-fi
 
 # Run data migrations
 echo "Running DATA migrations..."

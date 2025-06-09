@@ -2,6 +2,7 @@
 
 class VisitSuggestingJob < ApplicationJob
   queue_as :visit_suggesting
+  sidekiq_options retry: false
 
   # Passing timespan of more than 3 years somehow results in duplicated Places
   def perform(user_id:, start_at:, end_at:)

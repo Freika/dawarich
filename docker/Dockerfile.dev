@@ -62,6 +62,9 @@ RUN mkdir -p $APP_PATH/tmp && touch $APP_PATH/tmp/caching-dev.txt
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
 
+COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
+RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
+
 EXPOSE $RAILS_PORT
 
 ENTRYPOINT ["bundle", "exec"]
