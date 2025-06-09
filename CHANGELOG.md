@@ -129,6 +129,10 @@ volumes:
 
 ```
 
+_I understand the confusion, probably even anger, caused by so many breaking changes in the recent days._
+
+_I'm sorry._
+
 ## Fixed
 
 - Fixed a bug where points from Immich and Photoprism did not have lonlat attribute set. #1318
