@@ -59,7 +59,7 @@ services:
     restart: on-failure
     environment:
       RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
+      REDIS_URL: redis://dawarich_redis:6379
       DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
@@ -112,7 +112,7 @@ services:
     restart: on-failure
     environment:
       RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379/0
+      REDIS_URL: redis://dawarich_redis:6379
       DATABASE_HOST: dawarich_db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
@@ -131,7 +131,7 @@ services:
         max-size: "100m"
         max-file: "5"
     healthcheck:
-      test: [ "CMD-SHELL", "bundle exec sidekiqmon processes | grep $${HOSTNAME}" ]
+      test: [ "CMD-SHELL", "pgrep -f sidekiq" ]
       interval: 10s
       retries: 30
       start_period: 30s
