@@ -46,7 +46,6 @@ services:
       - dawarich_watched:/var/app/tmp/imports/watched
       - dawarich_storage:/var/app/storage
       - dawarich_db_data:/dawarich_db_data
-      - dawarich_sqlite_data:/dawarich_sqlite_data
     networks:
       - dawarich
     ports:
@@ -146,9 +145,9 @@ services:
       dawarich_app:
         condition: service_healthy
         restart: true
+
 volumes:
   dawarich_db_data:
-  dawarich_sqlite_data:
   dawarich_shared:
   dawarich_public:
   dawarich_watched:

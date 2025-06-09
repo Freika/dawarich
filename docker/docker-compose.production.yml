@@ -43,7 +43,6 @@ services:
       - dawarich_watched:/var/app/tmp/imports/watched
       - dawarich_storage:/var/app/storage
       - dawarich_db_data:/dawarich_db_data
-      - dawarich_sqlite_data:/dawarich_sqlite_data
     networks:
       - dawarich
     ports:
@@ -153,4 +152,3 @@ volumes:
   dawarich_public:
   dawarich_watched:
   dawarich_storage:
-  dawarich_sqlite_data:

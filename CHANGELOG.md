@@ -4,7 +4,130 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# 0.27.5 - 2025-06-08
+# 0.28.0 - 2025-06-09
+
+⚠️ This release includes a breaking change. ⚠️
+
+_yet another, yay!_
+
+Well, we're moving back to Sidekiq and Redis for background jobs and caching. Unfortunately, SolidQueue and SolidCache brought more problems than they solved. Please update your `docker-compose.yml` to use Redis and Sidekiq.
+
+```diff
+networks:
+  dawarich:
+services:
++ dawarich_redis:
++   image: redis:7.4-alpine
++   container_name: dawarich_redis
++   command: redis-server
++   networks:
++     - dawarich
++   volumes:
++     - dawarich_shared:/data
++   restart: always
++   healthcheck:
++     test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
++     interval: 10s
++     retries: 5
++     start_period: 30s
++     timeout: 10s
+...
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    volumes:
+      - dawarich_public:/var/app/public
+      - dawarich_watched:/var/app/tmp/imports/watched
+      - dawarich_storage:/var/app/storage
+      - dawarich_db_data:/dawarich_db_data
+-     - dawarich_sqlite_data:/dawarich_sqlite_data
+    ...
+    restart: on-failure
+    environment:
+      RAILS_ENV: development
++     REDIS_URL: redis://dawarich_redis:6379
+      DATABASE_HOST: dawarich_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: dawarich_development
+-     # PostgreSQL database name for solid_queue
+-     QUEUE_DATABASE_NAME: dawarich_development_queue
+-     QUEUE_DATABASE_PASSWORD: password
+-     QUEUE_DATABASE_USERNAME: postgres
+-     QUEUE_DATABASE_HOST: dawarich_db
+-     QUEUE_DATABASE_PORT: 5432
+-     # SQLite database paths for cache and cable databases
+-     CACHE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cache.sqlite3
+-     CABLE_DATABASE_PATH: /dawarich_sqlite_data/dawarich_development_cable.sqlite3
+...
+    depends_on:
+      dawarich_db:
+        condition: service_healthy
+        restart: true
++     dawarich_redis:
++       condition: service_healthy
++       restart: true
+...
++ dawarich_sidekiq:
++   image: freikin/dawarich:latest
++   container_name: dawarich_sidekiq
++   volumes:
++     - dawarich_public:/var/app/public
++     - dawarich_watched:/var/app/tmp/imports/watched
++     - dawarich_storage:/var/app/storage
++   networks:
++     - dawarich
++   stdin_open: true
++   tty: true
++   entrypoint: sidekiq-entrypoint.sh
++   command: ['sidekiq']
++   restart: on-failure
++   environment:
++     RAILS_ENV: development
++     REDIS_URL: redis://dawarich_redis:6379
++     DATABASE_HOST: dawarich_db
++     DATABASE_USERNAME: postgres
++     DATABASE_PASSWORD: password
++     DATABASE_NAME: dawarich_development
++     APPLICATION_HOSTS: localhost
++     BACKGROUND_PROCESSING_CONCURRENCY: 10
++     APPLICATION_PROTOCOL: http
++     PROMETHEUS_EXPORTER_ENABLED: false
++     PROMETHEUS_EXPORTER_HOST: dawarich_app
++     PROMETHEUS_EXPORTER_PORT: 9394
++     SELF_HOSTED: "true"
++     STORE_GEODATA: "true"
++   logging:
++     driver: "json-file"
++     options:
++       max-size: "100m"
++       max-file: "5"
++   healthcheck:
++     test: [ "CMD-SHELL", "pgrep -f sidekiq" ]
++     interval: 10s
++     retries: 30
++     start_period: 30s
++     timeout: 10s
++   depends_on:
++     dawarich_db:
++       condition: service_healthy
++       restart: true
++     dawarich_redis:
++       condition: service_healthy
++       restart: true
++     dawarich_app:
++       condition: service_healthy
++       restart: true
+...
+volumes:
+  dawarich_db_data:
+- dawarich_sqlite_data:
+  dawarich_shared:
+  dawarich_public:
+  dawarich_watched:
+  dawarich_storage:
+
+```
 
 ## Fixed
 
@@ -15,6 +138,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Geocoder is now being installed from a private fork for debugging purposes.
+- Redis is now being used for caching.
+- Sidekiq is now being used for background jobs.
+
+## Removed
+- SolidQueue, SolidCache and SolidCable are now removed.
 
 
 # 0.27.4 - 2025-06-06
