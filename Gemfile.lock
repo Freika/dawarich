@@ -173,7 +173,8 @@ GEM
       raabro (~> 1.4)
     globalid (1.2.1)
       activesupport (>= 6.1)
-    gpx (1.2.0)
+    gpx (1.2.1)
+      csv
       nokogiri (~> 1.7)
       rake
     groupdate (6.6.0)
