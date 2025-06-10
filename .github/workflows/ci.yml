@@ -57,14 +57,16 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
-          REDIS_URL: redis://localhost:6379/1
+          REDIS_URL: redis://localhost:6379
+          REDIS_DB: 1
         run: bin/rails db:setup
 
       - name: Run main tests (excluding system tests)
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
-          REDIS_URL: redis://localhost:6379/1
+          REDIS_URL: redis://localhost:6379
+          REDIS_DB: 1
         run: |
           bundle exec rspec --exclude-pattern "spec/system/**/*_spec.rb" || (cat log/test.log && exit 1)
 
@@ -72,7 +74,8 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
-          REDIS_URL: redis://localhost:6379/1
+          REDIS_URL: redis://localhost:6379
+          REDIS_DB: 1
         run: |
           bundle exec rspec spec/system/ || (cat log/test.log && exit 1)
 
