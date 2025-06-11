@@ -48,15 +48,51 @@ export default class extends BaseController {
       return
     }
 
+    // Create divider and notification item to match server-side structure
+    const divider = this.createDivider()
     const li = this.createNotificationListItem(notification)
-    const divider = this.listTarget.querySelector(".divider")
-    if (divider) {
-      divider.parentNode.insertBefore(li, divider.nextSibling)
+
+    // Find the "See all" link to determine where to insert
+    const seeAllLink = this.listTarget.querySelector('li:first-child')
+    if (seeAllLink) {
+      // Insert after the "See all" link
+      seeAllLink.insertAdjacentElement('afterend', divider)
+      divider.insertAdjacentElement('afterend', li)
     } else {
+      // Fallback: prepend to list
+      this.listTarget.prepend(divider)
       this.listTarget.prepend(li)
     }
 
+    // Enforce limit of 10 notification items (excluding the "See all" link)
+    this.enforceNotificationLimit()
+
     this.updateBadge()
+  }
+
+  createDivider() {
+    const divider = document.createElement("div")
+    divider.className = "divider p-0 m-0"
+    return divider
+  }
+
+  enforceNotificationLimit() {
+    const limit = 10
+    const notificationItems = this.listTarget.querySelectorAll('.notification-item')
+
+    // Remove excess notifications if we exceed the limit
+    if (notificationItems.length > limit) {
+      // Remove the oldest notifications (from the end of the list)
+      for (let i = limit; i < notificationItems.length; i++) {
+        const itemToRemove = notificationItems[i]
+        // Also remove the divider that comes before it
+        const previousSibling = itemToRemove.previousElementSibling
+        if (previousSibling && previousSibling.classList.contains('divider')) {
+          previousSibling.remove()
+        }
+        itemToRemove.remove()
+      }
+    }
   }
 
   createNotificationListItem(notification) {

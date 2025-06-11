@@ -4,9 +4,6 @@
 class ReverseGeocoding::Places::FetchData
   attr_reader :place
 
-  IGNORED_OSM_VALUES = %w[house residential yes detached].freeze
-  IGNORED_OSM_KEYS = %w[highway railway].freeze
-
   def initialize(place_id)
     @place = Place.find(place_id)
   end
@@ -14,6 +11,7 @@ class ReverseGeocoding::Places::FetchData
   def call
     unless DawarichSettings.reverse_geocoding_enabled?
       Rails.logger.warn('Reverse geocoding is not enabled')
+
       return
     end
 
@@ -102,10 +100,5 @@ class ReverseGeocoding::Places::FetchData
       radius: 1,
       units: :km
     )
-
-    data.reject do |place|
-      place.data['properties']['osm_value'].in?(IGNORED_OSM_VALUES) ||
-        place.data['properties']['osm_key'].in?(IGNORED_OSM_KEYS)
-    end
   end
 end
