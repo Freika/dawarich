@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# 0.28.1 - 2025-06-11
+
+## Fixed
+
+- Limit notifications in navbar to 10. Fresh one will replace the oldest one. #1184
+
+## Changed
+
+- No osm point types are being ignored anymore.
+
 # 0.28.0 - 2025-06-09
 
 ⚠️ This release includes a breaking change. ⚠️
