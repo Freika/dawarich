@@ -81,7 +81,9 @@ spec:
             - name: RAILS_ENV
               value: development
             - name: REDIS_URL
-              value: redis://redis-master.redis.svc.cluster.local:6379/10
+              value: redis://redis-master.redis.svc.cluster.local:6379
+            - name: REDIS_DB_CACHE
+              value: "10"
             - name: DATABASE_HOST
               value: postgres-postgresql.db.svc.cluster.local
             - name: DATABASE_PORT
@@ -127,13 +129,15 @@ spec:
               memory: "3Gi"
               cpu: "2000m"
           ports:
-          - containerPort: 3000
+            - containerPort: 3000
         - name: dawarich-sidekiq
           env:
             - name: RAILS_ENV
               value: development
             - name: REDIS_URL
-              value: redis://redis-master.redis.svc.cluster.local:6379/10
+              value: redis://redis-master.redis.svc.cluster.local:6379
+            - name: REDIS_DB_SIDEKIQ
+              value: "10"
             - name: DATABASE_HOST
               value: postgres-postgresql.db.svc.cluster.local
             - name: DATABASE_PORT
@@ -222,6 +226,7 @@ spec:
   selector:
     app: dawarich
 ---
+
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

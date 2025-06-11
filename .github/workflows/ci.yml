@@ -34,13 +34,13 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4.1'
+          ruby-version: "3.4.1"
           bundler-cache: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'  # Use the appropriate Node.js version
+          node-version: "16" # Use the appropriate Node.js version
 
       - name: Install Node.js dependencies
         run: npm install
@@ -57,14 +57,20 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
-          REDIS_URL: redis://localhost:6379/1
+          REDIS_URL: redis://localhost:6379
+          REDIS_DB_CACHE: 0
+          REDIS_DB_SIDEKIQ: 1
+          REDIS_DB_WS: 2
         run: bin/rails db:setup
 
       - name: Run main tests (excluding system tests)
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
-          REDIS_URL: redis://localhost:6379/1
+          REDIS_URL: redis://localhost:6379
+          REDIS_DB_CACHE: 0
+          REDIS_DB_SIDEKIQ: 1
+          REDIS_DB_WS: 2
         run: |
           bundle exec rspec --exclude-pattern "spec/system/**/*_spec.rb" || (cat log/test.log && exit 1)
 
@@ -72,7 +78,10 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
-          REDIS_URL: redis://localhost:6379/1
+          REDIS_URL: redis://localhost:6379
+          REDIS_DB_CACHE: 0
+          REDIS_DB_SIDEKIQ: 1
+          REDIS_DB_WS: 2
         run: |
           bundle exec rspec spec/system/ || (cat log/test.log && exit 1)
 
