@@ -1,11 +1,11 @@
 development:
   adapter: redis
-  url: <%= "#{ENV.fetch("REDIS_URL")}/#{ENV.fetch("REDIS_DB")}" %>
+  url: <%= "#{ENV.fetch("REDIS_URL")}/#{ENV.fetch("REDIS_DB_WS", "2")}" %>
 
 test:
   adapter: test
 
 production:
   adapter: redis
-  url: <%= "#{ENV.fetch("REDIS_URL")}/#{ENV.fetch("REDIS_DB")}" %>
+  url: <%= "#{ENV.fetch("REDIS_URL")}/#{ENV.fetch("REDIS_DB_WS", "2")}" %>
   channel_prefix: dawarich_production

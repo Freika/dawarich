@@ -4,7 +4,7 @@ settings = {
   debug_mode: true,
   timeout: 5,
   units: :km,
-  cache: Redis.new(url: "#{ENV['REDIS_URL']}/#{ENV['REDIS_DB']}"),
+  cache: Redis.new(url: "#{ENV['REDIS_URL']}/#{ENV.fetch('REDIS_DB_CACHE', '0')}"),
   always_raise: :all,
   http_headers: {
     'User-Agent' => "Dawarich #{APP_VERSION} (https://dawarich.app)"

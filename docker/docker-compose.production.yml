@@ -56,7 +56,9 @@ services:
     environment:
       RAILS_ENV: production
       REDIS_URL: redis://dawarich_redis:6379
-      REDIS_DB: 0
+      REDIS_DB_CACHE: 0
+      REDIS_DB_SIDEKIQ: 1
+      REDIS_DB_WS: 2
       DATABASE_HOST: dawarich_db
       DATABASE_PORT: 5432
       DATABASE_USERNAME: postgres
@@ -112,7 +114,9 @@ services:
     environment:
       RAILS_ENV: production
       REDIS_URL: redis://dawarich_redis:6379
-      REDIS_DB: 1
+      REDIS_DB_CACHE: 0
+      REDIS_DB_SIDEKIQ: 1
+      REDIS_DB_WS: 2
       DATABASE_HOST: dawarich_db
       DATABASE_PORT: 5432
       DATABASE_USERNAME: postgres
