@@ -4,7 +4,7 @@ settings = {
   debug_mode: true,
   timeout: 5,
   units: :km,
-  cache: Redis.new(url: "#{ENV['REDIS_URL']}/0"),
+  cache: Redis.new(url: ENV.fetch('REDIS_GEOCODER_URL') ? ENV['REDIS_GEOCODER_URL'] : "#{ENV.fetch('REDIS_URL')}/0"),
   always_raise: :all,
   http_headers: {
     'User-Agent' => "Dawarich #{APP_VERSION} (https://dawarich.app)"
