@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+sk_redis_url = ENV.fetch('REDIS_SIDEKIQ_URL') ? ENV['REDIS_SIDEKIQ_URL'] : "#{ENV.fetch('REDIS_URL')}/1"
+
 Sidekiq.configure_server do |config|
-  config.redis = { url: "#{ENV['REDIS_URL']}/1" }
+  config.redis = { url: sk_redis_url }
   config.logger = Sidekiq::Logger.new($stdout)
 
   if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
@@ -24,7 +26,7 @@ Sidekiq.configure_server do |config|
 end
 
 Sidekiq.configure_client do |config|
-  config.redis = { url: "#{ENV['REDIS_URL']}/1" }
+  config.redis = { url: sk_redis_url }
 end
 
 Sidekiq::Queue['reverse_geocoding'].limit = 1 if Sidekiq.server? && DawarichSettings.photon_uses_komoot_io?
