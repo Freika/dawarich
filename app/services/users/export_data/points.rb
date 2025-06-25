@@ -6,7 +6,7 @@ class Users::ExportData::Points
   end
 
   def call
-    points_data = Point.where(user_id: user.id).order(id: :asc)
+    points_data = Point.where(user_id: user.id).order(id: :asc).as_json(except: %w[user_id])
 
     return [] if points_data.empty?
 
