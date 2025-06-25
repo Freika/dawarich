@@ -13,12 +13,8 @@ class Users::ExportData
     # TODO: Implement
     # 1. Export user settings
     # 2. Export user points
-    # 3. Export user areas
     # 4. Export user visits
-    # 7. Export user trips
     # 8. Export user places
-    # 9. Export user notifications
-    # 10. Export user stats
 
     # 11. Zip all the files
 
@@ -28,12 +24,14 @@ class Users::ExportData
       data = {}
 
       data[:settings] = user.safe_settings.settings
-      data[:points] = nil
-      data[:areas] = nil
-      data[:visits] = nil
+      data[:areas] = serialized_areas
       data[:imports] = serialized_imports
       data[:exports] = serialized_exports
       data[:trips] = serialized_trips
+      data[:stats] = serialized_stats
+      data[:notifications] = serialized_notifications
+      data[:points] = nil
+      data[:visits] = nil
       data[:places] = nil
 
       json_file_path = export_directory.join('data.json')
@@ -204,16 +202,18 @@ class Users::ExportData
   end
 
   def serialized_trips
-    user.trips.map { process_trip(_1) }
+    user.trips.as_json(except: %w[user_id])
   end
 
-  def process_trip(trip)
-    Rails.logger.info "Processing trip #{trip.name}"
+  def serialized_areas
+    user.areas.as_json(except: %w[user_id])
+  end
 
-    trip_hash = trip.as_json(except: %w[user_id])
+  def serialized_stats
+    user.stats.as_json(except: %w[user_id])
+  end
 
-    Rails.logger.info "Trip #{trip.name} processed"
-
-    trip_hash
+  def serialized_notifications
+    user.notifications.as_json(except: %w[user_id])
   end
 end
