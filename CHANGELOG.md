@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - [x] In the User Settings, you can now export your user data as a zip file. It will contain the following:
-  - [ ] All your points
-  - [ ] All your places
-  - [ ] All your visits
+  - [x] All your points
+  - [x] All your places
+  - [x] All your visits
   - [x] All your areas
   - [x] All your imports with files
   - [x] All your exports with files

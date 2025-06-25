@@ -173,15 +173,15 @@ class Users::ExportData
       data = {}
 
       data[:settings] = user.safe_settings.settings
-      data[:areas] = serialized_areas
-      data[:imports] = serialized_imports
-      data[:exports] = serialized_exports
-      data[:trips] = serialized_trips
-      data[:stats] = serialized_stats
-      data[:notifications] = serialized_notifications
-      data[:points] = serialized_points
-      data[:visits] = serialized_visits
-      data[:places] = serialized_places
+      data[:areas] = Users::ExportData::Areas.new(user).call
+      data[:imports] = Users::ExportData::Imports.new(user, files_directory).call
+      data[:exports] = Users::ExportData::Exports.new(user, files_directory).call
+      data[:trips] = Users::ExportData::Trips.new(user).call
+      data[:stats] = Users::ExportData::Stats.new(user).call
+      data[:notifications] = Users::ExportData::Notifications.new(user).call
+      data[:points] = Users::ExportData::Points.new(user).call
+      data[:visits] = Users::ExportData::Visits.new(user).call
+      data[:places] = Users::ExportData::Places.new(user).call
 
       json_file_path = export_directory.join('data.json')
       File.write(json_file_path, data.to_json)
@@ -211,124 +211,6 @@ class Users::ExportData
     @files_directory ||= export_directory.join('files')
   end
 
-  def serialized_exports
-    exports_data = user.exports.includes(:file_attachment).map do |export|
-      process_export(export)
-    end
-
-    exports_data
-  end
-
-  def process_export(export)
-    Rails.logger.info "Processing export #{export.name}"
-
-    # Only include essential attributes, exclude any potentially large fields
-    export_hash = export.as_json(except: %w[user_id])
-
-    if export.file.attached?
-      add_file_data_to_export(export, export_hash)
-    else
-      add_empty_file_data_to_export(export_hash)
-    end
-
-    Rails.logger.info "Export #{export.name} processed"
-
-    export_hash
-  end
-
-  def add_file_data_to_export(export, export_hash)
-    sanitized_filename = generate_sanitized_export_filename(export)
-    file_path = files_directory.join(sanitized_filename)
-
-    begin
-      download_and_save_export_file(export, file_path)
-      add_file_metadata_to_export(export, export_hash, sanitized_filename)
-    rescue StandardError => e
-      Rails.logger.error "Failed to download export file #{export.id}: #{e.message}"
-      export_hash['file_error'] = "Failed to download: #{e.message}"
-    end
-  end
-
-  def add_empty_file_data_to_export(export_hash)
-    export_hash['file_name'] = nil
-    export_hash['original_filename'] = nil
-  end
-
-  def generate_sanitized_export_filename(export)
-    "export_#{export.id}_#{export.file.blob.filename}".gsub(/[^0-9A-Za-z._-]/, '_')
-  end
-
-  def download_and_save_export_file(export, file_path)
-    file_content = Imports::SecureFileDownloader.new(export.file).download_with_verification
-    File.write(file_path, file_content, mode: 'wb')
-  end
-
-  def add_file_metadata_to_export(export, export_hash, sanitized_filename)
-    export_hash['file_name'] = sanitized_filename
-    export_hash['original_filename'] = export.file.blob.filename.to_s
-    export_hash['file_size'] = export.file.blob.byte_size
-    export_hash['content_type'] = export.file.blob.content_type
-  end
-
-  def serialized_imports
-    imports_data = user.imports.includes(:file_attachment).map do |import|
-      process_import(import)
-    end
-
-    imports_data
-  end
-
-  def process_import(import)
-    Rails.logger.info "Processing import #{import.name}"
-
-    # Only include essential attributes, exclude large fields like raw_data
-    import_hash = import.as_json(except: %w[user_id raw_data])
-
-    if import.file.attached?
-      add_file_data_to_import(import, import_hash)
-    else
-      add_empty_file_data_to_import(import_hash)
-    end
-
-    Rails.logger.info "Import #{import.name} processed"
-
-    import_hash
-  end
-
-  def add_file_data_to_import(import, import_hash)
-    sanitized_filename = generate_sanitized_filename(import)
-    file_path = files_directory.join(sanitized_filename)
-
-    begin
-      download_and_save_import_file(import, file_path)
-      add_file_metadata_to_import(import, import_hash, sanitized_filename)
-    rescue StandardError => e
-      Rails.logger.error "Failed to download import file #{import.id}: #{e.message}"
-      import_hash['file_error'] = "Failed to download: #{e.message}"
-    end
-  end
-
-  def add_empty_file_data_to_import(import_hash)
-    import_hash['file_name'] = nil
-    import_hash['original_filename'] = nil
-  end
-
-  def generate_sanitized_filename(import)
-    "import_#{import.id}_#{import.file.blob.filename}".gsub(/[^0-9A-Za-z._-]/, '_')
-  end
-
-  def download_and_save_import_file(import, file_path)
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-    File.write(file_path, file_content, mode: 'wb')
-  end
-
-  def add_file_metadata_to_import(import, import_hash, sanitized_filename)
-    import_hash['file_name'] = sanitized_filename
-    import_hash['original_filename'] = import.file.blob.filename.to_s
-    import_hash['file_size'] = import.file.blob.byte_size
-    import_hash['content_type'] = import.file.blob.content_type
-  end
-
   def create_zip_archive(zip_file_path)
     Zip::File.open(zip_file_path, Zip::File::CREATE) do |zipfile|
       Dir.glob(export_directory.join('**', '*')).each do |file|
@@ -348,87 +230,5 @@ class Users::ExportData
   rescue StandardError => e
     Rails.logger.error "Failed to cleanup temporary files: #{e.message}"
     # Don't re-raise the error as cleanup failure shouldn't break the export
-  end
-
-  def serialized_trips
-    user.trips.as_json(except: %w[user_id id])
-  end
-
-  def serialized_areas
-    user.areas.as_json(except: %w[user_id id])
-  end
-
-  def serialized_stats
-    user.stats.as_json(except: %w[user_id id])
-  end
-
-  def serialized_notifications
-    user.notifications.as_json(except: %w[user_id id])
-  end
-
-  def serialized_points
-    # Include relationship with country to avoid N+1 queries
-    user.tracked_points.includes(:country, :import, :visit).find_each(batch_size: 1000).map do |point|
-      point_hash = point.as_json(except: %w[user_id import_id country_id visit_id id])
-
-      # Replace import_id with import natural key
-      if point.import
-        point_hash['import_reference'] = {
-          'name' => point.import.name,
-          'source' => point.import.source,
-          'created_at' => point.import.created_at.iso8601
-        }
-      else
-        point_hash['import_reference'] = nil
-      end
-
-      # Replace country_id with country information
-      if point.country
-        point_hash['country_info'] = {
-          'name' => point.country.name,
-          'iso_a2' => point.country.iso_a2,
-          'iso_a3' => point.country.iso_a3
-        }
-      else
-        point_hash['country_info'] = nil
-      end
-
-      # Replace visit_id with visit natural key
-      if point.visit
-        point_hash['visit_reference'] = {
-          'name' => point.visit.name,
-          'started_at' => point.visit.started_at&.iso8601,
-          'ended_at' => point.visit.ended_at&.iso8601
-        }
-      else
-        point_hash['visit_reference'] = nil
-      end
-
-      point_hash
-    end
-  end
-
-  def serialized_visits
-    user.visits.includes(:place).map do |visit|
-      visit_hash = visit.as_json(except: %w[user_id place_id id])
-
-      # Replace place_id with place natural key
-      if visit.place
-        visit_hash['place_reference'] = {
-          'name' => visit.place.name,
-          'latitude' => visit.place.lat.to_s,
-          'longitude' => visit.place.lon.to_s,
-          'source' => visit.place.source
-        }
-      else
-        visit_hash['place_reference'] = nil
-      end
-
-      visit_hash
-    end
-  end
-
-  def serialized_places
-    user.places.as_json(except: %w[user_id id])
   end
 end
