@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - [ ] All your areas
   - [ ] All your visits
   - [x] All your imports with files
-  - [ ] All your exports with files
-  - [ ] All your trips
+  - [x] All your exports with files
+  - [x] All your trips
   - [ ] All your places
   - [ ] All your notifications
   - [ ] All your stats

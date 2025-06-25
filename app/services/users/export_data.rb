@@ -33,7 +33,7 @@ class Users::ExportData
       data[:visits] = nil
       data[:imports] = serialized_imports
       data[:exports] = serialized_exports
-      data[:trips] = nil
+      data[:trips] = serialized_trips
       data[:places] = nil
 
       json_file_path = export_directory.join('data.json')
@@ -69,11 +69,7 @@ class Users::ExportData
       process_export(export)
     end
 
-    {
-      exports: exports_data,
-      export_directory: export_directory.to_s,
-      files_directory: files_directory.to_s
-    }
+    exports_data
   end
 
   def process_export(export)
@@ -132,11 +128,7 @@ class Users::ExportData
       process_import(import)
     end
 
-    {
-      imports: imports_data,
-      export_directory: export_directory.to_s,
-      files_directory: files_directory.to_s
-    }
+    imports_data
   end
 
   def process_import(import)
@@ -209,5 +201,19 @@ class Users::ExportData
   rescue StandardError => e
     Rails.logger.error "Failed to cleanup temporary files: #{e.message}"
     # Don't re-raise the error as cleanup failure shouldn't break the export
+  end
+
+  def serialized_trips
+    user.trips.map { process_trip(_1) }
+  end
+
+  def process_trip(trip)
+    Rails.logger.info "Processing trip #{trip.name}"
+
+    trip_hash = trip.as_json(except: %w[user_id])
+
+    Rails.logger.info "Trip #{trip.name} processed"
+
+    trip_hash
   end
 end
