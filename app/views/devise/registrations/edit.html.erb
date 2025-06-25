@@ -61,6 +61,11 @@
       <% end %>
 
       <p class='mt-3'>Unhappy? <%= link_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: 'btn' %></p>
+      <div class="divider"></div>
+      <p class='mt-3 flex flex-col gap-2'>
+        <%= link_to "Export my data", export_settings_users_path, class: 'btn btn-primary' %>
+        <%= link_to "Import my data", import_settings_users_path, class: 'btn btn-primary' %>
+      </p>
     </div>
   </div>
 </div>

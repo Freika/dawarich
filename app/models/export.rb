@@ -4,7 +4,8 @@ class Export < ApplicationRecord
   belongs_to :user
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
-  enum :file_format, { json: 0, gpx: 1 }
+  enum :file_format, { json: 0, gpx: 1, archive: 2 }
+  enum :file_type, { points: 0, user_data: 1 }
 
   validates :name, presence: true
 

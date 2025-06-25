@@ -76,3 +76,5 @@ group :development do
   gem 'foreman'
   gem 'rubocop-rails', require: false
 end
+
+gem "rubyzip", "~> 2.4"

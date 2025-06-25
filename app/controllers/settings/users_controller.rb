@@ -46,6 +46,15 @@ class Settings::UsersController < ApplicationController
     end
   end
 
+  def export
+    current_user.export_data
+
+    redirect_to exports_path, notice: 'Your data is being exported. You will receive a notification when it is ready.'
+  end
+
+  def import
+    @user = User.find(params[:id])
+
   private
 
   def user_params

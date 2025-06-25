@@ -9,6 +9,8 @@ class Import < ApplicationRecord
   after_commit -> { Import::ProcessJob.perform_later(id) }, on: :create
   after_commit :remove_attached_file, on: :destroy
 
+  validates :name, presence: true, uniqueness: { scope: :user_id }
+
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7

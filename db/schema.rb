@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_15_192211) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_25_185030) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -90,6 +90,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_15_192211) do
     t.integer "file_format", default: 0
     t.datetime "start_at"
     t.datetime "end_at"
+    t.integer "file_type", default: 0, null: false
+    t.index ["file_type"], name: "index_exports_on_file_type"
     t.index ["status"], name: "index_exports_on_status"
     t.index ["user_id"], name: "index_exports_on_user_id"
   end

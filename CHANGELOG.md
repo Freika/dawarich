@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED]
+
+## Added
+
+- [x] In the User Settings, you can now export your user data as a zip file. It will contain the following:
+  - [ ] All your points
+  - [ ] All your areas
+  - [ ] All your visits
+  - [x] All your imports with files
+  - [ ] All your exports with files
+  - [ ] All your trips
+  - [ ] All your places
+  - [ ] All your notifications
+  - [ ] All your stats
+
+- [ ] In the User Settings, you can now import your user data from a zip file. It will import all the data from the zip file, listed above. It will also start stats recalculation.
+
+## Changed
+
+- Oj is now being used for JSON serialization.
+
 # 0.28.1 - 2025-06-11
 
 ## Fixed
