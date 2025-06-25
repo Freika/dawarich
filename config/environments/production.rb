@@ -42,8 +42,9 @@ Rails.application.configure do
   # config.action_dispatch.x_sendfile_header = "X-Sendfile" # for Apache
   # config.action_dispatch.x_sendfile_header = "X-Accel-Redirect" # for NGINX
 
-  # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = ENV['SELF_HOSTED'] == 'true' ? :local : :s3
+  # Store uploaded files either on the local file system or in S3-compatible object storage
+  # (see config/storage.yml for options).
+  config.active_storage.service = ENV.fetch('STORAGE_BACKEND', local)
 
   config.silence_healthcheck_path = '/api/v1/health'
 
