@@ -6,59 +6,98 @@ class Users::ExportData::Points
   end
 
   def call
-    points_data = Point.where(user_id: user.id).order(id: :asc).as_json(except: %w[user_id])
+    # Single optimized query with all joins to avoid N+1 queries
+    points_sql = <<-SQL
+      SELECT
+        p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
+        p.ping, p.tracker_id, p.topic, p.trigger, p.bssid, p.ssid, p.connection,
+        p.vertical_accuracy, p.mode, p.inrids, p.in_regions, p.raw_data, p.city, p.country,
+        p.geodata, p.reverse_geocoded_at, p.course, p.course_accuracy, p.external_track_id,
+        p.created_at, p.updated_at,
+        ST_X(p.lonlat::geometry) as longitude,
+        ST_Y(p.lonlat::geometry) as latitude,
+        -- Import reference
+        i.name as import_name,
+        i.source as import_source,
+        i.created_at as import_created_at,
+        -- Country info
+        c.name as country_name,
+        c.iso_a2 as country_iso_a2,
+        c.iso_a3 as country_iso_a3,
+        -- Visit reference
+        v.name as visit_name,
+        v.started_at as visit_started_at,
+        v.ended_at as visit_ended_at
+      FROM points p
+      LEFT JOIN imports i ON p.import_id = i.id
+      LEFT JOIN countries c ON p.country_id = c.id
+      LEFT JOIN visits v ON p.visit_id = v.id
+      WHERE p.user_id = $1
+      ORDER BY p.id
+    SQL
 
-    return [] if points_data.empty?
+    result = ActiveRecord::Base.connection.exec_query(points_sql, 'Points Export', [user.id])
 
-    # Get unique IDs for batch loading
-    import_ids = points_data.filter_map { |row| row['import_id'] }.uniq
-    country_ids = points_data.filter_map { |row| row['country_id'] }.uniq
-    visit_ids = points_data.filter_map { |row| row['visit_id'] }.uniq
+    Rails.logger.info "Processing #{result.count} points for export..."
 
-    # Load all imports in one query
-    imports_map = {}
-    if import_ids.any?
-      Import.where(id: import_ids).find_each do |import|
-        imports_map[import.id] = {
-          'name' => import.name,
-          'source' => import.source,
-          'created_at' => import.created_at.iso8601
+    # Process results efficiently
+    result.map do |row|
+      point_hash = {
+        'battery_status' => row['battery_status'],
+        'battery' => row['battery'],
+        'timestamp' => row['timestamp'],
+        'altitude' => row['altitude'],
+        'velocity' => row['velocity'],
+        'accuracy' => row['accuracy'],
+        'ping' => row['ping'],
+        'tracker_id' => row['tracker_id'],
+        'topic' => row['topic'],
+        'trigger' => row['trigger'],
+        'bssid' => row['bssid'],
+        'ssid' => row['ssid'],
+        'connection' => row['connection'],
+        'vertical_accuracy' => row['vertical_accuracy'],
+        'mode' => row['mode'],
+        'inrids' => row['inrids'],
+        'in_regions' => row['in_regions'],
+        'raw_data' => row['raw_data'],
+        'city' => row['city'],
+        'country' => row['country'],
+        'geodata' => row['geodata'],
+        'reverse_geocoded_at' => row['reverse_geocoded_at'],
+        'course' => row['course'],
+        'course_accuracy' => row['course_accuracy'],
+        'external_track_id' => row['external_track_id'],
+        'created_at' => row['created_at'],
+        'updated_at' => row['updated_at'],
+        'longitude' => row['longitude'],
+        'latitude' => row['latitude']
+      }
+
+      # Add relationship references only if they exist
+      if row['import_name']
+        point_hash['import_reference'] = {
+          'name' => row['import_name'],
+          'source' => row['import_source'],
+          'created_at' => row['import_created_at']
         }
       end
-    end
 
-    # Load all countries in one query
-    countries_map = {}
-    if country_ids.any?
-      Country.where(id: country_ids).find_each do |country|
-        countries_map[country.id] = {
-          'name' => country.name,
-          'iso_a2' => country.iso_a2,
-          'iso_a3' => country.iso_a3
+      if row['country_name']
+        point_hash['country_info'] = {
+          'name' => row['country_name'],
+          'iso_a2' => row['country_iso_a2'],
+          'iso_a3' => row['country_iso_a3']
         }
       end
-    end
 
-    # Load all visits in one query
-    visits_map = {}
-    if visit_ids.any?
-      Visit.where(id: visit_ids).find_each do |visit|
-        visits_map[visit.id] = {
-          'name' => visit.name,
-          'started_at' => visit.started_at&.iso8601,
-          'ended_at' => visit.ended_at&.iso8601
+      if row['visit_name']
+        point_hash['visit_reference'] = {
+          'name' => row['visit_name'],
+          'started_at' => row['visit_started_at'],
+          'ended_at' => row['visit_ended_at']
         }
       end
-    end
-
-    # Build the final result
-    points_data.map do |row|
-      point_hash = row.except('import_id', 'country_id', 'visit_id', 'id').to_h
-
-      # Add relationship references
-      point_hash['import_reference'] = imports_map[row['import_id']]
-      point_hash['country_info'] = countries_map[row['country_id']]
-      point_hash['visit_reference'] = visits_map[row['visit_id']]
 
       point_hash
     end

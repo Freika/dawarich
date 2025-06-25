@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'parallel'
+
 class Users::ExportData::Exports
   def initialize(user, files_directory)
     @user = user
@@ -7,8 +9,17 @@ class Users::ExportData::Exports
   end
 
   def call
-    user.exports.includes(:file_attachment).map do |export|
-      process_export(export)
+    exports_with_files = user.exports.includes(:file_attachment).to_a
+
+    # Only use parallel processing if we have multiple exports
+    if exports_with_files.size > 1
+      # Use fewer threads to avoid database connection issues
+      results = Parallel.map(exports_with_files, in_threads: 2) do |export|
+        process_export(export)
+      end
+      results
+    else
+      exports_with_files.map { |export| process_export(export) }
     end
   end
 

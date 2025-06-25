@@ -159,43 +159,66 @@ class Users::ExportData
   end
 
   def export
-    # TODO: Implement
-    # 1. Export user settings
-    # 2. Export user points
-    # 4. Export user visits
-    # 8. Export user places
-
-    # 11. Zip all the files
+    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
+    export_directory = Rails.root.join('tmp', "#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{timestamp}")
+    files_directory = export_directory.join('files')
 
     FileUtils.mkdir_p(files_directory)
 
     begin
-      data = {}
-
-      data[:settings] = user.safe_settings.settings
-      data[:areas] = Users::ExportData::Areas.new(user).call
-      data[:imports] = Users::ExportData::Imports.new(user, files_directory).call
-      data[:exports] = Users::ExportData::Exports.new(user, files_directory).call
-      data[:trips] = Users::ExportData::Trips.new(user).call
-      data[:stats] = Users::ExportData::Stats.new(user).call
-      data[:notifications] = Users::ExportData::Notifications.new(user).call
-      data[:points] = Users::ExportData::Points.new(user).call
-      data[:visits] = Users::ExportData::Visits.new(user).call
-      data[:places] = Users::ExportData::Places.new(user).call
+      # Temporarily disable SQL logging for better performance
+      old_logger = ActiveRecord::Base.logger
+      ActiveRecord::Base.logger = nil if Rails.env.production?
 
       json_file_path = export_directory.join('data.json')
-      File.write(json_file_path, data.to_json)
+
+      # Stream JSON writing instead of building in memory
+      File.open(json_file_path, 'w') do |file|
+        file.write('{"settings":')
+        file.write(user.safe_settings.settings.to_json)
+
+        file.write(',"areas":')
+        file.write(Users::ExportData::Areas.new(user).call.to_json)
+
+        file.write(',"imports":')
+        file.write(Users::ExportData::Imports.new(user, files_directory).call.to_json)
+
+        file.write(',"exports":')
+        file.write(Users::ExportData::Exports.new(user, files_directory).call.to_json)
+
+        file.write(',"trips":')
+        file.write(Users::ExportData::Trips.new(user).call.to_json)
+
+        file.write(',"stats":')
+        file.write(Users::ExportData::Stats.new(user).call.to_json)
+
+        file.write(',"notifications":')
+        file.write(Users::ExportData::Notifications.new(user).call.to_json)
+
+        file.write(',"points":')
+        file.write(Users::ExportData::Points.new(user).call.to_json)
+
+        file.write(',"visits":')
+        file.write(Users::ExportData::Visits.new(user).call.to_json)
+
+        file.write(',"places":')
+        file.write(Users::ExportData::Places.new(user).call.to_json)
+
+        file.write('}')
+      end
 
       zip_file_path = export_directory.join('export.zip')
-      create_zip_archive(zip_file_path)
+      create_zip_archive(export_directory, zip_file_path)
 
-      # Move the zip file to a final location (e.g., tmp root) before cleanup
-      final_zip_path = Rails.root.join('tmp', "#{user.email}_export_#{Time.current.strftime('%Y%m%d_%H%M%S')}.zip")
+      # Move the zip file to a safe location before cleanup
+      final_zip_path = Rails.root.join('tmp', "export_#{timestamp}.zip")
       FileUtils.mv(zip_file_path, final_zip_path)
 
       final_zip_path
     ensure
-      cleanup_temporary_files
+      # Restore logger
+      ActiveRecord::Base.logger = old_logger if old_logger
+      cleanup_temporary_files(export_directory) if export_directory&.exist?
     end
   end
 
@@ -211,7 +234,8 @@ class Users::ExportData
     @files_directory ||= export_directory.join('files')
   end
 
-  def create_zip_archive(zip_file_path)
+        def create_zip_archive(export_directory, zip_file_path)
+    # Create zip archive with standard compression
     Zip::File.open(zip_file_path, Zip::File::CREATE) do |zipfile|
       Dir.glob(export_directory.join('**', '*')).each do |file|
         next if File.directory?(file) || file == zip_file_path.to_s
@@ -222,7 +246,7 @@ class Users::ExportData
     end
   end
 
-  def cleanup_temporary_files
+  def cleanup_temporary_files(export_directory)
     return unless File.directory?(export_directory)
 
     Rails.logger.info "Cleaning up temporary export directory: #{export_directory}"
