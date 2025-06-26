@@ -6,11 +6,12 @@ RSpec.describe Users::ExportData::Visits, type: :service do
   let(:user) { create(:user) }
   let(:service) { described_class.new(user) }
 
+  subject { service.call }
+
   describe '#call' do
     context 'when user has no visits' do
       it 'returns an empty array' do
-        result = service.call
-        expect(result).to eq([])
+        expect(subject).to eq([])
       end
     end
 
@@ -29,14 +30,12 @@ RSpec.describe Users::ExportData::Visits, type: :service do
       end
 
       it 'returns visits with place references' do
-        result = service.call
-        expect(result).to be_an(Array)
-        expect(result.size).to eq(1)
+        expect(subject).to be_an(Array)
+        expect(subject.size).to eq(1)
       end
 
       it 'excludes user_id, place_id, and id fields' do
-        result = service.call
-        visit_data = result.first
+        visit_data = subject.first
 
         expect(visit_data).not_to have_key('user_id')
         expect(visit_data).not_to have_key('place_id')
@@ -44,8 +43,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
       end
 
       it 'includes visit attributes and place reference' do
-        result = service.call
-        visit_data = result.first
+        visit_data = subject.first
 
         expect(visit_data).to include(
           'name' => 'Work Visit',
@@ -64,8 +62,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
       end
 
       it 'includes created_at and updated_at timestamps' do
-        result = service.call
-        visit_data = result.first
+        visit_data = subject.first
 
         expect(visit_data).to have_key('created_at')
         expect(visit_data).to have_key('updated_at')
@@ -86,8 +83,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
       end
 
       it 'returns visits with null place references' do
-        result = service.call
-        visit_data = result.first
+        visit_data = subject.first
 
         expect(visit_data).to include(
           'name' => 'Unknown Location',
@@ -104,11 +100,10 @@ RSpec.describe Users::ExportData::Visits, type: :service do
       let!(:visit_without_place) { create(:visit, user: user, place: nil, name: 'Random Stop') }
 
       it 'returns all visits with appropriate place references' do
-        result = service.call
-        expect(result.size).to eq(2)
+        expect(subject.size).to eq(2)
 
-        visit_with_place_data = result.find { |v| v['name'] == 'Workout' }
-        visit_without_place_data = result.find { |v| v['name'] == 'Random Stop' }
+        visit_with_place_data = subject.find { |v| v['name'] == 'Workout' }
+        visit_without_place_data = subject.find { |v| v['name'] == 'Random Stop' }
 
         expect(visit_with_place_data['place_reference']).to be_present
         expect(visit_without_place_data['place_reference']).to be_nil
@@ -121,9 +116,8 @@ RSpec.describe Users::ExportData::Visits, type: :service do
       let!(:other_user_visit) { create(:visit, user: other_user, name: 'Other User Visit') }
 
       it 'only returns visits for the specified user' do
-        result = service.call
-        expect(result.size).to eq(1)
-        expect(result.first['name']).to eq('User Visit')
+        expect(subject.size).to eq(1)
+        expect(subject.first['name']).to eq('User Visit')
       end
     end
 
@@ -135,15 +129,8 @@ RSpec.describe Users::ExportData::Visits, type: :service do
 
         # This test verifies that we're using .includes(:place)
         expect(user.visits).to receive(:includes).with(:place).and_call_original
-        service.call
-      end
-    end
-  end
 
-  describe 'private methods' do
-    describe '#user' do
-      it 'returns the initialized user' do
-        expect(service.send(:user)).to eq(user)
+        subject
       end
     end
   end

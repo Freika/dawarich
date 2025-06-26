@@ -34,6 +34,7 @@ gem 'rgeo-activerecord'
 gem 'rgeo-geojson'
 gem 'rswag-api'
 gem 'rswag-ui'
+gem 'rubyzip', '~> 2.4'
 gem 'sentry-ruby'
 gem 'sentry-rails'
 gem 'stackprof'
@@ -76,5 +77,3 @@ group :development do
   gem 'foreman'
   gem 'rubocop-rails', require: false
 end
-
-gem "rubyzip", "~> 2.4"

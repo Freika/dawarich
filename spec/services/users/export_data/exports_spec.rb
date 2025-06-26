@@ -7,6 +7,8 @@ RSpec.describe Users::ExportData::Exports, type: :service do
   let(:files_directory) { Rails.root.join('tmp', 'test_export_files') }
   let(:service) { described_class.new(user, files_directory) }
 
+  subject { service.call }
+
   before do
     FileUtils.mkdir_p(files_directory)
     allow(Rails.logger).to receive(:info)
@@ -20,8 +22,7 @@ RSpec.describe Users::ExportData::Exports, type: :service do
   describe '#call' do
     context 'when user has no exports' do
       it 'returns an empty array' do
-        result = service.call
-        expect(result).to eq([])
+        expect(subject).to eq([])
       end
     end
 
@@ -37,10 +38,10 @@ RSpec.describe Users::ExportData::Exports, type: :service do
       end
 
       it 'returns export data without file information' do
-        result = service.call
-        expect(result.size).to eq(1)
+        expect(subject.size).to eq(1)
 
-        export_data = result.first
+        export_data = subject.first
+
         expect(export_data).to include(
           'name' => 'Test Export',
           'file_format' => 'json',
@@ -71,8 +72,7 @@ RSpec.describe Users::ExportData::Exports, type: :service do
       end
 
       it 'returns export data with file information' do
-        result = service.call
-        export_data = result.first
+        export_data = subject.first
 
         expect(export_data['name']).to eq('Export with File')
         expect(export_data['file_name']).to eq("export_#{export_with_file.id}_export_data.json")
@@ -88,9 +88,8 @@ RSpec.describe Users::ExportData::Exports, type: :service do
       let!(:other_user_export) { create(:export, user: other_user, name: 'Other User Export') }
 
       it 'only returns exports for the specified user' do
-        result = service.call
-        expect(result.size).to eq(1)
-        expect(result.first['name']).to eq('User Export')
+        expect(subject.size).to eq(1)
+        expect(subject.first['name']).to eq('User Export')
       end
     end
   end

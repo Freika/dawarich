@@ -6,11 +6,12 @@ RSpec.describe Users::ExportData::Notifications, type: :service do
   let(:user) { create(:user) }
   let(:service) { described_class.new(user) }
 
+  subject { service.call }
+
   describe '#call' do
     context 'when user has no notifications' do
       it 'returns an empty array' do
-        result = service.call
-        expect(result).to eq([])
+        expect(subject).to eq([])
       end
     end
 
@@ -19,23 +20,19 @@ RSpec.describe Users::ExportData::Notifications, type: :service do
       let!(:notification2) { create(:notification, user: user, title: 'Test 2', kind: :warning) }
 
       it 'returns all user notifications' do
-        result = service.call
-        expect(result).to be_an(Array)
-        expect(result.size).to eq(2)
+        expect(subject).to be_an(Array)
+        expect(subject.size).to eq(2)
       end
 
       it 'excludes user_id and id fields' do
-        result = service.call
-
-        result.each do |notification_data|
+        subject.each do |notification_data|
           expect(notification_data).not_to have_key('user_id')
           expect(notification_data).not_to have_key('id')
         end
       end
 
       it 'includes expected notification attributes' do
-        result = service.call
-        notification_data = result.find { |n| n['title'] == 'Test 1' }
+        notification_data = subject.find { |n| n['title'] == 'Test 1' }
 
         expect(notification_data).to include(
           'title' => 'Test 1',
@@ -52,9 +49,8 @@ RSpec.describe Users::ExportData::Notifications, type: :service do
       let!(:other_user_notification) { create(:notification, user: other_user, title: 'Other Notification') }
 
       it 'only returns notifications for the specified user' do
-        result = service.call
-        expect(result.size).to eq(1)
-        expect(result.first['title']).to eq('User Notification')
+        expect(subject.size).to eq(1)
+        expect(subject.first['title']).to eq('User Notification')
       end
     end
   end

@@ -6,11 +6,12 @@ RSpec.describe Users::ExportData::Trips, type: :service do
   let(:user) { create(:user) }
   let(:service) { described_class.new(user) }
 
+  subject { service.call }
+
   describe '#call' do
     context 'when user has no trips' do
       it 'returns an empty array' do
-        result = service.call
-        expect(result).to eq([])
+        expect(subject).to eq([])
       end
     end
 
@@ -19,23 +20,19 @@ RSpec.describe Users::ExportData::Trips, type: :service do
       let!(:trip2) { create(:trip, user: user, name: 'Vacation', distance: 1200) }
 
       it 'returns all user trips' do
-        result = service.call
-        expect(result).to be_an(Array)
-        expect(result.size).to eq(2)
+        expect(subject).to be_an(Array)
+        expect(subject.size).to eq(2)
       end
 
       it 'excludes user_id and id fields' do
-        result = service.call
-
-        result.each do |trip_data|
+        subject.each do |trip_data|
           expect(trip_data).not_to have_key('user_id')
           expect(trip_data).not_to have_key('id')
         end
       end
 
       it 'includes expected trip attributes' do
-        result = service.call
-        trip_data = result.find { |t| t['name'] == 'Business Trip' }
+        trip_data = subject.find { |t| t['name'] == 'Business Trip' }
 
         expect(trip_data).to include(
           'name' => 'Business Trip',
@@ -51,10 +48,11 @@ RSpec.describe Users::ExportData::Trips, type: :service do
       let!(:user_trip) { create(:trip, user: user, name: 'User Trip') }
       let!(:other_user_trip) { create(:trip, user: other_user, name: 'Other Trip') }
 
+      subject { service.call }
+
       it 'only returns trips for the specified user' do
-        result = service.call
-        expect(result.size).to eq(1)
-        expect(result.first['name']).to eq('User Trip')
+        expect(service.call.size).to eq(1)
+        expect(service.call.first['name']).to eq('User Trip')
       end
     end
   end

@@ -10,7 +10,7 @@ require 'zip'
 #     "distance_unit": "km",
 #     "timezone": "UTC",
 #     "immich_url": "https://immich.example.com",
-#     // ... other user settings
+#     // ... other user settings (exported via user.safe_settings.settings)
 #   },
 #   "areas": [
 #     {
@@ -18,7 +18,8 @@ require 'zip'
 #       "latitude": "40.7128",
 #       "longitude": "-74.0060",
 #       "radius": 100,
-#       "created_at": "2024-01-01T00:00:00Z"
+#       "created_at": "2024-01-01T00:00:00Z",
+#       "updated_at": "2024-01-01T00:00:00Z"
 #     }
 #   ],
 #   "imports": [
@@ -26,12 +27,14 @@ require 'zip'
 #       "name": "2023_MARCH.json",
 #       "source": "google_semantic_history",
 #       "created_at": "2024-01-01T00:00:00Z",
+#       "updated_at": "2024-01-01T00:00:00Z",
 #       "processed": true,
-#       "points_count": 1500,
 #       "file_name": "import_1_2023_MARCH.json",
 #       "original_filename": "2023_MARCH.json",
 #       "file_size": 2048576,
 #       "content_type": "application/json"
+#       // Note: file_error may be present if file download fails
+#       // Note: file_name and original_filename will be null if no file attached
 #     }
 #   ],
 #   "exports": [
@@ -40,11 +43,16 @@ require 'zip'
 #       "status": "completed",
 #       "file_format": "json",
 #       "file_type": "points",
+#       "start_at": "2024-01-01T00:00:00Z",
+#       "end_at": "2024-01-31T23:59:59Z",
 #       "created_at": "2024-02-01T00:00:00Z",
+#       "updated_at": "2024-02-01T00:00:00Z",
 #       "file_name": "export_1_export_2024-01-01_to_2024-01-31.json",
 #       "original_filename": "export_2024-01-01_to_2024-01-31.json",
 #       "file_size": 1048576,
 #       "content_type": "application/json"
+#       // Note: file_error may be present if file download fails
+#       // Note: file_name and original_filename will be null if no file attached
 #     }
 #   ],
 #   "trips": [
@@ -53,7 +61,9 @@ require 'zip'
 #       "started_at": "2024-01-15T08:00:00Z",
 #       "ended_at": "2024-01-18T20:00:00Z",
 #       "distance": 1245.67,
-#       "created_at": "2024-01-19T00:00:00Z"
+#       "created_at": "2024-01-19T00:00:00Z",
+#       "updated_at": "2024-01-19T00:00:00Z"
+#       // ... other trip fields
 #     }
 #   ],
 #   "stats": [
@@ -61,10 +71,12 @@ require 'zip'
 #       "year": 2024,
 #       "month": 1,
 #       "distance": 456.78,
+#       "daily_distance": [[1, 15.2], [2, 23.5], ...], // [day, distance] pairs
 #       "toponyms": [
 #         {"country": "United States", "cities": [{"city": "New York"}]}
 #       ],
-#       "created_at": "2024-02-01T00:00:00Z"
+#       "created_at": "2024-02-01T00:00:00Z",
+#       "updated_at": "2024-02-01T00:00:00Z"
 #     }
 #   ],
 #   "notifications": [
@@ -72,8 +84,9 @@ require 'zip'
 #       "kind": "info",
 #       "title": "Import completed",
 #       "content": "Your data import has been processed successfully",
-#       "read": true,
-#       "created_at": "2024-01-01T12:00:00Z"
+#       "read_at": "2024-01-01T12:30:00Z", // null if unread
+#       "created_at": "2024-01-01T12:00:00Z",
+#       "updated_at": "2024-01-01T12:30:00Z"
 #     }
 #   ],
 #   "points": [
@@ -84,7 +97,30 @@ require 'zip'
 #       "altitude": 15.5,
 #       "velocity": 25.5,
 #       "accuracy": 5.0,
+#       "ping": "test-ping",
+#       "tracker_id": "tracker-123",
+#       "topic": "owntracks/user/device",
+#       "trigger": "manual_event",
+#       "bssid": "aa:bb:cc:dd:ee:ff",
+#       "ssid": "TestWiFi",
+#       "connection": "wifi",
+#       "vertical_accuracy": 3.0,
+#       "mode": 2,
+#       "inrids": ["region1", "region2"],
+#       "in_regions": ["home", "work"],
+#       "raw_data": {"test": "data"},
+#       "city": "New York",
+#       "country": "United States",
+#       "geodata": {"address": "123 Main St"},
+#       "reverse_geocoded_at": "2024-01-01T00:00:00Z",
+#       "course": 45.5,
+#       "course_accuracy": 2.5,
+#       "external_track_id": "ext-123",
+#       "lonlat": "POINT(-74.006 40.7128)",
+#       "longitude": -74.006,
+#       "latitude": 40.7128,
 #       "created_at": "2024-01-01T00:00:00Z",
+#       "updated_at": "2024-01-01T00:00:00Z",
 #       "import_reference": {
 #         "name": "2023_MARCH.json",
 #         "source": "google_semantic_history",
@@ -105,9 +141,15 @@ require 'zip'
 #       // Example of point without relationships (edge cases)
 #       "timestamp": 1704070800,
 #       "altitude": 10.0,
+#       "longitude": -73.9857,
+#       "latitude": 40.7484,
+#       "lonlat": "POINT(-73.9857 40.7484)",
+#       "created_at": "2024-01-01T00:05:00Z",
+#       "updated_at": "2024-01-01T00:05:00Z",
 #       "import_reference": null,     // Orphaned point
 #       "country_info": null,         // No country data
 #       "visit_reference": null       // Not part of a visit
+#       // ... other point fields may be null
 #     }
 #   ],
 #   "visits": [
@@ -117,28 +159,38 @@ require 'zip'
 #       "ended_at": "2024-01-01T17:00:00Z",
 #       "duration": 32400,
 #       "status": "suggested",
+#       "created_at": "2024-01-01T00:00:00Z",
+#       "updated_at": "2024-01-01T00:00:00Z",
 #       "place_reference": {
 #         "name": "Office Building",
 #         "latitude": "40.7589",
 #         "longitude": "-73.9851",
 #         "source": "manual"
 #       }
+#       // ... other visit fields
 #     },
 #     {
 #       // Example of visit without place
 #       "name": "Unknown Location",
 #       "started_at": "2024-01-02T10:00:00Z",
 #       "ended_at": "2024-01-02T12:00:00Z",
+#       "duration": 7200,
+#       "status": "confirmed",
+#       "created_at": "2024-01-02T00:00:00Z",
+#       "updated_at": "2024-01-02T00:00:00Z",
 #       "place_reference": null       // No associated place
 #     }
 #   ],
 #   "places": [
 #     {
 #       "name": "Office Building",
-#       "lonlat": "POINT(-73.9851 40.7589)",
+#       "longitude": "-73.9851",
+#       "latitude": "40.7589",
 #       "source": "manual",
 #       "geodata": {"properties": {"name": "Office Building"}},
-#       "created_at": "2024-01-01T00:00:00Z"
+#       "created_at": "2024-01-01T00:00:00Z",
+#       "updated_at": "2024-01-01T00:00:00Z"
+#       // ... other place fields
 #     }
 #   ]
 # }

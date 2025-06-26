@@ -6,11 +6,12 @@ RSpec.describe Users::ExportData::Points, type: :service do
   let(:user) { create(:user) }
   let(:service) { described_class.new(user) }
 
+  subject { service.call }
+
   describe '#call' do
     context 'when user has no points' do
       it 'returns an empty array' do
-        result = service.call
-        expect(result).to eq([])
+        expect(subject).to eq([])
       end
     end
 
@@ -66,14 +67,12 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'returns all points with correct structure' do
-        result = service.call
-        expect(result).to be_an(Array)
-        expect(result.size).to eq(2)
+        expect(subject).to be_an(Array)
+        expect(subject.size).to eq(2)
       end
 
       it 'includes all point attributes for point with relationships' do
-        result = service.call
-        point_data = result.find { |p| p['external_track_id'] == 'ext-123' }
+        point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
 
         expect(point_data).to include(
           'battery_status' => 2, # enum value for :charging
@@ -109,8 +108,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'includes import reference when point has import' do
-        result = service.call
-        point_data = result.find { |p| p['external_track_id'] == 'ext-123' }
+        point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
 
         expect(point_data['import_reference']).to eq({
           'name' => 'Test Import',
@@ -120,8 +118,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'includes country info when point has country' do
-        result = service.call
-        point_data = result.find { |p| p['external_track_id'] == 'ext-123' }
+        point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
 
         # Since we're using LEFT JOIN and the country is properly associated,
         # this should work, but let's check if it's actually being set
@@ -138,8 +135,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'includes visit reference when point has visit' do
-        result = service.call
-        point_data = result.find { |p| p['external_track_id'] == 'ext-123' }
+        point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
 
         expect(point_data['visit_reference']).to eq({
           'name' => 'Work Visit',
@@ -149,8 +145,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'does not include relationships for points without them' do
-        result = service.call
-        point_data = result.find { |p| p['external_track_id'].nil? }
+        point_data = subject.find { |p| p['external_track_id'].nil? }
 
         expect(point_data['import_reference']).to be_nil
         expect(point_data['country_info']).to be_nil
@@ -158,21 +153,19 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'correctly extracts longitude and latitude from lonlat geometry' do
-        result = service.call
+        point1 = subject.find { |p| p['external_track_id'] == 'ext-123' }
 
-        point1 = result.find { |p| p['external_track_id'] == 'ext-123' }
         expect(point1['longitude']).to eq(-74.006)
         expect(point1['latitude']).to eq(40.7128)
 
-        point2 = result.find { |p| p['external_track_id'].nil? }
+        point2 = subject.find { |p| p['external_track_id'].nil? }
         expect(point2['longitude']).to eq(-73.9857)
         expect(point2['latitude']).to eq(40.7484)
       end
 
       it 'orders points by id' do
-        result = service.call
-        expect(result.first['timestamp']).to eq(1640995200)
-        expect(result.last['timestamp']).to eq(1640995260)
+        expect(subject.first['timestamp']).to eq(1640995200)
+        expect(subject.last['timestamp']).to eq(1640995260)
       end
 
       it 'logs processing information' do
@@ -187,8 +180,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'handles null values gracefully' do
-        result = service.call
-        point_data = result.first
+        point_data = subject.first
 
         expect(point_data['inrids']).to eq([])
         expect(point_data['in_regions']).to eq([])
@@ -200,9 +192,10 @@ RSpec.describe Users::ExportData::Points, type: :service do
       let!(:user_point) { create(:point, user: user) }
       let!(:other_user_point) { create(:point, user: other_user) }
 
+      subject { service.call }
+
       it 'only returns points for the specified user' do
-        result = service.call
-        expect(result.size).to eq(1)
+        expect(service.call.size).to eq(1)
       end
     end
 
@@ -211,19 +204,11 @@ RSpec.describe Users::ExportData::Points, type: :service do
 
       it 'uses a single optimized query' do
         expect(Rails.logger).to receive(:info).with('Processing 3 points for export...')
-        service.call
+        subject
       end
 
       it 'avoids N+1 queries by using joins' do
-        expect(service.call.size).to eq(3)
-      end
-    end
-  end
-
-  describe 'private methods' do
-    describe '#user' do
-      it 'returns the initialized user' do
-        expect(service.send(:user)).to eq(user)
+        expect(subject.size).to eq(3)
       end
     end
   end

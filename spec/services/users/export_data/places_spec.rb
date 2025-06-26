@@ -6,11 +6,12 @@ RSpec.describe Users::ExportData::Places, type: :service do
   let(:user) { create(:user) }
   let(:service) { described_class.new(user) }
 
+  subject { service.call }
+
   describe '#call' do
     context 'when user has no places' do
       it 'returns an empty array' do
-        result = service.call
-        expect(result).to eq([])
+        expect(subject).to eq([])
       end
     end
 
@@ -21,21 +22,17 @@ RSpec.describe Users::ExportData::Places, type: :service do
       let!(:visit2) { create(:visit, user: user, place: place2) }
 
       it 'returns all places' do
-        result = service.call
-        expect(result.size).to eq(2)
+        expect(subject.size).to eq(2)
       end
 
       it 'excludes id field' do
-        result = service.call
-
-        result.each do |place_data|
+        subject.each do |place_data|
           expect(place_data).not_to have_key('id')
         end
       end
 
       it 'includes expected place attributes' do
-        result = service.call
-        place_data = result.find { |p| p['name'] == 'Office' }
+        place_data = subject.find { |p| p['name'] == 'Office' }
 
         expect(place_data).to include(
           'name' => 'Office',
