@@ -7,8 +7,8 @@ class Immich::RequestPhotos
     @user = user
     @immich_api_base_url = URI.parse("#{user.safe_settings.immich_url}/api/search/metadata")
     @immich_api_key = user.safe_settings.immich_api_key
-    @start_date = start_date
-    @end_date = end_date
+    @start_date = normalize_date(start_date)
+    @end_date = normalize_date(end_date)
   end
 
   def call
@@ -21,6 +21,15 @@ class Immich::RequestPhotos
   end
 
   private
+
+  def normalize_date(raw_date)
+    return nil if raw_date.nil?
+
+    time = Time.zone.parse(raw_date.to_s)
+    time.utc.iso8601
+  rescue ArgumentError => e
+    raise ArgumentError, "Invalid date format for '#{raw_date}': #{e.message}"
+  end
 
   def retrieve_immich_data
     page = 1
