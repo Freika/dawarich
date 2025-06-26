@@ -51,7 +51,8 @@ class Users::ExportData::Imports
       download_and_save_import_file(import, file_path)
       add_file_metadata_to_import(import, import_hash, sanitized_filename)
     rescue StandardError => e
-      Rails.logger.error "Failed to download import file #{import.id}: #{e.message}"
+      ExceptionReporter.call(e)
+
       import_hash['file_error'] = "Failed to download: #{e.message}"
     end
   end

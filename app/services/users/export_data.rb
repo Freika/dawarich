@@ -280,7 +280,9 @@ class Users::ExportData
     rescue StandardError => e
       # Mark export as failed if an error occurs
       export_record.update!(status: :failed) if export_record
-      Rails.logger.error "Export failed: #{e.message}"
+
+      ExceptionReporter.call(e)
+
       raise e
     ensure
       # Cleanup temporary files
@@ -332,8 +334,7 @@ class Users::ExportData
     Rails.logger.info "Cleaning up temporary export directory: #{export_directory}"
     FileUtils.rm_rf(export_directory)
   rescue StandardError => e
-    Rails.logger.error "Failed to cleanup temporary files: #{e.message}"
-    # Don't re-raise the error as cleanup failure shouldn't break the export
+    ExceptionReporter.call(e)
   end
 
   def create_success_notification

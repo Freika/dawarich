@@ -51,7 +51,8 @@ class Users::ExportData::Exports
       download_and_save_export_file(export, file_path)
       add_file_metadata_to_export(export, export_hash, sanitized_filename)
     rescue StandardError => e
-      Rails.logger.error "Failed to download export file #{export.id}: #{e.message}"
+      ExceptionReporter.call(e)
+
       export_hash['file_error'] = "Failed to download: #{e.message}"
     end
   end
