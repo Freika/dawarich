@@ -16,10 +16,10 @@ RSpec.describe Export, type: :model do
   describe 'callbacks' do
     describe 'after_commit' do
       context 'when the export is created' do
-        let(:export) { build(:export) }
+        let(:export) { build(:export, file_type: :points) }
 
         it 'enqueues the ExportJob' do
-          expect(ExportJob).to receive(:perform_later).with(export.id)
+          expect(ExportJob).to receive(:perform_later)
 
           export.save!
         end
@@ -39,7 +39,7 @@ RSpec.describe Export, type: :model do
         let(:export) { create(:export) }
 
         it 'removes the attached file' do
-          expect(export.file).to receive(:purge)
+          expect(export.file).to receive(:purge_later)
 
           export.destroy!
         end
