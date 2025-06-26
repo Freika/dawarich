@@ -154,23 +154,24 @@ require 'zip'
 class Users::ExportData
   def initialize(user)
     @user = user
-    @export_directory = export_directory
-    @files_directory = files_directory
   end
 
   def export
     timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
-    export_directory = Rails.root.join('tmp', "#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{timestamp}")
-    files_directory = export_directory.join('files')
+    @export_directory = Rails.root.join('tmp', "#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{timestamp}")
+    @files_directory = @export_directory.join('files')
 
-    FileUtils.mkdir_p(files_directory)
+    FileUtils.mkdir_p(@files_directory)
+
+    export_record = user.exports.create!(
+      name: "user_data_export_#{timestamp}.zip",
+      file_format: :archive,
+      file_type: :user_data,
+      status: :processing
+    )
 
     begin
-      # Temporarily disable SQL logging for better performance
-      old_logger = ActiveRecord::Base.logger
-      ActiveRecord::Base.logger = nil if Rails.env.production?
-
-      json_file_path = export_directory.join('data.json')
+      json_file_path = @export_directory.join('data.json')
 
       # Stream JSON writing instead of building in memory
       File.open(json_file_path, 'w') do |file|
@@ -181,10 +182,10 @@ class Users::ExportData
         file.write(Users::ExportData::Areas.new(user).call.to_json)
 
         file.write(',"imports":')
-        file.write(Users::ExportData::Imports.new(user, files_directory).call.to_json)
+        file.write(Users::ExportData::Imports.new(user, @files_directory).call.to_json)
 
         file.write(',"exports":')
-        file.write(Users::ExportData::Exports.new(user, files_directory).call.to_json)
+        file.write(Users::ExportData::Exports.new(user, @files_directory).call.to_json)
 
         file.write(',"trips":')
         file.write(Users::ExportData::Trips.new(user).call.to_json)
@@ -207,18 +208,31 @@ class Users::ExportData
         file.write('}')
       end
 
-      zip_file_path = export_directory.join('export.zip')
-      create_zip_archive(export_directory, zip_file_path)
+      zip_file_path = @export_directory.join('export.zip')
+      create_zip_archive(@export_directory, zip_file_path)
 
-      # Move the zip file to a safe location before cleanup
-      final_zip_path = Rails.root.join('tmp', "export_#{timestamp}.zip")
-      FileUtils.mv(zip_file_path, final_zip_path)
+      # Attach the zip file to the Export record
+      export_record.file.attach(
+        io: File.open(zip_file_path),
+        filename: export_record.name,
+        content_type: 'application/zip'
+      )
 
-      final_zip_path
+      # Mark export as completed
+      export_record.update!(status: :completed)
+
+      # Create notification
+      create_success_notification
+
+      export_record
+    rescue StandardError => e
+      # Mark export as failed if an error occurs
+      export_record.update!(status: :failed) if export_record
+      Rails.logger.error "Export failed: #{e.message}"
+      raise e
     ensure
-      # Restore logger
-      ActiveRecord::Base.logger = old_logger if old_logger
-      cleanup_temporary_files(export_directory) if export_directory&.exist?
+      # Cleanup temporary files
+      cleanup_temporary_files(@export_directory) if @export_directory&.exist?
     end
   end
 
@@ -227,21 +241,35 @@ class Users::ExportData
   attr_reader :user
 
   def export_directory
-    @export_directory ||= Rails.root.join('tmp', "#{user.email}_#{Time.current.strftime('%Y%m%d_%H%M%S')}")
+    @export_directory
   end
 
   def files_directory
-    @files_directory ||= export_directory.join('files')
+    @files_directory
   end
 
-        def create_zip_archive(export_directory, zip_file_path)
-    # Create zip archive with standard compression
+  def create_zip_archive(export_directory, zip_file_path)
+    # Create zip archive with optimized compression
     Zip::File.open(zip_file_path, Zip::File::CREATE) do |zipfile|
+      # Set higher compression for better file size reduction
+      zipfile.default_compression = Zip::Entry::DEFLATED
+      zipfile.default_compression_level = 9  # Maximum compression
+
       Dir.glob(export_directory.join('**', '*')).each do |file|
         next if File.directory?(file) || file == zip_file_path.to_s
 
         relative_path = file.sub(export_directory.to_s + '/', '')
-        zipfile.add(relative_path, file)
+
+        # Add file with specific compression settings
+        zipfile.add(relative_path, file) do |entry|
+          # JSON files compress very well, so use maximum compression
+          if file.end_with?('.json')
+            entry.compression_level = 9
+          else
+            # For other files (images, etc.), use balanced compression
+            entry.compression_level = 6
+          end
+        end
       end
     end
   end
@@ -254,5 +282,14 @@ class Users::ExportData
   rescue StandardError => e
     Rails.logger.error "Failed to cleanup temporary files: #{e.message}"
     # Don't re-raise the error as cleanup failure shouldn't break the export
+  end
+
+  def create_success_notification
+    ::Notifications::Create.new(
+      user: user,
+      title: 'Export completed',
+      content: 'Your data export has been processed successfully. You can download it from the exports page.',
+      kind: :info
+    ).call
   end
 end

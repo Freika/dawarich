@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [ ] In the User Settings, you can now import your user data from a zip file. It will import all the data from the zip file, listed above. It will also start stats recalculation.
 
+- Export file size is now displayed in the exports and imports lists.
+
 ## Changed
 
 - Oj is now being used for JSON serialization.

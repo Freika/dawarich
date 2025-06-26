@@ -13,7 +13,7 @@ class GoogleMaps::RecordsStorageImporter
 
   def call
     process_file_in_batches
-  rescue Oj::ParseError => e
+  rescue Oj::ParseError, JSON::ParserError => e
     Rails.logger.error("JSON parsing error: #{e.message}")
     raise
   end

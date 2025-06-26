@@ -11,7 +11,7 @@ class Export < ApplicationRecord
 
   has_one_attached :file
 
-  after_commit -> { ExportJob.perform_later(id) }, on: :create
+  after_commit -> { ExportJob.perform_later(id) }, on: :create, unless: -> { user_data? || archive? }
   after_commit -> { remove_attached_file }, on: :destroy
 
   def process!

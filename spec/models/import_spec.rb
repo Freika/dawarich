@@ -9,6 +9,8 @@ RSpec.describe Import, type: :model do
   end
 
   describe 'validations' do
+    subject { build(:import, name: 'test import') }
+
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_uniqueness_of(:name).scoped_to(:user_id) }
   end

@@ -53,7 +53,8 @@ class Settings::UsersController < ApplicationController
   end
 
   def import
-    @user = User.find(params[:id])
+
+  end
 
   private
 
