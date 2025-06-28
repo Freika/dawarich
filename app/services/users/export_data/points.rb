@@ -9,14 +9,15 @@ class Users::ExportData::Points
     # Single optimized query with all joins to avoid N+1 queries
     points_sql = <<-SQL
       SELECT
-        p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
+        p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
         p.ping, p.tracker_id, p.topic, p.trigger, p.bssid, p.ssid, p.connection,
         p.vertical_accuracy, p.mode, p.inrids, p.in_regions, p.raw_data,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
         p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
-        p.lonlat,
-        ST_X(p.lonlat::geometry) as longitude,
-        ST_Y(p.lonlat::geometry) as latitude,
+        p.lonlat, p.longitude, p.latitude,
+        -- Extract coordinates from lonlat if individual fields are missing
+        COALESCE(p.longitude, ST_X(p.lonlat::geometry)) as computed_longitude,
+        COALESCE(p.latitude, ST_Y(p.lonlat::geometry)) as computed_latitude,
         -- Import reference
         i.name as import_name,
         i.source as import_source,
@@ -42,7 +43,16 @@ class Users::ExportData::Points
     Rails.logger.info "Processing #{result.count} points for export..."
 
     # Process results efficiently
-    result.map do |row|
+    result.filter_map do |row|
+      # Skip points without any coordinate data
+      has_lonlat = row['lonlat'].present?
+      has_coordinates = row['computed_longitude'].present? && row['computed_latitude'].present?
+
+      unless has_lonlat || has_coordinates
+        Rails.logger.debug "Skipping point without coordinates: id=#{row['id'] || 'unknown'}"
+        next
+      end
+
       point_hash = {
         'battery_status' => row['battery_status'],
         'battery' => row['battery'],
@@ -70,10 +80,11 @@ class Users::ExportData::Points
         'course_accuracy' => row['course_accuracy'],
         'external_track_id' => row['external_track_id'],
         'created_at' => row['created_at'],
-        'updated_at' => row['updated_at'],
-        'longitude' => row['longitude'],
-        'latitude' => row['latitude']
+        'updated_at' => row['updated_at']
       }
+
+      # Ensure all coordinate fields are populated
+      populate_coordinate_fields(point_hash, row)
 
       # Add relationship references only if they exist
       if row['import_name']
@@ -107,4 +118,22 @@ class Users::ExportData::Points
   private
 
   attr_reader :user
+
+  def populate_coordinate_fields(point_hash, row)
+    longitude = row['computed_longitude']
+    latitude = row['computed_latitude']
+    lonlat = row['lonlat']
+
+    # If lonlat is present, use it and the computed coordinates
+    if lonlat.present?
+      point_hash['lonlat'] = lonlat
+      point_hash['longitude'] = longitude
+      point_hash['latitude'] = latitude
+    elsif longitude.present? && latitude.present?
+      # If lonlat is missing but we have coordinates, reconstruct lonlat
+      point_hash['longitude'] = longitude
+      point_hash['latitude'] = latitude
+      point_hash['lonlat'] = "POINT(#{longitude} #{latitude})"
+    end
+  end
 end

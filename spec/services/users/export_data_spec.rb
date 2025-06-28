@@ -39,8 +39,18 @@ RSpec.describe Users::ExportData, type: :service do
         # Mock user settings
         allow(user).to receive(:safe_settings).and_return(double(settings: { theme: 'dark' }))
 
+        # Mock user associations for counting (needed before error occurs)
+        allow(user).to receive(:areas).and_return(double(count: 5))
+        allow(user).to receive(:imports).and_return(double(count: 12))
+        allow(user).to receive(:trips).and_return(double(count: 8))
+        allow(user).to receive(:stats).and_return(double(count: 24))
+        allow(user).to receive(:notifications).and_return(double(count: 10))
+        allow(user).to receive(:tracked_points).and_return(double(count: 15000))
+        allow(user).to receive(:visits).and_return(double(count: 45))
+        allow(user).to receive(:places).and_return(double(count: 20))
+
         # Mock Export creation and file attachment
-        exports_double = double('Exports')
+        exports_double = double('Exports', count: 3)
         allow(user).to receive(:exports).and_return(exports_double)
         allow(exports_double).to receive(:create!).and_return(export_record)
         allow(export_record).to receive(:update!)
@@ -137,6 +147,22 @@ RSpec.describe Users::ExportData, type: :service do
         result = service.export
         expect(result).to eq(export_record)
       end
+
+      it 'calculates entity counts correctly' do
+        counts = service.send(:calculate_entity_counts)
+
+        expect(counts).to eq({
+          areas: 5,
+          imports: 12,
+          exports: 3,
+          trips: 8,
+          stats: 24,
+          notifications: 10,
+          points: 15000,
+          visits: 45,
+          places: 20
+        })
+      end
     end
 
     context 'when an error occurs during export' do
@@ -145,7 +171,7 @@ RSpec.describe Users::ExportData, type: :service do
 
       before do
         # Mock Export creation first
-        exports_double = double('Exports')
+        exports_double = double('Exports', count: 3)
         allow(user).to receive(:exports).and_return(exports_double)
         allow(exports_double).to receive(:create!).and_return(export_record)
         allow(export_record).to receive(:update!)
@@ -153,10 +179,21 @@ RSpec.describe Users::ExportData, type: :service do
         # Mock user settings and other dependencies that are needed before the error
         allow(user).to receive(:safe_settings).and_return(double(settings: { theme: 'dark' }))
 
+        # Mock user associations for counting
+        allow(user).to receive(:areas).and_return(double(count: 5))
+        allow(user).to receive(:imports).and_return(double(count: 12))
+        # exports already mocked above
+        allow(user).to receive(:trips).and_return(double(count: 8))
+        allow(user).to receive(:stats).and_return(double(count: 24))
+        allow(user).to receive(:notifications).and_return(double(count: 10))
+        allow(user).to receive(:tracked_points).and_return(double(count: 15000))
+        allow(user).to receive(:visits).and_return(double(count: 45))
+        allow(user).to receive(:places).and_return(double(count: 20))
+
         # Then set up the error condition - make it happen during the JSON writing step
         allow(File).to receive(:open).with(export_directory.join('data.json'), 'w').and_raise(StandardError, error_message)
 
-        allow(Rails.logger).to receive(:error)
+        allow(ExceptionReporter).to receive(:call)
 
         # Mock cleanup method and pathname existence
         allow(service).to receive(:cleanup_temporary_files)
@@ -169,8 +206,8 @@ RSpec.describe Users::ExportData, type: :service do
         expect { service.export }.to raise_error(StandardError, error_message)
       end
 
-      it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with("Export failed: #{error_message}")
+      it 'reports the error via ExceptionReporter' do
+        expect(ExceptionReporter).to receive(:call).with(an_instance_of(StandardError), 'Export failed')
 
         expect { service.export }.to raise_error(StandardError, error_message)
       end
@@ -188,7 +225,7 @@ RSpec.describe Users::ExportData, type: :service do
 
     context 'when export record creation fails' do
       before do
-        exports_double = double('Exports')
+        exports_double = double('Exports', count: 3)
         allow(user).to receive(:exports).and_return(exports_double)
         allow(exports_double).to receive(:create!).and_raise(ActiveRecord::RecordInvalid)
       end
@@ -203,7 +240,7 @@ RSpec.describe Users::ExportData, type: :service do
 
       before do
         # Mock Export creation
-        exports_double = double('Exports')
+        exports_double = double('Exports', count: 3)
         allow(user).to receive(:exports).and_return(exports_double)
         allow(exports_double).to receive(:create!).and_return(export_record)
         allow(export_record).to receive(:update!)
@@ -221,6 +258,18 @@ RSpec.describe Users::ExportData, type: :service do
         allow(Users::ExportData::Places).to receive(:new).and_return(double(call: []))
 
         allow(user).to receive(:safe_settings).and_return(double(settings: {}))
+
+        # Mock user associations for counting
+        allow(user).to receive(:areas).and_return(double(count: 5))
+        allow(user).to receive(:imports).and_return(double(count: 12))
+        # exports already mocked above
+        allow(user).to receive(:trips).and_return(double(count: 8))
+        allow(user).to receive(:stats).and_return(double(count: 24))
+        allow(user).to receive(:notifications).and_return(double(count: 10))
+        allow(user).to receive(:tracked_points).and_return(double(count: 15000))
+        allow(user).to receive(:visits).and_return(double(count: 45))
+        allow(user).to receive(:places).and_return(double(count: 20))
+
         allow(File).to receive(:open).and_call_original
         allow(File).to receive(:open).with(export_directory.join('data.json'), 'w').and_yield(StringIO.new)
 
@@ -292,11 +341,11 @@ RSpec.describe Users::ExportData, type: :service do
         before do
           allow(File).to receive(:directory?).and_return(true)
           allow(FileUtils).to receive(:rm_rf).and_raise(StandardError, 'Permission denied')
-          allow(Rails.logger).to receive(:error)
+          allow(ExceptionReporter).to receive(:call)
         end
 
-        it 'logs the error but does not re-raise' do
-          expect(Rails.logger).to receive(:error).with('Failed to cleanup temporary files: Permission denied')
+        it 'reports the error via ExceptionReporter but does not re-raise' do
+          expect(ExceptionReporter).to receive(:call).with(an_instance_of(StandardError), 'Failed to cleanup temporary files')
 
           expect { service.send(:cleanup_temporary_files, export_directory) }.not_to raise_error
         end
@@ -312,6 +361,45 @@ RSpec.describe Users::ExportData, type: :service do
 
           service.send(:cleanup_temporary_files, export_directory)
         end
+      end
+    end
+
+    describe '#calculate_entity_counts' do
+      before do
+        # Mock user associations for counting
+        allow(user).to receive(:areas).and_return(double(count: 5))
+        allow(user).to receive(:imports).and_return(double(count: 12))
+        allow(user).to receive(:exports).and_return(double(count: 3))
+        allow(user).to receive(:trips).and_return(double(count: 8))
+        allow(user).to receive(:stats).and_return(double(count: 24))
+        allow(user).to receive(:notifications).and_return(double(count: 10))
+        allow(user).to receive(:tracked_points).and_return(double(count: 15000))
+        allow(user).to receive(:visits).and_return(double(count: 45))
+        allow(user).to receive(:places).and_return(double(count: 20))
+        allow(Rails.logger).to receive(:info)
+      end
+
+      it 'returns correct counts for all entity types' do
+        counts = service.send(:calculate_entity_counts)
+
+        expect(counts).to eq({
+          areas: 5,
+          imports: 12,
+          exports: 3,
+          trips: 8,
+          stats: 24,
+          notifications: 10,
+          points: 15000,
+          visits: 45,
+          places: 20
+        })
+      end
+
+      it 'logs the calculation process' do
+        expect(Rails.logger).to receive(:info).with("Calculating entity counts for export")
+        expect(Rails.logger).to receive(:info).with(/Entity counts:/)
+
+        service.send(:calculate_entity_counts)
       end
     end
   end

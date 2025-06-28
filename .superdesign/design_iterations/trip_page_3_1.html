@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coast to Coast Adventure - Trip Details</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .map-placeholder {
+            background: linear-gradient(45deg, #f3f4f6 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f3f4f6 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f3f4f6 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f3f4f6 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        .photo-placeholder {
+            background: linear-gradient(135deg, #e5e7eb 0%, #f9fafb 50%, #e5e7eb 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-black font-sans antialiased">
+    <!-- Main Container -->
+    <div class="min-h-screen p-4">
+        <div class="max-w-4xl mx-auto">
+            
+            <!-- Compact Header -->
+            <header class="mb-6 bg-white rounded-lg p-4 border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-light tracking-tight">Coast to Coast Adventure</h1>
+                        <p class="text-sm text-gray-600">NYC → SF • Oct 2024</p>
+                    </div>
+                    <div class="text-right text-sm">
+                        <div class="text-lg font-light">2,908 mi</div>
+                        <div class="text-gray-600">14 days</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                
+                <!-- Map Section -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="map-placeholder h-64 lg:h-80 flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-2 bg-gray-300 rounded-full flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-xs text-gray-500">Route Map</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compact Data Panel -->
+                <div class="space-y-4">
+                    <!-- Stats -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <h3 class="text-sm font-medium mb-3 text-gray-800">Trip Stats</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Distance</span>
+                                <span class="font-medium">2,908 mi</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Duration</span>
+                                <span class="font-medium">14 days</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">States</span>
+                                <span class="font-medium">12</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Photos</span>
+                                <span class="font-medium">247</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Compact States List -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <h3 class="text-sm font-medium mb-3 text-gray-800">Route</h3>
+                        <div class="text-xs text-gray-600 leading-relaxed">
+                            NY → PA → OH → IN → IL → IA → NE → CO → UT → NV → CA
+                        </div>
+                    </div>
+
+                    <!-- Compact Photos -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <h3 class="text-sm font-medium mb-3 text-gray-800">Highlights</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="photo-placeholder h-16 rounded flex items-center justify-center">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="photo-placeholder h-16 rounded flex items-center justify-center">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="photo-placeholder h-16 rounded flex items-center justify-center">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="photo-placeholder h-16 rounded flex items-center justify-center">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compact Additional Details -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <!-- Key Stops -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <h3 class="text-sm font-medium mb-3 text-gray-800">Key Stops</h3>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex justify-between py-1">
+                            <span>Times Square</span>
+                            <span class="text-gray-500">Day 1</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span>Chicago</span>
+                            <span class="text-gray-500">Day 4</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span>Rocky Mountains</span>
+                            <span class="text-gray-500">Day 8</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span>Arches NP</span>
+                            <span class="text-gray-500">Day 10</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span>Golden Gate</span>
+                            <span class="text-gray-500">Day 14</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <h3 class="text-sm font-medium mb-3 text-gray-800">Weather</h3>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex justify-between py-1">
+                            <span>Avg Temp</span>
+                            <span class="font-medium">68°F</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span>Sunny Days</span>
+                            <span class="font-medium">11/14</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span>Rain Days</span>
+                            <span class="font-medium">2/14</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span>Best</span>
+                            <span class="font-medium">Utah, Nevada</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Notes -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <h3 class="text-sm font-medium mb-3 text-gray-800">Notes</h3>
+                    <div class="text-xs text-gray-700 space-y-2">
+                        <p>Fall foliage in Midwest was perfect timing.</p>
+                        <p>Route 66 sections provided authentic experience.</p>
+                        <p>Utah landscape diversity exceeded expectations.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

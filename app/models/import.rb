@@ -11,13 +11,24 @@ class Import < ApplicationRecord
 
   validates :name, presence: true, uniqueness: { scope: :user_id }
 
+  enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
+
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,
-    google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7
+    google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
+    user_data_archive: 8
   }
 
   def process!
-    Imports::Create.new(user, self).call
+    if user_data_archive?
+      process_user_data_archive!
+    else
+      Imports::Create.new(user, self).call
+    end
+  end
+
+  def process_user_data_archive!
+    Users::ImportDataJob.perform_later(id)
   end
 
   def reverse_geocoded_points_count
@@ -39,7 +50,7 @@ class Import < ApplicationRecord
     file.attach(io: raw_file, filename: name, content_type: 'application/json')
   end
 
-  private
+    private
 
   def remove_attached_file
     file.purge_later

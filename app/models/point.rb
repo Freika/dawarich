@@ -77,7 +77,7 @@ class Point < ApplicationRecord
         timestamp.to_s,
         velocity.to_s,
         id.to_s,
-        country.to_s
+        country_name.to_s
       ]
     )
   end
@@ -86,5 +86,10 @@ class Point < ApplicationRecord
   def set_country
     self.country_id = found_in_country&.id
     save! if changed?
+  end
+
+  def country_name
+    # Safely get country name from association or attribute
+    self.country&.name || read_attribute(:country) || ''
   end
 end

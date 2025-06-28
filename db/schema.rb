@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_25_185030) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -107,7 +107,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_25_185030) do
     t.integer "processed", default: 0
     t.jsonb "raw_data"
     t.integer "points_count", default: 0
+    t.integer "status", default: 0, null: false
     t.index ["source"], name: "index_imports_on_source"
+    t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
@@ -230,6 +232,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_25_185030) do
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
+  create_table "user_data_imports", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "status", default: "pending", null: false
+    t.string "archive_file_name"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_user_data_imports_on_status"
+    t.index ["user_id", "created_at"], name: "index_user_data_imports_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_user_data_imports_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -282,6 +296,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_25_185030) do
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
   add_foreign_key "trips", "users"
+  add_foreign_key "user_data_imports", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"

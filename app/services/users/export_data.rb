@@ -6,6 +6,17 @@ require 'zip'
 #
 # Output JSON Structure Example:
 # {
+#   "counts": {
+#     "areas": 5,
+#     "imports": 12,
+#     "exports": 3,
+#     "trips": 8,
+#     "stats": 24,
+#     "notifications": 10,
+#     "points": 15000,
+#     "visits": 45,
+#     "places": 20
+#   },
 #   "settings": {
 #     "distance_unit": "km",
 #     "timezone": "UTC",
@@ -227,7 +238,11 @@ class Users::ExportData
 
       # Stream JSON writing instead of building in memory
       File.open(json_file_path, 'w') do |file|
-        file.write('{"settings":')
+        # Start JSON and add counts summary
+        file.write('{"counts":')
+        file.write(calculate_entity_counts.to_json)
+
+        file.write(',"settings":')
         file.write(user.safe_settings.settings.to_json)
 
         file.write(',"areas":')
@@ -281,7 +296,7 @@ class Users::ExportData
       # Mark export as failed if an error occurs
       export_record.update!(status: :failed) if export_record
 
-      ExceptionReporter.call(e)
+      ExceptionReporter.call(e, 'Export failed')
 
       raise e
     ensure
@@ -302,30 +317,44 @@ class Users::ExportData
     @files_directory
   end
 
+  def calculate_entity_counts
+    Rails.logger.info "Calculating entity counts for export"
+
+    counts = {
+      areas: user.areas.count,
+      imports: user.imports.count,
+      exports: user.exports.count,
+      trips: user.trips.count,
+      stats: user.stats.count,
+      notifications: user.notifications.count,
+      points: user.tracked_points.count,
+      visits: user.visits.count,
+      places: user.places.count
+    }
+
+    Rails.logger.info "Entity counts: #{counts}"
+    counts
+  end
+
   def create_zip_archive(export_directory, zip_file_path)
+    # Set global compression level for better file size reduction
+    original_compression = Zip.default_compression
+    Zip.default_compression = Zlib::BEST_COMPRESSION
+
     # Create zip archive with optimized compression
     Zip::File.open(zip_file_path, Zip::File::CREATE) do |zipfile|
-      # Set higher compression for better file size reduction
-      zipfile.default_compression = Zip::Entry::DEFLATED
-      zipfile.default_compression_level = 9  # Maximum compression
-
       Dir.glob(export_directory.join('**', '*')).each do |file|
         next if File.directory?(file) || file == zip_file_path.to_s
 
         relative_path = file.sub(export_directory.to_s + '/', '')
 
-        # Add file with specific compression settings
-        zipfile.add(relative_path, file) do |entry|
-          # JSON files compress very well, so use maximum compression
-          if file.end_with?('.json')
-            entry.compression_level = 9
-          else
-            # For other files (images, etc.), use balanced compression
-            entry.compression_level = 6
-          end
-        end
+        # Add file to the zip archive
+        zipfile.add(relative_path, file)
       end
     end
+  ensure
+    # Restore original compression level
+    Zip.default_compression = original_compression if original_compression
   end
 
   def cleanup_temporary_files(export_directory)
@@ -334,14 +363,17 @@ class Users::ExportData
     Rails.logger.info "Cleaning up temporary export directory: #{export_directory}"
     FileUtils.rm_rf(export_directory)
   rescue StandardError => e
-    ExceptionReporter.call(e)
+    ExceptionReporter.call(e, 'Failed to cleanup temporary files')
   end
 
   def create_success_notification
+    counts = calculate_entity_counts
+    summary = "#{counts[:points]} points, #{counts[:visits]} visits, #{counts[:places]} places, #{counts[:trips]} trips"
+
     ::Notifications::Create.new(
       user: user,
       title: 'Export completed',
-      content: 'Your data export has been processed successfully. You can download it from the exports page.',
+      content: "Your data export has been processed successfully (#{summary}). You can download it from the exports page.",
       kind: :info
     ).call
   end

@@ -2,7 +2,8 @@
 
 class Settings::UsersController < ApplicationController
   before_action :authenticate_self_hosted!
-  before_action :authenticate_admin!
+  before_action :authenticate_admin!, except: [:export, :import]
+  before_action :authenticate_user!, only: [:export, :import]
 
   def index
     @users = User.order(created_at: :desc)
@@ -53,7 +54,40 @@ class Settings::UsersController < ApplicationController
   end
 
   def import
+    unless params[:archive].present?
+      redirect_to edit_user_registration_path, alert: 'Please select a ZIP archive to import.'
+      return
+    end
 
+    archive_file = params[:archive]
+
+    # Validate file type
+    unless archive_file.content_type == 'application/zip' ||
+           archive_file.content_type == 'application/x-zip-compressed' ||
+           File.extname(archive_file.original_filename).downcase == '.zip'
+      redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.'
+      return
+    end
+
+        # Create Import record for user data archive
+    import = current_user.imports.build(
+      name: archive_file.original_filename,
+      source: :user_data_archive
+    )
+
+    import.file.attach(archive_file)
+
+    if import.save
+      redirect_to edit_user_registration_path,
+                  notice: 'Your data import has been started. You will receive a notification when it completes.'
+    else
+      redirect_to edit_user_registration_path,
+                  alert: 'Failed to start import. Please try again.'
+    end
+  rescue StandardError => e
+    ExceptionReporter.call(e, 'User data import failed to start')
+    redirect_to edit_user_registration_path,
+                alert: 'An error occurred while starting the import. Please try again.'
   end
 
   private

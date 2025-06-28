@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coast to Coast Adventure - Trip Details</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .map-placeholder {
+            background: linear-gradient(45deg, #f3f4f6 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f3f4f6 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f3f4f6 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f3f4f6 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        .photo-placeholder {
+            background: linear-gradient(135deg, #e5e7eb 0%, #f9fafb 50%, #e5e7eb 100%);
+        }
+        
+        .stat-card {
+            transition: transform 0.2s ease-in-out;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-white text-black font-sans antialiased">
+    <!-- Main Container -->
+    <div class="min-h-screen p-4 md:p-8">
+        <div class="max-w-7xl mx-auto">
+            
+            <!-- Trip Header -->
+            <header class="mb-8">
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight mb-2">
+                    Coast to Coast Adventure
+                </h1>
+                <p class="text-lg md:text-xl text-gray-600 font-light">
+                    New York City to San Francisco • October 2024
+                </p>
+            </header>
+
+            <!-- Main Grid Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                
+                <!-- Map Section -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="p-6 border-b border-gray-100">
+                            <h2 class="text-2xl font-light mb-2">Route Overview</h2>
+                            <p class="text-gray-600">Interactive journey across America</p>
+                        </div>
+                        <div class="map-placeholder h-96 md:h-[500px] flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="w-16 h-16 mx-auto mb-4 bg-gray-300 rounded-full flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-gray-500 font-light">Interactive Map</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Section -->
+                <div>
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h2 class="text-2xl font-light mb-6">Trip Statistics</h2>
+                        
+                        <div class="space-y-6">
+                            <!-- Distance -->
+                            <div class="stat-card bg-gray-50 p-4 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-gray-600 mb-1">Total Distance</p>
+                                        <p class="text-3xl font-light">2,908 mi</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Duration -->
+                            <div class="stat-card bg-gray-50 p-4 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-gray-600 mb-1">Duration</p>
+                                        <p class="text-3xl font-light">14 days</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Countries -->
+                            <div class="stat-card bg-gray-50 p-4 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-gray-600 mb-1">States Visited</p>
+                                        <p class="text-3xl font-light">12</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- State List -->
+                        <div class="mt-6 pt-6 border-t border-gray-100">
+                            <h3 class="text-lg font-light mb-4">States Crossed</h3>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>New York</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Pennsylvania</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Ohio</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Indiana</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Illinois</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Iowa</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Nebraska</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Colorado</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Utah</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>Nevada</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                    <span>California</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Photos Section -->
+                <div>
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h2 class="text-2xl font-light mb-6">Trip Highlights</h2>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <!-- Featured Photo -->
+                            <div class="col-span-2">
+                                <div class="photo-placeholder h-48 rounded-lg flex items-center justify-center">
+                                    <div class="text-center">
+                                        <div class="w-12 h-12 mx-auto mb-2 bg-gray-400 rounded-lg flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </div>
+                                        <p class="text-sm text-gray-500">Golden Gate Bridge</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Small Photos -->
+                            <div class="photo-placeholder h-24 rounded-lg flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="w-8 h-8 mx-auto mb-1 bg-gray-400 rounded flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs text-gray-500">Chicago Skyline</p>
+                                </div>
+                            </div>
+
+                            <div class="photo-placeholder h-24 rounded-lg flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="w-8 h-8 mx-auto mb-1 bg-gray-400 rounded flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs text-gray-500">Rocky Mountains</p>
+                                </div>
+                            </div>
+
+                            <div class="photo-placeholder h-24 rounded-lg flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="w-8 h-8 mx-auto mb-1 bg-gray-400 rounded flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs text-gray-500">Monument Valley</p>
+                                </div>
+                            </div>
+
+                            <div class="photo-placeholder h-24 rounded-lg flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="w-8 h-8 mx-auto mb-1 bg-gray-400 rounded flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs text-gray-500">Route 66</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Photo Counter -->
+                        <div class="text-center">
+                            <button class="text-sm text-gray-600 hover:text-black transition-colors duration-200 border border-gray-200 px-4 py-2 rounded-lg hover:border-gray-300">
+                                View all 247 photos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Trip Details -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Key Stops -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 class="text-xl font-light mb-4">Key Stops</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                            <span class="text-sm">Times Square, NYC</span>
+                            <span class="text-sm text-gray-500">Day 1</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                            <span class="text-sm">Millennium Park, Chicago</span>
+                            <span class="text-sm text-gray-500">Day 4</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                            <span class="text-sm">Rocky Mountain National Park</span>
+                            <span class="text-sm text-gray-500">Day 8</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                            <span class="text-sm">Arches National Park</span>
+                            <span class="text-sm text-gray-500">Day 10</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                            <span class="text-sm">Golden Gate Bridge, SF</span>
+                            <span class="text-sm text-gray-500">Day 14</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather Summary -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 class="text-xl font-light mb-4">Weather Summary</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Average Temperature</span>
+                            <span class="text-sm font-medium">68°F</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Sunny Days</span>
+                            <span class="text-sm font-medium">11 of 14</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Rain Days</span>
+                            <span class="text-sm font-medium">2 of 14</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Best Weather</span>
+                            <span class="text-sm font-medium">Utah, Nevada</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trip Notes -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 class="text-xl font-light mb-4">Trip Notes</h3>
+                    <div class="space-y-3 text-sm text-gray-700">
+                        <p>Perfect timing for fall foliage in the Midwest. Colorado mountains were breathtaking with early snow caps.</p>
+                        <p>Route 66 sections in Illinois and Missouri provided authentic American road trip experience.</p>
+                        <p>Utah's landscape diversity exceeded expectations - from desert to mountain passes.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

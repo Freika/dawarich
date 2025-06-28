@@ -25,7 +25,8 @@ RSpec.describe Import, type: :model do
         gpx: 4,
         immich_api: 5,
         geojson: 6,
-        photoprism_api: 7
+        photoprism_api: 7,
+        user_data_archive: 8
       )
     end
   end
