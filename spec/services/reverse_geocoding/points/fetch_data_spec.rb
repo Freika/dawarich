@@ -11,7 +11,7 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     before do
       allow(Geocoder).to receive(:search).and_return(
         [
-          double(city: 'City', country: 'Country',data: { 'address' => 'Address' })
+          double(city: 'City', country: 'Country', data: { 'address' => 'Address' })
         ]
       )
     end
@@ -20,7 +20,7 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
       it 'updates point with city and country' do
         expect { fetch_data }.to change { point.reload.city }
           .from(nil).to('City')
-          .and change { point.reload.country }.from(nil).to('Country')
+          .and change { point.reload.country_id }.from(nil).to(be_present)
       end
 
       it 'updates point with geodata' do
@@ -35,7 +35,8 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
 
     context 'when point has city and country' do
-      let(:point) { create(:point, :with_geodata, :reverse_geocoded) }
+      let(:country) { create(:country, name: 'Test Country') }
+      let(:point) { create(:point, :with_geodata, city: 'Test City', country_id: country.id, reverse_geocoded_at: Time.current) }
 
       before do
         allow(Geocoder).to receive(:search).and_return(
@@ -57,7 +58,7 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
   context 'when Geocoder returns an error' do
     before do
-      allow(Geocoder).to receive(:search).and_return([double(data: { 'error' => 'Error' })])
+      allow(Geocoder).to receive(:search).and_return([double(city: nil, country: nil, data: { 'error' => 'Error' })])
     end
 
     it 'does not update point' do

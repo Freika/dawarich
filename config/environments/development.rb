@@ -88,7 +88,8 @@ Rails.application.configure do
 
   hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
 
-  config.action_mailer.default_url_options = { host: hosts.first, port: 3000 }
+  config.action_mailer.default_url_options = { host: ENV['SMTP_DOMAIN'] || hosts.first }
+
   config.hosts.concat(hosts) if hosts.present?
 
   config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'

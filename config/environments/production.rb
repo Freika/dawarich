@@ -103,7 +103,7 @@ Rails.application.configure do
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
   hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
 
-  config.action_mailer.default_url_options = { host: hosts.first, port: 3000 }
+  config.action_mailer.default_url_options = { host: ENV['SMTP_DOMAIN'] }
   config.hosts.concat(hosts) if hosts.present?
 
   config.action_mailer.delivery_method = :smtp

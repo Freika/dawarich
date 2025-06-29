@@ -36,7 +36,13 @@ Rails.application.routes.draw do
   resources :settings, only: :index
   namespace :settings do
     resources :background_jobs, only: %i[index create]
-    resources :users, only: %i[index create destroy edit update]
+    resources :users, only: %i[index create destroy edit update] do
+      collection do
+        get 'export'
+        post 'import'
+      end
+    end
+
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
   end

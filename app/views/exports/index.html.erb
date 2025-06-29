@@ -28,6 +28,7 @@
           <thead>
             <tr>
               <th>Name</th>
+              <th>File size</th>
               <th>Created at</th>
               <th>Status</th>
               <th>Actions</th>
@@ -37,6 +38,7 @@
             <% @exports.each do |export| %>
               <tr>
                 <td><%= export.name %></td>
+                <td><%= number_to_human_size(export.file.byte_size) || 'N/A' %></td>
                 <td><%= human_datetime(export.created_at) %></td>
                 <td><%= export.status %></td>
                 <td>

@@ -9,13 +9,19 @@ class Imports::Create
   end
 
   def call
+    import.update!(status: :processing)
+
     importer(import.source).new(import, user.id).call
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
     update_import_points_count(import)
   rescue StandardError => e
+    import.update!(status: :failed)
+
     create_import_failed_notification(import, user, e)
+  ensure
+    import.update!(status: :completed) if import.completed?
   end
 
   private

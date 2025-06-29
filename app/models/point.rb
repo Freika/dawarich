@@ -7,6 +7,7 @@ class Point < ApplicationRecord
   belongs_to :import, optional: true, counter_cache: true
   belongs_to :visit, optional: true
   belongs_to :user
+  belongs_to :country, optional: true
 
   validates :timestamp, :lonlat, presence: true
   validates :lonlat, uniqueness: {
@@ -28,7 +29,7 @@ class Point < ApplicationRecord
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
 
-  after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? }
+  after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates
 
@@ -76,7 +77,7 @@ class Point < ApplicationRecord
         timestamp.to_s,
         velocity.to_s,
         id.to_s,
-        country.to_s
+        country_name.to_s
       ]
     )
   end
@@ -85,5 +86,10 @@ class Point < ApplicationRecord
   def set_country
     self.country_id = found_in_country&.id
     save! if changed?
+  end
+
+  def country_name
+    # Safely get country name from association or attribute
+    self.country&.name || read_attribute(:country) || ''
   end
 end

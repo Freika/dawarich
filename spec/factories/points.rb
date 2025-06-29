@@ -24,7 +24,6 @@ FactoryBot.define do
     tracker_id      { 'MyString' }
     import_id       { '' }
     city            { nil }
-    country         { nil }
     reverse_geocoded_at { nil }
     course          { nil }
     course_accuracy { nil }
@@ -32,6 +31,32 @@ FactoryBot.define do
     lonlat { "POINT(#{FFaker::Geolocation.lng} #{FFaker::Geolocation.lat})" }
     user
     country_id { nil }
+
+    # Add transient attribute to handle country strings
+    transient do
+      country { nil }  # Allow country to be passed as string
+    end
+
+    # Handle country string assignment by creating Country objects
+    after(:create) do |point, evaluator|
+      if evaluator.country.is_a?(String)
+        # Set both the country string attribute and the Country association
+        country_obj = Country.find_or_create_by(name: evaluator.country) do |country|
+          country.iso_a2 = evaluator.country[0..1].upcase
+          country.iso_a3 = evaluator.country[0..2].upcase
+          country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
+        end
+        point.update_columns(
+          country: evaluator.country,
+          country_id: country_obj.id
+        )
+      elsif evaluator.country
+        point.update_columns(
+          country: evaluator.country.name,
+          country_id: evaluator.country.id
+        )
+      end
+    end
 
     trait :with_known_location do
       lonlat { 'POINT(37.6173 55.755826)' }
@@ -62,9 +87,22 @@ FactoryBot.define do
     end
 
     trait :reverse_geocoded do
-      country { FFaker::Address.country }
       city { FFaker::Address.city }
       reverse_geocoded_at { Time.current }
+
+      after(:build) do |point, evaluator|
+        # Only set country if not already set by transient attribute
+        unless point.read_attribute(:country)
+          country_name = FFaker::Address.country
+          country_obj = Country.find_or_create_by(name: country_name) do |country|
+            country.iso_a2 = country_name[0..1].upcase
+            country.iso_a3 = country_name[0..2].upcase
+            country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
+          end
+          point.write_attribute(:country, country_name)        # Set the string attribute directly
+          point.country_id = country_obj.id   # Set the association
+        end
+      end
     end
   end
 end

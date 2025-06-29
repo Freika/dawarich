@@ -115,6 +115,10 @@ class User < ApplicationRecord
     JWT.encode(payload, secret_key, 'HS256')
   end
 
+  def export_data
+    Users::ExportDataJob.perform_later(id)
+  end
+
   private
 
   def create_api_key
