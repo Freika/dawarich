@@ -42,8 +42,9 @@ FactoryBot.define do
       if evaluator.country.is_a?(String)
         # Set both the country string attribute and the Country association
         country_obj = Country.find_or_create_by(name: evaluator.country) do |country|
-          country.iso_a2 = evaluator.country[0..1].upcase
-          country.iso_a3 = evaluator.country[0..2].upcase
+          iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(evaluator.country)
+          country.iso_a2 = iso_a2
+          country.iso_a3 = iso_a3
           country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
         end
         point.update_columns(
@@ -95,8 +96,9 @@ FactoryBot.define do
         unless point.read_attribute(:country)
           country_name = FFaker::Address.country
           country_obj = Country.find_or_create_by(name: country_name) do |country|
-            country.iso_a2 = country_name[0..1].upcase
-            country.iso_a3 = country_name[0..2].upcase
+            iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(country_name)
+            country.iso_a2 = iso_a2
+            country.iso_a3 = iso_a3
             country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
           end
           point.write_attribute(:country, country_name)        # Set the string attribute directly

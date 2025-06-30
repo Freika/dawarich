@@ -11,7 +11,14 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     before do
       allow(Geocoder).to receive(:search).and_return(
         [
-          double(city: 'City', country: 'Country', data: { 'address' => 'Address' })
+          double(
+            city: 'Berlin',
+            country: 'Germany',
+            data: {
+              'address' => 'Address',
+              'properties' => { 'countrycode' => 'DE' }
+            }
+          )
         ]
       )
     end
@@ -19,12 +26,23 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     context 'when point does not have city and country' do
       it 'updates point with city and country' do
         expect { fetch_data }.to change { point.reload.city }
-          .from(nil).to('City')
+          .from(nil).to('Berlin')
           .and change { point.reload.country_id }.from(nil).to(be_present)
       end
 
+      it 'creates country with correct ISO codes' do
+        fetch_data
+        country = point.reload.country
+        expect(country.name).to eq('Germany')
+        expect(country.iso_a2).to eq('DE')
+        expect(country.iso_a3).to eq('DEU')
+      end
+
       it 'updates point with geodata' do
-        expect { fetch_data }.to change { point.reload.geodata }.from({}).to('address' => 'Address')
+        expect { fetch_data }.to change { point.reload.geodata }.from({}).to(
+          'address' => 'Address',
+          'properties' => { 'countrycode' => 'DE' }
+        )
       end
 
       it 'calls Geocoder' do
@@ -40,7 +58,15 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
       before do
         allow(Geocoder).to receive(:search).and_return(
-          [double(geodata: { 'address' => 'Address' }, city: 'City', country: 'Country')]
+          [double(
+            geodata: { 'address' => 'Address' },
+            city: 'Berlin',
+            country: 'Germany',
+            data: {
+              'address' => 'Address',
+              'properties' => { 'countrycode' => 'DE' }
+            }
+          )]
         )
       end
 
@@ -53,6 +79,31 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
         expect(Geocoder).not_to have_received(:search)
       end
+    end
+  end
+
+  context 'when Geocoder returns country name without ISO code' do
+    before do
+      allow(Geocoder).to receive(:search).and_return(
+        [
+          double(
+            city: 'Paris',
+            country: 'France',
+            data: {
+              'address' => 'Address',
+              'properties' => { 'city' => 'Paris' } # No countrycode property
+            }
+          )
+        ]
+      )
+    end
+
+    it 'creates country with correct ISO codes from country name mapping' do
+      fetch_data
+      country = point.reload.country
+      expect(country.name).to eq('France')
+      expect(country.iso_a2).to eq('FR')
+      expect(country.iso_a3).to eq('FRA')
     end
   end
 

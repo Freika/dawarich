@@ -7,6 +7,38 @@ RSpec.describe Imports::Create do
   let(:service) { described_class.new(user, import) }
 
   describe '#call' do
+    describe 'status transitions' do
+      let(:import) { create(:import, source: 'owntracks', status: 'created') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/owntracks/2024-03.rec') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: '2024-03.rec', content_type: 'application/octet-stream')
+      end
+
+      it 'sets status to processing at start' do
+        service.call
+        expect(import.reload.status).to eq('processing').or eq('completed')
+      end
+
+      context 'when import succeeds' do
+        it 'sets status to completed' do
+          service.call
+          expect(import.reload.status).to eq('completed')
+        end
+      end
+
+      context 'when import fails' do
+        before do
+          allow(OwnTracks::Importer).to receive(:new).with(import, user.id).and_raise(StandardError)
+        end
+
+        it 'sets status to failed' do
+          service.call
+          expect(import.reload.status).to eq('failed')
+        end
+      end
+    end
+
     context 'when source is google_semantic_history' do
       let(:import) { create(:import, source: 'google_semantic_history') }
       let(:file_path) { Rails.root.join('spec/fixtures/files/google/semantic_history.json') }

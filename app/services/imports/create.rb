@@ -21,7 +21,7 @@ class Imports::Create
 
     create_import_failed_notification(import, user, e)
   ensure
-    import.update!(status: :completed) if import.completed?
+    import.update!(status: :completed) if import.processing?
   end
 
   private

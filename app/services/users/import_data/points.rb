@@ -206,8 +206,8 @@ class Users::ImportData::Points
 
   def create_missing_country(country_info)
     Country.find_or_create_by(name: country_info['name']) do |new_country|
-      new_country.iso_a2 = country_info['iso_a2'] || country_info['name'][0..1].upcase
-      new_country.iso_a3 = country_info['iso_a3'] || country_info['name'][0..2].upcase
+      new_country.iso_a2 = country_info['iso_a2'] || Countries::IsoCodeMapper.fallback_codes_from_country_name(country_info['name'])[0]
+      new_country.iso_a3 = country_info['iso_a3'] || Countries::IsoCodeMapper.fallback_codes_from_country_name(country_info['name'])[1]
       new_country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"  # Default geometry
     end
   rescue StandardError => e
