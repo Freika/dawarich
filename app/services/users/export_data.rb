@@ -238,7 +238,6 @@ class Users::ExportData
 
       # Stream JSON writing instead of building in memory
       File.open(json_file_path, 'w') do |file|
-        # Start JSON and add counts summary
         file.write('{"counts":')
         file.write(calculate_entity_counts.to_json)
 
@@ -278,29 +277,24 @@ class Users::ExportData
       zip_file_path = @export_directory.join('export.zip')
       create_zip_archive(@export_directory, zip_file_path)
 
-      # Attach the zip file to the Export record
       export_record.file.attach(
         io: File.open(zip_file_path),
         filename: export_record.name,
         content_type: 'application/zip'
       )
 
-      # Mark export as completed
       export_record.update!(status: :completed)
 
-      # Create notification
       create_success_notification
 
       export_record
     rescue StandardError => e
-      # Mark export as failed if an error occurs
       export_record.update!(status: :failed) if export_record
 
       ExceptionReporter.call(e, 'Export failed')
 
       raise e
     ensure
-      # Cleanup temporary files
       cleanup_temporary_files(@export_directory) if @export_directory&.exist?
     end
   end
@@ -337,23 +331,19 @@ class Users::ExportData
   end
 
     def create_zip_archive(export_directory, zip_file_path)
-    # Set global compression for better file size reduction
     original_compression = Zip.default_compression
     Zip.default_compression = Zip::Entry::DEFLATED
 
-    # Create zip archive with optimized compression
     Zip::File.open(zip_file_path, Zip::File::CREATE) do |zipfile|
       Dir.glob(export_directory.join('**', '*')).each do |file|
         next if File.directory?(file) || file == zip_file_path.to_s
 
         relative_path = file.sub(export_directory.to_s + '/', '')
 
-        # Add file to the zip archive
         zipfile.add(relative_path, file)
       end
     end
   ensure
-    # Restore original compression setting
     Zip.default_compression = original_compression if original_compression
   end
 

@@ -4,27 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [UNRELEASED]
+# [0.29.0] - 2025-06-30
 
 ## Added
 
-- [x] In the User Settings, you can now export your user data as a zip file. It will contain the following:
-  - [x] All your points
-  - [x] All your places
-  - [x] All your visits
-  - [x] All your areas
-  - [x] All your imports with files
-  - [x] All your exports with files
-  - [x] All your trips
-  - [x] All your notifications
-  - [x] All your stats
+- In the User Settings, you can now export your user data as a zip file. It will contain the following:
+  - All your points
+  - All your places
+  - All your visits
+  - All your areas
+  - All your imports with files
+  - All your exports with files
+  - All your trips
+  - All your notifications
+  - All your stats
 
-- [ ] In the User Settings, you can now import your user data from a zip file. It will import all the data from the zip file, listed above. It will also start stats recalculation.
-  - [ ] User can select to override settings or not.
-  - [ ] Check distance units if they are correct
-  - [ ] Why import creates more points than the original?
+- In the User Settings, you can now import your user data from a zip file. It will import all the data from the zip file, listed above. It will also start stats recalculation.
 
 - Export file size is now displayed in the exports and imports lists.
+- A button to download an import file is now displayed in the imports list. It may not work properly for imports created before the 0.25.4 release.
 
 ## Changed
 

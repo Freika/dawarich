@@ -36,7 +36,7 @@
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="table">
+        <table class="table overflow-x-auto">
           <thead>
             <tr>
               <th>Name</th>
@@ -68,9 +68,9 @@
                 <td data-points-count>
                   <%= number_with_delimiter import.processed %>
                 </td>
-                <td><%#= import.status %></td>
+                <td><%= import.status %></td>
                 <td><%= human_datetime(import.created_at) %></td>
-                <td>
+                <td class="whitespace-nowrap">
                   <% if import.file.present? %>
                     <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: import.name %>
                   <% end %>

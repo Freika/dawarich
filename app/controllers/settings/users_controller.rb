@@ -61,15 +61,8 @@ class Settings::UsersController < ApplicationController
 
     archive_file = params[:archive]
 
-    # Validate file type
-    unless archive_file.content_type == 'application/zip' ||
-           archive_file.content_type == 'application/x-zip-compressed' ||
-           File.extname(archive_file.original_filename).downcase == '.zip'
-      redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.'
-      return
-    end
+    validate_archive_file(archive_file)
 
-        # Create Import record for user data archive
     import = current_user.imports.build(
       name: archive_file.original_filename,
       source: :user_data_archive
@@ -94,5 +87,15 @@ class Settings::UsersController < ApplicationController
 
   def user_params
     params.require(:user).permit(:email, :password)
+  end
+
+  def validate_archive_file(archive_file)
+    unless archive_file.content_type == 'application/zip' ||
+           archive_file.content_type == 'application/x-zip-compressed' ||
+           File.extname(archive_file.original_filename).downcase == '.zip'
+
+      redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.'
+      return
+    end
   end
 end

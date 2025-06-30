@@ -188,14 +188,6 @@ class Users::ImportData::Points
       country = countries_lookup[country_info['name']]
     end
 
-    # If still not found, create a new country record
-    if country.nil? && country_info['name'].present?
-      country = create_missing_country(country_info)
-      # Add to lookup cache for subsequent points
-      @countries_lookup[country_info['name']] = country
-      @countries_lookup[[country.name, country.iso_a2, country.iso_a3]] = country
-    end
-
     if country
       attributes['country_id'] = country.id
       Rails.logger.debug "Resolved country reference: #{country_info['name']} -> #{country.id}"
@@ -204,16 +196,7 @@ class Users::ImportData::Points
     end
   end
 
-  def create_missing_country(country_info)
-    Country.find_or_create_by(name: country_info['name']) do |new_country|
-      new_country.iso_a2 = country_info['iso_a2'] || Countries::IsoCodeMapper.fallback_codes_from_country_name(country_info['name'])[0]
-      new_country.iso_a3 = country_info['iso_a3'] || Countries::IsoCodeMapper.fallback_codes_from_country_name(country_info['name'])[1]
-      new_country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"  # Default geometry
-    end
-  rescue StandardError => e
-    Rails.logger.error "Failed to create missing country: #{e.message}"
-    nil
-  end
+
 
   def resolve_visit_reference(attributes, visit_reference)
     return unless visit_reference.is_a?(Hash)

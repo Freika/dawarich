@@ -53,7 +53,7 @@ class Import < ApplicationRecord
     file.attach(io: raw_file, filename: name, content_type: 'application/json')
   end
 
-    private
+  private
 
   def remove_attached_file
     file.purge_later

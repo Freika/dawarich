@@ -11,9 +11,7 @@ class Users::ExportData::Exports
   def call
     exports_with_files = user.exports.includes(:file_attachment).to_a
 
-    # Only use parallel processing if we have multiple exports
     if exports_with_files.size > 1
-      # Use fewer threads to avoid database connection issues
       results = Parallel.map(exports_with_files, in_threads: 2) do |export|
         process_export(export)
       end
