@@ -38,9 +38,6 @@ RSpec.describe Users::ImportData::Imports, type: :service do
     # Create mock files
     File.write(files_directory.join('import_1_2023_MARCH.json'), '{"test": "data"}')
     File.write(files_directory.join('import_2_2023_APRIL.json'), '{"more": "data"}')
-
-    # Mock the Import job to prevent it from being enqueued
-    allow(Import::ProcessJob).to receive(:perform_later)
   end
 
   after do
@@ -97,6 +94,20 @@ RSpec.describe Users::ImportData::Imports, type: :service do
         expect(Rails.logger).to receive(:info).with("Imports import completed. Created: 2, Files restored: 2")
 
         service.call
+      end
+
+      it 'does not trigger background processing jobs' do
+        expect(Import::ProcessJob).not_to receive(:perform_later)
+
+        service.call
+      end
+
+      it 'sets skip_background_processing flag on created imports' do
+        service.call
+
+        user.imports.each do |import|
+          expect(import.skip_background_processing).to be_truthy
+        end
       end
     end
 

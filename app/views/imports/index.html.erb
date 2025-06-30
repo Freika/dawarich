@@ -42,11 +42,9 @@
               <th>Name</th>
               <th>File size</th>
               <th>Imported points</th>
-              <% if DawarichSettings.store_geodata? %>
-                <th>Reverse geocoded points</th>
-              <% end %>
               <th>Status</th>
               <th>Created at</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody
@@ -70,12 +68,14 @@
                 <td data-points-count>
                   <%= number_with_delimiter import.processed %>
                 </td>
-                <% if DawarichSettings.store_geodata? %>
-                  <td data-reverse-geocoded-points-count>
-                    <%= number_with_delimiter import.reverse_geocoded_points_count %>
-                  </td>
-                <% end %>
+                <td><%#= import.status %></td>
                 <td><%= human_datetime(import.created_at) %></td>
+                <td>
+                  <% if import.file.present? %>
+                    <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: import.name %>
+                  <% end %>
+                  <%= link_to 'Delete', import, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
+                </td>
               </tr>
             <% end %>
           </tbody>

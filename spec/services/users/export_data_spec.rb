@@ -109,8 +109,9 @@ RSpec.describe Users::ExportData, type: :service do
 
       it 'creates a zip file with proper compression settings' do
         expect(Zip::File).to receive(:open).with(zip_file_path, Zip::File::CREATE)
-        expect(zip_file_double).to receive(:default_compression=).with(Zip::Entry::DEFLATED)
-        expect(zip_file_double).to receive(:default_compression_level=).with(9)
+        expect(Zip).to receive(:default_compression).and_return(-1)  # Mock original compression
+        expect(Zip).to receive(:default_compression=).with(Zip::Entry::DEFLATED)
+        expect(Zip).to receive(:default_compression=).with(-1)  # Restoration
 
         service.export
       end

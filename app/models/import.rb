@@ -6,7 +6,10 @@ class Import < ApplicationRecord
 
   has_one_attached :file
 
-  after_commit -> { Import::ProcessJob.perform_later(id) }, on: :create
+  # Flag to skip background processing during user data import
+  attr_accessor :skip_background_processing
+
+  after_commit -> { Import::ProcessJob.perform_later(id) unless skip_background_processing }, on: :create
   after_commit :remove_attached_file, on: :destroy
 
   validates :name, presence: true, uniqueness: { scope: :user_id }

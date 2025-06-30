@@ -54,7 +54,10 @@ class Users::ImportData::Imports
     import_attributes = prepare_import_attributes(import_data)
 
     begin
-      import_record = user.imports.create!(import_attributes)
+      import_record = user.imports.build(import_attributes)
+      # Skip background processing since we're importing user data directly
+      import_record.skip_background_processing = true
+      import_record.save!
       Rails.logger.debug "Created import: #{import_record.name}"
       import_record
     rescue ActiveRecord::RecordInvalid => e

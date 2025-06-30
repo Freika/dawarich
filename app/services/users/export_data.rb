@@ -336,10 +336,10 @@ class Users::ExportData
     counts
   end
 
-  def create_zip_archive(export_directory, zip_file_path)
-    # Set global compression level for better file size reduction
+    def create_zip_archive(export_directory, zip_file_path)
+    # Set global compression for better file size reduction
     original_compression = Zip.default_compression
-    Zip.default_compression = Zlib::BEST_COMPRESSION
+    Zip.default_compression = Zip::Entry::DEFLATED
 
     # Create zip archive with optimized compression
     Zip::File.open(zip_file_path, Zip::File::CREATE) do |zipfile|
@@ -353,7 +353,7 @@ class Users::ExportData
       end
     end
   ensure
-    # Restore original compression level
+    # Restore original compression setting
     Zip.default_compression = original_compression if original_compression
   end
 
@@ -368,7 +368,15 @@ class Users::ExportData
 
   def create_success_notification
     counts = calculate_entity_counts
-    summary = "#{counts[:points]} points, #{counts[:visits]} visits, #{counts[:places]} places, #{counts[:trips]} trips"
+    summary = "#{counts[:points]} points, " \
+    "#{counts[:visits]} visits, " \
+    "#{counts[:places]} places, " \
+    "#{counts[:trips]} trips, " \
+    "#{counts[:areas]} areas, " \
+    "#{counts[:imports]} imports, " \
+    "#{counts[:exports]} exports, " \
+    "#{counts[:stats]} stats, " \
+    "#{counts[:notifications]} notifications"
 
     ::Notifications::Create.new(
       user: user,

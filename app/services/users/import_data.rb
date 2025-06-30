@@ -103,6 +103,9 @@ class Users::ImportData
       Rails.logger.info "Expected entity counts from export: #{data['counts']}"
     end
 
+    # Debug: Log what data keys are available
+    Rails.logger.debug "Available data keys: #{data.keys.inspect}"
+
     # Import in dependency order
     import_settings(data['settings']) if data['settings']
     import_areas(data['areas']) if data['areas']
@@ -119,55 +122,84 @@ class Users::ImportData
   end
 
   def import_settings(settings_data)
+    Rails.logger.debug "Importing settings: #{settings_data.inspect}"
     Users::ImportData::Settings.new(user, settings_data).call
     @import_stats[:settings_updated] = true
   end
 
   def import_areas(areas_data)
+    Rails.logger.debug "Importing #{areas_data&.size || 0} areas"
     areas_created = Users::ImportData::Areas.new(user, areas_data).call
     @import_stats[:areas_created] = areas_created
   end
 
   def import_places(places_data)
+    Rails.logger.debug "Importing #{places_data&.size || 0} places"
     places_created = Users::ImportData::Places.new(user, places_data).call
     @import_stats[:places_created] = places_created
   end
 
   def import_imports(imports_data)
+    Rails.logger.debug "Importing #{imports_data&.size || 0} imports"
     imports_created, files_restored = Users::ImportData::Imports.new(user, imports_data, @import_directory.join('files')).call
     @import_stats[:imports_created] = imports_created
     @import_stats[:files_restored] += files_restored
   end
 
   def import_exports(exports_data)
+    Rails.logger.debug "Importing #{exports_data&.size || 0} exports"
     exports_created, files_restored = Users::ImportData::Exports.new(user, exports_data, @import_directory.join('files')).call
     @import_stats[:exports_created] = exports_created
     @import_stats[:files_restored] += files_restored
   end
 
   def import_trips(trips_data)
+    Rails.logger.debug "Importing #{trips_data&.size || 0} trips"
     trips_created = Users::ImportData::Trips.new(user, trips_data).call
     @import_stats[:trips_created] = trips_created
   end
 
   def import_stats(stats_data)
+    Rails.logger.debug "Importing #{stats_data&.size || 0} stats"
     stats_created = Users::ImportData::Stats.new(user, stats_data).call
     @import_stats[:stats_created] = stats_created
   end
 
   def import_notifications(notifications_data)
+    Rails.logger.debug "Importing #{notifications_data&.size || 0} notifications"
     notifications_created = Users::ImportData::Notifications.new(user, notifications_data).call
     @import_stats[:notifications_created] = notifications_created
   end
 
   def import_visits(visits_data)
+    Rails.logger.debug "Importing #{visits_data&.size || 0} visits"
     visits_created = Users::ImportData::Visits.new(user, visits_data).call
     @import_stats[:visits_created] = visits_created
   end
 
   def import_points(points_data)
-    points_created = Users::ImportData::Points.new(user, points_data).call
-    @import_stats[:points_created] = points_created
+    puts "=== POINTS IMPORT DEBUG ==="
+    puts "About to import #{points_data&.size || 0} points"
+    puts "Points data present: #{points_data.present?}"
+    puts "First point sample: #{points_data&.first&.slice('timestamp', 'longitude', 'latitude') if points_data&.first}"
+    puts "=== END POINTS IMPORT DEBUG ==="
+
+    Rails.logger.info "About to import #{points_data&.size || 0} points"
+    Rails.logger.info "Points data present: #{points_data.present?}"
+    Rails.logger.info "First point sample: #{points_data&.first&.slice('timestamp', 'longitude', 'latitude') if points_data&.first}"
+
+    begin
+      points_created = Users::ImportData::Points.new(user, points_data).call
+      Rails.logger.info "Points import returned: #{points_created}"
+      puts "Points import returned: #{points_created}"
+
+      @import_stats[:points_created] = points_created
+    rescue StandardError => e
+      Rails.logger.error "Points import failed: #{e.message}"
+      Rails.logger.error "Backtrace: #{e.backtrace.first(5).join('\n')}"
+      puts "Points import failed: #{e.message}"
+      @import_stats[:points_created] = 0
+    end
   end
 
   def cleanup_temporary_files(import_directory)
@@ -180,8 +212,26 @@ class Users::ImportData
   end
 
   def create_success_notification
-    summary = "#{@import_stats[:points_created]} points, #{@import_stats[:visits_created]} visits, " \
-              "#{@import_stats[:places_created]} places, #{@import_stats[:trips_created]} trips"
+    # Check if we already have a recent import success notification to avoid duplicates
+    recent_import_notification = user.notifications.where(
+      title: 'Data import completed'
+    ).where('created_at > ?', 5.minutes.ago).first
+
+    if recent_import_notification
+      Rails.logger.debug "Skipping duplicate import success notification"
+      return
+    end
+
+    summary = "#{@import_stats[:points_created]} points, " \
+    "#{@import_stats[:visits_created]} visits, " \
+    "#{@import_stats[:places_created]} places, " \
+    "#{@import_stats[:trips_created]} trips, " \
+    "#{@import_stats[:areas_created]} areas, " \
+    "#{@import_stats[:imports_created]} imports, " \
+    "#{@import_stats[:exports_created]} exports, " \
+    "#{@import_stats[:stats_created]} stats, " \
+    "#{@import_stats[:files_restored]} files restored, " \
+    "#{@import_stats[:notifications_created]} notifications"
 
     ::Notifications::Create.new(
       user: user,

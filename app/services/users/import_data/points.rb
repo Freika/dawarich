@@ -11,7 +11,12 @@ class Users::ImportData::Points
   def call
     return 0 unless points_data.is_a?(Array)
 
+    puts "=== POINTS SERVICE DEBUG ==="
+    puts "Points data is array: #{points_data.is_a?(Array)}"
+    puts "Points data size: #{points_data.size}"
+
     Rails.logger.info "Importing #{points_data.size} points for user: #{user.email}"
+    Rails.logger.debug "First point sample: #{points_data.first.inspect}"
 
     # Pre-load reference data for efficient bulk processing
     preload_reference_data
@@ -19,18 +24,26 @@ class Users::ImportData::Points
     # Filter valid points and prepare for bulk import
     valid_points = filter_and_prepare_points
 
+    puts "Valid points after filtering: #{valid_points.size}"
+
     if valid_points.empty?
-      Rails.logger.info "No valid points to import"
+      puts "No valid points after filtering - returning 0"
+      Rails.logger.warn "No valid points to import after filtering"
+      Rails.logger.debug "Original points_data size: #{points_data.size}"
       return 0
     end
 
     # Remove duplicates based on unique constraint
     deduplicated_points = deduplicate_points(valid_points)
 
+    puts "Deduplicated points: #{deduplicated_points.size}"
+
     Rails.logger.info "Prepared #{deduplicated_points.size} unique valid points (#{points_data.size - deduplicated_points.size} duplicates/invalid skipped)"
 
     # Bulk import in batches
     total_created = bulk_import_points(deduplicated_points)
+
+    puts "Total created by bulk import: #{total_created}"
 
     Rails.logger.info "Points import completed. Created: #{total_created}"
     total_created
@@ -45,6 +58,7 @@ class Users::ImportData::Points
     @imports_lookup = user.imports.index_by { |import|
       [import.name, import.source, import.created_at.to_s]
     }
+    Rails.logger.debug "Loaded #{@imports_lookup.size} imports for lookup"
 
     # Pre-load all countries for efficient lookup
     @countries_lookup = {}
@@ -53,23 +67,26 @@ class Users::ImportData::Points
       @countries_lookup[[country.name, country.iso_a2, country.iso_a3]] = country
       @countries_lookup[country.name] = country
     end
+    Rails.logger.debug "Loaded #{Country.count} countries for lookup"
 
     # Pre-load visits for this user
     @visits_lookup = user.visits.index_by { |visit|
       [visit.name, visit.started_at.to_s, visit.ended_at.to_s]
     }
+    Rails.logger.debug "Loaded #{@visits_lookup.size} visits for lookup"
   end
 
   def filter_and_prepare_points
     valid_points = []
     skipped_count = 0
 
-    points_data.each do |point_data|
+    points_data.each_with_index do |point_data, index|
       next unless point_data.is_a?(Hash)
 
       # Skip points with invalid or missing required data
       unless valid_point_data?(point_data)
         skipped_count += 1
+        Rails.logger.debug "Skipped point #{index}: invalid data - #{point_data.slice('timestamp', 'longitude', 'latitude', 'lonlat')}"
         next
       end
 
@@ -77,6 +94,7 @@ class Users::ImportData::Points
       prepared_attributes = prepare_point_attributes(point_data)
       unless prepared_attributes
         skipped_count += 1
+        Rails.logger.debug "Skipped point #{index}: failed to prepare attributes"
         next
       end
 
@@ -87,6 +105,7 @@ class Users::ImportData::Points
       Rails.logger.warn "Skipped #{skipped_count} points with invalid or missing required data"
     end
 
+    Rails.logger.debug "Filtered #{valid_points.size} valid points from #{points_data.size} total"
     valid_points
   end
 
@@ -119,7 +138,10 @@ class Users::ImportData::Points
     resolve_visit_reference(attributes, point_data['visit_reference'])
 
     # Convert string keys to symbols for consistency with Point model
-    attributes.symbolize_keys
+    result = attributes.symbolize_keys
+
+    Rails.logger.debug "Prepared point attributes: #{result.slice(:lonlat, :timestamp, :import_id, :country_id, :visit_id)}"
+    result
   rescue StandardError => e
     Rails.logger.error "Failed to prepare point attributes: #{e.message}"
     Rails.logger.error "Point data: #{point_data.inspect}"
@@ -136,7 +158,13 @@ class Users::ImportData::Points
     ]
 
     import = imports_lookup[import_key]
-    attributes['import_id'] = import.id if import
+    if import
+      attributes['import_id'] = import.id
+      Rails.logger.debug "Resolved import reference: #{import_reference['name']} -> #{import.id}"
+    else
+      Rails.logger.debug "Import not found for reference: #{import_reference.inspect}"
+      Rails.logger.debug "Available imports: #{imports_lookup.keys.inspect}"
+    end
   end
 
   def resolve_country_reference(attributes, country_info)
@@ -159,7 +187,12 @@ class Users::ImportData::Points
       @countries_lookup[[country.name, country.iso_a2, country.iso_a3]] = country
     end
 
-    attributes['country_id'] = country.id if country
+    if country
+      attributes['country_id'] = country.id
+      Rails.logger.debug "Resolved country reference: #{country_info['name']} -> #{country.id}"
+    else
+      Rails.logger.debug "Country not found for: #{country_info.inspect}"
+    end
   end
 
   def create_missing_country(country_info)
@@ -183,21 +216,55 @@ class Users::ImportData::Points
     ]
 
     visit = visits_lookup[visit_key]
-    attributes['visit_id'] = visit.id if visit
+    if visit
+      attributes['visit_id'] = visit.id
+      Rails.logger.debug "Resolved visit reference: #{visit_reference['name']} -> #{visit.id}"
+    else
+      Rails.logger.debug "Visit not found for reference: #{visit_reference.inspect}"
+      Rails.logger.debug "Available visits: #{visits_lookup.keys.inspect}"
+    end
   end
 
   def deduplicate_points(points)
     points.uniq { |point| [point[:lonlat], point[:timestamp], point[:user_id]] }
   end
 
+  # Ensure all points have the same keys for upsert_all compatibility
+  def normalize_point_keys(points)
+    # Get all possible keys from all points
+    all_keys = points.flat_map(&:keys).uniq
+
+    # Normalize each point to have all keys (with nil for missing ones)
+    points.map do |point|
+      normalized = {}
+      all_keys.each do |key|
+        normalized[key] = point[key]
+      end
+      normalized
+    end
+  end
+
   def bulk_import_points(points)
     total_created = 0
 
+    puts "=== BULK IMPORT DEBUG ==="
+    puts "About to bulk import #{points.size} points"
+    puts "First point for import: #{points.first.inspect}"
+
     points.each_slice(BATCH_SIZE) do |batch|
       begin
+        Rails.logger.debug "Processing batch of #{batch.size} points"
+        Rails.logger.debug "First point in batch: #{batch.first.inspect}"
+
+        puts "Processing batch of #{batch.size} points"
+        puts "Sample point attributes: #{batch.first.slice(:lonlat, :timestamp, :user_id, :import_id, :country_id, :visit_id)}"
+
+        # Normalize all points to have the same keys for upsert_all compatibility
+        normalized_batch = normalize_point_keys(batch)
+
         # Use upsert_all to efficiently bulk insert/update points
         result = Point.upsert_all(
-          batch,
+          normalized_batch,
           unique_by: %i[lonlat timestamp user_id],
           returning: %w[id],
           on_duplicate: :skip
@@ -206,17 +273,24 @@ class Users::ImportData::Points
         batch_created = result.count
         total_created += batch_created
 
+        puts "Batch result count: #{batch_created}"
+
         Rails.logger.debug "Processed batch of #{batch.size} points, created #{batch_created}, total created: #{total_created}"
 
       rescue StandardError => e
+        puts "Batch import failed: #{e.message}"
+        puts "Backtrace: #{e.backtrace.first(3).join('\n')}"
         Rails.logger.error "Failed to process point batch: #{e.message}"
         Rails.logger.error "Batch size: #{batch.size}"
-        Rails.logger.error "Backtrace: #{e.backtrace.first(3).join('\n')}"
+        Rails.logger.error "First point in failed batch: #{batch.first.inspect}"
+        Rails.logger.error "Backtrace: #{e.backtrace.first(5).join('\n')}"
         # Continue with next batch instead of failing completely
       end
     end
 
-    total_created
+    puts "Total created across all batches: #{total_created}"
+
+        total_created
   end
 
   def valid_point_data?(point_data)
@@ -242,6 +316,7 @@ class Users::ImportData::Points
       longitude = point_data['longitude'].to_f
       latitude = point_data['latitude'].to_f
       attributes['lonlat'] = "POINT(#{longitude} #{latitude})"
+      Rails.logger.debug "Reconstructed lonlat: #{attributes['lonlat']}"
     end
   end
 end
