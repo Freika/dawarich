@@ -54,11 +54,17 @@ class Users::ImportData::Points
   attr_reader :user, :points_data, :imports_lookup, :countries_lookup, :visits_lookup
 
   def preload_reference_data
-    # Pre-load imports for this user
-    @imports_lookup = user.imports.index_by { |import|
-      [import.name, import.source, import.created_at.to_s]
-    }
-    Rails.logger.debug "Loaded #{@imports_lookup.size} imports for lookup"
+    # Pre-load imports for this user with multiple lookup keys for flexibility
+    @imports_lookup = {}
+    user.imports.each do |import|
+      # Create keys for both string and integer source representations
+      string_key = [import.name, import.source, import.created_at.utc.iso8601]
+      integer_key = [import.name, Import.sources[import.source], import.created_at.utc.iso8601]
+
+      @imports_lookup[string_key] = import
+      @imports_lookup[integer_key] = import
+    end
+    Rails.logger.debug "Loaded #{user.imports.size} imports with #{@imports_lookup.size} lookup keys"
 
     # Pre-load all countries for efficient lookup
     @countries_lookup = {}
@@ -71,7 +77,7 @@ class Users::ImportData::Points
 
     # Pre-load visits for this user
     @visits_lookup = user.visits.index_by { |visit|
-      [visit.name, visit.started_at.to_s, visit.ended_at.to_s]
+      [visit.name, visit.started_at.utc.iso8601, visit.ended_at.utc.iso8601]
     }
     Rails.logger.debug "Loaded #{@visits_lookup.size} visits for lookup"
   end
@@ -148,13 +154,16 @@ class Users::ImportData::Points
     nil
   end
 
-  def resolve_import_reference(attributes, import_reference)
+    def resolve_import_reference(attributes, import_reference)
     return unless import_reference.is_a?(Hash)
+
+    # Normalize timestamp format to ISO8601 for consistent lookup
+    created_at = normalize_timestamp_for_lookup(import_reference['created_at'])
 
     import_key = [
       import_reference['name'],
       import_reference['source'],
-      import_reference['created_at']
+      created_at
     ]
 
     import = imports_lookup[import_key]
@@ -209,10 +218,14 @@ class Users::ImportData::Points
   def resolve_visit_reference(attributes, visit_reference)
     return unless visit_reference.is_a?(Hash)
 
+    # Normalize timestamp formats to ISO8601 for consistent lookup
+    started_at = normalize_timestamp_for_lookup(visit_reference['started_at'])
+    ended_at = normalize_timestamp_for_lookup(visit_reference['ended_at'])
+
     visit_key = [
       visit_reference['name'],
-      visit_reference['started_at'],
-      visit_reference['ended_at']
+      started_at,
+      ended_at
     ]
 
     visit = visits_lookup[visit_key]
@@ -318,5 +331,24 @@ class Users::ImportData::Points
       attributes['lonlat'] = "POINT(#{longitude} #{latitude})"
       Rails.logger.debug "Reconstructed lonlat: #{attributes['lonlat']}"
     end
+  end
+
+  def normalize_timestamp_for_lookup(timestamp)
+    return nil if timestamp.blank?
+
+    case timestamp
+    when String
+      # Parse string timestamp and convert to UTC ISO8601 format
+      Time.parse(timestamp).utc.iso8601
+    when Time, DateTime
+      # Convert time objects to UTC ISO8601 format
+      timestamp.utc.iso8601
+    else
+      # Fallback to string representation
+      timestamp.to_s
+    end
+  rescue StandardError => e
+    Rails.logger.debug "Failed to normalize timestamp #{timestamp}: #{e.message}"
+    timestamp.to_s
   end
 end
