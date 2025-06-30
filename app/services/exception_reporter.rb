@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ExceptionReporter
-  def self.call(exception, human_message = nil)
+  def self.call(exception, human_message = 'Exception reported')
     return unless DawarichSettings.self_hosted?
 
     Rails.logger.error "#{human_message}: #{exception.message}"

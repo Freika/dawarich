@@ -148,21 +148,21 @@ class Users::ImportData::Trips
 
   def validate_trip_name(trip_data)
     unless trip_data['name'].present?
-      ExceptionReporter.call(e, 'Failed to create trip: Validation failed: Name can\'t be blank')
+      Rails.logger.error 'Failed to create trip: Validation failed: Name can\'t be blank'
       return false
     end
   end
 
   def validate_trip_started_at(trip_data)
     unless trip_data['started_at'].present?
-      ExceptionReporter.call(e, 'Failed to create trip: Validation failed: Started at can\'t be blank')
+      Rails.logger.error 'Failed to create trip: Validation failed: Started at can\'t be blank'
       return false
     end
   end
 
   def validate_trip_ended_at(trip_data)
     unless trip_data['ended_at'].present?
-      ExceptionReporter.call(e, 'Failed to create trip: Validation failed: Ended at can\'t be blank')
+      Rails.logger.error 'Failed to create trip: Validation failed: Ended at can\'t be blank'
       return false
     end
   end
