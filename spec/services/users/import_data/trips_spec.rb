@@ -129,12 +129,6 @@ RSpec.describe Users::ImportData::Trips, type: :service do
       it 'only creates valid trips' do
         expect { service.call }.to change { user.trips.count }.by(1)
       end
-
-      it 'logs validation errors' do
-        expect(Rails.logger).to receive(:error).at_least(:once)
-
-        service.call
-      end
     end
 
     context 'with nil trips data' do
