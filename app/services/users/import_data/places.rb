@@ -16,7 +16,6 @@ class Users::ImportData::Places
     places_data.each do |place_data|
       next unless place_data.is_a?(Hash)
 
-      # Find or create place by name and coordinates
       place = find_or_create_place(place_data)
       places_created += 1 if place&.respond_to?(:previously_new_record?) && place.previously_new_record?
     end
@@ -34,16 +33,13 @@ class Users::ImportData::Places
     latitude = place_data['latitude']&.to_f
     longitude = place_data['longitude']&.to_f
 
-    # Skip if essential data is missing
     unless name.present? && latitude.present? && longitude.present?
       Rails.logger.debug "Skipping place with missing required data: #{place_data.inspect}"
       return nil
     end
 
-    # Try to find existing place by name first, then by coordinates
     existing_place = Place.find_by(name: name)
 
-    # If no place with same name, check by coordinates
     unless existing_place
       existing_place = Place.where(latitude: latitude, longitude: longitude).first
     end
@@ -54,12 +50,10 @@ class Users::ImportData::Places
       return existing_place
     end
 
-    # Create new place with lonlat point
     place_attributes = place_data.except('created_at', 'updated_at', 'latitude', 'longitude')
     place_attributes['lonlat'] = "POINT(#{longitude} #{latitude})"
     place_attributes['latitude'] = latitude
     place_attributes['longitude'] = longitude
-    # Remove any user reference since Place doesn't belong to user directly
     place_attributes.delete('user')
 
     begin
@@ -69,7 +63,8 @@ class Users::ImportData::Places
 
       place
     rescue ActiveRecord::RecordInvalid => e
-      Rails.logger.error "Failed to create place: #{e.message}"
+      ExceptionReporter.call(e, 'Failed to create place')
+
       nil
     end
   end

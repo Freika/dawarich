@@ -41,7 +41,6 @@ class Users::ImportData
   end
 
   def import
-    # Create a temporary directory for extraction
     @import_directory = Rails.root.join('tmp', "import_#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{Time.current.to_i}")
     FileUtils.mkdir_p(@import_directory)
 
@@ -74,10 +73,8 @@ class Users::ImportData
       zip_file.each do |entry|
         extraction_path = @import_directory.join(entry.name)
 
-        # Ensure directory exists
         FileUtils.mkdir_p(File.dirname(extraction_path))
 
-        # Extract file
         entry.extract(extraction_path)
       end
     end
@@ -98,15 +95,12 @@ class Users::ImportData
   def import_in_correct_order(data)
     Rails.logger.info "Starting data import for user: #{user.email}"
 
-    # Log expected counts if available
     if data['counts']
       Rails.logger.info "Expected entity counts from export: #{data['counts']}"
     end
 
-    # Debug: Log what data keys are available
     Rails.logger.debug "Available data keys: #{data.keys.inspect}"
 
-    # Import in dependency order
     import_settings(data['settings']) if data['settings']
     import_areas(data['areas']) if data['areas']
     import_places(data['places']) if data['places']
@@ -178,26 +172,14 @@ class Users::ImportData
   end
 
   def import_points(points_data)
-    puts "=== POINTS IMPORT DEBUG ==="
-    puts "About to import #{points_data&.size || 0} points"
-    puts "Points data present: #{points_data.present?}"
-    puts "First point sample: #{points_data&.first&.slice('timestamp', 'longitude', 'latitude') if points_data&.first}"
-    puts "=== END POINTS IMPORT DEBUG ==="
-
     Rails.logger.info "About to import #{points_data&.size || 0} points"
-    Rails.logger.info "Points data present: #{points_data.present?}"
-    Rails.logger.info "First point sample: #{points_data&.first&.slice('timestamp', 'longitude', 'latitude') if points_data&.first}"
 
     begin
       points_created = Users::ImportData::Points.new(user, points_data).call
-      Rails.logger.info "Points import returned: #{points_created}"
-      puts "Points import returned: #{points_created}"
 
       @import_stats[:points_created] = points_created
     rescue StandardError => e
-      Rails.logger.error "Points import failed: #{e.message}"
-      Rails.logger.error "Backtrace: #{e.backtrace.first(5).join('\n')}"
-      puts "Points import failed: #{e.message}"
+      ExceptionReporter.call(e, 'Points import failed')
       @import_stats[:points_created] = 0
     end
   end
@@ -212,16 +194,6 @@ class Users::ImportData
   end
 
   def create_success_notification
-    # Check if we already have a recent import success notification to avoid duplicates
-    recent_import_notification = user.notifications.where(
-      title: 'Data import completed'
-    ).where('created_at > ?', 5.minutes.ago).first
-
-    if recent_import_notification
-      Rails.logger.debug "Skipping duplicate import success notification"
-      return
-    end
-
     summary = "#{@import_stats[:points_created]} points, " \
     "#{@import_stats[:visits_created]} visits, " \
     "#{@import_stats[:places_created]} places, " \

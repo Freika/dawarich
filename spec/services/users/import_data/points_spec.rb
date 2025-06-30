@@ -65,13 +65,12 @@ RSpec.describe Users::ImportData::Points, type: :service do
         ]
       end
 
-      it 'creates the country and assigns it' do
-        expect { service.call }.to change(Country, :count).by(1)
+      it 'does not create country and leaves country_id nil' do
+        expect { service.call }.not_to change(Country, :count)
 
         point = user.tracked_points.last
-        expect(point.country.name).to eq('NewCountry')
-        expect(point.country.iso_a2).to eq('NC')
-        expect(point.country.iso_a3).to eq('NCO')
+        expect(point.country_id).to be_nil
+        expect(point.city).to eq('Berlin')
       end
     end
 

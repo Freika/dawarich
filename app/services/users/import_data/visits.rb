@@ -16,7 +16,6 @@ class Users::ImportData::Visits
     visits_data.each do |visit_data|
       next unless visit_data.is_a?(Hash)
 
-      # Check if visit already exists (match by name, timestamps, and place reference)
       existing_visit = find_existing_visit(visit_data)
 
       if existing_visit
@@ -24,13 +23,12 @@ class Users::ImportData::Visits
         next
       end
 
-      # Create new visit
       begin
         visit_record = create_visit_record(visit_data)
         visits_created += 1
         Rails.logger.debug "Created visit: #{visit_record.name}"
       rescue ActiveRecord::RecordInvalid => e
-        Rails.logger.error "Failed to create visit: #{e.message}"
+        ExceptionReporter.call(e, 'Failed to create visit')
         next
       end
     end
@@ -59,7 +57,6 @@ class Users::ImportData::Visits
   def prepare_visit_attributes(visit_data)
     attributes = visit_data.except('place_reference')
 
-    # Find and assign place if referenced
     if visit_data['place_reference']
       place = find_referenced_place(visit_data['place_reference'])
       attributes[:place] = place if place
@@ -75,7 +72,6 @@ class Users::ImportData::Visits
     latitude = place_reference['latitude'].to_f
     longitude = place_reference['longitude'].to_f
 
-    # Find place by name and coordinates (global search since places are not user-specific)
     place = Place.find_by(name: name) ||
             Place.where("latitude = ? AND longitude = ?", latitude, longitude).first
 

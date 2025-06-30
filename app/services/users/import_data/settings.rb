@@ -11,7 +11,6 @@ class Users::ImportData::Settings
 
     Rails.logger.info "Importing settings for user: #{user.email}"
 
-    # Merge imported settings with existing settings
     current_settings = user.settings || {}
     updated_settings = current_settings.merge(settings_data)
 

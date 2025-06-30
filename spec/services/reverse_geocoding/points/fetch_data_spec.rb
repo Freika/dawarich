@@ -8,6 +8,8 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
   let(:point) { create(:point) }
 
   context 'when Geocoder returns city and country' do
+    let!(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
+
     before do
       allow(Geocoder).to receive(:search).and_return(
         [
@@ -27,10 +29,10 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
       it 'updates point with city and country' do
         expect { fetch_data }.to change { point.reload.city }
           .from(nil).to('Berlin')
-          .and change { point.reload.country_id }.from(nil).to(be_present)
+          .and change { point.reload.country_id }.from(nil).to(germany.id)
       end
 
-      it 'creates country with correct ISO codes' do
+      it 'finds existing country' do
         fetch_data
         country = point.reload.country
         expect(country.name).to eq('Germany')
@@ -82,28 +84,27 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
-  context 'when Geocoder returns country name without ISO code' do
+  context 'when Geocoder returns country name that does not exist in database' do
     before do
       allow(Geocoder).to receive(:search).and_return(
         [
           double(
             city: 'Paris',
-            country: 'France',
+            country: 'NonExistentCountry',
             data: {
               'address' => 'Address',
-              'properties' => { 'city' => 'Paris' } # No countrycode property
+              'properties' => { 'city' => 'Paris' }
             }
           )
         ]
       )
     end
 
-    it 'creates country with correct ISO codes from country name mapping' do
-      fetch_data
-      country = point.reload.country
-      expect(country.name).to eq('France')
-      expect(country.iso_a2).to eq('FR')
-      expect(country.iso_a3).to eq('FRA')
+    it 'does not set country_id when country is not found' do
+      expect { fetch_data }.to change { point.reload.city }
+        .from(nil).to('Paris')
+
+      expect(point.reload.country_id).to be_nil
     end
   end
 

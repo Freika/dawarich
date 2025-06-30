@@ -9,10 +9,8 @@ RSpec.describe Users::ImportDataJob, type: :job do
   let(:job) { described_class.new }
 
   before do
-    # Create a mock ZIP file
     FileUtils.touch(archive_path)
 
-    # Mock the import file attachment
     allow(import).to receive(:file).and_return(
       double('ActiveStorage::Attached::One',
         download: proc { |&block|
@@ -29,7 +27,6 @@ RSpec.describe Users::ImportDataJob, type: :job do
   describe '#perform' do
     context 'when import is successful' do
       before do
-        # Mock the import service
         import_service = instance_double(Users::ImportData)
         allow(Users::ImportData).to receive(:new).and_return(import_service)
         allow(import_service).to receive(:import).and_return({
@@ -46,7 +43,6 @@ RSpec.describe Users::ImportDataJob, type: :job do
           files_restored: 7
         })
 
-        # Mock file operations
         allow(File).to receive(:exist?).and_return(true)
         allow(File).to receive(:delete)
         allow(Rails.logger).to receive(:info)
@@ -84,21 +80,17 @@ RSpec.describe Users::ImportDataJob, type: :job do
       let(:error) { StandardError.new(error_message) }
 
       before do
-        # Mock the import service to raise an error
         import_service = instance_double(Users::ImportData)
         allow(Users::ImportData).to receive(:new).and_return(import_service)
         allow(import_service).to receive(:import).and_raise(error)
 
-        # Mock notification creation
         notification_service = instance_double(::Notifications::Create, call: true)
         allow(::Notifications::Create).to receive(:new).and_return(notification_service)
 
-        # Mock file operations
         allow(File).to receive(:exist?).and_return(true)
         allow(File).to receive(:delete)
         allow(Rails.logger).to receive(:info)
 
-        # Mock ExceptionReporter
         allow(ExceptionReporter).to receive(:call)
       end
 
@@ -149,12 +141,10 @@ RSpec.describe Users::ImportDataJob, type: :job do
       let(:error) { StandardError.new(error_message) }
 
       before do
-        # Mock file download to fail
         allow(import).to receive(:file).and_return(
           double('ActiveStorage::Attached::One', download: proc { raise error })
         )
 
-        # Mock notification creation
         notification_service = instance_double(::Notifications::Create, call: true)
         allow(::Notifications::Create).to receive(:new).and_return(notification_service)
       end

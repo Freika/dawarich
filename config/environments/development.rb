@@ -88,7 +88,7 @@ Rails.application.configure do
 
   hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
 
-  config.action_mailer.default_url_options = { host: ENV['SMTP_DOMAIN'] || hosts.first }
+  config.action_mailer.default_url_options = { host: ENV['SMTP_DOMAIN'] || hosts.first, port: ENV.fetch('PORT', 3000) }
 
   config.hosts.concat(hosts) if hosts.present?
 

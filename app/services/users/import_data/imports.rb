@@ -18,7 +18,6 @@ class Users::ImportData::Imports
     imports_data.each do |import_data|
       next unless import_data.is_a?(Hash)
 
-      # Check if import already exists (match by name, source, and created_at)
       existing_import = user.imports.find_by(
         name: import_data['name'],
         source: import_data['source'],
@@ -30,13 +29,11 @@ class Users::ImportData::Imports
         next
       end
 
-      # Create new import
       import_record = create_import_record(import_data)
       next unless import_record # Skip if creation failed
 
       imports_created += 1
 
-      # Restore file if present
       if import_data['file_name'] && restore_import_file(import_record, import_data)
         files_restored += 1
       end
@@ -55,7 +52,6 @@ class Users::ImportData::Imports
 
     begin
       import_record = user.imports.build(import_attributes)
-      # Skip background processing since we're importing user data directly
       import_record.skip_background_processing = true
       import_record.save!
       Rails.logger.debug "Created import: #{import_record.name}"
@@ -86,7 +82,6 @@ class Users::ImportData::Imports
     end
 
     begin
-      # Attach the file to the import record
       import_record.file.attach(
         io: File.open(file_path),
         filename: import_data['original_filename'] || import_data['file_name'],
@@ -97,7 +92,7 @@ class Users::ImportData::Imports
 
       true
     rescue StandardError => e
-      ExceptionReporter.call(e, "Import file restoration failed")
+      ExceptionReporter.call(e, 'Import file restoration failed')
 
       false
     end

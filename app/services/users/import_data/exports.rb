@@ -18,7 +18,6 @@ class Users::ImportData::Exports
     exports_data.each do |export_data|
       next unless export_data.is_a?(Hash)
 
-      # Check if export already exists (match by name and created_at)
       existing_export = user.exports.find_by(
         name: export_data['name'],
         created_at: export_data['created_at']
@@ -29,11 +28,9 @@ class Users::ImportData::Exports
         next
       end
 
-      # Create new export
       export_record = create_export_record(export_data)
       exports_created += 1
 
-      # Restore file if present
       if export_data['file_name'] && restore_export_file(export_record, export_data)
         files_restored += 1
       end
@@ -73,7 +70,6 @@ class Users::ImportData::Exports
     end
 
     begin
-      # Attach the file to the export record
       export_record.file.attach(
         io: File.open(file_path),
         filename: export_data['original_filename'] || export_data['file_name'],

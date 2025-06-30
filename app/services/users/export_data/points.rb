@@ -6,7 +6,6 @@ class Users::ExportData::Points
   end
 
   def call
-    # Single optimized query with all joins to avoid N+1 queries
     points_sql = <<-SQL
       SELECT
         p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
@@ -42,9 +41,7 @@ class Users::ExportData::Points
 
     Rails.logger.info "Processing #{result.count} points for export..."
 
-    # Process results efficiently
     result.filter_map do |row|
-      # Skip points without any coordinate data
       has_lonlat = row['lonlat'].present?
       has_coordinates = row['computed_longitude'].present? && row['computed_latitude'].present?
 
