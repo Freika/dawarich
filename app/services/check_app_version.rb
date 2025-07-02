@@ -8,6 +8,8 @@ class CheckAppVersion
   end
 
   def call
+    return false if Rails.env.production?
+
     latest_version != APP_VERSION
   rescue StandardError
     false
