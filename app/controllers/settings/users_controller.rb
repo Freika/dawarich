@@ -94,8 +94,7 @@ class Settings::UsersController < ApplicationController
            archive_file.content_type == 'application/x-zip-compressed' ||
            File.extname(archive_file.original_filename).downcase == '.zip'
 
-      redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.'
-      return
+      redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.' and return
     end
   end
 end

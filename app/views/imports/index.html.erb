@@ -64,7 +64,7 @@
                   &nbsp;
                   <%= link_to '📋', points_path(import_id: import.id) %>
                 </td>
-                <td><%= number_to_human_size(import.file.byte_size) || 'N/A' %></td>
+                <td><%= number_to_human_size(import.file&.byte_size) || 'N/A' %></td>
                 <td data-points-count>
                   <%= number_with_delimiter import.processed %>
                 </td>
