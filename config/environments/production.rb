@@ -73,7 +73,7 @@ Rails.application.configure do
   config.log_level = ENV.fetch('RAILS_LOG_LEVEL', 'info')
 
   # Use a different cache store in production.
-  config.cache_store = :redis_cache_store, { url: "#{ENV['REDIS_URL']}/0" }
+  config.cache_store = :redis_cache_store, { url: "#{ENV['REDIS_URL']}/#{ENV.fetch('RAILS_CACHE_DB', 0)}" }
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
   config.active_job.queue_adapter = :sidekiq
@@ -99,8 +99,8 @@ Rails.application.configure do
   #   "example.com",     # Allow requests from example.com
   #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
   # ]
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # Skip DNS rebinding protection for the health check endpoint.
+  config.host_authorization = { exclude: ->(request) { request.path == "/api/v1/health" } }
   hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
 
   config.action_mailer.default_url_options = { host: ENV['SMTP_DOMAIN'] }

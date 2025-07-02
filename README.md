@@ -1,7 +1,6 @@
 # 🌍 Dawarich: Your Self-Hosted Location History Tracker
 
 [![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika)
-Donate using crypto: [0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4](https://etherscan.io/address/0x6bAd13667692632f1bF926cA9B421bEe7EaEB8D4)
 
 [![CircleCI](https://circleci.com/gh/Freika/dawarich.svg?style=svg)](https://app.circleci.com/pipelines/github/Freika/dawarich)
 

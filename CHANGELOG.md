@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.29.0] - 2025-06-30
+# [0.29.1] - 2025-07-02
+
+## Fixed
+
+- Buttons on the imports page now looks better in both light and dark mode. #1481
+- The PROMETHEUS_EXPORTER_ENABLED environment variable default value is now "false", in quotes.
+- The RAILS_CACHE_DB, RAILS_JOB_QUEUE_DB and RAILS_WS_DB environment variables can be used to set the Redis database number for caching, background jobs and websocket connections respectively. Default values are now 0, 1 and 2 respectively. #1420
+
+## Changed
+
+- Skip DNS rebinding protection for the health check endpoint.
+- Added health check to app.json.
+
+# [0.29.0] - 2025-07-02
 
 You can now move your user data between Dawarich instances. Simply go to your Account settings and click on the "Export my data" button under the password section. An export will be created and you will be able to download it on Exports page once it's ready.
 
