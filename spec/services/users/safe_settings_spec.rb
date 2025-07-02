@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'rails_helper'
+
 RSpec.describe Users::SafeSettings do
   describe '#default_settings' do
     context 'with default values' do
@@ -24,7 +26,8 @@ RSpec.describe Users::SafeSettings do
             photoprism_url: nil,
             photoprism_api_key: nil,
             maps: { "distance_unit" => "km" },
-            distance_unit: 'km'
+            distance_unit: 'km',
+            visits_suggestions_enabled: true
           }
         )
       end
@@ -47,7 +50,8 @@ RSpec.describe Users::SafeSettings do
           'immich_api_key' => 'immich-key',
           'photoprism_url' => 'https://photoprism.example.com',
           'photoprism_api_key' => 'photoprism-key',
-          'maps' => { 'name' => 'custom', 'url' => 'https://custom.example.com' }
+          'maps' => { 'name' => 'custom', 'url' => 'https://custom.example.com' },
+          'visits_suggestions_enabled' => false
         }
       end
       let(:safe_settings) { described_class.new(settings) }
@@ -69,7 +73,32 @@ RSpec.describe Users::SafeSettings do
             "immich_api_key" => "immich-key",
             "photoprism_url" => "https://photoprism.example.com",
             "photoprism_api_key" => "photoprism-key",
-            "maps" => { "name" => "custom", "url" => "https://custom.example.com" }
+            "maps" => { "name" => "custom", "url" => "https://custom.example.com" },
+            "visits_suggestions_enabled" => false
+          }
+        )
+      end
+
+      it 'returns custom default_settings configuration' do
+        expect(safe_settings.default_settings).to eq(
+          {
+            fog_of_war_meters: 100,
+            meters_between_routes: 1000,
+            preferred_map_layer: "Satellite",
+            speed_colored_routes: true,
+            points_rendering_mode: "simplified",
+            minutes_between_routes: 60,
+            time_threshold_minutes: 45,
+            merge_threshold_minutes: 20,
+            live_map_enabled: false,
+            route_opacity: 80,
+            immich_url: "https://immich.example.com",
+            immich_api_key: "immich-key",
+            photoprism_url: "https://photoprism.example.com",
+            photoprism_api_key: "photoprism-key",
+            maps: { "name" => "custom", "url" => "https://custom.example.com" },
+            distance_unit: nil,
+            visits_suggestions_enabled: false
           }
         )
       end
@@ -98,6 +127,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.photoprism_url).to be_nil
         expect(safe_settings.photoprism_api_key).to be_nil
         expect(safe_settings.maps).to eq({ "distance_unit" => "km" })
+        expect(safe_settings.visits_suggestions_enabled?).to be true
       end
     end
 
@@ -118,7 +148,8 @@ RSpec.describe Users::SafeSettings do
           'immich_api_key' => 'immich-key',
           'photoprism_url' => 'https://photoprism.example.com',
           'photoprism_api_key' => 'photoprism-key',
-          'maps' => { 'name' => 'custom', 'url' => 'https://custom.example.com' }
+          'maps' => { 'name' => 'custom', 'url' => 'https://custom.example.com' },
+          'visits_suggestions_enabled' => false
         }
       end
 
@@ -138,6 +169,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.photoprism_url).to eq('https://photoprism.example.com')
         expect(safe_settings.photoprism_api_key).to eq('photoprism-key')
         expect(safe_settings.maps).to eq({ 'name' => 'custom', 'url' => 'https://custom.example.com' })
+        expect(safe_settings.visits_suggestions_enabled?).to be false
       end
     end
   end

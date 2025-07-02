@@ -6,9 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [0.29.2] - UNRELEASED
 
+## Added
+
+- In the User Settings -> Background Jobs, you can now enable or disable visits suggestions. It's a background task that runs every day at midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
+
 ## Changed
 
 - Don't check for new version in production.
+- Area popup styles are now more consistent.
+
+## Fixed
+
+- Swagger documentation is now valid again.
 
 # [0.29.1] - 2025-07-02
 

@@ -17,6 +17,7 @@ class BulkVisitsSuggestingJob < ApplicationJob
     time_chunks = Visits::TimeChunks.new(start_at:, end_at:).call
 
     users.active.find_each do |user|
+      next unless user.safe_settings.visits_suggestions_enabled?
       next if user.tracked_points.empty?
 
       schedule_chunked_jobs(user, time_chunks)

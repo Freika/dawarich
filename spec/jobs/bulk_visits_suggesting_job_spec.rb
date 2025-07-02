@@ -102,5 +102,17 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
 
       described_class.perform_now(start_at: custom_start, end_at: custom_end)
     end
+
+    context 'when visits suggestions are disabled' do
+      before do
+        allow_any_instance_of(Users::SafeSettings).to receive(:visits_suggestions_enabled?).and_return(false)
+      end
+
+      it 'does not schedule jobs' do
+        expect(VisitSuggestingJob).not_to receive(:perform_later)
+
+        described_class.perform_now
+      end
+    end
   end
 end
