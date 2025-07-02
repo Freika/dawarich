@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_15_192211) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -77,9 +77,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_15_192211) do
     t.index ["name"], name: "index_countries_on_name"
   end
 
-  create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
-  end
-
   create_table "exports", force: :cascade do |t|
     t.string "name", null: false
     t.string "url"
@@ -90,6 +87,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_15_192211) do
     t.integer "file_format", default: 0
     t.datetime "start_at"
     t.datetime "end_at"
+    t.integer "file_type", default: 0, null: false
+    t.index ["file_type"], name: "index_exports_on_file_type"
     t.index ["status"], name: "index_exports_on_status"
     t.index ["user_id"], name: "index_exports_on_user_id"
   end
@@ -105,7 +104,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_15_192211) do
     t.integer "processed", default: 0
     t.jsonb "raw_data"
     t.integer "points_count", default: 0
+    t.integer "status", default: 0, null: false
     t.index ["source"], name: "index_imports_on_source"
+    t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 

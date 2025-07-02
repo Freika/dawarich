@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Country < ApplicationRecord
+  has_many :points, dependent: :nullify
+
   validates :name, :iso_a2, :iso_a3, :geom, presence: true
 
   def self.containing_point(lon, lat)

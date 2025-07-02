@@ -8,10 +8,19 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
   let(:point) { create(:point) }
 
   context 'when Geocoder returns city and country' do
+    let!(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
+
     before do
       allow(Geocoder).to receive(:search).and_return(
         [
-          double(city: 'City', country: 'Country',data: { 'address' => 'Address' })
+          double(
+            city: 'Berlin',
+            country: 'Germany',
+            data: {
+              'address' => 'Address',
+              'properties' => { 'countrycode' => 'DE' }
+            }
+          )
         ]
       )
     end
@@ -19,12 +28,23 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     context 'when point does not have city and country' do
       it 'updates point with city and country' do
         expect { fetch_data }.to change { point.reload.city }
-          .from(nil).to('City')
-          .and change { point.reload.country }.from(nil).to('Country')
+          .from(nil).to('Berlin')
+          .and change { point.reload.country_id }.from(nil).to(germany.id)
+      end
+
+      it 'finds existing country' do
+        fetch_data
+        country = point.reload.country
+        expect(country.name).to eq('Germany')
+        expect(country.iso_a2).to eq('DE')
+        expect(country.iso_a3).to eq('DEU')
       end
 
       it 'updates point with geodata' do
-        expect { fetch_data }.to change { point.reload.geodata }.from({}).to('address' => 'Address')
+        expect { fetch_data }.to change { point.reload.geodata }.from({}).to(
+          'address' => 'Address',
+          'properties' => { 'countrycode' => 'DE' }
+        )
       end
 
       it 'calls Geocoder' do
@@ -35,11 +55,20 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
 
     context 'when point has city and country' do
-      let(:point) { create(:point, :with_geodata, :reverse_geocoded) }
+      let(:country) { create(:country, name: 'Test Country') }
+      let(:point) { create(:point, :with_geodata, city: 'Test City', country_id: country.id, reverse_geocoded_at: Time.current) }
 
       before do
         allow(Geocoder).to receive(:search).and_return(
-          [double(geodata: { 'address' => 'Address' }, city: 'City', country: 'Country')]
+          [double(
+            geodata: { 'address' => 'Address' },
+            city: 'Berlin',
+            country: 'Germany',
+            data: {
+              'address' => 'Address',
+              'properties' => { 'countrycode' => 'DE' }
+            }
+          )]
         )
       end
 
@@ -55,9 +84,33 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
+  context 'when Geocoder returns country name that does not exist in database' do
+    before do
+      allow(Geocoder).to receive(:search).and_return(
+        [
+          double(
+            city: 'Paris',
+            country: 'NonExistentCountry',
+            data: {
+              'address' => 'Address',
+              'properties' => { 'city' => 'Paris' }
+            }
+          )
+        ]
+      )
+    end
+
+    it 'does not set country_id when country is not found' do
+      expect { fetch_data }.to change { point.reload.city }
+        .from(nil).to('Paris')
+
+      expect(point.reload.country_id).to be_nil
+    end
+  end
+
   context 'when Geocoder returns an error' do
     before do
-      allow(Geocoder).to receive(:search).and_return([double(data: { 'error' => 'Error' })])
+      allow(Geocoder).to receive(:search).and_return([double(city: nil, country: nil, data: { 'error' => 'Error' })])
     end
 
     it 'does not update point' do

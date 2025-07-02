@@ -11,7 +11,7 @@ class ImportsController < ApplicationController
     @imports =
       current_user
       .imports
-      .select(:id, :name, :source, :created_at, :processed)
+      .select(:id, :name, :source, :created_at, :processed, :status)
       .order(created_at: :desc)
       .page(params[:page])
   end

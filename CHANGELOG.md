@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.29.0] - 2025-06-30
+
+You can now move your user data between Dawarich instances. Simply go to your Account settings and click on the "Export my data" button under the password section. An export will be created and you will be able to download it on Exports page once it's ready.
+
+To import your data on a new Dawarich instance, create a new user and upload the exported zip file. You can import your data also on the Account page, by clicking "Import my data" button under the password section.
+
+The feature is experimental and not yet aimed to replace a proper backup solution. Please use at your own risk.
+
+## Added
+
+- In the User Settings, you can now export your user data as a zip file. It will contain the following:
+  - All your points
+  - All your places
+  - All your visits
+  - All your areas
+  - All your imports with files
+  - All your exports with files
+  - All your trips
+  - All your notifications
+  - All your stats
+
+- In the User Settings, you can now import your user data from a zip file. It will import all the data from the zip file, listed above. It will also start stats recalculation.
+- Export file size is now displayed in the exports and imports lists.
+- A button to download an import file is now displayed in the imports list. It may not work properly for imports created before the 0.25.4 release.
+- Imports now have statuses.
+
+## Changed
+
+- Oj is now being used for JSON serialization.
+
+## Fixed
+
+- Email links now use the SMTP domain if set. #1469
+
+
+
 # 0.28.1 - 2025-06-11
 
 ## Fixed

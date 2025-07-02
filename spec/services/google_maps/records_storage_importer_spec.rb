@@ -203,8 +203,7 @@ RSpec.describe GoogleMaps::RecordsStorageImporter do
       end
 
       it 'logs and raises parse error' do
-        # The actual error raised is an EncodingError, not Oj::ParseError
-        expect { subject.call }.to raise_error(EncodingError)
+        expect { subject.call }.to raise_error(JSON::ParserError)
       end
     end
 

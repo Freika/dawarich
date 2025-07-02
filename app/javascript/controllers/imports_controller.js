@@ -31,6 +31,11 @@ export default class extends BaseController {
             if (pointsCell) {
               pointsCell.textContent = new Intl.NumberFormat().format(data.import.points_count);
             }
+
+            const statusCell = row.querySelector('[data-status-display]');
+            if (statusCell && data.import.status) {
+              statusCell.textContent = data.import.status;
+            }
           }
         }
       }

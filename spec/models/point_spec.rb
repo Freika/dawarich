@@ -6,6 +6,8 @@ RSpec.describe Point, type: :model do
   describe 'associations' do
     it { is_expected.to belong_to(:import).optional }
     it { is_expected.to belong_to(:user) }
+    it { is_expected.to belong_to(:country).optional }
+    it { is_expected.to belong_to(:visit).optional }
   end
 
   describe 'validations' do
