@@ -4,13 +4,14 @@ class Export < ApplicationRecord
   belongs_to :user
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
-  enum :file_format, { json: 0, gpx: 1 }
+  enum :file_format, { json: 0, gpx: 1, archive: 2 }
+  enum :file_type, { points: 0, user_data: 1 }
 
   validates :name, presence: true
 
   has_one_attached :file
 
-  after_commit -> { ExportJob.perform_later(id) }, on: :create
+  after_commit -> { ExportJob.perform_later(id) }, on: :create, unless: -> { user_data? || archive? }
   after_commit -> { remove_attached_file }, on: :destroy
 
   def process!

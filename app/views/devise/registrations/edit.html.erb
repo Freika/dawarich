@@ -61,6 +61,39 @@
       <% end %>
 
       <p class='mt-3'>Unhappy? <%= link_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: 'btn' %></p>
+      <div class="divider"></div>
+      <p class='mt-3 flex flex-col gap-2'>
+        <%= link_to "Export my data", export_settings_users_path, class: 'btn btn-primary', data: {
+            turbo_confirm: "Are you sure you want to export your data?",
+            turbo_method: :get
+          } %>
+        <button class='btn btn-primary' onclick="import_modal.showModal()">Import my data</button>
+      </p>
+
+      <!-- Import Data Modal -->
+      <dialog id="import_modal" class="modal">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg mb-4">Import your data</h3>
+          <p class="mb-4 text-sm text-gray-600">Upload a ZIP file containing your exported Dawarich data to restore your points, trips, and settings.</p>
+
+          <%= form_with url: import_settings_users_path, method: :post, multipart: true, class: 'space-y-4', data: { turbo: false } do |f| %>
+            <div class="form-control">
+              <%= f.label :archive, class: 'label' do %>
+                <span class="label-text">Select ZIP archive</span>
+              <% end %>
+              <%= f.file_field :archive, accept: '.zip', required: true, class: 'file-input file-input-bordered w-full' %>
+            </div>
+
+            <div class="modal-action">
+              <%= f.submit "Import Data", class: 'btn btn-primary', data: { disable_with: 'Importing...' } %>
+              <button type="button" class="btn" onclick="import_modal.close()">Cancel</button>
+            </div>
+          <% end %>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
     </div>
   </div>
 </div>

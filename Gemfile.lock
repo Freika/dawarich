@@ -557,6 +557,7 @@ DEPENDENCIES
   rswag-specs
   rswag-ui
   rubocop-rails
+  rubyzip (~> 2.4)
   selenium-webdriver
   sentry-rails
   sentry-ruby

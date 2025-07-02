@@ -24,10 +24,11 @@
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="table">
+        <table class="table overflow-x-auto">
           <thead>
             <tr>
               <th>Name</th>
+              <th>File size</th>
               <th>Created at</th>
               <th>Status</th>
               <th>Actions</th>
@@ -37,9 +38,10 @@
             <% @exports.each do |export| %>
               <tr>
                 <td><%= export.name %></td>
+                <td><%= number_to_human_size(export.file&.byte_size) || 'N/A' %></td>
                 <td><%= human_datetime(export.created_at) %></td>
                 <td><%= export.status %></td>
-                <td>
+                <td class="whitespace-nowrap">
                   <% if export.completed? %>
                     <% if export.file.present? %>
                       <%= link_to 'Download', rails_blob_path(export.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>

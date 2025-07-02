@@ -204,5 +204,11 @@ RSpec.describe User, type: :model do
         end
       end
     end
+
+    describe '#export_data' do
+      it 'enqueues the export data job' do
+        expect { user.export_data }.to have_enqueued_job(Users::ExportDataJob).with(user.id)
+      end
+    end
   end
 end

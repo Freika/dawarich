@@ -8,6 +8,13 @@ RSpec.describe Import, type: :model do
     it { is_expected.to belong_to(:user) }
   end
 
+  describe 'validations' do
+    subject { build(:import, name: 'test import') }
+
+    it { is_expected.to validate_presence_of(:name) }
+    it { is_expected.to validate_uniqueness_of(:name).scoped_to(:user_id) }
+  end
+
   describe 'enums' do
     it do
       is_expected.to define_enum_for(:source).with_values(
@@ -18,7 +25,8 @@ RSpec.describe Import, type: :model do
         gpx: 4,
         immich_api: 5,
         geojson: 6,
-        photoprism_api: 7
+        photoprism_api: 7,
+        user_data_archive: 8
       )
     end
   end

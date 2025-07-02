@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Imports::Create
+  include Imports::Broadcaster
+
   attr_reader :user, :import
 
   def initialize(user, import)
@@ -9,13 +11,24 @@ class Imports::Create
   end
 
   def call
+    import.update!(status: :processing)
+    broadcast_status_update
+
     importer(import.source).new(import, user.id).call
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
     update_import_points_count(import)
   rescue StandardError => e
+    import.update!(status: :failed)
+    broadcast_status_update
+
     create_import_failed_notification(import, user, e)
+  ensure
+    if import.processing?
+      import.update!(status: :completed)
+      broadcast_status_update
+    end
   end
 
   private
