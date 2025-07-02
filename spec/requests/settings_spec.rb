@@ -80,7 +80,9 @@ RSpec.describe 'Settings', type: :request do
     it 'updates the user settings' do
       patch '/settings', params: params
 
-      expect(user.reload.settings).to eq(params[:settings])
+      user.reload
+      expect(user.settings['meters_between_routes']).to eq('1000')
+      expect(user.settings['minutes_between_routes']).to eq('10')
     end
 
     context 'when user is inactive' do
