@@ -540,6 +540,7 @@ DEPENDENCIES
   kaminari
   lograge
   oj
+  parallel
   pg
   prometheus_exporter
   pry-byebug
