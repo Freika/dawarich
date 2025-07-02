@@ -7,7 +7,7 @@ ruby File.read('.ruby-version').strip
 
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
 gem 'aws-sdk-s3', '~> 1.177.0', require: false
-gem 'aws-sdk-core', '~> 3.215.1', require: false
+gem 'aws-sdk-core', '~> 3.226.1', require: false
 gem 'aws-sdk-kms', '~> 1.96.0', require: false
 gem 'bootsnap', require: false
 gem 'chartkick'
