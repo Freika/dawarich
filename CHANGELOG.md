@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.29.0] - 2025-06-30
+# [0.29.1] - UNRELEASED
+
+## Fixed
+
+- Buttons on the imports page now looks better in both light and dark mode. #1481
+
+# [0.29.0] - 2025-07-02
 
 You can now move your user data between Dawarich instances. Simply go to your Account settings and click on the "Export my data" button under the password section. An export will be created and you will be able to download it on Exports page once it's ready.
 
