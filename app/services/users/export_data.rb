@@ -39,7 +39,11 @@ require 'zip'
 #       "source": "google_semantic_history",
 #       "created_at": "2024-01-01T00:00:00Z",
 #       "updated_at": "2024-01-01T00:00:00Z",
-#       "processed": true,
+#       "raw_points": 15432,
+#       "doubles": 23,
+#       "processed": 15409,
+#       "points_count": 15409,
+#       "status": "completed",
 #       "file_name": "import_1_2023_MARCH.json",
 #       "original_filename": "2023_MARCH.json",
 #       "file_size": 2048576,
@@ -51,6 +55,7 @@ require 'zip'
 #   "exports": [
 #     {
 #       "name": "export_2024-01-01_to_2024-01-31.json",
+#       "url": null,
 #       "status": "completed",
 #       "file_format": "json",
 #       "file_type": "points",
@@ -71,18 +76,19 @@ require 'zip'
 #       "name": "Business Trip to NYC",
 #       "started_at": "2024-01-15T08:00:00Z",
 #       "ended_at": "2024-01-18T20:00:00Z",
-#       "distance": 1245.67,
+#       "distance": 1245,
+#       "path": null, // PostGIS LineString geometry
+#       "visited_countries": {"US": "United States", "CA": "Canada"},
 #       "created_at": "2024-01-19T00:00:00Z",
 #       "updated_at": "2024-01-19T00:00:00Z"
-#       // ... other trip fields
 #     }
 #   ],
 #   "stats": [
 #     {
 #       "year": 2024,
 #       "month": 1,
-#       "distance": 456.78,
-#       "daily_distance": [[1, 15.2], [2, 23.5], ...], // [day, distance] pairs
+#       "distance": 456, // Note: integer, not float
+#       "daily_distance": {"1": 15.2, "2": 23.5}, // jsonb object
 #       "toponyms": [
 #         {"country": "United States", "cities": [{"city": "New York"}]}
 #       ],
@@ -165,10 +171,11 @@ require 'zip'
 #   ],
 #   "visits": [
 #     {
-#       "name": "Work Visit",
+#       "area_id": 123,
 #       "started_at": "2024-01-01T08:00:00Z",
 #       "ended_at": "2024-01-01T17:00:00Z",
 #       "duration": 32400,
+#       "name": "Work Visit",
 #       "status": "suggested",
 #       "created_at": "2024-01-01T00:00:00Z",
 #       "updated_at": "2024-01-01T00:00:00Z",
@@ -178,14 +185,14 @@ require 'zip'
 #         "longitude": "-73.9851",
 #         "source": "manual"
 #       }
-#       // ... other visit fields
 #     },
 #     {
 #       // Example of visit without place
-#       "name": "Unknown Location",
+#       "area_id": null,
 #       "started_at": "2024-01-02T10:00:00Z",
 #       "ended_at": "2024-01-02T12:00:00Z",
 #       "duration": 7200,
+#       "name": "Unknown Location",
 #       "status": "confirmed",
 #       "created_at": "2024-01-02T00:00:00Z",
 #       "updated_at": "2024-01-02T00:00:00Z",
@@ -197,11 +204,14 @@ require 'zip'
 #       "name": "Office Building",
 #       "longitude": "-73.9851",
 #       "latitude": "40.7589",
+#       "city": "New York",
+#       "country": "United States",
 #       "source": "manual",
 #       "geodata": {"properties": {"name": "Office Building"}},
+#       "reverse_geocoded_at": "2024-01-01T00:00:00Z",
+#       "lonlat": "POINT(-73.9851 40.7589)",
 #       "created_at": "2024-01-01T00:00:00Z",
 #       "updated_at": "2024-01-01T00:00:00Z"
-#       // ... other place fields
 #     }
 #   ]
 # }
