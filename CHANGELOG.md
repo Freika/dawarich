@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Buttons on the imports page now looks better in both light and dark mode. #1481
+- The PROMETHEUS_EXPORTER_ENABLED environment variable default value is now "false", in quotes.
+- The RAILS_CACHE_DB, RAILS_JOB_QUEUE_DB and RAILS_WS_DB environment variables can be used to set the Redis database number for caching, background jobs and websocket connections respectively. Default values are now 0, 1 and 2 respectively. #1420
 
 # [0.29.0] - 2025-07-02
 
