@@ -135,9 +135,9 @@ class Users::ImportData::Trips
   def valid_trip_data?(trip_data)
     return false unless trip_data.is_a?(Hash)
 
-    validate_trip_name(trip_data)
-    validate_trip_started_at(trip_data)
-    validate_trip_ended_at(trip_data)
+    return false unless validate_trip_name(trip_data)
+    return false unless validate_trip_started_at(trip_data)
+    return false unless validate_trip_ended_at(trip_data)
 
     true
   rescue StandardError => e
@@ -147,23 +147,29 @@ class Users::ImportData::Trips
 
 
   def validate_trip_name(trip_data)
-    unless trip_data['name'].present?
-      Rails.logger.error 'Failed to create trip: Validation failed: Name can\'t be blank'
-      return false
+    if trip_data['name'].present?
+      true
+    else
+      Rails.logger.debug 'Trip validation failed: Name can\'t be blank'
+      false
     end
   end
 
   def validate_trip_started_at(trip_data)
-    unless trip_data['started_at'].present?
-      Rails.logger.error 'Failed to create trip: Validation failed: Started at can\'t be blank'
-      return false
+    if trip_data['started_at'].present?
+      true
+    else
+      Rails.logger.debug 'Trip validation failed: Started at can\'t be blank'
+      false
     end
   end
 
   def validate_trip_ended_at(trip_data)
-    unless trip_data['ended_at'].present?
-      Rails.logger.error 'Failed to create trip: Validation failed: Ended at can\'t be blank'
-      return false
+    if trip_data['ended_at'].present?
+      true
+    else
+      Rails.logger.debug 'Trip validation failed: Ended at can\'t be blank'
+      false
     end
   end
 end

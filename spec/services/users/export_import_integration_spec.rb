@@ -31,8 +31,6 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
 
       original_counts = calculate_user_entity_counts(original_user)
 
-      debug_export_data(temp_archive_path)
-
       original_log_level = Rails.logger.level
       Rails.logger.level = Logger::DEBUG
 
@@ -129,35 +127,93 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
     end
   end
 
-  private
+  describe 'places and visits import integrity' do
+    it 'imports all places and visits without losses due to global deduplication' do
+      # Create a user with specific places and visits
+      original_user = create(:user, email: 'original@example.com')
 
-  def debug_export_data(archive_path)
-    require 'zip'
+      # Create places with different characteristics
+      home_place = create(:place, name: 'Home', latitude: 40.7128, longitude: -74.0060)
+      office_place = create(:place, name: 'Office', latitude: 40.7589, longitude: -73.9851)
+      gym_place = create(:place, name: 'Gym', latitude: 40.7505, longitude: -73.9934)
 
-    puts "\n=== DEBUGGING EXPORT DATA ==="
+      # Create visits associated with those places
+      create(:visit, user: original_user, place: home_place, name: 'Home Visit')
+      create(:visit, user: original_user, place: office_place, name: 'Work Visit')
+      create(:visit, user: original_user, place: gym_place, name: 'Workout')
 
-    data = nil
-    Zip::File.open(archive_path) do |zip_file|
-      data_entry = zip_file.find { |entry| entry.name == 'data.json' }
-      if data_entry
-        json_content = data_entry.get_input_stream.read
-        data = JSON.parse(json_content)
+      # Create a visit without a place
+      create(:visit, user: original_user, place: nil, name: 'Unknown Location')
 
-        puts "Export counts: #{data['counts'].inspect}"
-        puts "Points in export: #{data['points']&.size || 0}"
-        puts "Places in export: #{data['places']&.size || 0}"
-        puts "First point sample: #{data['points']&.first&.slice('timestamp', 'longitude', 'latitude', 'import_reference', 'country_info', 'visit_reference')}"
-        puts "First place sample: #{data['places']&.first&.slice('name', 'latitude', 'longitude', 'source')}"
-        puts "Imports in export: #{data['imports']&.size || 0}"
-        puts "Countries referenced: #{data['points']&.map { |p| p['country_info']&.dig('name') }&.compact&.uniq || []}"
-      else
-        puts "No data.json found in export!"
-      end
+      # Calculate counts properly - places are accessed through visits
+      original_places_count = original_user.places.distinct.count
+      original_visits_count = original_user.visits.count
+
+      # Export the data
+      export_service = Users::ExportData.new(original_user)
+      export_record = export_service.export
+
+      # Download and save to a temporary file for processing
+      archive_content = export_record.file.download
+      temp_export_file = Tempfile.new(['test_export', '.zip'])
+      temp_export_file.binmode
+      temp_export_file.write(archive_content)
+      temp_export_file.close
+
+      # SIMULATE FRESH DATABASE: Remove the original places to simulate database migration
+      # This simulates the scenario where we're importing into a different database
+      place_ids_to_remove = [home_place.id, office_place.id, gym_place.id]
+      Place.where(id: place_ids_to_remove).destroy_all
+
+      # Create another user on a "different database" scenario
+      import_user = create(:user, email: 'import@example.com')
+
+      # Create some existing global places that might conflict
+      # These should NOT prevent import of the user's places
+      create(:place, name: 'Home', latitude: 40.8000, longitude: -74.1000) # Different coordinates
+      create(:place, name: 'Coffee Shop', latitude: 40.7589, longitude: -73.9851) # Same coordinates, different name
+
+      # Simulate import into "new database"
+      temp_import_file = Tempfile.new(['test_import', '.zip'])
+      temp_import_file.binmode
+      temp_import_file.write(archive_content)
+      temp_import_file.close
+
+      # Import the data
+      import_service = Users::ImportData.new(import_user, temp_import_file.path)
+      import_stats = import_service.import
+
+      # Verify all entities were imported correctly
+      expect(import_stats[:places_created]).to eq(original_places_count),
+        "Expected #{original_places_count} places to be created, got #{import_stats[:places_created]}"
+      expect(import_stats[:visits_created]).to eq(original_visits_count),
+        "Expected #{original_visits_count} visits to be created, got #{import_stats[:visits_created]}"
+
+      # Verify the imported user has access to all their data
+      imported_places_count = import_user.places.distinct.count
+      imported_visits_count = import_user.visits.count
+
+      expect(imported_places_count).to eq(original_places_count),
+        "Expected user to have access to #{original_places_count} places, got #{imported_places_count}"
+      expect(imported_visits_count).to eq(original_visits_count),
+        "Expected user to have #{original_visits_count} visits, got #{imported_visits_count}"
+
+      # Verify specific visits have their place associations
+      imported_visits = import_user.visits.includes(:place)
+      visits_with_places = imported_visits.where.not(place: nil)
+      expect(visits_with_places.count).to eq(3) # Home, Office, Gym
+
+      # Verify place names are preserved
+      place_names = visits_with_places.map { |v| v.place.name }.sort
+      expect(place_names).to eq(['Gym', 'Home', 'Office'])
+
+      # Cleanup
+      temp_export_file.unlink
+      temp_import_file.unlink
     end
-
-    puts "=== END DEBUG ==="
-    data
   end
+
+  private
 
   def create_full_user_dataset(user)
     user.update!(settings: {

@@ -68,7 +68,7 @@
                 <td data-points-count>
                   <%= number_with_delimiter import.processed %>
                 </td>
-                <td><%= import.status %></td>
+                <td data-status-display><%= import.status %></td>
                 <td><%= human_datetime(import.created_at) %></td>
                 <td class="whitespace-nowrap">
                   <% if import.file.present? %>

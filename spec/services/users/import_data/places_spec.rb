@@ -71,19 +71,41 @@ RSpec.describe Users::ImportData::Places, type: :service do
 
     context 'with duplicate places (same name)' do
       before do
-        # Create an existing place with same name
+        # Create an existing place with same name but different coordinates
+        create(:place, name: 'Home',
+               latitude: 41.0000, longitude: -75.0000,
+               lonlat: 'POINT(-75.0000 41.0000)')
+      end
+
+      it 'creates the place since coordinates are different' do
+        expect { service.call }.to change { Place.count }.by(2)
+      end
+
+      it 'creates both places with different coordinates' do
+        service.call
+        home_places = Place.where(name: 'Home')
+        expect(home_places.count).to eq(2)
+
+        imported_home = home_places.find_by(latitude: 40.7128, longitude: -74.0060)
+        expect(imported_home).to be_present
+      end
+    end
+
+    context 'with exact duplicate places (same name and coordinates)' do
+      before do
+        # Create an existing place with exact same name and coordinates
         create(:place, name: 'Home',
                latitude: 40.7128, longitude: -74.0060,
                lonlat: 'POINT(-74.0060 40.7128)')
       end
 
-      it 'skips duplicate places' do
+      it 'skips exact duplicate places' do
         expect { service.call }.to change { Place.count }.by(1)
       end
 
-      it 'logs when skipping duplicates' do
+      it 'logs when finding exact duplicates' do
         allow(Rails.logger).to receive(:debug) # Allow any debug logs
-        expect(Rails.logger).to receive(:debug).with("Place already exists: Home")
+        expect(Rails.logger).to receive(:debug).with(/Found exact place match: Home at \(40\.7128, -74\.006\) -> existing place ID \d+/)
 
         service.call
       end
@@ -102,15 +124,15 @@ RSpec.describe Users::ImportData::Places, type: :service do
                lonlat: 'POINT(-74.0060 40.7128)')
       end
 
-      it 'skips duplicate places by coordinates' do
-        expect { service.call }.to change { Place.count }.by(1)
+      it 'creates the place since name is different' do
+        expect { service.call }.to change { Place.count }.by(2)
       end
 
-      it 'logs when skipping duplicates' do
-        allow(Rails.logger).to receive(:debug) # Allow any debug logs
-        expect(Rails.logger).to receive(:debug).with("Place already exists: Home")
-
+      it 'creates both places with different names' do
         service.call
+        places_at_location = Place.where(latitude: 40.7128, longitude: -74.0060)
+        expect(places_at_location.count).to eq(2)
+        expect(places_at_location.pluck(:name)).to contain_exactly('Home', 'Different Name')
       end
     end
 

@@ -77,9 +77,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
     t.index ["name"], name: "index_countries_on_name"
   end
 
-  create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
-  end
-
   create_table "exports", force: :cascade do |t|
     t.string "name", null: false
     t.string "url"
@@ -232,18 +229,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
-  create_table "user_data_imports", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.string "status", default: "pending", null: false
-    t.string "archive_file_name"
-    t.text "error_message"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["status"], name: "index_user_data_imports_on_status"
-    t.index ["user_id", "created_at"], name: "index_user_data_imports_on_user_id_and_created_at"
-    t.index ["user_id"], name: "index_user_data_imports_on_user_id"
-  end
-
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -296,7 +281,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
   add_foreign_key "trips", "users"
-  add_foreign_key "user_data_imports", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"

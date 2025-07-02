@@ -103,14 +103,27 @@ class Users::ImportData
 
     import_settings(data['settings']) if data['settings']
     import_areas(data['areas']) if data['areas']
-    import_places(data['places']) if data['places']
+
+    # Import places first to ensure they're available for visits
+    places_imported = import_places(data['places']) if data['places']
+    Rails.logger.info "Places import phase completed: #{places_imported} places imported"
+
     import_imports(data['imports']) if data['imports']
     import_exports(data['exports']) if data['exports']
     import_trips(data['trips']) if data['trips']
     import_stats(data['stats']) if data['stats']
     import_notifications(data['notifications']) if data['notifications']
-    import_visits(data['visits']) if data['visits']
+
+    # Import visits after places to ensure proper place resolution
+    visits_imported = import_visits(data['visits']) if data['visits']
+    Rails.logger.info "Visits import phase completed: #{visits_imported} visits imported"
+
     import_points(data['points']) if data['points']
+
+    # Final validation check
+    if data['counts']
+      validate_import_completeness(data['counts'])
+    end
 
     Rails.logger.info "Data import completed. Stats: #{@import_stats}"
   end
@@ -131,6 +144,7 @@ class Users::ImportData
     Rails.logger.debug "Importing #{places_data&.size || 0} places"
     places_created = Users::ImportData::Places.new(user, places_data).call
     @import_stats[:places_created] = places_created
+    places_created
   end
 
   def import_imports(imports_data)
@@ -169,6 +183,7 @@ class Users::ImportData
     Rails.logger.debug "Importing #{visits_data&.size || 0} visits"
     visits_created = Users::ImportData::Visits.new(user, visits_data).call
     @import_stats[:visits_created] = visits_created
+    visits_created
   end
 
   def import_points(points_data)
@@ -220,5 +235,27 @@ class Users::ImportData
       content: "Your data import failed with error: #{error.message}. Please check the archive format and try again.",
       kind: :error
     ).call
+  end
+
+  def validate_import_completeness(expected_counts)
+    Rails.logger.info "Validating import completeness..."
+
+    discrepancies = []
+
+    expected_counts.each do |entity, expected_count|
+      actual_count = @import_stats[:"#{entity}_created"] || 0
+
+      if actual_count < expected_count
+        discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{expected_count - actual_count} missing)"
+        discrepancies << discrepancy
+        Rails.logger.warn "Import discrepancy - #{discrepancy}"
+      end
+    end
+
+    if discrepancies.any?
+      Rails.logger.warn "Import completed with discrepancies: #{discrepancies.join(', ')}"
+    else
+      Rails.logger.info "Import validation successful - all entities imported correctly"
+    end
   end
 end
