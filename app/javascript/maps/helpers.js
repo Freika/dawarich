@@ -56,13 +56,19 @@ export function minutesToDaysHoursMinutes(minutes) {
 export function formatDate(timestamp, timezone) {
   let date;
 
-  // Handle both Unix timestamps (numbers) and ISO8601 strings
+  // Handle different timestamp formats
   if (typeof timestamp === 'number') {
     // Unix timestamp in seconds, convert to milliseconds
     date = new Date(timestamp * 1000);
   } else if (typeof timestamp === 'string') {
-    // ISO8601 string, parse directly
-    date = new Date(timestamp);
+    // Check if string is a numeric timestamp
+    if (/^\d+$/.test(timestamp)) {
+      // String representation of Unix timestamp in seconds
+      date = new Date(parseInt(timestamp) * 1000);
+    } else {
+      // Assume it's an ISO8601 string, parse directly
+      date = new Date(timestamp);
+    }
   } else {
     // Invalid input
     return 'Invalid Date';

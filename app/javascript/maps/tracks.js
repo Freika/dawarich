@@ -5,7 +5,7 @@ import { minutesToDaysHoursMinutes } from "../maps/helpers";
 
 // Track-specific color palette - different from regular polylines
 export const trackColorPalette = {
-  default: 'blue',      // Green - distinct from blue polylines
+  default: 'red',      // Green - distinct from blue polylines
   hover: '#FF6B35',        // Orange-red for hover
   active: '#E74C3C',       // Red for active/clicked
   start: '#2ECC71',        // Green for start marker

@@ -6,31 +6,10 @@ class MapController < ApplicationController
   def index
     @points = points.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
 
-    @coordinates = []
-      # @points.pluck(:lonlat, :battery, :altitude, :timestamp, :velocity, :id, :country)
-      #        .map { |lonlat, *rest| [lonlat.y, lonlat.x, *rest.map(&:to_s)] }
-    tracks_data = current_user.tracks
-      .where('start_at <= ? AND end_at >= ?', Time.zone.at(end_at), Time.zone.at(start_at))
-      .order(start_at: :asc)
-      .pluck(:id, :start_at, :end_at, :distance, :avg_speed, :duration,
-             :elevation_gain, :elevation_loss, :elevation_max, :elevation_min, :original_path)
-
-    @tracks = tracks_data.map do |id, start_at, end_at, distance, avg_speed, duration,
-                                elevation_gain, elevation_loss, elevation_max, elevation_min, original_path|
-      {
-        id: id,
-        start_at: start_at.iso8601,
-        end_at: end_at.iso8601,
-        distance: distance&.to_f || 0,
-        avg_speed: avg_speed&.to_f || 0,
-        duration: duration || 0,
-        elevation_gain: elevation_gain || 0,
-        elevation_loss: elevation_loss || 0,
-        elevation_max: elevation_max || 0,
-        elevation_min: elevation_min || 0,
-        original_path: original_path&.to_s
-      }
-    end
+    @coordinates =
+      @points.pluck(:lonlat, :battery, :altitude, :timestamp, :velocity, :id, :country)
+             .map { |lonlat, *rest| [lonlat.y, lonlat.x, *rest.map(&:to_s)] }
+    @tracks = TrackSerializer.new(current_user, start_at, end_at).call
     @distance = distance
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
