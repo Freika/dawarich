@@ -54,7 +54,25 @@ export function minutesToDaysHoursMinutes(minutes) {
 }
 
 export function formatDate(timestamp, timezone) {
-  const date = new Date(timestamp * 1000);
+  let date;
+
+  // Handle both Unix timestamps (numbers) and ISO8601 strings
+  if (typeof timestamp === 'number') {
+    // Unix timestamp in seconds, convert to milliseconds
+    date = new Date(timestamp * 1000);
+  } else if (typeof timestamp === 'string') {
+    // ISO8601 string, parse directly
+    date = new Date(timestamp);
+  } else {
+    // Invalid input
+    return 'Invalid Date';
+  }
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return 'Invalid Date';
+  }
+
   let locale;
   if (navigator.languages !== undefined) {
     locale = navigator.languages[0];

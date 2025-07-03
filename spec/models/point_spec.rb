@@ -8,6 +8,7 @@ RSpec.describe Point, type: :model do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to belong_to(:country).optional }
     it { is_expected.to belong_to(:visit).optional }
+    it { is_expected.to belong_to(:track).optional }
   end
 
   describe 'validations' do

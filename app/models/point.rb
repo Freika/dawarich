@@ -8,6 +8,7 @@ class Point < ApplicationRecord
   belongs_to :visit, optional: true
   belongs_to :user
   belongs_to :country, optional: true
+  belongs_to :track, optional: true
 
   validates :timestamp, :lonlat, presence: true
   validates :lonlat, uniqueness: {

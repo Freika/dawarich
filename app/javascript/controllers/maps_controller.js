@@ -14,6 +14,14 @@ import {
   colorStopsFallback
 } from "../maps/polylines";
 
+import {
+  createTracksLayer,
+  updateTracksOpacity,
+  toggleTracksVisibility,
+  filterTracks,
+  trackColorPalette
+} from "../maps/tracks";
+
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
 import { showFlashMessage, fetchAndDisplayPhotos } from "../maps/helpers";
@@ -34,6 +42,8 @@ export default class extends BaseController {
   visitedCitiesCache = new Map();
   trackedMonthsCache = null;
   currentPopup = null;
+  tracksLayer = null;
+  tracksVisible = false;
 
   connect() {
     super.connect();
@@ -41,9 +51,33 @@ export default class extends BaseController {
 
     this.apiKey = this.element.dataset.api_key;
     this.selfHosted = this.element.dataset.self_hosted;
-    this.markers = JSON.parse(this.element.dataset.coordinates);
+
+    // Defensive JSON parsing with error handling
+    try {
+      this.markers = this.element.dataset.coordinates ? JSON.parse(this.element.dataset.coordinates) : [];
+    } catch (error) {
+      console.error('Error parsing coordinates data:', error);
+      console.error('Raw coordinates data:', this.element.dataset.coordinates);
+      this.markers = [];
+    }
+
+    try {
+      this.tracksData = this.element.dataset.tracks ? JSON.parse(this.element.dataset.tracks) : null;
+    } catch (error) {
+      console.error('Error parsing tracks data:', error);
+      console.error('Raw tracks data:', this.element.dataset.tracks);
+      this.tracksData = null;
+    }
+
     this.timezone = this.element.dataset.timezone;
-    this.userSettings = JSON.parse(this.element.dataset.user_settings);
+
+    try {
+      this.userSettings = this.element.dataset.user_settings ? JSON.parse(this.element.dataset.user_settings) : {};
+    } catch (error) {
+      console.error('Error parsing user_settings data:', error);
+      console.error('Raw user_settings data:', this.element.dataset.user_settings);
+      this.userSettings = {};
+    }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.fogLinethreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
     // Store route opacity as decimal (0-1) internally
@@ -55,7 +89,14 @@ export default class extends BaseController {
     this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
     this.speedColorScale = this.userSettings.speed_color_scale || colorFormatEncode(colorStopsFallback);
 
-    this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
+    // Ensure we have valid markers array
+    if (!Array.isArray(this.markers)) {
+      console.warn('Markers is not an array, setting to empty array');
+      this.markers = [];
+    }
+
+    // Set default center (Berlin) if no markers available
+    this.center = this.markers.length > 0 ? this.markers[this.markers.length - 1] : [52.514568, 13.350111];
 
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
@@ -102,6 +143,9 @@ export default class extends BaseController {
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
 
+    // Initialize empty tracks layer for layer control (will be populated later)
+    this.tracksLayer = L.layerGroup();
+
     // Create a proper Leaflet layer for fog
     this.fogOverlay = createFogOverlay();
 
@@ -142,6 +186,7 @@ export default class extends BaseController {
     const controlsLayer = {
       Points: this.markersLayer,
       Routes: this.polylinesLayer,
+      Tracks: this.tracksLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": new this.fogOverlay(),
       "Scratch map": this.scratchLayer,
@@ -153,6 +198,9 @@ export default class extends BaseController {
 
     // Initialize layer control first
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+
+    // Now initialize tracks data (after layer control is created)
+    this.initializeTracksLayer();
 
     // Add the toggle panel button
     this.addTogglePanelButton();
@@ -801,6 +849,17 @@ export default class extends BaseController {
             <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class='w-4' style="width: 20px;" ${this.speedColoredRoutesChecked()} />
           </label>
 
+          <hr class="my-2">
+
+          <h4 style="font-weight: bold; margin: 8px 0;">Track Settings</h4>
+
+          <label for="tracks_visible">
+            Show Tracks
+            <input type="checkbox" id="tracks_visible" name="tracks_visible" class='w-4' style="width: 20px;" ${this.tracksVisible ? 'checked' : ''} />
+          </label>
+
+          <button type="button" id="refresh-tracks-btn" class="btn btn-xs mt-2">Refresh Tracks</button>
+
           <label for="speed_color_scale">Speed color scale</label>
           <div class="join">
             <input type="text" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="speed_color_scale" name="speed_color_scale" min="5" max="100" step="1" value="${this.speedColorScale}">
@@ -827,6 +886,17 @@ export default class extends BaseController {
       const editBtn = div.querySelector("#edit-gradient-btn");
       if (editBtn) {
         editBtn.addEventListener("click", this.showGradientEditor.bind(this));
+      }
+
+      // Add track control event listeners
+      const tracksVisibleCheckbox = div.querySelector("#tracks_visible");
+      if (tracksVisibleCheckbox) {
+        tracksVisibleCheckbox.addEventListener("change", this.toggleTracksVisibility.bind(this));
+      }
+
+      const refreshTracksBtn = div.querySelector("#refresh-tracks-btn");
+      if (refreshTracksBtn) {
+        refreshTracksBtn.addEventListener("click", this.refreshTracks.bind(this));
       }
 
       // Add event listener to the form submission
@@ -953,6 +1023,7 @@ export default class extends BaseController {
       const layerStates = {
         Points: this.map.hasLayer(this.markersLayer),
         Routes: this.map.hasLayer(this.polylinesLayer),
+        Tracks: this.tracksLayer ? this.map.hasLayer(this.tracksLayer) : false,
         Heatmap: this.map.hasLayer(this.heatmapLayer),
         "Fog of War": this.map.hasLayer(this.fogOverlay),
         "Scratch map": this.map.hasLayer(this.scratchLayer),
@@ -969,6 +1040,7 @@ export default class extends BaseController {
       const controlsLayer = {
         Points: this.markersLayer || L.layerGroup(),
         Routes: this.polylinesLayer || L.layerGroup(),
+        Tracks: this.tracksLayer || L.layerGroup(),
         Heatmap: this.heatmapLayer || L.heatLayer([]),
         "Fog of War": new this.fogOverlay(),
         "Scratch map": this.scratchLayer || L.layerGroup(),
@@ -1556,5 +1628,195 @@ export default class extends BaseController {
     content.appendChild(btnContainer);
     modal.appendChild(content);
     document.body.appendChild(modal);
+  }
+
+  // Track-related methods
+  async initializeTracksLayer() {
+    console.log('DEBUG: Initializing tracks layer');
+    console.log('DEBUG: this.tracksData:', this.tracksData);
+    console.log('DEBUG: tracksData type:', typeof this.tracksData);
+    console.log('DEBUG: tracksData length:', this.tracksData ? this.tracksData.length : 'undefined');
+
+    // Use pre-loaded tracks data if available, otherwise fetch from API
+    if (this.tracksData && this.tracksData.length > 0) {
+      console.log('DEBUG: Using pre-loaded tracks data');
+      this.createTracksFromData(this.tracksData);
+    } else {
+      console.log('DEBUG: No pre-loaded tracks data, fetching from API');
+      await this.fetchTracks();
+    }
+
+    console.log('DEBUG: Tracks layer after initialization:', this.tracksLayer);
+  }
+
+  async fetchTracks() {
+    try {
+      // Get start and end dates from the current map view or URL params
+      const urlParams = new URLSearchParams(window.location.search);
+      const startAt = urlParams.get('start_at') || this.getDefaultStartDate();
+      const endAt = urlParams.get('end_at') || this.getDefaultEndDate();
+
+      const response = await fetch(`/api/v1/tracks?start_at=${startAt}&end_at=${endAt}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.createTracksFromData(data.tracks || []);
+      } else {
+        console.warn('Failed to fetch tracks:', response.status);
+        // Create empty layer for layer control
+        this.tracksLayer = L.layerGroup();
+      }
+    } catch (error) {
+      console.warn('Tracks API not available or failed:', error);
+      // Create empty layer for layer control
+      this.tracksLayer = L.layerGroup();
+    }
+  }
+
+  createTracksFromData(tracksData) {
+    // Clear existing tracks
+    this.tracksLayer.clearLayers();
+
+    console.log('DEBUG: Creating tracks from data:', {
+      tracksData: tracksData,
+      tracksCount: tracksData ? tracksData.length : 0,
+      firstTrack: tracksData && tracksData.length > 0 ? tracksData[0] : null
+    });
+
+    if (!tracksData || tracksData.length === 0) {
+      console.log('DEBUG: No tracks data available');
+      return;
+    }
+
+    // Create tracks layer with data and add to existing tracks layer
+    const newTracksLayer = createTracksLayer(
+      tracksData,
+      this.map,
+      this.userSettings,
+      this.distanceUnit
+    );
+
+    console.log('DEBUG: Created tracks layer:', newTracksLayer);
+
+    // Add all tracks to the existing tracks layer
+    newTracksLayer.eachLayer((layer) => {
+      this.tracksLayer.addLayer(layer);
+    });
+
+    console.log('DEBUG: Final tracks layer with', Object.keys(this.tracksLayer._layers).length, 'layers');
+  }
+
+  updateLayerControl() {
+    if (!this.layerControl) return;
+
+    // Remove existing layer control
+    this.map.removeControl(this.layerControl);
+
+    // Create new controls layer object
+    const controlsLayer = {
+      Points: this.markersLayer || L.layerGroup(),
+      Routes: this.polylinesLayer || L.layerGroup(),
+      Tracks: this.tracksLayer || L.layerGroup(),
+      Heatmap: this.heatmapLayer || L.heatLayer([]),
+      "Fog of War": new this.fogOverlay(),
+      "Scratch map": this.scratchLayer || L.layerGroup(),
+      Areas: this.areasLayer || L.layerGroup(),
+      Photos: this.photoMarkers || L.layerGroup(),
+      "Suggested Visits": this.visitsManager?.getVisitCirclesLayer() || L.layerGroup(),
+      "Confirmed Visits": this.visitsManager?.getConfirmedVisitCirclesLayer() || L.layerGroup()
+    };
+
+    // Re-add the layer control
+    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+  }
+
+  toggleTracksVisibility(event) {
+    this.tracksVisible = event.target.checked;
+
+    if (this.tracksLayer) {
+      toggleTracksVisibility(this.tracksLayer, this.map, this.tracksVisible);
+    }
+  }
+
+
+
+  getDefaultStartDate() {
+    // Default to last week if no markers available
+    if (!this.markers || this.markers.length === 0) {
+      return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    }
+
+    // Get start date from first marker
+    const firstMarker = this.markers[0];
+    if (firstMarker && firstMarker[3]) {
+      const startDate = new Date(firstMarker[3] * 1000);
+      startDate.setHours(0, 0, 0, 0);
+      return startDate.toISOString();
+    }
+
+    return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  getDefaultEndDate() {
+    // Default to today if no markers available
+    if (!this.markers || this.markers.length === 0) {
+      return new Date().toISOString();
+    }
+
+    // Get end date from last marker
+    const lastMarker = this.markers[this.markers.length - 1];
+    if (lastMarker && lastMarker[3]) {
+      const endDate = new Date(lastMarker[3] * 1000);
+      endDate.setHours(23, 59, 59, 999);
+      return endDate.toISOString();
+    }
+
+    return new Date().toISOString();
+  }
+
+  async refreshTracks() {
+    const refreshBtn = document.getElementById('refresh-tracks-btn');
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = 'Refreshing...';
+    }
+
+    try {
+      // Trigger track creation on backend
+      const response = await fetch(`/api/v1/tracks`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          api_key: this.apiKey
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showFlashMessage('notice', data.message || 'Tracks refreshed successfully');
+
+        // Refresh tracks display
+        await this.fetchTracks();
+      } else {
+        throw new Error('Failed to refresh tracks');
+      }
+    } catch (error) {
+      console.error('Error refreshing tracks:', error);
+      showFlashMessage('error', 'Failed to refresh tracks');
+    } finally {
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh Tracks';
+      }
+    }
   }
 }
