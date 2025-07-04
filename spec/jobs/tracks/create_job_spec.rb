@@ -6,15 +6,17 @@ RSpec.describe Tracks::CreateJob, type: :job do
   let(:user) { create(:user) }
 
   describe '#perform' do
-    it 'calls the service and creates a notification' do
-      service_instance = instance_double(Tracks::CreateFromPoints)
+    let(:service_instance) { instance_double(Tracks::CreateFromPoints) }
+    let(:notification_service) { instance_double(Notifications::Create) }
+
+    before do
       allow(Tracks::CreateFromPoints).to receive(:new).with(user).and_return(service_instance)
       allow(service_instance).to receive(:call).and_return(3)
-
-      notification_service = instance_double(Notifications::Create)
       allow(Notifications::Create).to receive(:new).and_return(notification_service)
       allow(notification_service).to receive(:call)
+    end
 
+    it 'calls the service and creates a notification' do
       described_class.new.perform(user.id)
 
       expect(Tracks::CreateFromPoints).to have_received(:new).with(user)
@@ -30,18 +32,17 @@ RSpec.describe Tracks::CreateJob, type: :job do
 
     context 'when service raises an error' do
       let(:error_message) { 'Something went wrong' }
+      let(:service_instance) { instance_double(Tracks::CreateFromPoints) }
+      let(:notification_service) { instance_double(Notifications::Create) }
 
       before do
-        service_instance = instance_double(Tracks::CreateFromPoints)
         allow(Tracks::CreateFromPoints).to receive(:new).with(user).and_return(service_instance)
         allow(service_instance).to receive(:call).and_raise(StandardError, error_message)
+        allow(Notifications::Create).to receive(:new).and_return(notification_service)
+        allow(notification_service).to receive(:call)
       end
 
       it 'creates an error notification' do
-        notification_service = instance_double(Notifications::Create)
-        allow(Notifications::Create).to receive(:new).and_return(notification_service)
-        allow(notification_service).to receive(:call)
-
         described_class.new.perform(user.id)
 
         expect(Notifications::Create).to have_received(:new).with(
@@ -74,7 +75,7 @@ RSpec.describe Tracks::CreateJob, type: :job do
 
   describe 'queue' do
     it 'is queued on default queue' do
-      expect(described_class.new.queue_name).to eq('default')
+      expect(described_class.new.queue_name).to eq('tracks')
     end
   end
 end

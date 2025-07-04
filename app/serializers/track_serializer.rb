@@ -1,14 +1,12 @@
 # frozen_string_literal: true
 
 class TrackSerializer
-  def initialize(user, coordinates)
+  def initialize(user, track_ids)
     @user = user
-    @coordinates = coordinates
+    @track_ids = track_ids
   end
 
   def call
-    # Extract track IDs from the coordinates that are already filtered by timeframe
-    track_ids = extract_track_ids_from_coordinates
     return [] if track_ids.empty?
 
     # Show only tracks that have points in the selected timeframe
@@ -29,15 +27,7 @@ class TrackSerializer
 
   private
 
-  attr_reader :user, :coordinates
-
-  def extract_track_ids_from_coordinates
-    # Extract track_id from coordinates (index 8: [lat, lng, battery, altitude, timestamp, velocity, id, country, track_id])
-    track_ids = coordinates.map { |coord| coord[8]&.to_i }.compact.uniq
-    track_ids.reject(&:zero?) # Remove any nil/zero track IDs
-  end
-
-
+  attr_reader :user, :track_ids
 
   def serialize_track_data(
     id, start_at, end_at, distance, avg_speed, duration, elevation_gain,

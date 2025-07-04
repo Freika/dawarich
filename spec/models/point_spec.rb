@@ -29,6 +29,17 @@ RSpec.describe Point, type: :model do
         expect(point.country_id).to eq(country.id)
       end
     end
+
+    describe '#recalculate_track' do
+      let(:point) { create(:point, track: track) }
+      let(:track) { create(:track) }
+
+      it 'recalculates the track' do
+        expect(track).to receive(:recalculate_path_and_distance!)
+
+        point.update(lonlat: 'POINT(-79.85581250721961 15.854775993302411)')
+      end
+    end
   end
 
   describe 'scopes' do

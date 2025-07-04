@@ -223,7 +223,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_03_193657) do
     t.datetime "end_at", null: false
     t.bigint "user_id", null: false
     t.geometry "original_path", limit: {srid: 0, type: "line_string"}, null: false
-    t.float "distance"
+    t.integer "distance"
     t.float "avg_speed"
     t.integer "duration"
     t.integer "elevation_gain"
