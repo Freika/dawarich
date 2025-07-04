@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_03_193657) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -181,6 +181,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
     t.string "external_track_id"
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.bigint "country_id"
+    t.bigint "track_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -196,6 +197,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
+    t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["trigger"], name: "index_points_on_trigger"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
@@ -214,6 +216,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
     t.index ["month"], name: "index_stats_on_month"
     t.index ["user_id"], name: "index_stats_on_user_id"
     t.index ["year"], name: "index_stats_on_year"
+  end
+
+  create_table "tracks", force: :cascade do |t|
+    t.datetime "start_at", null: false
+    t.datetime "end_at", null: false
+    t.bigint "user_id", null: false
+    t.geometry "original_path", limit: {srid: 0, type: "line_string"}, null: false
+    t.integer "distance"
+    t.float "avg_speed"
+    t.integer "duration"
+    t.integer "elevation_gain"
+    t.integer "elevation_loss"
+    t.integer "elevation_max"
+    t.integer "elevation_min"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
   create_table "trips", force: :cascade do |t|
@@ -280,6 +299,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_27_184017) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
+  add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"

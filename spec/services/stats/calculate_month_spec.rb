@@ -61,7 +61,7 @@ RSpec.describe Stats::CalculateMonth do
         it 'calculates distance' do
           calculate_stats
 
-          expect(user.stats.last.distance).to eq(339)
+          expect(user.stats.last.distance).to eq(340)
         end
 
         context 'when there is an error' do

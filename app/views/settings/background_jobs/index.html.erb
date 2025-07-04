@@ -56,9 +56,9 @@
         <p>Enable or disable visits suggestions. It's a background task that runs every day at midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.</p>
         <div class="card-actions justify-end">
           <% if current_user.safe_settings.visits_suggestions_enabled? %>
-            <%= link_to 'Disable', settings_path(settings: { 'visits_suggestions_enabled' => false }), method: :patch, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :patch }, class: 'btn btn-error' %>
+            <%= link_to 'Disable', settings_path(settings: { 'visits_suggestions_enabled' => 'false' }), method: :patch, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :patch }, class: 'btn btn-error' %>
           <% else %>
-            <%= link_to 'Enable', settings_path(settings: { 'visits_suggestions_enabled' => true }), method: :patch, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :patch }, class: 'btn btn-success' %>
+            <%= link_to 'Enable', settings_path(settings: { 'visits_suggestions_enabled' => 'true' }), method: :patch, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :patch }, class: 'btn btn-success' %>
           <% end %>
         </div>
       </div>

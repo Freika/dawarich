@@ -111,6 +111,7 @@ class Users::SafeSettings
   end
 
   def distance_unit
+    # km or mi
     settings.dig('maps', 'distance_unit')
   end
 

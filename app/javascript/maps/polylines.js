@@ -464,6 +464,9 @@ export function createPolylinesLayer(markers, map, timezone, routeOpacity, userS
       segmentGroup.options.interactive = true;
       segmentGroup.options.bubblingMouseEvents = false;
 
+      // Store the original coordinates for later use
+      segmentGroup._polylineCoordinates = polylineCoordinates;
+
       // Add the hover functionality to the group
       addHighlightOnHover(segmentGroup, map, polylineCoordinates, userSettings, distanceUnit);
 
@@ -549,4 +552,121 @@ export function updatePolylinesOpacity(polylinesLayer, opacity) {
   processInBatches(segments, 50, (segment) => {
     segment.setStyle({ opacity: opacity });
   });
+}
+
+export function reestablishPolylineEventHandlers(polylinesLayer, map, userSettings, distanceUnit) {
+  let groupsProcessed = 0;
+  let segmentsProcessed = 0;
+
+  // Re-establish event handlers for all polyline groups
+  polylinesLayer.eachLayer((groupLayer) => {
+    if (groupLayer instanceof L.LayerGroup || groupLayer instanceof L.FeatureGroup) {
+      groupsProcessed++;
+
+      let segments = [];
+
+      groupLayer.eachLayer((segment) => {
+        if (segment instanceof L.Polyline) {
+          segments.push(segment);
+          segmentsProcessed++;
+        }
+      });
+
+      // If we have stored polyline coordinates, use them; otherwise create a basic representation
+      let polylineCoordinates = groupLayer._polylineCoordinates || [];
+
+      if (polylineCoordinates.length === 0) {
+        // Fallback: reconstruct coordinates from segments
+        const coordsMap = new Map();
+        segments.forEach(segment => {
+          const coords = segment.getLatLngs();
+          coords.forEach(coord => {
+            const key = `${coord.lat.toFixed(6)},${coord.lng.toFixed(6)}`;
+            if (!coordsMap.has(key)) {
+              const timestamp = segment.options.timestamp || Date.now() / 1000;
+              const speed = segment.options.speed || 0;
+              coordsMap.set(key, [coord.lat, coord.lng, 0, 0, timestamp, speed]);
+            }
+          });
+        });
+        polylineCoordinates = Array.from(coordsMap.values());
+      }
+
+      // Re-establish the highlight hover functionality
+      if (polylineCoordinates.length > 0) {
+        addHighlightOnHover(groupLayer, map, polylineCoordinates, userSettings, distanceUnit);
+      }
+
+      // Re-establish basic group event handlers
+      groupLayer.on('mouseover', function(e) {
+        L.DomEvent.stopPropagation(e);
+        segments.forEach(segment => {
+          segment.setStyle({
+            weight: 8,
+            opacity: 1
+          });
+          if (map.hasLayer(segment)) {
+            segment.bringToFront();
+          }
+        });
+      });
+
+      groupLayer.on('mouseout', function(e) {
+        L.DomEvent.stopPropagation(e);
+        segments.forEach(segment => {
+          segment.setStyle({
+            weight: 3,
+            opacity: userSettings.route_opacity,
+            color: segment.options.originalColor
+          });
+        });
+      });
+
+      groupLayer.on('click', function(e) {
+        // Click handler placeholder
+      });
+
+      // Ensure the group is interactive
+      groupLayer.options.interactive = true;
+      groupLayer.options.bubblingMouseEvents = false;
+    }
+  });
+}
+
+
+
+export function managePaneVisibility(map, activeLayerType) {
+  const polylinesPane = map.getPane('polylinesPane');
+  const tracksPane = map.getPane('tracksPane');
+
+  if (activeLayerType === 'routes') {
+    // Enable polylines pane events and disable tracks pane events
+    if (polylinesPane) {
+      polylinesPane.style.pointerEvents = 'auto';
+      polylinesPane.style.zIndex = 470; // Temporarily boost above tracks
+    }
+    if (tracksPane) {
+      tracksPane.style.pointerEvents = 'none';
+    }
+  } else if (activeLayerType === 'tracks') {
+    // Enable tracks pane events and disable polylines pane events
+    if (tracksPane) {
+      tracksPane.style.pointerEvents = 'auto';
+      tracksPane.style.zIndex = 470; // Boost above polylines
+    }
+    if (polylinesPane) {
+      polylinesPane.style.pointerEvents = 'none';
+      polylinesPane.style.zIndex = 450; // Reset to original
+    }
+  } else {
+    // Both layers might be active or neither - enable both
+    if (polylinesPane) {
+      polylinesPane.style.pointerEvents = 'auto';
+      polylinesPane.style.zIndex = 450; // Reset to original
+    }
+    if (tracksPane) {
+      tracksPane.style.pointerEvents = 'auto';
+      tracksPane.style.zIndex = 460; // Reset to original
+    }
+  }
 }

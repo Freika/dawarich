@@ -38,7 +38,7 @@ class Stat < ApplicationRecord
     timespan.to_a.map.with_index(1) do |day, index|
       daily_points = filter_points_for_day(monthly_points, day)
       distance = Point.total_distance(daily_points, user.safe_settings.distance_unit)
-      [index, distance.round(2)]
+      [index, distance.round]
     end
   end
 
