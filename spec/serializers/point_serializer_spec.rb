@@ -33,7 +33,8 @@ RSpec.describe PointSerializer do
         'geodata' => point.geodata,
         'course' => point.course,
         'course_accuracy' => point.course_accuracy,
-        'external_track_id' => point.external_track_id
+        'external_track_id' => point.external_track_id,
+        'track_id' => point.track_id
       }
     end
 

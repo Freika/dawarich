@@ -69,9 +69,9 @@ module Calculateable
     # For Track model - convert to meters for storage (Track expects distance in meters)
     case user_distance_unit.to_s
     when 'mi'
-      (calculated_distance * 1609.344).round(2) # miles to meters
+      (calculated_distance * 1609.344).round # miles to meters
     else
-      (calculated_distance * 1000).round(2) # km to meters
+      (calculated_distance * 1000).round # km to meters
     end
   end
 

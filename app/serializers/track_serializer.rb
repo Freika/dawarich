@@ -38,7 +38,7 @@ class TrackSerializer
       id: id,
       start_at: start_at.iso8601,
       end_at: end_at.iso8601,
-      distance: distance.to_f,
+      distance: distance.to_i,
       avg_speed: avg_speed.to_f,
       duration: duration,
       elevation_gain: elevation_gain,

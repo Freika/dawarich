@@ -154,9 +154,9 @@ class Tracks::CreateFromPoints
     # Convert to meters for storage (Track model expects distance in meters)
     case user.safe_settings.distance_unit
     when 'miles', 'mi'
-      (distance_in_user_unit * 1609.344).round(2) # miles to meters
+      (distance_in_user_unit * 1609.344).round # miles to meters
     else
-      (distance_in_user_unit * 1000).round(2) # km to meters
+      (distance_in_user_unit * 1000).round # km to meters
     end
   end
 

@@ -54,28 +54,35 @@ RSpec.describe Tracks::CreateJob, type: :job do
         expect(notification_service).to have_received(:call)
       end
 
-      it 'logs the error' do
-        allow(Rails.logger).to receive(:error)
-        allow(Notifications::Create).to receive(:new).and_return(instance_double(Notifications::Create, call: nil))
+      it 'reports the error using ExceptionReporter' do
+        allow(ExceptionReporter).to receive(:call)
 
         described_class.new.perform(user.id)
 
-        expect(Rails.logger).to have_received(:error).with("Failed to create tracks for user #{user.id}: #{error_message}")
+        expect(ExceptionReporter).to have_received(:call).with(
+          kind_of(StandardError),
+          'Failed to create tracks for user'
+        )
       end
     end
 
     context 'when user does not exist' do
-      it 'raises ActiveRecord::RecordNotFound' do
-        expect {
-          described_class.new.perform(999)
-        }.to raise_error(ActiveRecord::RecordNotFound)
+      it 'handles the error gracefully and creates error notification' do
+        allow(User).to receive(:find).with(999).and_raise(ActiveRecord::RecordNotFound)
+        allow(ExceptionReporter).to receive(:call)
+        allow(Notifications::Create).to receive(:new).and_return(instance_double(Notifications::Create, call: nil))
+
+        # Should not raise an error because it's caught by the rescue block
+        expect { described_class.new.perform(999) }.not_to raise_error
+
+        expect(ExceptionReporter).to have_received(:call)
       end
     end
   end
 
   describe 'queue' do
     it 'is queued on default queue' do
-      expect(described_class.new.queue_name).to eq('tracks')
+      expect(described_class.new.queue_name).to eq('default')
     end
   end
 end

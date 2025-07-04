@@ -44,7 +44,15 @@ class MapController < ApplicationController
       )
     end
 
-    distance.round(1)
+    # Convert distance to meters for consistent storage
+    distance_in_meters = case current_user.safe_settings.distance_unit.to_s
+                         when 'miles', 'mi'
+                           distance * 1609.344 # miles to meters
+                         else
+                           distance * 1000 # km to meters
+                         end
+
+    distance_in_meters.round # Return as integer meters
   end
 
   def parsed_start_at

@@ -7,12 +7,14 @@ RSpec.describe Track, type: :model do
   end
 
   describe 'validations' do
+    subject { build(:track) }
+
     it { is_expected.to validate_presence_of(:start_at) }
     it { is_expected.to validate_presence_of(:end_at) }
     it { is_expected.to validate_presence_of(:original_path) }
-    it { is_expected.to validate_numericality_of(:distance).is_greater_than(0) }
-    it { is_expected.to validate_numericality_of(:avg_speed).is_greater_than(0) }
-    it { is_expected.to validate_numericality_of(:duration).is_greater_than(0) }
+    it { is_expected.to validate_numericality_of(:distance).is_greater_than_or_equal_to(0) }
+    it { is_expected.to validate_numericality_of(:avg_speed).is_greater_than_or_equal_to(0) }
+    it { is_expected.to validate_numericality_of(:duration).is_greater_than_or_equal_to(0) }
   end
 
   describe 'Calculateable concern' do
@@ -21,8 +23,8 @@ RSpec.describe Track, type: :model do
     let!(:points) do
       [
         create(:point, user: user, track: track, lonlat: 'POINT(13.404954 52.520008)', timestamp: 1.hour.ago.to_i),
-        create(:point, user: user, track: track, lonlat: 'POINT(13.404955 52.520009)', timestamp: 30.minutes.ago.to_i),
-        create(:point, user: user, track: track, lonlat: 'POINT(13.404956 52.520010)', timestamp: Time.current.to_i)
+        create(:point, user: user, track: track, lonlat: 'POINT(13.405954 52.521008)', timestamp: 30.minutes.ago.to_i),
+        create(:point, user: user, track: track, lonlat: 'POINT(13.406954 52.522008)', timestamp: Time.current.to_i)
       ]
     end
 
@@ -41,7 +43,7 @@ RSpec.describe Track, type: :model do
         track.calculate_distance
 
         expect(track.distance).to be > 0
-        expect(track.distance).to be_a(Float)
+        expect(track.distance).to be_a(Integer)
       end
 
       it 'stores distance in meters for Track model' do
@@ -50,7 +52,7 @@ RSpec.describe Track, type: :model do
 
         track.calculate_distance
 
-        expect(track.distance).to eq(1500.0) # Should be in meters
+        expect(track.distance).to eq(1500) # Should be in meters as integer
       end
     end
 

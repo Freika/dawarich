@@ -9,8 +9,8 @@ RSpec.describe Tracks::CreateFromPoints do
   describe '#initialize' do
     it 'sets user and thresholds from user settings' do
       expect(service.user).to eq(user)
-      expect(service.distance_threshold_meters).to eq(user.safe_settings.meters_between_routes)
-      expect(service.time_threshold_minutes).to eq(user.safe_settings.minutes_between_routes)
+      expect(service.distance_threshold_meters).to eq(user.safe_settings.meters_between_routes.to_i)
+      expect(service.time_threshold_minutes).to eq(user.safe_settings.minutes_between_routes.to_i)
     end
 
     context 'with custom user settings' do
@@ -233,14 +233,14 @@ RSpec.describe Tracks::CreateFromPoints do
       end
     end
 
-    describe '#calculate_distance_meters' do
+    describe '#calculate_distance_kilometers' do
       let(:point1) { build(:point, lonlat: 'POINT(-74.0060 40.7128)') }
       let(:point2) { build(:point, lonlat: 'POINT(-74.0070 40.7130)') }
 
-      it 'calculates distance between two points in meters' do
-        distance = service.send(:calculate_distance_meters, point1, point2)
+      it 'calculates distance between two points in kilometers' do
+        distance = service.send(:calculate_distance_kilometers, point1, point2)
         expect(distance).to be > 0
-        expect(distance).to be < 200 # Should be small distance for close points
+        expect(distance).to be < 0.2 # Should be small distance for close points (in km)
       end
     end
 
@@ -276,7 +276,7 @@ RSpec.describe Tracks::CreateFromPoints do
 
       it 'converts km to meters by default' do
         distance = service.send(:calculate_track_distance, points)
-        expect(distance).to eq(1500.0) # 1.5 km = 1500 meters
+        expect(distance).to eq(1500) # 1.5 km = 1500 meters
       end
 
       context 'with miles unit' do
@@ -286,7 +286,7 @@ RSpec.describe Tracks::CreateFromPoints do
 
         it 'converts miles to meters' do
           distance = service.send(:calculate_track_distance, points)
-          expect(distance).to eq(2414.02) # 1.5 miles ≈ 2414 meters
+          expect(distance).to eq(2414) # 1.5 miles ≈ 2414 meters (rounded)
         end
       end
     end
