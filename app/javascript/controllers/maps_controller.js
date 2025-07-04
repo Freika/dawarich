@@ -11,7 +11,9 @@ import {
   updatePolylinesColors,
   colorFormatEncode,
   colorFormatDecode,
-  colorStopsFallback
+  colorStopsFallback,
+  reestablishPolylineEventHandlers,
+  managePaneVisibility
 } from "../maps/polylines";
 
 import {
@@ -204,6 +206,9 @@ export default class extends BaseController {
 
     // Add the toggle panel button
     this.addTogglePanelButton();
+
+    // Add routes/tracks selector
+    this.addRoutesTracksSelector();
 
     // Check if we should open the panel based on localStorage or URL params
     const urlParams = new URLSearchParams(window.location.search);
@@ -552,6 +557,33 @@ export default class extends BaseController {
     this.map.on('baselayerchange', (event) => {
       const selectedLayerName = event.name;
       this.updatePreferredBaseLayer(selectedLayerName);
+    });
+
+    // Add event listeners for overlay layer changes to keep routes/tracks selector in sync
+    this.map.on('overlayadd', (event) => {
+      if (event.name === 'Routes') {
+        this.handleRouteLayerToggle('routes');
+        // Re-establish event handlers when routes are manually added
+        if (event.layer === this.polylinesLayer) {
+          reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+        }
+      } else if (event.name === 'Tracks') {
+        this.handleRouteLayerToggle('tracks');
+      }
+
+      // Manage pane visibility when layers are manually toggled
+      this.updatePaneVisibilityAfterLayerChange();
+    });
+
+    this.map.on('overlayremove', (event) => {
+      if (event.name === 'Routes' || event.name === 'Tracks') {
+        // Don't auto-switch when layers are manually turned off
+        // Just update the radio button state to reflect current visibility
+        this.updateRadioButtonState();
+
+        // Manage pane visibility when layers are manually toggled
+        this.updatePaneVisibilityAfterLayerChange();
+      }
     });
   }
 
@@ -1056,10 +1088,26 @@ export default class extends BaseController {
         const layer = controlsLayer[name];
         if (wasVisible && layer) {
           layer.addTo(this.map);
+          // Re-establish event handlers for polylines layer when it's re-added
+          if (name === 'Routes' && layer === this.polylinesLayer) {
+            reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+          }
         } else if (layer && this.map.hasLayer(layer)) {
           this.map.removeLayer(layer);
         }
       });
+
+      // Manage pane visibility based on which layers are visible
+      const routesVisible = this.map.hasLayer(this.polylinesLayer);
+      const tracksVisible = this.tracksLayer && this.map.hasLayer(this.tracksLayer);
+
+      if (routesVisible && !tracksVisible) {
+        managePaneVisibility(this.map, 'routes');
+      } else if (tracksVisible && !routesVisible) {
+        managePaneVisibility(this.map, 'tracks');
+      } else {
+        managePaneVisibility(this.map, 'both');
+      }
 
     } catch (error) {
       console.error('Error updating map settings:', error);
@@ -1152,6 +1200,166 @@ export default class extends BaseController {
 
     // Add the control to the map
     this.map.addControl(new TogglePanelControl({ position: 'topright' }));
+  }
+
+  addRoutesTracksSelector() {
+    // Store reference to the controller instance for use in the control
+    const controller = this;
+
+    const RouteTracksControl = L.Control.extend({
+      onAdd: function(map) {
+        const container = L.DomUtil.create('div', 'routes-tracks-selector leaflet-bar');
+        container.style.backgroundColor = 'white';
+        container.style.padding = '8px';
+        container.style.borderRadius = '4px';
+        container.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        container.style.fontSize = '12px';
+        container.style.lineHeight = '1.2';
+
+        // Get saved preference or default to 'routes'
+        const savedPreference = localStorage.getItem('mapRouteMode') || 'routes';
+
+        container.innerHTML = `
+          <div style="margin-bottom: 4px; font-weight: bold; text-align: center;">Display</div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; cursor: pointer;">
+              <input type="radio" name="route-mode" value="routes" ${savedPreference === 'routes' ? 'checked' : ''} style="margin-right: 4px;">
+              Routes
+            </label>
+            <label style="display: block; cursor: pointer;">
+              <input type="radio" name="route-mode" value="tracks" ${savedPreference === 'tracks' ? 'checked' : ''} style="margin-right: 4px;">
+              Tracks
+            </label>
+          </div>
+        `;
+
+        // Disable map interactions when clicking the control
+        L.DomEvent.disableClickPropagation(container);
+
+        // Add change event listeners
+        const radioButtons = container.querySelectorAll('input[name="route-mode"]');
+        radioButtons.forEach(radio => {
+          L.DomEvent.on(radio, 'change', () => {
+            if (radio.checked) {
+              controller.switchRouteMode(radio.value);
+            }
+          });
+        });
+
+        return container;
+      }
+    });
+
+    // Add the control to the map
+    this.map.addControl(new RouteTracksControl({ position: 'topleft' }));
+
+    // Apply initial state based on saved preference
+    const savedPreference = localStorage.getItem('mapRouteMode') || 'routes';
+    this.switchRouteMode(savedPreference, true);
+
+    // Set initial pane visibility
+    this.updatePaneVisibilityAfterLayerChange();
+  }
+
+    switchRouteMode(mode, isInitial = false) {
+    // Save preference to localStorage
+    localStorage.setItem('mapRouteMode', mode);
+
+    if (mode === 'routes') {
+      // Hide tracks layer if it exists and is visible
+      if (this.tracksLayer && this.map.hasLayer(this.tracksLayer)) {
+        this.map.removeLayer(this.tracksLayer);
+      }
+
+      // Show routes layer if it exists and is not visible
+      if (this.polylinesLayer && !this.map.hasLayer(this.polylinesLayer)) {
+        this.map.addLayer(this.polylinesLayer);
+        // Re-establish event handlers after adding the layer back
+        reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+      } else if (this.polylinesLayer) {
+        reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+      }
+
+      // Manage pane visibility to fix z-index blocking
+      managePaneVisibility(this.map, 'routes');
+
+      // Update layer control checkboxes
+      this.updateLayerControlCheckboxes('Routes', true);
+      this.updateLayerControlCheckboxes('Tracks', false);
+    } else if (mode === 'tracks') {
+      // Hide routes layer if it exists and is visible
+      if (this.polylinesLayer && this.map.hasLayer(this.polylinesLayer)) {
+        this.map.removeLayer(this.polylinesLayer);
+      }
+
+      // Show tracks layer if it exists and is not visible
+      if (this.tracksLayer && !this.map.hasLayer(this.tracksLayer)) {
+        this.map.addLayer(this.tracksLayer);
+      }
+
+      // Manage pane visibility to fix z-index blocking
+      managePaneVisibility(this.map, 'tracks');
+
+      // Update layer control checkboxes
+      this.updateLayerControlCheckboxes('Routes', false);
+      this.updateLayerControlCheckboxes('Tracks', true);
+    }
+  }
+
+  updateLayerControlCheckboxes(layerName, isVisible) {
+    // Find the layer control input for the specified layer
+    const layerControlContainer = document.querySelector('.leaflet-control-layers');
+    if (!layerControlContainer) return;
+
+    const inputs = layerControlContainer.querySelectorAll('input[type="checkbox"]');
+    inputs.forEach(input => {
+      const label = input.nextElementSibling;
+      if (label && label.textContent.trim() === layerName) {
+        input.checked = isVisible;
+      }
+    });
+  }
+
+  handleRouteLayerToggle(mode) {
+    // Update the radio button selection
+    const radioButtons = document.querySelectorAll('input[name="route-mode"]');
+    radioButtons.forEach(radio => {
+      if (radio.value === mode) {
+        radio.checked = true;
+      }
+    });
+
+    // Switch to the selected mode and enforce mutual exclusivity
+    this.switchRouteMode(mode);
+  }
+
+  updateRadioButtonState() {
+    // Update radio buttons to reflect current layer visibility
+    const routesVisible = this.polylinesLayer && this.map.hasLayer(this.polylinesLayer);
+    const tracksVisible = this.tracksLayer && this.map.hasLayer(this.tracksLayer);
+
+    const radioButtons = document.querySelectorAll('input[name="route-mode"]');
+    radioButtons.forEach(radio => {
+      if (radio.value === 'routes' && routesVisible && !tracksVisible) {
+        radio.checked = true;
+      } else if (radio.value === 'tracks' && tracksVisible && !routesVisible) {
+        radio.checked = true;
+      }
+    });
+  }
+
+  updatePaneVisibilityAfterLayerChange() {
+    // Update pane visibility based on current layer visibility
+    const routesVisible = this.polylinesLayer && this.map.hasLayer(this.polylinesLayer);
+    const tracksVisible = this.tracksLayer && this.map.hasLayer(this.tracksLayer);
+
+    if (routesVisible && !tracksVisible) {
+      managePaneVisibility(this.map, 'routes');
+    } else if (tracksVisible && !routesVisible) {
+      managePaneVisibility(this.map, 'tracks');
+    } else {
+      managePaneVisibility(this.map, 'both');
+    }
   }
 
   toggleRightPanel() {
@@ -1632,21 +1840,12 @@ export default class extends BaseController {
 
   // Track-related methods
   async initializeTracksLayer() {
-    console.log('DEBUG: Initializing tracks layer');
-    console.log('DEBUG: this.tracksData:', this.tracksData);
-    console.log('DEBUG: tracksData type:', typeof this.tracksData);
-    console.log('DEBUG: tracksData length:', this.tracksData ? this.tracksData.length : 'undefined');
-
     // Use pre-loaded tracks data if available, otherwise fetch from API
     if (this.tracksData && this.tracksData.length > 0) {
-      console.log('DEBUG: Using pre-loaded tracks data');
       this.createTracksFromData(this.tracksData);
     } else {
-      console.log('DEBUG: No pre-loaded tracks data, fetching from API');
       await this.fetchTracks();
     }
-
-    console.log('DEBUG: Tracks layer after initialization:', this.tracksLayer);
   }
 
   async fetchTracks() {
@@ -1683,14 +1882,7 @@ export default class extends BaseController {
     // Clear existing tracks
     this.tracksLayer.clearLayers();
 
-    console.log('DEBUG: Creating tracks from data:', {
-      tracksData: tracksData,
-      tracksCount: tracksData ? tracksData.length : 0,
-      firstTrack: tracksData && tracksData.length > 0 ? tracksData[0] : null
-    });
-
     if (!tracksData || tracksData.length === 0) {
-      console.log('DEBUG: No tracks data available');
       return;
     }
 
@@ -1702,14 +1894,10 @@ export default class extends BaseController {
       this.distanceUnit
     );
 
-    console.log('DEBUG: Created tracks layer:', newTracksLayer);
-
     // Add all tracks to the existing tracks layer
     newTracksLayer.eachLayer((layer) => {
       this.tracksLayer.addLayer(layer);
     });
-
-    console.log('DEBUG: Final tracks layer with', Object.keys(this.tracksLayer._layers).length, 'layers');
   }
 
   updateLayerControl() {

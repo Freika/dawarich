@@ -68,7 +68,9 @@ export function addTrackInteractions(trackGroup, map, track, userSettings, dista
   const endMarker = L.marker([endCoord[0], endCoord[1]], { icon: endIcon });
 
   function handleTrackHover(e) {
-    if (isClicked) return; // Don't change hover state if clicked
+    if (isClicked) {
+      return; // Don't change hover state if clicked
+    }
 
     // Apply hover style to all segments in the track
     trackGroup.eachLayer((layer) => {
@@ -185,36 +187,22 @@ export function addTrackInteractions(trackGroup, map, track, userSettings, dista
 }
 
 function getTrackCoordinates(track) {
-  // Add debugging to see what we're working with
-  console.log(`DEBUG: Parsing track ${track.id}:`, {
-    has_coordinates: !!(track.coordinates && Array.isArray(track.coordinates)),
-    has_path: !!(track.path && Array.isArray(track.path)),
-    original_path_type: typeof track.original_path,
-    original_path_length: track.original_path ? track.original_path.length : 0,
-    original_path_sample: track.original_path ? track.original_path.substring(0, 100) + '...' : null
-  });
-
   // First check if coordinates are already provided as an array
   if (track.coordinates && Array.isArray(track.coordinates)) {
-    console.log(`DEBUG: Using coordinates array for track ${track.id}`);
     return track.coordinates; // If already provided as array of [lat, lng]
   }
 
   // If coordinates are provided as a path property
   if (track.path && Array.isArray(track.path)) {
-    console.log(`DEBUG: Using path array for track ${track.id}`);
     return track.path;
   }
 
   // Try to parse from original_path (PostGIS LineString format)
   if (track.original_path && typeof track.original_path === 'string') {
     try {
-      console.log(`DEBUG: Attempting to parse original_path for track ${track.id}: "${track.original_path}"`);
-
       // Parse PostGIS LineString format: "LINESTRING (lng lat, lng lat, ...)" or "LINESTRING(lng lat, lng lat, ...)"
       const match = track.original_path.match(/LINESTRING\s*\(([^)]+)\)/i);
       if (match) {
-        console.log(`DEBUG: LineString match found for track ${track.id}: "${match[1]}"`);
         const coordString = match[1];
         const coordinates = coordString.split(',').map(pair => {
           const [lng, lat] = pair.trim().split(/\s+/).map(parseFloat);
@@ -224,8 +212,6 @@ function getTrackCoordinates(track) {
           }
           return [lat, lng]; // Return as [lat, lng] for Leaflet
         }).filter(Boolean); // Remove null entries
-
-        console.log(`DEBUG: Parsed ${coordinates.length} coordinates for track ${track.id}`);
 
         if (coordinates.length >= 2) {
         return coordinates;
@@ -243,7 +229,6 @@ function getTrackCoordinates(track) {
 
   // For development/testing, create a simple line if we have start/end coordinates
   if (track.start_point && track.end_point) {
-    console.log(`DEBUG: Using start/end points for track ${track.id}`);
     return [
       [track.start_point.lat, track.start_point.lng],
       [track.end_point.lat, track.end_point.lng]

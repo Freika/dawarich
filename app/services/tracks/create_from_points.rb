@@ -1,22 +1,26 @@
 # frozen_string_literal: true
 
 class Tracks::CreateFromPoints
-  attr_reader :user, :distance_threshold_meters, :time_threshold_minutes
+  attr_reader :user, :distance_threshold_meters, :time_threshold_minutes, :start_at, :end_at
 
-  def initialize(user)
+  def initialize(user, start_at: nil, end_at: nil)
     @user = user
-    @distance_threshold_meters = user.safe_settings.meters_between_routes || 500
-    @time_threshold_minutes = user.safe_settings.minutes_between_routes || 30
+    @start_at = start_at
+    @end_at = end_at
+    @distance_threshold_meters = user.safe_settings.meters_between_routes.to_i || 500
+    @time_threshold_minutes = user.safe_settings.minutes_between_routes.to_i || 60
   end
 
   def call
-    Rails.logger.info "Creating tracks for user #{user.id} with thresholds: #{distance_threshold_meters}m, #{time_threshold_minutes}min"
+    time_range_info = start_at || end_at ? " for time range #{start_at} - #{end_at}" : ""
+    Rails.logger.info "Creating tracks for user #{user.id} with thresholds: #{distance_threshold_meters}m, #{time_threshold_minutes}min#{time_range_info}"
 
     tracks_created = 0
 
     Track.transaction do
-      # Clear existing tracks for this user to regenerate them
-      user.tracks.destroy_all
+      # Clear existing tracks for this user (optionally scoped to time range)
+      tracks_to_delete = start_at || end_at ? scoped_tracks_for_deletion : user.tracks
+      tracks_to_delete.destroy_all
 
       track_segments = split_points_into_tracks
 
@@ -28,17 +32,36 @@ class Tracks::CreateFromPoints
       end
     end
 
-    Rails.logger.info "Created #{tracks_created} tracks for user #{user.id}"
+    Rails.logger.info "Created #{tracks_created} tracks for user #{user.id}#{time_range_info}"
     tracks_created
   end
 
   private
 
-        def user_points
-    @user_points ||= Point.where(user: user)
-                          .where.not(lonlat: nil)
-                          .where.not(timestamp: nil)
-                          .order(:timestamp)
+  def user_points
+    @user_points ||= begin
+      points = Point.where(user: user)
+                    .where.not(lonlat: nil)
+                    .where.not(timestamp: nil)
+
+      # Apply timestamp filtering if provided
+      if start_at.present?
+        points = points.where('timestamp >= ?', start_at)
+      end
+
+      if end_at.present?
+        points = points.where('timestamp <= ?', end_at)
+      end
+
+      points.order(:timestamp)
+    end
+  end
+
+  def scoped_tracks_for_deletion
+    user.tracks.where(
+      'start_at <= ? AND end_at >= ?',
+      Time.zone.at(end_at), Time.zone.at(start_at)
+    )
   end
 
   def split_points_into_tracks
@@ -47,7 +70,9 @@ class Tracks::CreateFromPoints
     track_segments = []
     current_segment = []
 
-    user_points.find_each do |point|
+    # Use .each instead of find_each to preserve sequential processing
+    # find_each processes in batches which breaks track segmentation logic
+    user_points.each do |point|
       if should_start_new_track?(point, current_segment.last)
         # Finalize current segment if it has enough points
         track_segments << current_segment if current_segment.size >= 2
@@ -72,26 +97,22 @@ class Tracks::CreateFromPoints
 
     return true if time_diff_seconds > time_threshold_seconds
 
-    # Check distance threshold
-    distance_meters = calculate_distance_meters(previous_point, current_point)
-    return true if distance_meters > distance_threshold_meters.to_i
+    # Check distance threshold - convert km to meters to match frontend logic
+    distance_km = calculate_distance_kilometers(previous_point, current_point)
+    distance_meters = distance_km * 1000 # Convert km to meters
+    return true if distance_meters > distance_threshold_meters
 
     false
   end
 
-  def calculate_distance_meters(point1, point2)
-    # Use PostGIS to calculate distance in meters
-    distance_query = <<-SQL.squish
-      SELECT ST_Distance(
-        ST_GeomFromEWKT($1)::geography,
-        ST_GeomFromEWKT($2)::geography
-      )
-    SQL
-
-    Point.connection.select_value(distance_query, nil, [point1.lonlat, point2.lonlat]).to_f
+  def calculate_distance_kilometers(point1, point2)
+    # Use Geocoder to match behavior with frontend (same library used elsewhere in app)
+    Geocoder::Calculations.distance_between(
+      [point1.lat, point1.lon], [point2.lat, point2.lon], units: :km
+    )
   end
 
-    def create_track_from_points(points)
+  def create_track_from_points(points)
     track = Track.new(
       user_id: user.id,
       start_at: Time.zone.at(points.first.timestamp),
@@ -111,7 +132,7 @@ class Tracks::CreateFromPoints
     track.elevation_max = elevation_stats[:max]
     track.elevation_min = elevation_stats[:min]
 
-    if track.save
+    if track.save!
       Point.where(id: points.map(&:id)).update_all(track_id: track.id)
 
       track

@@ -33,6 +33,7 @@ class Point < ApplicationRecord
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates
+  after_commit :recalculate_track, on: :update
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
@@ -92,5 +93,11 @@ class Point < ApplicationRecord
   def country_name
     # Safely get country name from association or attribute
     self.country&.name || read_attribute(:country) || ''
+  end
+
+  def recalculate_track
+    return unless track.present?
+
+    track.recalculate_path_and_distance!
   end
 end

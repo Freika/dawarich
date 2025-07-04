@@ -7,9 +7,9 @@ class MapController < ApplicationController
     @points = points.where('timestamp >= ? AND timestamp <= ?', start_at, end_at)
 
     @coordinates =
-      @points.pluck(:lonlat, :battery, :altitude, :timestamp, :velocity, :id, :country)
+      @points.pluck(:lonlat, :battery, :altitude, :timestamp, :velocity, :id, :country, :track_id)
              .map { |lonlat, *rest| [lonlat.y, lonlat.x, *rest.map(&:to_s)] }
-    @tracks = TrackSerializer.new(current_user, start_at, end_at).call
+    @tracks = TrackSerializer.new(current_user, @coordinates).call
     @distance = distance
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)

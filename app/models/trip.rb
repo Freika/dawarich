@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Trip < ApplicationRecord
+  include Calculateable
+
   has_rich_text :notes
 
   belongs_to :user
@@ -32,17 +34,7 @@ class Trip < ApplicationRecord
     @photo_sources ||= photos.map { _1[:source] }.uniq
   end
 
-  def calculate_path
-    trip_path = Tracks::BuildPath.new(points.pluck(:lonlat)).call
 
-    self.path = trip_path
-  end
-
-  def calculate_distance
-    distance = Point.total_distance(points, user.safe_settings.distance_unit)
-
-    self.distance = distance.round
-  end
 
   def calculate_countries
     countries =

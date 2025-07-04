@@ -1,29 +1,43 @@
 # frozen_string_literal: true
 
 class TrackSerializer
-  def initialize(user, start_at, end_at)
+  def initialize(user, coordinates)
     @user = user
-    @start_at = start_at
-    @end_at = end_at
+    @coordinates = coordinates
   end
 
   def call
+    # Extract track IDs from the coordinates that are already filtered by timeframe
+    track_ids = extract_track_ids_from_coordinates
+    return [] if track_ids.empty?
+
+    # Show only tracks that have points in the selected timeframe
     tracks_data = user.tracks
-      .where('start_at <= ? AND end_at >= ?', Time.zone.at(end_at), Time.zone.at(start_at))
+      .where(id: track_ids)
       .order(start_at: :asc)
       .pluck(:id, :start_at, :end_at, :distance, :avg_speed, :duration,
              :elevation_gain, :elevation_loss, :elevation_max, :elevation_min, :original_path)
 
     tracks_data.map do |id, start_at, end_at, distance, avg_speed, duration,
                        elevation_gain, elevation_loss, elevation_max, elevation_min, original_path|
-      serialize_track_data(id, start_at, end_at, distance, avg_speed, duration,
-                          elevation_gain, elevation_loss, elevation_max, elevation_min, original_path)
+      serialize_track_data(
+        id, start_at, end_at, distance, avg_speed, duration, elevation_gain,
+        elevation_loss, elevation_max, elevation_min, original_path
+      )
     end
   end
 
   private
 
-  attr_reader :user, :start_at, :end_at
+  attr_reader :user, :coordinates
+
+  def extract_track_ids_from_coordinates
+    # Extract track_id from coordinates (index 8: [lat, lng, battery, altitude, timestamp, velocity, id, country, track_id])
+    track_ids = coordinates.map { |coord| coord[8]&.to_i }.compact.uniq
+    track_ids.reject(&:zero?) # Remove any nil/zero track IDs
+  end
+
+
 
   def serialize_track_data(
     id, start_at, end_at, distance, avg_speed, duration, elevation_gain,
