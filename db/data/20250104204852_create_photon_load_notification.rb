@@ -2,6 +2,8 @@
 
 class CreatePhotonLoadNotification < ActiveRecord::Migration[8.0]
   def up
+    return
+
     User.find_each do |user|
       Notifications::Create.new(
         user:, kind: :info, title: '⚠️ Photon API is under heavy load', content: notification_content

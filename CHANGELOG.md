@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Don't check for new version in production.
 - Area popup styles are now more consistent.
+- Notification about Photon API load is now disabled.
 
 ## Fixed
 
