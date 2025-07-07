@@ -24,7 +24,7 @@
 #
 # Example usage:
 #   cleaner = Tracks::TrackCleaners::ReplaceCleaner.new(user, start_at: 1.week.ago, end_at: Time.current)
-#   cleaner.cleanup_if_needed
+#   cleaner.cleanup
 #
 module Tracks
   module TrackCleaners
@@ -37,7 +37,7 @@ module Tracks
         @end_at = end_at
       end
 
-      def cleanup_if_needed
+      def cleanup
         tracks_to_remove = find_tracks_to_remove
 
         if tracks_to_remove.any?

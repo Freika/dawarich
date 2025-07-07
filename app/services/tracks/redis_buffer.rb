@@ -11,8 +11,6 @@ class Tracks::RedisBuffer
     @day = day.is_a?(Date) ? day : Date.parse(day.to_s)
   end
 
-  # Store buffered points for an incomplete track segment
-  # @param points [Array<Point>] array of Point objects to buffer
   def store(points)
     return if points.empty?
 
@@ -23,8 +21,6 @@ class Tracks::RedisBuffer
     Rails.logger.debug "Stored #{points.size} points in buffer for user #{user_id}, day #{day}"
   end
 
-  # Retrieve buffered points for the user/day combination
-  # @return [Array<Hash>] array of point hashes or empty array if no buffer exists
   def retrieve
     redis_key = buffer_key
     cached_data = Rails.cache.read(redis_key)
@@ -44,8 +40,6 @@ class Tracks::RedisBuffer
     Rails.logger.debug "Cleared buffer for user #{user_id}, day #{day}"
   end
 
-  # Check if a buffer exists for the user/day combination
-  # @return [Boolean] true if buffer exists, false otherwise
   def exists?
     Rails.cache.exist?(buffer_key)
   end

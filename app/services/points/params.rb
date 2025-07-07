@@ -17,7 +17,7 @@ class Points::Params
         lonlat: lonlat(point),
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
-        timestamp:          DateTime.parse(point[:properties][:timestamp]),
+        timestamp:          normalize_timestamp(point[:properties][:timestamp]),
         altitude:           point[:properties][:altitude],
         tracker_id:         point[:properties][:device_id],
         velocity:           point[:properties][:speed],
@@ -47,5 +47,9 @@ class Points::Params
 
   def lonlat(point)
     "POINT(#{point[:geometry][:coordinates][0]} #{point[:geometry][:coordinates][1]})"
+  end
+
+  def normalize_timestamp(timestamp)
+    Point.normalize_timestamp(DateTime.parse(timestamp))
   end
 end

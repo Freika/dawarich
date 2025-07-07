@@ -51,7 +51,7 @@ module Tracks
 
       Point.transaction do
         # Clean up existing tracks if needed
-        track_cleaner.cleanup_if_needed
+        track_cleaner.cleanup
 
         # Load points using the configured strategy
         points = point_loader.load_points

@@ -26,7 +26,7 @@ RSpec.describe Tracks::Generator do
   describe '#call' do
     context 'with no points to process' do
       before do
-        allow(track_cleaner).to receive(:cleanup_if_needed)
+        allow(track_cleaner).to receive(:cleanup)
         allow(point_loader).to receive(:load_points).and_return([])
       end
 
@@ -54,7 +54,7 @@ RSpec.describe Tracks::Generator do
        end
 
       before do
-        allow(track_cleaner).to receive(:cleanup_if_needed)
+        allow(track_cleaner).to receive(:cleanup)
         allow(point_loader).to receive(:load_points).and_return(points)
         allow(incomplete_segment_handler).to receive(:should_finalize_segment?).and_return(true)
         allow(incomplete_segment_handler).to receive(:cleanup_processed_data)
@@ -91,7 +91,7 @@ RSpec.describe Tracks::Generator do
        end
 
       before do
-        allow(track_cleaner).to receive(:cleanup_if_needed)
+        allow(track_cleaner).to receive(:cleanup)
         allow(point_loader).to receive(:load_points).and_return(points)
         allow(incomplete_segment_handler).to receive(:should_finalize_segment?).and_return(false)
         allow(incomplete_segment_handler).to receive(:handle_incomplete_segment)
@@ -129,7 +129,7 @@ RSpec.describe Tracks::Generator do
        end
 
        before do
-         allow(track_cleaner).to receive(:cleanup_if_needed)
+         allow(track_cleaner).to receive(:cleanup)
          allow(point_loader).to receive(:load_points).and_return(old_points + recent_points)
 
          # First segment (old points) should be finalized
@@ -168,7 +168,7 @@ RSpec.describe Tracks::Generator do
        end
 
       before do
-        allow(track_cleaner).to receive(:cleanup_if_needed)
+        allow(track_cleaner).to receive(:cleanup)
         allow(point_loader).to receive(:load_points).and_return(single_point)
         allow(incomplete_segment_handler).to receive(:should_finalize_segment?).and_return(true)
         allow(incomplete_segment_handler).to receive(:cleanup_processed_data)
@@ -186,7 +186,7 @@ RSpec.describe Tracks::Generator do
 
     context 'error handling' do
       before do
-        allow(track_cleaner).to receive(:cleanup_if_needed)
+        allow(track_cleaner).to receive(:cleanup)
         allow(point_loader).to receive(:load_points).and_raise(StandardError, 'Point loading failed')
       end
 

@@ -1913,6 +1913,7 @@ export default class extends BaseController {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
         },
         body: JSON.stringify({
           api_key: this.apiKey

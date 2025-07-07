@@ -7,7 +7,7 @@ module Tracks
         @user = user
       end
 
-      def cleanup_if_needed
+      def cleanup
         # No cleanup needed for incremental processing
         # We only append new tracks, don't remove existing ones
       end

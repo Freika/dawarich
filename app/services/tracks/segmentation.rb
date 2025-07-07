@@ -42,9 +42,6 @@ module Tracks::Segmentation
 
   private
 
-  # Split an array of points into track segments based on time and distance thresholds
-  # @param points [Array] array of Point objects or point hashes
-  # @return [Array<Array>] array of point segments
   def split_points_into_segments(points)
     return [] if points.empty?
 
@@ -67,10 +64,6 @@ module Tracks::Segmentation
     segments
   end
 
-  # Check if a new segment should start based on time and distance thresholds
-  # @param current_point [Point, Hash] current point (Point object or hash)
-  # @param previous_point [Point, Hash, nil] previous point or nil
-  # @return [Boolean] true if new segment should start
   def should_start_new_segment?(current_point, previous_point)
     return false if previous_point.nil?
 
@@ -91,10 +84,6 @@ module Tracks::Segmentation
     false
   end
 
-  # Calculate distance between two points in kilometers
-  # @param point1 [Point, Hash] first point
-  # @param point2 [Point, Hash] second point
-  # @return [Float] distance in kilometers
   def calculate_distance_kilometers_between_points(point1, point2)
     lat1, lon1 = point_coordinates(point1)
     lat2, lon2 = point_coordinates(point2)
@@ -103,10 +92,6 @@ module Tracks::Segmentation
     Geocoder::Calculations.distance_between([lat1, lon1], [lat2, lon2], units: :km)
   end
 
-  # Check if a segment should be finalized (has a large enough gap at the end)
-  # @param segment_points [Array] array of points in the segment
-  # @param grace_period_minutes [Integer] grace period in minutes (default 5)
-  # @return [Boolean] true if segment should be finalized
   def should_finalize_segment?(segment_points, grace_period_minutes = 5)
     return false if segment_points.size < 2
 
@@ -121,22 +106,19 @@ module Tracks::Segmentation
     time_since_last_point > grace_period_seconds
   end
 
-  # Extract timestamp from point (handles both Point objects and hashes)
-  # @param point [Point, Hash] point object or hash
-  # @return [Integer] timestamp as integer
   def point_timestamp(point)
     if point.respond_to?(:timestamp)
+      # Point objects from database always have integer timestamps
       point.timestamp
     elsif point.is_a?(Hash)
-      point[:timestamp] || point['timestamp']
+      # Hash might come from Redis buffer or test data
+      timestamp = point[:timestamp] || point['timestamp']
+      timestamp.to_i
     else
       raise ArgumentError, "Invalid point type: #{point.class}"
     end
   end
 
-  # Extract coordinates from point (handles both Point objects and hashes)
-  # @param point [Point, Hash] point object or hash
-  # @return [Array<Float>] [lat, lon] coordinates
   def point_coordinates(point)
     if point.respond_to?(:lat) && point.respond_to?(:lon)
       [point.lat, point.lon]

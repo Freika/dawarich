@@ -33,7 +33,7 @@ class Point < ApplicationRecord
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates
-  after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? } # Only for real-time points
+  after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? }
   after_commit :recalculate_track, on: :update
 
   def self.without_raw_data
@@ -65,6 +65,20 @@ class Point < ApplicationRecord
   def found_in_country
     Country.containing_point(lon, lat)
   end
+
+  def self.normalize_timestamp(timestamp)
+    case timestamp
+    when Integer
+      timestamp
+    when String, Numeric, DateTime, Time
+      timestamp.to_i
+    when nil
+      raise ArgumentError, 'Timestamp cannot be nil'
+    else
+      raise ArgumentError, "Cannot convert timestamp to integer: #{timestamp.class}"
+    end
+  end
+
 
   private
 
