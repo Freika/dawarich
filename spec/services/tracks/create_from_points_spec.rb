@@ -274,9 +274,9 @@ RSpec.describe Tracks::CreateFromPoints do
         allow(Point).to receive(:total_distance).and_return(1.5) # 1.5 km
       end
 
-      it 'converts km to meters by default' do
+      it 'stores distance in km by default' do
         distance = service.send(:calculate_track_distance, points)
-        expect(distance).to eq(1500) # 1.5 km = 1500 meters
+        expect(distance).to eq(1.5) # 1.5 km with 2 decimal places precision
       end
 
       context 'with miles unit' do
@@ -284,9 +284,9 @@ RSpec.describe Tracks::CreateFromPoints do
           user.update!(settings: user.settings.merge({'maps' => {'distance_unit' => 'miles'}}))
         end
 
-        it 'converts miles to meters' do
+        it 'stores distance in miles' do
           distance = service.send(:calculate_track_distance, points)
-          expect(distance).to eq(2414) # 1.5 miles ≈ 2414 meters (rounded)
+          expect(distance).to eq(1.5) # 1.5 miles with 2 decimal places precision
         end
       end
     end

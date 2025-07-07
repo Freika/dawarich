@@ -30,7 +30,7 @@ export function createTrackPopupContent(track, distanceUnit) {
         <strong>🕐 Start:</strong> ${startTime}<br>
         <strong>🏁 End:</strong> ${endTime}<br>
         <strong>⏱️ Duration:</strong> ${durationFormatted}<br>
-        <strong>📏 Distance:</strong> ${formatDistance(track.distance / 1000, distanceUnit)}<br>
+        <strong>📏 Distance:</strong> ${formatDistance(track.distance, distanceUnit)}<br>
         <strong>⚡ Avg Speed:</strong> ${formatSpeed(track.avg_speed, distanceUnit)}<br>
         <strong>⛰️ Elevation:</strong> +${track.elevation_gain || 0}m / -${track.elevation_loss || 0}m<br>
         <strong>📊 Max Alt:</strong> ${track.elevation_max || 0}m<br>
@@ -356,8 +356,8 @@ export function toggleTracksVisibility(tracksLayer, map, isVisible) {
 // Helper function to filter tracks by criteria
 export function filterTracks(tracks, criteria) {
   return tracks.filter(track => {
-    if (criteria.minDistance && track.distance < criteria.minDistance * 1000) return false;
-    if (criteria.maxDistance && track.distance > criteria.maxDistance * 1000) return false;
+    if (criteria.minDistance && track.distance < criteria.minDistance) return false;
+    if (criteria.maxDistance && track.distance > criteria.maxDistance) return false;
     if (criteria.minDuration && track.duration < criteria.minDuration * 60) return false;
     if (criteria.maxDuration && track.duration > criteria.maxDuration * 60) return false;
     if (criteria.startDate && new Date(track.start_at) < new Date(criteria.startDate)) return false;

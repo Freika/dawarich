@@ -44,19 +44,12 @@ module Tracks::TrackBuilder
     Tracks::BuildPath.new(points.map(&:lonlat)).call
   end
 
-  # Calculate track distance in meters for storage
+  # Calculate track distance in user's preferred unit for storage
   # @param points [Array<Point>] array of Point objects
-  # @return [Integer] distance in meters
+  # @return [Float] distance in user's preferred unit with 2 decimal places precision
   def calculate_track_distance(points)
     distance_in_user_unit = Point.total_distance(points, user.safe_settings.distance_unit || 'km')
-
-    # Convert to meters for storage (Track model expects distance in meters)
-    case user.safe_settings.distance_unit
-    when 'miles', 'mi'
-      (distance_in_user_unit * 1609.344).round # miles to meters
-    else
-      (distance_in_user_unit * 1000).round # km to meters
-    end
+    distance_in_user_unit.round(2)
   end
 
   # Calculate track duration in seconds
@@ -67,11 +60,19 @@ module Tracks::TrackBuilder
   end
 
   # Calculate average speed in km/h
-  # @param distance_meters [Numeric] distance in meters
+  # @param distance_in_user_unit [Numeric] distance in user's preferred unit
   # @param duration_seconds [Numeric] duration in seconds
   # @return [Float] average speed in km/h
-  def calculate_average_speed(distance_meters, duration_seconds)
-    return 0.0 if duration_seconds <= 0 || distance_meters <= 0
+  def calculate_average_speed(distance_in_user_unit, duration_seconds)
+    return 0.0 if duration_seconds <= 0 || distance_in_user_unit <= 0
+
+    # Convert distance to meters for speed calculation
+    distance_meters = case user.safe_settings.distance_unit
+                      when 'miles', 'mi'
+                        distance_in_user_unit * 1609.344 # miles to meters
+                      else
+                        distance_in_user_unit * 1000 # km to meters
+                      end
 
     # Speed in meters per second, then convert to km/h for storage
     speed_mps = distance_meters.to_f / duration_seconds

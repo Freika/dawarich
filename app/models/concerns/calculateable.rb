@@ -53,26 +53,12 @@ module Calculateable
   end
 
   def convert_distance_for_storage(calculated_distance)
-    if track_model?
-      convert_distance_to_meters(calculated_distance)
-    else
-      # For Trip model - store rounded distance in user's preferred unit
-      calculated_distance.round
-    end
+    # Store distance in user's preferred unit with 2 decimal places precision
+    calculated_distance.round(2)
   end
 
   def track_model?
     self.class.name == 'Track'
-  end
-
-  def convert_distance_to_meters(calculated_distance)
-    # For Track model - convert to meters for storage (Track expects distance in meters)
-    case user_distance_unit.to_s
-    when 'mi'
-      (calculated_distance * 1609.344).round # miles to meters
-    else
-      (calculated_distance * 1000).round # km to meters
-    end
   end
 
   def save_if_changed!

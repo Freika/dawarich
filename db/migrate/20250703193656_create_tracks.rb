@@ -5,7 +5,7 @@ class CreateTracks < ActiveRecord::Migration[8.0]
       t.datetime :end_at, null: false
       t.references :user, null: false, foreign_key: true
       t.line_string :original_path, null: false
-      t.integer :distance
+      t.decimal :distance, precision: 8, scale: 2
       t.float :avg_speed
       t.integer :duration
       t.integer :elevation_gain

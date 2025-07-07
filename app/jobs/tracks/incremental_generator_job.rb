@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class IncrementalTrackGeneratorJob < ApplicationJob
+class Tracks::IncrementalGeneratorJob < ApplicationJob
   queue_as :default
   sidekiq_options retry: 3
 

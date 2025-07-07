@@ -138,9 +138,9 @@ RSpec.describe Tracks::TrackBuilder do
         allow(Point).to receive(:total_distance).and_return(1.5) # 1.5 km
       end
 
-      it 'converts km to meters' do
+      it 'stores distance in km' do
         result = builder.calculate_track_distance(points)
-        expect(result).to eq(1500) # 1.5 km = 1500 meters
+        expect(result).to eq(1.5) # 1.5 km with 2 decimal places precision
       end
     end
 
@@ -150,9 +150,9 @@ RSpec.describe Tracks::TrackBuilder do
         allow(Point).to receive(:total_distance).and_return(1.0) # 1 mile
       end
 
-      it 'converts miles to meters' do
+      it 'stores distance in miles' do
         result = builder.calculate_track_distance(points)
-        expect(result).to eq(1609) # 1 mile ≈ 1609 meters
+        expect(result).to eq(1) # 1 mile
       end
     end
 
@@ -162,9 +162,9 @@ RSpec.describe Tracks::TrackBuilder do
         allow(Point).to receive(:total_distance).and_return(2.0)
       end
 
-      it 'defaults to km and converts to meters' do
+      it 'defaults to km and stores distance in km' do
         result = builder.calculate_track_distance(points)
-        expect(result).to eq(2000)
+        expect(result).to eq(2.0) # 2.0 km with 2 decimal places precision
       end
     end
   end

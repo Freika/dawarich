@@ -26,7 +26,6 @@ class MapController < ApplicationController
   end
 
   def extract_track_ids
-    # Extract track IDs from coordinates (index 8: [lat, lng, battery, altitude, timestamp, velocity, id, country, track_id])
     @coordinates.map { |coord| coord[8]&.to_i }.compact.uniq.reject(&:zero?)
   end
 
@@ -44,15 +43,14 @@ class MapController < ApplicationController
       )
     end
 
-    # Convert distance to meters for consistent storage
     distance_in_meters = case current_user.safe_settings.distance_unit.to_s
-                         when 'miles', 'mi'
+                         when 'mi'
                            distance * 1609.344 # miles to meters
                          else
                            distance * 1000 # km to meters
                          end
 
-    distance_in_meters.round # Return as integer meters
+    distance_in_meters.round
   end
 
   def parsed_start_at

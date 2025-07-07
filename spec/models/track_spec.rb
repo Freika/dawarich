@@ -143,16 +143,16 @@ RSpec.describe Track, type: :model do
         track.calculate_distance
 
         expect(track.distance).to be > 0
-        expect(track.distance).to be_a(Integer)
+        expect(track.distance).to be_a(Numeric)
       end
 
-      it 'stores distance in meters for Track model' do
+      it 'stores distance in user preferred unit for Track model' do
         allow(user).to receive(:safe_settings).and_return(double(distance_unit: 'km'))
         allow(Point).to receive(:total_distance).and_return(1.5) # 1.5 km
 
         track.calculate_distance
 
-        expect(track.distance).to eq(1500) # Should be in meters as integer
+        expect(track.distance).to eq(1.5) # Should be 1.5 km with 2 decimal places precision
       end
     end
 
