@@ -1,11 +1,54 @@
 # frozen_string_literal: true
 
+# Track creation and statistics calculation module for building Track records from GPS points.
+#
+# This module provides the core functionality for converting arrays of GPS points into
+# Track database records with calculated statistics including distance, duration, speed,
+# and elevation metrics.
+#
+# How it works:
+# 1. Takes an array of Point objects representing a track segment
+# 2. Creates a Track record with basic temporal and spatial boundaries
+# 3. Calculates comprehensive statistics: distance, duration, average speed
+# 4. Computes elevation metrics: gain, loss, maximum, minimum
+# 5. Builds a LineString path representation for mapping
+# 6. Associates all points with the created track
+#
+# Statistics calculated:
+# - Distance: In user's preferred unit (km/miles) with 2 decimal precision
+# - Duration: Total time in seconds between first and last point
+# - Average speed: In km/h regardless of user's distance unit preference
+# - Elevation gain/loss: Cumulative ascent and descent in meters
+# - Elevation max/min: Highest and lowest altitudes in the track
+#
+# The module respects user preferences for distance units and handles missing
+# elevation data gracefully by providing default values.
+#
+# Used by:
+# - Tracks::Generator for creating tracks during generation
+# - Any class that needs to convert point arrays to Track records
+#
+# Example usage:
+#   class MyTrackProcessor
+#     include Tracks::TrackBuilder
+#
+#     def initialize(user)
+#       @user = user
+#     end
+#
+#     def process_segment(points)
+#       track = create_track_from_points(points)
+#       # Track now exists with calculated statistics
+#     end
+#
+#     private
+#
+#     attr_reader :user
+#   end
+#
 module Tracks::TrackBuilder
   extend ActiveSupport::Concern
 
-  # Create a track from an array of points
-  # @param points [Array<Point>] array of Point objects
-  # @return [Track, nil] created track or nil if creation failed
   def create_track_from_points(points)
     return nil if points.size < 2
 
@@ -37,38 +80,25 @@ module Tracks::TrackBuilder
     end
   end
 
-  # Build path from points using existing BuildPath service
-  # @param points [Array<Point>] array of Point objects
-  # @return [String] LineString representation of the path
   def build_path(points)
     Tracks::BuildPath.new(points.map(&:lonlat)).call
   end
 
-  # Calculate track distance in user's preferred unit for storage
-  # @param points [Array<Point>] array of Point objects
-  # @return [Float] distance in user's preferred unit with 2 decimal places precision
   def calculate_track_distance(points)
     distance_in_user_unit = Point.total_distance(points, user.safe_settings.distance_unit || 'km')
     distance_in_user_unit.round(2)
   end
 
-  # Calculate track duration in seconds
-  # @param points [Array<Point>] array of Point objects
-  # @return [Integer] duration in seconds
   def calculate_duration(points)
     points.last.timestamp - points.first.timestamp
   end
 
-  # Calculate average speed in km/h
-  # @param distance_in_user_unit [Numeric] distance in user's preferred unit
-  # @param duration_seconds [Numeric] duration in seconds
-  # @return [Float] average speed in km/h
   def calculate_average_speed(distance_in_user_unit, duration_seconds)
     return 0.0 if duration_seconds <= 0 || distance_in_user_unit <= 0
 
     # Convert distance to meters for speed calculation
     distance_meters = case user.safe_settings.distance_unit
-                      when 'miles', 'mi'
+                      when 'mi'
                         distance_in_user_unit * 1609.344 # miles to meters
                       else
                         distance_in_user_unit * 1000 # km to meters
@@ -79,9 +109,6 @@ module Tracks::TrackBuilder
     (speed_mps * 3.6).round(2) # m/s to km/h
   end
 
-  # Calculate elevation statistics from points
-  # @param points [Array<Point>] array of Point objects
-  # @return [Hash] elevation statistics hash
   def calculate_elevation_stats(points)
     altitudes = points.map(&:altitude).compact
 
@@ -109,8 +136,6 @@ module Tracks::TrackBuilder
     }
   end
 
-  # Default elevation statistics when no altitude data is available
-  # @return [Hash] default elevation statistics
   def default_elevation_stats
     {
       gain: 0,
@@ -122,8 +147,6 @@ module Tracks::TrackBuilder
 
   private
 
-  # This method must be implemented by the including class
-  # @return [User] the user for which tracks are being created
   def user
     raise NotImplementedError, "Including class must implement user method"
   end

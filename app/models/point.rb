@@ -92,7 +92,6 @@ class Point < ApplicationRecord
   end
 
   def country_name
-    # Safely get country name from association or attribute
     self.country&.name || read_attribute(:country) || ''
   end
 
@@ -103,11 +102,9 @@ class Point < ApplicationRecord
   end
 
   def trigger_incremental_track_generation
-    # Only trigger for recent points (within last day) to avoid processing old data
     point_date = Time.zone.at(timestamp).to_date
     return unless point_date >= 1.day.ago.to_date
 
-    # Schedule incremental track generation for this user and day
-    IncrementalTrackGeneratorJob.perform_later(user_id, point_date.to_s, 5)
+    Tracks::IncrementalGeneratorJob.perform_later(user_id, point_date.to_s, 5)
   end
 end

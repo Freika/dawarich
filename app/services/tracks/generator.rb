@@ -1,5 +1,35 @@
 # frozen_string_literal: true
 
+# The core track generation engine that orchestrates the entire process of creating tracks from GPS points.
+#
+# This class uses a flexible strategy pattern to handle different track generation scenarios:
+# - Bulk processing: Generate all tracks at once from existing points
+# - Incremental processing: Generate tracks as new points arrive
+#
+# How it works:
+# 1. Uses a PointLoader strategy to load points from the database
+# 2. Applies segmentation logic to split points into track segments based on time/distance gaps
+# 3. Determines which segments should be finalized into tracks vs buffered for later
+# 4. Creates Track records from finalized segments with calculated statistics
+# 5. Manages cleanup of existing tracks based on the chosen strategy
+#
+# Strategy Components:
+# - point_loader: Loads points from database (BulkLoader, IncrementalLoader)
+# - incomplete_segment_handler: Handles segments that aren't ready to finalize (IgnoreHandler, BufferHandler)
+# - track_cleaner: Manages existing tracks when regenerating (ReplaceCleaner, NoOpCleaner)
+#
+# The class includes Tracks::Segmentation for splitting logic and Tracks::TrackBuilder for track creation.
+# Distance and time thresholds are configurable per user via their settings.
+#
+# Example usage:
+#   generator = Tracks::Generator.new(
+#     user,
+#     point_loader: Tracks::PointLoaders::BulkLoader.new(user),
+#     incomplete_segment_handler: Tracks::IncompleteSegmentHandlers::IgnoreHandler.new(user),
+#     track_cleaner: Tracks::TrackCleaners::ReplaceCleaner.new(user)
+#   )
+#   tracks_created = generator.call
+#
 module Tracks
   class Generator
     include Tracks::Segmentation

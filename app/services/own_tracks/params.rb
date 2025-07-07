@@ -4,7 +4,7 @@ class OwnTracks::Params
   attr_reader :params
 
   def initialize(params)
-    @params = params.deep_symbolize_keys
+    @params = params.to_h.deep_symbolize_keys
   end
 
   # rubocop:disable Metrics/MethodLength

@@ -5,7 +5,6 @@ class Api::V1::TracksController < ApiController
     start_at = params[:start_at]&.to_datetime&.to_i
     end_at = params[:end_at]&.to_datetime&.to_i || Time.zone.now.to_i
 
-    # Find tracks that overlap with the time range
     tracks = current_api_user.tracks
                              .where('start_at <= ? AND end_at >= ?', Time.zone.at(end_at), Time.zone.at(start_at))
                              .order(start_at: :asc)
@@ -17,7 +16,6 @@ class Api::V1::TracksController < ApiController
   end
 
   def create
-    # Trigger track generation for the user
     Tracks::CreateJob.perform_later(current_api_user.id)
 
     render json: { message: 'Track generation started' }

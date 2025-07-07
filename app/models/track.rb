@@ -14,10 +14,6 @@ class Track < ApplicationRecord
   after_update :broadcast_track_updated
   after_destroy :broadcast_track_destroyed
 
-  # Find the last track for a user on a specific day
-  # @param user [User] the user to find tracks for
-  # @param day [Date, Time] the day to search for tracks
-  # @return [Track, nil] the last track for that day or nil if none found
   def self.last_for_day(user, day)
     day_start = day.beginning_of_day
     day_end = day.end_of_day

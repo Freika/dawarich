@@ -1,5 +1,31 @@
 # frozen_string_literal: true
 
+# Track cleaning strategy for bulk track regeneration.
+#
+# This cleaner removes existing tracks before generating new ones,
+# ensuring a clean slate for bulk processing without duplicate tracks.
+#
+# How it works:
+# 1. Finds all existing tracks for the user within the specified time range
+# 2. Detaches all points from these tracks (sets track_id to nil)
+# 3. Destroys the existing track records
+# 4. Allows the generator to create fresh tracks from the same points
+#
+# Used primarily for:
+# - Bulk track regeneration after settings changes
+# - Reprocessing historical data with updated algorithms
+# - Ensuring consistency when tracks need to be rebuilt
+#
+# The cleaner respects optional time boundaries (start_at/end_at) to enable
+# partial regeneration of tracks within specific time windows.
+#
+# This strategy is essential for bulk operations but should not be used
+# for incremental processing where existing tracks should be preserved.
+#
+# Example usage:
+#   cleaner = Tracks::TrackCleaners::ReplaceCleaner.new(user, start_at: 1.week.ago, end_at: Time.current)
+#   cleaner.cleanup_if_needed
+#
 module Tracks
   module TrackCleaners
     class ReplaceCleaner
@@ -17,10 +43,8 @@ module Tracks
         if tracks_to_remove.any?
           Rails.logger.info "Removing #{tracks_to_remove.count} existing tracks for user #{user.id}"
 
-          # Set track_id to nil for all points in these tracks
           Point.where(track_id: tracks_to_remove.ids).update_all(track_id: nil)
 
-          # Remove the tracks
           tracks_to_remove.destroy_all
         end
       end

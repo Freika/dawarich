@@ -1,5 +1,42 @@
 # frozen_string_literal: true
 
+# Track segmentation logic for splitting GPS points into meaningful track segments.
+#
+# This module provides the core algorithm for determining where one track ends
+# and another begins, based on time gaps and distance jumps between consecutive points.
+#
+# How it works:
+# 1. Analyzes consecutive GPS points to detect gaps that indicate separate journeys
+# 2. Uses configurable time and distance thresholds to identify segment boundaries
+# 3. Splits large arrays of points into smaller arrays representing individual tracks
+# 4. Provides utilities for handling both Point objects and hash representations
+#
+# Segmentation criteria:
+# - Time threshold: Gap longer than X minutes indicates a new track
+# - Distance threshold: Jump larger than X meters indicates a new track
+# - Minimum segment size: Segments must have at least 2 points to form a track
+#
+# The module is designed to be included in classes that need segmentation logic
+# and requires the including class to implement distance_threshold_meters and
+# time_threshold_minutes methods.
+#
+# Used by:
+# - Tracks::Generator for splitting points during track generation
+# - Tracks::CreateFromPoints for legacy compatibility
+#
+# Example usage:
+#   class MyTrackProcessor
+#     include Tracks::Segmentation
+#
+#     def distance_threshold_meters; 500; end
+#     def time_threshold_minutes; 60; end
+#
+#     def process_points(points)
+#       segments = split_points_into_segments(points)
+#       # Process each segment...
+#     end
+#   end
+#
 module Tracks::Segmentation
   extend ActiveSupport::Concern
 

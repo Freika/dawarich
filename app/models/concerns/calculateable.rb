@@ -53,7 +53,6 @@ module Calculateable
   end
 
   def convert_distance_for_storage(calculated_distance)
-    # Store distance in user's preferred unit with 2 decimal places precision
     calculated_distance.round(2)
   end
 
