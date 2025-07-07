@@ -269,7 +269,7 @@ GEM
     oj (3.16.11)
       bigdecimal (>= 3.0)
       ostruct (>= 0.2)
-    optimist (3.2.0)
+    optimist (3.2.1)
     orm_adapter (0.5.0)
     ostruct (0.6.1)
     parallel (1.27.0)
@@ -462,7 +462,7 @@ GEM
     stringio (3.1.7)
     strong_migrations (2.3.0)
       activerecord (>= 7)
-    super_diff (0.15.0)
+    super_diff (0.16.0)
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
