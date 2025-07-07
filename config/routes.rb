@@ -99,7 +99,6 @@ Rails.application.routes.draw do
 
       resources :areas,     only: %i[index create update destroy]
       resources :points,    only: %i[index create update destroy]
-      resources :tracks,    only: %i[index create]
       resources :visits,    only: %i[index update] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
         collection do

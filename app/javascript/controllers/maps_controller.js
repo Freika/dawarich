@@ -280,8 +280,8 @@ export default class extends BaseController {
   handleTrackUpdate(data) {
     // Get current time range for filtering
     const urlParams = new URLSearchParams(window.location.search);
-    const currentStartAt = urlParams.get('start_at') || this.getDefaultStartDate();
-    const currentEndAt = urlParams.get('end_at') || this.getDefaultEndDate();
+    const currentStartAt = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const currentEndAt = urlParams.get('end_at') || new Date().toISOString();
 
     // Handle the track update
     handleIncrementalTrackUpdate(
@@ -821,7 +821,7 @@ export default class extends BaseController {
             <input type="checkbox" id="tracks_visible" name="tracks_visible" class='w-4' style="width: 20px;" ${this.tracksVisible ? 'checked' : ''} />
           </label>
 
-          <button type="button" id="refresh-tracks-btn" class="btn btn-xs mt-2">Refresh Tracks</button>
+
 
           <label for="speed_color_scale">Speed color scale</label>
           <div class="join">
@@ -857,10 +857,7 @@ export default class extends BaseController {
         tracksVisibleCheckbox.addEventListener("change", this.toggleTracksVisibility.bind(this));
       }
 
-      const refreshTracksBtn = div.querySelector("#refresh-tracks-btn");
-      if (refreshTracksBtn) {
-        refreshTracksBtn.addEventListener("click", this.refreshTracks.bind(this));
-      }
+
 
       // Add event listener to the form submission
       div.querySelector('#settings-form').addEventListener(
@@ -1771,39 +1768,10 @@ export default class extends BaseController {
 
   // Track-related methods
   async initializeTracksLayer() {
-    // Use pre-loaded tracks data if available, otherwise fetch from API
+    // Use pre-loaded tracks data if available
     if (this.tracksData && this.tracksData.length > 0) {
       this.createTracksFromData(this.tracksData);
     } else {
-      await this.fetchTracks();
-    }
-  }
-
-  async fetchTracks() {
-    try {
-      // Get start and end dates from the current map view or URL params
-      const urlParams = new URLSearchParams(window.location.search);
-      const startAt = urlParams.get('start_at') || this.getDefaultStartDate();
-      const endAt = urlParams.get('end_at') || this.getDefaultEndDate();
-
-      const response = await fetch(`/api/v1/tracks?start_at=${startAt}&end_at=${endAt}`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        this.createTracksFromData(data.tracks || []);
-      } else {
-        console.warn('Failed to fetch tracks:', response.status);
-        // Create empty layer for layer control
-        this.tracksLayer = L.layerGroup();
-      }
-    } catch (error) {
-      console.warn('Tracks API not available or failed:', error);
       // Create empty layer for layer control
       this.tracksLayer = L.layerGroup();
     }
@@ -1865,78 +1833,5 @@ export default class extends BaseController {
 
 
 
-  getDefaultStartDate() {
-    // Default to last week if no markers available
-    if (!this.markers || this.markers.length === 0) {
-      return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    }
 
-    // Get start date from first marker
-    const firstMarker = this.markers[0];
-    if (firstMarker && firstMarker[3]) {
-      const startDate = new Date(firstMarker[3] * 1000);
-      startDate.setHours(0, 0, 0, 0);
-      return startDate.toISOString();
-    }
-
-    return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  }
-
-  getDefaultEndDate() {
-    // Default to today if no markers available
-    if (!this.markers || this.markers.length === 0) {
-      return new Date().toISOString();
-    }
-
-    // Get end date from last marker
-    const lastMarker = this.markers[this.markers.length - 1];
-    if (lastMarker && lastMarker[3]) {
-      const endDate = new Date(lastMarker[3] * 1000);
-      endDate.setHours(23, 59, 59, 999);
-      return endDate.toISOString();
-    }
-
-    return new Date().toISOString();
-  }
-
-  async refreshTracks() {
-    const refreshBtn = document.getElementById('refresh-tracks-btn');
-    if (refreshBtn) {
-      refreshBtn.disabled = true;
-      refreshBtn.textContent = 'Refreshing...';
-    }
-
-    try {
-      // Trigger track creation on backend
-      const response = await fetch(`/api/v1/tracks`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          api_key: this.apiKey
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        showFlashMessage('notice', data.message || 'Tracks refreshed successfully');
-
-        // Refresh tracks display
-        await this.fetchTracks();
-      } else {
-        throw new Error('Failed to refresh tracks');
-      }
-    } catch (error) {
-      console.error('Error refreshing tracks:', error);
-      showFlashMessage('error', 'Failed to refresh tracks');
-    } finally {
-      if (refreshBtn) {
-        refreshBtn.disabled = false;
-        refreshBtn.textContent = 'Refresh Tracks';
-      }
-    }
-  }
 }
