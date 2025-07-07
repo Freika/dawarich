@@ -17,6 +17,106 @@ RSpec.describe Track, type: :model do
     it { is_expected.to validate_numericality_of(:duration).is_greater_than_or_equal_to(0) }
   end
 
+  describe '.last_for_day' do
+    let(:user) { create(:user) }
+    let(:other_user) { create(:user) }
+    let(:target_day) { Date.current }
+
+    context 'when user has tracks on the target day' do
+      let!(:early_track) do
+        create(:track, user: user,
+               start_at: target_day.beginning_of_day + 1.hour,
+               end_at: target_day.beginning_of_day + 2.hours)
+      end
+
+      let!(:late_track) do
+        create(:track, user: user,
+               start_at: target_day.beginning_of_day + 3.hours,
+               end_at: target_day.beginning_of_day + 4.hours)
+      end
+
+      let!(:other_user_track) do
+        create(:track, user: other_user,
+               start_at: target_day.beginning_of_day + 5.hours,
+               end_at: target_day.beginning_of_day + 6.hours)
+      end
+
+      it 'returns the track that ends latest on that day for the user' do
+        result = Track.last_for_day(user, target_day)
+        expect(result).to eq(late_track)
+      end
+
+      it 'does not return tracks from other users' do
+        result = Track.last_for_day(user, target_day)
+        expect(result).not_to eq(other_user_track)
+      end
+    end
+
+    context 'when user has tracks on different days' do
+      let!(:yesterday_track) do
+        create(:track, user: user,
+               start_at: target_day.yesterday.beginning_of_day + 1.hour,
+               end_at: target_day.yesterday.beginning_of_day + 2.hours)
+      end
+
+      let!(:tomorrow_track) do
+        create(:track, user: user,
+               start_at: target_day.tomorrow.beginning_of_day + 1.hour,
+               end_at: target_day.tomorrow.beginning_of_day + 2.hours)
+      end
+
+      let!(:target_day_track) do
+        create(:track, user: user,
+               start_at: target_day.beginning_of_day + 1.hour,
+               end_at: target_day.beginning_of_day + 2.hours)
+      end
+
+      it 'returns only the track from the target day' do
+        result = Track.last_for_day(user, target_day)
+        expect(result).to eq(target_day_track)
+      end
+    end
+
+    context 'when user has no tracks on the target day' do
+      let!(:yesterday_track) do
+        create(:track, user: user,
+               start_at: target_day.yesterday.beginning_of_day + 1.hour,
+               end_at: target_day.yesterday.beginning_of_day + 2.hours)
+      end
+
+      it 'returns nil' do
+        result = Track.last_for_day(user, target_day)
+        expect(result).to be_nil
+      end
+    end
+
+    context 'when passing a Time object instead of Date' do
+      let!(:track) do
+        create(:track, user: user,
+               start_at: target_day.beginning_of_day + 1.hour,
+               end_at: target_day.beginning_of_day + 2.hours)
+      end
+
+      it 'correctly handles Time objects' do
+        result = Track.last_for_day(user, target_day.to_time)
+        expect(result).to eq(track)
+      end
+    end
+
+    context 'when track spans midnight' do
+      let!(:spanning_track) do
+        create(:track, user: user,
+               start_at: target_day.beginning_of_day - 1.hour,
+               end_at: target_day.beginning_of_day + 1.hour)
+      end
+
+      it 'includes tracks that end on the target day' do
+        result = Track.last_for_day(user, target_day)
+        expect(result).to eq(spanning_track)
+      end
+    end
+  end
+
   describe 'Calculateable concern' do
     let(:user) { create(:user) }
     let(:track) { create(:track, user: user, distance: 1000, avg_speed: 25, duration: 3600) }
