@@ -33,6 +33,7 @@ class Point < ApplicationRecord
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates
+  after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? } # Only for real-time points
   after_commit :recalculate_track, on: :update
 
   def self.without_raw_data
@@ -99,5 +100,14 @@ class Point < ApplicationRecord
     return unless track.present?
 
     track.recalculate_path_and_distance!
+  end
+
+  def trigger_incremental_track_generation
+    # Only trigger for recent points (within last day) to avoid processing old data
+    point_date = Time.zone.at(timestamp).to_date
+    return unless point_date >= 1.day.ago.to_date
+
+    # Schedule incremental track generation for this user and day
+    IncrementalTrackGeneratorJob.perform_later(user_id, point_date.to_s, 5)
   end
 end

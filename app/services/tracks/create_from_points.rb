@@ -4,66 +4,61 @@ class Tracks::CreateFromPoints
   include Tracks::Segmentation
   include Tracks::TrackBuilder
 
-  attr_reader :user, :distance_threshold_meters, :time_threshold_minutes, :start_at, :end_at
+  attr_reader :user, :start_at, :end_at
 
   def initialize(user, start_at: nil, end_at: nil)
     @user = user
     @start_at = start_at
     @end_at = end_at
-    @distance_threshold_meters = user.safe_settings.meters_between_routes.to_i || 500
-    @time_threshold_minutes = user.safe_settings.minutes_between_routes.to_i || 60
   end
 
   def call
-    time_range_info = start_at || end_at ? " for time range #{start_at} - #{end_at}" : ""
-    Rails.logger.info "Creating tracks for user #{user.id} with thresholds: #{distance_threshold_meters}m, #{time_threshold_minutes}min#{time_range_info}"
+    generator = Tracks::Generator.new(
+      user,
+      point_loader: point_loader,
+      incomplete_segment_handler: incomplete_segment_handler,
+      track_cleaner: track_cleaner
+    )
 
-    tracks_created = 0
+    generator.call
+  end
 
-    Track.transaction do
-      # Clear existing tracks for this user (optionally scoped to time range)
-      tracks_to_delete = start_at || end_at ? scoped_tracks_for_deletion : user.tracks
-      tracks_to_delete.destroy_all
+  # Expose threshold properties for tests
+  def distance_threshold_meters
+    @distance_threshold_meters ||= user.safe_settings.meters_between_routes.to_i || 500
+  end
 
-      track_segments = split_points_into_segments(user_points)
-
-      track_segments.each do |segment_points|
-        next if segment_points.size < 2
-
-        track = create_track_from_points(segment_points)
-        tracks_created += 1 if track&.persisted?
-      end
-    end
-
-    Rails.logger.info "Created #{tracks_created} tracks for user #{user.id}#{time_range_info}"
-    tracks_created
+  def time_threshold_minutes
+    @time_threshold_minutes ||= user.safe_settings.minutes_between_routes.to_i || 60
   end
 
   private
 
-  def user_points
-    @user_points ||= begin
-      points = Point.where(user: user)
-                    .where.not(lonlat: nil)
-                    .where.not(timestamp: nil)
-
-      # Apply timestamp filtering if provided
-      if start_at.present?
-        points = points.where('timestamp >= ?', start_at)
-      end
-
-      if end_at.present?
-        points = points.where('timestamp <= ?', end_at)
-      end
-
-      points.order(:timestamp)
-    end
+  def point_loader
+    @point_loader ||=
+      Tracks::PointLoaders::BulkLoader.new(
+        user, start_at: start_at, end_at: end_at
+      )
   end
 
-  def scoped_tracks_for_deletion
-    user.tracks.where(
-      'start_at <= ? AND end_at >= ?',
-      Time.zone.at(end_at), Time.zone.at(start_at)
-    )
+  def incomplete_segment_handler
+    @incomplete_segment_handler ||=
+      Tracks::IncompleteSegmentHandlers::IgnoreHandler.new(user)
+  end
+
+  def track_cleaner
+    @track_cleaner ||= Tracks::TrackCleaners::ReplaceCleaner.new(user, start_at: start_at, end_at: end_at)
+  end
+
+  # Legacy method for backward compatibility with tests
+  # Delegates to segmentation module logic
+  def should_start_new_track?(current_point, previous_point)
+    should_start_new_segment?(current_point, previous_point)
+  end
+
+  # Legacy method for backward compatibility with tests
+  # Delegates to segmentation module logic
+  def calculate_distance_kilometers(point1, point2)
+    calculate_distance_kilometers_between_points(point1, point2)
   end
 end

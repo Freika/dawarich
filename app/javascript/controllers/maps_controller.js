@@ -21,7 +21,11 @@ import {
   updateTracksOpacity,
   toggleTracksVisibility,
   filterTracks,
-  trackColorPalette
+  trackColorPalette,
+  handleIncrementalTrackUpdate,
+  addOrUpdateTrack,
+  removeTrackById,
+  isTrackInTimeRange
 } from "../maps/tracks";
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
@@ -46,6 +50,7 @@ export default class extends BaseController {
   currentPopup = null;
   tracksLayer = null;
   tracksVisible = false;
+  tracksSubscription = null;
 
   connect() {
     super.connect();
@@ -198,164 +203,54 @@ export default class extends BaseController {
       "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
     };
 
-    // Initialize layer control first
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
-    // Now initialize tracks data (after layer control is created)
+    // Initialize tile monitor
+    this.tileMonitor = new TileMonitor(this.map, this.apiKey);
+
+    this.addEventListeners();
+    this.setupSubscription();
+    this.setupTracksSubscription();
+
+    // Handle routes/tracks mode selection
+    this.addRoutesTracksSelector();
+    this.switchRouteMode('routes', true);
+
+    // Initialize layers based on settings
+    this.initializeLayersFromSettings();
+
+    // Initialize tracks layer
     this.initializeTracksLayer();
 
-    // Add the toggle panel button
-    this.addTogglePanelButton();
-
-    // Add routes/tracks selector
-    this.addRoutesTracksSelector();
-
-    // Check if we should open the panel based on localStorage or URL params
-    const urlParams = new URLSearchParams(window.location.search);
-    const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
-    const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
-
-    // Always create the panel first
-    this.toggleRightPanel();
-
-    // Then hide it if it shouldn't be open
-    if (!isPanelOpen && !hasDateParams) {
-      const panel = document.querySelector('.leaflet-right-panel');
-      if (panel) {
-        panel.style.display = 'none';
-        localStorage.setItem('mapPanelOpen', 'false');
-      }
-    }
-
-    // Update event handlers
-    this.map.on('moveend', () => {
-      if (document.getElementById('fog')) {
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-      }
-    });
-
-    this.map.on('zoomend', () => {
-      if (document.getElementById('fog')) {
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-      }
-    });
-
-    // Fetch and draw areas when the map is loaded
-    fetchAndDrawAreas(this.areasLayer, this.apiKey);
-
-    let fogEnabled = false;
-
-    // Hide fog by default
-    document.getElementById('fog').style.display = 'none';
-
-    // Toggle fog layer visibility
-    this.map.on('overlayadd', (e) => {
-      if (e.name === 'Fog of War') {
-        fogEnabled = true;
-        document.getElementById('fog').style.display = 'block';
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-      }
-    });
-
-    this.map.on('overlayremove', (e) => {
-      if (e.name === 'Fog of War') {
-        fogEnabled = false;
-        document.getElementById('fog').style.display = 'none';
-      }
-    });
-
-    // Update fog circles on zoom and move
-    this.map.on('zoomend moveend', () => {
-      if (fogEnabled) {
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-      }
-    });
-
-    this.addLastMarker(this.map, this.markers);
-    this.addEventListeners();
-
-    // Initialize Leaflet.draw
+    // Setup draw control
     this.initializeDrawControl();
 
-    // Add event listeners to toggle draw controls
-    this.map.on('overlayadd', async (e) => {
-      if (e.name === 'Areas') {
-        this.map.addControl(this.drawControl);
-      }
-      if (e.name === 'Photos') {
-        if (
-          (!this.userSettings.immich_url || !this.userSettings.immich_api_key) &&
-          (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)
-        ) {
-          showFlashMessage(
-            'error',
-            'Photos integration is not configured. Please check your integrations settings.'
-          );
-          return;
-        }
+    // Preload areas
+    fetchAndDrawAreas(this.areasLayer, this.map, this.apiKey);
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const startDate = urlParams.get('start_at') || new Date().toISOString();
-        const endDate = urlParams.get('end_at')|| new Date().toISOString();
-        await fetchAndDisplayPhotos({
-          map: this.map,
-          photoMarkers: this.photoMarkers,
-          apiKey: this.apiKey,
-          startDate: startDate,
-          endDate: endDate,
-          userSettings: this.userSettings
-        });
-      }
-    });
-
-    this.map.on('overlayremove', (e) => {
-      if (e.name === 'Areas') {
-        this.map.removeControl(this.drawControl);
-      }
-    });
-
-    if (this.liveMapEnabled) {
-      this.setupSubscription();
-    }
-
-    // Initialize tile monitor
-    this.tileMonitor = new TileMonitor(this.apiKey);
-
-    // Add tile load event handlers to each base layer
-    Object.entries(this.baseMaps()).forEach(([name, layer]) => {
-      layer.on('tileload', () => {
-        this.tileMonitor.recordTileLoad(name);
-      });
-    });
-
-    // Start monitoring
-    this.tileMonitor.startMonitoring();
-
-    // Add the drawer button for visits
-    this.visitsManager.addDrawerButton();
-
-    // Fetch and display visits when map loads
-    this.visitsManager.fetchAndDisplayVisits();
+    // Add right panel toggle
+    this.addTogglePanelButton();
   }
 
   disconnect() {
-    if (this.handleDeleteClick) {
-      document.removeEventListener('click', this.handleDeleteClick);
+    super.disconnect();
+    this.removeEventListeners();
+    if (this.tracksSubscription) {
+      this.tracksSubscription.unsubscribe();
     }
-    // Store panel state before disconnecting
-    if (this.rightPanel) {
-      const panel = document.querySelector('.leaflet-right-panel');
-      const finalState = panel ? (panel.style.display !== 'none' ? 'true' : 'false') : 'false';
-      localStorage.setItem('mapPanelOpen', finalState);
+    if (this.tileMonitor) {
+      this.tileMonitor.destroy();
+    }
+    if (this.visitsManager) {
+      this.visitsManager.destroy();
+    }
+    if (this.layerControl) {
+      this.map.removeControl(this.layerControl);
     }
     if (this.map) {
       this.map.remove();
     }
-
-    // Stop tile monitoring
-    if (this.tileMonitor) {
-      this.tileMonitor.stopMonitoring();
-    }
+    console.log("Map controller disconnected");
   }
 
   setupSubscription() {
@@ -369,6 +264,42 @@ export default class extends BaseController {
         }
       }
     });
+  }
+
+  setupTracksSubscription() {
+    this.tracksSubscription = consumer.subscriptions.create("TracksChannel", {
+      received: (data) => {
+        console.log("Received track update:", data);
+        if (this.map && this.map._loaded && this.tracksLayer) {
+          this.handleTrackUpdate(data);
+        }
+      }
+    });
+  }
+
+  handleTrackUpdate(data) {
+    // Get current time range for filtering
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentStartAt = urlParams.get('start_at') || this.getDefaultStartDate();
+    const currentEndAt = urlParams.get('end_at') || this.getDefaultEndDate();
+
+    // Handle the track update
+    handleIncrementalTrackUpdate(
+      this.tracksLayer,
+      data,
+      this.map,
+      this.userSettings,
+      this.distanceUnit,
+      currentStartAt,
+      currentEndAt
+    );
+
+    // If tracks are visible, make sure the layer is properly displayed
+    if (this.tracksVisible && this.tracksLayer) {
+      if (!this.map.hasLayer(this.tracksLayer)) {
+        this.map.addLayer(this.tracksLayer);
+      }
+    }
   }
 
   appendPoint(data) {

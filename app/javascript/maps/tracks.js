@@ -365,3 +365,163 @@ export function filterTracks(tracks, criteria) {
     return true;
   });
 }
+
+// === INCREMENTAL TRACK HANDLING ===
+
+/**
+ * Create a single track layer from track data
+ * @param {Object} track - Track data
+ * @param {Object} map - Leaflet map instance
+ * @param {Object} userSettings - User settings
+ * @param {string} distanceUnit - Distance unit preference
+ * @returns {L.FeatureGroup} Track layer group
+ */
+export function createSingleTrackLayer(track, map, userSettings, distanceUnit) {
+  const coordinates = getTrackCoordinates(track);
+
+  if (!coordinates || coordinates.length < 2) {
+    console.warn(`Track ${track.id} has insufficient coordinates`);
+    return null;
+  }
+
+  // Create a custom pane for tracks if it doesn't exist
+  if (!map.getPane('tracksPane')) {
+    map.createPane('tracksPane');
+    map.getPane('tracksPane').style.zIndex = 460;
+  }
+
+  const renderer = L.canvas({
+    padding: 0.5,
+    pane: 'tracksPane'
+  });
+
+  const trackColor = getTrackColor();
+  const trackGroup = L.featureGroup();
+
+  const trackPolyline = L.polyline(coordinates, {
+    renderer: renderer,
+    color: trackColor,
+    originalColor: trackColor,
+    opacity: userSettings.route_opacity || 0.7,
+    weight: 4,
+    interactive: true,
+    pane: 'tracksPane',
+    bubblingMouseEvents: false,
+    trackId: track.id
+  });
+
+  trackGroup.addLayer(trackPolyline);
+  addTrackInteractions(trackGroup, map, track, userSettings, distanceUnit);
+  trackGroup._trackData = track;
+
+  return trackGroup;
+}
+
+/**
+ * Add or update a track in the tracks layer
+ * @param {L.LayerGroup} tracksLayer - Main tracks layer group
+ * @param {Object} track - Track data
+ * @param {Object} map - Leaflet map instance
+ * @param {Object} userSettings - User settings
+ * @param {string} distanceUnit - Distance unit preference
+ */
+export function addOrUpdateTrack(tracksLayer, track, map, userSettings, distanceUnit) {
+  // Remove existing track if it exists
+  removeTrackById(tracksLayer, track.id);
+
+  // Create new track layer
+  const trackLayer = createSingleTrackLayer(track, map, userSettings, distanceUnit);
+
+  if (trackLayer) {
+    tracksLayer.addLayer(trackLayer);
+    console.log(`Track ${track.id} added/updated on map`);
+  }
+}
+
+/**
+ * Remove a track from the tracks layer by ID
+ * @param {L.LayerGroup} tracksLayer - Main tracks layer group
+ * @param {number} trackId - Track ID to remove
+ */
+export function removeTrackById(tracksLayer, trackId) {
+  let layerToRemove = null;
+
+  tracksLayer.eachLayer((layer) => {
+    if (layer._trackData && layer._trackData.id === trackId) {
+      layerToRemove = layer;
+      return;
+    }
+  });
+
+  if (layerToRemove) {
+    // Clean up any markers that might be showing
+    if (layerToRemove._trackStartMarker) {
+      tracksLayer.removeLayer(layerToRemove._trackStartMarker);
+    }
+    if (layerToRemove._trackEndMarker) {
+      tracksLayer.removeLayer(layerToRemove._trackEndMarker);
+    }
+
+    tracksLayer.removeLayer(layerToRemove);
+    console.log(`Track ${trackId} removed from map`);
+  }
+}
+
+/**
+ * Check if a track is within the current map time range
+ * @param {Object} track - Track data
+ * @param {string} startAt - Start time filter
+ * @param {string} endAt - End time filter
+ * @returns {boolean} Whether track is in range
+ */
+export function isTrackInTimeRange(track, startAt, endAt) {
+  if (!startAt || !endAt) return true;
+
+  const trackStart = new Date(track.start_at);
+  const trackEnd = new Date(track.end_at);
+  const rangeStart = new Date(startAt);
+  const rangeEnd = new Date(endAt);
+
+  // Track is in range if it overlaps with the time range
+  return trackStart <= rangeEnd && trackEnd >= rangeStart;
+}
+
+/**
+ * Handle incremental track updates from WebSocket
+ * @param {L.LayerGroup} tracksLayer - Main tracks layer group
+ * @param {Object} data - WebSocket data
+ * @param {Object} map - Leaflet map instance
+ * @param {Object} userSettings - User settings
+ * @param {string} distanceUnit - Distance unit preference
+ * @param {string} currentStartAt - Current time range start
+ * @param {string} currentEndAt - Current time range end
+ */
+export function handleIncrementalTrackUpdate(tracksLayer, data, map, userSettings, distanceUnit, currentStartAt, currentEndAt) {
+  const { action, track, track_id } = data;
+
+  switch (action) {
+    case 'created':
+      // Only add if track is within current time range
+      if (isTrackInTimeRange(track, currentStartAt, currentEndAt)) {
+        addOrUpdateTrack(tracksLayer, track, map, userSettings, distanceUnit);
+      }
+      break;
+
+    case 'updated':
+      // Update track if it exists or add if it's now in range
+      if (isTrackInTimeRange(track, currentStartAt, currentEndAt)) {
+        addOrUpdateTrack(tracksLayer, track, map, userSettings, distanceUnit);
+      } else {
+        // Remove track if it's no longer in range
+        removeTrackById(tracksLayer, track.id);
+      }
+      break;
+
+    case 'destroyed':
+      removeTrackById(tracksLayer, track_id);
+      break;
+
+    default:
+      console.warn('Unknown track update action:', action);
+  }
+}
