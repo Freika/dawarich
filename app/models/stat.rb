@@ -40,7 +40,7 @@ class Stat < ApplicationRecord
     timespan.to_a.map.with_index(1) do |day, index|
       daily_points = filter_points_for_day(monthly_points, day)
       # Calculate distance in meters for consistent storage
-      distance_meters = Point.total_distance(daily_points, :km)
+      distance_meters = Point.total_distance(daily_points, :m)
       [index, distance_meters.round]
     end
   end

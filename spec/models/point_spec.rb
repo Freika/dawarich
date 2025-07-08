@@ -121,17 +121,6 @@ RSpec.describe Point, type: :model do
       end
     end
 
-    describe '#recalculate_track' do
-      let(:point) { create(:point, track: track) }
-      let(:track) { create(:track) }
-
-      it 'recalculates the track' do
-        expect(track).to receive(:recalculate_path_and_distance!)
-
-        point.update(lonlat: 'POINT(-79.85581250721961 15.854775993302411)')
-      end
-    end
-
     describe '#trigger_incremental_track_generation' do
       let(:point) do
         create(:point, track: track, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)

@@ -236,6 +236,9 @@ export default class extends BaseController {
 
     // Add right panel toggle
     this.addTogglePanelButton();
+
+    // Add visits buttons after calendar button to position them below
+    this.visitsManager.addDrawerButton();
   }
 
   disconnect() {

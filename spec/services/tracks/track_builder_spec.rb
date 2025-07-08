@@ -92,7 +92,7 @@ RSpec.describe Tracks::TrackBuilder do
       end
 
       before do
-        allow_any_instance_of(Track).to receive(:save!).and_return(false)
+        allow_any_instance_of(Track).to receive(:save).and_return(false)
       end
 
       it 'returns nil and logs error' do
