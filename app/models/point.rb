@@ -66,20 +66,6 @@ class Point < ApplicationRecord
     Country.containing_point(lon, lat)
   end
 
-  def self.normalize_timestamp(timestamp)
-    case timestamp
-    when Integer
-      timestamp
-    when String, Numeric, DateTime, Time
-      timestamp.to_i
-    when nil
-      raise ArgumentError, 'Timestamp cannot be nil'
-    else
-      raise ArgumentError, "Cannot convert timestamp to integer: #{timestamp.class}"
-    end
-  end
-
-
   private
 
   # rubocop:disable Metrics/MethodLength Metrics/AbcSize

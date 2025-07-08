@@ -56,7 +56,7 @@ class Immich::ImportGeodata
       latitude: asset['exifInfo']['latitude'],
       longitude: asset['exifInfo']['longitude'],
       lonlat: "SRID=4326;POINT(#{asset['exifInfo']['longitude']} #{asset['exifInfo']['latitude']})",
-      timestamp: Point.normalize_timestamp(asset['exifInfo']['dateTimeOriginal'])
+      timestamp: Time.zone.parse(asset['exifInfo']['dateTimeOriginal']).to_i
     }
   end
 

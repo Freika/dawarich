@@ -18,11 +18,13 @@
     <%= countries_and_cities_stat_for_month(stat) %>
   </div>
 
-  <canvas id="distance-chart-<%= stat.id %>"
-          data-daily-distance="<%= stat.daily_distance %>"
-          data-distance-type="monthly"
-          data-title="<%= Date::MONTHNAMES[stat.month] %> <%= stat.year %>"
-          data-y-axis-title="Distance"
-          suffix: " <%= current_user.safe_settings.distance_unit %>",
-          data-user-settings="<%= current_user.safe_settings.default_settings.to_json %>"></canvas>
+  <%= area_chart(
+    stat.daily_distance.map { |day, distance_meters|
+      [day, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round(2)]
+    },
+    height: '200px',
+    suffix: " #{current_user.safe_settings.distance_unit}",
+    xtitle: 'Day',
+    ytitle: 'Distance'
+  ) %>
 </div>

@@ -66,7 +66,7 @@ class Photoprism::ImportGeodata
       latitude: asset['Lat'],
       longitude: asset['Lng'],
       lonlat: "SRID=4326;POINT(#{asset['Lng']} #{asset['Lat']})",
-      timestamp: Point.normalize_timestamp(asset['TakenAt'])
+      timestamp: Time.zone.parse(asset['TakenAt']).to_i
     }
   end
 
