@@ -232,7 +232,7 @@ export default class extends BaseController {
     this.initializeDrawControl();
 
     // Preload areas
-    fetchAndDrawAreas(this.areasLayer, this.map, this.apiKey);
+    fetchAndDrawAreas(this.areasLayer, this.apiKey);
 
     // Add right panel toggle
     this.addTogglePanelButton();
@@ -1293,6 +1293,29 @@ export default class extends BaseController {
       managePaneVisibility(this.map, 'tracks');
     } else {
       managePaneVisibility(this.map, 'both');
+    }
+  }
+
+    initializeLayersFromSettings() {
+    // Initialize layer visibility based on user settings or defaults
+    // This method sets up the initial state of overlay layers
+
+    // Note: Don't automatically add layers to map here - let the layer control and user preferences handle it
+    // The layer control will manage which layers are visible based on user interaction
+
+    // Initialize photos layer if user wants it visible
+    if (this.userSettings.photos_enabled) {
+      fetchAndDisplayPhotos(this.photoMarkers, this.apiKey, this.userSettings);
+    }
+
+    // Initialize fog of war if enabled in settings
+    if (this.userSettings.fog_of_war_enabled) {
+      this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+    }
+
+    // Initialize visits manager functionality
+    if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
+      this.visitsManager.fetchAndDisplayVisits();
     }
   }
 
