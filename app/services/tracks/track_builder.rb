@@ -71,11 +71,12 @@ module Tracks::TrackBuilder
     track.elevation_max = elevation_stats[:max]
     track.elevation_min = elevation_stats[:min]
 
-    if track.save!
+    if track.save
       Point.where(id: points.map(&:id)).update_all(track_id: track.id)
       track
     else
       Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
+
       nil
     end
   end
