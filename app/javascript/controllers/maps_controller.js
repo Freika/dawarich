@@ -122,10 +122,16 @@ export default class extends BaseController {
       },
       onAdd: (map) => {
         const div = L.DomUtil.create('div', 'leaflet-control-stats');
-        const distance = this.element.dataset.distance || '0';
+        let distance = parseInt(this.element.dataset.distance) || 0;
         const pointsNumber = this.element.dataset.points_number || '0';
+
+        // Convert distance to miles if user prefers miles (assuming backend sends km)
+        if (this.distanceUnit === 'mi') {
+          distance = distance * 0.621371; // km to miles conversion
+        }
+
         const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
-        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
+        div.innerHTML = `${distance.toFixed(1)} ${unit} | ${pointsNumber} points`;
         div.style.backgroundColor = 'white';
         div.style.padding = '0 5px';
         div.style.marginRight = '5px';

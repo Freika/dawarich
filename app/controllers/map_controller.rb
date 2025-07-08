@@ -41,7 +41,8 @@ class MapController < ApplicationController
       distance_km = Geocoder::Calculations.distance_between(
         [_1[0], _1[1]], [_2[0], _2[1]], units: :km
       )
-      total_distance_meters += distance_km * 1000 # Convert km to meters
+
+      total_distance_meters += distance_km
     end
 
     total_distance_meters.round
