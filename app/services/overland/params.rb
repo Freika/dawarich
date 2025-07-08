@@ -16,7 +16,7 @@ class Overland::Params
         lonlat: "POINT(#{point[:geometry][:coordinates][0]} #{point[:geometry][:coordinates][1]})",
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
-        timestamp:          Point.normalize_timestamp(point[:properties][:timestamp]),
+        timestamp:          DateTime.parse(point[:properties][:timestamp]),
         altitude:           point[:properties][:altitude],
         velocity:           point[:properties][:speed],
         tracker_id:         point[:properties][:device_id],

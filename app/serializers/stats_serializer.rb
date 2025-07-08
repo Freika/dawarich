@@ -21,9 +21,9 @@ class StatsSerializer
   private
 
   def total_distance_km
-    # Convert from stored meters to kilometers
     total_distance_meters = user.stats.sum(:distance)
-    (total_distance_meters / 1000.0).round(2)
+
+    (total_distance_meters / 1000)
   end
 
   def reverse_geocoded_points
@@ -45,7 +45,7 @@ class StatsSerializer
   def stats_distance_km(stats)
     # Convert from stored meters to kilometers
     total_meters = stats.sum(&:distance)
-    (total_meters / 1000.0).round(2)
+    total_meters / 1000
   end
 
   def monthly_distance(year, stats)
@@ -59,6 +59,7 @@ class StatsSerializer
   def distance_km(month, year, stats)
     # Convert from stored meters to kilometers
     distance_meters = stats.find { _1.month == month && _1.year == year }&.distance.to_i
-    (distance_meters / 1000.0).round(2)
+
+    distance_meters / 1000
   end
 end

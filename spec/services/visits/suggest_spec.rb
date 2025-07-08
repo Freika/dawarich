@@ -24,6 +24,7 @@ RSpec.describe Visits::Suggest do
         create(:point, :with_known_location, user:, timestamp: start_at + 50.minutes),
         create(:point, :with_known_location, user:, timestamp: start_at + 55.minutes),
         # end of first visit
+
         # second visit
         create(:point, :with_known_location, user:, timestamp: start_at + 95.minutes),
         create(:point, :with_known_location, user:, timestamp: start_at + 100.minutes),
