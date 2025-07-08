@@ -99,24 +99,6 @@ module ApplicationHelper
     current_user&.theme == 'light' ? 'light' : 'dark'
   end
 
-  def sidebar_distance(distance_meters)
-    return unless distance_meters
-
-    # Convert from stored meters to user's preferred unit for display
-    user_unit = current_user.safe_settings.distance_unit
-    converted_distance = Stat.convert_distance(distance_meters, user_unit)
-    "#{converted_distance.round(2)} #{user_unit}"
-  end
-
-  def sidebar_points(points)
-    return unless points
-
-    points_number = points.size
-    points_pluralized = pluralize(points_number, 'point')
-
-    "(#{points_pluralized})"
-  end
-
   def active_class?(link_path)
     'btn-active' if current_page?(link_path)
   end
