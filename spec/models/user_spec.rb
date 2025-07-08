@@ -211,4 +211,110 @@ RSpec.describe User, type: :model do
       end
     end
   end
+
+  describe 'OAuth authentication' do
+    let(:auth_hash) do
+      {
+        'provider' => 'google_oauth2',
+        'uid' => '123456789',
+        'info' => {
+          'email' => 'test@example.com',
+          'name' => 'Test User',
+          'image' => 'https://example.com/avatar.jpg'
+        }
+      }
+    end
+
+    describe '.from_omniauth' do
+      context 'when user does not exist' do
+        it 'creates a new user with OAuth data' do
+          expect {
+            User.from_omniauth(auth_hash)
+          }.to change(User, :count).by(1)
+
+          user = User.last
+          expect(user.provider).to eq('google_oauth2')
+          expect(user.uid).to eq('123456789')
+          expect(user.email).to eq('test@example.com')
+          expect(user.name).to eq('Test User')
+          expect(user.image).to eq('https://example.com/avatar.jpg')
+        end
+      end
+
+      context 'when user already exists with same provider and uid' do
+        let!(:existing_user) do
+          User.create!(
+            provider: 'google_oauth2',
+            uid: '123456789',
+            email: 'test@example.com',
+            password: 'password123'
+          )
+        end
+
+        it 'returns the existing user' do
+          user = User.from_omniauth(auth_hash)
+          expect(user).to eq(existing_user)
+        end
+
+        it 'does not create a new user' do
+          expect {
+            User.from_omniauth(auth_hash)
+          }.not_to change(User, :count)
+        end
+      end
+
+      context 'when user exists with same email but different provider' do
+        let!(:existing_user) do
+          User.create!(
+            email: 'test@example.com',
+            password: 'password123'
+          )
+        end
+
+        it 'creates a new user with OAuth data' do
+          expect {
+            User.from_omniauth(auth_hash)
+          }.to change(User, :count).by(1)
+
+          new_user = User.last
+          expect(new_user.provider).to eq('google_oauth2')
+          expect(new_user.uid).to eq('123456789')
+          expect(new_user.email).to eq('test@example.com')
+        end
+      end
+    end
+
+    describe '.new_with_session' do
+      let(:params) { { email: 'test@example.com' } }
+      let(:session) do
+        {
+          'devise.oauth_data' => {
+            'extra' => {
+              'raw_info' => {
+                'email' => 'oauth@example.com',
+                'name' => 'OAuth User'
+              }
+            }
+          }
+        }
+      end
+
+      it 'populates user with OAuth data from session' do
+        user = User.new_with_session(params, session)
+        expect(user.email).to eq('oauth@example.com')
+        expect(user.name).to eq('OAuth User')
+      end
+
+      it 'does not override existing params' do
+        user = User.new_with_session({ email: 'existing@example.com' }, session)
+        expect(user.email).to eq('existing@example.com')
+      end
+    end
+  end
+
+  describe 'omniauthable' do
+    it 'includes omniauth providers' do
+      expect(User.omniauth_providers).to include(:google_oauth2, :github, :microsoft_office365, :openid_connect)
+    end
+  end
 end

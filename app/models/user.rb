@@ -2,7 +2,8 @@
 
 class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable, :trackable
+         :recoverable, :rememberable, :validatable, :trackable,
+         :omniauthable, omniauth_providers: [:google_oauth2, :github, :microsoft_office365, :openid_connect]
 
   has_many :tracked_points, class_name: 'Point', dependent: :destroy
   has_many :imports,        dependent: :destroy
@@ -117,6 +118,24 @@ class User < ApplicationRecord
 
   def export_data
     Users::ExportDataJob.perform_later(id)
+  end
+
+  def self.from_omniauth(auth)
+    where(provider: auth.provider, uid: auth.uid).first_or_create do |user|
+      user.email = auth.info.email
+      user.password = Devise.friendly_token[0, 20]
+      user.name = auth.info.name
+      user.image = auth.info.image
+    end
+  end
+
+  def self.new_with_session(params, session)
+    super.tap do |user|
+      if data = session["devise.oauth_data"] && session["devise.oauth_data"]["extra"]["raw_info"]
+        user.email = data["email"] if user.email.blank?
+        user.name = data["name"] if user.name.blank?
+      end
+    end
   end
 
   private

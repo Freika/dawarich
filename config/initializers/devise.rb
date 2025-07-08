@@ -266,6 +266,79 @@ Devise.setup do |config|
   # Add a new OmniAuth provider. Check the wiki for more information on setting
   # up on your models and hooks.
   # config.omniauth :github, 'APP_ID', 'APP_SECRET', scope: 'user,public_repo'
+  
+  # Google OAuth2
+  config.omniauth :google_oauth2,
+                  ENV['GOOGLE_CLIENT_ID'],
+                  ENV['GOOGLE_CLIENT_SECRET'],
+                  {
+                    scope: 'email,profile',
+                    prompt: 'select_account'
+                  }
+
+  # GitHub OAuth
+  config.omniauth :github,
+                  ENV['GITHUB_CLIENT_ID'],
+                  ENV['GITHUB_CLIENT_SECRET'],
+                  scope: 'user:email'
+
+  # Microsoft Office 365
+  config.omniauth :microsoft_office365,
+                  ENV['MICROSOFT_CLIENT_ID'],
+                  ENV['MICROSOFT_CLIENT_SECRET'],
+                  scope: 'openid email profile'
+
+  # Generic OpenID Connect (for Authentik, Authelia, Keycloak)
+  config.omniauth :openid_connect,
+                  {
+                    name: :authentik,
+                    scope: [:openid, :email, :profile],
+                    response_type: :code,
+                    issuer: ENV['AUTHENTIK_ISSUER'],
+                    discovery: true,
+                    client_options: {
+                      port: 443,
+                      scheme: 'https',
+                      host: ENV['AUTHENTIK_HOST'],
+                      identifier: ENV['AUTHENTIK_CLIENT_ID'],
+                      secret: ENV['AUTHENTIK_CLIENT_SECRET'],
+                      redirect_uri: "#{ENV['APP_URL']}/users/auth/openid_connect/callback"
+                    }
+                  }
+
+  config.omniauth :openid_connect,
+                  {
+                    name: :authelia,
+                    scope: [:openid, :email, :profile],
+                    response_type: :code,
+                    issuer: ENV['AUTHELIA_ISSUER'],
+                    discovery: true,
+                    client_options: {
+                      port: 443,
+                      scheme: 'https',
+                      host: ENV['AUTHELIA_HOST'],
+                      identifier: ENV['AUTHELIA_CLIENT_ID'],
+                      secret: ENV['AUTHELIA_CLIENT_SECRET'],
+                      redirect_uri: "#{ENV['APP_URL']}/users/auth/openid_connect/callback"
+                    }
+                  }
+
+  config.omniauth :openid_connect,
+                  {
+                    name: :keycloak,
+                    scope: [:openid, :email, :profile],
+                    response_type: :code,
+                    issuer: ENV['KEYCLOAK_ISSUER'],
+                    discovery: true,
+                    client_options: {
+                      port: 443,
+                      scheme: 'https',
+                      host: ENV['KEYCLOAK_HOST'],
+                      identifier: ENV['KEYCLOAK_CLIENT_ID'],
+                      secret: ENV['KEYCLOAK_CLIENT_SECRET'],
+                      redirect_uri: "#{ENV['APP_URL']}/users/auth/openid_connect/callback"
+                    }
+                  }
 
   # ==> Warden configuration
   # If you want to use other strategies, that are not supported by Devise, or

@@ -123,6 +123,18 @@ Feel free to change them in the account settings.
 ### 📤 Export Your Data
 - Export your data to GeoJSON or GPX formats.
 
+### 🔐 Authentication
+- Local account authentication with email and password
+- OAuth2/OpenID Connect support for:
+  - Google OAuth2
+  - GitHub OAuth
+  - Microsoft Office 365
+  - Authentik (OpenID Connect)
+  - Authelia (OpenID Connect)
+  - Keycloak (OpenID Connect)
+
+See [OAuth Setup Guide](docs/oauth_setup.md) for detailed configuration instructions.
+
 ---
 
 ## 📚 Guides and Tutorials
