@@ -2,6 +2,7 @@
 
 class Track < ApplicationRecord
   include Calculateable
+  include DistanceConvertible
 
   belongs_to :user
   has_many :points, dependent: :nullify

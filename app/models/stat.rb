@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Stat < ApplicationRecord
+  include DistanceConvertible
+
   validates :year, :month, presence: true
 
   belongs_to :user
@@ -37,8 +39,9 @@ class Stat < ApplicationRecord
   def calculate_daily_distances(monthly_points)
     timespan.to_a.map.with_index(1) do |day, index|
       daily_points = filter_points_for_day(monthly_points, day)
-      distance = Point.total_distance(daily_points, user.safe_settings.distance_unit)
-      [index, distance.round]
+      # Calculate distance in meters for consistent storage
+      distance_meters = Point.total_distance(daily_points, :m)
+      [index, distance_meters.round]
     end
   end
 

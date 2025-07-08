@@ -117,7 +117,7 @@ class Point < ApplicationRecord
 
   def trigger_incremental_track_generation
     point_date = Time.zone.at(timestamp).to_date
-    return unless point_date >= 1.day.ago.to_date
+    return if point_date < 1.day.ago.to_date
 
     Tracks::IncrementalGeneratorJob.perform_later(user_id, point_date.to_s, 5)
   end

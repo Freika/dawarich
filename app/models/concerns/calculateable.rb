@@ -9,8 +9,8 @@ module Calculateable
   end
 
   def calculate_distance
-    calculated_distance = calculate_distance_from_coordinates
-    self.distance = convert_distance_for_storage(calculated_distance)
+    calculated_distance_meters = calculate_distance_from_coordinates
+    self.distance = convert_distance_for_storage(calculated_distance_meters)
   end
 
   def recalculate_path!
@@ -44,16 +44,14 @@ module Calculateable
     self.original_path = updated_path if respond_to?(:original_path=)
   end
 
-  def user_distance_unit
-    user.safe_settings.distance_unit
-  end
-
   def calculate_distance_from_coordinates
-    Point.total_distance(points, user_distance_unit)
+    # Always calculate in meters for consistent storage
+    Point.total_distance(points, :m)
   end
 
-  def convert_distance_for_storage(calculated_distance)
-    calculated_distance.round(2)
+  def convert_distance_for_storage(calculated_distance_meters)
+    # Store as integer meters for consistency
+    calculated_distance_meters.round
   end
 
   def track_model?

@@ -15,14 +15,14 @@
 # 6. Associates all points with the created track
 #
 # Statistics calculated:
-# - Distance: In user's preferred unit (km/miles) with 2 decimal precision
+# - Distance: Always stored in meters as integers for consistency
 # - Duration: Total time in seconds between first and last point
 # - Average speed: In km/h regardless of user's distance unit preference
 # - Elevation gain/loss: Cumulative ascent and descent in meters
 # - Elevation max/min: Highest and lowest altitudes in the track
 #
-# The module respects user preferences for distance units and handles missing
-# elevation data gracefully by providing default values.
+# Distance is converted to user's preferred unit only at display time, not storage time.
+# This ensures consistency when users change their distance unit preferences.
 #
 # Used by:
 # - Tracks::Generator for creating tracks during generation
@@ -85,27 +85,20 @@ module Tracks::TrackBuilder
   end
 
   def calculate_track_distance(points)
-    distance_in_user_unit = Point.total_distance(points, user.safe_settings.distance_unit || 'km')
-    distance_in_user_unit.round(2)
+    # Always calculate and store distance in meters for consistency
+    distance_in_meters = Point.total_distance(points, :m)
+    distance_in_meters.round
   end
 
   def calculate_duration(points)
     points.last.timestamp - points.first.timestamp
   end
 
-  def calculate_average_speed(distance_in_user_unit, duration_seconds)
-    return 0.0 if duration_seconds <= 0 || distance_in_user_unit <= 0
-
-    # Convert distance to meters for speed calculation
-    distance_meters = case user.safe_settings.distance_unit
-                      when 'mi'
-                        distance_in_user_unit * 1609.344 # miles to meters
-                      else
-                        distance_in_user_unit * 1000 # km to meters
-                      end
+  def calculate_average_speed(distance_in_meters, duration_seconds)
+    return 0.0 if duration_seconds <= 0 || distance_in_meters <= 0
 
     # Speed in meters per second, then convert to km/h for storage
-    speed_mps = distance_meters.to_f / duration_seconds
+    speed_mps = distance_in_meters.to_f / duration_seconds
     (speed_mps * 3.6).round(2) # m/s to km/h
   end
 

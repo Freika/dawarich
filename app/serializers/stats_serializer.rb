@@ -9,7 +9,7 @@ class StatsSerializer
 
   def call
     {
-      totalDistanceKm: total_distance,
+      totalDistanceKm: total_distance_km,
       totalPointsTracked: user.tracked_points.count,
       totalReverseGeocodedPoints: reverse_geocoded_points,
       totalCountriesVisited: user.countries_visited.count,
@@ -20,8 +20,10 @@ class StatsSerializer
 
   private
 
-  def total_distance
-    user.stats.sum(:distance)
+  def total_distance_km
+    # Convert from stored meters to kilometers
+    total_distance_meters = user.stats.sum(:distance)
+    (total_distance_meters / 1000.0).round(2)
   end
 
   def reverse_geocoded_points
@@ -32,7 +34,7 @@ class StatsSerializer
     user.stats.group_by(&:year).sort.reverse.map do |year, stats|
       {
         year:,
-        totalDistanceKm: stats.sum(&:distance),
+        totalDistanceKm: stats_distance_km(stats),
         totalCountriesVisited: user.countries_visited.count,
         totalCitiesVisited: user.cities_visited.count,
         monthlyDistanceKm: monthly_distance(year, stats)
@@ -40,15 +42,23 @@ class StatsSerializer
     end
   end
 
+  def stats_distance_km(stats)
+    # Convert from stored meters to kilometers
+    total_meters = stats.sum(&:distance)
+    (total_meters / 1000.0).round(2)
+  end
+
   def monthly_distance(year, stats)
     months = {}
 
-    (1..12).each { |month| months[Date::MONTHNAMES[month]&.downcase] = distance(month, year, stats) }
+    (1..12).each { |month| months[Date::MONTHNAMES[month]&.downcase] = distance_km(month, year, stats) }
 
     months
   end
 
-  def distance(month, year, stats)
-    stats.find { _1.month == month && _1.year == year }&.distance.to_i
+  def distance_km(month, year, stats)
+    # Convert from stored meters to kilometers
+    distance_meters = stats.find { _1.month == month && _1.year == year }&.distance.to_i
+    (distance_meters / 1000.0).round(2)
   end
 end

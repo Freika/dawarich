@@ -2,6 +2,7 @@
 
 class Trip < ApplicationRecord
   include Calculateable
+  include DistanceConvertible
 
   has_rich_text :notes
 

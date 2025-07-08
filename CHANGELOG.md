@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Don't check for new version in production.
 - Area popup styles are now more consistent.
 - Notification about Photon API load is now disabled.
+- All distance values are now stored in the database in meters. Conversion to user's preferred unit is done on the fly.
 
 ## Fixed
 

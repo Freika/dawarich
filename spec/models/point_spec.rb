@@ -133,11 +133,13 @@ RSpec.describe Point, type: :model do
     end
 
     describe '#trigger_incremental_track_generation' do
-      let(:point) { create(:point, track: track) }
+      let(:point) do
+        create(:point, track: track, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)
+      end
       let(:track) { create(:track) }
 
       it 'enqueues Tracks::IncrementalGeneratorJob' do
-        expect { point.trigger_incremental_track_generation }.to have_enqueued_job(Tracks::IncrementalGeneratorJob)
+        expect { point.send(:trigger_incremental_track_generation) }.to have_enqueued_job(Tracks::IncrementalGeneratorJob).with(point.user_id, point.recorded_at.to_date.to_s, 5)
       end
     end
   end

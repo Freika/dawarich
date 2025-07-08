@@ -132,40 +132,20 @@ RSpec.describe Tracks::TrackBuilder do
       ]
     end
 
-    context 'with km unit' do
-      before do
-        allow_any_instance_of(Users::SafeSettings).to receive(:distance_unit).and_return('km')
-        allow(Point).to receive(:total_distance).and_return(1.5) # 1.5 km
-      end
-
-      it 'stores distance in km' do
-        result = builder.calculate_track_distance(points)
-        expect(result).to eq(1.5) # 1.5 km with 2 decimal places precision
-      end
+    before do
+      # Mock Point.total_distance to return distance in meters
+      allow(Point).to receive(:total_distance).and_return(1500) # 1500 meters
     end
 
-    context 'with miles unit' do
-      before do
-        allow_any_instance_of(Users::SafeSettings).to receive(:distance_unit).and_return('miles')
-        allow(Point).to receive(:total_distance).and_return(1.0) # 1 mile
-      end
-
-      it 'stores distance in miles' do
-        result = builder.calculate_track_distance(points)
-        expect(result).to eq(1) # 1 mile
-      end
+    it 'stores distance in meters regardless of user unit preference' do
+      result = builder.calculate_track_distance(points)
+      expect(result).to eq(1500) # Always stored as meters
     end
 
-    context 'with nil distance unit (defaults to km)' do
-      before do
-        allow_any_instance_of(Users::SafeSettings).to receive(:distance_unit).and_return(nil)
-        allow(Point).to receive(:total_distance).and_return(2.0)
-      end
-
-      it 'defaults to km and stores distance in km' do
-        result = builder.calculate_track_distance(points)
-        expect(result).to eq(2.0) # 2.0 km with 2 decimal places precision
-      end
+    it 'rounds distance to nearest meter' do
+      allow(Point).to receive(:total_distance).and_return(1500.7)
+      result = builder.calculate_track_distance(points)
+      expect(result).to eq(1501) # Rounded to nearest meter
     end
   end
 

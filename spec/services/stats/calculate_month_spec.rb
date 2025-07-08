@@ -53,15 +53,17 @@ RSpec.describe Stats::CalculateMonth do
                lonlat: 'POINT(9.77973105800526 52.72859111523629)')
       end
 
-      context 'when units are kilometers' do
+      context 'when calculating distance' do
         it 'creates stats' do
           expect { calculate_stats }.to change { Stat.count }.by(1)
         end
 
-        it 'calculates distance' do
+        it 'calculates distance in meters consistently' do
           calculate_stats
 
-          expect(user.stats.last.distance).to eq(340)
+          # Distance should be calculated in meters regardless of user unit preference
+          # The actual distance between the test points is approximately 340 km = 340,000 meters
+          expect(user.stats.last.distance).to be_within(1000).of(340_000)
         end
 
         context 'when there is an error' do
@@ -79,33 +81,16 @@ RSpec.describe Stats::CalculateMonth do
         end
       end
 
-      context 'when units are miles' do
+      context 'when user prefers miles' do
         before do
           user.update(settings: { maps: { distance_unit: 'mi' } })
         end
 
-        it 'creates stats' do
-          expect { calculate_stats }.to change { Stat.count }.by(1)
-        end
-
-        it 'calculates distance' do
+        it 'still stores distance in meters (same as km users)' do
           calculate_stats
 
-          expect(user.stats.last.distance).to eq(211)
-        end
-
-        context 'when there is an error' do
-          before do
-            allow(Stat).to receive(:find_or_initialize_by).and_raise(StandardError)
-          end
-
-          it 'does not create stats' do
-            expect { calculate_stats }.not_to(change { Stat.count })
-          end
-
-          it 'creates a notification' do
-            expect { calculate_stats }.to change { Notification.count }.by(1)
-          end
+          # Distance stored should be the same regardless of user preference (meters)
+          expect(user.stats.last.distance).to be_within(1000).of(340_000)
         end
       end
     end

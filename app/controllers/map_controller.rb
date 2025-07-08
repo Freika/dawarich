@@ -35,22 +35,16 @@ class MapController < ApplicationController
   end
 
   def calculate_distance
-    distance = 0
+    total_distance_meters = 0
 
     @coordinates.each_cons(2) do
-      distance += Geocoder::Calculations.distance_between(
-        [_1[0], _1[1]], [_2[0], _2[1]], units: current_user.safe_settings.distance_unit.to_sym
+      distance_km = Geocoder::Calculations.distance_between(
+        [_1[0], _1[1]], [_2[0], _2[1]], units: :km
       )
+      total_distance_meters += distance_km * 1000 # Convert km to meters
     end
 
-    distance_in_meters = case current_user.safe_settings.distance_unit.to_s
-                         when 'mi'
-                           distance * 1609.344 # miles to meters
-                         else
-                           distance * 1000 # km to meters
-                         end
-
-    distance_in_meters.round
+    total_distance_meters.round
   end
 
   def parsed_start_at

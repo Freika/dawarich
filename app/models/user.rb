@@ -50,8 +50,9 @@ class User < ApplicationRecord
   end
 
   def total_distance
-    # In km or miles, depending on user.safe_settings.distance_unit
-    stats.sum(:distance)
+    # Distance is stored in meters, convert to user's preferred unit for display
+    total_distance_meters = stats.sum(:distance)
+    Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
   end
 
   def total_countries
