@@ -27,19 +27,19 @@ services:
     networks:
       - dawarich
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: dawarich_development
+      POSTGRES_USER: ${DAWARICH_DATABASE_USER}
+      POSTGRES_PASSWORD: ${DAWARICH_DATABASE_PASSWORD}
+      POSTGRES_DB: ${DAWARICH_DATABASE_NAME}
     restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d dawarich_development" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${DAWARICH_DATABASE_USER} -d ${DAWARICH_DATABASE_NAME}" ]
       interval: 10s
       retries: 5
       start_period: 30s
       timeout: 10s
     # command: postgres -c config_file=/etc/postgresql/postgresql.conf # Use custom config, uncomment if you want to use a custom config
   dawarich_app:
-    image: freikin/dawarich:latest
+    image: freikin/dawarich:${DAWARICH_VERSION}
     container_name: dawarich_app
     volumes:
       - dawarich_public:/var/app/public
@@ -56,22 +56,11 @@ services:
     entrypoint: web-entrypoint.sh
     command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: on-failure
+    env_file: '.env.dawarich-common'
     environment:
-      RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379
-      DATABASE_HOST: dawarich_db
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
       MIN_MINUTES_SPENT_IN_CITY: 60
-      APPLICATION_HOSTS: localhost
       TIME_ZONE: Europe/London
-      APPLICATION_PROTOCOL: http
-      PROMETHEUS_EXPORTER_ENABLED: "false"
       PROMETHEUS_EXPORTER_HOST: 0.0.0.0
-      PROMETHEUS_EXPORTER_PORT: 9394
-      SELF_HOSTED: "true"
-      STORE_GEODATA: "true"
     logging:
       driver: "json-file"
       options:
@@ -96,7 +85,7 @@ services:
           cpus: '0.50'    # Limit CPU usage to 50% of one core
           memory: '4G'    # Limit memory usage to 4GB
   dawarich_sidekiq:
-    image: freikin/dawarich:latest
+    image: freikin/dawarich:${DAWARICH_VERSION}
     container_name: dawarich_sidekiq
     volumes:
       - dawarich_public:/var/app/public
@@ -109,21 +98,10 @@ services:
     entrypoint: sidekiq-entrypoint.sh
     command: ['sidekiq']
     restart: on-failure
+    env_file: '.env.dawarich-common'
     environment:
-      RAILS_ENV: development
-      REDIS_URL: redis://dawarich_redis:6379
-      DATABASE_HOST: dawarich_db
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: dawarich_development
-      APPLICATION_HOSTS: localhost
       BACKGROUND_PROCESSING_CONCURRENCY: 10
-      APPLICATION_PROTOCOL: http
-      PROMETHEUS_EXPORTER_ENABLED: "false"
       PROMETHEUS_EXPORTER_HOST: dawarich_app
-      PROMETHEUS_EXPORTER_PORT: 9394
-      SELF_HOSTED: "true"
-      STORE_GEODATA: "true"
     logging:
       driver: "json-file"
       options:
