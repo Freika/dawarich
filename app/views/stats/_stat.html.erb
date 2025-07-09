@@ -1,31 +1,30 @@
-<div id="<%= dom_id stat %>" class="card w-full bg-base-200 shadow-xl">
-  <div class="card-body">
-    <div class="flex justify-between items-center">
-      <h2 class="card-title">
-        <%= link_to map_url(timespan(stat.month, stat.year)), class: "underline hover:no-underline text-#{header_colors.sample}" do %>
-          <%= Date::MONTHNAMES[stat.month] %>
-        <% end %>
-      </h2>
+<div class="border border-gray-500 rounded-md border-opacity-30 bg-gray-100 dark:bg-gray-800 p-3">
+  <div class="flex justify-between">
+    <h4 class="stat-title text-left"><%= Date::MONTHNAMES[stat.month] %> <%= stat.year %></h4>
 
-      <div class="gap-2">
-        <span class='text-xs text-gray-500'>Last update <%= human_date(stat.updated_at) %></span>
-        <%= link_to '🔄', update_year_month_stats_path(stat.year, stat.month), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
-      </div>
+    <div class="flex items-center space-x-2">
+      <%= link_to "Details", points_path(year: stat.year, month: stat.month),
+          class: "link link-primary" %>
     </div>
-    <p><%= number_with_delimiter stat.distance %><%= current_user.safe_settings.distance_unit %></p>
-    <% if DawarichSettings.reverse_geocoding_enabled? %>
-      <div class="card-actions justify-end">
-        <%= countries_and_cities_stat_for_month(stat) %>
-      </div>
-    <% end %>
-    <% if stat.daily_distance %>
-      <%= column_chart(
-        stat.daily_distance,
-        height: '100px',
-        suffix: " #{current_user.safe_settings.distance_unit}",
-        xtitle: 'Days',
-        ytitle: 'Distance'
-      ) %>
-    <% end %>
   </div>
+
+  <div class="flex">
+    <div class="stat-value">
+      <p><%= number_with_delimiter stat.distance_in_unit(current_user.safe_settings.distance_unit).round %><%= current_user.safe_settings.distance_unit %></p>
+    </div>
+  </div>
+
+  <div class="stat-desc">
+    <%= countries_and_cities_stat_for_month(stat) %>
+  </div>
+
+  <%= area_chart(
+    stat.daily_distance.map { |day, distance_meters|
+      [day, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round(2)]
+    },
+    height: '200px',
+    suffix: " #{current_user.safe_settings.distance_unit}",
+    xtitle: 'Day',
+    ytitle: 'Distance'
+  ) %>
 </div>

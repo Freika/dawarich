@@ -8,6 +8,7 @@ RSpec.describe Point, type: :model do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to belong_to(:country).optional }
     it { is_expected.to belong_to(:visit).optional }
+    it { is_expected.to belong_to(:track).optional }
   end
 
   describe 'validations' do
@@ -26,6 +27,17 @@ RSpec.describe Point, type: :model do
         point.save!
 
         expect(point.country_id).to eq(country.id)
+      end
+    end
+
+    describe '#recalculate_track' do
+      let(:point) { create(:point, track: track) }
+      let(:track) { create(:track) }
+
+      it 'recalculates the track' do
+        expect(track).to receive(:recalculate_path_and_distance!)
+
+        point.update(lonlat: 'POINT(-79.85581250721961 15.854775993302411)')
       end
     end
   end
@@ -106,6 +118,17 @@ RSpec.describe Point, type: :model do
 
       it 'returns latitude' do
         expect(point.lat).to eq(2)
+      end
+    end
+
+    describe '#trigger_incremental_track_generation' do
+      let(:point) do
+        create(:point, track: track, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)
+      end
+      let(:track) { create(:track) }
+
+      it 'enqueues Tracks::IncrementalGeneratorJob' do
+        expect { point.send(:trigger_incremental_track_generation) }.to have_enqueued_job(Tracks::IncrementalGeneratorJob).with(point.user_id, point.recorded_at.to_date.to_s, 5)
       end
     end
   end

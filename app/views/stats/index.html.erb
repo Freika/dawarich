@@ -4,7 +4,7 @@
   <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200">
     <div class="stat text-center">
       <div class="stat-value text-primary">
-        <%= number_with_delimiter(current_user.total_distance) %> <%= current_user.safe_settings.distance_unit %>
+        <%= number_with_delimiter(current_user.total_distance.round) %> <%= current_user.safe_settings.distance_unit %>
       </div>
       <div class="stat-title">Total distance</div>
     </div>
@@ -82,7 +82,9 @@
             </div>
           <% end %>
           <%= column_chart(
-            Stat.year_distance(year, current_user),
+            Stat.year_distance(year, current_user).map { |month_name, distance_meters|
+              [month_name, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round(2)]
+            },
             height: '200px',
             suffix: " #{current_user.safe_settings.distance_unit}",
             xtitle: 'Days',

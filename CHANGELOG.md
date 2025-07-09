@@ -4,16 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 # [0.29.2] - UNRELEASED
 
 ## Added
 
-- In the User Settings -> Background Jobs, you can now enable or disable visits suggestions. It's a background task that runs every day at midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
+- In the User Settings -> Background Jobs, you can now disable visits suggestions, which is enabled by default. It's a background task that runs every day around midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
+- Tracks are now being calculated and stored in the database instead of being calculated on the fly in the browser. This will make the map page load faster.
 
 ## Changed
 
 - Don't check for new version in production.
 - Area popup styles are now more consistent.
+- Notification about Photon API load is now disabled.
+- All distance values are now stored in the database in meters. Conversion to user's preferred unit is done on the fly.
 
 ## Fixed
 

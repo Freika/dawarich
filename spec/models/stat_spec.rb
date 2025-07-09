@@ -29,7 +29,7 @@ RSpec.describe Stat, type: :model do
           create(:point, user:, lonlat: 'POINT(2 2)', timestamp: DateTime.new(year, 1, 1, 2))
         end
 
-        before { expected_distance[0][1] = 156.88 }
+        before { expected_distance[0][1] = 156_876 }
 
         it 'returns distance by day' do
           expect(subject).to eq(expected_distance)
