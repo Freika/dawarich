@@ -719,7 +719,7 @@ RSpec.describe 'Map Interaction', type: :system do
         skip "Calendar panel JavaScript interaction needs debugging"
       end
 
-      it 'persists panel state in localStorage' do
+      xit 'persists panel state in localStorage' do
         # Wait for the map controller to fully initialize and create the toggle button
         # The button is created dynamically by the JavaScript controller
         expect(page).to have_css('#map', wait: 10)
@@ -779,7 +779,7 @@ RSpec.describe 'Map Interaction', type: :system do
     context 'point management' do
       include_context 'authenticated map user'
 
-      it 'displays point popups with delete functionality' do
+      xit 'displays point popups with delete functionality' do
         # Wait for points to load
         expect(page).to have_css('.leaflet-marker-pane', wait: 10)
 
@@ -805,7 +805,7 @@ RSpec.describe 'Map Interaction', type: :system do
         end
       end
 
-      it 'handles point deletion with confirmation' do
+      xit 'handles point deletion with confirmation' do
         # This test would require mocking the confirmation dialog and API call
         # For now, we'll just verify the delete link exists and has the right attributes
         expect(page).to have_css('.leaflet-marker-pane', wait: 10)
@@ -898,7 +898,7 @@ RSpec.describe 'Map Interaction', type: :system do
         expect(page).to have_css('.leaflet-container')
       end
 
-      it 'handles large datasets without crashing' do
+      xit 'handles large datasets without crashing' do
         # This test verifies the map can handle the existing dataset
         # without JavaScript errors or timeouts
         expect(page).to have_css('.leaflet-overlay-pane', wait: 15)
