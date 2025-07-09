@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Added
 
-- In the User Settings -> Background Jobs, you can now enable or disable visits suggestions. It's a background task that runs every day at midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
+- In the User Settings -> Background Jobs, you can now disable visits suggestions, which is enabled by default. It's a background task that runs every day around midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
 - Tracks are now being calculated and stored in the database instead of being calculated on the fly in the browser. This will make the map page load faster.
 
 ## Changed

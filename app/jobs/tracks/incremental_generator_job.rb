@@ -24,7 +24,7 @@ class Tracks::IncrementalGeneratorJob < ApplicationJob
       user,
       point_loader: Tracks::PointLoaders::IncrementalLoader.new(user, day),
       incomplete_segment_handler: Tracks::IncompleteSegmentHandlers::BufferHandler.new(user, day, grace_period_minutes),
-      track_cleaner: Tracks::TrackCleaners::NoOpCleaner.new(user)
+      track_cleaner: Tracks::Cleaners::NoOpCleaner.new(user)
     )
   end
 end

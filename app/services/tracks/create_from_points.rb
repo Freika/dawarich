@@ -4,12 +4,13 @@ class Tracks::CreateFromPoints
   include Tracks::Segmentation
   include Tracks::TrackBuilder
 
-  attr_reader :user, :start_at, :end_at
+  attr_reader :user, :start_at, :end_at, :cleaning_strategy
 
-  def initialize(user, start_at: nil, end_at: nil)
+  def initialize(user, start_at: nil, end_at: nil, cleaning_strategy: :replace)
     @user = user
     @start_at = start_at
     @end_at = end_at
+    @cleaning_strategy = cleaning_strategy
   end
 
   def call
@@ -46,8 +47,16 @@ class Tracks::CreateFromPoints
       Tracks::IncompleteSegmentHandlers::IgnoreHandler.new(user)
   end
 
-  def track_cleaner
-    @track_cleaner ||= Tracks::TrackCleaners::ReplaceCleaner.new(user, start_at: start_at, end_at: end_at)
+    def track_cleaner
+    @track_cleaner ||=
+      case cleaning_strategy
+      when :daily
+        Tracks::Cleaners::DailyCleaner.new(user, start_at: start_at, end_at: end_at)
+      when :none
+        Tracks::Cleaners::NoOpCleaner.new(user)
+      else # :replace (default)
+        Tracks::Cleaners::ReplaceCleaner.new(user, start_at: start_at, end_at: end_at)
+      end
   end
 
   # Legacy method for backward compatibility with tests

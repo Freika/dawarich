@@ -6,7 +6,7 @@ RSpec.describe Tracks::Generator do
   let(:user) { create(:user) }
   let(:point_loader) { double('PointLoader') }
   let(:incomplete_segment_handler) { double('IncompleteSegmentHandler') }
-  let(:track_cleaner) { double('TrackCleaner') }
+  let(:track_cleaner) { double('Cleaner') }
 
   let(:generator) do
     described_class.new(
@@ -200,7 +200,7 @@ RSpec.describe Tracks::Generator do
     context 'with bulk processing strategies' do
       let(:bulk_loader) { Tracks::PointLoaders::BulkLoader.new(user) }
       let(:ignore_handler) { Tracks::IncompleteSegmentHandlers::IgnoreHandler.new(user) }
-      let(:replace_cleaner) { Tracks::TrackCleaners::ReplaceCleaner.new(user) }
+      let(:replace_cleaner) { Tracks::Cleaners::ReplaceCleaner.new(user) }
 
       let(:bulk_generator) do
         described_class.new(
@@ -231,7 +231,7 @@ RSpec.describe Tracks::Generator do
     context 'with incremental processing strategies' do
       let(:incremental_loader) { Tracks::PointLoaders::IncrementalLoader.new(user) }
       let(:buffer_handler) { Tracks::IncompleteSegmentHandlers::BufferHandler.new(user, Date.current, 5) }
-      let(:noop_cleaner) { Tracks::TrackCleaners::NoOpCleaner.new(user) }
+      let(:noop_cleaner) { Tracks::Cleaners::NoOpCleaner.new(user) }
 
       let(:incremental_generator) do
         described_class.new(

@@ -1,0 +1,3 @@
+web: bundle exec puma -C config/puma.rb
+worker: bundle exec sidekiq -C config/sidekiq.yml
+prometheus_exporter: bundle exec prometheus_exporter -b ANY

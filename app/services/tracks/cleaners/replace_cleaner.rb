@@ -23,11 +23,11 @@
 # for incremental processing where existing tracks should be preserved.
 #
 # Example usage:
-#   cleaner = Tracks::TrackCleaners::ReplaceCleaner.new(user, start_at: 1.week.ago, end_at: Time.current)
+#   cleaner = Tracks::Cleaners::ReplaceCleaner.new(user, start_at: 1.week.ago, end_at: Time.current)
 #   cleaner.cleanup
 #
 module Tracks
-  module TrackCleaners
+  module Cleaners
     class ReplaceCleaner
       attr_reader :user, :start_at, :end_at
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Tracks
-  module TrackCleaners
+  module Cleaners
     class NoOpCleaner
       def initialize(user)
         @user = user

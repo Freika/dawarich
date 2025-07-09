@@ -13,6 +13,10 @@ RSpec.describe Tracks::CreateFromPoints do
       expect(service.time_threshold_minutes).to eq(user.safe_settings.minutes_between_routes.to_i)
     end
 
+    it 'defaults to replace cleaning strategy' do
+      expect(service.cleaning_strategy).to eq(:replace)
+    end
+
     context 'with custom user settings' do
       before do
         user.update!(settings: user.settings.merge({
@@ -25,6 +29,28 @@ RSpec.describe Tracks::CreateFromPoints do
         service = described_class.new(user)
         expect(service.distance_threshold_meters).to eq(1000)
         expect(service.time_threshold_minutes).to eq(60)
+      end
+    end
+
+    context 'with custom cleaning strategy' do
+      it 'accepts daily cleaning strategy' do
+        service = described_class.new(user, cleaning_strategy: :daily)
+        expect(service.cleaning_strategy).to eq(:daily)
+      end
+
+      it 'accepts none cleaning strategy' do
+        service = described_class.new(user, cleaning_strategy: :none)
+        expect(service.cleaning_strategy).to eq(:none)
+      end
+
+      it 'accepts custom date range with cleaning strategy' do
+        start_time = 1.day.ago.beginning_of_day.to_i
+        end_time = 1.day.ago.end_of_day.to_i
+        service = described_class.new(user, start_at: start_time, end_at: end_time, cleaning_strategy: :daily)
+
+        expect(service.start_at).to eq(start_time)
+        expect(service.end_at).to eq(end_time)
+        expect(service.cleaning_strategy).to eq(:daily)
       end
     end
   end
@@ -153,6 +179,58 @@ RSpec.describe Tracks::CreateFromPoints do
       it 'destroys existing tracks and creates new ones' do
         expect { service.call }.to change(Track, :count).by(0) # -1 + 1
         expect(Track.exists?(existing_track.id)).to be false
+      end
+
+      context 'with none cleaning strategy' do
+        let(:service) { described_class.new(user, cleaning_strategy: :none) }
+
+        it 'preserves existing tracks and creates new ones' do
+          expect { service.call }.to change(Track, :count).by(1) # +1, existing preserved
+          expect(Track.exists?(existing_track.id)).to be true
+        end
+      end
+    end
+
+    context 'with different cleaning strategies' do
+      let!(:points) do
+        [
+          create(:point, user: user, timestamp: 1.hour.ago.to_i,
+                lonlat: 'POINT(-74.0060 40.7128)'),
+          create(:point, user: user, timestamp: 50.minutes.ago.to_i,
+                lonlat: 'POINT(-74.0070 40.7130)')
+        ]
+      end
+
+      it 'works with replace strategy (default)' do
+        service = described_class.new(user, cleaning_strategy: :replace)
+        expect { service.call }.to change(Track, :count).by(1)
+      end
+
+            it 'works with daily strategy' do
+        # Create points within the daily range we're testing
+        start_time = 1.day.ago.beginning_of_day.to_i
+        end_time = 1.day.ago.end_of_day.to_i
+
+        # Create test points within the daily range
+        create(:point, user: user, timestamp: start_time + 1.hour.to_i,
+               lonlat: 'POINT(-74.0060 40.7128)')
+        create(:point, user: user, timestamp: start_time + 2.hours.to_i,
+               lonlat: 'POINT(-74.0070 40.7130)')
+
+        # Create an existing track that overlaps with our time window
+        existing_track = create(:track, user: user,
+                               start_at: Time.zone.at(start_time - 1.hour),
+                               end_at: Time.zone.at(start_time + 30.minutes))
+
+        service = described_class.new(user, start_at: start_time, end_at: end_time, cleaning_strategy: :daily)
+
+        # Daily cleaning should handle existing tracks properly and create new ones
+        expect { service.call }.to change(Track, :count).by(0) # existing cleaned and new created
+      end
+
+      it 'works with none strategy' do
+        service = described_class.new(user, cleaning_strategy: :none)
+        expect { service.call }.to change(Track, :count).by(1)
       end
     end
 

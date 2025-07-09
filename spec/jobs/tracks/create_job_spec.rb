@@ -10,7 +10,7 @@ RSpec.describe Tracks::CreateJob, type: :job do
     let(:notification_service) { instance_double(Notifications::Create) }
 
     before do
-      allow(Tracks::CreateFromPoints).to receive(:new).with(user).and_return(service_instance)
+      allow(Tracks::CreateFromPoints).to receive(:new).with(user, start_at: nil, end_at: nil, cleaning_strategy: :replace).and_return(service_instance)
       allow(service_instance).to receive(:call).and_return(3)
       allow(Notifications::Create).to receive(:new).and_return(notification_service)
       allow(notification_service).to receive(:call)
@@ -19,7 +19,7 @@ RSpec.describe Tracks::CreateJob, type: :job do
     it 'calls the service and creates a notification' do
       described_class.new.perform(user.id)
 
-      expect(Tracks::CreateFromPoints).to have_received(:new).with(user)
+      expect(Tracks::CreateFromPoints).to have_received(:new).with(user, start_at: nil, end_at: nil, cleaning_strategy: :replace)
       expect(service_instance).to have_received(:call)
       expect(Notifications::Create).to have_received(:new).with(
         user: user,
@@ -30,13 +30,40 @@ RSpec.describe Tracks::CreateJob, type: :job do
       expect(notification_service).to have_received(:call)
     end
 
+    context 'with custom parameters' do
+      let(:start_at) { 1.day.ago.beginning_of_day.to_i }
+      let(:end_at) { 1.day.ago.end_of_day.to_i }
+      let(:cleaning_strategy) { :daily }
+
+      before do
+        allow(Tracks::CreateFromPoints).to receive(:new).with(user, start_at: start_at, end_at: end_at, cleaning_strategy: cleaning_strategy).and_return(service_instance)
+        allow(service_instance).to receive(:call).and_return(2)
+        allow(Notifications::Create).to receive(:new).and_return(notification_service)
+        allow(notification_service).to receive(:call)
+      end
+
+      it 'passes custom parameters to the service' do
+        described_class.new.perform(user.id, start_at: start_at, end_at: end_at, cleaning_strategy: cleaning_strategy)
+
+        expect(Tracks::CreateFromPoints).to have_received(:new).with(user, start_at: start_at, end_at: end_at, cleaning_strategy: cleaning_strategy)
+        expect(service_instance).to have_received(:call)
+        expect(Notifications::Create).to have_received(:new).with(
+          user: user,
+          kind: :info,
+          title: 'Tracks Generated',
+          content: 'Created 2 tracks from your location data. Check your tracks section to view them.'
+        )
+        expect(notification_service).to have_received(:call)
+      end
+    end
+
     context 'when service raises an error' do
       let(:error_message) { 'Something went wrong' }
       let(:service_instance) { instance_double(Tracks::CreateFromPoints) }
       let(:notification_service) { instance_double(Notifications::Create) }
 
       before do
-        allow(Tracks::CreateFromPoints).to receive(:new).with(user).and_return(service_instance)
+        allow(Tracks::CreateFromPoints).to receive(:new).with(user, start_at: nil, end_at: nil, cleaning_strategy: :replace).and_return(service_instance)
         allow(service_instance).to receive(:call).and_raise(StandardError, error_message)
         allow(Notifications::Create).to receive(:new).and_return(notification_service)
         allow(notification_service).to receive(:call)

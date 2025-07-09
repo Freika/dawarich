@@ -130,8 +130,8 @@ export default class extends BaseController {
           distance = distance * 0.621371; // km to miles conversion
         }
 
-        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
-        div.innerHTML = `${distance.toFixed(1)} ${unit} | ${pointsNumber} points`;
+        const unit = this.distanceUnit === 'km' ? 'km' : 'mi';
+        div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
         div.style.backgroundColor = 'white';
         div.style.padding = '0 5px';
         div.style.marginRight = '5px';
@@ -746,7 +746,7 @@ export default class extends BaseController {
 
       // Form HTML
       div.innerHTML = `
-        <form id="settings-form" style="overflow-y: auto; height: 36rem; width: 12rem;">
+        <form id="settings-form" style="overflow-y: auto; max-height: 70vh; width: 12rem; padding-right: 5px;">
           <label for="route-opacity">Route Opacity, %</label>
           <div class="join">
             <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="10" max="100" step="10" value="${Math.round(this.routeOpacity * 100)}">
@@ -821,17 +821,6 @@ export default class extends BaseController {
             <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class='w-4' style="width: 20px;" ${this.speedColoredRoutesChecked()} />
           </label>
 
-          <hr class="my-2">
-
-          <h4 style="font-weight: bold; margin: 8px 0;">Track Settings</h4>
-
-          <label for="tracks_visible">
-            Show Tracks
-            <input type="checkbox" id="tracks_visible" name="tracks_visible" class='w-4' style="width: 20px;" ${this.tracksVisible ? 'checked' : ''} />
-          </label>
-
-
-
           <label for="speed_color_scale">Speed color scale</label>
           <div class="join">
             <input type="text" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="speed_color_scale" name="speed_color_scale" min="5" max="100" step="1" value="${this.speedColorScale}">
@@ -859,14 +848,6 @@ export default class extends BaseController {
       if (editBtn) {
         editBtn.addEventListener("click", this.showGradientEditor.bind(this));
       }
-
-      // Add track control event listeners
-      const tracksVisibleCheckbox = div.querySelector("#tracks_visible");
-      if (tracksVisibleCheckbox) {
-        tracksVisibleCheckbox.addEventListener("change", this.toggleTracksVisibility.bind(this));
-      }
-
-
 
       // Add event listener to the form submission
       div.querySelector('#settings-form').addEventListener(

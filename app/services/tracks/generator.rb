@@ -26,7 +26,7 @@
 #     user,
 #     point_loader: Tracks::PointLoaders::BulkLoader.new(user),
 #     incomplete_segment_handler: Tracks::IncompleteSegmentHandlers::IgnoreHandler.new(user),
-#     track_cleaner: Tracks::TrackCleaners::ReplaceCleaner.new(user)
+#     track_cleaner: Tracks::Cleaners::ReplaceCleaner.new(user)
 #   )
 #   tracks_created = generator.call
 #

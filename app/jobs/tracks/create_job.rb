@@ -3,9 +3,9 @@
 class Tracks::CreateJob < ApplicationJob
   queue_as :default
 
-  def perform(user_id)
+  def perform(user_id, start_at: nil, end_at: nil, cleaning_strategy: :replace)
     user = User.find(user_id)
-    tracks_created = Tracks::CreateFromPoints.new(user).call
+    tracks_created = Tracks::CreateFromPoints.new(user, start_at:, end_at:, cleaning_strategy:).call
 
     create_success_notification(user, tracks_created)
   rescue StandardError => e
