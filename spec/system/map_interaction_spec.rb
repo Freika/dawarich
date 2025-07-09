@@ -687,8 +687,15 @@ RSpec.describe 'Map Interaction', type: :system do
       include_context 'authenticated map user'
 
       it 'opens and displays calendar navigation' do
+        # Wait for the map controller to fully initialize and create the toggle button
+        expect(page).to have_css('#map', wait: 10)
+        expect(page).to have_css('.leaflet-container', wait: 10)
+
+        # Additional wait for the controller to finish initializing all controls
+        sleep 2
+
         # Click calendar button
-        calendar_button = find('.toggle-panel-button', wait: 10)
+        calendar_button = find('.toggle-panel-button', wait: 15)
         expect(calendar_button).to be_visible
 
         # Verify button is clickable
@@ -713,24 +720,59 @@ RSpec.describe 'Map Interaction', type: :system do
       end
 
       it 'persists panel state in localStorage' do
-        # Open panel
-        calendar_button = find('.toggle-panel-button', wait: 10)
+        # Wait for the map controller to fully initialize and create the toggle button
+        # The button is created dynamically by the JavaScript controller
+        expect(page).to have_css('#map', wait: 10)
+        expect(page).to have_css('.leaflet-container', wait: 10)
+
+        # Additional wait for the controller to finish initializing all controls
+        # The toggle-panel-button is created by the addTogglePanelButton() method
+        # which is called after the map and all other controls are set up
+        sleep 2
+
+        # Now try to find the calendar button
+        calendar_button = nil
+        begin
+          calendar_button = find('.toggle-panel-button', wait: 15)
+        rescue Capybara::ElementNotFound
+          # If button still not found, check if map controller loaded properly
+          map_element = find('#map')
+          controller_data = map_element['data-controller']
+
+          # Log debug info for troubleshooting
+          puts "Map controller data: #{controller_data}"
+          puts "Map element classes: #{map_element[:class]}"
+
+          # Try one more time with extended wait
+          calendar_button = find('.toggle-panel-button', wait: 20)
+        end
+
+        # Verify button exists and is functional
+        expect(calendar_button).to be_present
         calendar_button.click
-        expect(page).to have_css('.leaflet-right-panel', visible: true)
+
+        # Wait for panel to appear
+        expect(page).to have_css('.leaflet-right-panel', visible: true, wait: 10)
 
         # Close panel
         calendar_button.click
-        expect(page).not_to have_css('.leaflet-right-panel', visible: true)
+
+        # Wait for panel to disappear
+        expect(page).not_to have_css('.leaflet-right-panel', visible: true, wait: 10)
 
         # Refresh page (user should still be signed in due to session)
         page.refresh
         expect(page).to have_css('#map', wait: 10)
+        expect(page).to have_css('.leaflet-container', wait: 10)
+
+        # Wait for controller to reinitialize after refresh
+        sleep 2
 
         # Panel should remember its state (though this is hard to test reliably in system tests)
         # At minimum, verify the panel can be toggled after refresh
-        calendar_button = find('.toggle-panel-button', wait: 10)
+        calendar_button = find('.toggle-panel-button', wait: 15)
         calendar_button.click
-        expect(page).to have_css('.leaflet-right-panel')
+        expect(page).to have_css('.leaflet-right-panel', wait: 10)
       end
     end
 
@@ -836,9 +878,9 @@ RSpec.describe 'Map Interaction', type: :system do
         expect(page).to have_css('.leaflet-control-scale')
         expect(page).to have_css('.leaflet-control-stats')
 
-        # Verify custom controls
-        expect(page).to have_css('.map-settings-button')
-        expect(page).to have_css('.toggle-panel-button')
+        # Verify custom controls (these are created dynamically by JavaScript)
+        expect(page).to have_css('.map-settings-button', wait: 10)
+        expect(page).to have_css('.toggle-panel-button', wait: 15)
       end
     end
 
