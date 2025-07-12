@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# [0.29.2] - UNRELEASED
+# [0.29.2] - 2025-07-12
 
 ## Added
 
@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Area popup styles are now more consistent.
 - Notification about Photon API load is now disabled.
 - All distance values are now stored in the database in meters. Conversion to user's preferred unit is done on the fly.
+- Every night, Dawarich will try to fetch names for places and visits that don't have them. #1281 #902 #583 #212
 
 ## Fixed
 
