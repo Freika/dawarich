@@ -1,0 +1,33 @@
+# frozen_string_literal: true
+
+module Places
+  class NameFetcher
+    def initialize(place)
+      @place = place
+    end
+
+    def call
+      geodata = Geocoder.search([@place.lat, @place.lon], units: :km, limit: 1, distance_sort: true).first
+
+      return if geodata.blank?
+
+      properties = geodata.data&.dig('properties')
+      return if properties.blank?
+
+      ActiveRecord::Base.transaction do
+        @place.name = properties['name']
+        @place.city = properties['city']
+        @place.country = properties['country']
+        @place.geodata = geodata.data if DawarichSettings.store_geodata?
+        @place.save!
+
+        @place
+          .visits
+          .where(name: Place::DEFAULT_NAME)
+          .update_all(name: properties['name'])
+
+        @place
+      end
+    end
+  end
+end

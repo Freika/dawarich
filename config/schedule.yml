@@ -34,3 +34,8 @@ tracks_bulk_creating_job:
   cron: "10 0 * * *" # every day at 00:10
   class: "Tracks::BulkCreatingJob"
   queue: tracks
+
+place_name_fetching_job:
+  cron: "30 0 * * *" # every day at 00:30
+  class: "Places::NameFetchingJob"
+  queue: places
