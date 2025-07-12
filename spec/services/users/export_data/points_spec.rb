@@ -56,20 +56,13 @@ RSpec.describe Users::ExportData::Points, type: :service do
         )
       end
       let(:point_without_relationships) do
-        point = create(:point,
+        create(:point,
           user: user,
           timestamp: 1640995260,
           longitude: -73.9857,
           latitude: 40.7484,
           lonlat: 'POINT(-73.9857 40.7484)'
         )
-        # Force remove all relationships to ensure clean test
-        point.update_columns(
-          country_id: nil,
-          import_id: nil,
-          visit_id: nil
-        )
-        point
       end
 
       before do
