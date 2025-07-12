@@ -20,7 +20,7 @@ RSpec.describe Places::BulkNameFetchingJob, type: :job do
 
     it 'can be enqueued' do
       expect { described_class.perform_later }.to have_enqueued_job(described_class)
-        .on_queue('default')
+        .on_queue('places')
     end
   end
 end

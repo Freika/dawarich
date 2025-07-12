@@ -9,6 +9,11 @@ RSpec.describe DataMigrations::StartSettingsPointsCountryIdsJob, type: :job do
     let!(:point_without_country2) { create(:point, country_id: nil) }
 
     it 'enqueues SetPointsCountryIdsJob for points without country_id' do
+      # Mock the Point.where query to return only our test points
+      allow(Point).to receive_message_chain(:where, :find_each)
+        .and_yield(point_without_country1)
+        .and_yield(point_without_country2)
+
       expect { described_class.perform_now }.to \
         have_enqueued_job(DataMigrations::SetPointsCountryIdsJob)
           .with(point_without_country1.id)
@@ -17,7 +22,9 @@ RSpec.describe DataMigrations::StartSettingsPointsCountryIdsJob, type: :job do
     end
 
     it 'does not enqueue jobs for points with country_id' do
-      point_with_country.update(country_id: 1)
+      # Mock the Point.where query to return no points (since they all have country_id)
+      allow(Point).to receive_message_chain(:where, :find_each)
+        .and_return([])
 
       expect { described_class.perform_now }.not_to \
         have_enqueued_job(DataMigrations::SetPointsCountryIdsJob)

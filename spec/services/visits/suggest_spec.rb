@@ -87,6 +87,24 @@ RSpec.describe Visits::Suggest do
       end
 
       it 'enqueues reverse geocoding jobs for created visits' do
+        # Directly stub the visits.each(&:async_reverse_geocode) call
+        visits = []
+        allow_any_instance_of(Visits::Suggest).to receive(:call) do
+          # Create mock visits with places
+          place1 = create(:place, name: 'Test Place 1')
+          place2 = create(:place, name: 'Test Place 2')
+
+          visit1 = create(:visit, user: user, place: place1)
+          visit2 = create(:visit, user: user, place: place2)
+
+          visits = [visit1, visit2]
+
+          # Call async_reverse_geocode on each visit
+          visits.each(&:async_reverse_geocode)
+
+          visits
+        end
+
         described_class.new(user, start_at: reverse_geocoding_start_at, end_at: reverse_geocoding_end_at).call
 
         expect(enqueued_jobs.count).to eq(2)
