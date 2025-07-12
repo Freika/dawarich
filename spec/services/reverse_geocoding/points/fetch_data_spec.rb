@@ -5,12 +5,7 @@ require 'rails_helper'
 RSpec.describe ReverseGeocoding::Points::FetchData do
   subject(:fetch_data) { described_class.new(point.id).call }
 
-  let(:point) do
-    p = create(:point)
-    # Force the point to have no country_id, city, or reverse_geocoded_at
-    p.update_columns(country_id: nil, city: nil, reverse_geocoded_at: nil)
-    p
-  end
+  let(:point) { create(:point) }
 
   context 'when Geocoder returns city and country' do
     let!(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
@@ -32,18 +27,12 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
     context 'when point does not have city and country' do
       it 'updates point with city and country' do
-        # Mock the Country.find_by to return our test country
-        allow(Country).to receive(:find_by).with(name: 'Germany').and_return(germany)
-
         expect { fetch_data }.to change { point.reload.city }
           .from(nil).to('Berlin')
           .and change { point.reload.country_id }.from(nil).to(germany.id)
       end
 
       it 'finds existing country' do
-        # Mock the Country.find_by to return our test country
-        allow(Country).to receive(:find_by).with(name: 'Germany').and_return(germany)
-
         fetch_data
         country = point.reload.country
         expect(country.name).to eq('Germany')
@@ -52,9 +41,6 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
       end
 
       it 'updates point with geodata' do
-        # Mock the Country.find_by to return our test country
-        allow(Country).to receive(:find_by).with(name: 'Germany').and_return(germany)
-
         expect { fetch_data }.to change { point.reload.geodata }.from({}).to(
           'address' => 'Address',
           'properties' => { 'countrycode' => 'DE' }

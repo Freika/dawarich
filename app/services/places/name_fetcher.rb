@@ -15,16 +15,18 @@ module Places
       return if properties.blank?
 
       ActiveRecord::Base.transaction do
-        @place.name = properties['name']
-        @place.city = properties['city']
-        @place.country = properties['country']
+        @place.name = properties['name'] if properties['name'].present?
+        @place.city = properties['city'] if properties['city'].present?
+        @place.country = properties['country'] if properties['country'].present?
         @place.geodata = geodata.data if DawarichSettings.store_geodata?
         @place.save!
 
-        @place
-          .visits
-          .where(name: Place::DEFAULT_NAME)
-          .update_all(name: properties['name'])
+        if properties['name'].present?
+          @place
+            .visits
+            .where(name: Place::DEFAULT_NAME)
+            .update_all(name: properties['name'])
+        end
 
         @place
       end
