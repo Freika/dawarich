@@ -10,5 +10,10 @@
   "engines": {
     "node": "18.17.1",
     "npm": "9.6.7"
-  }
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^24.0.13"
+  },
+  "scripts": {}
 }

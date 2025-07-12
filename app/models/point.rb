@@ -92,6 +92,9 @@ class Point < ApplicationRecord
   end
 
   def country_name
+    # We have a country column in the database,
+    # but we also have a country_id column.
+    # TODO: rename country column to country_name
     self.country&.name || read_attribute(:country) || ''
   end
 
