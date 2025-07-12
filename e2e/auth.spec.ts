@@ -49,8 +49,8 @@ test.describe('Authentication', () => {
 
       // Should stay on login page and show error
       await expect(page).toHaveURL(/\/users\/sign_in/);
-      // Devise shows error messages - look for error indication
-      const errorMessage = page.locator('#error_explanation, .alert, .flash').filter({ hasText: /invalid/i });
+      // Look for flash message with error styling
+      const errorMessage = page.locator('.bg-red-100, .text-red-700, .alert-error');
       if (await errorMessage.isVisible()) {
         await expect(errorMessage).toBeVisible();
       }
@@ -139,8 +139,6 @@ test.describe('Authentication', () => {
     });
   });
 
-  // NOTE: Update TEST_USERS in fixtures/test-helpers.ts with correct credentials
-  // that match your localhost:3000 server setup
   test.describe('Password Management', () => {
     test('should display forgot password form', async ({ page }) => {
       await page.goto('/users/sign_in');
@@ -155,16 +153,19 @@ test.describe('Authentication', () => {
     test('should handle password reset request', async ({ page }) => {
       await page.goto('/users/password/new');
 
-      // Fill the email but don't submit to avoid sending actual reset emails
+      // Fill the email and actually submit the form
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
+      await page.getByRole('button', { name: 'Send me reset password instructions' }).click();
 
-      // Verify the form elements exist and are functional
-      await expect(page.getByRole('button', { name: 'Send me reset password instructions' })).toBeVisible();
-      await expect(page.getByLabel('Email')).toHaveValue(TEST_USERS.DEMO.email);
+      // Wait for response and check URL
+      await page.waitForLoadState('networkidle');
 
-      // Test form validation by clearing email and checking if button is still clickable
-      await page.getByLabel('Email').fill('');
-      await expect(page.getByRole('button', { name: 'Send me reset password instructions' })).toBeVisible();
+      // Should redirect to login page after successful submission
+      await expect(page).toHaveURL(/\/users\/sign_in/);
+
+      // Look for success flash message with correct Devise message
+      const successMessage = page.locator('.bg-blue-100, .text-blue-700').filter({ hasText: /instructions.*reset.*password.*minutes/i });
+      await expect(successMessage).toBeVisible();
     });
 
     test('should change password when logged in', async ({ page }) => {
@@ -173,6 +174,11 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
       await page.getByLabel('Password').fill(TEST_USERS.DEMO.password);
       await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+
       await page.waitForURL(/\/map/, { timeout: 10000 });
 
       // Navigate to account settings through user dropdown
@@ -182,19 +188,82 @@ test.describe('Authentication', () => {
 
       await expect(page).toHaveURL(/\/users\/edit/);
 
-      // Check password change form is available - be more specific with selectors
+      // Check password change form using actual field IDs from Rails
       await expect(page.locator('input[id="user_password"]')).toBeVisible();
-      await expect(page.getByLabel('Current password')).toBeVisible();
+      await expect(page.locator('input[id="user_password_confirmation"]')).toBeVisible();
+      await expect(page.locator('input[id="user_current_password"]')).toBeVisible();
 
-      // Test filling the form but don't submit to avoid changing the password
-      await page.locator('input[id="user_password"]').fill('newpassword123');
-      await page.getByLabel('Current password').fill(TEST_USERS.DEMO.password);
+      // Actually change the password
+      const newPassword = 'newpassword123';
+      await page.locator('input[id="user_password"]').fill(newPassword);
+      await page.locator('input[id="user_password_confirmation"]').fill(newPassword);
+      await page.locator('input[id="user_current_password"]').fill(TEST_USERS.DEMO.password);
+      await page.getByRole('button', { name: 'Update' }).click();
 
-      // Verify the form can be filled and update button is present
-      await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
+      // Wait for update to complete and check for success flash message
+      await page.waitForLoadState('networkidle');
 
-      // Clear the password fields to avoid changing credentials
-      await page.locator('input[id="user_password"]').fill('');
+      // Look for success flash message with Devise styling
+      const successMessage = page.locator('.bg-blue-100, .text-blue-700').filter({ hasText: /updated.*successfully/i });
+      await expect(successMessage).toBeVisible();
+
+      // Verify we can login with the new password
+      await page.evaluate(() => {
+        const logoutLink = document.querySelector('a[href="/users/sign_out"]');
+        if (logoutLink) {
+          const form = document.createElement('form');
+          form.action = '/users/sign_out';
+          form.method = 'post';
+          form.style.display = 'none';
+          const methodInput = document.createElement('input');
+          methodInput.type = 'hidden';
+          methodInput.name = '_method';
+          methodInput.value = 'delete';
+          form.appendChild(methodInput);
+          const csrfToken = document.querySelector('meta[name="csrf-token"]');
+          if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'authenticity_token';
+            const tokenValue = csrfToken.getAttribute('content');
+            if (tokenValue) {
+              csrfInput.value = tokenValue;
+            }
+            form.appendChild(csrfInput);
+          }
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+
+      await page.waitForURL('/', { timeout: 10000 });
+
+      // Login with new password
+      await page.goto('/users/sign_in');
+      await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
+      await page.getByLabel('Password').fill(newPassword);
+      await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+
+      await page.waitForURL(/\/map/, { timeout: 10000 });
+
+      // Change password back to original
+      const userDropdown2 = page.locator('details').filter({ hasText: TEST_USERS.DEMO.email });
+      await userDropdown2.locator('summary').click();
+      await page.getByRole('link', { name: 'Account' }).click();
+
+      await page.locator('input[id="user_password"]').fill(TEST_USERS.DEMO.password);
+      await page.locator('input[id="user_password_confirmation"]').fill(TEST_USERS.DEMO.password);
+      await page.locator('input[id="user_current_password"]').fill(newPassword);
+      await page.getByRole('button', { name: 'Update' }).click();
+
+      // Wait for final update to complete
+      await page.waitForLoadState('networkidle');
+      const finalSuccessMessage = page.locator('.bg-blue-100, .text-blue-700').filter({ hasText: /updated.*successfully/i });
+      await expect(finalSuccessMessage).toBeVisible();
     });
   });
 
@@ -205,6 +274,14 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
       await page.getByLabel('Password').fill(TEST_USERS.DEMO.password);
       await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+
+      // Give it a moment to process the login
+      await page.waitForTimeout(1000);
+
+      // Then wait for the URL change
       await page.waitForURL(/\/map/, { timeout: 10000 });
     });
 
@@ -223,15 +300,38 @@ test.describe('Authentication', () => {
       await userDropdown.locator('summary').click();
       await page.getByRole('link', { name: 'Account' }).click();
 
-      // Test that we can fill the form, but don't actually submit to avoid changing credentials
-      await page.getByLabel('Email').fill('newemail@test.com');
-      await page.getByLabel('Current password').fill(TEST_USERS.DEMO.password);
+      // Actually change the email using the correct field ID
+      const newEmail = 'newemail@test.com';
+      await page.locator('input[id="user_email"]').fill(newEmail);
+      await page.locator('input[id="user_current_password"]').fill(TEST_USERS.DEMO.password);
+      await page.getByRole('button', { name: 'Update' }).click();
 
-      // Verify the form elements are present and fillable, but don't submit
-      await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
+      // Wait for update to complete and check for success flash message
+      await page.waitForLoadState('networkidle');
 
-      // Reset the email field to avoid confusion
-      await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
+      // Look for success flash message with Devise styling
+      const successMessage = page.locator('.bg-blue-100, .text-blue-700').filter({ hasText: /updated.*successfully/i });
+      await expect(successMessage).toBeVisible();
+
+      // Verify the new email is displayed in the navigation
+      await expect(page.getByText(newEmail)).toBeVisible();
+
+      // Change email back to original
+      const userDropdown2 = page.locator('details').filter({ hasText: newEmail });
+      await userDropdown2.locator('summary').click();
+      await page.getByRole('link', { name: 'Account' }).click();
+
+      await page.locator('input[id="user_email"]').fill(TEST_USERS.DEMO.email);
+      await page.locator('input[id="user_current_password"]').fill(TEST_USERS.DEMO.password);
+      await page.getByRole('button', { name: 'Update' }).click();
+
+      // Wait for final update to complete
+      await page.waitForLoadState('networkidle');
+      const finalSuccessMessage = page.locator('.bg-blue-100, .text-blue-700').filter({ hasText: /updated.*successfully/i });
+      await expect(finalSuccessMessage).toBeVisible();
+
+      // Verify original email is back
+      await expect(page.getByText(TEST_USERS.DEMO.email)).toBeVisible();
     });
 
     test('should view API key in settings', async ({ page }) => {
@@ -251,14 +351,30 @@ test.describe('Authentication', () => {
 
       // Get current API key
       const currentApiKey = await page.locator('code').first().textContent();
+      expect(currentApiKey).toBeTruthy();
 
-      // Verify the generate new API key link exists but don't click it to avoid changing the key
+      // Actually generate a new API key
       const generateKeyLink = page.getByRole('link', { name: 'Generate new API key' });
       await expect(generateKeyLink).toBeVisible();
 
-      // Verify the API key is displayed
-      await expect(page.locator('code').first()).toBeVisible();
-      expect(currentApiKey).toBeTruthy();
+      // Handle the confirmation dialog if it appears
+      page.on('dialog', dialog => dialog.accept());
+
+      await generateKeyLink.click();
+
+      // Wait for the page to reload/update
+      await page.waitForLoadState('networkidle');
+
+      // Verify the API key has changed
+      const newApiKey = await page.locator('code').first().textContent();
+      expect(newApiKey).toBeTruthy();
+      expect(newApiKey).not.toBe(currentApiKey);
+
+      // Look for success flash message with Devise styling
+      const successMessage = page.locator('.bg-blue-100, .text-blue-700');
+      if (await successMessage.isVisible()) {
+        await expect(successMessage).toBeVisible();
+      }
     });
 
     test('should change theme', async ({ page }) => {
@@ -287,7 +403,7 @@ test.describe('Authentication', () => {
       await page.goto('/users/sign_in');
 
       // Registration link may or may not be visible depending on SELF_HOSTED setting
-      const registerLink = page.getByRole('link', { name: 'Register' }).first(); // Use first to avoid strict mode
+      const registerLink = page.getByRole('link', { name: 'Register' }).first();
       const selfHosted = await page.getAttribute('html', 'data-self-hosted');
 
       if (selfHosted === 'false') {
@@ -304,8 +420,8 @@ test.describe('Authentication', () => {
       if (page.url().includes('/users/sign_up')) {
         await expect(page.getByRole('heading', { name: 'Register now!' })).toBeVisible();
         await expect(page.getByLabel('Email')).toBeVisible();
-        await expect(page.locator('input[id="user_password"]')).toBeVisible(); // Be specific for main password field
-        await expect(page.locator('input[id="user_password_confirmation"]')).toBeVisible(); // Use ID for confirmation field
+        await expect(page.locator('input[id="user_password"]')).toBeVisible();
+        await expect(page.locator('input[id="user_password_confirmation"]')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Sign up' })).toBeVisible();
       }
     });
@@ -327,6 +443,11 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
       await page.getByLabel('Password').fill(TEST_USERS.DEMO.password);
       await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+
       await page.waitForURL(/\/map/, { timeout: 10000 });
     });
 
@@ -338,6 +459,11 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
       await page.getByLabel('Password').fill(TEST_USERS.DEMO.password);
       await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+
       await page.waitForURL(/\/map/, { timeout: 10000 });
 
       // Open mobile navigation using hamburger menu
@@ -361,6 +487,11 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
       await page.getByLabel('Password').fill(TEST_USERS.DEMO.password);
       await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+
       await page.waitForURL(/\/map/, { timeout: 10000 });
 
       // In mobile view, user dropdown should still work
@@ -417,6 +548,14 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
       await page.getByLabel('Password').fill(TEST_USERS.DEMO.password);
       await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+
+      // Give it a moment to process the login
+      await page.waitForTimeout(1000);
+
+      // Then wait for the URL change
       await page.waitForURL(/\/map/, { timeout: 10000 });
     });
 
@@ -477,6 +616,11 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
       await page.getByLabel('Password').fill(TEST_USERS.DEMO.password);
       await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+
       await page.waitForURL(/\/map/, { timeout: 10000 });
 
       // Reload page
@@ -494,6 +638,11 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email').fill(TEST_USERS.DEMO.email);
       await page.getByLabel('Password').fill(TEST_USERS.DEMO.password);
       await page.getByRole('button', { name: 'Log in' }).click();
+
+      // Wait for the form submission to complete
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+
       await page.waitForURL(/\/map/, { timeout: 10000 });
 
       // Clear all cookies to simulate session timeout
