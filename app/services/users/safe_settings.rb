@@ -45,7 +45,9 @@ class Users::SafeSettings
       photoprism_api_key: photoprism_api_key,
       maps: maps,
       distance_unit: distance_unit,
-      visits_suggestions_enabled: visits_suggestions_enabled?
+      visits_suggestions_enabled: visits_suggestions_enabled?,
+      speed_color_scale: speed_color_scale,
+      fog_of_war_threshold: fog_of_war_threshold
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -117,5 +119,13 @@ class Users::SafeSettings
 
   def visits_suggestions_enabled?
     settings['visits_suggestions_enabled'] == 'true'
+  end
+
+  def speed_color_scale
+    settings['speed_color_scale']
+  end
+
+  def fog_of_war_threshold
+    settings['fog_of_war_threshold']
   end
 end
