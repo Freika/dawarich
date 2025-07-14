@@ -29,19 +29,22 @@ describe 'Users API', type: :request do
                      settings: {
                        type: :object,
                        properties: {
-                         immich_url: { type: :string },
-                         route_opacity: { type: :string },
-                         immich_api_key: { type: :string },
-                         live_map_enabled: { type: :boolean },
-                         fog_of_war_meters: { type: :string },
+                         maps: { type: :object },
+                         fog_of_war_meters: { type: :integer },
+                         meters_between_routes: { type: :integer },
                          preferred_map_layer: { type: :string },
                          speed_colored_routes: { type: :boolean },
-                         meters_between_routes: { type: :string },
                          points_rendering_mode: { type: :string },
-                         minutes_between_routes: { type: :string },
-                         time_threshold_minutes: { type: :string },
-                         merge_threshold_minutes: { type: :string },
-                         speed_colored_polylines: { type: :boolean }
+                         minutes_between_routes: { type: :integer },
+                         time_threshold_minutes: { type: :integer },
+                         merge_threshold_minutes: { type: :integer },
+                         live_map_enabled: { type: :boolean },
+                         route_opacity: { type: :number },
+                         immich_url: { type: :string, nullable: true },
+                         photoprism_url: { type: :string, nullable: true },
+                         visits_suggestions_enabled: { type: :boolean },
+                         speed_color_scale: { type: :string, nullable: true },
+                         fog_of_war_threshold: { type: :string, nullable: true }
                        }
                      },
                      admin: { type: :boolean }

@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Notification about Photon API load is now disabled.
 - All distance values are now stored in the database in meters. Conversion to user's preferred unit is done on the fly.
 - Every night, Dawarich will try to fetch names for places and visits that don't have them. #1281 #902 #583 #212
-- User settings are now being serialized in a more consistent way. `GET /api/v1/users/me` now returns the following data structure:
+- ⚠️ User settings are now being serialized in a more consistent way ⚠. `GET /api/v1/users/me` now returns the following data structure:
 ```json
 {
   "user": {
