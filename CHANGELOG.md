@@ -19,6 +19,39 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Notification about Photon API load is now disabled.
 - All distance values are now stored in the database in meters. Conversion to user's preferred unit is done on the fly.
 - Every night, Dawarich will try to fetch names for places and visits that don't have them. #1281 #902 #583 #212
+- ⚠️ User settings are now being serialized in a more consistent way ⚠. `GET /api/v1/users/me` now returns the following data structure:
+```json
+{
+  "user": {
+    "email": "test@example.com",
+    "theme": "light",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z",
+    "settings": {
+      "maps": {
+        "url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "name": "Custom OpenStreetMap",
+        "distance_unit": "km"
+      },
+      "fog_of_war_meters": 51,
+      "meters_between_routes": 500,
+      "preferred_map_layer": "Light",
+      "speed_colored_routes": false,
+      "points_rendering_mode": "raw",
+      "minutes_between_routes": 30,
+      "time_threshold_minutes": 30,
+      "merge_threshold_minutes": 15,
+      "live_map_enabled": false,
+      "route_opacity": 0.3,
+      "immich_url": "https://persistence-test-1752264458724.com",
+      "photoprism_url": "",
+      "visits_suggestions_enabled": true,
+      "speed_color_scale": "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
+      "fog_of_war_threshold": 5
+    }
+  }
+}
+```
 
 ## Fixed
 

@@ -81,7 +81,7 @@ RSpec.describe Visits::Suggest do
 
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-        # Create points for reverse geocoding test in a separate time range
+
         create_visit_points(user, reverse_geocoding_start_at)
         clear_enqueued_jobs
       end

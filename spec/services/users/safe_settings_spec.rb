@@ -27,7 +27,9 @@ RSpec.describe Users::SafeSettings do
             photoprism_api_key: nil,
             maps: { "distance_unit" => "km" },
             distance_unit: 'km',
-            visits_suggestions_enabled: true
+            visits_suggestions_enabled: true,
+            speed_color_scale: nil,
+            fog_of_war_threshold: nil
           }
         )
       end
@@ -98,7 +100,9 @@ RSpec.describe Users::SafeSettings do
             photoprism_api_key: "photoprism-key",
             maps: { "name" => "custom", "url" => "https://custom.example.com" },
             distance_unit: nil,
-            visits_suggestions_enabled: false
+            visits_suggestions_enabled: false,
+            speed_color_scale: nil,
+            fog_of_war_threshold: nil
           }
         )
       end
