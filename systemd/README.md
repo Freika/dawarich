@@ -23,8 +23,8 @@ account to do so. This account needs to have superuser capabilities as
 the database population includes enabling the postgis extention:
 ```sh
 sudo -u postgres psql <<EOF
-CREATE USER test PASSWORD 'UseAStrongPasswordAndKeepItSecret';
-ALTER USER test WITH SUPERUSER;
+CREATE USER dawarich PASSWORD 'UseAStrongPasswordAndKeepItSecret';
+ALTER USER dawarich WITH SUPERUSER;
 EOF
 ```
 
