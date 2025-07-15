@@ -160,6 +160,11 @@ spec:
               value: photon.komoot.io
             - name: PHOTON_API_USE_HTTPS
               value: "true"
+              # If you have s3-compatible object storage, (e.g. minio or ceph), 
+              # you can set this to "s3" and set the necessary "AWS_" environment variables 
+              # to use s3 storage for imports and exports
+            - name: STORAGE_BACKEND
+              value: "local"
           image: freikin/dawarich:latest
           imagePullPolicy: Always
           volumeMounts:
