@@ -30,9 +30,10 @@ cache_preheating_job:
   class: "Cache::PreheatingJob"
   queue: default
 
-tracks_bulk_creating_job:
+track_processing_job:
   cron: "10 0 * * *" # every day at 00:10
-  class: "Tracks::BulkCreatingJob"
+  class: "TrackProcessingJob"
+  args: [null, "bulk", {"cleanup_tracks": true}]
   queue: tracks
 
 place_name_fetching_job:

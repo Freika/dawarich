@@ -11,5 +11,17 @@ RSpec.describe AppVersionCheckingJob, type: :job do
 
       job.perform
     end
+
+    context 'when app is not self-hosted' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'does not call CheckAppVersion service' do
+        expect(CheckAppVersion).not_to receive(:new)
+
+        job.perform
+      end
+    end
   end
 end

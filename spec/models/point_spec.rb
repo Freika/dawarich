@@ -40,6 +40,54 @@ RSpec.describe Point, type: :model do
         point.update(lonlat: 'POINT(-79.85581250721961 15.854775993302411)')
       end
     end
+
+    describe '#trigger_track_processing' do
+      let(:user) { create(:user) }
+      let(:point) { build(:point, user: user) }
+
+      context 'when point is from import' do
+        let(:import) { create(:import, user: user) }
+        let(:point) { build(:point, user: user, import: import) }
+
+        it 'does not trigger track processing' do
+          expect(TrackProcessingJob).not_to receive(:perform_now)
+          expect(TrackProcessingJob).not_to receive(:perform_later)
+
+          point.save!
+        end
+      end
+
+      context 'when point is not from import' do
+        context 'with no previous point' do
+          it 'triggers immediate processing' do
+            expect(TrackProcessingJob).to receive(:perform_now).with(user.id, 'incremental', point_id: point.id)
+
+            point.save!
+          end
+        end
+
+        context 'with previous point triggering immediate processing' do
+          let!(:previous_point) { create(:point, user: user, timestamp: 2.hours.ago.to_i) }
+
+          it 'triggers immediate processing' do
+            expect(TrackProcessingJob).to receive(:perform_now).with(user.id, 'incremental', point_id: point.id)
+
+            point.save!
+          end
+        end
+
+        context 'with previous point not triggering immediate processing' do
+          let!(:previous_point) { create(:point, user: user, timestamp: 10.minutes.ago.to_i, lonlat: 'POINT(13.404954 52.520008)') }
+          let(:point) { build(:point, user: user, timestamp: 5.minutes.ago.to_i, lonlat: 'POINT(13.405954 52.521008)') }
+
+          it 'triggers batched processing' do
+            expect(TrackProcessingJob).to receive(:perform_later).with(user.id, 'incremental', point_id: point.id)
+
+            point.save!
+          end
+        end
+      end
+    end
   end
 
   describe 'scopes' do
@@ -121,14 +169,65 @@ RSpec.describe Point, type: :model do
       end
     end
 
-    describe '#trigger_incremental_track_generation' do
-      let(:point) do
-        create(:point, track: track, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)
-      end
-      let(:track) { create(:track) }
+    describe '#should_trigger_immediate_processing?' do
+      let(:user) { create(:user) }
+      let(:point) { build(:point, user: user, timestamp: Time.current.to_i, lonlat: 'POINT(13.405954 52.521008)') }
 
-      it 'enqueues Tracks::IncrementalGeneratorJob' do
-        expect { point.send(:trigger_incremental_track_generation) }.to have_enqueued_job(Tracks::IncrementalGeneratorJob).with(point.user_id, point.recorded_at.to_date.to_s, 5)
+      context 'with no previous point' do
+        it 'returns true' do
+          result = point.send(:should_trigger_immediate_processing?, nil)
+          expect(result).to eq(true)
+        end
+      end
+
+      context 'with previous point exceeding time threshold' do
+        let(:previous_point) { create(:point, user: user, timestamp: 2.hours.ago.to_i, lonlat: 'POINT(13.404954 52.520008)') }
+
+        it 'returns true' do
+          result = point.send(:should_trigger_immediate_processing?, previous_point)
+          expect(result).to eq(true)
+        end
+      end
+
+      context 'with previous point exceeding distance threshold' do
+        let(:previous_point) { create(:point, user: user, timestamp: 10.minutes.ago.to_i, lonlat: 'POINT(14.404954 53.520008)') }
+
+        it 'returns true' do
+          result = point.send(:should_trigger_immediate_processing?, previous_point)
+          expect(result).to eq(true)
+        end
+      end
+
+      context 'with previous point within both thresholds' do
+        let(:previous_point) { create(:point, user: user, timestamp: 10.minutes.ago.to_i, lonlat: 'POINT(13.404954 52.520008)') }
+
+        it 'returns false' do
+          result = point.send(:should_trigger_immediate_processing?, previous_point)
+          expect(result).to eq(false)
+        end
+      end
+
+      context 'with previous point exactly at time threshold' do
+        let(:previous_point) { create(:point, user: user, timestamp: 30.minutes.ago.to_i, lonlat: 'POINT(13.404954 52.520008)') }
+
+        it 'returns false' do
+          result = point.send(:should_trigger_immediate_processing?, previous_point)
+          expect(result).to eq(false)
+        end
+      end
+
+      context 'with previous point exactly at distance threshold' do
+        let(:previous_point) { create(:point, user: user, timestamp: 10.minutes.ago.to_i, lonlat: 'POINT(13.404954 52.520008)') }
+
+        before do
+          # Mock distance calculation to return exactly 1.0 km
+          allow(Geocoder::Calculations).to receive(:distance_between).and_return(1.0)
+        end
+
+        it 'returns false' do
+          result = point.send(:should_trigger_immediate_processing?, previous_point)
+          expect(result).to eq(false)
+        end
       end
     end
   end

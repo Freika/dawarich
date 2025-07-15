@@ -33,7 +33,7 @@ class Point < ApplicationRecord
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates
-  after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? }
+  after_create_commit :trigger_track_processing, if: -> { import_id.nil? }
   after_commit :recalculate_track, on: :update
 
   def self.without_raw_data
@@ -104,10 +104,36 @@ class Point < ApplicationRecord
     track.recalculate_path_and_distance!
   end
 
-  def trigger_incremental_track_generation
-    point_date = Time.zone.at(timestamp).to_date
-    return if point_date < 1.day.ago.to_date
-
-    Tracks::IncrementalGeneratorJob.perform_later(user_id, point_date.to_s, 5)
+  def trigger_track_processing
+    # Smart track processing: immediate for track boundaries, batched for continuous tracking
+    previous_point = user.points.where('timestamp < ?', timestamp)
+                                .order(timestamp: :desc)
+                                .first
+    
+    if should_trigger_immediate_processing?(previous_point)
+      # Process immediately for obvious track boundaries
+      TrackProcessingJob.perform_now(user_id, 'incremental', point_id: id)
+    else
+      # Batch processing for continuous tracking (reduces job queue load)
+      TrackProcessingJob.perform_later(user_id, 'incremental', point_id: id)
+    end
+  end
+  
+  def should_trigger_immediate_processing?(previous_point)
+    return true if previous_point.nil?
+    
+    # Immediate processing for obvious track boundaries
+    time_diff = timestamp - previous_point.timestamp
+    return true if time_diff > 30.minutes # Long gap = likely new track
+    
+    # Calculate distance for large jumps
+    distance_km = Geocoder::Calculations.distance_between(
+      [previous_point.lat, previous_point.lon],
+      [lat, lon],
+      units: :km
+    )
+    return true if distance_km > 1.0 # Large jump = likely new track
+    
+    false
   end
 end

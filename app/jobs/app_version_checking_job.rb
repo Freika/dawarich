@@ -5,6 +5,8 @@ class AppVersionCheckingJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform
+    return unless DawarichSettings.self_hosted?
+
     Rails.cache.delete(CheckAppVersion::VERSION_CACHE_KEY)
 
     CheckAppVersion.new.call
