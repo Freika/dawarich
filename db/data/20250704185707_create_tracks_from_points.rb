@@ -20,7 +20,7 @@ class CreateTracksFromPoints < ActiveRecord::Migration[8.0]
           user.id,
           start_at: nil,
           end_at: nil,
-          cleaning_strategy: :replace
+          mode: :daily
         )
 
         processed_users += 1

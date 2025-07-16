@@ -73,6 +73,7 @@ module Tracks::TrackBuilder
 
     if track.save
       Point.where(id: points.map(&:id)).update_all(track_id: track.id)
+
       track
     else
       Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
@@ -82,7 +83,7 @@ module Tracks::TrackBuilder
   end
 
   def build_path(points)
-    Tracks::BuildPath.new(points.map(&:lonlat)).call
+    Tracks::BuildPath.new(points).call
   end
 
   def calculate_track_distance(points)

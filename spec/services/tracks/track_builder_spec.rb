@@ -116,11 +116,11 @@ RSpec.describe Tracks::TrackBuilder do
 
     it 'builds path using Tracks::BuildPath service' do
       expect(Tracks::BuildPath).to receive(:new).with(
-        points.map(&:lonlat)
+        points
       ).and_call_original
 
       result = builder.build_path(points)
-      expect(result).to respond_to(:as_text) # RGeo geometry object
+      expect(result).to respond_to(:as_text)
     end
   end
 
