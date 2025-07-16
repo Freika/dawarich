@@ -249,9 +249,6 @@ point = Point.create!(
 ### 3. Background Job Management
 
 ```ruby
-# Enqueue bulk processing
-Tracks::BulkGeneratorJob.perform_later(user.id)
-
 # Enqueue incremental check (automatically triggered by point creation)
 Tracks::IncrementalCheckJob.perform_later(user.id, point.id)
 
