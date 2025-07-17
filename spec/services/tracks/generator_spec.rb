@@ -31,6 +31,24 @@ RSpec.describe Tracks::Generator do
           generator.call
           expect(points.map(&:reload).map(&:track)).to all(be_present)
         end
+
+        it 'properly handles point associations when cleaning existing tracks' do
+          # Create existing tracks with associated points
+          existing_track = create(:track, user: user)
+          existing_points = create_list(:point, 3, user: user, track: existing_track)
+
+          # Verify points are associated
+          expect(existing_points.map(&:reload).map(&:track_id)).to all(eq(existing_track.id))
+
+          # Run generator which should clean existing tracks and create new ones
+          generator.call
+
+          # Verify the old track is deleted
+          expect(Track.exists?(existing_track.id)).to be false
+
+          # Verify the points are no longer associated with the deleted track
+          expect(existing_points.map(&:reload).map(&:track_id)).to all(be_nil)
+        end
       end
 
       context 'with insufficient points' do
@@ -117,6 +135,24 @@ RSpec.describe Tracks::Generator do
         existing_track = create(:track, user: user, start_at: today.beginning_of_day)
         generator.call
         expect(Track.exists?(existing_track.id)).to be false
+      end
+
+      it 'properly handles point associations when cleaning daily tracks' do
+        # Create existing tracks with associated points for today
+        existing_track = create(:track, user: user, start_at: today.beginning_of_day)
+        existing_points = create_list(:point, 3, user: user, track: existing_track)
+
+        # Verify points are associated
+        expect(existing_points.map(&:reload).map(&:track_id)).to all(eq(existing_track.id))
+
+        # Run generator which should clean existing tracks for the day and create new ones
+        generator.call
+
+        # Verify the old track is deleted
+        expect(Track.exists?(existing_track.id)).to be false
+
+        # Verify the points are no longer associated with the deleted track
+        expect(existing_points.map(&:reload).map(&:track_id)).to all(be_nil)
       end
     end
 

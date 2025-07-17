@@ -47,7 +47,7 @@ RSpec.describe Tracks::IncrementalProcessor do
 
       it 'processes when time threshold exceeded' do
         expect(Tracks::CreateJob).to receive(:perform_later)
-          .with(user.id, start_at: nil, end_at: Time.at(previous_point.timestamp), mode: :none)
+          .with(user.id, start_at: nil, end_at: Time.zone.at(previous_point.timestamp), mode: :none)
         processor.call
       end
     end
@@ -65,7 +65,7 @@ RSpec.describe Tracks::IncrementalProcessor do
 
       it 'uses existing track end time as start_at' do
         expect(Tracks::CreateJob).to receive(:perform_later)
-          .with(user.id, start_at: existing_track.end_at, end_at: Time.at(previous_point.timestamp), mode: :none)
+          .with(user.id, start_at: existing_track.end_at, end_at: Time.zone.at(previous_point.timestamp), mode: :none)
         processor.call
       end
     end
@@ -88,7 +88,7 @@ RSpec.describe Tracks::IncrementalProcessor do
 
       it 'processes when distance threshold exceeded' do
         expect(Tracks::CreateJob).to receive(:perform_later)
-          .with(user.id, start_at: nil, end_at: Time.at(previous_point.timestamp), mode: :none)
+          .with(user.id, start_at: nil, end_at: Time.zone.at(previous_point.timestamp), mode: :none)
         processor.call
       end
     end

@@ -163,15 +163,18 @@ class Tracks::Generator
     scope = user.tracks
     scope = scope.where(start_at: time_range) if time_range_defined?
 
-    deleted_count = scope.delete_all
-    Rails.logger.info "Deleted #{deleted_count} existing tracks for user #{user.id}"
+    deleted_count = scope.destroy_all
+
+    Rails.logger.info "Deleted #{deleted_count} existing  tracks for user #{user.id}"
   end
 
   def clean_daily_tracks
     day_range = daily_time_range
     range = Time.zone.at(day_range.begin)..Time.zone.at(day_range.end)
 
-    deleted_count = user.tracks.where(start_at: range).delete_all
+    scope = user.tracks.where(start_at: range)
+    deleted_count = scope.destroy_all
+
     Rails.logger.info "Deleted #{deleted_count} daily tracks for user #{user.id}"
   end
 

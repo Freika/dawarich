@@ -66,7 +66,7 @@ class Tracks::IncrementalProcessor
   end
 
   def find_end_time
-    previous_point ? Time.at(previous_point.timestamp) : nil
+    previous_point ? Time.zone.at(previous_point.timestamp) : nil
   end
 
   def exceeds_thresholds?(previous_point, current_point)
