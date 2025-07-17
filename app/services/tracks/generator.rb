@@ -163,8 +163,8 @@ class Tracks::Generator
   end
 
   def clean_daily_tracks
-    day_range_times = daily_time_range.map { |timestamp| Time.at(timestamp) }
-    range = Range.new(day_range_times.first, day_range_times.last)
+    day_range = daily_time_range
+    range = Time.zone.at(day_range.begin)..Time.zone.at(day_range.end)
 
     deleted_count = user.tracks.where(start_at: range).delete_all
     Rails.logger.info "Deleted #{deleted_count} daily tracks for user #{user.id}"
