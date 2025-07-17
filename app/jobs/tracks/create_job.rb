@@ -5,26 +5,21 @@ class Tracks::CreateJob < ApplicationJob
 
   def perform(user_id, start_at: nil, end_at: nil, mode: :daily)
     user = User.find(user_id)
-    
+
     # Translate mode parameter to Generator mode
     generator_mode = case mode
                     when :daily then :daily
                     when :none then :incremental
                     else :bulk
                     end
-    
-    # Count tracks before generation
-    tracks_before = user.tracks.count
-    
-    Tracks::Generator.new(
+
+    # Generate tracks and get the count of tracks created
+    tracks_created = Tracks::Generator.new(
       user,
       start_at: start_at,
       end_at: end_at,
       mode: generator_mode
     ).call
-    
-    # Calculate tracks created
-    tracks_created = user.tracks.count - tracks_before
 
     create_success_notification(user, tracks_created)
   rescue StandardError => e

@@ -17,11 +17,9 @@ RSpec.describe Tracks::CreateJob, type: :job do
     end
 
     it 'calls the generator and creates a notification' do
-      # Mock the generator to actually create tracks
-      allow(generator_instance).to receive(:call) do
-        create_list(:track, 2, user: user)
-      end
-      
+      # Mock the generator to return the count of tracks created
+      allow(generator_instance).to receive(:call).and_return(2)
+
       described_class.new.perform(user.id)
 
       expect(Tracks::Generator).to have_received(:new).with(
@@ -53,12 +51,9 @@ RSpec.describe Tracks::CreateJob, type: :job do
       end
 
       it 'passes custom parameters to the generator' do
-        # Create some existing tracks and mock generator to create 1 more
-        create_list(:track, 5, user: user)
-        allow(generator_instance).to receive(:call) do
-          create(:track, user: user)
-        end
-        
+        # Mock generator to return the count of tracks created
+        allow(generator_instance).to receive(:call).and_return(1)
+
         described_class.new.perform(user.id, start_at: start_at, end_at: end_at, mode: mode)
 
         expect(Tracks::Generator).to have_received(:new).with(
@@ -87,6 +82,8 @@ RSpec.describe Tracks::CreateJob, type: :job do
       end
 
       it 'translates :none to :incremental' do
+        allow(generator_instance).to receive(:call).and_return(0)
+
         described_class.new.perform(user.id, mode: :none)
 
         expect(Tracks::Generator).to have_received(:new).with(
@@ -104,6 +101,8 @@ RSpec.describe Tracks::CreateJob, type: :job do
       end
 
       it 'translates :daily to :daily' do
+        allow(generator_instance).to receive(:call).and_return(0)
+
         described_class.new.perform(user.id, mode: :daily)
 
         expect(Tracks::Generator).to have_received(:new).with(
@@ -121,6 +120,8 @@ RSpec.describe Tracks::CreateJob, type: :job do
       end
 
       it 'translates other modes to :bulk' do
+        allow(generator_instance).to receive(:call).and_return(0)
+
         described_class.new.perform(user.id, mode: :replace)
 
         expect(Tracks::Generator).to have_received(:new).with(
@@ -183,6 +184,34 @@ RSpec.describe Tracks::CreateJob, type: :job do
         expect { described_class.new.perform(999) }.not_to raise_error
 
         expect(ExceptionReporter).to have_received(:call)
+      end
+    end
+
+    context 'when tracks are deleted and recreated' do
+      it 'returns the correct count of newly created tracks' do
+        # Create some existing tracks first
+        create_list(:track, 3, user: user)
+
+        # Mock the generator to simulate deleting existing tracks and creating new ones
+        # This should return the count of newly created tracks, not the difference
+        allow(generator_instance).to receive(:call).and_return(2)
+
+        described_class.new.perform(user.id, mode: :bulk)
+
+        expect(Tracks::Generator).to have_received(:new).with(
+          user,
+          start_at: nil,
+          end_at: nil,
+          mode: :bulk
+        )
+        expect(generator_instance).to have_received(:call)
+        expect(Notifications::Create).to have_received(:new).with(
+          user: user,
+          kind: :info,
+          title: 'Tracks Generated',
+          content: 'Created 2 tracks from your location data. Check your tracks section to view them.'
+        )
+        expect(notification_service).to have_received(:call)
       end
     end
   end

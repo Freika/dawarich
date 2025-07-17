@@ -42,14 +42,19 @@ class Tracks::Generator
 
     points = load_points
     Rails.logger.debug "Generator: loaded #{points.size} points for user #{user.id} in #{mode} mode"
-    return if points.empty?
+    return 0 if points.empty?
 
     segments = split_points_into_segments(points)
     Rails.logger.debug "Generator: created #{segments.size} segments"
 
-    segments.each { |segment| create_track_from_segment(segment) }
+    tracks_created = 0
+    segments.each do |segment|
+      track = create_track_from_segment(segment)
+      tracks_created += 1 if track
+    end
 
-    Rails.logger.info "Generated #{segments.size} tracks for user #{user.id} in #{mode} mode"
+    Rails.logger.info "Generated #{tracks_created} tracks for user #{user.id} in #{mode} mode"
+    tracks_created
   end
 
   private
