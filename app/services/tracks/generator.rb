@@ -163,9 +163,7 @@ class Tracks::Generator
     scope = user.tracks
     scope = scope.where(start_at: time_range) if time_range_defined?
 
-    deleted_count = scope.destroy_all
-
-    Rails.logger.info "Deleted #{deleted_count} existing  tracks for user #{user.id}"
+    scope.destroy_all
   end
 
   def clean_daily_tracks
@@ -173,9 +171,7 @@ class Tracks::Generator
     range = Time.zone.at(day_range.begin)..Time.zone.at(day_range.end)
 
     scope = user.tracks.where(start_at: range)
-    deleted_count = scope.destroy_all
-
-    Rails.logger.info "Deleted #{deleted_count} daily tracks for user #{user.id}"
+    scope.destroy_all
   end
 
   # Threshold methods from safe_settings
