@@ -7,7 +7,7 @@ class PointsLimitExceeded
 
   def call
     return false if DawarichSettings.self_hosted?
-    return true if @user.points.count >= points_limit
+    return true if @user.tracked_points.count >= points_limit
 
     false
   end

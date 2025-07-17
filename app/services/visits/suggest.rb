@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Visits::Suggest
-  include Rails.application.routes.url_helpers
-
   attr_reader :points, :user, :start_at, :end_at
 
   def initialize(user, start_at:, end_at:)
@@ -14,6 +12,7 @@ class Visits::Suggest
 
   def call
     visits = Visits::SmartDetect.new(user, start_at:, end_at:).call
+
     create_visits_notification(user) if visits.any?
 
     return nil unless DawarichSettings.reverse_geocoding_enabled?
@@ -35,7 +34,7 @@ class Visits::Suggest
 
   def create_visits_notification(user)
     content = <<~CONTENT
-      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them on the <a href="#{visits_path}" class="link">Visits</a> page.
+      New visits have been suggested based on your location data from #{Time.zone.at(start_at)} to #{Time.zone.at(end_at)}. You can review them on the <a href="/visits" class="link">Visits</a> page.
     CONTENT
 
     user.notifications.create!(

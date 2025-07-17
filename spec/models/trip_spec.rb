@@ -137,4 +137,49 @@ RSpec.describe Trip, type: :model do
       end
     end
   end
+
+  describe 'Calculateable concern' do
+    let(:user) { create(:user) }
+    let(:trip) { create(:trip, user: user) }
+    let!(:points) do
+      [
+        create(:point, user: user, lonlat: 'POINT(13.404954 52.520008)', timestamp: trip.started_at.to_i + 1.hour),
+        create(:point, user: user, lonlat: 'POINT(13.404955 52.520009)', timestamp: trip.started_at.to_i + 2.hours),
+        create(:point, user: user, lonlat: 'POINT(13.404956 52.520010)', timestamp: trip.started_at.to_i + 3.hours)
+      ]
+    end
+
+    describe '#calculate_distance' do
+      it 'stores distance in user preferred unit for Trip model' do
+        allow(user).to receive(:safe_settings).and_return(double(distance_unit: 'km'))
+        allow(Point).to receive(:total_distance).and_return(2.5) # 2.5 km
+
+        trip.calculate_distance
+
+        expect(trip.distance).to eq(3) # Should be rounded, in km
+      end
+    end
+
+        describe '#recalculate_distance!' do
+      it 'recalculates and saves the distance' do
+        original_distance = trip.distance
+
+        trip.recalculate_distance!
+
+        trip.reload
+        expect(trip.distance).not_to eq(original_distance)
+      end
+    end
+
+    describe '#recalculate_path!' do
+      it 'recalculates and saves the path' do
+        original_path = trip.path
+
+        trip.recalculate_path!
+
+        trip.reload
+        expect(trip.path).not_to eq(original_path)
+      end
+    end
+  end
 end

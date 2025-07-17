@@ -4,13 +4,13 @@ require 'rails_helper'
 
 RSpec.describe AreaVisitsCalculationSchedulingJob, type: :job do
   describe '#perform' do
-    let(:area) { create(:area) }
-    let(:user) { create(:user) }
+    let!(:user) { create(:user) }
+    let!(:area) { create(:area, user: user) }
 
     it 'calls the AreaVisitsCalculationService' do
-      expect(AreaVisitsCalculatingJob).to receive(:perform_later).with(user.id).and_call_original
+      expect(AreaVisitsCalculatingJob).to receive(:perform_later).with(user.id)
 
-      described_class.new.perform
+      described_class.new.perform_now
     end
   end
 end

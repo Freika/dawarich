@@ -13,6 +13,10 @@ require 'super_diff/rspec-rails'
 require 'rake'
 
 Rails.application.load_tasks
+
+# Ensure Devise is properly configured for tests
+require 'devise'
+
 # Add additional requires below this line. Rails is not loaded until this point!
 
 Dir[Rails.root.join('spec/support/**/*.rb')].sort.each { |f| require f }
@@ -32,10 +36,15 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
 
   config.include FactoryBot::Syntax::Methods
-  config.include Devise::Test::IntegrationHelpers, type: :request
-  config.include Devise::Test::IntegrationHelpers, type: :system
 
   config.rswag_dry_run = false
+
+  config.before(:suite) do
+    Rails.application.reload_routes!
+
+    # DatabaseCleaner.strategy = :transaction
+    # DatabaseCleaner.clean_with(:truncation)
+  end
 
   config.before do
     ActiveJob::Base.queue_adapter = :test
@@ -83,6 +92,12 @@ RSpec.configure do |config|
   config.after(:suite) do
     Rake::Task['rswag:generate'].invoke
   end
+
+  # config.around(:each) do |example|
+  #   DatabaseCleaner.cleaning do
+  #     example.run
+  #   end
+  # end
 end
 
 Shoulda::Matchers.configure do |config|

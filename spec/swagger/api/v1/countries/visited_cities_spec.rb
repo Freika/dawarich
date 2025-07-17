@@ -17,16 +17,20 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
                 description: 'Your API authentication key'
       parameter name: :start_at,
                 in: :query,
-                type: :string,
-                format: 'date-time',
+                schema: {
+                  type: :string,
+                  format: :date
+                },
                 required: true,
                 description: 'Start date in YYYY-MM-DD format',
                 example: '2023-01-01'
 
       parameter name: :end_at,
                 in: :query,
-                type: :string,
-                format: 'date-time',
+                schema: {
+                  type: :string,
+                  format: :date
+                },
                 required: true,
                 description: 'End date in YYYY-MM-DD format',
                 example: '2023-12-31'

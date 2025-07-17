@@ -14,6 +14,7 @@ class User < ApplicationRecord
   has_many :points, through: :imports
   has_many :places, through: :visits
   has_many :trips,  dependent: :destroy
+  has_many :tracks, dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
@@ -49,8 +50,9 @@ class User < ApplicationRecord
   end
 
   def total_distance
-    # In km or miles, depending on user.safe_settings.distance_unit
-    stats.sum(:distance)
+    # Distance is stored in meters, convert to user's preferred unit for display
+    total_distance_meters = stats.sum(:distance)
+    Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
   end
 
   def total_countries

@@ -124,7 +124,7 @@
                 <li><%= link_to 'Subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
               <% end %>
 
-              <li><%= link_to 'Logout', destroy_user_session_path, method: :delete, data: { turbo_method: :delete } %></li>
+              <li><%= link_to 'Logout', destroy_user_session_path, method: :delete, data: { turbo: false } %></li>
             </ul>
           </details>
         </li>

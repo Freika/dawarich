@@ -76,8 +76,9 @@ module ApplicationHelper
   end
 
   def year_distance_stat(year, user)
-    # In km or miles, depending on the user.safe_settings.distance_unit
-    Stat.year_distance(year, user).sum { _1[1] }
+    # Distance is now stored in meters, convert to user's preferred unit for display
+    total_distance_meters = Stat.year_distance(year, user).sum { _1[1] }
+    Stat.convert_distance(total_distance_meters, user.safe_settings.distance_unit)
   end
 
   def past?(year, month)
@@ -96,21 +97,6 @@ module ApplicationHelper
 
   def app_theme
     current_user&.theme == 'light' ? 'light' : 'dark'
-  end
-
-  def sidebar_distance(distance)
-    return unless distance
-
-    "#{distance} #{current_user.safe_settings.distance_unit}"
-  end
-
-  def sidebar_points(points)
-    return unless points
-
-    points_number = points.size
-    points_pluralized = pluralize(points_number, 'point')
-
-    "(#{points_pluralized})"
   end
 
   def active_class?(link_path)

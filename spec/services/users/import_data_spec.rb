@@ -9,7 +9,7 @@ RSpec.describe Users::ImportData, type: :service do
   let(:import_directory) { Rails.root.join('tmp', "import_#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_1234567890") }
 
   before do
-    allow(Time).to receive(:current).and_return(Time.at(1234567890))
+    allow(Time).to receive(:current).and_return(Time.zone.at(1234567890))
     allow(FileUtils).to receive(:mkdir_p)
     allow(FileUtils).to receive(:rm_rf)
     allow(File).to receive(:directory?).and_return(true)

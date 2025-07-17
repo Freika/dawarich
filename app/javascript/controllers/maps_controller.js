@@ -11,8 +11,22 @@ import {
   updatePolylinesColors,
   colorFormatEncode,
   colorFormatDecode,
-  colorStopsFallback
+  colorStopsFallback,
+  reestablishPolylineEventHandlers,
+  managePaneVisibility
 } from "../maps/polylines";
+
+import {
+  createTracksLayer,
+  updateTracksOpacity,
+  toggleTracksVisibility,
+  filterTracks,
+  trackColorPalette,
+  handleIncrementalTrackUpdate,
+  addOrUpdateTrack,
+  removeTrackById,
+  isTrackInTimeRange
+} from "../maps/tracks";
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
@@ -34,6 +48,9 @@ export default class extends BaseController {
   visitedCitiesCache = new Map();
   trackedMonthsCache = null;
   currentPopup = null;
+  tracksLayer = null;
+  tracksVisible = false;
+  tracksSubscription = null;
 
   connect() {
     super.connect();
@@ -41,9 +58,33 @@ export default class extends BaseController {
 
     this.apiKey = this.element.dataset.api_key;
     this.selfHosted = this.element.dataset.self_hosted;
-    this.markers = JSON.parse(this.element.dataset.coordinates);
+
+    // Defensive JSON parsing with error handling
+    try {
+      this.markers = this.element.dataset.coordinates ? JSON.parse(this.element.dataset.coordinates) : [];
+    } catch (error) {
+      console.error('Error parsing coordinates data:', error);
+      console.error('Raw coordinates data:', this.element.dataset.coordinates);
+      this.markers = [];
+    }
+
+    try {
+      this.tracksData = this.element.dataset.tracks ? JSON.parse(this.element.dataset.tracks) : null;
+    } catch (error) {
+      console.error('Error parsing tracks data:', error);
+      console.error('Raw tracks data:', this.element.dataset.tracks);
+      this.tracksData = null;
+    }
+
     this.timezone = this.element.dataset.timezone;
-    this.userSettings = JSON.parse(this.element.dataset.user_settings);
+
+    try {
+      this.userSettings = this.element.dataset.user_settings ? JSON.parse(this.element.dataset.user_settings) : {};
+    } catch (error) {
+      console.error('Error parsing user_settings data:', error);
+      console.error('Raw user_settings data:', this.element.dataset.user_settings);
+      this.userSettings = {};
+    }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.fogLinethreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
     // Store route opacity as decimal (0-1) internally
@@ -55,7 +96,14 @@ export default class extends BaseController {
     this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
     this.speedColorScale = this.userSettings.speed_color_scale || colorFormatEncode(colorStopsFallback);
 
-    this.center = this.markers[this.markers.length - 1] || [52.514568, 13.350111];
+    // Ensure we have valid markers array
+    if (!Array.isArray(this.markers)) {
+      console.warn('Markers is not an array, setting to empty array');
+      this.markers = [];
+    }
+
+    // Set default center (Berlin) if no markers available
+    this.center = this.markers.length > 0 ? this.markers[this.markers.length - 1] : [52.514568, 13.350111];
 
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
@@ -74,9 +122,15 @@ export default class extends BaseController {
       },
       onAdd: (map) => {
         const div = L.DomUtil.create('div', 'leaflet-control-stats');
-        const distance = this.element.dataset.distance || '0';
+        let distance = parseInt(this.element.dataset.distance) || 0;
         const pointsNumber = this.element.dataset.points_number || '0';
-        const unit = this.distanceUnit === 'mi' ? 'mi' : 'km';
+
+        // Convert distance to miles if user prefers miles (assuming backend sends km)
+        if (this.distanceUnit === 'mi') {
+          distance = distance * 0.621371; // km to miles conversion
+        }
+
+        const unit = this.distanceUnit === 'km' ? 'km' : 'mi';
         div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
         div.style.backgroundColor = 'white';
         div.style.padding = '0 5px';
@@ -101,6 +155,9 @@ export default class extends BaseController {
 
     this.polylinesLayer = createPolylinesLayer(this.markers, this.map, this.timezone, this.routeOpacity, this.userSettings, this.distanceUnit);
     this.heatmapLayer = L.heatLayer(this.heatmapMarkers, { radius: 20 }).addTo(this.map);
+
+    // Initialize empty tracks layer for layer control (will be populated later)
+    this.tracksLayer = L.layerGroup();
 
     // Create a proper Leaflet layer for fog
     this.fogOverlay = createFogOverlay();
@@ -142,6 +199,7 @@ export default class extends BaseController {
     const controlsLayer = {
       Points: this.markersLayer,
       Routes: this.polylinesLayer,
+      Tracks: this.tracksLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": new this.fogOverlay(),
       "Scratch map": this.scratchLayer,
@@ -151,158 +209,57 @@ export default class extends BaseController {
       "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
     };
 
-    // Initialize layer control first
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
-    // Add the toggle panel button
-    this.addTogglePanelButton();
+    // Initialize tile monitor
+    this.tileMonitor = new TileMonitor(this.map, this.apiKey);
 
-    // Check if we should open the panel based on localStorage or URL params
-    const urlParams = new URLSearchParams(window.location.search);
-    const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
-    const hasDateParams = urlParams.has('start_at') && urlParams.has('end_at');
-
-    // Always create the panel first
-    this.toggleRightPanel();
-
-    // Then hide it if it shouldn't be open
-    if (!isPanelOpen && !hasDateParams) {
-      const panel = document.querySelector('.leaflet-right-panel');
-      if (panel) {
-        panel.style.display = 'none';
-        localStorage.setItem('mapPanelOpen', 'false');
-      }
-    }
-
-    // Update event handlers
-    this.map.on('moveend', () => {
-      if (document.getElementById('fog')) {
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-      }
-    });
-
-    this.map.on('zoomend', () => {
-      if (document.getElementById('fog')) {
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-      }
-    });
-
-    // Fetch and draw areas when the map is loaded
-    fetchAndDrawAreas(this.areasLayer, this.apiKey);
-
-    let fogEnabled = false;
-
-    // Hide fog by default
-    document.getElementById('fog').style.display = 'none';
-
-    // Toggle fog layer visibility
-    this.map.on('overlayadd', (e) => {
-      if (e.name === 'Fog of War') {
-        fogEnabled = true;
-        document.getElementById('fog').style.display = 'block';
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-      }
-    });
-
-    this.map.on('overlayremove', (e) => {
-      if (e.name === 'Fog of War') {
-        fogEnabled = false;
-        document.getElementById('fog').style.display = 'none';
-      }
-    });
-
-    // Update fog circles on zoom and move
-    this.map.on('zoomend moveend', () => {
-      if (fogEnabled) {
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-      }
-    });
-
-    this.addLastMarker(this.map, this.markers);
     this.addEventListeners();
+    this.setupSubscription();
+    this.setupTracksSubscription();
 
-    // Initialize Leaflet.draw
+    // Handle routes/tracks mode selection
+    this.addRoutesTracksSelector();
+    this.switchRouteMode('routes', true);
+
+    // Initialize layers based on settings
+    this.initializeLayersFromSettings();
+
+    // Initialize tracks layer
+    this.initializeTracksLayer();
+
+    // Setup draw control
     this.initializeDrawControl();
 
-    // Add event listeners to toggle draw controls
-    this.map.on('overlayadd', async (e) => {
-      if (e.name === 'Areas') {
-        this.map.addControl(this.drawControl);
-      }
-      if (e.name === 'Photos') {
-        if (
-          (!this.userSettings.immich_url || !this.userSettings.immich_api_key) &&
-          (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)
-        ) {
-          showFlashMessage(
-            'error',
-            'Photos integration is not configured. Please check your integrations settings.'
-          );
-          return;
-        }
+    // Preload areas
+    fetchAndDrawAreas(this.areasLayer, this.apiKey);
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const startDate = urlParams.get('start_at') || new Date().toISOString();
-        const endDate = urlParams.get('end_at')|| new Date().toISOString();
-        await fetchAndDisplayPhotos({
-          map: this.map,
-          photoMarkers: this.photoMarkers,
-          apiKey: this.apiKey,
-          startDate: startDate,
-          endDate: endDate,
-          userSettings: this.userSettings
-        });
-      }
-    });
+    // Add right panel toggle
+    this.addTogglePanelButton();
 
-    this.map.on('overlayremove', (e) => {
-      if (e.name === 'Areas') {
-        this.map.removeControl(this.drawControl);
-      }
-    });
-
-    if (this.liveMapEnabled) {
-      this.setupSubscription();
-    }
-
-    // Initialize tile monitor
-    this.tileMonitor = new TileMonitor(this.apiKey);
-
-    // Add tile load event handlers to each base layer
-    Object.entries(this.baseMaps()).forEach(([name, layer]) => {
-      layer.on('tileload', () => {
-        this.tileMonitor.recordTileLoad(name);
-      });
-    });
-
-    // Start monitoring
-    this.tileMonitor.startMonitoring();
-
-    // Add the drawer button for visits
+    // Add visits buttons after calendar button to position them below
     this.visitsManager.addDrawerButton();
-
-    // Fetch and display visits when map loads
-    this.visitsManager.fetchAndDisplayVisits();
   }
 
   disconnect() {
-    if (this.handleDeleteClick) {
-      document.removeEventListener('click', this.handleDeleteClick);
+    super.disconnect();
+    this.removeEventListeners();
+    if (this.tracksSubscription) {
+      this.tracksSubscription.unsubscribe();
     }
-    // Store panel state before disconnecting
-    if (this.rightPanel) {
-      const panel = document.querySelector('.leaflet-right-panel');
-      const finalState = panel ? (panel.style.display !== 'none' ? 'true' : 'false') : 'false';
-      localStorage.setItem('mapPanelOpen', finalState);
+    if (this.tileMonitor) {
+      this.tileMonitor.destroy();
+    }
+    if (this.visitsManager) {
+      this.visitsManager.destroy();
+    }
+    if (this.layerControl) {
+      this.map.removeControl(this.layerControl);
     }
     if (this.map) {
       this.map.remove();
     }
-
-    // Stop tile monitoring
-    if (this.tileMonitor) {
-      this.tileMonitor.stopMonitoring();
-    }
+    console.log("Map controller disconnected");
   }
 
   setupSubscription() {
@@ -316,6 +273,42 @@ export default class extends BaseController {
         }
       }
     });
+  }
+
+  setupTracksSubscription() {
+    this.tracksSubscription = consumer.subscriptions.create("TracksChannel", {
+      received: (data) => {
+        console.log("Received track update:", data);
+        if (this.map && this.map._loaded && this.tracksLayer) {
+          this.handleTrackUpdate(data);
+        }
+      }
+    });
+  }
+
+  handleTrackUpdate(data) {
+    // Get current time range for filtering
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentStartAt = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const currentEndAt = urlParams.get('end_at') || new Date().toISOString();
+
+    // Handle the track update
+    handleIncrementalTrackUpdate(
+      this.tracksLayer,
+      data,
+      this.map,
+      this.userSettings,
+      this.distanceUnit,
+      currentStartAt,
+      currentEndAt
+    );
+
+    // If tracks are visible, make sure the layer is properly displayed
+    if (this.tracksVisible && this.tracksLayer) {
+      if (!this.map.hasLayer(this.tracksLayer)) {
+        this.map.addLayer(this.tracksLayer);
+      }
+    }
   }
 
   appendPoint(data) {
@@ -504,6 +497,33 @@ export default class extends BaseController {
     this.map.on('baselayerchange', (event) => {
       const selectedLayerName = event.name;
       this.updatePreferredBaseLayer(selectedLayerName);
+    });
+
+    // Add event listeners for overlay layer changes to keep routes/tracks selector in sync
+    this.map.on('overlayadd', (event) => {
+      if (event.name === 'Routes') {
+        this.handleRouteLayerToggle('routes');
+        // Re-establish event handlers when routes are manually added
+        if (event.layer === this.polylinesLayer) {
+          reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+        }
+      } else if (event.name === 'Tracks') {
+        this.handleRouteLayerToggle('tracks');
+      }
+
+      // Manage pane visibility when layers are manually toggled
+      this.updatePaneVisibilityAfterLayerChange();
+    });
+
+    this.map.on('overlayremove', (event) => {
+      if (event.name === 'Routes' || event.name === 'Tracks') {
+        // Don't auto-switch when layers are manually turned off
+        // Just update the radio button state to reflect current visibility
+        this.updateRadioButtonState();
+
+        // Manage pane visibility when layers are manually toggled
+        this.updatePaneVisibilityAfterLayerChange();
+      }
     });
   }
 
@@ -726,7 +746,7 @@ export default class extends BaseController {
 
       // Form HTML
       div.innerHTML = `
-        <form id="settings-form" style="overflow-y: auto; height: 36rem; width: 12rem;">
+        <form id="settings-form" style="overflow-y: auto; max-height: 70vh; width: 12rem; padding-right: 5px;">
           <label for="route-opacity">Route Opacity, %</label>
           <div class="join">
             <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="10" max="100" step="10" value="${Math.round(this.routeOpacity * 100)}">
@@ -953,6 +973,7 @@ export default class extends BaseController {
       const layerStates = {
         Points: this.map.hasLayer(this.markersLayer),
         Routes: this.map.hasLayer(this.polylinesLayer),
+        Tracks: this.tracksLayer ? this.map.hasLayer(this.tracksLayer) : false,
         Heatmap: this.map.hasLayer(this.heatmapLayer),
         "Fog of War": this.map.hasLayer(this.fogOverlay),
         "Scratch map": this.map.hasLayer(this.scratchLayer),
@@ -969,6 +990,7 @@ export default class extends BaseController {
       const controlsLayer = {
         Points: this.markersLayer || L.layerGroup(),
         Routes: this.polylinesLayer || L.layerGroup(),
+        Tracks: this.tracksLayer || L.layerGroup(),
         Heatmap: this.heatmapLayer || L.heatLayer([]),
         "Fog of War": new this.fogOverlay(),
         "Scratch map": this.scratchLayer || L.layerGroup(),
@@ -984,10 +1006,26 @@ export default class extends BaseController {
         const layer = controlsLayer[name];
         if (wasVisible && layer) {
           layer.addTo(this.map);
+          // Re-establish event handlers for polylines layer when it's re-added
+          if (name === 'Routes' && layer === this.polylinesLayer) {
+            reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+          }
         } else if (layer && this.map.hasLayer(layer)) {
           this.map.removeLayer(layer);
         }
       });
+
+      // Manage pane visibility based on which layers are visible
+      const routesVisible = this.map.hasLayer(this.polylinesLayer);
+      const tracksVisible = this.tracksLayer && this.map.hasLayer(this.tracksLayer);
+
+      if (routesVisible && !tracksVisible) {
+        managePaneVisibility(this.map, 'routes');
+      } else if (tracksVisible && !routesVisible) {
+        managePaneVisibility(this.map, 'tracks');
+      } else {
+        managePaneVisibility(this.map, 'both');
+      }
 
     } catch (error) {
       console.error('Error updating map settings:', error);
@@ -1080,6 +1118,189 @@ export default class extends BaseController {
 
     // Add the control to the map
     this.map.addControl(new TogglePanelControl({ position: 'topright' }));
+  }
+
+  addRoutesTracksSelector() {
+    // Store reference to the controller instance for use in the control
+    const controller = this;
+
+    const RouteTracksControl = L.Control.extend({
+      onAdd: function(map) {
+        const container = L.DomUtil.create('div', 'routes-tracks-selector leaflet-bar');
+        container.style.backgroundColor = 'white';
+        container.style.padding = '8px';
+        container.style.borderRadius = '4px';
+        container.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        container.style.fontSize = '12px';
+        container.style.lineHeight = '1.2';
+
+        // Get saved preference or default to 'routes'
+        const savedPreference = localStorage.getItem('mapRouteMode') || 'routes';
+
+        container.innerHTML = `
+          <div style="margin-bottom: 4px; font-weight: bold; text-align: center;">Display</div>
+          <div>
+            <label style="display: block; margin-bottom: 4px; cursor: pointer;">
+              <input type="radio" name="route-mode" value="routes" ${savedPreference === 'routes' ? 'checked' : ''} style="margin-right: 4px;">
+              Routes
+            </label>
+            <label style="display: block; cursor: pointer;">
+              <input type="radio" name="route-mode" value="tracks" ${savedPreference === 'tracks' ? 'checked' : ''} style="margin-right: 4px;">
+              Tracks
+            </label>
+          </div>
+        `;
+
+        // Disable map interactions when clicking the control
+        L.DomEvent.disableClickPropagation(container);
+
+        // Add change event listeners
+        const radioButtons = container.querySelectorAll('input[name="route-mode"]');
+        radioButtons.forEach(radio => {
+          L.DomEvent.on(radio, 'change', () => {
+            if (radio.checked) {
+              controller.switchRouteMode(radio.value);
+            }
+          });
+        });
+
+        return container;
+      }
+    });
+
+    // Add the control to the map
+    this.map.addControl(new RouteTracksControl({ position: 'topleft' }));
+
+    // Apply initial state based on saved preference
+    const savedPreference = localStorage.getItem('mapRouteMode') || 'routes';
+    this.switchRouteMode(savedPreference, true);
+
+    // Set initial pane visibility
+    this.updatePaneVisibilityAfterLayerChange();
+  }
+
+    switchRouteMode(mode, isInitial = false) {
+    // Save preference to localStorage
+    localStorage.setItem('mapRouteMode', mode);
+
+    if (mode === 'routes') {
+      // Hide tracks layer if it exists and is visible
+      if (this.tracksLayer && this.map.hasLayer(this.tracksLayer)) {
+        this.map.removeLayer(this.tracksLayer);
+      }
+
+      // Show routes layer if it exists and is not visible
+      if (this.polylinesLayer && !this.map.hasLayer(this.polylinesLayer)) {
+        this.map.addLayer(this.polylinesLayer);
+        // Re-establish event handlers after adding the layer back
+        reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+      } else if (this.polylinesLayer) {
+        reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+      }
+
+      // Manage pane visibility to fix z-index blocking
+      managePaneVisibility(this.map, 'routes');
+
+      // Update layer control checkboxes
+      this.updateLayerControlCheckboxes('Routes', true);
+      this.updateLayerControlCheckboxes('Tracks', false);
+    } else if (mode === 'tracks') {
+      // Hide routes layer if it exists and is visible
+      if (this.polylinesLayer && this.map.hasLayer(this.polylinesLayer)) {
+        this.map.removeLayer(this.polylinesLayer);
+      }
+
+      // Show tracks layer if it exists and is not visible
+      if (this.tracksLayer && !this.map.hasLayer(this.tracksLayer)) {
+        this.map.addLayer(this.tracksLayer);
+      }
+
+      // Manage pane visibility to fix z-index blocking
+      managePaneVisibility(this.map, 'tracks');
+
+      // Update layer control checkboxes
+      this.updateLayerControlCheckboxes('Routes', false);
+      this.updateLayerControlCheckboxes('Tracks', true);
+    }
+  }
+
+  updateLayerControlCheckboxes(layerName, isVisible) {
+    // Find the layer control input for the specified layer
+    const layerControlContainer = document.querySelector('.leaflet-control-layers');
+    if (!layerControlContainer) return;
+
+    const inputs = layerControlContainer.querySelectorAll('input[type="checkbox"]');
+    inputs.forEach(input => {
+      const label = input.nextElementSibling;
+      if (label && label.textContent.trim() === layerName) {
+        input.checked = isVisible;
+      }
+    });
+  }
+
+  handleRouteLayerToggle(mode) {
+    // Update the radio button selection
+    const radioButtons = document.querySelectorAll('input[name="route-mode"]');
+    radioButtons.forEach(radio => {
+      if (radio.value === mode) {
+        radio.checked = true;
+      }
+    });
+
+    // Switch to the selected mode and enforce mutual exclusivity
+    this.switchRouteMode(mode);
+  }
+
+  updateRadioButtonState() {
+    // Update radio buttons to reflect current layer visibility
+    const routesVisible = this.polylinesLayer && this.map.hasLayer(this.polylinesLayer);
+    const tracksVisible = this.tracksLayer && this.map.hasLayer(this.tracksLayer);
+
+    const radioButtons = document.querySelectorAll('input[name="route-mode"]');
+    radioButtons.forEach(radio => {
+      if (radio.value === 'routes' && routesVisible && !tracksVisible) {
+        radio.checked = true;
+      } else if (radio.value === 'tracks' && tracksVisible && !routesVisible) {
+        radio.checked = true;
+      }
+    });
+  }
+
+  updatePaneVisibilityAfterLayerChange() {
+    // Update pane visibility based on current layer visibility
+    const routesVisible = this.polylinesLayer && this.map.hasLayer(this.polylinesLayer);
+    const tracksVisible = this.tracksLayer && this.map.hasLayer(this.tracksLayer);
+
+    if (routesVisible && !tracksVisible) {
+      managePaneVisibility(this.map, 'routes');
+    } else if (tracksVisible && !routesVisible) {
+      managePaneVisibility(this.map, 'tracks');
+    } else {
+      managePaneVisibility(this.map, 'both');
+    }
+  }
+
+    initializeLayersFromSettings() {
+    // Initialize layer visibility based on user settings or defaults
+    // This method sets up the initial state of overlay layers
+
+    // Note: Don't automatically add layers to map here - let the layer control and user preferences handle it
+    // The layer control will manage which layers are visible based on user interaction
+
+    // Initialize photos layer if user wants it visible
+    if (this.userSettings.photos_enabled) {
+      fetchAndDisplayPhotos(this.photoMarkers, this.apiKey, this.userSettings);
+    }
+
+    // Initialize fog of war if enabled in settings
+    if (this.userSettings.fog_of_war_enabled) {
+      this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+    }
+
+    // Initialize visits manager functionality
+    if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
+      this.visitsManager.fetchAndDisplayVisits();
+    }
   }
 
   toggleRightPanel() {
@@ -1557,4 +1778,73 @@ export default class extends BaseController {
     modal.appendChild(content);
     document.body.appendChild(modal);
   }
+
+  // Track-related methods
+  async initializeTracksLayer() {
+    // Use pre-loaded tracks data if available
+    if (this.tracksData && this.tracksData.length > 0) {
+      this.createTracksFromData(this.tracksData);
+    } else {
+      // Create empty layer for layer control
+      this.tracksLayer = L.layerGroup();
+    }
+  }
+
+  createTracksFromData(tracksData) {
+    // Clear existing tracks
+    this.tracksLayer.clearLayers();
+
+    if (!tracksData || tracksData.length === 0) {
+      return;
+    }
+
+    // Create tracks layer with data and add to existing tracks layer
+    const newTracksLayer = createTracksLayer(
+      tracksData,
+      this.map,
+      this.userSettings,
+      this.distanceUnit
+    );
+
+    // Add all tracks to the existing tracks layer
+    newTracksLayer.eachLayer((layer) => {
+      this.tracksLayer.addLayer(layer);
+    });
+  }
+
+  updateLayerControl() {
+    if (!this.layerControl) return;
+
+    // Remove existing layer control
+    this.map.removeControl(this.layerControl);
+
+    // Create new controls layer object
+    const controlsLayer = {
+      Points: this.markersLayer || L.layerGroup(),
+      Routes: this.polylinesLayer || L.layerGroup(),
+      Tracks: this.tracksLayer || L.layerGroup(),
+      Heatmap: this.heatmapLayer || L.heatLayer([]),
+      "Fog of War": new this.fogOverlay(),
+      "Scratch map": this.scratchLayer || L.layerGroup(),
+      Areas: this.areasLayer || L.layerGroup(),
+      Photos: this.photoMarkers || L.layerGroup(),
+      "Suggested Visits": this.visitsManager?.getVisitCirclesLayer() || L.layerGroup(),
+      "Confirmed Visits": this.visitsManager?.getConfirmedVisitCirclesLayer() || L.layerGroup()
+    };
+
+    // Re-add the layer control
+    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+  }
+
+  toggleTracksVisibility(event) {
+    this.tracksVisible = event.target.checked;
+
+    if (this.tracksLayer) {
+      toggleTracksVisibility(this.tracksLayer, this.map, this.tracksVisible);
+    }
+  }
+
+
+
+
 }

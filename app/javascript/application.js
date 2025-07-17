@@ -12,3 +12,6 @@ import "./channels"
 
 import "trix"
 import "@rails/actiontext"
+
+import "@rails/ujs"
+Rails.start()

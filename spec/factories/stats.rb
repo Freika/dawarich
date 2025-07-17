@@ -4,7 +4,7 @@ FactoryBot.define do
   factory :stat do
     year { 1 }
     month { 1 }
-    distance { 1 }
+    distance { 1000 } # 1 km
     user
     toponyms do
       [

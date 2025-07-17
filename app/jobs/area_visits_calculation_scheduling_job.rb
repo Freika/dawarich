@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AreaVisitsCalculationSchedulingJob < ApplicationJob
-  queue_as :default
+  queue_as :visit_suggesting
   sidekiq_options retry: false
 
   def perform

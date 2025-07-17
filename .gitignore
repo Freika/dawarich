@@ -76,3 +76,10 @@ Makefile
 /db/*.sqlite3
 /db/*.sqlite3-shm
 /db/*.sqlite3-wal
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
