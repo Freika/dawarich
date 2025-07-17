@@ -24,7 +24,7 @@ RSpec.describe PointsLimitExceeded do
 
       context 'when user points count is equal to the limit' do
         before do
-          allow(user.points).to receive(:count).and_return(10)
+          allow(user.tracked_points).to receive(:count).and_return(10)
         end
 
         it { is_expected.to be true }
@@ -32,7 +32,7 @@ RSpec.describe PointsLimitExceeded do
 
       context 'when user points count exceeds the limit' do
         before do
-          allow(user.points).to receive(:count).and_return(11)
+          allow(user.tracked_points).to receive(:count).and_return(11)
         end
 
         it { is_expected.to be true }
@@ -40,7 +40,7 @@ RSpec.describe PointsLimitExceeded do
 
       context 'when user points count is below the limit' do
         before do
-          allow(user.points).to receive(:count).and_return(9)
+          allow(user.tracked_points).to receive(:count).and_return(9)
         end
 
         it { is_expected.to be false }

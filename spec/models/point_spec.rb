@@ -127,8 +127,8 @@ RSpec.describe Point, type: :model do
       end
       let(:track) { create(:track) }
 
-      it 'enqueues Tracks::IncrementalGeneratorJob' do
-        expect { point.send(:trigger_incremental_track_generation) }.to have_enqueued_job(Tracks::IncrementalGeneratorJob).with(point.user_id, point.recorded_at.to_date.to_s, 5)
+      it 'enqueues Tracks::IncrementalCheckJob' do
+        expect { point.send(:trigger_incremental_track_generation) }.to have_enqueued_job(Tracks::IncrementalCheckJob).with(point.user_id, point.id)
       end
     end
   end

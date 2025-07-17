@@ -15,12 +15,11 @@ class CreateTracksFromPoints < ActiveRecord::Migration[8.0]
 
         # Use explicit parameters for bulk historical processing:
         # - No time limits (start_at: nil, end_at: nil) = process ALL historical data
-        # - Replace strategy = clean slate, removes any existing tracks first
         Tracks::CreateJob.perform_later(
           user.id,
           start_at: nil,
           end_at: nil,
-          cleaning_strategy: :replace
+          mode: :bulk
         )
 
         processed_users += 1
