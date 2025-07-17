@@ -73,7 +73,7 @@ class Tracks::Generator
 
   def load_bulk_points
     scope = user.tracked_points.order(:timestamp)
-    scope = scope.where(timestamp: time_range) if time_range_defined?
+    scope = scope.where(timestamp: timestamp_range) if time_range_defined?
 
     scope
   end
@@ -109,7 +109,31 @@ class Tracks::Generator
   def time_range
     return nil unless time_range_defined?
 
-    Time.at(start_at&.to_i)..Time.at(end_at&.to_i)
+    start_time = start_at&.to_i
+    end_time = end_at&.to_i
+
+    if start_time && end_time
+      Time.zone.at(start_time)..Time.zone.at(end_time)
+    elsif start_time
+      Time.zone.at(start_time)..
+    elsif end_time
+      ..Time.zone.at(end_time)
+    end
+  end
+
+  def timestamp_range
+    return nil unless time_range_defined?
+
+    start_time = start_at&.to_i
+    end_time = end_at&.to_i
+
+    if start_time && end_time
+      start_time..end_time
+    elsif start_time
+      start_time..
+    elsif end_time
+      ..end_time
+    end
   end
 
   def daily_time_range
