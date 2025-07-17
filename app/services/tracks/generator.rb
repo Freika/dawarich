@@ -1,17 +1,11 @@
 # frozen_string_literal: true
 
-# Simplified track generation service that replaces the complex strategy pattern.
-#
 # This service handles both bulk and incremental track generation using a unified
 # approach with different modes:
 #
 # - :bulk - Regenerates all tracks from scratch (replaces existing)
 # - :incremental - Processes untracked points up to a specified end time
 # - :daily - Processes tracks on a daily basis
-#
-# The service maintains the same core logic as the original system but simplifies
-# the architecture by removing the multiple strategy classes in favor of
-# mode-based configuration.
 #
 # Key features:
 # - Deterministic results (same algorithm for all modes)
@@ -62,9 +56,7 @@ class Tracks::Generator
 
   def should_clean_tracks?
     case mode
-    when :bulk then true
-    when :daily then true
-    when :incremental then false
+    when :bulk, :daily then true
     else false
     end
   end
@@ -82,6 +74,7 @@ class Tracks::Generator
   def load_bulk_points
     scope = user.tracked_points.order(:timestamp)
     scope = scope.where(timestamp: time_range) if time_range_defined?
+
     scope
   end
 
@@ -90,11 +83,13 @@ class Tracks::Generator
     # If end_at is specified, only process points up to that time
     scope = user.tracked_points.where(track_id: nil).order(:timestamp)
     scope = scope.where(timestamp: ..end_at.to_i) if end_at.present?
+
     scope
   end
 
   def load_daily_points
     day_range = daily_time_range
+
     user.tracked_points.where(timestamp: day_range).order(:timestamp)
   end
 
@@ -128,10 +123,10 @@ class Tracks::Generator
 
   def clean_existing_tracks
     case mode
-    when :bulk
-      clean_bulk_tracks
-    when :daily
-      clean_daily_tracks
+    when :bulk then clean_bulk_tracks
+    when :daily then clean_daily_tracks
+    else
+      raise ArgumentError, "Unknown mode: #{mode}"
     end
   end
 

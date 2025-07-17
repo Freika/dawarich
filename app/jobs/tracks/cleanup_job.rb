@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 # Lightweight cleanup job that runs weekly to catch any missed track generation.
-# This replaces the daily bulk creation job with a more targeted approach.
-#
-# Instead of processing all users daily, this job only processes users who have
-# untracked points that are older than a threshold (e.g., 1 day), indicating
-# they may have been missed by incremental processing.
 #
 # This provides a safety net while avoiding the overhead of daily bulk processing.
 class Tracks::CleanupJob < ApplicationJob
