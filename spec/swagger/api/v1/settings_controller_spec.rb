@@ -21,8 +21,8 @@ describe 'Settings API', type: :request do
           'immich_api_key': 'your-immich-api-key',
           'photoprism_url': 'https://photoprism.example.com',
           'photoprism_api_key': 'your-photoprism-api-key',
-          'maps': { 'distance_unit': 'km' },
-          'visits_suggestions_enabled': true
+          'speed_color_scale': 'viridis',
+          'fog_of_war_threshold': 100
         }
       }
       tags 'Settings'
@@ -100,21 +100,15 @@ describe 'Settings API', type: :request do
             example: 'your-photoprism-api-key',
             description: 'API key for PhotoPrism photo service'
           },
-          maps: {
-            type: :object,
-            properties: {
-              distance_unit: {
-                type: :string,
-                example: 'km',
-                description: 'Distance unit preference (km or miles)'
-              }
-            },
-            description: 'Map-related settings'
+          speed_color_scale: {
+            type: :string,
+            example: 'viridis',
+            description: 'Color scale for speed-colored routes'
           },
-          visits_suggestions_enabled: {
-            type: :boolean,
-            example: true,
-            description: 'Whether visit suggestions are enabled'
+          fog_of_war_threshold: {
+            type: :number,
+            example: 100,
+            description: 'Fog of war threshold value'
           }
         }
       }
@@ -138,33 +132,33 @@ describe 'Settings API', type: :request do
                    type: :object,
                    properties: {
                      route_opacity: {
-                       type: :string,
-                       example: '60',
+                       type: :number,
+                       example: 60,
                        description: 'Route opacity percentage (0-100)'
                      },
                      meters_between_routes: {
-                       type: :string,
-                       example: '500',
+                       type: :number,
+                       example: 500,
                        description: 'Minimum distance between routes in meters'
                      },
                      minutes_between_routes: {
-                       type: :string,
-                       example: '30',
+                       type: :number,
+                       example: 30,
                        description: 'Minimum time between routes in minutes'
                      },
                      fog_of_war_meters: {
-                       type: :string,
-                       example: '50',
+                       type: :number,
+                       example: 50,
                        description: 'Fog of war radius in meters'
                      },
                      time_threshold_minutes: {
-                       type: :string,
-                       example: '30',
+                       type: :number,
+                       example: 30,
                        description: 'Time threshold for grouping points in minutes'
                      },
                      merge_threshold_minutes: {
-                       type: :string,
-                       example: '15',
+                       type: :number,
+                       example: 15,
                        description: 'Threshold for merging nearby points in minutes'
                      },
                      preferred_map_layer: {
@@ -207,21 +201,15 @@ describe 'Settings API', type: :request do
                        example: 'your-photoprism-api-key',
                        description: 'API key for PhotoPrism photo service'
                      },
-                     maps: {
-                       type: :object,
-                       properties: {
-                         distance_unit: {
-                           type: :string,
-                           example: 'km',
-                           description: 'Distance unit preference (km or miles)'
-                         }
-                       },
-                       description: 'Map-related settings'
+                     speed_color_scale: {
+                       type: :string,
+                       example: 'viridis',
+                       description: 'Color scale for speed-colored routes'
                      },
-                     visits_suggestions_enabled: {
-                       type: :boolean,
-                       example: true,
-                       description: 'Whether visit suggestions are enabled'
+                     fog_of_war_threshold: {
+                       type: :number,
+                       example: 100,
+                       description: 'Fog of war threshold value'
                      }
                    }
                  }
