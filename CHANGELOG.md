@@ -67,6 +67,7 @@ end
   }
 }
 ```
+- Links in emails will be based on the `DOMAIN` environment variable instead of `SMTP_DOMAIN`.
 
 ## Fixed
 
