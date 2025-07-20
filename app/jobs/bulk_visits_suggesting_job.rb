@@ -11,14 +11,13 @@ class BulkVisitsSuggestingJob < ApplicationJob
     return unless DawarichSettings.reverse_geocoding_enabled?
 
     users = user_ids.any? ? User.active.where(id: user_ids) : User.active
-    users = users.select { _1.safe_settings.visits_suggestions_enabled? }
-
     start_at = start_at.to_datetime
     end_at = end_at.to_datetime
 
     time_chunks = Visits::TimeChunks.new(start_at:, end_at:).call
 
-    users.find_each do |user|
+    users.active.find_each do |user|
+      next unless user.safe_settings.visits_suggestions_enabled?
       next if user.tracked_points.empty?
 
       schedule_chunked_jobs(user, time_chunks)
