@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Swagger documentation is now valid again.
+- Invalid owntracks points are now ignored.
 
 # [0.29.1] - 2025-07-02
 

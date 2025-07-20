@@ -28,5 +28,13 @@ RSpec.describe Owntracks::PointCreatingJob, type: :job do
         expect { perform }.not_to(change { Point.count })
       end
     end
+
+    context 'when point is invalid' do
+      let(:point_params) { { lat: 1.0, lon: 1.0, tid: 'test', tst: nil, topic: 'iPhone 12 pro' } }
+
+      it 'does not create a point' do
+        expect { perform }.not_to(change { Point.count })
+      end
+    end
   end
 end
