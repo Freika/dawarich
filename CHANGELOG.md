@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [0.29.2] - 2025-07-12
 
+⚠️ If you were using RC, please run the following commands in the console, otherwise read on. ⚠️
+
+```ruby
+# This will delete all tracks 👇
+Track.delete_all
+
+# This will remove all tracks relations from points 👇
+Point.update_all(track_id: nil)
+
+# This will create tracks for all users 👇
+User.find_each do |user|
+  Tracks::CreateJob.perform_later(user.id, start_at: nil, end_at: nil, mode: :bulk)
+end
+```
+
 ## Added
 
 - In the User Settings -> Background Jobs, you can now disable visits suggestions, which is enabled by default. It's a background task that runs every day around midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
