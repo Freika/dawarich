@@ -13,7 +13,7 @@ FactoryBot.define do
 
     settings do
       {
-        'route_opacity' => '0.5',
+        'route_opacity' => '50',
         'meters_between_routes' => '500',
         'minutes_between_routes' => '30',
         'fog_of_war_meters' => '100',

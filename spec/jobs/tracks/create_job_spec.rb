@@ -132,7 +132,7 @@ RSpec.describe Tracks::CreateJob, type: :job do
           user,
           start_at: nil,
           end_at: nil,
-          mode: :bulk
+          mode: :incremental
         )
         expect(generator_instance).to have_received(:call)
         expect(Notifications::Create).to have_received(:new).with(
