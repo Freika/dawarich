@@ -34,7 +34,7 @@ class Point < ApplicationRecord
   after_create :set_country
   after_create_commit :broadcast_coordinates
   after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? }
-  after_commit :recalculate_track, on: :update
+  after_commit :recalculate_track, on: :update, if: -> { track.present? }
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
@@ -99,8 +99,6 @@ class Point < ApplicationRecord
   end
 
   def recalculate_track
-    return unless track.present?
-
     track.recalculate_path_and_distance!
   end
 

@@ -31,7 +31,8 @@ class MapController < ApplicationController
 
   def build_tracks
     track_ids = extract_track_ids
-    TrackSerializer.new(current_user, track_ids).call
+
+    TracksSerializer.new(current_user, track_ids).call
   end
 
   def calculate_distance

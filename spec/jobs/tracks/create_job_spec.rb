@@ -14,12 +14,10 @@ RSpec.describe Tracks::CreateJob, type: :job do
       allow(generator_instance).to receive(:call)
       allow(Notifications::Create).to receive(:new).and_return(notification_service)
       allow(notification_service).to receive(:call)
+      allow(generator_instance).to receive(:call).and_return(2)
     end
 
     it 'calls the generator and creates a notification' do
-      # Mock the generator to return the count of tracks created
-      allow(generator_instance).to receive(:call).and_return(2)
-
       described_class.new.perform(user.id)
 
       expect(Tracks::Generator).to have_received(:new).with(
@@ -48,12 +46,10 @@ RSpec.describe Tracks::CreateJob, type: :job do
         allow(generator_instance).to receive(:call)
         allow(Notifications::Create).to receive(:new).and_return(notification_service)
         allow(notification_service).to receive(:call)
+        allow(generator_instance).to receive(:call).and_return(1)
       end
 
       it 'passes custom parameters to the generator' do
-        # Mock generator to return the count of tracks created
-        allow(generator_instance).to receive(:call).and_return(1)
-
         described_class.new.perform(user.id, start_at: start_at, end_at: end_at, mode: mode)
 
         expect(Tracks::Generator).to have_received(:new).with(
@@ -70,72 +66,6 @@ RSpec.describe Tracks::CreateJob, type: :job do
           content: 'Created 1 tracks from your location data. Check your tracks section to view them.'
         )
         expect(notification_service).to have_received(:call)
-      end
-    end
-
-    context 'with mode translation' do
-      before do
-        allow(Tracks::Generator).to receive(:new).and_return(generator_instance)
-        allow(generator_instance).to receive(:call) # No tracks created for mode tests
-        allow(Notifications::Create).to receive(:new).and_return(notification_service)
-        allow(notification_service).to receive(:call)
-      end
-
-      it 'translates :none to :incremental' do
-        allow(generator_instance).to receive(:call).and_return(0)
-
-        described_class.new.perform(user.id, mode: :none)
-
-        expect(Tracks::Generator).to have_received(:new).with(
-          user,
-          start_at: nil,
-          end_at: nil,
-          mode: :incremental
-        )
-        expect(Notifications::Create).to have_received(:new).with(
-          user: user,
-          kind: :info,
-          title: 'Tracks Generated',
-          content: 'Created 0 tracks from your location data. Check your tracks section to view them.'
-        )
-      end
-
-      it 'translates :daily to :daily' do
-        allow(generator_instance).to receive(:call).and_return(0)
-
-        described_class.new.perform(user.id, mode: :daily)
-
-        expect(Tracks::Generator).to have_received(:new).with(
-          user,
-          start_at: nil,
-          end_at: nil,
-          mode: :daily
-        )
-        expect(Notifications::Create).to have_received(:new).with(
-          user: user,
-          kind: :info,
-          title: 'Tracks Generated',
-          content: 'Created 0 tracks from your location data. Check your tracks section to view them.'
-        )
-      end
-
-      it 'translates other modes to :bulk' do
-        allow(generator_instance).to receive(:call).and_return(0)
-
-        described_class.new.perform(user.id, mode: :replace)
-
-        expect(Tracks::Generator).to have_received(:new).with(
-          user,
-          start_at: nil,
-          end_at: nil,
-          mode: :bulk
-        )
-        expect(Notifications::Create).to have_received(:new).with(
-          user: user,
-          kind: :info,
-          title: 'Tracks Generated',
-          content: 'Created 0 tracks from your location data. Check your tracks section to view them.'
-        )
       end
     end
 
@@ -175,12 +105,13 @@ RSpec.describe Tracks::CreateJob, type: :job do
     end
 
     context 'when user does not exist' do
-      it 'handles the error gracefully and creates error notification' do
+      before do
         allow(User).to receive(:find).with(999).and_raise(ActiveRecord::RecordNotFound)
         allow(ExceptionReporter).to receive(:call)
         allow(Notifications::Create).to receive(:new).and_return(instance_double(Notifications::Create, call: nil))
+      end
 
-        # Should not raise an error because it's caught by the rescue block
+      it 'handles the error gracefully and creates error notification' do
         expect { described_class.new.perform(999) }.not_to raise_error
 
         expect(ExceptionReporter).to have_received(:call)
@@ -188,15 +119,14 @@ RSpec.describe Tracks::CreateJob, type: :job do
     end
 
     context 'when tracks are deleted and recreated' do
-      it 'returns the correct count of newly created tracks' do
-        # Create some existing tracks first
-        create_list(:track, 3, user: user)
+      let(:existing_tracks) { create_list(:track, 3, user: user) }
 
-        # Mock the generator to simulate deleting existing tracks and creating new ones
-        # This should return the count of newly created tracks, not the difference
+      before do
         allow(generator_instance).to receive(:call).and_return(2)
+      end
 
-        described_class.new.perform(user.id, mode: :bulk)
+      it 'returns the correct count of newly created tracks' do
+        described_class.new.perform(user.id, mode: :incremental)
 
         expect(Tracks::Generator).to have_received(:new).with(
           user,

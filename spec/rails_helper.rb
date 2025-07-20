@@ -41,9 +41,6 @@ RSpec.configure do |config|
 
   config.before(:suite) do
     Rails.application.reload_routes!
-
-    # DatabaseCleaner.strategy = :transaction
-    # DatabaseCleaner.clean_with(:truncation)
   end
 
   config.before do
@@ -92,12 +89,6 @@ RSpec.configure do |config|
   config.after(:suite) do
     Rake::Task['rswag:generate'].invoke
   end
-
-  # config.around(:each) do |example|
-  #   DatabaseCleaner.cleaning do
-  #     example.run
-  #   end
-  # end
 end
 
 Shoulda::Matchers.configure do |config|

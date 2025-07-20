@@ -36,12 +36,7 @@ class Tracks::IncrementalProcessor
     start_at = find_start_time
     end_at = find_end_time
 
-    Tracks::CreateJob.perform_later(
-      user.id,
-      start_at: start_at,
-      end_at: end_at,
-      mode: :none
-    )
+    Tracks::CreateJob.perform_later(user.id, start_at:, end_at:, mode: :incremental)
   end
 
   private

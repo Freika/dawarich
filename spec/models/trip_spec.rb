@@ -160,7 +160,7 @@ RSpec.describe Trip, type: :model do
       end
     end
 
-        describe '#recalculate_distance!' do
+    describe '#recalculate_distance!' do
       it 'recalculates and saves the distance' do
         original_distance = trip.distance
 

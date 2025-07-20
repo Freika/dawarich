@@ -77,7 +77,7 @@ module Tracks::Segmentation
     return true if time_diff_seconds > time_threshold_seconds
 
     # Check distance threshold - convert km to meters to match frontend logic
-    distance_km = calculate_distance_kilometers_between_points(previous_point, current_point)
+    distance_km = calculate_km_distance_between_points(previous_point, current_point)
     distance_meters = distance_km * 1000 # Convert km to meters
 
     return true if distance_meters > distance_threshold_meters
@@ -85,7 +85,7 @@ module Tracks::Segmentation
     false
   end
 
-  def calculate_distance_kilometers_between_points(point1, point2)
+  def calculate_km_distance_between_points(point1, point2)
     lat1, lon1 = point_coordinates(point1)
     lat2, lon2 = point_coordinates(point2)
 
