@@ -447,7 +447,7 @@ RSpec.describe 'Map Interaction', type: :system do
         # Find and update route opacity
         within('.leaflet-settings-panel') do
           opacity_input = find('#route-opacity')
-          expect(opacity_input.value).to eq('50') # Default value
+          expect(opacity_input.value).to eq('60') # Default value
 
           # Change opacity to 80%
           opacity_input.fill_in(with: '80')
