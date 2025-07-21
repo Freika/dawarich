@@ -78,5 +78,19 @@ RSpec.describe OwnTracks::Importer do
         expect(Point.first.velocity).to eq('1.4')
       end
     end
+
+    context 'when file is old' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/owntracks/2023-02_old.rec') }
+
+      it 'creates points' do
+        expect { parser }.to change { Point.count }.by(9)
+      end
+
+      it 'correctly writes attributes' do
+        parser
+
+        point = Point.first
+      end
+    end
   end
 end

@@ -73,6 +73,8 @@ end
 
 - Swagger documentation is now valid again.
 - Invalid owntracks points are now ignored.
+- An older Owntrack's .rec format is now also supported.
+- Course and course accuracy are now rounded to 8 decimal places to fix the issue with points creation.
 
 # [0.29.1] - 2025-07-02
 
