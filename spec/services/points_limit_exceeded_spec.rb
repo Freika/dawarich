@@ -28,6 +28,11 @@ RSpec.describe PointsLimitExceeded do
         end
 
         it { is_expected.to be true }
+
+        it 'caches the result' do
+          expect(user.tracked_points).to receive(:count).once
+          2.times { described_class.new(user).call }
+        end
       end
 
       context 'when user points count exceeds the limit' do
