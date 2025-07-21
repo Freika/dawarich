@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Points limit exceeded check is now cached.
+- Reverse geocoding for places is now significantly faster.
 
 
 # [0.30.0] - 2025-07-21
