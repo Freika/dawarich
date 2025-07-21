@@ -4,10 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.30.1] - 2025-07-21
+
+## Fixed
+
+- Points limit exceeded check is now cached.
+
 
 # [0.30.0] - 2025-07-21
 
-⚠️ If you were using RC, please run the following commands in the console, otherwise read on. ⚠️
+⚠️ If you were using 0.29.2 RC, please run the following commands in the console, otherwise read on. ⚠️
 
 ```ruby
 # This will delete all tracks 👇
