@@ -30,6 +30,20 @@ export class TestHelpers {
     // Submit login
     await this.page.getByRole('button', { name: 'Log in' }).click();
 
+    // Wait for form submission to complete
+    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForTimeout(1000);
+
+    // Check if login failed (stayed on login page with error)
+    const currentUrl = this.page.url();
+    if (currentUrl.includes('/users/sign_in')) {
+      // Check for error messages
+      const errorMessage = this.page.locator('.bg-red-100, .text-red-700, .alert-error');
+      if (await errorMessage.isVisible()) {
+        throw new Error(`Login failed for ${user.email}. Possible credential mismatch.`);
+      }
+    }
+
     // Wait for navigation to complete - use the same approach as working tests
     await this.page.waitForURL(/\/map/, { timeout: 10000 });
 
@@ -38,10 +52,28 @@ export class TestHelpers {
   }
 
   /**
-   * Login with demo credentials
+   * Login with demo credentials with retry logic
    */
   async loginAsDemo() {
-    await this.login({ email: 'demo@dawarich.app', password: 'password' });
+    // Try login with retry mechanism in case of transient failures
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        await this.login({ email: 'demo@dawarich.app', password: 'password' });
+        return; // Success, exit the retry loop
+      } catch (error) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw new Error(`Login failed after ${maxAttempts} attempts. Last error: ${error.message}. The demo user credentials may need to be reset. Please run: User.first.update(email: 'demo@dawarich.app', password: 'password', password_confirmation: 'password')`);
+        }
+        
+        // Wait a bit before retrying
+        await this.page.waitForTimeout(1000);
+        console.log(`Login attempt ${attempts} failed, retrying...`);
+      }
+    }
   }
 
   /**

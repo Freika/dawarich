@@ -38,6 +38,9 @@ export default defineConfig({
 
   /* Global setup for checking server availability */
   globalSetup: require.resolve('./e2e/global-setup.ts'),
+  
+  /* Global teardown for cleanup */
+  globalTeardown: require.resolve('./e2e/global-teardown.ts'),
 
   /* Configure projects for major browsers */
   projects: [
