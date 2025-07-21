@@ -14,6 +14,7 @@ RSpec.describe User, type: :model do
     it { is_expected.to have_many(:visits).dependent(:destroy) }
     it { is_expected.to have_many(:places).through(:visits) }
     it { is_expected.to have_many(:trips).dependent(:destroy) }
+    it { is_expected.to have_many(:tracks).dependent(:destroy) }
   end
 
   describe 'enums' do
@@ -87,11 +88,11 @@ RSpec.describe User, type: :model do
     describe '#total_distance' do
       subject { user.total_distance }
 
-      let!(:stat1) { create(:stat, user:, distance: 10) }
-      let!(:stat2) { create(:stat, user:, distance: 20) }
+      let!(:stat1) { create(:stat, user:, distance: 10_000) }
+      let!(:stat2) { create(:stat, user:, distance: 20_000) }
 
       it 'returns sum of distances' do
-        expect(subject).to eq(30)
+        expect(subject).to eq(30) # 30 km
       end
     end
 

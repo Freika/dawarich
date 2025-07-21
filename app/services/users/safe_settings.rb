@@ -18,7 +18,8 @@ class Users::SafeSettings
     'immich_api_key' => nil,
     'photoprism_url' => nil,
     'photoprism_api_key' => nil,
-    'maps' => { 'distance_unit' => 'km' }
+    'maps' => { 'distance_unit' => 'km' },
+    'visits_suggestions_enabled' => 'true'
   }.freeze
 
   def initialize(settings = {})
@@ -43,7 +44,10 @@ class Users::SafeSettings
       photoprism_url: photoprism_url,
       photoprism_api_key: photoprism_api_key,
       maps: maps,
-      distance_unit: distance_unit
+      distance_unit: distance_unit,
+      visits_suggestions_enabled: visits_suggestions_enabled?,
+      speed_color_scale: speed_color_scale,
+      fog_of_war_threshold: fog_of_war_threshold
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -110,5 +114,17 @@ class Users::SafeSettings
 
   def distance_unit
     settings.dig('maps', 'distance_unit')
+  end
+
+  def visits_suggestions_enabled?
+    settings['visits_suggestions_enabled'] == 'true'
+  end
+
+  def speed_color_scale
+    settings['speed_color_scale']
+  end
+
+  def fog_of_war_threshold
+    settings['fog_of_war_threshold']
   end
 end

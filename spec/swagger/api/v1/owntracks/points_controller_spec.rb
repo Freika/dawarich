@@ -43,11 +43,11 @@ describe 'OwnTracks Points API', type: :request do
           lon: { type: :number, description: 'Longitude coordinate' },
           acc: { type: :number, description: 'Accuracy of position in meters' },
           bs: { type: :number, description: 'Battery status (0=unknown, 1=unplugged, 2=charging, 3=full)' },
-          inrids: { type: :array, description: 'Array of region IDs device is currently in' },
+          inrids: { type: :array, items: { type: :string }, description: 'Array of region IDs device is currently in' },
           BSSID: { type: :string, description: 'Connected WiFi access point MAC address' },
           SSID: { type: :string, description: 'Connected WiFi network name' },
           vac: { type: :number, description: 'Vertical accuracy in meters' },
-          inregions: { type: :array, description: 'Array of region names device is currently in' },
+          inregions: { type: :array, items: { type: :string }, description: 'Array of region names device is currently in' },
           lat: { type: :number, description: 'Latitude coordinate' },
           topic: { type: :string, description: 'MQTT topic in format owntracks/user/device' },
           t: { type: :string, description: 'Type of message (p=position, c=circle, etc)' },
@@ -63,7 +63,7 @@ describe 'OwnTracks Points API', type: :request do
           isotst: { type: :string, description: 'ISO 8601 timestamp of the location fix' },
           disptst: { type: :string, description: 'Human-readable timestamp of the location fix' }
         },
-        required: %w[owntracks/jane]
+        required: %w[lat lon tst _type]
       }
 
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'

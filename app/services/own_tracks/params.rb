@@ -10,6 +10,8 @@ class OwnTracks::Params
   # rubocop:disable Metrics/MethodLength
   # rubocop:disable Metrics/AbcSize
   def call
+    return unless valid_point?
+
     {
       lonlat:             "POINT(#{params[:lon]} #{params[:lat]})",
       battery:            params[:batt],
@@ -83,5 +85,9 @@ class OwnTracks::Params
 
   def owntracks_point?
     params[:topic].present?
+  end
+
+  def valid_point?
+    params[:lon].present? && params[:lat].present? && params[:tst].present?
   end
 end

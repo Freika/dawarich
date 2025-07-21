@@ -185,5 +185,13 @@ RSpec.describe OwnTracks::Params do
         expect(params[:trigger]).to eq('unknown')
       end
     end
+
+    context 'when point is invalid' do
+      let(:raw_point_params) { super().merge(lon: nil, lat: nil, tst: nil) }
+
+      it 'returns parsed params' do
+        expect(params).to eq(nil)
+      end
+    end
   end
 end

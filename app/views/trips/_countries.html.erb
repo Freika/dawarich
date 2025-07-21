@@ -2,7 +2,7 @@
   <div class="card bg-base-200 shadow-lg">
     <div class="card-body p-4">
       <div class="stat-title text-xs">Distance</div>
-      <div class="stat-value text-lg"><%= trip.distance %> <%= distance_unit %></div>
+      <div class="stat-value text-lg"><%= trip.distance_for_user(current_user).round %> <%= distance_unit %></div>
     </div>
   </div>
   <div class="card bg-base-200 shadow-lg">

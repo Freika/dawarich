@@ -5,11 +5,11 @@ SELF_HOSTED = ENV.fetch('SELF_HOSTED', 'true') == 'true'
 MIN_MINUTES_SPENT_IN_CITY = ENV.fetch('MIN_MINUTES_SPENT_IN_CITY', 60).to_i
 
 DISTANCE_UNITS = {
-  km: 1000, # to meters
+  km: 1000,    # to meters
   mi: 1609.34, # to meters
-  m: 1, # already in meters
-  ft: 0.3048, # to meters
-  yd: 0.9144 # to meters
+  m: 1,        # already in meters
+  ft: 0.3048,  # to meters
+  yd: 0.9144   # to meters
 }.freeze
 
 APP_VERSION = File.read('.app_version').strip

@@ -3,10 +3,13 @@
 class SettingsController < ApplicationController
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[update]
+
   def index; end
 
   def update
-    current_user.update(settings: settings_params)
+    existing_settings = current_user.safe_settings.settings
+
+    current_user.update(settings: existing_settings.merge(settings_params))
 
     flash.now[:notice] = 'Settings updated'
 
@@ -31,7 +34,8 @@ class SettingsController < ApplicationController
     params.require(:settings).permit(
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
-      :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key
+      :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
+      :visits_suggestions_enabled
     )
   end
 end

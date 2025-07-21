@@ -8,29 +8,7 @@ RSpec.describe Visits::Suggest do
     let(:start_at) { Time.zone.local(2020, 1, 1, 0, 0, 0) }
     let(:end_at) { Time.zone.local(2020, 1, 1, 2, 0, 0) }
 
-    let!(:points) do
-      [
-        # first visit
-        create(:point, :with_known_location, user:, timestamp: start_at),
-        create(:point, :with_known_location, user:, timestamp: start_at + 5.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 10.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 15.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 20.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 25.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 30.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 35.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 40.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 45.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 50.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 55.minutes),
-        # end of first visit
-        # second visit
-        create(:point, :with_known_location, user:, timestamp: start_at + 95.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 100.minutes),
-        create(:point, :with_known_location, user:, timestamp: start_at + 105.minutes)
-        # end of second visit
-      ]
-    end
+    let!(:points) { create_visit_points(user, start_at) }
 
     let(:geocoder_struct) do
       Struct.new(:data) do
@@ -97,12 +75,22 @@ RSpec.describe Visits::Suggest do
     end
 
     context 'when reverse geocoding is enabled' do
+      let(:reverse_geocoding_start_at) { Time.zone.local(2020, 6, 1, 0, 0, 0) }
+      let(:reverse_geocoding_end_at) { Time.zone.local(2020, 6, 1, 2, 0, 0) }
+
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+
+        create_visit_points(user, reverse_geocoding_start_at)
+        clear_enqueued_jobs
       end
 
-      it 'reverse geocodes visits' do
-        expect { subject }.to have_enqueued_job(ReverseGeocodingJob).exactly(2).times
+      it 'enqueues reverse geocoding jobs for created visits' do
+        described_class.new(user, start_at: reverse_geocoding_start_at, end_at: reverse_geocoding_end_at).call
+
+        expect(enqueued_jobs.count).to eq(2)
+        expect(enqueued_jobs).to all(have_job_class('ReverseGeocodingJob'))
+        expect(enqueued_jobs).to all(have_arguments_starting_with('place'))
       end
     end
 
@@ -113,9 +101,51 @@ RSpec.describe Visits::Suggest do
 
       it 'does not reverse geocode visits' do
         expect_any_instance_of(Visit).not_to receive(:async_reverse_geocode)
-
         subject
       end
     end
+  end
+
+  private
+
+  def create_visit_points(user, start_time)
+    [
+      # first visit
+      create(:point, :with_known_location, user:, timestamp: start_time),
+      create(:point, :with_known_location, user:, timestamp: start_time + 5.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 10.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 15.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 20.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 25.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 30.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 35.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 40.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 45.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 50.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 55.minutes),
+      # end of first visit
+
+      # second visit
+      create(:point, :with_known_location, user:, timestamp: start_time + 95.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 100.minutes),
+      create(:point, :with_known_location, user:, timestamp: start_time + 105.minutes)
+      # end of second visit
+    ]
+  end
+
+  def clear_enqueued_jobs
+    ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+  end
+
+  def enqueued_jobs
+    ActiveJob::Base.queue_adapter.enqueued_jobs
+  end
+
+  def have_job_class(job_class)
+    satisfy { |job| job['job_class'] == job_class }
+  end
+
+  def have_arguments_starting_with(first_argument)
+    satisfy { |job| job['arguments'].first == first_argument }
   end
 end

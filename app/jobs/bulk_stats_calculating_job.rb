@@ -4,7 +4,7 @@ class BulkStatsCalculatingJob < ApplicationJob
   queue_as :stats
 
   def perform
-    user_ids = User.pluck(:id)
+    user_ids = User.active.pluck(:id)
 
     user_ids.each do |user_id|
       Stats::BulkCalculator.new(user_id).call

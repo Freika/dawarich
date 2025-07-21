@@ -13,6 +13,12 @@ RSpec.describe CheckAppVersion do
       stub_const('APP_VERSION', '1.0.0')
     end
 
+    context 'when in production' do
+      before { allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new('production')) }
+
+      it { is_expected.to be false }
+    end
+
     context 'when latest version is newer' do
       before { stub_const('APP_VERSION', '0.9.0') }
 

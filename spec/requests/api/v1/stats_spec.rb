@@ -21,7 +21,7 @@ RSpec.describe 'Api::V1::Stats', type: :request do
     end
     let(:expected_json) do
       {
-        totalDistanceKm: stats_in_2020.map(&:distance).sum + stats_in_2021.map(&:distance).sum,
+        totalDistanceKm: (stats_in_2020.map(&:distance).sum + stats_in_2021.map(&:distance).sum) / 1000,
         totalPointsTracked: points_in_2020.count + points_in_2021.count,
         totalReverseGeocodedPoints: points_in_2020.count + points_in_2021.count,
         totalCountriesVisited: 1,
@@ -29,7 +29,7 @@ RSpec.describe 'Api::V1::Stats', type: :request do
         yearlyStats: [
           {
             year: 2021,
-            totalDistanceKm: 12,
+            totalDistanceKm: (stats_in_2021.map(&:distance).sum / 1000).to_i,
             totalCountriesVisited: 1,
             totalCitiesVisited: 1,
             monthlyDistanceKm: {
@@ -49,7 +49,7 @@ RSpec.describe 'Api::V1::Stats', type: :request do
           },
           {
             year: 2020,
-            totalDistanceKm: 12,
+            totalDistanceKm: (stats_in_2020.map(&:distance).sum / 1000).to_i,
             totalCountriesVisited: 1,
             totalCitiesVisited: 1,
             monthlyDistanceKm: {
