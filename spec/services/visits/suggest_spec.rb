@@ -75,13 +75,12 @@ RSpec.describe Visits::Suggest do
     end
 
     context 'when reverse geocoding is enabled' do
-      # Use a different time range to avoid interference with main tests
       let(:reverse_geocoding_start_at) { Time.zone.local(2020, 6, 1, 0, 0, 0) }
       let(:reverse_geocoding_end_at) { Time.zone.local(2020, 6, 1, 2, 0, 0) }
 
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-        # Create points for reverse geocoding test in a separate time range
+
         create_visit_points(user, reverse_geocoding_start_at)
         clear_enqueued_jobs
       end

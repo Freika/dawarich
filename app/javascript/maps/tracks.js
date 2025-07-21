@@ -30,7 +30,7 @@ export function createTrackPopupContent(track, distanceUnit) {
         <strong>🕐 Start:</strong> ${startTime}<br>
         <strong>🏁 End:</strong> ${endTime}<br>
         <strong>⏱️ Duration:</strong> ${durationFormatted}<br>
-        <strong>📏 Distance:</strong> ${formatDistance(track.distance, distanceUnit)}<br>
+        <strong>📏 Distance:</strong> ${formatDistance(track.distance / 1000, distanceUnit)}<br>
         <strong>⚡ Avg Speed:</strong> ${formatSpeed(track.avg_speed, distanceUnit)}<br>
         <strong>⛰️ Elevation:</strong> +${track.elevation_gain || 0}m / -${track.elevation_loss || 0}m<br>
         <strong>📊 Max Alt:</strong> ${track.elevation_max || 0}m<br>

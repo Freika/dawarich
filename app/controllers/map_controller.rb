@@ -31,21 +31,22 @@ class MapController < ApplicationController
 
   def build_tracks
     track_ids = extract_track_ids
-    TrackSerializer.new(current_user, track_ids).call
+
+    TracksSerializer.new(current_user, track_ids).call
   end
 
   def calculate_distance
-    total_distance_meters = 0
+    total_distance = 0
 
     @coordinates.each_cons(2) do
       distance_km = Geocoder::Calculations.distance_between(
         [_1[0], _1[1]], [_2[0], _2[1]], units: :km
       )
 
-      total_distance_meters += distance_km
+      total_distance += distance_km
     end
 
-    total_distance_meters.round
+    total_distance.round
   end
 
   def parsed_start_at

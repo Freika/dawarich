@@ -17,6 +17,9 @@
 
     <%= render 'application/favicon' %>
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
+    <% if !DawarichSettings.self_hosted? %>
+      <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+    <% end %>
   </head>
 
   <body class='min-h-screen'>

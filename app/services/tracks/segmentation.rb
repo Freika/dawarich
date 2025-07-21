@@ -68,8 +68,8 @@ module Tracks::Segmentation
     return false if previous_point.nil?
 
     # Check time threshold (convert minutes to seconds)
-    current_timestamp = point_timestamp(current_point)
-    previous_timestamp = point_timestamp(previous_point)
+    current_timestamp = current_point.timestamp
+    previous_timestamp = previous_point.timestamp
 
     time_diff_seconds = current_timestamp - previous_timestamp
     time_threshold_seconds = time_threshold_minutes.to_i * 60
@@ -77,14 +77,15 @@ module Tracks::Segmentation
     return true if time_diff_seconds > time_threshold_seconds
 
     # Check distance threshold - convert km to meters to match frontend logic
-    distance_km = calculate_distance_kilometers_between_points(previous_point, current_point)
+    distance_km = calculate_km_distance_between_points(previous_point, current_point)
     distance_meters = distance_km * 1000 # Convert km to meters
+
     return true if distance_meters > distance_threshold_meters
 
     false
   end
 
-  def calculate_distance_kilometers_between_points(point1, point2)
+  def calculate_km_distance_between_points(point1, point2)
     lat1, lon1 = point_coordinates(point1)
     lat2, lon2 = point_coordinates(point2)
 
@@ -96,7 +97,7 @@ module Tracks::Segmentation
     return false if segment_points.size < 2
 
     last_point = segment_points.last
-    last_timestamp = point_timestamp(last_point)
+    last_timestamp = last_point.timestamp
     current_time = Time.current.to_i
 
     # Don't finalize if the last point is too recent (within grace period)
@@ -106,30 +107,10 @@ module Tracks::Segmentation
     time_since_last_point > grace_period_seconds
   end
 
-  def point_timestamp(point)
-    if point.respond_to?(:timestamp)
-      # Point objects from database always have integer timestamps
-      point.timestamp
-    elsif point.is_a?(Hash)
-      # Hash might come from Redis buffer or test data
-      timestamp = point[:timestamp] || point['timestamp']
-      timestamp.to_i
-    else
-      raise ArgumentError, "Invalid point type: #{point.class}"
-    end
-  end
-
   def point_coordinates(point)
-    if point.respond_to?(:lat) && point.respond_to?(:lon)
-      [point.lat, point.lon]
-    elsif point.is_a?(Hash)
-      [point[:lat] || point['lat'], point[:lon] || point['lon']]
-    else
-      raise ArgumentError, "Invalid point type: #{point.class}"
-    end
+    [point.lat, point.lon]
   end
 
-  # These methods need to be implemented by the including class
   def distance_threshold_meters
     raise NotImplementedError, "Including class must implement distance_threshold_meters"
   end

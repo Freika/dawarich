@@ -34,7 +34,7 @@ class Point < ApplicationRecord
   after_create :set_country
   after_create_commit :broadcast_coordinates
   after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? }
-  after_commit :recalculate_track, on: :update
+  after_commit :recalculate_track, on: :update, if: -> { track.present? }
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
@@ -99,15 +99,10 @@ class Point < ApplicationRecord
   end
 
   def recalculate_track
-    return unless track.present?
-
     track.recalculate_path_and_distance!
   end
 
   def trigger_incremental_track_generation
-    point_date = Time.zone.at(timestamp).to_date
-    return if point_date < 1.day.ago.to_date
-
-    Tracks::IncrementalGeneratorJob.perform_later(user_id, point_date.to_s, 5)
+    Tracks::IncrementalCheckJob.perform_later(user.id, id)
   end
 end

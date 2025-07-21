@@ -4,8 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.30.1] - 2025-07-21
 
-# [0.29.2] - 2025-07-12
+## Fixed
+
+- Points limit exceeded check is now cached.
+
+
+# [0.30.0] - 2025-07-21
+
+⚠️ If you were using 0.29.2 RC, please run the following commands in the console, otherwise read on. ⚠️
+
+```ruby
+# This will delete all tracks 👇
+Track.delete_all
+
+# This will remove all tracks relations from points 👇
+Point.update_all(track_id: nil)
+
+# This will create tracks for all users 👇
+User.find_each do |user|
+  Tracks::CreateJob.perform_later(user.id, start_at: nil, end_at: nil, mode: :bulk)
+end
+```
 
 ## Added
 
@@ -19,10 +40,47 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Notification about Photon API load is now disabled.
 - All distance values are now stored in the database in meters. Conversion to user's preferred unit is done on the fly.
 - Every night, Dawarich will try to fetch names for places and visits that don't have them. #1281 #902 #583 #212
+- ⚠️ User settings are now being serialized in a more consistent way ⚠. `GET /api/v1/users/me` now returns the following data structure:
+```json
+{
+  "user": {
+    "email": "test@example.com",
+    "theme": "light",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z",
+    "settings": {
+      "maps": {
+        "url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "name": "Custom OpenStreetMap",
+        "distance_unit": "km"
+      },
+      "fog_of_war_meters": 51,
+      "meters_between_routes": 500,
+      "preferred_map_layer": "Light",
+      "speed_colored_routes": false,
+      "points_rendering_mode": "raw",
+      "minutes_between_routes": 30,
+      "time_threshold_minutes": 30,
+      "merge_threshold_minutes": 15,
+      "live_map_enabled": false,
+      "route_opacity": 0.3,
+      "immich_url": "https://persistence-test-1752264458724.com",
+      "photoprism_url": "",
+      "visits_suggestions_enabled": true,
+      "speed_color_scale": "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
+      "fog_of_war_threshold": 5
+    }
+  }
+}
+```
+- Links in emails will be based on the `DOMAIN` environment variable instead of `SMTP_DOMAIN`.
 
 ## Fixed
 
 - Swagger documentation is now valid again.
+- Invalid owntracks points are now ignored.
+- An older Owntrack's .rec format is now also supported.
+- Course and course accuracy are now rounded to 8 decimal places to fix the issue with points creation.
 
 # [0.29.1] - 2025-07-02
 
