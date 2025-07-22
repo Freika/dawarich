@@ -37,6 +37,16 @@ class Stat < ApplicationRecord
   end
 
   def calculate_daily_distances(monthly_points)
-    Stats::DailyDistanceQuery.new(monthly_points, timespan).call
+    Stats::DailyDistanceQuery.new(monthly_points, timespan, user_timezone).call
+  end
+
+  private
+
+  def user_timezone
+    # Future: Once user.timezone column exists, uncomment the line below
+    # user.timezone.presence || Time.zone.name
+
+    # For now, use application timezone
+    Time.zone.name
   end
 end
