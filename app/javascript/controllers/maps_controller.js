@@ -219,7 +219,7 @@ export default class extends BaseController {
     this.setupTracksSubscription();
 
     // Handle routes/tracks mode selection
-    this.addRoutesTracksSelector();
+    // this.addRoutesTracksSelector(); # Temporarily disabled
     this.switchRouteMode('routes', true);
 
     // Initialize layers based on settings
