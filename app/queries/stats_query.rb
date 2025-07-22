@@ -6,12 +6,12 @@ class StatsQuery
   end
 
   def points_stats
-    result = user.tracked_points.connection.execute(<<~SQL.squish)
-      SELECT#{' '}
-        COUNT(*) as total,
+    result = Point.connection.execute(<<~SQL.squish)
+      SELECT
+        COUNT(id) as total,
         COUNT(reverse_geocoded_at) as geocoded,
-        COUNT(CASE WHEN geodata = '{}' THEN 1 END) as without_data
-      FROM points#{' '}
+        COUNT(CASE WHEN geodata = '{}'::jsonb THEN 1 END) as without_data
+      FROM points
       WHERE user_id = #{user.id}
     SQL
 
