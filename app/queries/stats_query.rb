@@ -6,21 +6,24 @@ class StatsQuery
   end
 
   def points_stats
-    result = Point.connection.execute(<<~SQL.squish)
-      SELECT
-        COUNT(id) as total,
-        COUNT(reverse_geocoded_at) as geocoded,
-        COUNT(CASE WHEN geodata = '{}'::jsonb THEN 1 END) as without_data
-      FROM points
-      WHERE user_id = #{user.id}
-    SQL
+    sql = ActiveRecord::Base.sanitize_sql_array([
+      <<~SQL.squish,
+        SELECT
+          COUNT(id) as total,
+          COUNT(reverse_geocoded_at) as geocoded,
+          COUNT(CASE WHEN geodata = '{}'::jsonb THEN 1 END) as without_data
+        FROM points
+        WHERE user_id = ?
+      SQL
+      user.id
+    ])
 
-    row = result.first
+    result = Point.connection.select_one(sql)
 
     {
-      total: row['total'].to_i,
-      geocoded: row['geocoded'].to_i,
-      without_data: row['without_data'].to_i
+      total: result['total'].to_i,
+      geocoded: result['geocoded'].to_i,
+      without_data: result['without_data'].to_i
     }
   end
 
