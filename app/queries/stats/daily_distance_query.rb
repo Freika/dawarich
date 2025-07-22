@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 class Stats::DailyDistanceQuery
-  def initialize(monthly_points, timespan, user_timezone = nil)
+  def initialize(monthly_points, timespan, timezone = nil)
     @monthly_points = monthly_points
     @timespan = timespan
-    @user_timezone = user_timezone || 'UTC'
+    @timezone = validate_timezone(timezone)
   end
 
   def call
@@ -16,22 +16,22 @@ class Stats::DailyDistanceQuery
 
   private
 
-  attr_reader :monthly_points, :timespan, :user_timezone
+  attr_reader :monthly_points, :timespan, :timezone
 
   def daily_distances(monthly_points)
     Stat.connection.select_all(<<-SQL.squish)
       WITH points_with_distances AS (
         SELECT
-          EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{user_timezone}')) as day_of_month,
+          EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}')) as day_of_month,
           CASE
             WHEN LAG(lonlat) OVER (
-              PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{user_timezone}'))
+              PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}'))
               ORDER BY timestamp
             ) IS NOT NULL THEN
               ST_Distance(
                 lonlat::geography,
                 LAG(lonlat) OVER (
-                  PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{user_timezone}'))
+                  PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}'))
                   ORDER BY timestamp
                 )::geography
               )
@@ -61,5 +61,11 @@ class Stats::DailyDistanceQuery
 
       [index, distance_meters.to_i]
     end
+  end
+
+  def validate_timezone(timezone)
+    return timezone if ActiveSupport::TimeZone.all.any? { |tz| tz.name == timezone }
+
+    'UTC'
   end
 end
