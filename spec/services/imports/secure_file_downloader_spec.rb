@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Imports::SecureFileDownloader do
   let(:file_content) { 'test content' }
   let(:file_size) { file_content.bytesize }
-  let(:checksum) { Base64.strict_encode64(Digest::MD5.digest(file_content)) }
+  let(:checksum) { Base64.strict_encode64(Digest::SHA256.digest(file_content)) }
   let(:blob) { double('ActiveStorage::Blob', byte_size: file_size, checksum: checksum) }
   # Create a mock that mimics ActiveStorage::Attached::One
   let(:storage_attachment) { double('ActiveStorage::Attached::One', blob: blob) }
