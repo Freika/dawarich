@@ -27,6 +27,8 @@ class Tracks::CreateJob < ApplicationJob
   end
 
   def create_error_notification(user, error)
+    return unless DawarichSettings.self_hosted?
+
     Notifications::Create.new(
       user: user,
       kind: :error,
