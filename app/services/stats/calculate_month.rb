@@ -50,7 +50,7 @@ class Stats::CalculateMonth
               .tracked_points
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:lonlat, :timestamp, :city, :country)
+              .select(:lonlat, :timestamp)
               .order(timestamp: :asc)
   end
 
@@ -59,7 +59,14 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    CountriesAndCities.new(points).call
+    toponym_points = user
+                      .tracked_points
+                      .without_raw_data
+                      .where(timestamp: start_timestamp..end_timestamp)
+                      .select(:city, :country)
+                      .distinct
+
+    CountriesAndCities.new(toponym_points).call
   end
 
   def create_stats_update_failed_notification(user, error)

@@ -21,7 +21,7 @@ module Stats
       last_calculated_at ||= DateTime.new(1970, 1, 1)
 
       time_diff = last_calculated_at.to_i..Time.current.to_i
-      Point.where(user_id:, timestamp: time_diff).pluck(:timestamp)
+      Point.where(user_id:, timestamp: time_diff).pluck(:timestamp).uniq
     end
 
     def extract_months(timestamps)
