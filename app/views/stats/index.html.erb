@@ -82,7 +82,7 @@
             </div>
           <% end %>
           <%= column_chart(
-            Stat.year_distance(year, current_user).map { |month_name, distance_meters|
+            @year_distances[year].map { |month_name, distance_meters|
               [month_name, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round(2)]
             },
             height: '200px',
