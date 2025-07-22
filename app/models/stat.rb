@@ -39,11 +39,4 @@ class Stat < ApplicationRecord
   def calculate_daily_distances(monthly_points)
     Stats::DailyDistanceQuery.new(monthly_points, timespan).call
   end
-
-  def filter_points_for_day(points, day)
-    beginning_of_day = day.beginning_of_day.to_i
-    end_of_day = day.end_of_day.to_i
-
-    points.select { |p| p.timestamp.between?(beginning_of_day, end_of_day) }
-  end
 end
