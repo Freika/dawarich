@@ -13,6 +13,7 @@ class StatsController < ApplicationController
   def show
     @year = params[:year].to_i
     @stats = current_user.stats.where(year: @year).order(:month)
+    @year_distances = { @year => Stat.year_distance(@year, current_user) }
   end
 
   def update

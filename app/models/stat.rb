@@ -37,12 +37,7 @@ class Stat < ApplicationRecord
   end
 
   def calculate_daily_distances(monthly_points)
-    timespan.to_a.map.with_index(1) do |day, index|
-      daily_points = filter_points_for_day(monthly_points, day)
-      # Calculate distance in meters for consistent storage
-      distance_meters = Point.total_distance(daily_points, :m)
-      [index, distance_meters.round]
-    end
+    Stats::DailyDistanceQuery.new(monthly_points, timespan).call
   end
 
   def filter_points_for_day(points, day)

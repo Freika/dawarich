@@ -83,7 +83,7 @@
           <% end %>
           <%= column_chart(
             @year_distances[year].map { |month_name, distance_meters|
-              [month_name, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round(2)]
+              [month_name, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
             },
             height: '200px',
             suffix: " #{current_user.safe_settings.distance_unit}",
