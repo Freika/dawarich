@@ -4,12 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.30.1] - 2025-07-21
+# [0.30.1] - 2025-07-22
 
 ## Fixed
 
 - Points limit exceeded check is now cached.
 - Reverse geocoding for places is now significantly faster.
+
+## Changed
+
+- Stats page should load faster now.
+- Track creation is temporarily disabled.
 
 
 # [0.30.0] - 2025-07-21
