@@ -6,6 +6,7 @@
   - imports
   - exports
   - stats
+  - trips
   - tracks
   - reverse_geocoding
   - visit_suggesting

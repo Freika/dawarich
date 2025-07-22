@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Trips::CalculatePathJob < ApplicationJob
-  queue_as :default
+  queue_as :trips
 
   def perform(trip_id)
     trip = Trip.find(trip_id)
