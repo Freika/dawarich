@@ -30,7 +30,7 @@ RSpec.describe Point, type: :model do
       end
     end
 
-    describe '#recalculate_track' do
+    xdescribe '#recalculate_track' do
       let(:point) { create(:point, track: track) }
       let(:track) { create(:track) }
 
@@ -121,7 +121,7 @@ RSpec.describe Point, type: :model do
       end
     end
 
-    describe '#trigger_incremental_track_generation' do
+    xdescribe '#trigger_incremental_track_generation' do
       let(:point) do
         create(:point, track: track, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)
       end

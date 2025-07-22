@@ -12,6 +12,8 @@ class Country < ApplicationRecord
   end
 
   def self.names_to_iso_a2
-    pluck(:name, :iso_a2).to_h
+    Rails.cache.fetch('countries_names_to_iso_a2', expires_in: 1.day) do
+      pluck(:name, :iso_a2).to_h
+    end
   end
 end

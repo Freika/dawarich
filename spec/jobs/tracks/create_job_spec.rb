@@ -151,4 +151,50 @@ RSpec.describe Tracks::CreateJob, type: :job do
       expect(described_class.new.queue_name).to eq('tracks')
     end
   end
+
+  context 'when self-hosted' do
+    let(:generator_instance) { instance_double(Tracks::Generator) }
+    let(:notification_service) { instance_double(Notifications::Create) }
+    let(:error_message) { 'Something went wrong' }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(Tracks::Generator).to receive(:new).and_return(generator_instance)
+      allow(generator_instance).to receive(:call).and_raise(StandardError, error_message)
+      allow(Notifications::Create).to receive(:new).and_return(notification_service)
+      allow(notification_service).to receive(:call)
+    end
+
+    it 'creates a failure notification when self-hosted' do
+      described_class.new.perform(user.id)
+
+      expect(Notifications::Create).to have_received(:new).with(
+        user: user,
+        kind: :error,
+        title: 'Track Generation Failed',
+        content: "Failed to generate tracks from your location data: #{error_message}"
+      )
+      expect(notification_service).to have_received(:call)
+    end
+  end
+
+  context 'when not self-hosted' do
+    let(:generator_instance) { instance_double(Tracks::Generator) }
+    let(:notification_service) { instance_double(Notifications::Create) }
+    let(:error_message) { 'Something went wrong' }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      allow(Tracks::Generator).to receive(:new).and_return(generator_instance)
+      allow(generator_instance).to receive(:call).and_raise(StandardError, error_message)
+      allow(Notifications::Create).to receive(:new).and_return(notification_service)
+      allow(notification_service).to receive(:call)
+    end
+
+    it 'does not create a failure notification' do
+      described_class.new.perform(user.id)
+
+      expect(notification_service).not_to have_received(:call)
+    end
+  end
 end
