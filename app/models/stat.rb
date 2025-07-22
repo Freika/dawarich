@@ -37,18 +37,16 @@ class Stat < ApplicationRecord
   end
 
   def calculate_daily_distances(monthly_points)
-    timespan.to_a.map.with_index(1) do |day, index|
-      daily_points = filter_points_for_day(monthly_points, day)
-      # Calculate distance in meters for consistent storage
-      distance_meters = Point.total_distance(daily_points, :m)
-      [index, distance_meters.round]
-    end
+    Stats::DailyDistanceQuery.new(monthly_points, timespan, user_timezone).call
   end
 
-  def filter_points_for_day(points, day)
-    beginning_of_day = day.beginning_of_day.to_i
-    end_of_day = day.end_of_day.to_i
+  private
 
-    points.select { |p| p.timestamp.between?(beginning_of_day, end_of_day) }
+  def user_timezone
+    # Future: Once user.timezone column exists, uncomment the line below
+    # user.timezone.presence || Time.zone.name
+
+    # For now, use application timezone
+    Time.zone.name
   end
 end
