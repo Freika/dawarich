@@ -77,5 +77,4 @@ group :development do
   gem 'database_consistency', require: false
   gem 'foreman'
   gem 'rubocop-rails', require: false
-  gem 'bullet'
 end

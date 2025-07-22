@@ -5,30 +5,9 @@ class StatsController < ApplicationController
   before_action :authenticate_active_user!, only: %i[update update_all]
 
   def index
-    @stats = current_user.stats.group_by(&:year).transform_values do |stats|
-      stats.sort_by(&:updated_at).reverse
-    end.sort.reverse
-
-    # Single aggregated query to replace 3 separate COUNT queries
-    result = current_user.tracked_points.connection.execute(<<~SQL.squish)
-      SELECT#{' '}
-        COUNT(*) as total,
-        COUNT(reverse_geocoded_at) as geocoded,
-        COUNT(CASE WHEN geodata = '{}' THEN 1 END) as without_data
-      FROM points#{' '}
-      WHERE user_id = #{current_user.id}
-    SQL
-
-    row = result.first
-    @points_total = row['total'].to_i
-    @points_reverse_geocoded = row['geocoded'].to_i
-    @points_reverse_geocoded_without_data = row['without_data'].to_i
-
-    # Precompute year distance data to avoid N+1 queries in view
-    @year_distances = {}
-    @stats.each do |year, _stats|
-      @year_distances[year] = Stat.year_distance(year, current_user)
-    end
+    @stats = build_stats
+    assign_points_statistics
+    @year_distances = precompute_year_distances
   end
 
   def show
@@ -62,5 +41,31 @@ class StatsController < ApplicationController
     end
 
     redirect_to stats_path, notice: 'Stats are being updated', status: :see_other
+  end
+
+  private
+
+  def assign_points_statistics
+    points_stats = ::StatsQuery.new(current_user).points_stats
+
+    @points_total = points_stats[:total]
+    @points_reverse_geocoded = points_stats[:geocoded]
+    @points_reverse_geocoded_without_data = points_stats[:without_data]
+  end
+
+  def precompute_year_distances
+    year_distances = {}
+
+    @stats.each do |year, _stats|
+      year_distances[year] = Stat.year_distance(year, current_user)
+    end
+
+    year_distances
+  end
+
+  def build_stats
+    current_user.stats.group_by(&:year).transform_values do |stats|
+      stats.sort_by(&:updated_at).reverse
+    end.sort.reverse
   end
 end
