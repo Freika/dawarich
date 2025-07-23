@@ -184,28 +184,33 @@ class Tracks::Generator
 
   def get_timestamp_range
     case mode
-    when :bulk
-      if start_at && end_at
-        [start_at.to_i, end_at.to_i]
-      else
-        first_point = user.tracked_points.order(:timestamp).first
-        last_point = user.tracked_points.order(:timestamp).last
-
-        [first_point&.timestamp || 0, last_point&.timestamp || Time.current.to_i]
-      end
-    when :daily
-      day = start_at&.to_date || Date.current
-
-      [day.beginning_of_day.to_i, day.end_of_day.to_i]
-    when :incremental
-      # For incremental, we need all untracked points up to end_at
-      first_point = user.tracked_points.where(track_id: nil).order(:timestamp).first
-      end_timestamp = end_at ? end_at.to_i : Time.current.to_i
-
-      [first_point&.timestamp || 0, end_timestamp]
+    when :bulk then bulk_timestamp_range
+    when :daily then daily_timestamp_range
+    when :incremental then incremental_timestamp_range
     else
       raise ArgumentError, "Unknown mode: #{mode}"
     end
+  end
+
+  def bulk_timestamp_range
+    return [start_at.to_i, end_at.to_i] if start_at && end_at
+
+    first_point = user.tracked_points.order(:timestamp).first
+    last_point = user.tracked_points.order(:timestamp).last
+
+    [first_point&.timestamp || 0, last_point&.timestamp || Time.current.to_i]
+  end
+
+  def daily_timestamp_range
+    day = start_at&.to_date || Date.current
+    [day.beginning_of_day.to_i, day.end_of_day.to_i]
+  end
+
+  def incremental_timestamp_range
+    first_point = user.tracked_points.where(track_id: nil).order(:timestamp).first
+    end_timestamp = end_at ? end_at.to_i : Time.current.to_i
+
+    [first_point&.timestamp || 0, end_timestamp]
   end
 
   def distance_threshold_meters
