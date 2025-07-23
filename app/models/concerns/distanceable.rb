@@ -60,18 +60,25 @@ module Distanceable
       point_pairs = points.each_cons(2).to_a
       return [] if point_pairs.empty?
 
-      values_clause = point_pairs.map.with_index do |(p1, p2), index|
-        "(#{index}, ST_GeomFromEWKT('#{p1.lonlat}')::geography, ST_GeomFromEWKT('#{p2.lonlat}')::geography)"
+      # Create parameterized placeholders for VALUES clause
+      values_placeholders = point_pairs.map.with_index do |_, index|
+        base_idx = index * 3
+        "($#{base_idx + 1}, ST_GeomFromEWKT($#{base_idx + 2})::geography, ST_GeomFromEWKT($#{base_idx + 3})::geography)"
       end.join(', ')
 
-      # Single query to calculate all distances
-      results = connection.execute(<<-SQL.squish)
+      # Flatten parameters: [pair_id, lonlat1, lonlat2, pair_id, lonlat1, lonlat2, ...]
+      params = point_pairs.flat_map.with_index do |(p1, p2), index|
+        [index, p1.lonlat, p2.lonlat]
+      end
+
+      # Single query to calculate all distances using parameterized query
+      results = connection.exec_params(<<-SQL.squish, params)
         WITH point_pairs AS (
           SELECT
             pair_id,
             point1,
             point2
-          FROM (VALUES #{values_clause}) AS t(pair_id, point1, point2)
+          FROM (VALUES #{values_placeholders}) AS t(pair_id, point1, point2)
         )
         SELECT
           pair_id,
