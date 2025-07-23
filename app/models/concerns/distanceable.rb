@@ -60,10 +60,9 @@ module Distanceable
       point_pairs = points.each_cons(2).to_a
       return [] if point_pairs.empty?
 
-      # Create parameterized placeholders for VALUES clause
-      values_placeholders = point_pairs.map.with_index do |_, index|
-        base_idx = index * 3
-        "($#{base_idx + 1}, ST_GeomFromEWKT($#{base_idx + 2})::geography, ST_GeomFromEWKT($#{base_idx + 3})::geography)"
+      # Create parameterized placeholders for VALUES clause using ? placeholders
+      values_placeholders = point_pairs.map do |_|
+        "(?, ST_GeomFromEWKT(?)::geography, ST_GeomFromEWKT(?)::geography)"
       end.join(', ')
 
       # Flatten parameters: [pair_id, lonlat1, lonlat2, pair_id, lonlat1, lonlat2, ...]
@@ -72,7 +71,7 @@ module Distanceable
       end
 
       # Single query to calculate all distances using parameterized query
-      results = connection.exec_params(<<-SQL.squish, params)
+      sql_with_params = ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish] + params)
         WITH point_pairs AS (
           SELECT
             pair_id,
@@ -86,9 +85,11 @@ module Distanceable
         FROM point_pairs
         ORDER BY pair_id
       SQL
+      
+      results = connection.select_all(sql_with_params)
 
       # Return array of distances in meters
-      results.map { |row| row['distance_meters'].to_i }
+      results.map { |row| row['distance_meters'].to_f }
     end
   end
 
