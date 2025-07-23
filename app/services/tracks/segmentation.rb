@@ -86,14 +86,12 @@ module Tracks::Segmentation
   end
 
   def calculate_km_distance_between_points(point1, point2)
-    # OPTIMIZED: Use PostGIS for more accurate distance calculation (same as track distance)
-    # This maintains consistency with track distance calculations
     distance_meters = Point.connection.select_value(
       'SELECT ST_Distance(ST_GeomFromEWKT($1)::geography, ST_GeomFromEWKT($2)::geography)',
       nil,
       [point1.lonlat, point2.lonlat]
     )
-    
+
     distance_meters.to_f / 1000.0 # Convert meters to kilometers
   end
 

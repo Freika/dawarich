@@ -40,20 +40,17 @@ class Tracks::Generator
   def call
     clean_existing_tracks if should_clean_tracks?
 
-    # Get timestamp range for SQL query
     start_timestamp, end_timestamp = get_timestamp_range
-    
+
     Rails.logger.debug "Generator: querying points for user #{user.id} in #{mode} mode"
-    
-    # Use optimized SQL segmentation with pre-calculated distances
-    untracked_only = (mode == :incremental)
+
     segments = Track.get_segments_with_points(
       user.id,
       start_timestamp,
       end_timestamp,
       time_threshold_minutes,
       distance_threshold_meters,
-      untracked_only: untracked_only
+      untracked_only: mode == :incremental
     )
 
     Rails.logger.debug "Generator: created #{segments.size} segments via SQL"
@@ -110,23 +107,14 @@ class Tracks::Generator
     user.tracked_points.where(timestamp: day_range).order(:timestamp)
   end
 
-  def create_track_from_segment_optimized(segment_data)
+  def create_track_from_segment(segment_data)
     points = segment_data[:points]
     pre_calculated_distance = segment_data[:pre_calculated_distance]
-    
+
     Rails.logger.debug "Generator: processing segment with #{points.size} points"
     return unless points.size >= 2
 
-    track = create_track_from_points_optimized(points, pre_calculated_distance)
-    Rails.logger.debug "Generator: created track #{track&.id}"
-    track
-  end
-
-  def create_track_from_segment(segment)
-    Rails.logger.debug "Generator: processing segment with #{segment.size} points"
-    return unless segment.size >= 2
-
-    track = create_track_from_points(segment)
+    track = create_track_from_points(points, pre_calculated_distance)
     Rails.logger.debug "Generator: created track #{track&.id}"
     track
   end
@@ -194,7 +182,6 @@ class Tracks::Generator
     scope.destroy_all
   end
 
-  # Get timestamp range for SQL query based on mode
   def get_timestamp_range
     case mode
     when :bulk
@@ -204,22 +191,24 @@ class Tracks::Generator
         # Get full range for user
         first_point = user.tracked_points.order(:timestamp).first
         last_point = user.tracked_points.order(:timestamp).last
+
         [first_point&.timestamp || 0, last_point&.timestamp || Time.current.to_i]
       end
     when :daily
       day = start_at&.to_date || Date.current
+
       [day.beginning_of_day.to_i, day.end_of_day.to_i]
     when :incremental
       # For incremental, we need all untracked points up to end_at
       first_point = user.tracked_points.where(track_id: nil).order(:timestamp).first
       end_timestamp = end_at ? end_at.to_i : Time.current.to_i
+
       [first_point&.timestamp || 0, end_timestamp]
     else
       raise ArgumentError, "Unknown mode: #{mode}"
     end
   end
 
-  # Threshold methods from safe_settings
   def distance_threshold_meters
     @distance_threshold_meters ||= user.safe_settings.meters_between_routes.to_i
   end

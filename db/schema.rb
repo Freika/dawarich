@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_03_193657) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_23_164055) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -146,6 +146,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_03_193657) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
   end
 
@@ -202,6 +203,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_03_193657) do
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["trigger"], name: "index_points_on_trigger"
+    t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end

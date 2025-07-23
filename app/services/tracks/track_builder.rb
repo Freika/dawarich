@@ -49,7 +49,7 @@
 module Tracks::TrackBuilder
   extend ActiveSupport::Concern
 
-  def create_track_from_points(points)
+  def create_track_from_points(points, pre_calculated_distance)
     return nil if points.size < 2
 
     track = Track.new(
@@ -59,54 +59,20 @@ module Tracks::TrackBuilder
       original_path: build_path(points)
     )
 
-    # Calculate track statistics
-    track.distance = calculate_track_distance(points)
-    track.duration = calculate_duration(points)
-    track.avg_speed = calculate_average_speed(track.distance, track.duration)
-
-    # Calculate elevation statistics
-    elevation_stats = calculate_elevation_stats(points)
-    track.elevation_gain = elevation_stats[:gain]
-    track.elevation_loss = elevation_stats[:loss]
-    track.elevation_max = elevation_stats[:max]
-    track.elevation_min = elevation_stats[:min]
-
-    if track.save
-      Point.where(id: points.map(&:id)).update_all(track_id: track.id)
-
-      track
-    else
-      Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
-
-      nil
-    end
-  end
-
-  # Optimized version that uses pre-calculated distance from SQL
-  def create_track_from_points_optimized(points, pre_calculated_distance)
-    return nil if points.size < 2
-
-    track = Track.new(
-      user_id: user.id,
-      start_at: Time.zone.at(points.first.timestamp),
-      end_at: Time.zone.at(points.last.timestamp),
-      original_path: build_path(points)
-    )
-
-    # Use pre-calculated distance from SQL instead of recalculating
-    track.distance = pre_calculated_distance.round
-    track.duration = calculate_duration(points)
+    track.distance  = pre_calculated_distance.round
+    track.duration  = calculate_duration(points)
     track.avg_speed = calculate_average_speed(track.distance, track.duration)
 
     # Calculate elevation statistics (no DB queries needed)
     elevation_stats = calculate_elevation_stats(points)
     track.elevation_gain = elevation_stats[:gain]
     track.elevation_loss = elevation_stats[:loss]
-    track.elevation_max = elevation_stats[:max]
-    track.elevation_min = elevation_stats[:min]
+    track.elevation_max  = elevation_stats[:max]
+    track.elevation_min  = elevation_stats[:min]
 
     if track.save
       Point.where(id: points.map(&:id)).update_all(track_id: track.id)
+
       track
     else
       Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
@@ -133,6 +99,7 @@ module Tracks::TrackBuilder
 
     # Speed in meters per second, then convert to km/h for storage
     speed_mps = distance_in_meters.to_f / duration_seconds
+
     (speed_mps * 3.6).round(2) # m/s to km/h
   end
 
