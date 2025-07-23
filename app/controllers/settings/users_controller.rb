@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 class Settings::UsersController < ApplicationController
-  before_action :authenticate_self_hosted!, only: [:export, :import]
+  before_action :authenticate_self_hosted!, except: [:export, :import]
   before_action :authenticate_admin!, except: [:export, :import]
-  before_action :authenticate_user!, only: [:export, :import]
+  before_action :authenticate_user!
 
   def index
     @users = User.order(created_at: :desc)
