@@ -86,11 +86,15 @@ module Tracks::Segmentation
   end
 
   def calculate_km_distance_between_points(point1, point2)
-    lat1, lon1 = point_coordinates(point1)
-    lat2, lon2 = point_coordinates(point2)
-
-    # Use Geocoder to match behavior with frontend (same library used elsewhere in app)
-    Geocoder::Calculations.distance_between([lat1, lon1], [lat2, lon2], units: :km)
+    # OPTIMIZED: Use PostGIS for more accurate distance calculation (same as track distance)
+    # This maintains consistency with track distance calculations
+    distance_meters = Point.connection.select_value(
+      'SELECT ST_Distance(ST_GeomFromEWKT($1)::geography, ST_GeomFromEWKT($2)::geography)',
+      nil,
+      [point1.lonlat, point2.lonlat]
+    )
+    
+    distance_meters.to_f / 1000.0 # Convert meters to kilometers
   end
 
   def should_finalize_segment?(segment_points, grace_period_minutes = 5)

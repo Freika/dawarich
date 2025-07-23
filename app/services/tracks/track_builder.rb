@@ -82,6 +82,38 @@ module Tracks::TrackBuilder
     end
   end
 
+  # Optimized version that uses pre-calculated distance from SQL
+  def create_track_from_points_optimized(points, pre_calculated_distance)
+    return nil if points.size < 2
+
+    track = Track.new(
+      user_id: user.id,
+      start_at: Time.zone.at(points.first.timestamp),
+      end_at: Time.zone.at(points.last.timestamp),
+      original_path: build_path(points)
+    )
+
+    # Use pre-calculated distance from SQL instead of recalculating
+    track.distance = pre_calculated_distance.round
+    track.duration = calculate_duration(points)
+    track.avg_speed = calculate_average_speed(track.distance, track.duration)
+
+    # Calculate elevation statistics (no DB queries needed)
+    elevation_stats = calculate_elevation_stats(points)
+    track.elevation_gain = elevation_stats[:gain]
+    track.elevation_loss = elevation_stats[:loss]
+    track.elevation_max = elevation_stats[:max]
+    track.elevation_min = elevation_stats[:min]
+
+    if track.save
+      Point.where(id: points.map(&:id)).update_all(track_id: track.id)
+      track
+    else
+      Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
+      nil
+    end
+  end
+
   def build_path(points)
     Tracks::BuildPath.new(points).call
   end

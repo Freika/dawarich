@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Timestamps
-
   def self.parse_timestamp(timestamp)
     begin
       # if the timestamp is in ISO 8601 format, try to parse it

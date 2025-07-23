@@ -50,15 +50,42 @@ module Distanceable
 
       return 0 if points.length < 2
 
-      total_meters = points.each_cons(2).sum do |point1, point2|
-        connection.select_value(
-          'SELECT ST_Distance(ST_GeomFromEWKT($1)::geography, ST_GeomFromEWKT($2)::geography)',
-          nil,
-          [point1.lonlat, point2.lonlat]
-        )
-      end
+      # OPTIMIZED: Single SQL query instead of N individual queries
+      total_meters = calculate_batch_distances(points).sum
 
       total_meters.to_f / ::DISTANCE_UNITS[unit.to_sym]
+    end
+
+    # Optimized batch distance calculation using single SQL query
+    def calculate_batch_distances(points)
+      return [] if points.length < 2
+
+      point_pairs = points.each_cons(2).to_a
+      return [] if point_pairs.empty?
+
+      # Create a VALUES clause with all point pairs
+      values_clause = point_pairs.map.with_index do |(p1, p2), index|
+        "(#{index}, ST_GeomFromEWKT('#{p1.lonlat}')::geography, ST_GeomFromEWKT('#{p2.lonlat}')::geography)"
+      end.join(', ')
+
+      # Single query to calculate all distances
+      results = connection.execute(<<-SQL.squish)
+        WITH point_pairs AS (
+          SELECT 
+            pair_id,
+            point1,
+            point2
+          FROM (VALUES #{values_clause}) AS t(pair_id, point1, point2)
+        )
+        SELECT 
+          pair_id,
+          ST_Distance(point1, point2) as distance_meters
+        FROM point_pairs
+        ORDER BY pair_id
+      SQL
+
+      # Return array of distances in meters
+      results.map { |row| row['distance_meters'].to_f }
     end
   end
 

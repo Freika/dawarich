@@ -52,6 +52,7 @@ gem 'jwt'
 
 group :development, :test do
   gem 'brakeman', require: false
+  gem 'bullet'
   gem 'bundler-audit', require: false
   gem 'debug', platforms: %i[mri mingw x64_mingw]
   gem 'dotenv-rails'
@@ -78,3 +79,9 @@ group :development do
   gem 'foreman'
   gem 'rubocop-rails', require: false
 end
+
+# group :production do
+#   gem 'uglifier'
+# end
+
+# gem 'sassc-rails'
