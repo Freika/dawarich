@@ -57,12 +57,12 @@ class Tracks::Generator
 
     tracks_created = 0
 
-    segments.each do |segment_data|
-      track = create_track_from_segment(segment_data)
+    segments.each do |segment|
+      track = create_track_from_segment(segment)
       tracks_created += 1 if track
     end
 
-    Rails.logger.info "Generated #{tracks_created} tracks for user #{user.id} in optimized #{mode} mode"
+    Rails.logger.info "Generated #{tracks_created} tracks for user #{user.id} in #{mode} mode"
     tracks_created
   end
 
@@ -188,7 +188,6 @@ class Tracks::Generator
       if start_at && end_at
         [start_at.to_i, end_at.to_i]
       else
-        # Get full range for user
         first_point = user.tracked_points.order(:timestamp).first
         last_point = user.tracked_points.order(:timestamp).last
 

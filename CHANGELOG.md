@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Distance on the stats page is now rounded. #1548
+- Non-selfhosted users can now export and import their account data.
 
 
 # [0.30.2] - 2025-07-22
