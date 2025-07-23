@@ -5,7 +5,6 @@ module Distanceable
 
   module ClassMethods
     def total_distance(points = nil, unit = :km)
-      # Handle method being called directly on relation vs with array
       if points.nil?
         calculate_distance_for_relation(unit)
       else
@@ -50,15 +49,47 @@ module Distanceable
 
       return 0 if points.length < 2
 
-      total_meters = points.each_cons(2).sum do |point1, point2|
-        connection.select_value(
-          'SELECT ST_Distance(ST_GeomFromEWKT($1)::geography, ST_GeomFromEWKT($2)::geography)',
-          nil,
-          [point1.lonlat, point2.lonlat]
-        )
-      end
+      total_meters = calculate_batch_distances(points).sum
 
       total_meters.to_f / ::DISTANCE_UNITS[unit.to_sym]
+    end
+
+    def calculate_batch_distances(points)
+      return [] if points.length < 2
+
+      point_pairs = points.each_cons(2).to_a
+      return [] if point_pairs.empty?
+
+      # Create parameterized placeholders for VALUES clause using ? placeholders
+      values_placeholders = point_pairs.map do |_|
+        "(?, ST_GeomFromEWKT(?)::geography, ST_GeomFromEWKT(?)::geography)"
+      end.join(', ')
+
+      # Flatten parameters: [pair_id, lonlat1, lonlat2, pair_id, lonlat1, lonlat2, ...]
+      params = point_pairs.flat_map.with_index do |(p1, p2), index|
+        [index, p1.lonlat, p2.lonlat]
+      end
+
+      # Single query to calculate all distances using parameterized query
+      sql_with_params = ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish] + params)
+        WITH point_pairs AS (
+          SELECT
+            pair_id,
+            point1,
+            point2
+          FROM (VALUES #{values_placeholders}) AS t(pair_id, point1, point2)
+        )
+        SELECT
+          pair_id,
+          ST_Distance(point1, point2) as distance_meters
+        FROM point_pairs
+        ORDER BY pair_id
+      SQL
+      
+      results = connection.select_all(sql_with_params)
+
+      # Return array of distances in meters
+      results.map { |row| row['distance_meters'].to_f }
     end
   end
 
@@ -67,7 +98,6 @@ module Distanceable
       raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
     end
 
-    # Extract coordinates based on what type other_point is
     other_lonlat = extract_point(other_point)
     return nil if other_lonlat.nil?
 

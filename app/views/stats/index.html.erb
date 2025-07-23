@@ -21,7 +21,9 @@
     <% end %>
   </div>
 
-  <%= link_to 'Update stats', update_all_stats_path, data: { turbo_method: :put }, class: 'btn btn-primary mt-5' %>
+  <% if current_user.active? %>
+    <%= link_to 'Update stats', update_all_stats_path, data: { turbo_method: :put }, class: 'btn btn-primary mt-5' %>
+  <% end %>
 
   <div class="mt-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
     <% @stats.each do |year, stats| %>
@@ -33,13 +35,13 @@
               <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
             <div class="gap-2">
-              <span class='text-xs text-gray-500'>Last updated: <%= human_date(stats.first.updated_at) %></span>
+              <span class='text-xs text-gray-500'>Last update: <%= human_date(stats.first.updated_at) %></span>
               <%= link_to '🔄', update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
             </div>
           </h2>
           <p>
             <% cache [current_user, 'year_distance_stat', year], skip_digest: true do %>
-              <%= number_with_delimiter year_distance_stat(year, current_user) %><%= current_user.safe_settings.distance_unit %>
+              <%= number_with_delimiter year_distance_stat(year, current_user).round %> <%= current_user.safe_settings.distance_unit %>
             <% end %>
           </p>
           <% if DawarichSettings.reverse_geocoding_enabled? %>
