@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Track generation is now significantly faster and less resource intensive.
 
+## Fixed
+
+- Distance on the stats page is now rounded. #1548
+
 
 # [0.30.2] - 2025-07-22
 

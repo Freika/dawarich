@@ -41,7 +41,7 @@
           </h2>
           <p>
             <% cache [current_user, 'year_distance_stat', year], skip_digest: true do %>
-              <%= number_with_delimiter year_distance_stat(year, current_user) %><%= current_user.safe_settings.distance_unit %>
+              <%= number_with_delimiter year_distance_stat(year, current_user).round %> <%= current_user.safe_settings.distance_unit %>
             <% end %>
           </p>
           <% if DawarichSettings.reverse_geocoding_enabled? %>

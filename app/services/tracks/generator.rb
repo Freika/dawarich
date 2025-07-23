@@ -58,7 +58,7 @@ class Tracks::Generator
     tracks_created = 0
 
     segments.each do |segment_data|
-      track = create_track_from_segment_optimized(segment_data)
+      track = create_track_from_segment(segment_data)
       tracks_created += 1 if track
     end
 
