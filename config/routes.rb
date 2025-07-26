@@ -87,6 +87,8 @@ Rails.application.routes.draw do
     devise_for :users
   end
 
+  resources :metrics, only: [:index]
+
   get 'map', to: 'map#index'
 
   namespace :api do
