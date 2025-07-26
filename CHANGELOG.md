@@ -4,9 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.30.4] - 2025-07-26
 
+## Added
 
-# [0.30.4] - 2025-07-25
+- Prometheus metrics are now available at `/metrics`. Configure `METRICS_USERNAME` and `METRICS_PASSWORD` environment variables for basic authentication. All other prometheus-related environment variables are also necessary.
+
 
 ## Fixed
 
