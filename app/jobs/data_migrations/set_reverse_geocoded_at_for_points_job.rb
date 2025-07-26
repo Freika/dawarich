@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class DataMigrations::SetReverseGeocodedAtForPointsJob < ApplicationJob
-  queue_as :default
+  queue_as :data_migrations
 
   def perform
     timestamp = Time.current

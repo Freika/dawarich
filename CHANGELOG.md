@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.30.6] - 2025-07-27
+
+## Changed
+
+- Put all jobs in their own queues.
+- Visits page should load faster now.
+- Reverse geocoding jobs now make less database queries.
+
+
 # [0.30.5] - 2025-07-26
 
 ## Fixed

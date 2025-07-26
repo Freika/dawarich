@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class DataMigrations::MigratePlacesLonlatJob < ApplicationJob
-  queue_as :default
+  queue_as :data_migrations
 
   def perform(user_id)
     user = User.find(user_id)
