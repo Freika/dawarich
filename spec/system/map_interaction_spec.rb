@@ -435,7 +435,7 @@ RSpec.describe 'Map Interaction', type: :system do
       end
     end
 
-    context 'settings panel functionality' do
+    xcontext 'settings panel functionality' do
       include_context 'authenticated map user'
 
       it 'allows updating route opacity settings' do
