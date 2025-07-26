@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Warden error in jobs is now fixed. #1556
 - The Live Map setting is now respected.
 - The Live Map info modal is now displayed. #665
+- GPX from Basecamp is now supported. #790
 
 
 

@@ -81,8 +81,10 @@ class Gpx::TrackImporter
   def speed(point)
     return if point['extensions'].blank?
 
-    (
-      point.dig('extensions', 'speed') || point.dig('extensions', 'TrackPointExtension', 'speed')
-    ).to_f.round(1)
+    value = point.dig('extensions', 'speed')
+    extensions = point.dig('extensions', 'TrackPointExtension')
+    value ||= extensions.is_a?(Hash) ? extensions.dig('speed') : nil
+
+    value&.to_f&.round(1) || 0
   end
 end
