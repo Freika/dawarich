@@ -5,7 +5,7 @@
         <span class="hover:underline"><%= trip.name %></span>
       </h2>
       <p class="text-sm text-gray-600 text-center">
-        <%= "#{human_date(trip.started_at)} – #{human_date(trip.ended_at)}, #{trip.distance_in_unit(current_user.safe_settings.distance_unit).round} #{distance_unit}" %>
+        <%= "#{human_date(trip.started_at)} – #{human_date(trip.ended_at)}, #{trip.distance_in_unit(current_user.safe_settings.distance_unit).round} #{current_user.safe_settings.distance_unit}" %>
       </p>
 
       <div style="width: 100%; aspect-ratio: 1/1;"
