@@ -65,6 +65,7 @@
 .dotnet/
 .cursorrules
 .cursormemory.md
+.serena/project.yml
 
 /config/credentials/production.key
 /config/credentials/production.yml.enc

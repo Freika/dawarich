@@ -63,5 +63,14 @@ RSpec.describe '/points', type: :request do
 
       expect(response).to redirect_to(points_url(start_at: '2021-01-01', end_at: '2021-01-02'))
     end
+
+    context 'when no points are selected' do
+      it 'redirects to the points list' do
+        delete bulk_destroy_points_url, params: { point_ids: [] }
+
+        expect(response).to redirect_to(points_url)
+        expect(flash[:alert]).to eq('No points selected.')
+      end
+    end
   end
 end

@@ -17,7 +17,7 @@ class Point < ApplicationRecord
     index: true
   }
 
-  enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3 }, suffix: true
+  enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3, connected_not_charging: 4 }, suffix: true
   enum :trigger, {
     unknown: 0, background_event: 1, circular_region_event: 2, beacon_event: 3,
     report_location_message_event: 4, manual_event: 5, timer_based_event: 6,
@@ -70,6 +70,8 @@ class Point < ApplicationRecord
 
   # rubocop:disable Metrics/MethodLength Metrics/AbcSize
   def broadcast_coordinates
+    return unless user.safe_settings.live_map_enabled
+
     PointsChannel.broadcast_to(
       user,
       [
