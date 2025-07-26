@@ -37,11 +37,6 @@ module DistanceConvertible
     distance.to_f / conversion_factor
   end
 
-  def distance_for_user(user)
-    user_unit = user.safe_settings.distance_unit
-    distance_in_unit(user_unit)
-  end
-
   module ClassMethods
     def convert_distance(distance_meters, unit)
       return 0.0 unless distance_meters.present?
