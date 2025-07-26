@@ -969,6 +969,12 @@ export default class extends BaseController {
       this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
       this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
 
+      // Update the DOM data attribute to keep it in sync
+      const mapElement = document.getElementById('map');
+      if (mapElement) {
+        mapElement.setAttribute('data-user_settings', JSON.stringify(this.userSettings));
+      }
+
       // Store current layer states
       const layerStates = {
         Points: this.map.hasLayer(this.markersLayer),
