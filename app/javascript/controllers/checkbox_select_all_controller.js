@@ -2,11 +2,12 @@ import BaseController from "./base_controller"
 
 // Connects to data-controller="checkbox-select-all"
 export default class extends BaseController {
-  static targets = ["parent", "child"]
+  static targets = ["parent", "child", "deleteButton"]
 
   connect() {
     this.parentTarget.checked = false
     this.childTargets.map(x => x.checked = false)
+    this.updateDeleteButtonVisibility()
   }
 
   toggleChildren() {
@@ -15,6 +16,7 @@ export default class extends BaseController {
     } else {
       this.childTargets.map(x => x.checked = false)
     }
+    this.updateDeleteButtonVisibility()
   }
 
   toggleParent() {
@@ -22,6 +24,15 @@ export default class extends BaseController {
       this.parentTarget.checked = false
     } else {
       this.parentTarget.checked = true
+    }
+    this.updateDeleteButtonVisibility()
+  }
+
+  updateDeleteButtonVisibility() {
+    const hasCheckedItems = this.childTargets.some(target => target.checked)
+
+    if (this.hasDeleteButtonTarget) {
+      this.deleteButtonTarget.style.display = hasCheckedItems ? 'inline-block' : 'none'
     }
   }
 }

@@ -6,34 +6,34 @@
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2">
           <%= f.label :start_at, class: "text-sm font-semibold" %>
-          <%= f.datetime_local_field :start_at, class: "rounded-md w-full", value: @start_at %>
+          <%= f.datetime_local_field :start_at, class: "input input-bordered hover:cursor-pointer hover:input-primary", value: @start_at %>
         </div>
       </div>
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2">
           <%= f.label :end_at, class: "text-sm font-semibold" %>
-          <%= f.datetime_local_field :end_at, class: "rounded-md w-full", value: @end_at %>
+          <%= f.datetime_local_field :end_at, class: "input input-bordered hover:cursor-pointer hover:input-primary", value: @end_at %>
         </div>
       </div>
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2">
           <%= f.label :import, class: "text-sm font-semibold" %>
-          <%= f.select :import_id, options_for_select(@imports.map { |i| [i.name, i.id] }, params[:import_id]), { include_blank: true }, class: "rounded-md w-full" %>
+          <%= f.select :import_id, options_for_select(@imports.map { |i| [i.name, i.id] }, params[:import_id]), { include_blank: true }, class: "input input-bordered hover:cursor-pointer hover:input-primary" %>
         </div>
       </div>
       <div class="w-full md:w-1/12">
         <div class="flex flex-col space-y-2">
-          <%= f.submit "Search", class: "px-4 py-2 bg-blue-500 text-white rounded-md" %>
+          <%= f.submit "Search", class: "btn btn-primary" %>
         </div>
       </div>
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2 text-center">
-          <%= link_to 'Export as GeoJSON', exports_path(start_at: @start_at, end_at: @end_at, file_format: :json), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "px-4 py-2 bg-green-500 text-white rounded-md join-item" %>
+          <%= link_to 'Export as GeoJSON', exports_path(start_at: @start_at, end_at: @end_at, file_format: :json), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "btn border border-base-300 hover:btn-ghost" %>
         </div>
       </div>
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2 text-center">
-          <%= link_to 'Export as GPX', exports_path(start_at: @start_at, end_at: @end_at, file_format: :gpx), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "px-4 py-2 bg-green-500 text-white rounded-md join-item" %>
+          <%= link_to 'Export as GPX', exports_path(start_at: @start_at, end_at: @end_at, file_format: :gpx), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "btn border border-base-300 hover:btn-ghost" %>
         </div>
       </div>
     </div>
@@ -46,9 +46,8 @@
   <div id="points" class="min-w-full">
     <div data-controller='checkbox-select-all'>
       <%= form_with url: bulk_destroy_points_path(params.permit!), method: :delete, id: :bulk_destroy_form do |f| %>
-
         <div class="flex justify-between my-5">
-          <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" } %>
+          <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
           <div>
             <%= page_entries_info @points, entry_name: 'point' %>
           </div>
@@ -64,14 +63,15 @@
             <tr>
               <th>
                 <%= label_tag do %>
-                  Select all
                   <%= check_box_tag 'Select all',
                     id: :select_all_points,
                     data: {
                       checkbox_select_all_target: 'parent',
                       action: 'change->checkbox-select-all#toggleChildren'
-                    }
+                    },
+                    class: 'mr-2'
                   %>
+                  Select all
                 <% end %>
                 </div>
               </th>
