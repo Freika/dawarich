@@ -70,6 +70,8 @@ class Point < ApplicationRecord
 
   # rubocop:disable Metrics/MethodLength Metrics/AbcSize
   def broadcast_coordinates
+    return unless user.safe_settings.live_map_enabled
+
     PointsChannel.broadcast_to(
       user,
       [
