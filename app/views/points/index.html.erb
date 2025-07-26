@@ -48,7 +48,7 @@
       <%= form_with url: bulk_destroy_points_path(params.permit!), method: :delete, id: :bulk_destroy_form do |f| %>
 
         <div class="flex justify-between my-5">
-          <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" } %>
+          <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
           <div>
             <%= page_entries_info @points, entry_name: 'point' %>
           </div>
@@ -64,14 +64,15 @@
             <tr>
               <th>
                 <%= label_tag do %>
-                  Select all
                   <%= check_box_tag 'Select all',
                     id: :select_all_points,
                     data: {
                       checkbox_select_all_target: 'parent',
                       action: 'change->checkbox-select-all#toggleChildren'
-                    }
+                    },
+                    class: 'mr-2'
                   %>
+                  Select all
                 <% end %>
                 </div>
               </th>

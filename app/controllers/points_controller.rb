@@ -18,6 +18,10 @@ class PointsController < ApplicationController
   end
 
   def bulk_destroy
+    redirect_to points_url(preserved_params),
+                alert: 'No points selected.',
+                status: :see_other and return if params[:point_ids].blank?
+
     current_user.tracked_points.where(id: params[:point_ids].compact).destroy_all
     redirect_to points_url(preserved_params),
                 notice: 'Points were successfully destroyed.',
