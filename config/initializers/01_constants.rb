@@ -31,3 +31,8 @@ STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'true') == 'true'
 
 SENTRY_DSN = ENV.fetch('SENTRY_DSN', nil)
 MANAGER_URL = SELF_HOSTED ? nil : ENV.fetch('MANAGER_URL', nil)
+
+# Prometheus metrics
+METRICS_USERNAME = ENV.fetch('METRICS_USERNAME', 'prometheus')
+METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', 'prometheus')
+# /Prometheus metrics

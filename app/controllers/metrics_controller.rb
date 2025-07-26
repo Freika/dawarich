@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MetricsController < ApplicationController
-  http_basic_authenticate_with name: ENV['METRICS_USERNAME'], password: ENV['METRICS_PASSWORD'], only: :index
+  http_basic_authenticate_with name: METRICS_USERNAME, password: METRICS_PASSWORD, only: :index
 
   def index
     result = PrometheusMetrics.fetch_data
