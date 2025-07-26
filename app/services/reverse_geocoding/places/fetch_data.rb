@@ -53,10 +53,11 @@ class ReverseGeocoding::Places::FetchData
     osm_id = place_data['properties']['osm_id'].to_s
 
     existing_place = existing_places[osm_id]
+
     return existing_place if existing_place.present?
 
-    # If not found in existing places, initialize a new one
     coordinates = place_data['geometry']['coordinates']
+
     Place.new(
       lonlat: build_point_coordinates(coordinates),
       latitude: coordinates[1].to_f.round(5),
@@ -111,13 +112,32 @@ class ReverseGeocoding::Places::FetchData
     place.country = data['properties']['country']
     place.geodata = data
     place.source = :photon
-    if place.lonlat.blank?
+    if place.lonlat.nil?
       place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
     end
   end
 
   def save_places(places_to_create, places_to_update)
-    Place.create!(places_to_create) if places_to_create.any?
+    # Bulk insert for new places
+    if places_to_create.any?
+      place_attributes = places_to_create.map do |place|
+        {
+          name: place.name,
+          latitude: place.latitude,
+          longitude: place.longitude,
+          lonlat: place.lonlat,
+          city: place.city,
+          country: place.country,
+          geodata: place.geodata,
+          source: place.source,
+          created_at: Time.current,
+          updated_at: Time.current
+        }
+      end
+      Place.insert_all(place_attributes)
+    end
+    
+    # Individual updates for existing places
     places_to_update.each(&:save!) if places_to_update.any?
   end
 

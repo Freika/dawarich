@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visits page should load faster now.
 - Reverse geocoding jobs now make less database queries.
 
+
 # [0.30.5] - 2025-07-26
 
 ## Fixed
