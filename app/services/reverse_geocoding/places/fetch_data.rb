@@ -112,13 +112,13 @@ class ReverseGeocoding::Places::FetchData
     place.country = data['properties']['country']
     place.geodata = data
     place.source = :photon
-    if place.lonlat.nil?
+
+    if place.lonlat.blank?
       place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
     end
   end
 
   def save_places(places_to_create, places_to_update)
-    # Bulk insert for new places
     if places_to_create.any?
       place_attributes = places_to_create.map do |place|
         {
@@ -136,7 +136,7 @@ class ReverseGeocoding::Places::FetchData
       end
       Place.insert_all(place_attributes)
     end
-    
+
     # Individual updates for existing places
     places_to_update.each(&:save!) if places_to_update.any?
   end
