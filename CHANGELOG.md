@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visits page should load faster now.
 - Reverse geocoding jobs now make less database queries.
 
+## Added
+- Points now support discharging and connected_not_charging battery statuses. #768
+
 
 # [0.30.5] - 2025-07-26
 
