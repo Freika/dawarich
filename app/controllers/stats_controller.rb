@@ -57,8 +57,15 @@ class StatsController < ApplicationController
   def precompute_year_distances
     year_distances = {}
 
-    @stats.each do |year, _stats|
-      year_distances[year] = Stat.year_distance(year, current_user)
+    @stats.each do |year, stats|
+      stats_by_month = stats.index_by(&:month)
+      
+      year_distances[year] = (1..12).map do |month|
+        month_name = Date::MONTHNAMES[month]
+        distance = stats_by_month[month]&.distance || 0
+        
+        [month_name, distance]
+      end
     end
 
     year_distances

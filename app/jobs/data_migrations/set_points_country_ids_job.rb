@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class DataMigrations::SetPointsCountryIdsJob < ApplicationJob
-  queue_as :default
+  queue_as :data_migrations
 
   def perform(point_id)
     point = Point.find(point_id)

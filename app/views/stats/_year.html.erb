@@ -4,7 +4,9 @@
 </h2>
 <div class='my-10'>
   <%= column_chart(
-    @year_distances[year],
+    @year_distances[year].map { |month_name, distance_meters|
+      [month_name, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
+    },
     height: '200px',
     suffix: " #{current_user.safe_settings.distance_unit}",
     xtitle: 'Days',
