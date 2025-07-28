@@ -54,30 +54,36 @@ class Settings::UsersController < ApplicationController
   end
 
   def import
-    unless params[:archive].present?
+    files_params = params.dig(:user_import, :files)
+    raw_files = Array(files_params).reject(&:blank?)
+
+    if raw_files.empty?
       redirect_to edit_user_registration_path, alert: 'Please select a ZIP archive to import.'
       return
     end
 
-    archive_file = params[:archive]
+    created_imports = []
 
-    validate_archive_file(archive_file)
+    raw_files.each do |item|
+      next if item.is_a?(ActionDispatch::Http::UploadedFile)
 
-    import = current_user.imports.build(
-      name: archive_file.original_filename,
-      source: :user_data_archive
-    )
+      import = create_import_from_signed_id(item)
+      created_imports << import if import.present?
+    end
 
-    import.file.attach(archive_file)
-
-    if import.save
+    if created_imports.any?
       redirect_to edit_user_registration_path,
                   notice: 'Your data import has been started. You will receive a notification when it completes.'
     else
       redirect_to edit_user_registration_path,
-                  alert: 'Failed to start import. Please try again.'
+                  alert: 'No valid file references were found. Please upload files using the file selector.'
     end
   rescue StandardError => e
+    if created_imports.present?
+      import_ids = created_imports.map(&:id).compact
+      Import.where(id: import_ids).destroy_all if import_ids.any?
+    end
+
     ExceptionReporter.call(e, 'User data import failed to start')
     redirect_to edit_user_registration_path,
                 alert: 'An error occurred while starting the import. Please try again.'
@@ -89,10 +95,29 @@ class Settings::UsersController < ApplicationController
     params.require(:user).permit(:email, :password)
   end
 
-  def validate_archive_file(archive_file)
-    unless archive_file.content_type == 'application/zip' ||
-           archive_file.content_type == 'application/x-zip-compressed' ||
-           File.extname(archive_file.original_filename).downcase == '.zip'
+  def create_import_from_signed_id(signed_id)
+    Rails.logger.debug "Creating user data import from signed ID: #{signed_id[0..20]}..."
+
+    blob = ActiveStorage::Blob.find_signed(signed_id)
+
+    validate_archive_blob(blob)
+
+    import = current_user.imports.build(
+      name: blob.filename.to_s,
+      source: :user_data_archive
+    )
+
+    import.file.attach(blob)
+
+    import.save!
+
+    import
+  end
+
+  def validate_archive_blob(blob)
+    unless blob.content_type == 'application/zip' ||
+           blob.content_type == 'application/x-zip-compressed' ||
+           File.extname(blob.filename.to_s).downcase == '.zip'
 
       redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.' and return
     end
