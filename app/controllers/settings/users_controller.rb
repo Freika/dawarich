@@ -54,7 +54,7 @@ class Settings::UsersController < ApplicationController
   end
 
   def import
-    files_params = params.dig(:user_import, :files)
+    files_params = params.dig(:import, :files)
     raw_files = Array(files_params).reject(&:blank?)
 
     if raw_files.empty?
@@ -102,8 +102,12 @@ class Settings::UsersController < ApplicationController
 
     validate_archive_blob(blob)
 
+    # Generate unique name if duplicate exists
+    base_name = blob.filename.to_s
+    unique_name = generate_unique_import_name(base_name)
+
     import = current_user.imports.build(
-      name: blob.filename.to_s,
+      name: unique_name,
       source: :user_data_archive
     )
 
@@ -112,6 +116,21 @@ class Settings::UsersController < ApplicationController
     import.save!
 
     import
+  end
+
+  def generate_unique_import_name(base_name)
+    return base_name unless current_user.imports.exists?(name: base_name)
+
+    # Extract extension
+    name_without_ext = File.basename(base_name, File.extname(base_name))
+    extension = File.extname(base_name)
+    
+    counter = 1
+    loop do
+      candidate_name = "#{name_without_ext}_#{counter}#{extension}"
+      break candidate_name unless current_user.imports.exists?(name: candidate_name)
+      counter += 1
+    end
   end
 
   def validate_archive_blob(blob)

@@ -83,10 +83,10 @@
             turbo: false
           } do |f| %>
             <div class="form-control">
-              <%= f.label "user_import[files]", class: 'label' do %>
+              <%= f.label "import[files]", class: 'label' do %>
                 <span class="label-text">Select ZIP archive</span>
               <% end %>
-              <%= f.file_field "user_import[files][]",
+              <%= f.file_field "import[files][]",
                   multiple: false,
                   direct_upload: true,
                   accept: '.zip',
