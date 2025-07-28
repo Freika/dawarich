@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_23_164055) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -186,6 +186,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_23_164055) do
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.bigint "country_id"
     t.bigint "track_id"
+    t.string "country_name"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -193,6 +194,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_23_164055) do
     t.index ["connection"], name: "index_points_on_connection"
     t.index ["country"], name: "index_points_on_country"
     t.index ["country_id"], name: "index_points_on_country_id"
+    t.index ["country_name"], name: "index_points_on_country_name"
     t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"

@@ -4,13 +4,15 @@ class ImportsController < ApplicationController
   include ActiveStorage::SetCurrent
 
   before_action :authenticate_user!
-  before_action :authenticate_active_user!, only: %i[new create]
   before_action :set_import, only: %i[show edit update destroy]
+  before_action :authorize_import, only: %i[show edit update destroy]
   before_action :validate_points_limit, only: %i[new create]
+
+  after_action :verify_authorized, except: %i[index]
+  after_action :verify_policy_scoped, only: %i[index]
+
   def index
-    @imports =
-      current_user
-      .imports
+    @imports = policy_scope(Import)
       .select(:id, :name, :source, :created_at, :processed, :status)
       .order(created_at: :desc)
       .page(params[:page])
@@ -22,6 +24,8 @@ class ImportsController < ApplicationController
 
   def new
     @import = Import.new
+
+    authorize @import
   end
 
   def update
@@ -80,6 +84,10 @@ class ImportsController < ApplicationController
 
   def set_import
     @import = Import.find(params[:id])
+  end
+
+  def authorize_import
+    authorize @import
   end
 
   def import_params

@@ -11,9 +11,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Put all jobs in their own queues.
 - Visits page should load faster now.
 - Reverse geocoding jobs now make less database queries.
+- Country name is now being backfilled for all points. #1562
+- Stats are now reflecting countries and cities. #1562
 
 ## Added
 - Points now support discharging and connected_not_charging battery statuses. #768
+
+## Fixed
+
+- Fixed a bug where import or notification could have been deleted by a different user.
 
 
 # [0.30.5] - 2025-07-26

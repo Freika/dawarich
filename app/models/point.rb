@@ -66,6 +66,11 @@ class Point < ApplicationRecord
     Country.containing_point(lon, lat)
   end
 
+  def country_name
+    # Use the new country_name column first, then fallback to association, then legacy column
+    read_attribute(:country_name) || self.country&.name || read_attribute(:country) || ''
+  end
+
   private
 
   # rubocop:disable Metrics/MethodLength Metrics/AbcSize
@@ -91,13 +96,6 @@ class Point < ApplicationRecord
   def set_country
     self.country_id = found_in_country&.id
     save! if changed?
-  end
-
-  def country_name
-    # We have a country column in the database,
-    # but we also have a country_id column.
-    # TODO: rename country column to country_name
-    self.country&.name || read_attribute(:country) || ''
   end
 
   def recalculate_track

@@ -31,6 +31,85 @@ RSpec.describe 'Imports', type: :request do
           expect(response.body).to include(import.name)
         end
       end
+
+      # Security test: Users should only see their own imports
+      context 'when other users have imports' do
+        let!(:other_user) { create(:user) }
+        let!(:other_import) { create(:import, user: other_user) }
+        let!(:user_import) { create(:import, user: user) }
+
+        it 'only displays current users imports' do
+          get imports_path
+
+          expect(response.body).to include(user_import.name)
+          expect(response.body).not_to include(other_import.name)
+        end
+      end
+    end
+  end
+
+  describe 'GET /imports/:id' do
+    let(:user) { create(:user) }
+    let(:other_user) { create(:user) }
+    let(:import) { create(:import, user: user) }
+    let(:other_import) { create(:import, user: other_user) }
+
+    context 'when user is logged in' do
+      before { sign_in user }
+
+      it 'allows viewing own import' do
+        get import_path(import)
+        expect(response).to have_http_status(200)
+      end
+
+      it 'prevents viewing other users import' do
+        expect {
+          get import_path(other_import)
+        }.to raise_error(Pundit::NotAuthorizedError)
+      end
+    end
+
+    context 'when user is not logged in' do
+      it 'redirects to login' do
+        get import_path(import)
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+  end
+
+  describe 'GET /imports/new' do
+    let(:user) { create(:user) }
+
+    context 'when user is active' do
+      before do
+        allow(user).to receive(:active?).and_return(true)
+        sign_in user
+      end
+
+      it 'allows access to new import form' do
+        get new_import_path
+        expect(response).to have_http_status(200)
+      end
+    end
+
+    context 'when user is inactive' do
+      before do
+        allow(user).to receive(:active?).and_return(false)
+        sign_in user
+      end
+
+      it 'prevents access to new import form' do
+        expect {
+          get new_import_path
+        }.to raise_error(Pundit::NotAuthorizedError)
+      end
+    end
+
+    context 'when user is not logged in' do
+      it 'redirects to login' do
+        get new_import_path
+        expect(response).to redirect_to(new_user_session_path)
+      end
     end
   end
 
