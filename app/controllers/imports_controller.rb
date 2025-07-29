@@ -35,6 +35,10 @@ class ImportsController < ApplicationController
   end
 
   def create
+    @import = Import.new
+
+    authorize @import
+
     files_params = params.dig(:import, :files)
     raw_files = Array(files_params).reject(&:blank?)
 
