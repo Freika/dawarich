@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
-- Fixed a bug where import or notification could have been deleted by a different user.
+- Fixed a bug where import or notification could have been accessed by a different user.
+- Fixed a bug where draw control was not being added to the map when areas layer was enabled. #1583
 
 
 # [0.30.5] - 2025-07-26
