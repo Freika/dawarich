@@ -65,23 +65,36 @@ RSpec.describe User, type: :model do
     describe '#countries_visited' do
       subject { user.countries_visited }
 
-      let!(:stat1) { create(:stat, user:, toponyms: [{ 'country' => 'Germany' }]) }
-      let!(:stat2) { create(:stat, user:, toponyms: [{ 'country' => 'France' }]) }
+      let!(:point1) { create(:point, user:, country_name: 'Germany') }
+      let!(:point2) { create(:point, user:, country_name: 'France') }
+      let!(:point3) { create(:point, user:, country_name: nil) }
+      let!(:point4) { create(:point, user:, country_name: '') }
 
       it 'returns array of countries' do
         expect(subject).to include('Germany', 'France')
         expect(subject.count).to eq(2)
+      end
+
+      it 'excludes nil and empty country names' do
+        expect(subject).not_to include(nil, '')
       end
     end
 
     describe '#cities_visited' do
       subject { user.cities_visited }
 
-      let!(:stat1) { create(:stat, user:, toponyms: [{ 'cities' => [{ 'city' => 'Berlin' }] }]) }
-      let!(:stat2) { create(:stat, user:, toponyms: [{ 'cities' => [{ 'city' => 'Paris' }] }]) }
+      let!(:point1) { create(:point, user:, city: 'Berlin') }
+      let!(:point2) { create(:point, user:, city: 'Paris') }
+      let!(:point3) { create(:point, user:, city: nil) }
+      let!(:point4) { create(:point, user:, city: '') }
 
       it 'returns array of cities' do
-        expect(subject).to eq(%w[Berlin Paris])
+        expect(subject).to include('Berlin', 'Paris')
+        expect(subject.count).to eq(2)
+      end
+
+      it 'excludes nil and empty city names' do
+        expect(subject).not_to include(nil, '')
       end
     end
 
@@ -99,30 +112,24 @@ RSpec.describe User, type: :model do
     describe '#total_countries' do
       subject { user.total_countries }
 
-      let!(:stat) { create(:stat, user:, toponyms: [{ 'country' => 'Country' }]) }
+      let!(:point1) { create(:point, user:, country_name: 'Germany') }
+      let!(:point2) { create(:point, user:, country_name: 'France') }
+      let!(:point3) { create(:point, user:, country_name: nil) }
 
       it 'returns number of countries' do
-        expect(subject).to eq(1)
+        expect(subject).to eq(2)
       end
     end
 
     describe '#total_cities' do
       subject { user.total_cities }
 
-      let!(:stat) do
-        create(
-          :stat,
-          user:,
-          toponyms: [
-            { 'cities' => [], 'country' => nil },
-            { 'cities' => [{ 'city' => 'Berlin', 'points' => 64, 'timestamp' => 1_710_446_806, 'stayed_for' => 8772 }],
-'country' => 'Germany' }
-          ]
-        )
-      end
+      let!(:point1) { create(:point, user:, city: 'Berlin') }
+      let!(:point2) { create(:point, user:, city: 'Paris') }
+      let!(:point3) { create(:point, user:, city: nil) }
 
       it 'returns number of cities' do
-        expect(subject).to eq(1)
+        expect(subject).to eq(2)
       end
     end
 

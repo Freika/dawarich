@@ -49,11 +49,13 @@ FactoryBot.define do
         end
         point.update_columns(
           country: evaluator.country,
+          country_name: evaluator.country,
           country_id: country_obj.id
         )
       elsif evaluator.country
         point.update_columns(
           country: evaluator.country.name,
+          country_name: evaluator.country.name,
           country_id: evaluator.country.id
         )
       end
@@ -101,7 +103,8 @@ FactoryBot.define do
             country.iso_a3 = iso_a3
             country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
           end
-          point.write_attribute(:country, country_name)        # Set the string attribute directly
+          point.write_attribute(:country, country_name)        # Set the legacy string attribute
+          point.write_attribute(:country_name, country_name)  # Set the new string attribute
           point.country_id = country_obj.id   # Set the association
         end
       end
