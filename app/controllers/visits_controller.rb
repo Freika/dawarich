@@ -11,7 +11,7 @@ class VisitsController < ApplicationController
     visits = current_user
              .visits
              .where(status:)
-             .includes(%i[suggested_places area points])
+             .includes(%i[suggested_places area points place])
              .order(started_at: order_by)
 
     @suggested_visits_count = current_user.visits.suggested.count

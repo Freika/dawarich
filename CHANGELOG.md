@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.30.6] - 2025-07-27
+
+## Changed
+
+- Put all jobs in their own queues.
+- Visits page should load faster now.
+- Reverse geocoding jobs now make less database queries.
+- Country name is now being backfilled for all points. #1562
+- Stats are now reflecting countries and cities. #1562
+
+## Added
+- Points now support discharging and connected_not_charging battery statuses. #768
+
+## Fixed
+
+- Fixed a bug where import or notification could have been accessed by a different user.
+- Fixed a bug where draw control was not being added to the map when areas layer was enabled. #1583
+
+
 # [0.30.5] - 2025-07-26
 
 ## Fixed

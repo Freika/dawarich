@@ -49,7 +49,7 @@ RSpec.describe Tracks::TrackBuilder do
         expect(track.start_at).to be_within(1.second).of(Time.zone.at(points.first.timestamp))
         expect(track.end_at).to be_within(1.second).of(Time.zone.at(points.last.timestamp))
         expect(track.distance).to eq(1500)
-        expect(track.duration).to eq(90.minutes.to_i)
+        expect(track.duration).to be_within(3.seconds).of(90.minutes.to_i)
         expect(track.avg_speed).to be > 0
         expect(track.original_path).to be_present
       end

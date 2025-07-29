@@ -17,7 +17,7 @@ class Point < ApplicationRecord
     index: true
   }
 
-  enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3, connected_not_charging: 4 }, suffix: true
+  enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3, connected_not_charging: 4, discharging: 5 }, suffix: true
   enum :trigger, {
     unknown: 0, background_event: 1, circular_region_event: 2, beacon_event: 3,
     report_location_message_event: 4, manual_event: 5, timer_based_event: 6,
@@ -66,6 +66,11 @@ class Point < ApplicationRecord
     Country.containing_point(lon, lat)
   end
 
+  def country_name
+    # TODO: Remove the country column in the future.
+    read_attribute(:country_name) || self.country&.name || read_attribute(:country) || ''
+  end
+
   private
 
   # rubocop:disable Metrics/MethodLength Metrics/AbcSize
@@ -91,13 +96,6 @@ class Point < ApplicationRecord
   def set_country
     self.country_id = found_in_country&.id
     save! if changed?
-  end
-
-  def country_name
-    # We have a country column in the database,
-    # but we also have a country_id column.
-    # TODO: rename country column to country_name
-    self.country&.name || read_attribute(:country) || ''
   end
 
   def recalculate_track

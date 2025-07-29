@@ -81,6 +81,19 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
   const radius = layer.getRadius();
   const center = layer.getLatLng();
 
+  // Configure the layer with the same settings as existing areas
+  layer.setStyle({
+    color: 'red',
+    fillColor: '#f03',
+    fillOpacity: 0.5,
+    weight: 2,
+    interactive: true,
+    bubblingMouseEvents: false
+  });
+  
+  // Set the pane to match existing areas
+  layer.options.pane = 'areasPane';
+
   const formHtml = `
     <div class="card w-96 bg-base-100 border border-base-300 shadow-xl">
       <div class="card-body">

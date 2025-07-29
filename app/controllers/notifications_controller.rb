@@ -32,6 +32,6 @@ class NotificationsController < ApplicationController
   private
 
   def set_notification
-    @notification = Notification.find(params[:id])
+    @notification = current_user.notifications.find(params[:id])
   end
 end
