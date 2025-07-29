@@ -67,7 +67,7 @@ class Point < ApplicationRecord
   end
 
   def country_name
-    # Use the new country_name column first, then fallback to association, then legacy column
+    # TODO: Remove the country column in the future.
     read_attribute(:country_name) || self.country&.name || read_attribute(:country) || ''
   end
 

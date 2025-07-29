@@ -29,7 +29,6 @@ RSpec.describe 'Api::V1::Stats', type: :request do
     end
 
     before do
-      # Create all the test data
       stats_in_2020
       stats_in_2021
       points_in_2020
