@@ -160,7 +160,7 @@ export default class extends BaseController {
     this.tracksLayer = L.layerGroup();
 
     // Create a proper Leaflet layer for fog
-    this.fogOverlay = createFogOverlay();
+    this.fogOverlay = new (createFogOverlay())();
 
     // Create custom pane for areas
     this.map.createPane('areasPane');
@@ -201,7 +201,7 @@ export default class extends BaseController {
       Routes: this.polylinesLayer,
       Tracks: this.tracksLayer,
       Heatmap: this.heatmapLayer,
-      "Fog of War": new this.fogOverlay(),
+      "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer,
       Areas: this.areasLayer,
       Photos: this.photoMarkers,
@@ -514,6 +514,12 @@ export default class extends BaseController {
         if (this.drawControl && !this.map.hasControl && !this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
           this.map.addControl(this.drawControl);
         }
+      } else if (event.name === 'Fog of War') {
+        // Enable fog of war when layer is added
+        this.fogOverlay = event.layer;
+        if (this.markers && this.markers.length > 0) {
+          this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+        }
       }
 
       // Manage pane visibility when layers are manually toggled
@@ -533,6 +539,9 @@ export default class extends BaseController {
         if (this.drawControl && this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
           this.map.removeControl(this.drawControl);
         }
+      } else if (event.name === 'Fog of War') {
+        // Fog canvas will be automatically removed by the layer's onRemove method
+        this.fogOverlay = null;
       }
     });
   }
@@ -606,7 +615,7 @@ export default class extends BaseController {
           Points: this.markersLayer || L.layerGroup(),
           Routes: this.polylinesLayer || L.layerGroup(),
           Heatmap: this.heatmapLayer || L.layerGroup(),
-          "Fog of War": new this.fogOverlay(),
+          "Fog of War": this.fogOverlay,
           "Scratch map": this.scratchLayer || L.layerGroup(),
           Areas: this.areasLayer || L.layerGroup(),
           Photos: this.photoMarkers || L.layerGroup()
@@ -1008,7 +1017,7 @@ export default class extends BaseController {
         Routes: this.polylinesLayer || L.layerGroup(),
         Tracks: this.tracksLayer || L.layerGroup(),
         Heatmap: this.heatmapLayer || L.heatLayer([]),
-        "Fog of War": new this.fogOverlay(),
+        "Fog of War": this.fogOverlay,
         "Scratch map": this.scratchLayer || L.layerGroup(),
         Areas: this.areasLayer || L.layerGroup(),
         Photos: this.photoMarkers || L.layerGroup()
@@ -1840,7 +1849,7 @@ export default class extends BaseController {
       Routes: this.polylinesLayer || L.layerGroup(),
       Tracks: this.tracksLayer || L.layerGroup(),
       Heatmap: this.heatmapLayer || L.heatLayer([]),
-      "Fog of War": new this.fogOverlay(),
+      "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer || L.layerGroup(),
       Areas: this.areasLayer || L.layerGroup(),
       Photos: this.photoMarkers || L.layerGroup(),
