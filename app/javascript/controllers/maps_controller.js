@@ -161,7 +161,7 @@ export default class extends BaseController {
     this.tracksLayer = L.layerGroup();
 
     // Create a proper Leaflet layer for fog
-    this.fogOverlay = createFogOverlay();
+    this.fogOverlay = new (createFogOverlay())();
 
     // Create custom pane for areas
     this.map.createPane('areasPane');
@@ -202,7 +202,7 @@ export default class extends BaseController {
       Routes: this.polylinesLayer,
       Tracks: this.tracksLayer,
       Heatmap: this.heatmapLayer,
-      "Fog of War": new this.fogOverlay(),
+      "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer,
       Areas: this.areasLayer,
       Photos: this.photoMarkers,
@@ -424,7 +424,7 @@ export default class extends BaseController {
 
   async refreshScratchLayer() {
     console.log('Refreshing scratch layer with current data');
-    
+
     if (!this.scratchLayer) {
       console.log('Scratch layer not initialized, setting up');
       await this.setupScratchLayer(this.countryCodesMap);
@@ -434,11 +434,11 @@ export default class extends BaseController {
     try {
       // Clear existing data
       this.scratchLayer.clearLayers();
-      
+
       // Get current visited countries based on current markers
       const visitedCountries = this.getVisitedCountries(this.countryCodesMap);
       console.log('Current visited countries:', visitedCountries);
-      
+
       if (visitedCountries.length === 0) {
         console.log('No visited countries found');
         return;
@@ -579,7 +579,7 @@ export default class extends BaseController {
         const urlParams = new URLSearchParams(window.location.search);
         const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
         const endDate = urlParams.get('end_at') || new Date().toISOString();
-        
+
         console.log('Fetching photos for date range:', { startDate, endDate });
         fetchAndDisplayPhotos({
           map: this.map,
@@ -632,6 +632,9 @@ export default class extends BaseController {
           // Clear the visit circles when layer is disabled
           this.visitsManager.visitCircles.clearLayers();
         }
+      } else if (event.name === 'Fog of War') {
+        // Fog canvas will be automatically removed by the layer's onRemove method
+        this.fogOverlay = null;
       }
     });
   }
@@ -705,7 +708,7 @@ export default class extends BaseController {
           Points: this.markersLayer || L.layerGroup(),
           Routes: this.polylinesLayer || L.layerGroup(),
           Heatmap: this.heatmapLayer || L.layerGroup(),
-          "Fog of War": new this.fogOverlay(),
+          "Fog of War": this.fogOverlay,
           "Scratch map": this.scratchLayer || L.layerGroup(),
           Areas: this.areasLayer || L.layerGroup(),
           Photos: this.photoMarkers || L.layerGroup()
@@ -1107,7 +1110,7 @@ export default class extends BaseController {
         Routes: this.polylinesLayer || L.layerGroup(),
         Tracks: this.tracksLayer || L.layerGroup(),
         Heatmap: this.heatmapLayer || L.heatLayer([]),
-        "Fog of War": new this.fogOverlay(),
+        "Fog of War": this.fogOverlay,
         "Scratch map": this.scratchLayer || L.layerGroup(),
         Areas: this.areasLayer || L.layerGroup(),
         Photos: this.photoMarkers || L.layerGroup()
@@ -1361,7 +1364,7 @@ export default class extends BaseController {
       const urlParams = new URLSearchParams(window.location.search);
       const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const endDate = urlParams.get('end_at') || new Date().toISOString();
-      
+
       console.log('Auto-fetching photos for date range:', { startDate, endDate });
       fetchAndDisplayPhotos({
         map: this.map,
@@ -1383,9 +1386,9 @@ export default class extends BaseController {
     if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
       // Check if confirmed visits layer is enabled by default (it's added to map in constructor)
       const confirmedVisitsEnabled = this.map.hasLayer(this.visitsManager.getConfirmedVisitCirclesLayer());
-      
+
       console.log('Visits initialization - confirmedVisitsEnabled:', confirmedVisitsEnabled);
-      
+
       if (confirmedVisitsEnabled) {
         console.log('Confirmed visits layer enabled by default - fetching visits data');
         this.visitsManager.fetchAndDisplayVisits();
@@ -1914,7 +1917,7 @@ export default class extends BaseController {
       Routes: this.polylinesLayer || L.layerGroup(),
       Tracks: this.tracksLayer || L.layerGroup(),
       Heatmap: this.heatmapLayer || L.heatLayer([]),
-      "Fog of War": new this.fogOverlay(),
+      "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer || L.layerGroup(),
       Areas: this.areasLayer || L.layerGroup(),
       Photos: this.photoMarkers || L.layerGroup(),
