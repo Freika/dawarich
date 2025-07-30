@@ -104,24 +104,61 @@ function getMetersPerPixel(latitude, zoom) {
 
 export function createFogOverlay() {
   return L.Layer.extend({
-    onAdd: (map) => {
+    onAdd: function(map) {
+      this._map = map;
+
+      // Initialize the fog canvas
       initializeFogCanvas(map);
 
+      // Get the map controller to access markers and settings
+      const mapElement = document.getElementById('map');
+      if (mapElement && mapElement._stimulus_controllers) {
+        const controller = mapElement._stimulus_controllers.find(c => c.identifier === 'maps');
+        if (controller) {
+          this._controller = controller;
+
+          // Draw initial fog if we have markers
+          if (controller.markers && controller.markers.length > 0) {
+            drawFogCanvas(map, controller.markers, controller.clearFogRadius, controller.fogLinethreshold);
+          }
+        }
+      }
+
       // Add resize event handlers to update fog size
-      map.on('resize', () => {
-       // Set canvas size to match map container
-       const mapSize = map.getSize();
-       fog.width = mapSize.x;
-       fog.height = mapSize.y;
-      });
+      this._onResize = () => {
+        const fog = document.getElementById('fog');
+        if (fog) {
+          const mapSize = map.getSize();
+          fog.width = mapSize.x;
+          fog.height = mapSize.y;
+
+          // Redraw fog after resize
+          if (this._controller && this._controller.markers) {
+            drawFogCanvas(map, this._controller.markers, this._controller.clearFogRadius, this._controller.fogLinethreshold);
+          }
+        }
+      };
+
+      map.on('resize', this._onResize);
     },
-    onRemove: (map) => {
+
+    onRemove: function(map) {
       const fog = document.getElementById('fog');
       if (fog) {
         fog.remove();
       }
+
       // Clean up event listener
-      map.off('resize');
+      if (this._onResize) {
+        map.off('resize', this._onResize);
+      }
+    },
+
+    // Method to update fog when markers change
+    updateFog: function(markers, clearFogRadius, fogLinethreshold) {
+      if (this._map) {
+        drawFogCanvas(this._map, markers, clearFogRadius, fogLinethreshold);
+      }
     }
   });
 }
