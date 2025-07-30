@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.30.7] - 2025-07-30
+
+## Fixed
+
+- Photos layer is now working again on the map page. #1563 #1421 #1071 #889
+- Suggested and Confirmed visits layers are now working again on the map page. #1443
+
+## Added
+
+- Logging for Photos layer is now enabled.
+
 # [0.30.6] - 2025-07-27
 
 ## Changed
