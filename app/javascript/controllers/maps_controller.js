@@ -60,30 +60,23 @@ export default class extends BaseController {
     this.apiKey = this.element.dataset.api_key;
     this.selfHosted = this.element.dataset.self_hosted;
 
-    // Defensive JSON parsing with error handling
     try {
       this.markers = this.element.dataset.coordinates ? JSON.parse(this.element.dataset.coordinates) : [];
     } catch (error) {
       console.error('Error parsing coordinates data:', error);
-      console.error('Raw coordinates data:', this.element.dataset.coordinates);
       this.markers = [];
     }
-
     try {
       this.tracksData = this.element.dataset.tracks ? JSON.parse(this.element.dataset.tracks) : null;
     } catch (error) {
       console.error('Error parsing tracks data:', error);
-      console.error('Raw tracks data:', this.element.dataset.tracks);
       this.tracksData = null;
     }
-
     this.timezone = this.element.dataset.timezone;
-
     try {
       this.userSettings = this.element.dataset.user_settings ? JSON.parse(this.element.dataset.user_settings) : {};
     } catch (error) {
       console.error('Error parsing user_settings data:', error);
-      console.error('Raw user_settings data:', this.element.dataset.user_settings);
       this.userSettings = {};
     }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
@@ -125,6 +118,9 @@ export default class extends BaseController {
         const div = L.DomUtil.create('div', 'leaflet-control-stats');
         let distance = parseInt(this.element.dataset.distance) || 0;
         const pointsNumber = this.element.dataset.points_number || '0';
+        // Original stats data loading disabled:
+        // let distance = parseInt(this.element.dataset.distance) || 0;
+        // const pointsNumber = this.element.dataset.points_number || '0';
 
         // Convert distance to miles if user prefers miles (assuming backend sends km)
         if (this.distanceUnit === 'mi') {
