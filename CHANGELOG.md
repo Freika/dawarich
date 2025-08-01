@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.30.7] - 2025-07-30
+# [0.30.7] - 2025-08-01
 
 ## Fixed
 
@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Suggested and Confirmed visits layers are now working again on the map page. #1443
 - Fog of war is now working correctly. #1583
 - Areas layer is now working correctly. #1583
+- Live map doesn't cause memory leaks anymore. #880
 
 ## Added
 
