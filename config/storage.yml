@@ -14,9 +14,8 @@ s3:
   secret_access_key: <%= ENV.fetch("AWS_SECRET_ACCESS_KEY") %>
   region: <%= ENV.fetch("AWS_REGION") %>
   bucket: <%= ENV.fetch("AWS_BUCKET") %>
-  <% if ENV['AWS_ENDPOINT'] %>
   endpoint: <%= ENV.fetch("AWS_ENDPOINT") %>
-  <% end %>
+  force_path_style: true
 <% end %>
 
 # Remember not to checkin your GCS keyfile to a repository
