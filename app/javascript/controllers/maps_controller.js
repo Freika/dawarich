@@ -4,6 +4,7 @@ import "leaflet.heat";
 import consumer from "../channels/consumer";
 
 import { createMarkersArray } from "../maps/markers";
+import { LiveMapHandler } from "../maps/live_map_handler";
 
 import {
   createPolylinesLayer,
@@ -236,6 +237,9 @@ export default class extends BaseController {
 
     // Add visits buttons after calendar button to position them below
     this.visitsManager.addDrawerButton();
+    
+    // Initialize Live Map Handler
+    this.initializeLiveMapHandler();
   }
 
   disconnect() {
@@ -308,51 +312,48 @@ export default class extends BaseController {
     }
   }
 
-  appendPoint(data) {
-    // Parse the received point data
-    const newPoint = data;
-
-    // Add the new point to the markers array
-    this.markers.push(newPoint);
-
-    const newMarker = L.marker([newPoint[0], newPoint[1]])
-    this.markersArray.push(newMarker);
-
-    // Update the markers layer
-    this.markersLayer.clearLayers();
-    this.markersLayer.addLayer(L.layerGroup(this.markersArray));
-
-    // Update heatmap
-    this.heatmapMarkers.push([newPoint[0], newPoint[1], 0.2]);
-    this.heatmapLayer.setLatLngs(this.heatmapMarkers);
-
-    // Update polylines
-    this.polylinesLayer.clearLayers();
-    this.polylinesLayer = createPolylinesLayer(
-      this.markers,
-      this.map,
-      this.timezone,
-      this.routeOpacity,
-      this.userSettings,
-      this.distanceUnit
-    );
-
-    // Pan map to new location
-    this.map.setView([newPoint[0], newPoint[1]], 16);
-
-    // Update fog of war if enabled
-    if (this.map.hasLayer(this.fogOverlay)) {
-      this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+  /**
+   * Initialize the Live Map Handler
+   */
+  initializeLiveMapHandler() {
+    const layers = {
+      markersLayer: this.markersLayer,
+      polylinesLayer: this.polylinesLayer,
+      heatmapLayer: this.heatmapLayer,
+      fogOverlay: this.fogOverlay
+    };
+    
+    const options = {
+      maxPoints: 1000,
+      routeOpacity: this.routeOpacity,
+      timezone: this.timezone,
+      distanceUnit: this.distanceUnit,
+      userSettings: this.userSettings,
+      clearFogRadius: this.clearFogRadius,
+      fogLinethreshold: this.fogLinethreshold,
+      // Pass existing data to LiveMapHandler
+      existingMarkers: this.markers || [],
+      existingMarkersArray: this.markersArray || [],
+      existingHeatmapMarkers: this.heatmapMarkers || []
+    };
+    
+    this.liveMapHandler = new LiveMapHandler(this.map, layers, options);
+    
+    // Enable live map handler if live mode is already enabled
+    if (this.liveMapEnabled) {
+      this.liveMapHandler.enable();
     }
+  }
 
-    // Update the last marker
-    this.map.eachLayer((layer) => {
-      if (layer instanceof L.Marker && !layer._popup) {
-        this.map.removeLayer(layer);
-      }
-    });
-
-    this.addLastMarker(this.map, this.markers);
+  /**
+   * Delegate to LiveMapHandler for memory-efficient point appending
+   */
+  appendPoint(data) {
+    if (this.liveMapHandler && this.liveMapEnabled) {
+      this.liveMapHandler.appendPoint(data);
+    } else {
+      console.warn('LiveMapHandler not initialized or live mode not enabled');
+    }
   }
 
   async setupScratchLayer(countryCodesMap) {
@@ -749,8 +750,10 @@ export default class extends BaseController {
   addLastMarker(map, markers) {
     if (markers.length > 0) {
       const lastMarker = markers[markers.length - 1].slice(0, 2);
-      L.marker(lastMarker).addTo(map);
+      const marker = L.marker(lastMarker).addTo(map);
+      return marker; // Return marker reference for tracking
     }
+    return null;
   }
 
   updateFog(markers, clearFogRadius, fogLinethreshold) {
@@ -1024,6 +1027,13 @@ export default class extends BaseController {
 
           if (data.settings.live_map_enabled) {
             this.setupSubscription();
+            if (this.liveMapHandler) {
+              this.liveMapHandler.enable();
+            }
+          } else {
+            if (this.liveMapHandler) {
+              this.liveMapHandler.disable();
+            }
           }
         } else {
           showFlashMessage('error', data.message);
@@ -1076,6 +1086,7 @@ export default class extends BaseController {
       // Store the value as decimal internally, but display as percentage in UI
       this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
       this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
+      this.liveMapEnabled = newSettings.live_map_enabled || false;
 
       // Update the DOM data attribute to keep it in sync
       const mapElement = document.getElementById('map');
