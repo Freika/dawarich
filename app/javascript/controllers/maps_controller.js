@@ -315,27 +315,52 @@ export default class extends BaseController {
     // Add the new point to the markers array
     this.markers.push(newPoint);
 
-    const newMarker = L.marker([newPoint[0], newPoint[1]])
+    // Implement bounded markers array (keep only last 1000 points in live mode)
+    if (this.liveMapEnabled && this.markers.length > 1000) {
+      this.markers.shift(); // Remove oldest point
+      // Also remove corresponding marker from display
+      if (this.markersArray.length > 1000) {
+        const oldMarker = this.markersArray.shift();
+        this.markersLayer.removeLayer(oldMarker);
+      }
+    }
+
+    // Create new marker with proper styling
+    const newMarker = L.marker([newPoint[0], newPoint[1]], {
+      icon: L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style='background-color: ${newPoint[5] < 0 ? 'orange' : 'blue'}; width: 8px; height: 8px; border-radius: 50%;'></div>`,
+        iconSize: [8, 8],
+        iconAnchor: [4, 4]
+      })
+    });
+
+    // Add marker incrementally instead of recreating entire layer
     this.markersArray.push(newMarker);
+    this.markersLayer.addLayer(newMarker);
 
-    // Update the markers layer
-    this.markersLayer.clearLayers();
-    this.markersLayer.addLayer(L.layerGroup(this.markersArray));
-
-    // Update heatmap
+    // Implement bounded heatmap data (keep only last 1000 points)
     this.heatmapMarkers.push([newPoint[0], newPoint[1], 0.2]);
+    if (this.heatmapMarkers.length > 1000) {
+      this.heatmapMarkers.shift(); // Remove oldest point
+    }
     this.heatmapLayer.setLatLngs(this.heatmapMarkers);
 
-    // Update polylines
-    this.polylinesLayer.clearLayers();
-    this.polylinesLayer = createPolylinesLayer(
-      this.markers,
-      this.map,
-      this.timezone,
-      this.routeOpacity,
-      this.userSettings,
-      this.distanceUnit
-    );
+    // Only update polylines if we have more than one point and update incrementally
+    if (this.markers.length > 1) {
+      const prevPoint = this.markers[this.markers.length - 2];
+      const newSegment = L.polyline([
+        [prevPoint[0], prevPoint[1]],
+        [newPoint[0], newPoint[1]]
+      ], {
+        color: this.routeOpacity > 0 ? '#3388ff' : 'transparent',
+        weight: 3,
+        opacity: this.routeOpacity
+      });
+
+      // Add only the new segment instead of recreating all polylines
+      this.polylinesLayer.addLayer(newSegment);
+    }
 
     // Pan map to new location
     this.map.setView([newPoint[0], newPoint[1]], 16);
@@ -345,14 +370,13 @@ export default class extends BaseController {
       this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
     }
 
-    // Update the last marker
-    this.map.eachLayer((layer) => {
-      if (layer instanceof L.Marker && !layer._popup) {
-        this.map.removeLayer(layer);
-      }
-    });
+    // Remove only the previous last marker more efficiently
+    if (this.lastMarkerRef) {
+      this.map.removeLayer(this.lastMarkerRef);
+    }
 
-    this.addLastMarker(this.map, this.markers);
+    // Add and store reference to new last marker
+    this.lastMarkerRef = this.addLastMarker(this.map, this.markers);
   }
 
   async setupScratchLayer(countryCodesMap) {
@@ -749,8 +773,10 @@ export default class extends BaseController {
   addLastMarker(map, markers) {
     if (markers.length > 0) {
       const lastMarker = markers[markers.length - 1].slice(0, 2);
-      L.marker(lastMarker).addTo(map);
+      const marker = L.marker(lastMarker).addTo(map);
+      return marker; // Return marker reference for tracking
     }
+    return null;
   }
 
   updateFog(markers, clearFogRadius, fogLinethreshold) {
