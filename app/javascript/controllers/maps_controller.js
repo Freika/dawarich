@@ -754,11 +754,17 @@ export default class extends BaseController {
   }
 
   updateFog(markers, clearFogRadius, fogLineThreshold) {
-    const fog = document.getElementById('fog');
-    if (!fog) {
-      initializeFogCanvas(this.map);
+    // Call the fog overlay's updateFog method if it exists
+    if (this.fogOverlay && typeof this.fogOverlay.updateFog === 'function') {
+      this.fogOverlay.updateFog(markers, clearFogRadius, fogLineThreshold);
+    } else {
+      // Fallback for when fog overlay isn't available
+      const fog = document.getElementById('fog');
+      if (!fog) {
+        initializeFogCanvas(this.map);
+      }
+      requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius, fogLineThreshold));
     }
-    requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius, fogLineThreshold));
   }
 
   initializeDrawControl() {

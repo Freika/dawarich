@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.30.8] - 2025-08-01
+
+## Fixed
+
+- Fog of war is now working correctly on zoom and map movement. #1603
+
+
+
 # [0.30.7] - 2025-08-01
 
 ## Fixed
