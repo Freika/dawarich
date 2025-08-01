@@ -30,7 +30,8 @@ import {
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
-import { showFlashMessage, fetchAndDisplayPhotos } from "../maps/helpers";
+import { showFlashMessage } from "../maps/helpers";
+import { fetchAndDisplayPhotos } from "../maps/photos";
 import { countryCodesMap } from "../maps/country_codes";
 import { VisitsManager } from "../maps/visits";
 
@@ -59,30 +60,23 @@ export default class extends BaseController {
     this.apiKey = this.element.dataset.api_key;
     this.selfHosted = this.element.dataset.self_hosted;
 
-    // Defensive JSON parsing with error handling
     try {
       this.markers = this.element.dataset.coordinates ? JSON.parse(this.element.dataset.coordinates) : [];
     } catch (error) {
       console.error('Error parsing coordinates data:', error);
-      console.error('Raw coordinates data:', this.element.dataset.coordinates);
       this.markers = [];
     }
-
     try {
       this.tracksData = this.element.dataset.tracks ? JSON.parse(this.element.dataset.tracks) : null;
     } catch (error) {
       console.error('Error parsing tracks data:', error);
-      console.error('Raw tracks data:', this.element.dataset.tracks);
       this.tracksData = null;
     }
-
     this.timezone = this.element.dataset.timezone;
-
     try {
       this.userSettings = this.element.dataset.user_settings ? JSON.parse(this.element.dataset.user_settings) : {};
     } catch (error) {
       console.error('Error parsing user_settings data:', error);
-      console.error('Raw user_settings data:', this.element.dataset.user_settings);
       this.userSettings = {};
     }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
@@ -124,6 +118,9 @@ export default class extends BaseController {
         const div = L.DomUtil.create('div', 'leaflet-control-stats');
         let distance = parseInt(this.element.dataset.distance) || 0;
         const pointsNumber = this.element.dataset.points_number || '0';
+        // Original stats data loading disabled:
+        // let distance = parseInt(this.element.dataset.distance) || 0;
+        // const pointsNumber = this.element.dataset.points_number || '0';
 
         // Convert distance to miles if user prefers miles (assuming backend sends km)
         if (this.distanceUnit === 'mi') {
@@ -382,6 +379,8 @@ export default class extends BaseController {
       }
 
       const worldData = await response.json();
+      // Cache the world borders data for future use
+      this.worldBordersData = worldData;
 
       const visitedCountries = this.getVisitedCountries(countryCodesMap)
       const filteredFeatures = worldData.features.filter(feature =>
@@ -416,6 +415,62 @@ export default class extends BaseController {
       this.map.removeLayer(this.scratchLayer)
     } else {
       this.scratchLayer.addTo(this.map)
+    }
+  }
+
+  async refreshScratchLayer() {
+    console.log('Refreshing scratch layer with current data');
+
+    if (!this.scratchLayer) {
+      console.log('Scratch layer not initialized, setting up');
+      await this.setupScratchLayer(this.countryCodesMap);
+      return;
+    }
+
+    try {
+      // Clear existing data
+      this.scratchLayer.clearLayers();
+
+      // Get current visited countries based on current markers
+      const visitedCountries = this.getVisitedCountries(this.countryCodesMap);
+      console.log('Current visited countries:', visitedCountries);
+
+      if (visitedCountries.length === 0) {
+        console.log('No visited countries found');
+        return;
+      }
+
+      // Fetch country borders data (reuse if already loaded)
+      if (!this.worldBordersData) {
+        console.log('Loading world borders data');
+        const response = await fetch('/api/v1/countries/borders.json', {
+          headers: {
+            'Accept': 'application/geo+json,application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        this.worldBordersData = await response.json();
+      }
+
+      // Filter for visited countries
+      const filteredFeatures = this.worldBordersData.features.filter(feature =>
+        visitedCountries.includes(feature.properties["ISO3166-1-Alpha-2"])
+      );
+
+      console.log('Filtered features for visited countries:', filteredFeatures.length);
+
+      // Add the filtered country data to the scratch layer
+      this.scratchLayer.addData({
+        type: 'FeatureCollection',
+        features: filteredFeatures
+      });
+
+    } catch (error) {
+      console.error('Error refreshing scratch layer:', error);
     }
   }
 
@@ -514,6 +569,33 @@ export default class extends BaseController {
         if (this.drawControl && !this.map.hasControl && !this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
           this.map.addControl(this.drawControl);
         }
+      } else if (event.name === 'Photos') {
+        // Load photos when Photos layer is enabled
+        console.log('Photos layer enabled via layer control');
+        const urlParams = new URLSearchParams(window.location.search);
+        const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const endDate = urlParams.get('end_at') || new Date().toISOString();
+
+        console.log('Fetching photos for date range:', { startDate, endDate });
+        fetchAndDisplayPhotos({
+          map: this.map,
+          photoMarkers: this.photoMarkers,
+          apiKey: this.apiKey,
+          startDate: startDate,
+          endDate: endDate,
+          userSettings: this.userSettings
+        });
+      } else if (event.name === 'Suggested Visits' || event.name === 'Confirmed Visits') {
+        // Load visits when layer is enabled
+        console.log(`${event.name} layer enabled via layer control`);
+        if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
+          // Fetch and populate the visits - this will create circles and update drawer if open
+          this.visitsManager.fetchAndDisplayVisits();
+        }
+      } else if (event.name === 'Scratch map') {
+        // Refresh scratch map with current visited countries
+        console.log('Scratch map layer enabled via layer control');
+        this.refreshScratchLayer();
       } else if (event.name === 'Fog of War') {
         // Enable fog of war when layer is added
         this.fogOverlay = event.layer;
@@ -538,6 +620,13 @@ export default class extends BaseController {
         // Hide draw control when Areas layer is disabled
         if (this.drawControl && this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
           this.map.removeControl(this.drawControl);
+        }
+      } else if (event.name === 'Suggested Visits') {
+        // Clear suggested visits when layer is disabled
+        console.log('Suggested Visits layer disabled via layer control');
+        if (this.visitsManager) {
+          // Clear the visit circles when layer is disabled
+          this.visitsManager.visitCircles.clearLayers();
         }
       } else if (event.name === 'Fog of War') {
         // Fog canvas will be automatically removed by the layer's onRemove method
@@ -1063,57 +1152,13 @@ export default class extends BaseController {
     }
   }
 
-  createPhotoMarker(photo) {
-    if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
-
-    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`;
-
-    const icon = L.divIcon({
-      className: 'photo-marker',
-      html: `<img src="${thumbnailUrl}" style="width: 48px; height: 48px;">`,
-      iconSize: [48, 48]
-    });
-
-    const marker = L.marker(
-      [photo.exifInfo.latitude, photo.exifInfo.longitude],
-      { icon }
-    );
-
-    const startOfDay = new Date(photo.localDateTime);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(photo.localDateTime);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const queryParams = {
-      takenAfter: startOfDay.toISOString(),
-      takenBefore: endOfDay.toISOString()
-    };
-    const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
-    const immich_photo_link = `${this.userSettings.immich_url}/search?query=${encodedQuery}`;
-    const popupContent = `
-      <div class="max-w-xs">
-        <a href="${immich_photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
-   onmouseout="this.firstElementChild.style.boxShadow = '';">
-          <img src="${thumbnailUrl}"
-              class="w-8 h-8 mb-2 rounded"
-              style="transition: box-shadow 0.3s ease;"
-              alt="${photo.originalFileName}">
-        </a>
-        <h3 class="font-bold">${photo.originalFileName}</h3>
-        <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
-        <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
-        ${photo.type === 'video' ? '🎥 Video' : '📷 Photo'}
-      </div>
-    `;
-    marker.bindPopup(popupContent, { autoClose: false });
-
-    this.photoMarkers.addLayer(marker);
-  }
 
   addTogglePanelButton() {
+    // Store reference to the controller instance for use in the control
+    const controller = this;
+
     const TogglePanelControl = L.Control.extend({
-      onAdd: (map) => {
+      onAdd: function(map) {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
         button.innerHTML = '📅';
 
@@ -1134,7 +1179,7 @@ export default class extends BaseController {
 
         // Toggle panel on button click
         L.DomEvent.on(button, 'click', () => {
-          this.toggleRightPanel();
+          controller.toggleRightPanel();
         });
 
         return button;
@@ -1314,7 +1359,20 @@ export default class extends BaseController {
 
     // Initialize photos layer if user wants it visible
     if (this.userSettings.photos_enabled) {
-      fetchAndDisplayPhotos(this.photoMarkers, this.apiKey, this.userSettings);
+      console.log('Photos layer enabled via user settings');
+      const urlParams = new URLSearchParams(window.location.search);
+      const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const endDate = urlParams.get('end_at') || new Date().toISOString();
+
+      console.log('Auto-fetching photos for date range:', { startDate, endDate });
+      fetchAndDisplayPhotos({
+        map: this.map,
+        photoMarkers: this.photoMarkers,
+        apiKey: this.apiKey,
+        startDate: startDate,
+        endDate: endDate,
+        userSettings: this.userSettings
+      });
     }
 
     // Initialize fog of war if enabled in settings
@@ -1323,8 +1381,17 @@ export default class extends BaseController {
     }
 
     // Initialize visits manager functionality
+    // Check if any visits layers are enabled by default and load data
     if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
-      this.visitsManager.fetchAndDisplayVisits();
+      // Check if confirmed visits layer is enabled by default (it's added to map in constructor)
+      const confirmedVisitsEnabled = this.map.hasLayer(this.visitsManager.getConfirmedVisitCirclesLayer());
+
+      console.log('Visits initialization - confirmedVisitsEnabled:', confirmedVisitsEnabled);
+
+      if (confirmedVisitsEnabled) {
+        console.log('Confirmed visits layer enabled by default - fetching visits data');
+        this.visitsManager.fetchAndDisplayVisits();
+      }
     }
   }
 
@@ -1424,9 +1491,9 @@ export default class extends BaseController {
       // Fetch visited cities when panel is first created
       this.fetchAndDisplayVisitedCities();
 
-      // Set initial display style based on localStorage
-      const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
-      div.style.display = isPanelOpen ? 'block' : 'none';
+      // Since user clicked to open panel, make it visible and update localStorage
+      div.style.display = 'block';
+      localStorage.setItem('mapPanelOpen', 'true');
 
       return div;
     };
