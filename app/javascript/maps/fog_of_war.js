@@ -33,7 +33,12 @@ export function drawFogCanvas(map, markers, clearFogRadius, fogLineThreshold) {
 
   const size = map.getSize();
 
-  // 1) Paint base fog
+  // Update canvas size if needed
+  if (fog.width !== size.x || fog.height !== size.y) {
+    fog.width = size.x;
+    fog.height = size.y;
+  }
+// 1) Paint base fog
   ctx.clearRect(0, 0, size.x, size.y);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
   ctx.fillRect(0, 0, size.x, size.y);
@@ -106,23 +111,17 @@ export function createFogOverlay() {
   return L.Layer.extend({
     onAdd: function(map) {
       this._map = map;
+      
+      // Initialize storage for fog parameters
+      this._markers = [];
+      this._clearFogRadius = 50;
+      this._fogLineThreshold = 90;
 
       // Initialize the fog canvas
       initializeFogCanvas(map);
 
-      // Get the map controller to access markers and settings
-      const mapElement = document.getElementById('map');
-      if (mapElement && mapElement._stimulus_controllers) {
-        const controller = mapElement._stimulus_controllers.find(c => c.identifier === 'maps');
-        if (controller) {
-          this._controller = controller;
-
-          // Draw initial fog if we have markers
-          if (controller.markers && controller.markers.length > 0) {
-            drawFogCanvas(map, controller.markers, controller.clearFogRadius, controller.fogLineThreshold);
-          }
-        }
-      }
+      // Fog overlay will be initialized via updateFog() call from maps controller
+      // No need to try to access controller data here
 
       // Add resize event handlers to update fog size
       this._onResize = () => {
@@ -139,7 +138,31 @@ export function createFogOverlay() {
         }
       };
 
+      // Add event handlers for zoom and pan to update fog position
+      this._onMoveEnd = () => {
+        console.log('Fog: moveend event fired');
+        if (this._markers && this._markers.length > 0) {
+          console.log('Fog: redrawing after move with stored data');
+          drawFogCanvas(map, this._markers, this._clearFogRadius, this._fogLineThreshold);
+        } else {
+          console.log('Fog: no stored markers available');
+        }
+      };
+
+      this._onZoomEnd = () => {
+        console.log('Fog: zoomend event fired');
+        if (this._markers && this._markers.length > 0) {
+          console.log('Fog: redrawing after zoom with stored data');
+          drawFogCanvas(map, this._markers, this._clearFogRadius, this._fogLineThreshold);
+        } else {
+          console.log('Fog: no stored markers available');
+        }
+      };
+
+      // Bind event listeners
       map.on('resize', this._onResize);
+      map.on('moveend', this._onMoveEnd);
+      map.on('zoomend', this._onZoomEnd);
     },
 
     onRemove: function(map) {
@@ -148,16 +171,28 @@ export function createFogOverlay() {
         fog.remove();
       }
 
-      // Clean up event listener
+      // Clean up event listeners
       if (this._onResize) {
         map.off('resize', this._onResize);
+      }
+      if (this._onMoveEnd) {
+        map.off('moveend', this._onMoveEnd);
+      }
+      if (this._onZoomEnd) {
+        map.off('zoomend', this._onZoomEnd);
       }
     },
 
     // Method to update fog when markers change
     updateFog: function(markers, clearFogRadius, fogLineThreshold) {
       if (this._map) {
-        drawFogCanvas(this._map, markers, clearFogRadius, fogLineThreshold);
+        // Store the updated parameters
+        this._markers = markers || [];
+        this._clearFogRadius = clearFogRadius || 50;
+        this._fogLineThreshold = fogLineThreshold || 90;
+        
+        console.log('Fog: updateFog called with', markers?.length || 0, 'markers');
+        drawFogCanvas(this._map, this._markers, this._clearFogRadius, this._fogLineThreshold);
       }
     }
   });
