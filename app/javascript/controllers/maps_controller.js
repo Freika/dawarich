@@ -4,6 +4,7 @@ import "leaflet.heat";
 import consumer from "../channels/consumer";
 
 import { createMarkersArray } from "../maps/markers";
+import { LiveMapHandler } from "../maps/live_map_handler";
 
 import {
   createPolylinesLayer,
@@ -30,7 +31,8 @@ import {
 
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas";
 
-import { showFlashMessage, fetchAndDisplayPhotos } from "../maps/helpers";
+import { showFlashMessage } from "../maps/helpers";
+import { fetchAndDisplayPhotos } from "../maps/photos";
 import { countryCodesMap } from "../maps/country_codes";
 import { VisitsManager } from "../maps/visits";
 
@@ -59,34 +61,27 @@ export default class extends BaseController {
     this.apiKey = this.element.dataset.api_key;
     this.selfHosted = this.element.dataset.self_hosted;
 
-    // Defensive JSON parsing with error handling
     try {
       this.markers = this.element.dataset.coordinates ? JSON.parse(this.element.dataset.coordinates) : [];
     } catch (error) {
       console.error('Error parsing coordinates data:', error);
-      console.error('Raw coordinates data:', this.element.dataset.coordinates);
       this.markers = [];
     }
-
     try {
       this.tracksData = this.element.dataset.tracks ? JSON.parse(this.element.dataset.tracks) : null;
     } catch (error) {
       console.error('Error parsing tracks data:', error);
-      console.error('Raw tracks data:', this.element.dataset.tracks);
       this.tracksData = null;
     }
-
     this.timezone = this.element.dataset.timezone;
-
     try {
       this.userSettings = this.element.dataset.user_settings ? JSON.parse(this.element.dataset.user_settings) : {};
     } catch (error) {
       console.error('Error parsing user_settings data:', error);
-      console.error('Raw user_settings data:', this.element.dataset.user_settings);
       this.userSettings = {};
     }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
-    this.fogLinethreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
+    this.fogLineThreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
     // Store route opacity as decimal (0-1) internally
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.userSettings.maps?.distance_unit || "km";
@@ -160,7 +155,7 @@ export default class extends BaseController {
     this.tracksLayer = L.layerGroup();
 
     // Create a proper Leaflet layer for fog
-    this.fogOverlay = createFogOverlay();
+    this.fogOverlay = new (createFogOverlay())();
 
     // Create custom pane for areas
     this.map.createPane('areasPane');
@@ -201,7 +196,7 @@ export default class extends BaseController {
       Routes: this.polylinesLayer,
       Tracks: this.tracksLayer,
       Heatmap: this.heatmapLayer,
-      "Fog of War": new this.fogOverlay(),
+      "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer,
       Areas: this.areasLayer,
       Photos: this.photoMarkers,
@@ -239,6 +234,9 @@ export default class extends BaseController {
 
     // Add visits buttons after calendar button to position them below
     this.visitsManager.addDrawerButton();
+
+    // Initialize Live Map Handler
+    this.initializeLiveMapHandler();
   }
 
   disconnect() {
@@ -311,51 +309,48 @@ export default class extends BaseController {
     }
   }
 
-  appendPoint(data) {
-    // Parse the received point data
-    const newPoint = data;
+  /**
+   * Initialize the Live Map Handler
+   */
+  initializeLiveMapHandler() {
+    const layers = {
+      markersLayer: this.markersLayer,
+      polylinesLayer: this.polylinesLayer,
+      heatmapLayer: this.heatmapLayer,
+      fogOverlay: this.fogOverlay
+    };
 
-    // Add the new point to the markers array
-    this.markers.push(newPoint);
+    const options = {
+      maxPoints: 1000,
+      routeOpacity: this.routeOpacity,
+      timezone: this.timezone,
+      distanceUnit: this.distanceUnit,
+      userSettings: this.userSettings,
+      clearFogRadius: this.clearFogRadius,
+      fogLineThreshold: this.fogLineThreshold,
+      // Pass existing data to LiveMapHandler
+      existingMarkers: this.markers || [],
+      existingMarkersArray: this.markersArray || [],
+      existingHeatmapMarkers: this.heatmapMarkers || []
+    };
 
-    const newMarker = L.marker([newPoint[0], newPoint[1]])
-    this.markersArray.push(newMarker);
+    this.liveMapHandler = new LiveMapHandler(this.map, layers, options);
 
-    // Update the markers layer
-    this.markersLayer.clearLayers();
-    this.markersLayer.addLayer(L.layerGroup(this.markersArray));
-
-    // Update heatmap
-    this.heatmapMarkers.push([newPoint[0], newPoint[1], 0.2]);
-    this.heatmapLayer.setLatLngs(this.heatmapMarkers);
-
-    // Update polylines
-    this.polylinesLayer.clearLayers();
-    this.polylinesLayer = createPolylinesLayer(
-      this.markers,
-      this.map,
-      this.timezone,
-      this.routeOpacity,
-      this.userSettings,
-      this.distanceUnit
-    );
-
-    // Pan map to new location
-    this.map.setView([newPoint[0], newPoint[1]], 16);
-
-    // Update fog of war if enabled
-    if (this.map.hasLayer(this.fogOverlay)) {
-      this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+    // Enable live map handler if live mode is already enabled
+    if (this.liveMapEnabled) {
+      this.liveMapHandler.enable();
     }
+  }
 
-    // Update the last marker
-    this.map.eachLayer((layer) => {
-      if (layer instanceof L.Marker && !layer._popup) {
-        this.map.removeLayer(layer);
-      }
-    });
-
-    this.addLastMarker(this.map, this.markers);
+  /**
+   * Delegate to LiveMapHandler for memory-efficient point appending
+   */
+  appendPoint(data) {
+    if (this.liveMapHandler && this.liveMapEnabled) {
+      this.liveMapHandler.appendPoint(data);
+    } else {
+      console.warn('LiveMapHandler not initialized or live mode not enabled');
+    }
   }
 
   async setupScratchLayer(countryCodesMap) {
@@ -382,6 +377,8 @@ export default class extends BaseController {
       }
 
       const worldData = await response.json();
+      // Cache the world borders data for future use
+      this.worldBordersData = worldData;
 
       const visitedCountries = this.getVisitedCountries(countryCodesMap)
       const filteredFeatures = worldData.features.filter(feature =>
@@ -416,6 +413,62 @@ export default class extends BaseController {
       this.map.removeLayer(this.scratchLayer)
     } else {
       this.scratchLayer.addTo(this.map)
+    }
+  }
+
+  async refreshScratchLayer() {
+    console.log('Refreshing scratch layer with current data');
+
+    if (!this.scratchLayer) {
+      console.log('Scratch layer not initialized, setting up');
+      await this.setupScratchLayer(this.countryCodesMap);
+      return;
+    }
+
+    try {
+      // Clear existing data
+      this.scratchLayer.clearLayers();
+
+      // Get current visited countries based on current markers
+      const visitedCountries = this.getVisitedCountries(this.countryCodesMap);
+      console.log('Current visited countries:', visitedCountries);
+
+      if (visitedCountries.length === 0) {
+        console.log('No visited countries found');
+        return;
+      }
+
+      // Fetch country borders data (reuse if already loaded)
+      if (!this.worldBordersData) {
+        console.log('Loading world borders data');
+        const response = await fetch('/api/v1/countries/borders.json', {
+          headers: {
+            'Accept': 'application/geo+json,application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        this.worldBordersData = await response.json();
+      }
+
+      // Filter for visited countries
+      const filteredFeatures = this.worldBordersData.features.filter(feature =>
+        visitedCountries.includes(feature.properties["ISO3166-1-Alpha-2"])
+      );
+
+      console.log('Filtered features for visited countries:', filteredFeatures.length);
+
+      // Add the filtered country data to the scratch layer
+      this.scratchLayer.addData({
+        type: 'FeatureCollection',
+        features: filteredFeatures
+      });
+
+    } catch (error) {
+      console.error('Error refreshing scratch layer:', error);
     }
   }
 
@@ -514,6 +567,39 @@ export default class extends BaseController {
         if (this.drawControl && !this.map.hasControl && !this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
           this.map.addControl(this.drawControl);
         }
+      } else if (event.name === 'Photos') {
+        // Load photos when Photos layer is enabled
+        console.log('Photos layer enabled via layer control');
+        const urlParams = new URLSearchParams(window.location.search);
+        const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const endDate = urlParams.get('end_at') || new Date().toISOString();
+
+        console.log('Fetching photos for date range:', { startDate, endDate });
+        fetchAndDisplayPhotos({
+          map: this.map,
+          photoMarkers: this.photoMarkers,
+          apiKey: this.apiKey,
+          startDate: startDate,
+          endDate: endDate,
+          userSettings: this.userSettings
+        });
+      } else if (event.name === 'Suggested Visits' || event.name === 'Confirmed Visits') {
+        // Load visits when layer is enabled
+        console.log(`${event.name} layer enabled via layer control`);
+        if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
+          // Fetch and populate the visits - this will create circles and update drawer if open
+          this.visitsManager.fetchAndDisplayVisits();
+        }
+      } else if (event.name === 'Scratch map') {
+        // Refresh scratch map with current visited countries
+        console.log('Scratch map layer enabled via layer control');
+        this.refreshScratchLayer();
+      } else if (event.name === 'Fog of War') {
+        // Enable fog of war when layer is added
+        this.fogOverlay = event.layer;
+        if (this.markers && this.markers.length > 0) {
+          this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
+        }
       }
 
       // Manage pane visibility when layers are manually toggled
@@ -533,6 +619,16 @@ export default class extends BaseController {
         if (this.drawControl && this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
           this.map.removeControl(this.drawControl);
         }
+      } else if (event.name === 'Suggested Visits') {
+        // Clear suggested visits when layer is disabled
+        console.log('Suggested Visits layer disabled via layer control');
+        if (this.visitsManager) {
+          // Clear the visit circles when layer is disabled
+          this.visitsManager.visitCircles.clearLayers();
+        }
+      } else if (event.name === 'Fog of War') {
+        // Fog canvas will be automatically removed by the layer's onRemove method
+        this.fogOverlay = null;
       }
     });
   }
@@ -606,7 +702,7 @@ export default class extends BaseController {
           Points: this.markersLayer || L.layerGroup(),
           Routes: this.polylinesLayer || L.layerGroup(),
           Heatmap: this.heatmapLayer || L.layerGroup(),
-          "Fog of War": new this.fogOverlay(),
+          "Fog of War": this.fogOverlay,
           "Scratch map": this.scratchLayer || L.layerGroup(),
           Areas: this.areasLayer || L.layerGroup(),
           Photos: this.photoMarkers || L.layerGroup()
@@ -619,7 +715,7 @@ export default class extends BaseController {
 
       // Update fog if enabled
       if (this.map.hasLayer(this.fogOverlay)) {
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+        this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
       }
     })
     .catch(error => {
@@ -651,16 +747,18 @@ export default class extends BaseController {
   addLastMarker(map, markers) {
     if (markers.length > 0) {
       const lastMarker = markers[markers.length - 1].slice(0, 2);
-      L.marker(lastMarker).addTo(map);
+      const marker = L.marker(lastMarker).addTo(map);
+      return marker; // Return marker reference for tracking
     }
+    return null;
   }
 
-  updateFog(markers, clearFogRadius, fogLinethreshold) {
+  updateFog(markers, clearFogRadius, fogLineThreshold) {
     const fog = document.getElementById('fog');
     if (!fog) {
       initializeFogCanvas(this.map);
     }
-    requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius, fogLinethreshold));
+    requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius, fogLineThreshold));
   }
 
   initializeDrawControl() {
@@ -926,6 +1024,13 @@ export default class extends BaseController {
 
           if (data.settings.live_map_enabled) {
             this.setupSubscription();
+            if (this.liveMapHandler) {
+              this.liveMapHandler.enable();
+            }
+          } else {
+            if (this.liveMapHandler) {
+              this.liveMapHandler.disable();
+            }
           }
         } else {
           showFlashMessage('error', data.message);
@@ -978,6 +1083,7 @@ export default class extends BaseController {
       // Store the value as decimal internally, but display as percentage in UI
       this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
       this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
+      this.liveMapEnabled = newSettings.live_map_enabled || false;
 
       // Update the DOM data attribute to keep it in sync
       const mapElement = document.getElementById('map');
@@ -1008,7 +1114,7 @@ export default class extends BaseController {
         Routes: this.polylinesLayer || L.layerGroup(),
         Tracks: this.tracksLayer || L.layerGroup(),
         Heatmap: this.heatmapLayer || L.heatLayer([]),
-        "Fog of War": new this.fogOverlay(),
+        "Fog of War": this.fogOverlay,
         "Scratch map": this.scratchLayer || L.layerGroup(),
         Areas: this.areasLayer || L.layerGroup(),
         Photos: this.photoMarkers || L.layerGroup()
@@ -1054,57 +1160,13 @@ export default class extends BaseController {
     }
   }
 
-  createPhotoMarker(photo) {
-    if (!photo.exifInfo?.latitude || !photo.exifInfo?.longitude) return;
-
-    const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`;
-
-    const icon = L.divIcon({
-      className: 'photo-marker',
-      html: `<img src="${thumbnailUrl}" style="width: 48px; height: 48px;">`,
-      iconSize: [48, 48]
-    });
-
-    const marker = L.marker(
-      [photo.exifInfo.latitude, photo.exifInfo.longitude],
-      { icon }
-    );
-
-    const startOfDay = new Date(photo.localDateTime);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(photo.localDateTime);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const queryParams = {
-      takenAfter: startOfDay.toISOString(),
-      takenBefore: endOfDay.toISOString()
-    };
-    const encodedQuery = encodeURIComponent(JSON.stringify(queryParams));
-    const immich_photo_link = `${this.userSettings.immich_url}/search?query=${encodedQuery}`;
-    const popupContent = `
-      <div class="max-w-xs">
-        <a href="${immich_photo_link}" target="_blank" onmouseover="this.firstElementChild.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';"
-   onmouseout="this.firstElementChild.style.boxShadow = '';">
-          <img src="${thumbnailUrl}"
-              class="w-8 h-8 mb-2 rounded"
-              style="transition: box-shadow 0.3s ease;"
-              alt="${photo.originalFileName}">
-        </a>
-        <h3 class="font-bold">${photo.originalFileName}</h3>
-        <p>Taken: ${new Date(photo.localDateTime).toLocaleString()}</p>
-        <p>Location: ${photo.exifInfo.city}, ${photo.exifInfo.state}, ${photo.exifInfo.country}</p>
-        ${photo.type === 'video' ? '🎥 Video' : '📷 Photo'}
-      </div>
-    `;
-    marker.bindPopup(popupContent, { autoClose: false });
-
-    this.photoMarkers.addLayer(marker);
-  }
 
   addTogglePanelButton() {
+    // Store reference to the controller instance for use in the control
+    const controller = this;
+
     const TogglePanelControl = L.Control.extend({
-      onAdd: (map) => {
+      onAdd: function(map) {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
         button.innerHTML = '📅';
 
@@ -1125,7 +1187,7 @@ export default class extends BaseController {
 
         // Toggle panel on button click
         L.DomEvent.on(button, 'click', () => {
-          this.toggleRightPanel();
+          controller.toggleRightPanel();
         });
 
         return button;
@@ -1305,17 +1367,39 @@ export default class extends BaseController {
 
     // Initialize photos layer if user wants it visible
     if (this.userSettings.photos_enabled) {
-      fetchAndDisplayPhotos(this.photoMarkers, this.apiKey, this.userSettings);
+      console.log('Photos layer enabled via user settings');
+      const urlParams = new URLSearchParams(window.location.search);
+      const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const endDate = urlParams.get('end_at') || new Date().toISOString();
+
+      console.log('Auto-fetching photos for date range:', { startDate, endDate });
+      fetchAndDisplayPhotos({
+        map: this.map,
+        photoMarkers: this.photoMarkers,
+        apiKey: this.apiKey,
+        startDate: startDate,
+        endDate: endDate,
+        userSettings: this.userSettings
+      });
     }
 
     // Initialize fog of war if enabled in settings
     if (this.userSettings.fog_of_war_enabled) {
-      this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+      this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
     }
 
     // Initialize visits manager functionality
+    // Check if any visits layers are enabled by default and load data
     if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
-      this.visitsManager.fetchAndDisplayVisits();
+      // Check if confirmed visits layer is enabled by default (it's added to map in constructor)
+      const confirmedVisitsEnabled = this.map.hasLayer(this.visitsManager.getConfirmedVisitCirclesLayer());
+
+      console.log('Visits initialization - confirmedVisitsEnabled:', confirmedVisitsEnabled);
+
+      if (confirmedVisitsEnabled) {
+        console.log('Confirmed visits layer enabled by default - fetching visits data');
+        this.visitsManager.fetchAndDisplayVisits();
+      }
     }
   }
 
@@ -1415,9 +1499,9 @@ export default class extends BaseController {
       // Fetch visited cities when panel is first created
       this.fetchAndDisplayVisitedCities();
 
-      // Set initial display style based on localStorage
-      const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
-      div.style.display = isPanelOpen ? 'block' : 'none';
+      // Since user clicked to open panel, make it visible and update localStorage
+      div.style.display = 'block';
+      localStorage.setItem('mapPanelOpen', 'true');
 
       return div;
     };
@@ -1840,7 +1924,7 @@ export default class extends BaseController {
       Routes: this.polylinesLayer || L.layerGroup(),
       Tracks: this.tracksLayer || L.layerGroup(),
       Heatmap: this.heatmapLayer || L.heatLayer([]),
-      "Fog of War": new this.fogOverlay(),
+      "Fog of War": this.fogOverlay,
       "Scratch map": this.scratchLayer || L.layerGroup(),
       Areas: this.areasLayer || L.layerGroup(),
       Photos: this.photoMarkers || L.layerGroup(),

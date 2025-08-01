@@ -23,7 +23,7 @@ export function initializeFogCanvas(map) {
   return fog;
 }
 
-export function drawFogCanvas(map, markers, clearFogRadius, fogLinethreshold) {
+export function drawFogCanvas(map, markers, clearFogRadius, fogLineThreshold) {
   const fog = document.getElementById('fog');
   // Return early if fog element doesn't exist or isn't a canvas
   if (!fog || !(fog instanceof HTMLCanvasElement)) return;
@@ -55,7 +55,7 @@ export function drawFogCanvas(map, markers, clearFogRadius, fogLinethreshold) {
   // 4) Mark which pts are part of a line
   const connected = new Array(pts.length).fill(false);
   for (let i = 0; i < pts.length - 1; i++) {
-    if (pts[i + 1].time - pts[i].time <= fogLinethreshold) {
+    if (pts[i + 1].time - pts[i].time <= fogLineThreshold) {
       connected[i]     = true;
       connected[i + 1] = true;
     }
@@ -78,7 +78,7 @@ export function drawFogCanvas(map, markers, clearFogRadius, fogLinethreshold) {
   ctx.strokeStyle = 'rgba(255,255,255,1)';
 
   for (let i = 0; i < pts.length - 1; i++) {
-    if (pts[i + 1].time - pts[i].time <= fogLinethreshold) {
+    if (pts[i + 1].time - pts[i].time <= fogLineThreshold) {
       ctx.beginPath();
       ctx.moveTo(pts[i].pixel.x, pts[i].pixel.y);
       ctx.lineTo(pts[i + 1].pixel.x, pts[i + 1].pixel.y);
@@ -104,24 +104,61 @@ function getMetersPerPixel(latitude, zoom) {
 
 export function createFogOverlay() {
   return L.Layer.extend({
-    onAdd: (map) => {
+    onAdd: function(map) {
+      this._map = map;
+
+      // Initialize the fog canvas
       initializeFogCanvas(map);
 
+      // Get the map controller to access markers and settings
+      const mapElement = document.getElementById('map');
+      if (mapElement && mapElement._stimulus_controllers) {
+        const controller = mapElement._stimulus_controllers.find(c => c.identifier === 'maps');
+        if (controller) {
+          this._controller = controller;
+
+          // Draw initial fog if we have markers
+          if (controller.markers && controller.markers.length > 0) {
+            drawFogCanvas(map, controller.markers, controller.clearFogRadius, controller.fogLineThreshold);
+          }
+        }
+      }
+
       // Add resize event handlers to update fog size
-      map.on('resize', () => {
-       // Set canvas size to match map container
-       const mapSize = map.getSize();
-       fog.width = mapSize.x;
-       fog.height = mapSize.y;
-      });
+      this._onResize = () => {
+        const fog = document.getElementById('fog');
+        if (fog) {
+          const mapSize = map.getSize();
+          fog.width = mapSize.x;
+          fog.height = mapSize.y;
+
+          // Redraw fog after resize
+          if (this._controller && this._controller.markers) {
+            drawFogCanvas(map, this._controller.markers, this._controller.clearFogRadius, this._controller.fogLineThreshold);
+          }
+        }
+      };
+
+      map.on('resize', this._onResize);
     },
-    onRemove: (map) => {
+
+    onRemove: function(map) {
       const fog = document.getElementById('fog');
       if (fog) {
         fog.remove();
       }
+
       // Clean up event listener
-      map.off('resize');
+      if (this._onResize) {
+        map.off('resize', this._onResize);
+      }
+    },
+
+    // Method to update fog when markers change
+    updateFog: function(markers, clearFogRadius, fogLineThreshold) {
+      if (this._map) {
+        drawFogCanvas(this._map, markers, clearFogRadius, fogLineThreshold);
+      }
     }
   });
 }
