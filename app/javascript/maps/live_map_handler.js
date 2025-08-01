@@ -1,4 +1,5 @@
 import { createPolylinesLayer } from "./polylines";
+import { createLiveMarker } from "./marker_factory";
 
 /**
  * LiveMapHandler - Manages real-time GPS point streaming and live map updates
@@ -169,20 +170,11 @@ export class LiveMapHandler {
   }
 
   /**
-   * Create a new marker with proper styling
+   * Create a new marker using the shared factory (memory-efficient for live streaming)
    * @private
    */
   _createMarker(point) {
-    const markerColor = point[5] < 0 ? 'orange' : 'blue';
-
-    return L.marker([point[0], point[1]], {
-      icon: L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div style='background-color: ${markerColor}; width: 8px; height: 8px; border-radius: 50%;'></div>`,
-        iconSize: [8, 8],
-        iconAnchor: [4, 4]
-      })
-    });
+    return createLiveMarker(point);
   }
 
   /**
