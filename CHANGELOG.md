@@ -4,16 +4,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.30.6] - 2025-07-27
+# [0.30.7] - 2025-08-01
+
+## Fixed
+
+- Photos layer is now working again on the map page. #1563 #1421 #1071 #889
+- Suggested and Confirmed visits layers are now working again on the map page. #1443
+- Fog of war is now working correctly. #1583
+- Areas layer is now working correctly. #1583
+- Live map doesn't cause memory leaks anymore. #880
+
+## Added
+
+- Logging for Photos layer is now enabled.
+- E2e tests for map page.
+
+
+# [0.30.6] - 2025-07-29
 
 ## Changed
 
 - Put all jobs in their own queues.
 - Visits page should load faster now.
 - Reverse geocoding jobs now make less database queries.
+- Country name is now being backfilled for all points. #1562
+- Stats are now reflecting countries and cities. #1562
 
 ## Added
 - Points now support discharging and connected_not_charging battery statuses. #768
+
+## Fixed
+
+- Fixed a bug where import or notification could have been accessed by a different user.
+- Fixed a bug where draw control was not being added to the map when areas layer was enabled. #1583
 
 
 # [0.30.5] - 2025-07-26

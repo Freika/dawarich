@@ -33,24 +33,18 @@ class User < ApplicationRecord
   end
 
   def countries_visited
-    stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact
-  end
-
-  def cities_visited
-    stats
-      .where.not(toponyms: nil)
-      .pluck(:toponyms)
-      .flatten
-      .reject { |toponym| toponym['cities'].blank? }
-      .pluck('cities')
-      .flatten
-      .pluck('city')
-      .uniq
+    tracked_points
+      .where.not(country_name: [nil, ''])
+      .distinct
+      .pluck(:country_name)
       .compact
   end
 
+  def cities_visited
+    tracked_points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+  end
+
   def total_distance
-    # Distance is stored in meters, convert to user's preferred unit for display
     total_distance_meters = stats.sum(:distance)
     Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
   end

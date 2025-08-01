@@ -31,6 +31,84 @@ RSpec.describe 'Imports', type: :request do
           expect(response.body).to include(import.name)
         end
       end
+
+      context 'when other users have imports' do
+        let!(:other_user) { create(:user) }
+        let!(:other_import) { create(:import, user: other_user) }
+        let!(:user_import) { create(:import, user: user) }
+
+        it 'only displays current users imports' do
+          get imports_path
+
+          expect(response.body).to include(user_import.name)
+          expect(response.body).not_to include(other_import.name)
+        end
+      end
+    end
+  end
+
+  describe 'GET /imports/:id' do
+    let(:user) { create(:user) }
+    let(:other_user) { create(:user) }
+    let(:import) { create(:import, user: user) }
+    let(:other_import) { create(:import, user: other_user) }
+
+    context 'when user is logged in' do
+      before { sign_in user }
+
+      it 'allows viewing own import' do
+        get import_path(import)
+        expect(response).to have_http_status(200)
+      end
+
+      it 'prevents viewing other users import' do
+        expect {
+          get import_path(other_import)
+        }.to raise_error(Pundit::NotAuthorizedError)
+      end
+    end
+
+    context 'when user is not logged in' do
+      it 'redirects to login' do
+        get import_path(import)
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+  end
+
+  describe 'GET /imports/new' do
+    let(:user) { create(:user) }
+
+    context 'when user is active' do
+      before do
+        allow(user).to receive(:active?).and_return(true)
+        sign_in user
+      end
+
+      it 'allows access to new import form' do
+        get new_import_path
+        expect(response).to have_http_status(200)
+      end
+    end
+
+    context 'when user is inactive' do
+      before do
+        allow(user).to receive(:active?).and_return(false)
+        sign_in user
+      end
+
+      it 'prevents access to new import form' do
+        expect {
+          get new_import_path
+        }.to raise_error(Pundit::NotAuthorizedError)
+      end
+    end
+
+    context 'when user is not logged in' do
+      it 'redirects to login' do
+        get new_import_path
+        expect(response).to redirect_to(new_user_session_path)
+      end
     end
   end
 
@@ -97,24 +175,17 @@ RSpec.describe 'Imports', type: :request do
         let(:signed_id2) { generate_signed_id_for_blob(blob2) }
 
         it 'deletes any created imports' do
-          # The first blob should be found correctly
           allow(ActiveStorage::Blob).to receive(:find_signed).with(signed_id1).and_return(blob1)
 
-          # The second blob find will raise an error
           allow(ActiveStorage::Blob).to receive(:find_signed).with(signed_id2).and_raise(StandardError, 'Test error')
 
-          # Allow ExceptionReporter to be called without actually calling it
           allow(ExceptionReporter).to receive(:call)
 
-          # The request should not ultimately create any imports
           expect do
             post imports_path, params: { import: { source: 'owntracks', files: [signed_id1, signed_id2] } }
           end.not_to change(Import, :count)
 
-          # Check that we were redirected with an error message
           expect(response).to have_http_status(422)
-          # Just check that we have an alert message, not its exact content
-          # since error handling might transform the message
           expect(flash[:alert]).not_to be_nil
         end
       end
@@ -183,7 +254,6 @@ RSpec.describe 'Imports', type: :request do
     end
   end
 
-  # Helper methods for creating ActiveStorage blobs and signed IDs in tests
   def create_blob_for_file(file)
     ActiveStorage::Blob.create_and_upload!(
       io: file.open,

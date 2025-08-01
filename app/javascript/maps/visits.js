@@ -233,15 +233,9 @@ export class VisitsManager {
     this.visitCircles.clearLayers();
     this.confirmedVisitCircles.clearLayers();
 
-    // If the drawer is open, refresh with time-based visits
-    if (this.drawerOpen) {
-      this.fetchAndDisplayVisits();
-    } else {
-      // If drawer is closed, we should hide all visits
-      if (this.map.hasLayer(this.visitCircles)) {
-        this.map.removeLayer(this.visitCircles);
-      }
-    }
+    // Always refresh visits data regardless of drawer state
+    // Layer visibility is now controlled by the layer control, not the drawer
+    this.fetchAndDisplayVisits();
 
     // Reset drawer title
     const drawerTitle = document.querySelector('#visits-drawer .drawer h2');
@@ -495,19 +489,19 @@ export class VisitsManager {
       control.classList.toggle('controls-shifted');
     });
 
-    // Update the drawer content if it's being opened
+    // Update the drawer content if it's being opened - but don't fetch visits automatically
     if (this.drawerOpen) {
-      this.fetchAndDisplayVisits();
-      // Show the suggested visits layer when drawer is open
-      if (!this.map.hasLayer(this.visitCircles)) {
-        this.map.addLayer(this.visitCircles);
-      }
-    } else {
-      // Hide the suggested visits layer when drawer is closed
-      if (this.map.hasLayer(this.visitCircles)) {
-        this.map.removeLayer(this.visitCircles);
+      const container = document.getElementById('visits-list');
+      if (container) {
+        container.innerHTML = `
+          <div class="text-gray-500 text-center p-4">
+            <p class="mb-2">No visits data loaded</p>
+            <p class="text-sm">Enable "Suggested Visits" or "Confirmed Visits" layers from the map controls to view visits.</p>
+          </div>
+        `;
       }
     }
+    // Note: Layer visibility is now controlled by the layer control, not the drawer state
   }
 
   /**
@@ -546,11 +540,13 @@ export class VisitsManager {
    */
   async fetchAndDisplayVisits() {
     try {
+      console.log('fetchAndDisplayVisits called');
       // Clear any existing highlight before fetching new visits
       this.clearVisitHighlight();
 
       // If there's an active selection, don't perform time-based fetch
       if (this.isSelectionActive && this.selectionRect) {
+        console.log('Active selection found, fetching visits in selection');
         this.fetchVisitsInSelection();
         return;
       }
@@ -560,7 +556,7 @@ export class VisitsManager {
       const startAt = urlParams.get('start_at') || new Date().toISOString();
       const endAt = urlParams.get('end_at') || new Date().toISOString();
 
-      console.log('Fetching visits for:', startAt, endAt);
+      console.log('Fetching visits for date range:', { startAt, endAt });
       const response = await fetch(
         `/api/v1/visits?start_at=${encodeURIComponent(startAt)}&end_at=${encodeURIComponent(endAt)}`,
         {
@@ -573,22 +569,35 @@ export class VisitsManager {
       );
 
       if (!response.ok) {
+        console.error('Visits API response not ok:', response.status, response.statusText);
         throw new Error('Network response was not ok');
       }
 
       const visits = await response.json();
+      console.log('Visits API response:', { count: visits.length, visits });
       this.displayVisits(visits);
 
-      // Ensure the suggested visits layer visibility matches the drawer state
-      if (this.drawerOpen) {
-        if (!this.map.hasLayer(this.visitCircles)) {
-          this.map.addLayer(this.visitCircles);
+      // Let the layer control manage visibility instead of drawer state
+      console.log('Visit circles populated - layer control will manage visibility');
+      console.log('visitCircles layer count:', this.visitCircles.getLayers().length);
+      console.log('confirmedVisitCircles layer count:', this.confirmedVisitCircles.getLayers().length);
+
+      // Check if the layers are currently enabled in the layer control and ensure they're visible
+      const layerControl = this.map._layers;
+      let suggestedVisitsEnabled = false;
+      let confirmedVisitsEnabled = false;
+
+      // Check layer control state
+      Object.values(layerControl || {}).forEach(layer => {
+        if (layer.name === 'Suggested Visits' && this.map.hasLayer(layer.layer)) {
+          suggestedVisitsEnabled = true;
         }
-      } else {
-        if (this.map.hasLayer(this.visitCircles)) {
-          this.map.removeLayer(this.visitCircles);
+        if (layer.name === 'Confirmed Visits' && this.map.hasLayer(layer.layer)) {
+          confirmedVisitsEnabled = true;
         }
-      }
+      });
+
+      console.log('Layer control state:', { suggestedVisitsEnabled, confirmedVisitsEnabled });
     } catch (error) {
       console.error('Error fetching visits:', error);
       const container = document.getElementById('visits-list');
@@ -599,12 +608,87 @@ export class VisitsManager {
   }
 
   /**
+   * Creates visit circles on the map (independent of drawer UI)
+   * @param {Array} visits - Array of visit objects
+   */
+  createMapCircles(visits) {
+    if (!visits || visits.length === 0) {
+      console.log('No visits to create circles for');
+      return;
+    }
+
+    // Clear existing visit circles
+    console.log('Clearing existing visit circles');
+    this.visitCircles.clearLayers();
+    this.confirmedVisitCircles.clearLayers();
+
+    let suggestedCount = 0;
+    let confirmedCount = 0;
+
+    // Draw circles for all visits
+    visits
+      .filter(visit => visit.status !== 'declined')
+      .forEach(visit => {
+        if (visit.place?.latitude && visit.place?.longitude) {
+          const isConfirmed = visit.status === 'confirmed';
+          const isSuggested = visit.status === 'suggested';
+
+          console.log('Creating circle for visit:', {
+            id: visit.id,
+            status: visit.status,
+            lat: visit.place.latitude,
+            lng: visit.place.longitude,
+            isConfirmed,
+            isSuggested
+          });
+
+          const circle = L.circle([visit.place.latitude, visit.place.longitude], {
+            color: isSuggested ? '#FFA500' : '#4A90E2', // Border color
+            fillColor: isSuggested ? '#FFD700' : '#4A90E2', // Fill color
+            fillOpacity: isSuggested ? 0.3 : 0.5,
+            radius: isConfirmed ? 110 : 80, // Increased size for confirmed visits
+            weight: 2,
+            interactive: true,
+            bubblingMouseEvents: false,
+            pane: isConfirmed ? 'confirmedVisitsPane' : 'suggestedVisitsPane', // Use appropriate pane
+            dashArray: isSuggested ? '4' : null // Dotted border for suggested
+          });
+
+          // Add the circle to the appropriate layer
+          if (isConfirmed) {
+            this.confirmedVisitCircles.addLayer(circle);
+            confirmedCount++;
+            console.log('Added confirmed visit circle to layer');
+          } else {
+            this.visitCircles.addLayer(circle);
+            suggestedCount++;
+            console.log('Added suggested visit circle to layer');
+          }
+
+          // Attach click event to the circle
+          circle.on('click', () => this.fetchPossiblePlaces(visit));
+        } else {
+          console.warn('Visit missing coordinates:', visit);
+        }
+      });
+
+    console.log('Visit circles created:', { suggestedCount, confirmedCount });
+  }
+
+  /**
    * Displays visits on the map and in the drawer
    * @param {Array} visits - Array of visit objects
    */
   displayVisits(visits) {
+    // Always create map circles regardless of drawer state
+    this.createMapCircles(visits);
+
+    // Update drawer UI only if container exists
     const container = document.getElementById('visits-list');
-    if (!container) return;
+    if (!container) {
+      console.log('No visits-list container found - skipping drawer UI update');
+      return;
+    }
 
     // Update the drawer title if selection is active
     if (this.isSelectionActive && this.selectionRect) {
@@ -637,42 +721,7 @@ export class VisitsManager {
       return;
     }
 
-    // Clear existing visit circles
-    this.visitCircles.clearLayers();
-    this.confirmedVisitCircles.clearLayers();
-
-    // Draw circles for all visits
-    visits
-      .filter(visit => visit.status !== 'declined')
-      .forEach(visit => {
-        if (visit.place?.latitude && visit.place?.longitude) {
-          const isConfirmed = visit.status === 'confirmed';
-          const isSuggested = visit.status === 'suggested';
-
-          const circle = L.circle([visit.place.latitude, visit.place.longitude], {
-            color: isSuggested ? '#FFA500' : '#4A90E2', // Border color
-            fillColor: isSuggested ? '#FFD700' : '#4A90E2', // Fill color
-            fillOpacity: isSuggested ? 0.3 : 0.5,
-            radius: isConfirmed ? 110 : 80, // Increased size for confirmed visits
-            weight: 2,
-            interactive: true,
-            bubblingMouseEvents: false,
-            pane: isConfirmed ? 'confirmedVisitsPane' : 'suggestedVisitsPane', // Use appropriate pane
-            dashArray: isSuggested ? '4' : null // Dotted border for suggested
-          });
-
-          // Add the circle to the appropriate layer
-          if (isConfirmed) {
-            this.confirmedVisitCircles.addLayer(circle);
-          } else {
-            this.visitCircles.addLayer(circle);
-          }
-
-          // Attach click event to the circle
-          circle.on('click', () => this.fetchPossiblePlaces(visit));
-        }
-      });
-
+    // Map circles are handled by createMapCircles() - just generate drawer HTML
     const visitsHtml = visits
       // Filter out declined visits
       .filter(visit => visit.status !== 'declined')
