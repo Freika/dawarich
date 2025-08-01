@@ -1154,8 +1154,11 @@ export default class extends BaseController {
 
 
   addTogglePanelButton() {
+    // Store reference to the controller instance for use in the control
+    const controller = this;
+
     const TogglePanelControl = L.Control.extend({
-      onAdd: (map) => {
+      onAdd: function(map) {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
         button.innerHTML = '📅';
 
@@ -1176,7 +1179,7 @@ export default class extends BaseController {
 
         // Toggle panel on button click
         L.DomEvent.on(button, 'click', () => {
-          this.toggleRightPanel();
+          controller.toggleRightPanel();
         });
 
         return button;
@@ -1488,9 +1491,9 @@ export default class extends BaseController {
       // Fetch visited cities when panel is first created
       this.fetchAndDisplayVisitedCities();
 
-      // Set initial display style based on localStorage
-      const isPanelOpen = localStorage.getItem('mapPanelOpen') === 'true';
-      div.style.display = isPanelOpen ? 'block' : 'none';
+      // Since user clicked to open panel, make it visible and update localStorage
+      div.style.display = 'block';
+      localStorage.setItem('mapPanelOpen', 'true');
 
       return div;
     };

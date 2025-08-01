@@ -6,14 +6,14 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 3000; // 3 seconds
 
-  console.log('fetchAndDisplayPhotos called with:', { 
-    startDate, 
-    endDate, 
+  console.log('fetchAndDisplayPhotos called with:', {
+    startDate,
+    endDate,
     retryCount,
     photoMarkersExists: !!photoMarkers,
     mapExists: !!map,
     apiKeyExists: !!apiKey,
-    userSettingsExists: !!userSettings 
+    userSettingsExists: !!userSettings
   });
 
   // Create loading control
@@ -137,7 +137,7 @@ export function createPhotoMarker(photo, userSettings, photoMarkers, apiKey) {
   // Handle both data formats - check for exifInfo or direct lat/lng
   const latitude = photo.latitude || photo.exifInfo?.latitude;
   const longitude = photo.longitude || photo.exifInfo?.longitude;
-  
+
   console.log('Creating photo marker for:', {
     photoId: photo.id,
     latitude,
@@ -145,7 +145,7 @@ export function createPhotoMarker(photo, userSettings, photoMarkers, apiKey) {
     hasExifInfo: !!photo.exifInfo,
     hasDirectCoords: !!(photo.latitude && photo.longitude)
   });
-  
+
   if (!latitude || !longitude) {
     console.warn('Photo missing coordinates, skipping:', photo.id);
     return;
