@@ -4,6 +4,7 @@ import "leaflet.heat";
 import consumer from "../channels/consumer";
 
 import { createMarkersArray } from "../maps/markers";
+import { LiveMapHandler } from "../maps/live_map_handler";
 
 import {
   createPolylinesLayer,
@@ -236,6 +237,9 @@ export default class extends BaseController {
 
     // Add visits buttons after calendar button to position them below
     this.visitsManager.addDrawerButton();
+    
+    // Initialize Live Map Handler
+    this.initializeLiveMapHandler();
   }
 
   disconnect() {
@@ -308,75 +312,48 @@ export default class extends BaseController {
     }
   }
 
+  /**
+   * Initialize the Live Map Handler
+   */
+  initializeLiveMapHandler() {
+    const layers = {
+      markersLayer: this.markersLayer,
+      polylinesLayer: this.polylinesLayer,
+      heatmapLayer: this.heatmapLayer,
+      fogOverlay: this.fogOverlay
+    };
+    
+    const options = {
+      maxPoints: 1000,
+      routeOpacity: this.routeOpacity,
+      timezone: this.timezone,
+      distanceUnit: this.distanceUnit,
+      userSettings: this.userSettings,
+      clearFogRadius: this.clearFogRadius,
+      fogLinethreshold: this.fogLinethreshold,
+      // Pass existing data to LiveMapHandler
+      existingMarkers: this.markers || [],
+      existingMarkersArray: this.markersArray || [],
+      existingHeatmapMarkers: this.heatmapMarkers || []
+    };
+    
+    this.liveMapHandler = new LiveMapHandler(this.map, layers, options);
+    
+    // Enable live map handler if live mode is already enabled
+    if (this.liveMapEnabled) {
+      this.liveMapHandler.enable();
+    }
+  }
+
+  /**
+   * Delegate to LiveMapHandler for memory-efficient point appending
+   */
   appendPoint(data) {
-    // Parse the received point data
-    const newPoint = data;
-
-    // Add the new point to the markers array
-    this.markers.push(newPoint);
-
-    // Implement bounded markers array (keep only last 1000 points in live mode)
-    if (this.liveMapEnabled && this.markers.length > 1000) {
-      this.markers.shift(); // Remove oldest point
-      // Also remove corresponding marker from display
-      if (this.markersArray.length > 1000) {
-        const oldMarker = this.markersArray.shift();
-        this.markersLayer.removeLayer(oldMarker);
-      }
+    if (this.liveMapHandler && this.liveMapEnabled) {
+      this.liveMapHandler.appendPoint(data);
+    } else {
+      console.warn('LiveMapHandler not initialized or live mode not enabled');
     }
-
-    // Create new marker with proper styling
-    const newMarker = L.marker([newPoint[0], newPoint[1]], {
-      icon: L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div style='background-color: ${newPoint[5] < 0 ? 'orange' : 'blue'}; width: 8px; height: 8px; border-radius: 50%;'></div>`,
-        iconSize: [8, 8],
-        iconAnchor: [4, 4]
-      })
-    });
-
-    // Add marker incrementally instead of recreating entire layer
-    this.markersArray.push(newMarker);
-    this.markersLayer.addLayer(newMarker);
-
-    // Implement bounded heatmap data (keep only last 1000 points)
-    this.heatmapMarkers.push([newPoint[0], newPoint[1], 0.2]);
-    if (this.heatmapMarkers.length > 1000) {
-      this.heatmapMarkers.shift(); // Remove oldest point
-    }
-    this.heatmapLayer.setLatLngs(this.heatmapMarkers);
-
-    // Only update polylines if we have more than one point and update incrementally
-    if (this.markers.length > 1) {
-      const prevPoint = this.markers[this.markers.length - 2];
-      const newSegment = L.polyline([
-        [prevPoint[0], prevPoint[1]],
-        [newPoint[0], newPoint[1]]
-      ], {
-        color: this.routeOpacity > 0 ? '#3388ff' : 'transparent',
-        weight: 3,
-        opacity: this.routeOpacity
-      });
-
-      // Add only the new segment instead of recreating all polylines
-      this.polylinesLayer.addLayer(newSegment);
-    }
-
-    // Pan map to new location
-    this.map.setView([newPoint[0], newPoint[1]], 16);
-
-    // Update fog of war if enabled
-    if (this.map.hasLayer(this.fogOverlay)) {
-      this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
-    }
-
-    // Remove only the previous last marker more efficiently
-    if (this.lastMarkerRef) {
-      this.map.removeLayer(this.lastMarkerRef);
-    }
-
-    // Add and store reference to new last marker
-    this.lastMarkerRef = this.addLastMarker(this.map, this.markers);
   }
 
   async setupScratchLayer(countryCodesMap) {
@@ -1050,6 +1027,13 @@ export default class extends BaseController {
 
           if (data.settings.live_map_enabled) {
             this.setupSubscription();
+            if (this.liveMapHandler) {
+              this.liveMapHandler.enable();
+            }
+          } else {
+            if (this.liveMapHandler) {
+              this.liveMapHandler.disable();
+            }
           }
         } else {
           showFlashMessage('error', data.message);
@@ -1102,6 +1086,7 @@ export default class extends BaseController {
       // Store the value as decimal internally, but display as percentage in UI
       this.routeOpacity = parseFloat(newSettings.route_opacity) || 0.6;
       this.clearFogRadius = parseInt(newSettings.fog_of_war_meters) || 50;
+      this.liveMapEnabled = newSettings.live_map_enabled || false;
 
       // Update the DOM data attribute to keep it in sync
       const mapElement = document.getElementById('map');
