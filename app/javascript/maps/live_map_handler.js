@@ -33,7 +33,7 @@ export class LiveMapHandler {
     this.distanceUnit = options.distanceUnit || 'km';
     this.userSettings = options.userSettings || {};
     this.clearFogRadius = options.clearFogRadius || 100;
-    this.fogLinethreshold = options.fogLinethreshold || 10;
+    this.fogLineThreshold = options.fogLineThreshold || 10;
 
     // State tracking
     this.isEnabled = false;
