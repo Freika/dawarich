@@ -7,8 +7,8 @@ import BaseController from "./base_controller"
 import L from "leaflet"
 import { createAllMapLayers } from "../maps/layers"
 import { createPopupContent } from "../maps/popups"
-import { showFlashMessage } from '../maps/helpers';
-import { fetchAndDisplayPhotos } from '../maps/photos';
+import { showFlashMessage } from "../maps/helpers"
+import { fetchAndDisplayPhotos } from "../maps/photos"
 
 export default class extends BaseController {
   static targets = ["container", "startedAt", "endedAt"]

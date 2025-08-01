@@ -81,7 +81,7 @@ export default class extends BaseController {
       this.userSettings = {};
     }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
-    this.fogLinethreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
+    this.fogLineThreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
     // Store route opacity as decimal (0-1) internally
     this.routeOpacity = parseFloat(this.userSettings.route_opacity) || 0.6;
     this.distanceUnit = this.userSettings.maps?.distance_unit || "km";
@@ -119,9 +119,6 @@ export default class extends BaseController {
         const div = L.DomUtil.create('div', 'leaflet-control-stats');
         let distance = parseInt(this.element.dataset.distance) || 0;
         const pointsNumber = this.element.dataset.points_number || '0';
-        // Original stats data loading disabled:
-        // let distance = parseInt(this.element.dataset.distance) || 0;
-        // const pointsNumber = this.element.dataset.points_number || '0';
 
         // Convert distance to miles if user prefers miles (assuming backend sends km)
         if (this.distanceUnit === 'mi') {
@@ -237,7 +234,7 @@ export default class extends BaseController {
 
     // Add visits buttons after calendar button to position them below
     this.visitsManager.addDrawerButton();
-    
+
     // Initialize Live Map Handler
     this.initializeLiveMapHandler();
   }
@@ -322,7 +319,7 @@ export default class extends BaseController {
       heatmapLayer: this.heatmapLayer,
       fogOverlay: this.fogOverlay
     };
-    
+
     const options = {
       maxPoints: 1000,
       routeOpacity: this.routeOpacity,
@@ -330,15 +327,15 @@ export default class extends BaseController {
       distanceUnit: this.distanceUnit,
       userSettings: this.userSettings,
       clearFogRadius: this.clearFogRadius,
-      fogLinethreshold: this.fogLinethreshold,
+      fogLineThreshold: this.fogLineThreshold,
       // Pass existing data to LiveMapHandler
       existingMarkers: this.markers || [],
       existingMarkersArray: this.markersArray || [],
       existingHeatmapMarkers: this.heatmapMarkers || []
     };
-    
+
     this.liveMapHandler = new LiveMapHandler(this.map, layers, options);
-    
+
     // Enable live map handler if live mode is already enabled
     if (this.liveMapEnabled) {
       this.liveMapHandler.enable();
@@ -601,7 +598,7 @@ export default class extends BaseController {
         // Enable fog of war when layer is added
         this.fogOverlay = event.layer;
         if (this.markers && this.markers.length > 0) {
-          this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+          this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
         }
       }
 
@@ -718,7 +715,7 @@ export default class extends BaseController {
 
       // Update fog if enabled
       if (this.map.hasLayer(this.fogOverlay)) {
-        this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+        this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
       }
     })
     .catch(error => {
@@ -756,12 +753,12 @@ export default class extends BaseController {
     return null;
   }
 
-  updateFog(markers, clearFogRadius, fogLinethreshold) {
+  updateFog(markers, clearFogRadius, fogLineThreshold) {
     const fog = document.getElementById('fog');
     if (!fog) {
       initializeFogCanvas(this.map);
     }
-    requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius, fogLinethreshold));
+    requestAnimationFrame(() => drawFogCanvas(this.map, markers, clearFogRadius, fogLineThreshold));
   }
 
   initializeDrawControl() {
@@ -1388,7 +1385,7 @@ export default class extends BaseController {
 
     // Initialize fog of war if enabled in settings
     if (this.userSettings.fog_of_war_enabled) {
-      this.updateFog(this.markers, this.clearFogRadius, this.fogLinethreshold);
+      this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
     }
 
     // Initialize visits manager functionality

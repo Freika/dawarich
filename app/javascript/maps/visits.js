@@ -491,11 +491,14 @@ export class VisitsManager {
 
     // Update the drawer content if it's being opened - but don't fetch visits automatically
     if (this.drawerOpen) {
-      console.log('Drawer opened - showing placeholder message');
-      // Just show a placeholder message in the drawer, don't fetch visits
       const container = document.getElementById('visits-list');
       if (container) {
-        container.innerHTML = '<p class="text-gray-500">Enable "Suggested Visits" or "Confirmed Visits" layers to see visits data</p>';
+        container.innerHTML = `
+          <div class="text-gray-500 text-center p-4">
+            <p class="mb-2">No visits data loaded</p>
+            <p class="text-sm">Enable "Suggested Visits" or "Confirmed Visits" layers from the map controls to view visits.</p>
+          </div>
+        `;
       }
     }
     // Note: Layer visibility is now controlled by the layer control, not the drawer state
@@ -578,12 +581,12 @@ export class VisitsManager {
       console.log('Visit circles populated - layer control will manage visibility');
       console.log('visitCircles layer count:', this.visitCircles.getLayers().length);
       console.log('confirmedVisitCircles layer count:', this.confirmedVisitCircles.getLayers().length);
-      
+
       // Check if the layers are currently enabled in the layer control and ensure they're visible
       const layerControl = this.map._layers;
       let suggestedVisitsEnabled = false;
       let confirmedVisitsEnabled = false;
-      
+
       // Check layer control state
       Object.values(layerControl || {}).forEach(layer => {
         if (layer.name === 'Suggested Visits' && this.map.hasLayer(layer.layer)) {
@@ -593,7 +596,7 @@ export class VisitsManager {
           confirmedVisitsEnabled = true;
         }
       });
-      
+
       console.log('Layer control state:', { suggestedVisitsEnabled, confirmedVisitsEnabled });
     } catch (error) {
       console.error('Error fetching visits:', error);
@@ -679,7 +682,7 @@ export class VisitsManager {
   displayVisits(visits) {
     // Always create map circles regardless of drawer state
     this.createMapCircles(visits);
-    
+
     // Update drawer UI only if container exists
     const container = document.getElementById('visits-list');
     if (!container) {
