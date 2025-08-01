@@ -21,7 +21,7 @@ class MapController < ApplicationController
   end
 
   def build_coordinates
-    @points.pluck(:lonlat, :battery, :altitude, :timestamp, :velocity, :id, :country, :track_id)
+    @points.pluck(:lonlat, :battery, :altitude, :timestamp, :velocity, :id, :country_name, :track_id)
            .map { |lonlat, *rest| [lonlat.y, lonlat.x, *rest.map(&:to_s)] }
   end
 
