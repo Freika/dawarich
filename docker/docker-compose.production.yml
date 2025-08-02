@@ -86,7 +86,7 @@ services:
       dawarich_db:
         condition: service_healthy
         restart: true
-    dawarich_redis:
+      dawarich_redis:
         condition: service_healthy
         restart: true
     deploy:
