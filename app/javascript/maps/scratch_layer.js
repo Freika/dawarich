@@ -23,20 +23,7 @@ export class ScratchLayer {
     try {
       // Up-to-date version can be found on Github:
       // https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson
-      const response = await fetch('/api/v1/countries/borders.json', {
-        headers: {
-          'Accept': 'application/geo+json,application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const worldData = await response.json();
-      // Cache the world borders data for future use
-      this.worldBordersData = worldData;
+      const worldData = await this._fetchWorldBordersData();
 
       const visitedCountries = this.getVisitedCountries();
       console.log('Current visited countries:', visitedCountries);
@@ -61,6 +48,27 @@ export class ScratchLayer {
     }
 
     return this.scratchLayer;
+  }
+
+  async _fetchWorldBordersData() {
+    if (this.worldBordersData) {
+      return this.worldBordersData;
+    }
+
+    console.log('Loading world borders data');
+    const response = await fetch('/api/v1/countries/borders.json', {
+      headers: {
+        'Accept': 'application/geo+json,application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    this.worldBordersData = await response.json();
+    return this.worldBordersData;
   }
 
   getVisitedCountries() {
@@ -112,24 +120,10 @@ export class ScratchLayer {
       }
 
       // Fetch country borders data (reuse if already loaded)
-      if (!this.worldBordersData) {
-        console.log('Loading world borders data');
-        const response = await fetch('/api/v1/countries/borders.json', {
-          headers: {
-            'Accept': 'application/geo+json,application/json',
-            'Authorization': `Bearer ${this.apiKey}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        this.worldBordersData = await response.json();
-      }
+      const worldData = await this._fetchWorldBordersData();
 
       // Filter for visited countries
-      const filteredFeatures = this.worldBordersData.features.filter(feature =>
+      const filteredFeatures = worldData.features.filter(feature =>
         visitedCountries.includes(feature.properties["ISO3166-1-Alpha-2"])
       );
 
