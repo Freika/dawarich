@@ -35,6 +35,7 @@ import { showFlashMessage } from "../maps/helpers";
 import { fetchAndDisplayPhotos } from "../maps/photos";
 import { countryCodesMap } from "../maps/country_codes";
 import { VisitsManager } from "../maps/visits";
+import { ScratchLayer } from "../maps/scratch_layer";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
@@ -49,7 +50,6 @@ export default class extends BaseController {
   layerControl = null;
   visitedCitiesCache = new Map();
   trackedMonthsCache = null;
-  currentPopup = null;
   tracksLayer = null;
   tracksVisible = false;
   tracksSubscription = null;
@@ -181,7 +181,7 @@ export default class extends BaseController {
     this.areasLayer = new L.FeatureGroup();
     this.photoMarkers = L.layerGroup();
 
-    this.setupScratchLayer(this.countryCodesMap);
+    this.initializeScratchLayer();
 
     if (!this.settingsButtonAdded) {
       this.addSettingsButton();
@@ -197,7 +197,7 @@ export default class extends BaseController {
       Tracks: this.tracksLayer,
       Heatmap: this.heatmapLayer,
       "Fog of War": this.fogOverlay,
-      "Scratch map": this.scratchLayer,
+      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
       Areas: this.areasLayer,
       Photos: this.photoMarkers,
       "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
@@ -348,127 +348,23 @@ export default class extends BaseController {
   appendPoint(data) {
     if (this.liveMapHandler && this.liveMapEnabled) {
       this.liveMapHandler.appendPoint(data);
+      // Update scratch layer manager with new markers
+      if (this.scratchLayerManager) {
+        this.scratchLayerManager.updateMarkers(this.markers);
+      }
     } else {
       console.warn('LiveMapHandler not initialized or live mode not enabled');
     }
   }
 
-  async setupScratchLayer(countryCodesMap) {
-    this.scratchLayer = L.geoJSON(null, {
-      style: {
-        fillColor: '#FFD700',
-        fillOpacity: 0.3,
-        color: '#FFA500',
-        weight: 1
-      }
-    })
-
-    try {
-      // Up-to-date version can be found on Github:
-      // https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson
-      const response = await fetch('/api/v1/countries/borders.json', {
-        headers: {
-          'Accept': 'application/geo+json,application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const worldData = await response.json();
-      // Cache the world borders data for future use
-      this.worldBordersData = worldData;
-
-      const visitedCountries = this.getVisitedCountries(countryCodesMap)
-      const filteredFeatures = worldData.features.filter(feature =>
-        visitedCountries.includes(feature.properties["ISO3166-1-Alpha-2"])
-      )
-
-      this.scratchLayer.addData({
-        type: 'FeatureCollection',
-        features: filteredFeatures
-      })
-    } catch (error) {
-      console.error('Error loading GeoJSON:', error);
-    }
+  async initializeScratchLayer() {
+    this.scratchLayerManager = new ScratchLayer(this.map, this.markers, this.countryCodesMap, this.apiKey);
+    this.scratchLayer = await this.scratchLayerManager.setup();
   }
 
-  getVisitedCountries(countryCodesMap) {
-    if (!this.markers) return [];
-
-    return [...new Set(
-      this.markers
-        .filter(marker => marker[7]) // Ensure country exists
-        .map(marker => {
-          // Convert country name to ISO code, or return the original if not found
-          return countryCodesMap[marker[7]] || marker[7];
-        })
-    )];
-  }
-
-  // Optional: Add methods to handle user interactions
   toggleScratchLayer() {
-    if (this.map.hasLayer(this.scratchLayer)) {
-      this.map.removeLayer(this.scratchLayer)
-    } else {
-      this.scratchLayer.addTo(this.map)
-    }
-  }
-
-  async refreshScratchLayer() {
-    console.log('Refreshing scratch layer with current data');
-
-    if (!this.scratchLayer) {
-      console.log('Scratch layer not initialized, setting up');
-      await this.setupScratchLayer(this.countryCodesMap);
-      return;
-    }
-
-    try {
-      // Clear existing data
-      this.scratchLayer.clearLayers();
-
-      // Get current visited countries based on current markers
-      const visitedCountries = this.getVisitedCountries(this.countryCodesMap);
-      console.log('Current visited countries:', visitedCountries);
-
-      if (visitedCountries.length === 0) {
-        console.log('No visited countries found');
-        return;
-      }
-
-      // Fetch country borders data (reuse if already loaded)
-      if (!this.worldBordersData) {
-        console.log('Loading world borders data');
-        const response = await fetch('/api/v1/countries/borders.json', {
-          headers: {
-            'Accept': 'application/geo+json,application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        this.worldBordersData = await response.json();
-      }
-
-      // Filter for visited countries
-      const filteredFeatures = this.worldBordersData.features.filter(feature =>
-        visitedCountries.includes(feature.properties["ISO3166-1-Alpha-2"])
-      );
-
-      console.log('Filtered features for visited countries:', filteredFeatures.length);
-
-      // Add the filtered country data to the scratch layer
-      this.scratchLayer.addData({
-        type: 'FeatureCollection',
-        features: filteredFeatures
-      });
-
-    } catch (error) {
-      console.error('Error refreshing scratch layer:', error);
+    if (this.scratchLayerManager) {
+      this.scratchLayerManager.toggle();
     }
   }
 
@@ -591,9 +487,11 @@ export default class extends BaseController {
           this.visitsManager.fetchAndDisplayVisits();
         }
       } else if (event.name === 'Scratch map') {
-        // Refresh scratch map with current visited countries
+        // Add scratch map layer
         console.log('Scratch map layer enabled via layer control');
-        this.refreshScratchLayer();
+        if (this.scratchLayerManager) {
+          this.scratchLayerManager.addToMap();
+        }
       } else if (event.name === 'Fog of War') {
         // Enable fog of war when layer is added
         this.fogOverlay = event.layer;
@@ -625,6 +523,12 @@ export default class extends BaseController {
         if (this.visitsManager) {
           // Clear the visit circles when layer is disabled
           this.visitsManager.visitCircles.clearLayers();
+        }
+      } else if (event.name === 'Scratch map') {
+        // Handle scratch map layer removal
+        console.log('Scratch map layer disabled via layer control');
+        if (this.scratchLayerManager) {
+          this.scratchLayerManager.remove();
         }
       } else if (event.name === 'Fog of War') {
         // Fog canvas will be automatically removed by the layer's onRemove method
@@ -703,7 +607,7 @@ export default class extends BaseController {
           Routes: this.polylinesLayer || L.layerGroup(),
           Heatmap: this.heatmapLayer || L.layerGroup(),
           "Fog of War": this.fogOverlay,
-          "Scratch map": this.scratchLayer || L.layerGroup(),
+          "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
           Areas: this.areasLayer || L.layerGroup(),
           Photos: this.photoMarkers || L.layerGroup()
         };
@@ -741,16 +645,12 @@ export default class extends BaseController {
         const markerId = parseInt(marker[6]);
         return markerId !== numericId;
       });
+      
+      // Update scratch layer manager with updated markers
+      if (this.scratchLayerManager) {
+        this.scratchLayerManager.updateMarkers(this.markers);
+      }
     }
-  }
-
-  addLastMarker(map, markers) {
-    if (markers.length > 0) {
-      const lastMarker = markers[markers.length - 1].slice(0, 2);
-      const marker = L.marker(lastMarker).addTo(map);
-      return marker; // Return marker reference for tracking
-    }
-    return null;
   }
 
   updateFog(markers, clearFogRadius, fogLineThreshold) {
@@ -1104,7 +1004,7 @@ export default class extends BaseController {
         Tracks: this.tracksLayer ? this.map.hasLayer(this.tracksLayer) : false,
         Heatmap: this.map.hasLayer(this.heatmapLayer),
         "Fog of War": this.map.hasLayer(this.fogOverlay),
-        "Scratch map": this.map.hasLayer(this.scratchLayer),
+        "Scratch map": this.scratchLayerManager?.isVisible() || false,
         Areas: this.map.hasLayer(this.areasLayer),
         Photos: this.map.hasLayer(this.photoMarkers)
       };
@@ -1646,14 +1546,6 @@ export default class extends BaseController {
     }
   }
 
-  chunk(array, size) {
-    const chunked = [];
-    for (let i = 0; i < array.length; i += size) {
-      chunked.push(array.slice(i, i + size));
-    }
-    return chunked;
-  }
-
   getWholeYearLink() {
     // First try to get year from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -1918,30 +1810,6 @@ export default class extends BaseController {
     });
   }
 
-  updateLayerControl() {
-    if (!this.layerControl) return;
-
-    // Remove existing layer control
-    this.map.removeControl(this.layerControl);
-
-    // Create new controls layer object
-    const controlsLayer = {
-      Points: this.markersLayer || L.layerGroup(),
-      Routes: this.polylinesLayer || L.layerGroup(),
-      Tracks: this.tracksLayer || L.layerGroup(),
-      Heatmap: this.heatmapLayer || L.heatLayer([]),
-      "Fog of War": this.fogOverlay,
-      "Scratch map": this.scratchLayer || L.layerGroup(),
-      Areas: this.areasLayer || L.layerGroup(),
-      Photos: this.photoMarkers || L.layerGroup(),
-      "Suggested Visits": this.visitsManager?.getVisitCirclesLayer() || L.layerGroup(),
-      "Confirmed Visits": this.visitsManager?.getConfirmedVisitCirclesLayer() || L.layerGroup()
-    };
-
-    // Re-add the layer control
-    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
-  }
-
   toggleTracksVisibility(event) {
     this.tracksVisible = event.target.checked;
 
@@ -1949,8 +1817,4 @@ export default class extends BaseController {
       toggleTracksVisibility(this.tracksLayer, this.map, this.tracksVisible);
     }
   }
-
-
-
-
 }

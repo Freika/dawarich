@@ -58,8 +58,7 @@ RSpec.describe Visits::PlaceFinder do
     context 'with places from points data' do
       let(:point_with_geodata) do
         build_stubbed(:point,
-                      latitude: latitude,
-                      longitude: longitude,
+                      lonlat: "POINT(#{longitude} #{latitude})",
                       geodata: {
                         'properties' => {
                           'name' => 'POI from Point',
