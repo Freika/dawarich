@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Fog of war is now working correctly on zoom and map movement. #1603
 - Possibly fixed a bug where visits were no suggested correctly. #984
+- Scratch map is now working correctly.
 
 
 
