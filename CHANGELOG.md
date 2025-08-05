@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Possibly fixed a bug where visits were no suggested correctly. #984
 - Scratch map is now working correctly.
 
+## Added
+
+- Internal data structure for separate devices in a single user account.
+  - [ ] Immich and Photoprism integrations should fill all possible fields in points table
+
 
 
 # [0.30.7] - 2025-08-01
