@@ -15,12 +15,9 @@
     <div class="card-body p-4">
       <div class="stat-title text-xs">Countries</div>
       <div class="stat-value text-lg">
-        <% if trip.countries.any? %>
-          <%= trip.countries.join(', ') %>
-        <% elsif trip.visited_countries.present? %>
+        <% if trip.visited_countries.any? %>
           <%= trip.visited_countries.join(', ') %>
         <% else %>
-          <span class="text-xs">Countries are being calculated...</span>
           <span class="loading loading-dots loading-sm"></span>
         <% end %>
       </div>

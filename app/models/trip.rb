@@ -21,12 +21,6 @@ class Trip < ApplicationRecord
     user.tracked_points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
   end
 
-  def countries
-    return points.pluck(:country).uniq.compact if DawarichSettings.store_geodata?
-
-    visited_countries
-  end
-
   def photo_previews
     @photo_previews ||= select_dominant_orientation(photos).sample(12)
   end
@@ -35,13 +29,8 @@ class Trip < ApplicationRecord
     @photo_sources ||= photos.map { _1[:source] }.uniq
   end
 
-
-
   def calculate_countries
-    countries =
-      Country.where(id: points.pluck(:country_id).compact.uniq).pluck(:name)
-
-    self.visited_countries = countries
+    self.visited_countries = points.pluck(:country_name).uniq.compact
   end
 
   private
