@@ -45,11 +45,27 @@ RSpec.describe Photos::Importer do
 
     context 'when there are points with the same coordinates' do
       let!(:existing_point) do
-        create(:point, lonlat: 'POINT(30.0000 59.0000)', timestamp: 978_296_400, user:, device:)
+        create(:point,
+          lonlat: 'SRID=4326;POINT(30.0000 59.0000)',
+          timestamp: 978_296_400,
+          user: user,
+          device: device,
+          tracker_id: nil
+        )
       end
 
       it 'creates only new points' do
         expect { service }.to change { Point.count }.by(1)
+      end
+
+      it 'does not create duplicate points' do
+        service
+        points = Point.where(
+          lonlat: 'SRID=4326;POINT(30.0000 59.0000)',
+          timestamp: 978_296_400,
+          user_id: user.id
+        )
+        expect(points.count).to eq(1)
       end
     end
   end

@@ -7,6 +7,7 @@ module PointValidation
     Point.where(
       lonlat: params[:lonlat],
       timestamp: params[:timestamp].to_i,
+      tracker_id: params[:tracker_id],
       user_id:
     ).exists?
   end

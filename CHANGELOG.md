@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Internal data structure for separate devices in a single user account.
   - [ ] Immich and Photoprism integrations should fill all possible fields in points table
+- Geodata from Immich and Photoprism now will also write `tracker_id` to the points table. This will allow to group points by device. It's a good idea to delete your existing imports from Photoprism and Immich and import them again. This will remove existing points and re-import them as long as photos are still available.
+- [ ] Add tracker_id index to points table
 
 
 
