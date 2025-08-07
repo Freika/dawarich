@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_05_184855) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -78,6 +78,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
   end
 
   create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
+  end
+
+  create_table "devices", force: :cascade do |t|
+    t.string "name", null: false
+    t.bigint "user_id", null: false
+    t.string "identifier", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["identifier"], name: "index_devices_on_identifier"
+    t.index ["user_id"], name: "index_devices_on_user_id"
   end
 
   create_table "exports", force: :cascade do |t|
@@ -187,6 +197,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.bigint "country_id"
     t.bigint "track_id"
     t.string "country_name"
+    t.bigint "device_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -195,6 +206,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.index ["country"], name: "index_points_on_country"
     t.index ["country_id"], name: "index_points_on_country_id"
     t.index ["country_name"], name: "index_points_on_country_name"
+    t.index ["device_id"], name: "index_points_on_device_id"
     t.index ["external_track_id"], name: "index_points_on_external_track_id"
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
@@ -300,6 +312,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
+  add_foreign_key "devices", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"

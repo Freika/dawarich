@@ -19,7 +19,7 @@ class Photos::Importer
 
   def create_point(point, index)
     return 0 unless valid?(point)
-    return 0 if point_exists?(point, point['timestamp'])
+    return 0 if point_exists?(point, user_id)
 
     Point.create(
       lonlat:    point['lonlat'],
@@ -28,6 +28,7 @@ class Photos::Importer
       timestamp: point['timestamp'].to_i,
       raw_data:  point,
       import_id: import.id,
+      tracker_id: point['tracker_id'],
       user_id:
     )
 

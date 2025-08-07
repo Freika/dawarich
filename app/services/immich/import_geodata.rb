@@ -56,7 +56,8 @@ class Immich::ImportGeodata
       latitude: asset['exifInfo']['latitude'],
       longitude: asset['exifInfo']['longitude'],
       lonlat: "SRID=4326;POINT(#{asset['exifInfo']['longitude']} #{asset['exifInfo']['latitude']})",
-      timestamp: Time.zone.parse(asset['exifInfo']['dateTimeOriginal']).to_i
+      timestamp: Time.zone.parse(asset['exifInfo']['dateTimeOriginal']).to_i,
+      tracker_id: asset['deviceId']
     }
   end
 

@@ -9,10 +9,11 @@ class Point < ApplicationRecord
   belongs_to :user
   belongs_to :country, optional: true
   belongs_to :track, optional: true
+  belongs_to :device, optional: true
 
   validates :timestamp, :lonlat, presence: true
   validates :lonlat, uniqueness: {
-    scope: %i[timestamp user_id],
+    scope: %i[timestamp user_id device_id],
     message: 'already has a point at this location and time for this user',
     index: true
   }

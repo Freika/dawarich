@@ -15,6 +15,7 @@ class User < ApplicationRecord
   has_many :places, through: :visits
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
+  has_many :devices, dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }

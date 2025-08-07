@@ -3,6 +3,7 @@
     {
       "assets": [
         {
+          "deviceId": "MyString",
           "exifInfo": {
             "dateTimeOriginal": "2022-12-31T23:17:06.170Z",
             "latitude": 52.0000,
@@ -10,6 +11,7 @@
           }
         },
         {
+          "deviceId": "MyString",
           "exifInfo": {
             "dateTimeOriginal": "2022-12-31T23:21:53.140Z",
             "latitude": 52.0000,

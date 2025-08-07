@@ -9,6 +9,7 @@ RSpec.describe Photos::Importer do
     let(:user) do
       create(:user, settings: { 'immich_url' => 'http://immich.app', 'immich_api_key' => '123456' })
     end
+    let(:device) { create(:device, user:) }
 
     let(:immich_data) do
       JSON.parse(File.read(Rails.root.join('spec/fixtures/files/immich/geodata.json')))
@@ -44,11 +45,27 @@ RSpec.describe Photos::Importer do
 
     context 'when there are points with the same coordinates' do
       let!(:existing_point) do
-        create(:point, lonlat: 'POINT(30.0000 59.0000)', timestamp: 978_296_400, user:)
+        create(:point,
+          lonlat: 'SRID=4326;POINT(30.0000 59.0000)',
+          timestamp: 978_296_400,
+          user: user,
+          device: device,
+          tracker_id: nil
+        )
       end
 
       it 'creates only new points' do
         expect { service }.to change { Point.count }.by(1)
+      end
+
+      it 'does not create duplicate points' do
+        service
+        points = Point.where(
+          lonlat: 'SRID=4326;POINT(30.0000 59.0000)',
+          timestamp: 978_296_400,
+          user_id: user.id
+        )
+        expect(points.count).to eq(1)
       end
     end
   end

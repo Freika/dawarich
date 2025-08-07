@@ -9,11 +9,15 @@ RSpec.describe Point, type: :model do
     it { is_expected.to belong_to(:country).optional }
     it { is_expected.to belong_to(:visit).optional }
     it { is_expected.to belong_to(:track).optional }
+    it { is_expected.to belong_to(:device).optional }
   end
 
   describe 'validations' do
+    subject { build(:point, timestamp: Time.current, lonlat: 'POINT(1.0 2.0)') }
+
     it { is_expected.to validate_presence_of(:timestamp) }
     it { is_expected.to validate_presence_of(:lonlat) }
+    it { is_expected.to validate_uniqueness_of(:lonlat).scoped_to(%i[timestamp user_id device_id]).with_message('already has a point at this location and time for this user') }
   end
 
   describe 'callbacks' do
