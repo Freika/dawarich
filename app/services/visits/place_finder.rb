@@ -114,7 +114,7 @@ module Visits
 
       # Look for existing place with this name
       existing = Place.where(name: name)
-                      .near([point.latitude, point.longitude], SIMILARITY_RADIUS, :m)
+                      .near([point.lat, point.lon], SIMILARITY_RADIUS, :m)
                       .first
 
       return existing if existing
@@ -122,9 +122,9 @@ module Visits
       # Create new place
       place = Place.new(
         name: name,
-        lonlat: "POINT(#{point.longitude} #{point.latitude})",
-        latitude: point.latitude,
-        longitude: point.longitude,
+        lonlat: "POINT(#{point.lon} #{point.lat})",
+        latitude: point.lat,
+        longitude: point.lon,
         city: properties['city'],
         country: properties['country'],
         geodata: point.geodata,
