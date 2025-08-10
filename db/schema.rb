@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_05_184855) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_10_111002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -211,11 +211,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_05_184855) do
     t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
-    t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
+    t.index ["lonlat", "timestamp", "user_id", "device_id"], name: "index_points_on_lonlat_timestamp_user_id_device_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
+    t.index ["tracker_id"], name: "index_points_on_tracker_id"
     t.index ["trigger"], name: "index_points_on_trigger"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id"], name: "index_points_on_user_id"

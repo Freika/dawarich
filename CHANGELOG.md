@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.30.9] - 2025-08-10
+
+## Added
+
+- Internal data structure for separate devices in a single user account.
+- Geodata from Immich and Photoprism now will also write `tracker_id` to the points table. This will allow to group points by device. It's a good idea to delete your existing imports from Photoprism and Immich and import them again. This will remove existing points and re-import them as long as photos are still available.
+- [ ] Add tracker_id index to points table
+
+
 # [0.30.8] - 2025-08-01
 
 ## Fixed
@@ -11,14 +20,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fog of war is now working correctly on zoom and map movement. #1603
 - Possibly fixed a bug where visits were no suggested correctly. #984
 - Scratch map is now working correctly.
-
-## Added
-
-- Internal data structure for separate devices in a single user account.
-  - [ ] Immich and Photoprism integrations should fill all possible fields in points table
-- Geodata from Immich and Photoprism now will also write `tracker_id` to the points table. This will allow to group points by device. It's a good idea to delete your existing imports from Photoprism and Immich and import them again. This will remove existing points and re-import them as long as photos are still available.
-- [ ] Add tracker_id index to points table
-
 
 
 # [0.30.7] - 2025-08-01
