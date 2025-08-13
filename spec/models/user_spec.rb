@@ -18,7 +18,7 @@ RSpec.describe User, type: :model do
   end
 
   describe 'enums' do
-    it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1) }
+    it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 3) }
   end
 
   describe 'callbacks' do
@@ -49,18 +49,107 @@ RSpec.describe User, type: :model do
           allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
         end
 
-        it 'does not activate user' do
+        it 'sets user to trial instead of active' do
           user = create(:user, :inactive)
 
-          expect(user.active?).to be_falsey
-          expect(user.active_until).to be_within(1.minute).of(1.day.ago)
+          expect(user.trial?).to be_truthy
+          expect(user.active_until).to be_within(1.minute).of(7.days.from_now)
         end
+      end
+    end
+
+    describe '#start_trial' do
+      let(:user) { create(:user, :inactive) }
+
+      before do
+        allow(Users::TrialWebhookJob).to receive(:perform_later)
+      end
+
+      it 'sets trial status and active_until to 7 days from now' do
+        user.send(:start_trial)
+
+        expect(user.reload.trial?).to be_truthy
+        expect(user.active_until).to be_within(1.minute).of(7.days.from_now)
+      end
+
+      it 'enqueues trial webhook job' do
+        expect(Users::TrialWebhookJob).to receive(:perform_later).with(user.id)
+        user.send(:start_trial)
+      end
+    end
+
+    describe '#schedule_welcome_emails' do
+      let(:user) { create(:user, :inactive) }
+
+      before do
+        allow(Users::MailerSendingJob).to receive(:perform_later)
+        allow(Users::MailerSendingJob).to receive(:set).and_return(Users::MailerSendingJob)
+      end
+
+      it 'schedules welcome email immediately' do
+        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'welcome')
+        user.send(:schedule_welcome_emails)
+      end
+
+      it 'schedules explore_features email for day 2' do
+        expect(Users::MailerSendingJob).to receive(:set).with(wait: 2.days).and_return(Users::MailerSendingJob)
+        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'explore_features')
+        user.send(:schedule_welcome_emails)
+      end
+
+      it 'schedules trial_expires_soon email for day 5' do
+        expect(Users::MailerSendingJob).to receive(:set).with(wait: 5.days).and_return(Users::MailerSendingJob)
+        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'trial_expires_soon')
+        user.send(:schedule_welcome_emails)
+      end
+
+      it 'schedules trial_expired email for day 7' do
+        expect(Users::MailerSendingJob).to receive(:set).with(wait: 7.days).and_return(Users::MailerSendingJob)
+        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'trial_expired')
+        user.send(:schedule_welcome_emails)
       end
     end
   end
 
   describe 'methods' do
     let(:user) { create(:user) }
+
+    describe '#trial_state?' do
+      context 'when user has trial status and no tracked points' do
+        let(:user) do
+          user = build(:user, :trial)
+          user.save!(validate: false)
+          user.update_column(:status, 'trial')
+          user
+        end
+
+        it 'returns true' do
+          user.tracked_points.destroy_all
+
+          expect(user.trial_state?).to be_truthy
+        end
+      end
+
+      context 'when user has trial status but has tracked points' do
+        let(:user) { create(:user, :trial) }
+
+        before do
+          create(:point, user: user)
+        end
+
+        it 'returns false' do
+          expect(user.trial_state?).to be_falsey
+        end
+      end
+
+      context 'when user is not on trial' do
+        let(:user) { create(:user, :active) }
+
+        it 'returns false' do
+          expect(user.trial_state?).to be_falsey
+        end
+      end
+    end
 
     describe '#countries_visited' do
       subject { user.countries_visited }
@@ -204,7 +293,12 @@ RSpec.describe User, type: :model do
         end
 
         context 'when user is inactive' do
-          let(:user) { create(:user, :inactive) }
+          let(:user) do
+            user = build(:user, :inactive)
+            user.save!(validate: false)
+            user.update_columns(status: 'inactive', active_until: 1.day.ago)
+            user
+          end
 
           it 'returns true' do
             expect(user.can_subscribe?).to be_truthy

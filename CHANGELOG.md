@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - X-Dawarich-Response and X-Dawarich-Version headers are now returned for all API responses.
 
+
 # [0.30.8] - 2025-08-01
 
 ## Fixed

@@ -4,7 +4,13 @@
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-5">
     <div class="text-center lg:text-left">
       <h1 class="text-5xl font-bold mb-5">Edit your account!</h1>
-      <%= render 'devise/registrations/api_key' %>
+      <% if current_user.active? %>
+        <%= render 'devise/registrations/api_key' %>
+      <% else %>
+        <p>
+          <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success glass' %> to access your API key and start tracking your location.
+        </p>
+      <% end %>
       <% if !DawarichSettings.self_hosted? %>
         <%= render 'devise/registrations/points_usage' %>
       <% end %>

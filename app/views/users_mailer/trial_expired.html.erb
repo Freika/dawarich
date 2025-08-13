@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .expired { background: #fee2e2; border: 1px solid #dc2626; padding: 15px; border-radius: 6px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔒 Your Trial Has Expired</h1>
+    </div>
+    <div class="content">
+      <p>Hi <%= @user.email %>,</p>
+
+      <div class="expired">
+        <p><strong>Your 7-day Dawarich trial has ended.</strong></p>
+      </div>
+
+      <p>Thank you for trying Dawarich! We hope you enjoyed exploring your location data over the past week.</p>
+
+      <p>Your trial account is now limited, but your data is safe and secure. To regain full access to all features, please subscribe to continue your journey with Dawarich.</p>
+
+      <h3>🔓 Restore full access with a subscription:</h3>
+      <ul>
+        <li>Resume location tracking</li>
+        <li>Access all your historical data</li>
+        <li>Use travel analytics and insights</li>
+        <li>Export data in multiple formats</li>
+        <li>Enjoy beautiful interactive maps</li>
+      </ul>
+
+      <a href="https://my.dawarich.app" class="cta">Subscribe to Continue</a>
+
+      <p>Ready to unlock the full power of location insights? Subscribe now and pick up right where you left off!</p>
+
+      <p>We'd love to have you back as a subscriber.</p>
+
+      <p>Best regards,<br>
+      Evgenii from Dawarich</p>
+    </div>
+  </div>
+</body>
+</html>
