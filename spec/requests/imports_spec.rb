@@ -203,6 +203,16 @@ RSpec.describe 'Imports', type: :request do
 
         expect(response).to have_http_status(200)
       end
+
+      context 'when user is a trial user' do
+        let(:user) { create(:user, status: :trial) }
+
+        it 'returns http success' do
+          get new_import_path
+
+          expect(response).to have_http_status(200)
+        end
+      end
     end
   end
 

@@ -288,6 +288,8 @@ RSpec.describe User, type: :model do
           let(:user) { create(:user, status: :active, active_until: 1000.years.from_now) }
 
           it 'returns false' do
+            user.update(status: :active)
+
             expect(user.can_subscribe?).to be_falsey
           end
         end
@@ -299,6 +301,14 @@ RSpec.describe User, type: :model do
             user.update_columns(status: 'inactive', active_until: 1.day.ago)
             user
           end
+
+          it 'returns true' do
+            expect(user.can_subscribe?).to be_truthy
+          end
+        end
+
+        context 'when user is on trial' do
+          let(:user) { create(:user, :trial, active_until: 1.week.from_now) }
 
           it 'returns true' do
             expect(user.can_subscribe?).to be_truthy

@@ -3,16 +3,69 @@
 require 'rails_helper'
 
 RSpec.describe Import, type: :model do
+  let(:user) { create(:user) }
+  subject(:import) { create(:import, user:) }
+
   describe 'associations' do
     it { is_expected.to have_many(:points).dependent(:destroy) }
-    it { is_expected.to belong_to(:user) }
+    it 'belongs to a user' do
+      expect(user).to be_present
+      expect(import.user).to eq(user)
+    end
   end
 
   describe 'validations' do
-    subject { build(:import, name: 'test import') }
-
     it { is_expected.to validate_presence_of(:name) }
-    it { is_expected.to validate_uniqueness_of(:name).scoped_to(:user_id) }
+
+    it 'validates uniqueness of name scoped to user_id' do
+      create(:import, name: 'test_name', user: user)
+
+      duplicate_import = build(:import, name: 'test_name', user: user)
+      expect(duplicate_import).not_to be_valid
+      expect(duplicate_import.errors[:name]).to include('has already been taken')
+
+      other_user = create(:user)
+      different_user_import = build(:import, name: 'test_name', user: other_user)
+      expect(different_user_import).to be_valid
+    end
+
+    describe 'file size validation' do
+      context 'when user is a trial user' do
+        let(:user) do 
+          user = create(:user)
+          user.update!(status: :trial)
+          user
+        end
+
+        it 'validates file size limit for large files' do
+          import = build(:import, user: user)
+          mock_file = double(attached?: true, blob: double(byte_size: 12.megabytes))
+          allow(import).to receive(:file).and_return(mock_file)
+
+          expect(import).not_to be_valid
+          expect(import.errors[:file]).to include('is too large. Trial users can only upload files up to 10MB.')
+        end
+
+        it 'allows files under the size limit' do
+          import = build(:import, user: user)
+          mock_file = double(attached?: true, blob: double(byte_size: 5.megabytes))
+          allow(import).to receive(:file).and_return(mock_file)
+
+          expect(import).to be_valid
+        end
+      end
+
+      context 'when user is a paid user' do
+        let(:user) { create(:user, status: :active) }
+        let(:import) { build(:import, user: user) }
+
+        it 'does not validate file size limit' do
+          allow(import).to receive(:file).and_return(double(attached?: true, blob: double(byte_size: 12.megabytes)))
+
+          expect(import).to be_valid
+        end
+      end
+    end
   end
 
   describe 'enums' do

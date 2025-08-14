@@ -1,9 +1,19 @@
-# Preview all emails at http://localhost:3000/rails/mailers/users_mailer
-class UsersMailerPreview < ActionMailer::Preview
+# frozen_string_literal: true
 
-  # Preview this email at http://localhost:3000/rails/mailers/users_mailer/welcome
+class UsersMailerPreview < ActionMailer::Preview
   def welcome
-    UsersMailer.welcome
+    UsersMailer.with(user: User.last).welcome
   end
 
+  def explore_features
+    UsersMailer.with(user: User.last).explore_features
+  end
+
+  def trial_expires_soon
+    UsersMailer.with(user: User.last).trial_expires_soon
+  end
+
+  def trial_expired
+    UsersMailer.with(user: User.last).trial_expired
+  end
 end

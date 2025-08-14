@@ -13,6 +13,7 @@ class Import < ApplicationRecord
   after_commit :remove_attached_file, on: :destroy
 
   validates :name, presence: true, uniqueness: { scope: :user_id }
+  validate :file_size_within_limit, if: -> { user.trial? }
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
 
@@ -21,6 +22,18 @@ class Import < ApplicationRecord
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
     user_data_archive: 8
   }
+
+  private
+
+  def file_size_within_limit
+    return unless file.attached?
+
+    if file.blob.byte_size > 11.megabytes
+      errors.add(:file, 'is too large. Trial users can only upload files up to 10MB.')
+    end
+  end
+
+  public
 
   def process!
     if user_data_archive?

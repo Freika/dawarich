@@ -2,12 +2,12 @@
   <p class='py-2'>Use this API key to authenticate your requests.</p>
   <code><%= current_user.api_key %></code>
 
-  <%# if ENV['QR_CODE_ENABLED'] == 'true' %>
+  <% if ENV['QR_CODE_ENABLED'] == 'true' %>
     <p class='py-2'>
       Or you can scan it in your Dawarich iOS app:
       <%= api_key_qr_code(current_user) %>
     </p>
-  <%# end %>
+  <% end %>
 
   <p class='py-2'>
     <p>Docs: <%= link_to "API documentation", '/api-docs', class: 'underline hover:no-underline' %></p>

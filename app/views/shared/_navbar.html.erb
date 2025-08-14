@@ -72,8 +72,7 @@
   <div class="navbar-end">
     <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
       <% if user_signed_in? %>
-
-        <%# if current_user.can_subscribe? %>
+        <% if current_user.can_subscribe? %>
           <div class="join">
             <%= link_to "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" do %>
               <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
@@ -83,7 +82,7 @@
               </span>
             <% end %>
           </div>
-        <%# end %>
+        <% end %>
 
         <div class="dropdown dropdown-end dropdown-bottom dropdown-hover"
           data-controller="notifications"
@@ -159,4 +158,3 @@
     </ul>
   </div>
 </div>
-

@@ -1,16 +1,21 @@
-<dialog id="getting_started" class="modal">
-  <div class="modal-box">
-    <h3 class="text-lg font-bold">Start tracking your location!</h3>
-    <p class="py-4">
-      To start tracking your location and putting it on the map, you need to configure your mobile application.
-    </p>
-    <p>
-      To do so, grab the API key from <%= link_to 'here', settings_path, class: 'link' %> and follow the instructions in the <%= link_to 'documentation', 'https://docs.dawarich.com/mobile-apps/android', class: 'link' %>.
-    </p>
-    <div class="modal-action">
-      <form method="dialog">
-        <button class="btn">Close</button>
-      </form>
+<% if user_signed_in? %>
+<div data-controller="onboarding-modal"
+     data-onboarding-modal-showable-value="<%= onboarding_modal_showable?(current_user) %>">
+  <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">Start tracking your location!</h3>
+      <p class="py-4">
+        To start tracking your location and putting it on the map, you need to configure your mobile application.
+      </p>
+      <p>
+        To do so, grab the API key from <%= link_to 'here', settings_path, class: 'link' %> and follow the instructions in the <%= link_to 'documentation', 'https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&utm_medium=referral&utm_campaign=onboarding', class: 'link' %>.
+      </p>
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn">Close</button>
+        </form>
+      </div>
     </div>
-  </div>
-</dialog>
+  </dialog>
+</div>
+<% end %>

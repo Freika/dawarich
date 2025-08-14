@@ -6,10 +6,14 @@ class Users::TrialWebhookJob < ApplicationJob
   def perform(user_id)
     user = User.find(user_id)
 
-    token = Subscription::EncodeJwtToken.new(
-      { user_id: user.id, email: user.email, action: 'create_user' },
-      ENV['JWT_SECRET_KEY']
-    ).call
+    payload = {
+      user_id: user.id,
+      email: user.email,
+      active_until: user.active_until,
+      action: 'create_user'
+    }
+
+    token = Subscription::EncodeJwtToken.new(payload, ENV['JWT_SECRET_KEY']).call
 
     request_url = "#{ENV['MANAGER_URL']}/api/v1/users"
     headers = {

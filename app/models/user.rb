@@ -98,7 +98,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def can_subscribe?
-    (active_until.nil? || active_until&.past?) && !DawarichSettings.self_hosted?
+    (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
 
   def generate_subscription_token
@@ -130,7 +130,6 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def activate
-    # TODO: Remove the `status` column in the future.
     update(status: :active, active_until: 1000.years.from_now)
   end
 
