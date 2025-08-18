@@ -4,11 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 # [0.30.9] - 2025-08-18
 
 ## Changed
 
 - Countries, visited during a trip, are now being calculated from points to improve performance.
+
+## Added
+
+- X-Dawarich-Response and X-Dawarich-Version headers are now returned for all API responses.
 
 
 # [0.30.8] - 2025-08-01
@@ -16,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Fog of war is now working correctly on zoom and map movement. #1603
+- Possibly fixed a bug where visits were no suggested correctly. #984
+- Scratch map is now working correctly.
 
 
 
