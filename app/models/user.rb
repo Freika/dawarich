@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class User < ApplicationRecord
+class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable
 
@@ -18,6 +18,8 @@ class User < ApplicationRecord
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
+  after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? }
+  after_commit :schedule_welcome_emails, on: :create, if: -> { !DawarichSettings.self_hosted? }
   before_save :sanitize_input
 
   validates :email, presence: true
@@ -26,7 +28,7 @@ class User < ApplicationRecord
 
   attribute :admin, :boolean, default: false
 
-  enum :status, { inactive: 0, active: 1 }
+  enum :status, { inactive: 0, active: 1, trial: 2 }
 
   def safe_settings
     Users::SafeSettings.new(settings)
@@ -96,7 +98,7 @@ class User < ApplicationRecord
   end
 
   def can_subscribe?
-    (active_until.nil? || active_until&.past?) && !DawarichSettings.self_hosted?
+    (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
 
   def generate_subscription_token
@@ -115,6 +117,10 @@ class User < ApplicationRecord
     Users::ExportDataJob.perform_later(id)
   end
 
+  def trial_state?
+    tracked_points.none? && trial?
+  end
+
   private
 
   def create_api_key
@@ -124,7 +130,6 @@ class User < ApplicationRecord
   end
 
   def activate
-    # TODO: Remove the `status` column in the future.
     update(status: :active, active_until: 1000.years.from_now)
   end
 
@@ -132,5 +137,18 @@ class User < ApplicationRecord
     settings['immich_url']&.gsub!(%r{/+\z}, '')
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
+  end
+
+  def start_trial
+    update(status: :trial, active_until: 7.days.from_now)
+
+    Users::TrialWebhookJob.perform_later(id)
+  end
+
+  def schedule_welcome_emails
+    Users::MailerSendingJob.perform_later(id, 'welcome')
+    Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
+    Users::MailerSendingJob.set(wait: 5.days).perform_later(id, 'trial_expires_soon')
+    Users::MailerSendingJob.set(wait: 7.days).perform_later(id, 'trial_expired')
   end
 end

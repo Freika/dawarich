@@ -48,11 +48,11 @@ module ApplicationHelper
 
         grouped_by_country[country] ||= []
 
-        if toponym['cities'].present?
-          toponym['cities'].each do |city_data|
-            city = city_data['city']
-            grouped_by_country[country] << city if city.present?
-          end
+        next unless toponym['cities'].present?
+
+        toponym['cities'].each do |city_data|
+          city = city_data['city']
+          grouped_by_country[country] << city if city.present?
         end
       end
     end
@@ -171,5 +171,22 @@ module ApplicationHelper
       class: 'tooltip',
       data: { tip: "Expires on #{active_until.iso8601}" }
     )
+  end
+
+  def onboarding_modal_showable?(user)
+    user.trial_state?
+  end
+
+  def trial_button_class(user)
+    case (user.active_until.to_date - Time.current.to_date).to_i
+    when 5..8
+      'btn-info'
+    when 2...5
+      'btn-warning'
+    when 0...2
+      'btn-error'
+    else
+      'btn-success'
+    end
   end
 end
