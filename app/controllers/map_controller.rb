@@ -2,6 +2,7 @@
 
 class MapController < ApplicationController
   before_action :authenticate_user!
+  layout 'map', only: :index
 
   def index
     @points = filtered_points

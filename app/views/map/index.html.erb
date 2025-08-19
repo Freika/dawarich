@@ -1,6 +1,6 @@
 <% content_for :title, 'Map' %>
 
-<div class="flex flex-col lg:flex-row lg:space-x-4 my-5 w-full">
+<div class="flex flex-col lg:flex-row lg:space-x-4 w-full">
   <div class='w-full'>
     <div class="flex flex-col space-y-4 mb-4 w-full">
       <%= form_with url: map_path(import_id: params[:import_id]), method: :get do |f| %>
