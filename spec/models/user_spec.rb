@@ -18,7 +18,7 @@ RSpec.describe User, type: :model do
   end
 
   describe 'enums' do
-    it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 3) }
+    it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 2) }
   end
 
   describe 'callbacks' do

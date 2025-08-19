@@ -23,18 +23,6 @@ class Import < ApplicationRecord
     user_data_archive: 8
   }
 
-  private
-
-  def file_size_within_limit
-    return unless file.attached?
-
-    if file.blob.byte_size > 11.megabytes
-      errors.add(:file, 'is too large. Trial users can only upload files up to 10MB.')
-    end
-  end
-
-  public
-
   def process!
     if user_data_archive?
       process_user_data_archive!
@@ -70,5 +58,13 @@ class Import < ApplicationRecord
 
   def remove_attached_file
     file.purge_later
+  end
+
+  def file_size_within_limit
+    return unless file.attached?
+
+    if file.blob.byte_size > 11.megabytes
+      errors.add(:file, 'is too large. Trial users can only upload files up to 10MB.')
+    end
   end
 end

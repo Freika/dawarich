@@ -28,7 +28,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
 
   attribute :admin, :boolean, default: false
 
-  enum :status, { inactive: 0, active: 1, trial: 3 }
+  enum :status, { inactive: 0, active: 1, trial: 2 }
 
   def safe_settings
     Users::SafeSettings.new(settings)
