@@ -1,6 +1,7 @@
 <%= form_with model: import, class: "contents", data: {
   controller: "direct-upload",
   direct_upload_url_value: rails_direct_uploads_url,
+  direct_upload_user_trial_value: current_user.trial?,
   direct_upload_target: "form"
 } do |form| %>
   <div class="form-control w-full">
