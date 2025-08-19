@@ -11,13 +11,13 @@ class ImportPolicy < ApplicationPolicy
     user.present? && record.user == user
   end
 
-  # Users can create new imports if they are active
+  # Users can create new imports if they are active or trial
   def new?
     create?
   end
 
   def create?
-    user.present? && user.active?
+    user.present? && (user.active? || user.trial?)
   end
 
   # Users can only edit their own imports

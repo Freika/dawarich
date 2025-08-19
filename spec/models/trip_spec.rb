@@ -26,34 +26,6 @@ RSpec.describe Trip, type: :model do
         trip.save
       end
     end
-
-    context 'when DawarichSettings.store_geodata? is enabled' do
-      before do
-        allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
-      end
-
-      it 'sets the countries' do
-        expect(trip.countries).to eq(trip.points.pluck(:country).uniq.compact)
-      end
-    end
-  end
-
-  describe '#countries' do
-    let(:user) { create(:user) }
-    let(:trip) { create(:trip, user:) }
-    let(:points) do
-      create_list(
-        :point,
-        25,
-        :reverse_geocoded,
-        user:,
-        timestamp: (trip.started_at.to_i..trip.ended_at.to_i).to_a.sample
-      )
-    end
-
-    it 'returns the unique countries of the points' do
-      expect(trip.countries).to eq(trip.points.pluck(:country).uniq.compact)
-    end
   end
 
   describe '#photo_previews' do

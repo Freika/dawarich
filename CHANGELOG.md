@@ -4,13 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.30.9] - 2025-08-10
+
+# [0.30.10] - 2025-08-19
+
 
 ## Added
 
 - Internal data structure for separate devices in a single user account.
 - Geodata from Immich and Photoprism now will also write `tracker_id` to the points table. This will allow to group points by device. It's a good idea to delete your existing imports from Photoprism and Immich and import them again. This will remove existing points and re-import them as long as photos are still available.
 - [ ] Add tracker_id index to points table
+
+
+
+# [0.30.9] - 2025-08-19
+
+## Changed
+
+- Countries, visited during a trip, are now being calculated from points to improve performance.
+
+## Added
+
+- QR code for API key is implemented but hidden under feature flag until the iOS app supports it.
+- X-Dawarich-Response and X-Dawarich-Version headers are now returned for all API responses.
+- Trial version for cloud users is now available.
+
 
 
 # [0.30.8] - 2025-08-01

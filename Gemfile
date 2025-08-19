@@ -5,6 +5,7 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby File.read('.ruby-version').strip
 
+gem 'activerecord-postgis-adapter'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
 gem 'aws-sdk-s3', '~> 1.177.0', require: false
 gem 'aws-sdk-core', '~> 3.215.1', require: false
@@ -24,7 +25,7 @@ gem 'oj'
 gem 'parallel'
 gem 'pg'
 gem 'prometheus_exporter'
-gem 'activerecord-postgis-adapter'
+gem 'rqrcode', '~> 3.0'
 gem 'puma'
 gem 'pundit'
 gem 'rails', '~> 8.0'

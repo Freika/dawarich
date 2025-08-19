@@ -56,7 +56,12 @@ class Imports::Create
   end
 
   def schedule_visit_suggesting(user_id, import)
+    return unless user.safe_settings.visits_suggestions_enabled?
+
     points = import.points.order(:timestamp)
+
+    return if points.none?
+
     start_at = Time.zone.at(points.first.timestamp)
     end_at = Time.zone.at(points.last.timestamp)
 
