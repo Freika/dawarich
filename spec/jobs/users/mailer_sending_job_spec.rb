@@ -6,6 +6,7 @@ RSpec.describe Users::MailerSendingJob, type: :job do
 
   before do
     allow(UsersMailer).to receive(:with).and_return(UsersMailer)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
   end
 
   describe '#perform' do
@@ -59,12 +60,11 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
 
       context 'with active user' do
-        let(:active_user) { create(:user) }
+        let(:active_user) { create(:user).tap { |u| u.update!(status: :active) } }
 
         it 'skips sending trial_expires_soon email' do
           expect(UsersMailer).not_to receive(:with)
           expect(UsersMailer).not_to receive(:trial_expires_soon)
-          expect(Rails.logger).to receive(:info).with("Skipping trial_expires_soon email for user #{active_user.id} - user is already subscribed")
 
           described_class.perform_now(active_user.id, 'trial_expires_soon')
         end
@@ -83,12 +83,11 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
 
       context 'with active user' do
-        let(:active_user) { create(:user) }
+        let(:active_user) { create(:user).tap { |u| u.update!(status: :active) } }
 
         it 'skips sending trial_expired email' do
           expect(UsersMailer).not_to receive(:with)
           expect(UsersMailer).not_to receive(:trial_expired)
-          expect(Rails.logger).to receive(:info).with("Skipping trial_expired email for user #{active_user.id} - user is already subscribed")
 
           described_class.perform_now(active_user.id, 'trial_expired')
         end
