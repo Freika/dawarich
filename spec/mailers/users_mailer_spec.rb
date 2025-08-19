@@ -13,7 +13,7 @@ RSpec.describe UsersMailer, type: :mailer do
     let(:mail) { UsersMailer.with(user: user).welcome }
 
     it "renders the headers" do
-      expect(mail.subject).to eq("Welcome to Dawarich")
+      expect(mail.subject).to eq("Welcome to Dawarich!")
       expect(mail.to).to eq(["test@example.com"])
     end
 
@@ -26,7 +26,7 @@ RSpec.describe UsersMailer, type: :mailer do
     let(:mail) { UsersMailer.with(user: user).explore_features }
 
     it "renders the headers" do
-      expect(mail.subject).to eq("Explore Dawarich features")
+      expect(mail.subject).to eq("Explore Dawarich features!")
       expect(mail.to).to eq(["test@example.com"])
     end
   end
@@ -35,7 +35,7 @@ RSpec.describe UsersMailer, type: :mailer do
     let(:mail) { UsersMailer.with(user: user).trial_expires_soon }
 
     it "renders the headers" do
-      expect(mail.subject).to eq("Your Dawarich trial expires in 2 days")
+      expect(mail.subject).to eq("⚠️ Your Dawarich trial expires in 2 days")
       expect(mail.to).to eq(["test@example.com"])
     end
   end
@@ -44,7 +44,7 @@ RSpec.describe UsersMailer, type: :mailer do
     let(:mail) { UsersMailer.with(user: user).trial_expired }
 
     it "renders the headers" do
-      expect(mail.subject).to eq("Your Dawarich trial expired")
+      expect(mail.subject).to eq("💔 Your Dawarich trial expired")
       expect(mail.to).to eq(["test@example.com"])
     end
   end
