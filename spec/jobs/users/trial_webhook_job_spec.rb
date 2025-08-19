@@ -18,6 +18,8 @@ RSpec.describe Users::TrialWebhookJob, type: :job do
       expected_payload = {
         user_id: user.id,
         email: user.email,
+        active_until: user.active_until,
+        status: user.status,
         action: 'create_user'
       }
 
