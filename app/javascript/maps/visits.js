@@ -1326,43 +1326,78 @@ export class VisitsManager {
       // Create popup content with form and dropdown
       const defaultName = visit.name;
       const popupContent = `
-        <div class="p-3">
-          <div class="mb-3">
-            <div class="text-sm mb-1">
+        <div class="p-4 bg-base-100 text-base-content rounded-lg shadow-lg">
+          <div class="mb-4">
+            <div class="text-sm mb-2 text-base-content/80 font-medium">
               ${dateTimeDisplay.trim()}
             </div>
-            <div>
-              <span class="text-sm text-gray-500">
-                Duration: ${durationText},
-              </span>
-              <span class="text-sm mb-1 ${statusColorClass} font-semibold">
-                status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}
-              </span>
-              <span>${visit.place.latitude}, ${visit.place.longitude}</span>
+            <div class="space-y-1">
+              <div class="text-sm text-base-content/60">
+                Duration: ${durationText}
+              </div>
+              <div class="text-sm ${statusColorClass} font-semibold">
+                Status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}
+              </div>
+              <div class="text-xs text-base-content/50 font-mono">
+                ${visit.place.latitude}, ${visit.place.longitude}
+              </div>
             </div>
           </div>
-          <form class="visit-name-form" data-visit-id="${visit.id}">
+          <form class="visit-name-form space-y-3" data-visit-id="${visit.id}">
             <div class="form-control">
+              <label class="label">
+                <span class="label-text text-sm font-medium">Visit Name</span>
+              </label>
               <input type="text"
-                     class="input input-bordered input-sm w-full text-neutral-content"
+                     class="input input-bordered input-sm w-full bg-base-200 text-base-content placeholder:text-base-content/50"
                      value="${defaultName}"
                      placeholder="Enter visit name">
             </div>
-            <div class="form-control mt-2">
-              <select class="select text-neutral-content select-bordered select-sm w-full h-fit" name="place">
-                ${possiblePlaces.map(place => `
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text text-sm font-medium">Location</span>
+              </label>
+              <select class="select select-bordered select-sm text-xs w-full bg-base-200 text-base-content" name="place">
+                ${possiblePlaces.length > 0 ? possiblePlaces.map(place => `
                   <option value="${place.id}" ${place.id === visit.place.id ? 'selected' : ''}>
                     ${place.name}
                   </option>
-                `).join('')}
+                `).join('') : `
+                  <option value="${visit.place.id}" selected>
+                    ${visit.place.name || 'Current Location'}
+                  </option>
+                `}
               </select>
             </div>
-            <div class="flex gap-2 mt-2">
-              <button type="submit" class="btn btn-xs btn-primary">Save</button>
+            <div class="flex gap-2 mt-4 pt-2 border-t border-base-300">
+              <button type="submit" class="btn btn-sm btn-primary flex-1">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Save
+              </button>
               ${visit.status !== 'confirmed' ? `
-                <button type="button" class="btn btn-xs btn-success confirm-visit" data-id="${visit.id}">Confirm</button>
-                <button type="button" class="btn btn-xs btn-error decline-visit" data-id="${visit.id}">Decline</button>
+                <button type="button" class="btn btn-sm btn-success confirm-visit" data-id="${visit.id}">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path>
+                  </svg>
+                  Confirm
+                </button>
+                <button type="button" class="btn btn-sm btn-error decline-visit" data-id="${visit.id}">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                  Decline
+                </button>
               ` : ''}
+            </div>
+            <div class="mt-2">
+              <button type="button" class="btn btn-sm btn-outline btn-error w-full delete-visit" data-id="${visit.id}">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                Delete Visit
+              </button>
             </div>
           </form>
         </div>
@@ -1374,8 +1409,9 @@ export class VisitsManager {
         closeOnClick: true,
         autoClose: true,
         closeOnEscapeKey: true,
-        maxWidth: 450, // Set maximum width
-        minWidth: 300  // Set minimum width
+        maxWidth: 420, // Set maximum width
+        minWidth: 320, // Set minimum width
+        className: 'visit-popup' // Add custom class for additional styling
       })
         .setLatLng([visit.place.latitude, visit.place.longitude])
         .setContent(popupContent);
@@ -1406,6 +1442,12 @@ export class VisitsManager {
         event.stopPropagation(); // Stop event bubbling
         const newName = event.target.querySelector('input').value;
         const selectedPlaceId = event.target.querySelector('select[name="place"]').value;
+
+        // Validate that we have a valid place_id
+        if (!selectedPlaceId || selectedPlaceId === '') {
+          showFlashMessage('error', 'Please select a valid location');
+          return;
+        }
 
         // Get the selected place name from the dropdown
         const selectedOption = event.target.querySelector(`select[name="place"] option[value="${selectedPlaceId}"]`);
@@ -1473,9 +1515,11 @@ export class VisitsManager {
       // Add event listeners for confirm and decline buttons
       const confirmBtn = form.querySelector('.confirm-visit');
       const declineBtn = form.querySelector('.decline-visit');
+      const deleteBtn = form.querySelector('.delete-visit');
 
       confirmBtn?.addEventListener('click', (event) => this.handleStatusChange(event, visit.id, 'confirmed'));
       declineBtn?.addEventListener('click', (event) => this.handleStatusChange(event, visit.id, 'declined'));
+      deleteBtn?.addEventListener('click', (event) => this.handleDeleteVisit(event, visit.id));
     }
   }
 
@@ -1514,6 +1558,51 @@ export class VisitsManager {
     } catch (error) {
       console.error(`Error ${status}ing visit:`, error);
       showFlashMessage('error', `Failed to ${status} visit`);
+    }
+  }
+
+  /**
+   * Handles deletion of a visit with confirmation
+   * @param {Event} event - The click event
+   * @param {string} visitId - The visit ID to delete
+   */
+  async handleDeleteVisit(event, visitId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Show confirmation dialog
+    const confirmDelete = confirm('Are you sure you want to delete this visit? This action cannot be undone.');
+    
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/visits/${visitId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+        }
+      });
+
+      if (response.ok) {
+        // Close the popup
+        if (this.currentPopup) {
+          this.map.closePopup(this.currentPopup);
+          this.currentPopup = null;
+        }
+
+        // Refresh the visits list
+        this.fetchAndDisplayVisits();
+        showFlashMessage('notice', 'Visit deleted successfully');
+      } else {
+        const errorData = await response.json();
+        const errorMessage = errorData.error || 'Failed to delete visit';
+        showFlashMessage('error', errorMessage);
+      }
+    } catch (error) {
+      console.error('Error deleting visit:', error);
+      showFlashMessage('error', 'Failed to delete visit');
     }
   }
 

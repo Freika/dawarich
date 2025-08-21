@@ -1275,6 +1275,424 @@ paths:
       responses:
         '200':
           description: user found
+  "/api/v1/visits":
+    get:
+      summary: List visits
+      tags:
+      - Visits
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        required: false
+        description: Start date (ISO 8601)
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        required: false
+        description: End date (ISO 8601)
+        schema:
+          type: string
+      - name: selection
+        in: query
+        required: false
+        description: Set to "true" for area-based search
+        schema:
+          type: string
+      - name: sw_lat
+        in: query
+        required: false
+        description: Southwest latitude for area search
+        schema:
+          type: number
+      - name: sw_lng
+        in: query
+        required: false
+        description: Southwest longitude for area search
+        schema:
+          type: number
+      - name: ne_lat
+        in: query
+        required: false
+        description: Northeast latitude for area search
+        schema:
+          type: number
+      - name: ne_lng
+        in: query
+        required: false
+        description: Northeast longitude for area search
+        schema:
+          type: number
+      responses:
+        '200':
+          description: visits found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    status:
+                      type: string
+                      enum:
+                      - suggested
+                      - confirmed
+                      - declined
+                    started_at:
+                      type: string
+                      format: datetime
+                    ended_at:
+                      type: string
+                      format: datetime
+                    duration:
+                      type: integer
+                      description: Duration in minutes
+                    place:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        latitude:
+                          type: number
+                        longitude:
+                          type: number
+                        city:
+                          type: string
+                        country:
+                          type: string
+                  required:
+                  - id
+                  - name
+                  - status
+                  - started_at
+                  - ended_at
+                  - duration
+        '401':
+          description: unauthorized
+    post:
+      summary: Create visit
+      tags:
+      - Visits
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: visit created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  status:
+                    type: string
+                  started_at:
+                    type: string
+                    format: datetime
+                  ended_at:
+                    type: string
+                    format: datetime
+                  duration:
+                    type: integer
+                  place:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visit:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    started_at:
+                      type: string
+                      format: datetime
+                    ended_at:
+                      type: string
+                      format: datetime
+                  required:
+                  - name
+                  - latitude
+                  - longitude
+                  - started_at
+                  - ended_at
+  "/api/v1/visits/{id}":
+    patch:
+      summary: Update visit
+      tags:
+      - Visits
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Visit ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: visit updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  status:
+                    type: string
+                  started_at:
+                    type: string
+                    format: datetime
+                  ended_at:
+                    type: string
+                    format: datetime
+                  duration:
+                    type: integer
+                  place:
+                    type: object
+        '404':
+          description: visit not found
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visit:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    place_id:
+                      type: integer
+                    status:
+                      type: string
+                      enum:
+                      - suggested
+                      - confirmed
+                      - declined
+    delete:
+      summary: Delete visit
+      tags:
+      - Visits
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Visit ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '204':
+          description: visit deleted
+        '404':
+          description: visit not found
+        '401':
+          description: unauthorized
+  "/api/v1/visits/{id}/possible_places":
+    get:
+      summary: Get possible places for visit
+      tags:
+      - Visits
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Visit ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: possible places found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    city:
+                      type: string
+                    country:
+                      type: string
+        '404':
+          description: visit not found
+        '401':
+          description: unauthorized
+  "/api/v1/visits/merge":
+    post:
+      summary: Merge visits
+      tags:
+      - Visits
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: visits merged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  status:
+                    type: string
+                  started_at:
+                    type: string
+                    format: datetime
+                  ended_at:
+                    type: string
+                    format: datetime
+                  duration:
+                    type: integer
+                  place:
+                    type: object
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visit_ids:
+                  type: array
+                  items:
+                    type: integer
+                  minItems: 2
+                  description: Array of visit IDs to merge (minimum 2)
+              required:
+              - visit_ids
+  "/api/v1/visits/bulk_update":
+    post:
+      summary: Bulk update visits
+      tags:
+      - Visits
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: visits updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  updated_count:
+                    type: integer
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visit_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: Array of visit IDs to update
+                status:
+                  type: string
+                  enum:
+                  - suggested
+                  - confirmed
+                  - declined
+                  description: New status for the visits
+              required:
+              - visit_ids
+              - status
 servers:
 - url: http://{defaultHost}
   variables:

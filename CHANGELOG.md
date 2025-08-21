@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED]
+
+## Added
+
+- `POST /api/v1/visits` endpoint.
+- User now can create visits manually on the map.
+- User can now delete a visit by clicking on the delete button in the visit popup.
+- Import failure now throws an internal server error.
+
 
 # [0.30.9] - 2025-08-19
 

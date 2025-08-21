@@ -64,6 +64,104 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     end
   end
 
+  describe 'POST /api/v1/visits' do
+    let(:valid_create_params) do
+      {
+        visit: {
+          name: 'Test Visit',
+          latitude: 52.52,
+          longitude: 13.405,
+          started_at: '2023-12-01T10:00:00Z',
+          ended_at: '2023-12-01T12:00:00Z'
+        }
+      }
+    end
+
+    context 'with valid parameters' do
+      let(:existing_place) { create(:place, latitude: 52.52, longitude: 13.405) }
+
+      it 'creates a new visit' do
+        expect {
+          post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+        }.to change { user.visits.count }.by(1)
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'creates a visit with correct attributes' do
+        post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['name']).to eq('Test Visit')
+        expect(json_response['status']).to eq('confirmed')
+        expect(json_response['duration']).to eq(120) # 2 hours in minutes
+        expect(json_response['place']['latitude']).to eq(52.52)
+        expect(json_response['place']['longitude']).to eq(13.405)
+      end
+
+      it 'creates a place for the visit' do
+        expect {
+          post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+        }.to change { Place.count }.by(1)
+
+        created_place = Place.last
+        expect(created_place.name).to eq('Test Visit')
+        expect(created_place.latitude).to eq(52.52)
+        expect(created_place.longitude).to eq(13.405)
+        expect(created_place.source).to eq('manual')
+      end
+
+      it 'reuses existing place when coordinates are exactly the same' do
+        create(:visit, user: user, place: existing_place)
+
+        expect {
+          post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+        }.not_to change { Place.count }
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['place']['id']).to eq(existing_place.id)
+      end
+    end
+
+    context 'with invalid parameters' do
+      context 'when required fields are missing' do
+        let(:missing_name_params) do
+          valid_create_params.deep_merge(visit: { name: '' })
+        end
+
+        it 'returns unprocessable entity status' do
+          post '/api/v1/visits', params: missing_name_params, headers: auth_headers
+
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+
+        it 'returns error message' do
+          post '/api/v1/visits', params: missing_name_params, headers: auth_headers
+
+          json_response = JSON.parse(response.body)
+          expect(json_response['error']).to eq('Failed to create visit')
+          expect(json_response['errors']).to include("Name can't be blank")
+        end
+
+        it 'does not create a visit' do
+          expect {
+            post '/api/v1/visits', params: missing_name_params, headers: auth_headers
+          }.not_to change { Visit.count }
+        end
+      end
+    end
+
+    context 'with invalid API key' do
+      let(:invalid_auth_headers) { { 'Authorization' => 'Bearer invalid-key' } }
+
+      it 'returns unauthorized status' do
+        post '/api/v1/visits', params: valid_create_params, headers: invalid_auth_headers
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe 'PUT /api/v1/visits/:id' do
     let(:visit) { create(:visit, user:) }
 
@@ -221,6 +319,63 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to include('Invalid status')
+      end
+    end
+  end
+
+  describe 'DELETE /api/v1/visits/:id' do
+    let!(:visit) { create(:visit, user: user, place: place) }
+    let!(:other_user_visit) { create(:visit, user: other_user, place: place) }
+
+    context 'when visit exists and belongs to current user' do
+      it 'deletes the visit' do
+        expect {
+          delete "/api/v1/visits/#{visit.id}", headers: auth_headers
+        }.to change { user.visits.count }.by(-1)
+
+        expect(response).to have_http_status(:no_content)
+      end
+
+      it 'removes the visit from the database' do
+        delete "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+        expect { visit.reload }.to raise_error(ActiveRecord::RecordNotFound)
+      end
+    end
+
+    context 'when visit does not exist' do
+      it 'returns not found status' do
+        delete '/api/v1/visits/999999', headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('Visit not found')
+      end
+    end
+
+    context 'when visit belongs to another user' do
+      it 'returns not found status' do
+        delete "/api/v1/visits/#{other_user_visit.id}", headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('Visit not found')
+      end
+
+      it 'does not delete the visit' do
+        expect {
+          delete "/api/v1/visits/#{other_user_visit.id}", headers: auth_headers
+        }.not_to change { Visit.count }
+      end
+    end
+
+    context 'with invalid API key' do
+      let(:invalid_auth_headers) { { 'Authorization' => 'Bearer invalid-key' } }
+
+      it 'returns unauthorized status' do
+        delete "/api/v1/visits/#{visit.id}", headers: invalid_auth_headers
+
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end
