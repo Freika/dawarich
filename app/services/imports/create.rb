@@ -23,6 +23,8 @@ class Imports::Create
     import.update!(status: :failed)
     broadcast_status_update
 
+    ExceptionReporter.call(e, 'Import failed')
+
     create_import_failed_notification(import, user, e)
   ensure
     if import.processing?
