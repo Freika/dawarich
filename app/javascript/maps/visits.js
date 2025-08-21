@@ -1358,11 +1358,15 @@ export class VisitsManager {
                 <span class="label-text text-sm font-medium">Location</span>
               </label>
               <select class="select select-bordered select-sm w-full bg-base-200 text-base-content" name="place">
-                ${possiblePlaces.map(place => `
+                ${possiblePlaces.length > 0 ? possiblePlaces.map(place => `
                   <option value="${place.id}" ${place.id === visit.place.id ? 'selected' : ''}>
                     ${place.name}
                   </option>
-                `).join('')}
+                `).join('') : `
+                  <option value="${visit.place.id}" selected>
+                    ${visit.place.name || 'Current Location'}
+                  </option>
+                `}
               </select>
             </div>
             <div class="flex gap-2 mt-4 pt-2 border-t border-base-300">
@@ -1430,6 +1434,12 @@ export class VisitsManager {
         event.stopPropagation(); // Stop event bubbling
         const newName = event.target.querySelector('input').value;
         const selectedPlaceId = event.target.querySelector('select[name="place"]').value;
+
+        // Validate that we have a valid place_id
+        if (!selectedPlaceId || selectedPlaceId === '') {
+          showFlashMessage('error', 'Please select a valid location');
+          return;
+        }
 
         // Get the selected place name from the dropdown
         const selectedOption = event.target.querySelector(`select[name="place"] option[value="${selectedPlaceId}"]`);
