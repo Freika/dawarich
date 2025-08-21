@@ -72,22 +72,21 @@ export default class extends Controller {
     // Create the Add Visit control
     const AddVisitControl = L.Control.extend({
       onAdd: (map) => {
-        const button = L.DomUtil.create('button', 'add-visit-button');
-        button.innerHTML = '📍 Add a Visit';
-        button.title = 'Click to add a visit to the map';
+        const button = L.DomUtil.create('button', 'leaflet-control-button add-visit-button');
+        button.innerHTML = '➕';
+        button.title = 'Add a visit';
 
-        // Style the button
-        button.style.backgroundColor = 'white';
-        button.style.padding = '8px 12px';
-        button.style.border = '2px solid #ccc';
-        button.style.borderRadius = '4px';
+        // Style the button to match other map controls
+        button.style.width = '48px';
+        button.style.height = '48px';
+        button.style.border = 'none';
         button.style.cursor = 'pointer';
         button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.fontSize = '14px';
-        button.style.fontWeight = 'bold';
-        button.style.marginBottom = '5px';
-        button.style.display = 'block';
-        button.style.width = '100%';
+        button.style.backgroundColor = 'white';
+        button.style.borderRadius = '4px';
+        button.style.padding = '0';
+        button.style.lineHeight = '48px';
+        button.style.fontSize = '18px';
         button.style.textAlign = 'center';
         button.style.transition = 'all 0.2s ease';
 
@@ -135,10 +134,9 @@ export default class extends Controller {
     this.isAddingVisit = true;
 
     // Update button style to show active state
-    button.style.backgroundColor = '#007bff';
+    button.style.backgroundColor = '#dc3545';
     button.style.color = 'white';
-    button.style.borderColor = '#0056b3';
-    button.innerHTML = '✕ Cancel';
+    button.innerHTML = '✕';
 
     // Change cursor to crosshair
     this.map.getContainer().style.cursor = 'crosshair';
@@ -155,8 +153,7 @@ export default class extends Controller {
     // Reset button style
     button.style.backgroundColor = 'white';
     button.style.color = 'black';
-    button.style.borderColor = '#ccc';
-    button.innerHTML = '📍 Add Visit';
+    button.innerHTML = '➕';
 
     // Reset cursor
     this.map.getContainer().style.cursor = '';
@@ -370,7 +367,7 @@ export default class extends Controller {
 
       if (stimulusController && stimulusController.visitsManager) {
         console.log('Found maps controller with visits manager');
-        
+
         // Clear existing visits and fetch fresh data
         if (stimulusController.visitsManager.visitCircles) {
           stimulusController.visitsManager.visitCircles.clearLayers();
@@ -386,7 +383,7 @@ export default class extends Controller {
         }
       } else {
         console.log('Could not find maps controller or visits manager');
-        
+
         // Fallback: Try to dispatch a custom event
         const refreshEvent = new CustomEvent('visits:refresh', { bubbles: true });
         mapsController.dispatchEvent(refreshEvent);
@@ -414,7 +411,7 @@ export default class extends Controller {
         if (confirmedVisitsLayer && !map.hasLayer(confirmedVisitsLayer)) {
           console.log('Adding confirmed visits layer to map');
           map.addLayer(confirmedVisitsLayer);
-          
+
           // Update the layer control checkbox to reflect the layer is now active
           this.updateLayerControlCheckbox('Confirmed Visits', true);
         }
@@ -442,7 +439,7 @@ export default class extends Controller {
       if (label && label.textContent.trim() === layerName) {
         console.log(`Updating ${layerName} checkbox to ${isEnabled}`);
         input.checked = isEnabled;
-        
+
         // Trigger change event to ensure proper state management
         input.dispatchEvent(new Event('change', { bubbles: true }));
       }

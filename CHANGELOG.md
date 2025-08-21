@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - `POST /api/v1/visits` endpoint.
 - User now can create visits manually on the map.
+- User can now delete a visit by clicking on the delete button in the visit popup.
 - Import failure now throws an internal server error.
 
 

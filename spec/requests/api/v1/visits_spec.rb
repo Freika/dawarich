@@ -322,4 +322,61 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
     end
   end
+
+  describe 'DELETE /api/v1/visits/:id' do
+    let!(:visit) { create(:visit, user: user, place: place) }
+    let!(:other_user_visit) { create(:visit, user: other_user, place: place) }
+
+    context 'when visit exists and belongs to current user' do
+      it 'deletes the visit' do
+        expect {
+          delete "/api/v1/visits/#{visit.id}", headers: auth_headers
+        }.to change { user.visits.count }.by(-1)
+
+        expect(response).to have_http_status(:no_content)
+      end
+
+      it 'removes the visit from the database' do
+        delete "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+        expect { visit.reload }.to raise_error(ActiveRecord::RecordNotFound)
+      end
+    end
+
+    context 'when visit does not exist' do
+      it 'returns not found status' do
+        delete '/api/v1/visits/999999', headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('Visit not found')
+      end
+    end
+
+    context 'when visit belongs to another user' do
+      it 'returns not found status' do
+        delete "/api/v1/visits/#{other_user_visit.id}", headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('Visit not found')
+      end
+
+      it 'does not delete the visit' do
+        expect {
+          delete "/api/v1/visits/#{other_user_visit.id}", headers: auth_headers
+        }.not_to change { Visit.count }
+      end
+    end
+
+    context 'with invalid API key' do
+      let(:invalid_auth_headers) { { 'Authorization' => 'Bearer invalid-key' } }
+
+      it 'returns unauthorized status' do
+        delete "/api/v1/visits/#{visit.id}", headers: invalid_auth_headers
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

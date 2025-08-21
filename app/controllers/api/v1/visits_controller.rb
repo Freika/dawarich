@@ -75,6 +75,21 @@ class Api::V1::VisitsController < ApiController
     end
   end
 
+  def destroy
+    visit = current_api_user.visits.find(params[:id])
+    
+    if visit.destroy
+      head :no_content
+    else
+      render json: { 
+        error: 'Failed to delete visit',
+        errors: visit.errors.full_messages
+      }, status: :unprocessable_entity
+    end
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: 'Visit not found' }, status: :not_found
+  end
+
   private
 
   def visit_params
