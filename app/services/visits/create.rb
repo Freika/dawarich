@@ -18,9 +18,12 @@ module Visits
 
         create_visit(place)
       end
+    rescue ActiveRecord::RecordInvalid => e
+      @errors = e.record.errors.full_messages
+      false
     rescue StandardError => e
       ExceptionReporter.call(e, 'Failed to create visit')
-
+      @errors = [e.message]
       false
     end
 
@@ -39,7 +42,7 @@ module Visits
            .where(visits: { user: user })
            .where(
              "ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)",
-             params[:longitude].to_f, params[:latitude].to_f, 0.0001 # approximately 10 meters
+             params[:longitude].to_f, params[:latitude].to_f, 0.001 # approximately 100 meters
            ).first
     end
 
@@ -57,9 +60,12 @@ module Visits
       )
 
       place
+    rescue ActiveRecord::RecordInvalid => e
+      @errors = e.record.errors.full_messages
+      nil
     rescue StandardError => e
       ExceptionReporter.call(e, 'Failed to create place')
-
+      @errors = [e.message]
       nil
     end
 
