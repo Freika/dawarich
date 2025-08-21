@@ -10,6 +10,8 @@ class Visit < ApplicationRecord
 
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
 
+  validates :ended_at, comparison: { greater_than: :started_at }
+
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
 
   def coordinates

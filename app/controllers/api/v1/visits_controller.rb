@@ -11,34 +11,16 @@ class Api::V1::VisitsController < ApiController
   end
 
   def create
-    visit = current_api_user.visits.build(visit_params.except(:latitude, :longitude))
-
-    # If coordinates are provided but no place_id, create a place
-    if visit_params[:latitude].present? && visit_params[:longitude].present? && visit.place_id.blank?
-      place = create_place_from_coordinates(visit_params[:latitude], visit_params[:longitude], visit_params[:name])
-      if place
-        visit.place = place
-      else
-        return render json: { error: 'Failed to create place for visit' }, status: :unprocessable_entity
-      end
-    end
-
-    # Validate that visit has a place
-    if visit.place.blank?
-      return render json: { error: 'Visit must have a valid place' }, status: :unprocessable_entity
-    end
-
-    # Set visit times and calculate duration
-    visit.started_at = DateTime.parse(visit_params[:started_at])
-    visit.ended_at = DateTime.parse(visit_params[:ended_at])
-    visit.duration = (visit.ended_at - visit.started_at) * 24 * 60 # duration in minutes
+    service = Visits::Create.new(current_api_user, visit_params)
     
-    # Set status to confirmed for manually created visits
-    visit.status = :confirmed
-
-    visit.save!
-
-    render json: Api::VisitSerializer.new(visit).call
+    if service.call
+      render json: Api::VisitSerializer.new(service.visit).call
+    else
+      render json: { 
+        error: 'Failed to create visit', 
+        errors: service.errors 
+      }, status: :unprocessable_entity
+    end
   end
 
   def update
@@ -105,51 +87,6 @@ class Api::V1::VisitsController < ApiController
 
   def bulk_update_params
     params.permit(:status, visit_ids: [])
-  end
-
-  def create_place_from_coordinates(latitude, longitude, name)
-    Rails.logger.info "Creating place from coordinates: lat=#{latitude}, lon=#{longitude}, name=#{name}"
-    
-    # Create a place at the specified coordinates
-    place_name = name.presence || Place::DEFAULT_NAME
-
-    # Validate coordinates
-    lat_f = latitude.to_f
-    lon_f = longitude.to_f
-    
-    if lat_f.abs > 90 || lon_f.abs > 180
-      Rails.logger.error "Invalid coordinates: lat=#{lat_f}, lon=#{lon_f}"
-      return nil
-    end
-
-    # Check if a place already exists very close to these coordinates (within 10 meters)
-    existing_place = Place.joins("JOIN visits ON places.id = visits.place_id")
-                          .where(visits: { user: current_api_user })
-                          .where(
-                            "ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)",
-                            lon_f, lat_f, 0.0001 # approximately 10 meters
-                          ).first
-
-    if existing_place
-      Rails.logger.info "Found existing place: #{existing_place.id}"
-      return existing_place
-    end
-
-    # Create new place with both coordinate formats
-    place = Place.create!(
-      name: place_name,
-      latitude: lat_f,
-      longitude: lon_f,
-      lonlat: "POINT(#{lon_f} #{lat_f})",
-      source: :manual
-    )
-    
-    Rails.logger.info "Created new place: #{place.id} at #{place.lonlat}"
-    place
-  rescue StandardError => e
-    Rails.logger.error "Failed to create place: #{e.class} - #{e.message}"
-    Rails.logger.error e.backtrace.join("\n") if Rails.env.development?
-    nil
   end
 
   def update_visit(visit)
