@@ -24,7 +24,7 @@ class Stat < ApplicationRecord
   end
 
   def points
-    user.tracked_points
+    user.points
         .without_raw_data
         .where(timestamp: timespan)
         .order(timestamp: :asc)

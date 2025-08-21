@@ -6,7 +6,7 @@ class Visits::Suggest
   def initialize(user, start_at:, end_at:)
     @start_at = start_at.to_i
     @end_at = end_at.to_i
-    @points = user.tracked_points.not_visited.order(timestamp: :asc).where(timestamp: start_at..end_at)
+    @points = user.points.not_visited.order(timestamp: :asc).where(timestamp: start_at..end_at)
     @user = user
   end
 

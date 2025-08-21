@@ -88,6 +88,6 @@ class MapController < ApplicationController
   end
 
   def points_from_user
-    current_user.tracked_points.without_raw_data.order(timestamp: :asc)
+    current_user.points.without_raw_data.order(timestamp: :asc)
   end
 end
