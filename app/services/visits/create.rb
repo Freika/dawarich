@@ -7,7 +7,6 @@ module Visits
     def initialize(user, params)
       @user = user
       @params = params.respond_to?(:with_indifferent_access) ? params.with_indifferent_access : params
-      @errors = []
       @visit = nil
     end
 
@@ -18,12 +17,8 @@ module Visits
 
         create_visit(place)
       end
-    rescue ActiveRecord::RecordInvalid => e
-      @errors = e.record.errors.full_messages
-      false
     rescue StandardError => e
       ExceptionReporter.call(e, 'Failed to create visit')
-      @errors = [e.message]
       false
     end
 
@@ -60,12 +55,8 @@ module Visits
       )
 
       place
-    rescue ActiveRecord::RecordInvalid => e
-      @errors = e.record.errors.full_messages
-      nil
     rescue StandardError => e
       ExceptionReporter.call(e, 'Failed to create place')
-      @errors = [e.message]
       nil
     end
 

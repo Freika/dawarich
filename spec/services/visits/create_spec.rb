@@ -46,11 +46,6 @@ RSpec.describe Visits::Create do
         expect(place.longitude).to eq(13.405)
         expect(place.source).to eq('manual')
       end
-
-      it 'has no errors' do
-        service.call
-        expect(service.errors).to be_empty
-      end
     end
 
     context 'when reusing existing place' do
