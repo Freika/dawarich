@@ -14,7 +14,10 @@ class Imports::Create
     import.update!(status: :processing)
     broadcast_status_update
 
-    importer(import.source).new(import, user.id).call
+    temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
+
+    source = import.source.presence || detect_source_from_file(temp_file_path)
+    importer(source).new(import, user.id, temp_file_path).call
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
@@ -23,8 +26,14 @@ class Imports::Create
     import.update!(status: :failed)
     broadcast_status_update
 
+    ExceptionReporter.call(e, 'Import failed')
+
     create_import_failed_notification(import, user, e)
   ensure
+    if temp_file_path && File.exist?(temp_file_path)
+      File.unlink(temp_file_path)
+    end
+
     if import.processing?
       import.update!(status: :completed)
       broadcast_status_update
@@ -34,7 +43,7 @@ class Imports::Create
   private
 
   def importer(source)
-    case source
+    case source.to_s
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
@@ -42,6 +51,8 @@ class Imports::Create
     when 'gpx'                          then Gpx::TrackImporter
     when 'geojson'                      then Geojson::Importer
     when 'immich_api', 'photoprism_api' then Photos::Importer
+    else
+      raise ArgumentError, "Unsupported source: #{source}"
     end
   end
 
@@ -77,6 +88,11 @@ class Imports::Create
       title: 'Import failed',
       content: message
     ).call
+  end
+
+  def detect_source_from_file(temp_file_path)
+    detector = Imports::SourceDetector.new_from_file_header(temp_file_path)
+    detector.detect_source!
   end
 
   def import_failed_message(import, error)

@@ -645,7 +645,7 @@ export default class extends BaseController {
         const markerId = parseInt(marker[6]);
         return markerId !== numericId;
       });
-      
+
       // Update scratch layer manager with updated markers
       if (this.scratchLayerManager) {
         this.scratchLayerManager.updateMarkers(this.markers);

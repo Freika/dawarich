@@ -2,12 +2,14 @@
 
 class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
+  include Imports::FileLoader
 
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import   = import
     @user_id  = user_id
+    @file_path = file_path
   end
 
   def call
@@ -46,9 +48,7 @@ class GoogleMaps::PhoneTakeoutImporter
     raw_signals       = []
     raw_array         = []
 
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-
-    json = Oj.load(file_content)
+    json = load_json_data
 
     if json.is_a?(Array)
       raw_array = parse_raw_array(json)
