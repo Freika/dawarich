@@ -45,7 +45,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points).and_return(double(count: 15000))
+        allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
 
@@ -187,7 +187,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points).and_return(double(count: 15000))
+        allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
 
@@ -267,7 +267,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points).and_return(double(count: 15000))
+        allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
 
@@ -374,7 +374,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points).and_return(double(count: 15000))
+        allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
         allow(Rails.logger).to receive(:info)
