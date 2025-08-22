@@ -3,15 +3,20 @@
 class OwnTracks::Importer
   include Imports::Broadcaster
 
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user_id = user_id
+    @file_path = file_path
   end
 
   def call
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+    file_content = if file_path && File.exist?(file_path)
+                     File.read(file_path)
+                   else
+                     Imports::SecureFileDownloader.new(import.file).download_with_verification
+                   end
     parsed_data = OwnTracks::RecParser.new(file_content).call
 
     points_data = parsed_data.map do |point|

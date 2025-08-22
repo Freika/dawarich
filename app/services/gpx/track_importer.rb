@@ -5,15 +5,20 @@ require 'rexml/document'
 class Gpx::TrackImporter
   include Imports::Broadcaster
 
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user_id = user_id
+    @file_path = file_path
   end
 
   def call
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+    file_content = if file_path && File.exist?(file_path)
+                     File.read(file_path)
+                   else
+                     Imports::SecureFileDownloader.new(import.file).download_with_verification
+                   end
     json = Hash.from_xml(file_content)
 
     tracks = json['gpx']['trk']

@@ -6,9 +6,10 @@
 class GoogleMaps::RecordsStorageImporter
   BATCH_SIZE = 1000
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user = User.find_by(id: user_id)
+    @file_path = file_path
   end
 
   def call
@@ -20,12 +21,25 @@ class GoogleMaps::RecordsStorageImporter
 
   private
 
-  attr_reader :import, :user
+  attr_reader :import, :user, :file_path
 
   def process_file_in_batches
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-    locations = parse_file(file_content)
+    locations = if file_path && File.exist?(file_path)
+                  # Use streaming for large files
+                  parse_file_from_path(file_path)
+                else
+                  # Fallback to traditional method
+                  file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+                  parse_file(file_content)
+                end
     process_locations_in_batches(locations) if locations.present?
+  end
+
+  def parse_file_from_path(file_path)
+    parsed_file = Oj.load_file(file_path, mode: :compat)
+    return nil unless parsed_file.is_a?(Hash) && parsed_file['locations']
+
+    parsed_file['locations']
   end
 
   def parse_file(file_content)

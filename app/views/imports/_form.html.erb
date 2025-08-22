@@ -4,68 +4,6 @@
   direct_upload_user_trial_value: current_user.trial?,
   direct_upload_target: "form"
 } do |form| %>
-  <div class="form-control w-full">
-    <label class="label">
-      <span class="label-text">Select source</span>
-    </label>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
-        <div class="form-control">
-          <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, :google_semantic_history, class: "radio radio-primary" %>
-            <span class="label-text">Google Semantic History</span>
-          </label>
-          <p class="text-sm mt-2">JSON files from your Takeout/Location History/Semantic Location History/YEAR</p>
-        </div>
-      </div>
-      <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
-        <div class="form-control">
-          <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, :google_records, class: "radio radio-primary" %>
-            <span class="label-text">Google Records</span>
-          </label>
-          <p class="text-sm mt-2">The Records.json file from your Google Takeout</p>
-        </div>
-      </div>
-      <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
-        <div class="form-control">
-          <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, :google_phone_takeout, class: "radio radio-primary" %>
-            <span class="label-text">Google Phone Takeout</span>
-          </label>
-          <p class="text-sm mt-2">A JSON file you received after your request for Takeout from your mobile device</p>
-        </div>
-      </div>
-      <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
-        <div class="form-control">
-          <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, :owntracks, class: "radio radio-primary" %>
-            <span class="label-text">Owntracks</span>
-          </label>
-          <p class="text-sm mt-2">A .REC file you could find in your volumes/owntracks-recorder/store/rec/USER/TOPIC directory</p>
-        </div>
-      </div>
-      <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
-        <div class="form-control">
-          <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, :geojson, class: "radio radio-primary" %>
-            <span class="label-text">GeoJSON</span>
-          </label>
-          <p class="text-sm mt-2">A valid GeoJSON file. For example, a file, exported from a Dawarich instance</p>
-        </div>
-      </div>
-      <div class="card bordered shadow-lg p-3 hover:shadow-blue-500/50">
-        <div class="form-control">
-          <label class="label cursor-pointer space-x-3">
-            <%= form.radio_button :source, :gpx, class: "radio radio-primary" %>
-            <span class="label-text">GPX</span>
-          </label>
-          <p class="text-sm mt-2">GPX track file</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <label class="form-control w-full max-w-xs my-5">
     <div class="label">
       <span class="label-text">Select one or multiple files</span>

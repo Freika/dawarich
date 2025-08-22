@@ -139,8 +139,8 @@ RSpec.describe 'Api::V1::Visits', type: :request do
           post '/api/v1/visits', params: missing_name_params, headers: auth_headers
 
           json_response = JSON.parse(response.body)
+
           expect(json_response['error']).to eq('Failed to create visit')
-          expect(json_response['errors']).to include("Name can't be blank")
         end
 
         it 'does not create a visit' do

@@ -14,7 +14,14 @@ class Imports::Create
     import.update!(status: :processing)
     broadcast_status_update
 
-    importer(import.source).new(import, user.id).call
+    # Download file to temp location for processing
+    temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
+
+    # Auto-detect source if not already set
+    source = import.source.presence || detect_source_from_file(temp_file_path)
+
+    # Create importer with file path for efficient processing
+    importer(source).new(import, user.id, temp_file_path).call
 
     schedule_stats_creating(user.id)
     schedule_visit_suggesting(user.id, import)
@@ -27,6 +34,11 @@ class Imports::Create
 
     create_import_failed_notification(import, user, e)
   ensure
+    # Cleanup temp file
+    if temp_file_path && File.exist?(temp_file_path)
+      File.unlink(temp_file_path)
+    end
+
     if import.processing?
       import.update!(status: :completed)
       broadcast_status_update
@@ -79,6 +91,11 @@ class Imports::Create
       title: 'Import failed',
       content: message
     ).call
+  end
+
+  def detect_source_from_file(temp_file_path)
+    detector = Imports::SourceDetector.new_from_file(temp_file_path)
+    detector.detect_source!
   end
 
   def import_failed_message(import, error)
