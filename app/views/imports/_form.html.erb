@@ -1,3 +1,19 @@
+<!-- Supported Formats Info Card -->
+<div class="card bg-base-200 w-full max-w-md mb-5 mt-5">
+  <div class="card-body p-4">
+    <h3 class="card-title text-sm">Supported Import Formats</h3>
+    <ul class="text-xs space-y-1">
+      <li><strong>✅ Google Maps:</strong> Records.json, Semantic History, Phone Takeout (.json)</li>
+      <li><strong>✅ GPX:</strong> Track files (.gpx)</li>
+      <li><strong>✅ GeoJSON:</strong> Feature collections (.json)</li>
+      <li><strong>✅ OwnTracks:</strong> Recorder files (.rec)</li>
+    </ul>
+    <div class="text-xs text-gray-500 mt-2">
+      File format is automatically detected during upload.
+    </div>
+  </div>
+</div>
+
 <%= form_with model: import, class: "contents", data: {
   controller: "direct-upload",
   direct_upload_url_value: rails_direct_uploads_url,
