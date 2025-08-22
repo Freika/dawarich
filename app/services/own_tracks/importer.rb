@@ -2,6 +2,7 @@
 
 class OwnTracks::Importer
   include Imports::Broadcaster
+  include Imports::FileLoader
 
   attr_reader :import, :user_id, :file_path
 
@@ -12,11 +13,7 @@ class OwnTracks::Importer
   end
 
   def call
-    file_content = if file_path && File.exist?(file_path)
-                     File.read(file_path)
-                   else
-                     Imports::SecureFileDownloader.new(import.file).download_with_verification
-                   end
+    file_content = load_file_content
     parsed_data = OwnTracks::RecParser.new(file_content).call
 
     points_data = parsed_data.map do |point|

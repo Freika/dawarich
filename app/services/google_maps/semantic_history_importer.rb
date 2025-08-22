@@ -2,6 +2,7 @@
 
 class GoogleMaps::SemanticHistoryImporter
   include Imports::Broadcaster
+  include Imports::FileLoader
 
   BATCH_SIZE = 1000
   attr_reader :import, :user_id, :file_path
@@ -69,16 +70,6 @@ class GoogleMaps::SemanticHistoryImporter
     end.compact
   end
 
-  def load_json_data
-    if file_path && File.exist?(file_path)
-      # Use streaming JSON loading for better memory efficiency
-      Oj.load_file(file_path, mode: :compat)
-    else
-      # Fallback to traditional method
-      file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-      Oj.load(file_content, mode: :compat)
-    end
-  end
 
   def parse_timeline_object(timeline_object)
     if timeline_object['activitySegment'].present?

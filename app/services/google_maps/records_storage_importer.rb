@@ -4,6 +4,8 @@
 # via the UI, vs the CLI, which uses the `GoogleMaps::RecordsImporter` class.
 
 class GoogleMaps::RecordsStorageImporter
+  include Imports::FileLoader
+  
   BATCH_SIZE = 1000
 
   def initialize(import, user_id, file_path = nil)
@@ -24,29 +26,11 @@ class GoogleMaps::RecordsStorageImporter
   attr_reader :import, :user, :file_path
 
   def process_file_in_batches
-    locations = if file_path && File.exist?(file_path)
-                  # Use streaming for large files
-                  parse_file_from_path(file_path)
-                else
-                  # Fallback to traditional method
-                  file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-                  parse_file(file_content)
-                end
+    parsed_file = load_json_data
+    return unless parsed_file.is_a?(Hash) && parsed_file['locations']
+
+    locations = parsed_file['locations']
     process_locations_in_batches(locations) if locations.present?
-  end
-
-  def parse_file_from_path(file_path)
-    parsed_file = Oj.load_file(file_path, mode: :compat)
-    return nil unless parsed_file.is_a?(Hash) && parsed_file['locations']
-
-    parsed_file['locations']
-  end
-
-  def parse_file(file_content)
-    parsed_file = Oj.load(file_content, mode: :compat)
-    return nil unless parsed_file.is_a?(Hash) && parsed_file['locations']
-
-    parsed_file['locations']
   end
 
   def process_locations_in_batches(locations)

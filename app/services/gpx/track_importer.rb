@@ -4,6 +4,7 @@ require 'rexml/document'
 
 class Gpx::TrackImporter
   include Imports::Broadcaster
+  include Imports::FileLoader
 
   attr_reader :import, :user_id, :file_path
 
@@ -14,11 +15,7 @@ class Gpx::TrackImporter
   end
 
   def call
-    file_content = if file_path && File.exist?(file_path)
-                     File.read(file_path)
-                   else
-                     Imports::SecureFileDownloader.new(import.file).download_with_verification
-                   end
+    file_content = load_file_content
     json = Hash.from_xml(file_content)
 
     tracks = json['gpx']['trk']

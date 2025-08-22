@@ -2,6 +2,7 @@
 
 class Geojson::Importer
   include Imports::Broadcaster
+  include Imports::FileLoader
   include PointValidation
 
   attr_reader :import, :user_id, :file_path
@@ -23,17 +24,6 @@ class Geojson::Importer
       Point.create!(point.merge(user_id:, import_id: import.id))
 
       broadcast_import_progress(import, index)
-    end
-  end
-
-  private
-
-  def load_json_data
-    if file_path && File.exist?(file_path)
-      Oj.load_file(file_path, mode: :compat)
-    else
-      file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-      Oj.load(file_content, mode: :compat)
     end
   end
 end

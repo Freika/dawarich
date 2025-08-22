@@ -2,6 +2,7 @@
 
 class Photos::Importer
   include Imports::Broadcaster
+  include Imports::FileLoader
   include PointValidation
   attr_reader :import, :user_id, :file_path
 
@@ -12,12 +13,7 @@ class Photos::Importer
   end
 
   def call
-    json = if file_path && File.exist?(file_path)
-             Oj.load_file(file_path, mode: :compat)
-           else
-             file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-             Oj.load(file_content, mode: :compat)
-           end
+    json = load_json_data
 
     json.each.with_index(1) { |point, index| create_point(point, index) }
   end

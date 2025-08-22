@@ -2,6 +2,7 @@
 
 class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
+  include Imports::FileLoader
 
   attr_reader :import, :user_id, :file_path
 
@@ -47,12 +48,7 @@ class GoogleMaps::PhoneTakeoutImporter
     raw_signals       = []
     raw_array         = []
 
-    json = if file_path && File.exist?(file_path)
-             Oj.load_file(file_path, mode: :compat)
-           else
-             file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-             Oj.load(file_content, mode: :compat)
-           end
+    json = load_json_data
 
     if json.is_a?(Array)
       raw_array = parse_raw_array(json)

@@ -104,12 +104,7 @@ class ImportsController < ApplicationController
 
     import = current_user.imports.build(name: blob.filename.to_s)
     import.file.attach(blob)
-
-    # Auto-detect source if not already set
-    if import.source.blank?
-      detected_source = detect_import_source(import.file)
-      import.source = detected_source if detected_source
-    end
+    import.source = detect_import_source(import.file) if import.source.blank?
 
     import.save!
 
@@ -117,16 +112,9 @@ class ImportsController < ApplicationController
   end
 
   def detect_import_source(file_attachment)
-    # Download file to temporary location for source detection
     temp_file_path = Imports::SecureFileDownloader.new(file_attachment).download_to_temp_file
-    
-    # Detect source using optimized file-based detection
-    detector = Imports::SourceDetector.new_from_file(temp_file_path)
-    detected_source = detector.detect_source
-    
-    Rails.logger.info "Auto-detected import source: #{detected_source || 'unknown'} for file: #{file_attachment.filename}"
-    
-    detected_source
+
+    Imports::SourceDetector.new_from_file(temp_file_path).detect_source
   rescue StandardError => e
     Rails.logger.warn "Failed to auto-detect import source for #{file_attachment.filename}: #{e.message}"
     nil
