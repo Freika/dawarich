@@ -43,7 +43,7 @@ class Imports::Create
   private
 
   def importer(source)
-    case source
+    case source.to_s
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
@@ -51,6 +51,8 @@ class Imports::Create
     when 'gpx'                          then Gpx::TrackImporter
     when 'geojson'                      then Geojson::Importer
     when 'immich_api', 'photoprism_api' then Photos::Importer
+    else
+      raise ArgumentError, "Unsupported source: #{source}"
     end
   end
 
