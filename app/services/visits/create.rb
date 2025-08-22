@@ -8,6 +8,7 @@ module Visits
       @user = user
       @params = params.respond_to?(:with_indifferent_access) ? params.with_indifferent_access : params
       @visit = nil
+      @errors = nil
     end
 
     def call
@@ -15,10 +16,19 @@ module Visits
         place = find_or_create_place
         return false unless place
 
-        create_visit(place)
+        visit = create_visit(place)
+        visit
       end
+    rescue ActiveRecord::RecordInvalid => e
+      ExceptionReporter.call(e, "Failed to create visit: #{e.message}")
+
+      @errors = "Failed to create visit: #{e.message}"
+
+      false
     rescue StandardError => e
-      ExceptionReporter.call(e, 'Failed to create visit')
+      ExceptionReporter.call(e, "Failed to create visit: #{e.message}")
+
+      @errors = "Failed to create visit: #{e.message}"
       false
     end
 
@@ -56,7 +66,7 @@ module Visits
 
       place
     rescue StandardError => e
-      ExceptionReporter.call(e, 'Failed to create place')
+      ExceptionReporter.call(e, "Failed to create place: #{e.message}")
       nil
     end
 

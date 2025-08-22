@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - User can now delete a visit by clicking on the delete button in the visit popup.
 - Import failure now throws an internal server error.
 
+## Changed
+
+- Source of imports is now being detected automatically.
+
 
 # [0.30.9] - 2025-08-19
 

@@ -2,17 +2,18 @@
 
 class Photos::Importer
   include Imports::Broadcaster
+  include Imports::FileLoader
   include PointValidation
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user_id = user_id
+    @file_path = file_path
   end
 
   def call
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-    json = Oj.load(file_content)
+    json = load_json_data
 
     json.each.with_index(1) { |point, index| create_point(point, index) }
   end
