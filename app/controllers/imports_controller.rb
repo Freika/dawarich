@@ -43,8 +43,7 @@ class ImportsController < ApplicationController
     raw_files = Array(files_params).reject(&:blank?)
 
     if raw_files.empty?
-      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_entity
-      return
+      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_entity and return
     end
 
     created_imports = []
@@ -59,11 +58,11 @@ class ImportsController < ApplicationController
     if created_imports.any?
       redirect_to imports_url,
                   notice: "#{created_imports.size} files are queued to be imported in background",
-                  status: :see_other
+                  status: :see_other and return
     else
       redirect_to new_import_path,
                   alert: 'No valid file references were found. Please upload files using the file selector.',
-                  status: :unprocessable_entity
+                  status: :unprocessable_entity and return
     end
   rescue StandardError => e
     if created_imports.present?
@@ -95,7 +94,7 @@ class ImportsController < ApplicationController
   end
 
   def import_params
-    params.require(:import).permit(:name, :source, files: [])
+    params.require(:import).permit(:name, files: [])
   end
 
   def create_import_from_signed_id(signed_id)
@@ -103,16 +102,27 @@ class ImportsController < ApplicationController
 
     blob = ActiveStorage::Blob.find_signed(signed_id)
 
-    import = current_user.imports.build(
-      name: blob.filename.to_s,
-      source: params[:import][:source]
-    )
-
+    import = current_user.imports.build(name: blob.filename.to_s)
     import.file.attach(blob)
+    import.source = detect_import_source(import.file) if import.source.blank?
 
     import.save!
 
     import
+  end
+
+  def detect_import_source(file_attachment)
+    temp_file_path = Imports::SecureFileDownloader.new(file_attachment).download_to_temp_file
+
+    Imports::SourceDetector.new_from_file_header(temp_file_path).detect_source
+  rescue StandardError => e
+    Rails.logger.warn "Failed to auto-detect import source for #{file_attachment.filename}: #{e.message}"
+    nil
+  ensure
+    # Cleanup temp file
+    if temp_file_path && File.exist?(temp_file_path)
+      File.unlink(temp_file_path)
+    end
   end
 
   def validate_points_limit

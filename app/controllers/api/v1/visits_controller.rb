@@ -12,14 +12,14 @@ class Api::V1::VisitsController < ApiController
 
   def create
     service = Visits::Create.new(current_api_user, visit_params)
-    
-    if service.call
+
+    result = service.call
+
+    if result
       render json: Api::VisitSerializer.new(service.visit).call
     else
-      render json: { 
-        error: 'Failed to create visit', 
-        errors: service.errors 
-      }, status: :unprocessable_entity
+      error_message = service.errors || 'Failed to create visit'
+      render json: { error: error_message }, status: :unprocessable_entity
     end
   end
 
@@ -77,11 +77,11 @@ class Api::V1::VisitsController < ApiController
 
   def destroy
     visit = current_api_user.visits.find(params[:id])
-    
+
     if visit.destroy
       head :no_content
     else
-      render json: { 
+      render json: {
         error: 'Failed to delete visit',
         errors: visit.errors.full_messages
       }, status: :unprocessable_entity
