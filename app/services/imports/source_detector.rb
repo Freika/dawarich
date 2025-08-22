@@ -60,7 +60,7 @@ class Imports::SourceDetector
     @file_path = file_path
   end
 
-  def self.new_from_file(file_path)
+  def self.new_from_file_header(file_path)
     filename = File.basename(file_path)
     
     # For detection, read only first 2KB to optimize performance

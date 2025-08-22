@@ -120,17 +120,17 @@ RSpec.describe Imports::SourceDetector do
     end
   end
 
-  describe '.new_from_file' do
+  describe '.new_from_file_header' do
     context 'with Google Records file' do
       let(:fixture_path) { file_fixture('google/records.json').to_s }
 
       it 'detects source correctly from file path' do
-        detector = described_class.new_from_file(fixture_path)
+        detector = described_class.new_from_file_header(fixture_path)
         expect(detector.detect_source).to eq(:google_records)
       end
 
       it 'can detect source efficiently from file' do
-        detector = described_class.new_from_file(fixture_path)
+        detector = described_class.new_from_file_header(fixture_path)
         
         # Verify it can detect correctly using file-based approach
         expect(detector.detect_source).to eq(:google_records)
@@ -141,7 +141,7 @@ RSpec.describe Imports::SourceDetector do
       let(:fixture_path) { file_fixture('geojson/export.json').to_s }
 
       it 'detects source correctly from file path' do
-        detector = described_class.new_from_file(fixture_path)
+        detector = described_class.new_from_file_header(fixture_path)
         expect(detector.detect_source).to eq(:geojson)
       end
     end

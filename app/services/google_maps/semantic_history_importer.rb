@@ -70,7 +70,6 @@ class GoogleMaps::SemanticHistoryImporter
     end.compact
   end
 
-
   def parse_timeline_object(timeline_object)
     if timeline_object['activitySegment'].present?
       parse_activity_segment(timeline_object['activitySegment'])

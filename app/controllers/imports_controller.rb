@@ -114,7 +114,7 @@ class ImportsController < ApplicationController
   def detect_import_source(file_attachment)
     temp_file_path = Imports::SecureFileDownloader.new(file_attachment).download_to_temp_file
 
-    Imports::SourceDetector.new_from_file(temp_file_path).detect_source
+    Imports::SourceDetector.new_from_file_header(temp_file_path).detect_source
   rescue StandardError => e
     Rails.logger.warn "Failed to auto-detect import source for #{file_attachment.filename}: #{e.message}"
     nil

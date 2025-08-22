@@ -14,13 +14,9 @@ class Imports::Create
     import.update!(status: :processing)
     broadcast_status_update
 
-    # Download file to temp location for processing
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
 
-    # Auto-detect source if not already set
     source = import.source.presence || detect_source_from_file(temp_file_path)
-
-    # Create importer with file path for efficient processing
     importer(source).new(import, user.id, temp_file_path).call
 
     schedule_stats_creating(user.id)
@@ -34,7 +30,6 @@ class Imports::Create
 
     create_import_failed_notification(import, user, e)
   ensure
-    # Cleanup temp file
     if temp_file_path && File.exist?(temp_file_path)
       File.unlink(temp_file_path)
     end
@@ -94,7 +89,7 @@ class Imports::Create
   end
 
   def detect_source_from_file(temp_file_path)
-    detector = Imports::SourceDetector.new_from_file(temp_file_path)
+    detector = Imports::SourceDetector.new_from_file_header(temp_file_path)
     detector.detect_source!
   end
 
