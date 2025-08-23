@@ -14,7 +14,7 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
 
     context 'when file content is an object' do
       # This file contains 3 duplicates
-      let(:file_path) { Rails.root.join('spec/fixtures/files/google/phone-takeout.json') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/google/phone-takeout_w_3_duplicates.json') }
       let(:file) { Rack::Test::UploadedFile.new(file_path, 'application/json') }
       let(:import) { create(:import, user:, name: 'phone_takeout.json', file:) }
 

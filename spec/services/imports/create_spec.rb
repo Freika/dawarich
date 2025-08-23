@@ -63,10 +63,10 @@ RSpec.describe Imports::Create do
 
     context 'when source is google_phone_takeout' do
       let(:import) { create(:import, source: 'google_phone_takeout') }
-      let(:file_path) { Rails.root.join('spec/fixtures/files/google/phone-takeout.json') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/google/phone-takeout_w_3_duplicates.json') }
 
       before do
-        import.file.attach(io: File.open(file_path), filename: 'phone-takeout.json',
+        import.file.attach(io: File.open(file_path), filename: 'phone-takeout_w_3_duplicates.json',
                            content_type: 'application/json')
       end
 
@@ -193,6 +193,7 @@ RSpec.describe Imports::Create do
       it 'calls the Photos::Importer' do
         expect(Photos::Importer).to \
           receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
+
         service.call
       end
     end

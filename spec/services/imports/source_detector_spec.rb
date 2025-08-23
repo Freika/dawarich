@@ -24,7 +24,7 @@ RSpec.describe Imports::SourceDetector do
     end
 
     context 'with Google Phone Takeout format' do
-      let(:file_content) { file_fixture('google/phone-takeout.json').read }
+      let(:file_content) { file_fixture('google/phone-takeout_w_3_duplicates.json').read }
 
       it 'detects google_phone_takeout format' do
         expect(detector.detect_source).to eq(:google_phone_takeout)
@@ -131,7 +131,7 @@ RSpec.describe Imports::SourceDetector do
 
       it 'can detect source efficiently from file' do
         detector = described_class.new_from_file_header(fixture_path)
-        
+
         # Verify it can detect correctly using file-based approach
         expect(detector.detect_source).to eq(:google_records)
       end
