@@ -6,7 +6,7 @@ class Settings::BackgroundJobsController < ApplicationController
     %w[start_immich_import start_photoprism_import].include?(params[:job_name])
   }
 
-  def index;end
+  def index; end
 
   def create
     EnqueueBackgroundJob.perform_later(params[:job_name], current_user.id)
