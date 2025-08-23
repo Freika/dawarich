@@ -22,6 +22,7 @@ class Imports::Create
                import.source
              end
 
+    import.update!(source: source)
     importer(source).new(import, user.id, temp_file_path).call
 
     schedule_stats_creating(user.id)

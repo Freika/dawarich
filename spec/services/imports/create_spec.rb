@@ -21,6 +21,12 @@ RSpec.describe Imports::Create do
         expect(import.reload.status).to eq('processing').or eq('completed')
       end
 
+      it 'updates the import source' do
+        service.call
+
+        expect(import.reload.source).to eq('owntracks')
+      end
+
       context 'when import succeeds' do
         it 'sets status to completed' do
           service.call
