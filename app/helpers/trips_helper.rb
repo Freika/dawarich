@@ -21,8 +21,6 @@ module TripsHelper
       immich_search_url(settings['immich_url'], start_date, end_date)
     when 'photoprism'
       photoprism_search_url(settings['photoprism_url'], start_date, end_date)
-    else
-      nil # return nil for nil or unknown source
     end
   end
 
