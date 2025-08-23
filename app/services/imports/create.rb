@@ -49,6 +49,8 @@ class Imports::Create
   private
 
   def importer(source)
+    return raise ArgumentError, 'Import source cannot be nil' if source.nil?
+
     case source.to_s
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter

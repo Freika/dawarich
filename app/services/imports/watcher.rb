@@ -70,12 +70,14 @@ class Imports::Watcher
   end
 
   def mime_type(source)
-    case source.to_sym
+    case source&.to_sym
     when :gpx then 'application/xml'
     when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history
       'application/json'
     when :owntracks
       'application/octet-stream'
+    when nil
+      'application/octet-stream' # fallback MIME type for nil source
     else
       raise UnsupportedSourceError, "Unsupported source: #{source}"
     end
