@@ -221,7 +221,7 @@ RSpec.describe Users::ImportData::Imports, type: :service do
         created_imports = user.imports.pluck(:name, :source)
         expect(created_imports).to contain_exactly(
           ['Valid Import', 'owntracks'],
-          ['Missing Source Import', 'google_semantic_history']
+          ['Missing Source Import', nil]
         )
       end
 

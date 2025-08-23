@@ -102,27 +102,25 @@ class ImportsController < ApplicationController
 
     blob = ActiveStorage::Blob.find_signed(signed_id)
 
-    import = current_user.imports.build(name: blob.filename.to_s)
+    import_name = generate_unique_import_name(blob.filename.to_s)
+    import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
-    import.source = detect_import_source(import.file) if import.source.blank?
 
     import.save!
 
     import
   end
 
-  def detect_import_source(file_attachment)
-    temp_file_path = Imports::SecureFileDownloader.new(file_attachment).download_to_temp_file
+  def generate_unique_import_name(original_name)
+    return original_name unless current_user.imports.exists?(name: original_name)
 
-    Imports::SourceDetector.new_from_file_header(temp_file_path).detect_source
-  rescue StandardError => e
-    Rails.logger.warn "Failed to auto-detect import source for #{file_attachment.filename}: #{e.message}"
-    nil
-  ensure
-    # Cleanup temp file
-    if temp_file_path && File.exist?(temp_file_path)
-      File.unlink(temp_file_path)
-    end
+    # Extract filename and extension
+    basename = File.basename(original_name, File.extname(original_name))
+    extension = File.extname(original_name)
+    
+    # Add current datetime
+    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
+    "#{basename}_#{timestamp}#{extension}"
   end
 
   def validate_points_limit
