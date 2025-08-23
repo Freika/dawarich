@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED] -
+
+## Changed
+
+- If user already have import with the same name, it will be appended with timestamp during the import process.
+
+## Fixed
+
+- Some types of imports were not being detected correctly and were failing to import.
+
 # [0.30.10] - 2025-08-22
 
 ## Added
