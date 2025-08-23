@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
-- Some types of imports were not being detected correctly and were failing to import.
+- Some types of imports were not being detected correctly and were failing to import. #1678
 
 # [0.30.10] - 2025-08-22
 

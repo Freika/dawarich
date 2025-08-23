@@ -52,7 +52,7 @@ class Photos::Thumbnail
     request_headers
   end
 
-  unsupported_source_error unless SUPPORTED_SOURCES.include?(source)
+  def unsupported_source_error
     raise ArgumentError, "Unsupported source: #{source}"
   end
 end
