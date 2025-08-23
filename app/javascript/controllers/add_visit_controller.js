@@ -5,8 +5,8 @@ import { showFlashMessage } from "../maps/helpers";
 export default class extends Controller {
   static targets = [""];
   static values = {
-    apiKey: String
-  }
+    apiKey: String,
+  };
 
   connect() {
     console.log("Add visit controller connected");
@@ -32,7 +32,11 @@ export default class extends Controller {
 
     if (mapElement) {
       // Try to get Stimulus controller instance
-      const stimulusController = this.application.getControllerForElementAndIdentifier(mapElement, 'maps');
+      const stimulusController =
+        this.application.getControllerForElementAndIdentifier(
+          mapElement,
+          "maps"
+        );
       if (stimulusController && stimulusController.map) {
         this.map = stimulusController.map;
         this.mapsController = stimulusController;
@@ -43,10 +47,12 @@ export default class extends Controller {
     }
 
     // Fallback: check for map container and try to find map instance
-    const mapContainer = document.getElementById('map');
+    const mapContainer = document.getElementById("map");
     if (mapContainer && mapContainer._leaflet_id) {
       // Get map instance from Leaflet registry
-      this.map = window.L._getMap ? window.L._getMap(mapContainer._leaflet_id) : null;
+      this.map = window.L._getMap
+        ? window.L._getMap(mapContainer._leaflet_id)
+        : null;
 
       if (!this.map) {
         // Try through Leaflet internal registry
@@ -56,7 +62,8 @@ export default class extends Controller {
 
       if (this.map) {
         // Get API key from map element data
-        this.apiKeyValue = mapContainer.dataset.api_key || this.element.dataset.apiKey;
+        this.apiKeyValue =
+          mapContainer.dataset.api_key || this.element.dataset.apiKey;
         this.setupAddVisitButton();
         return;
       }
@@ -72,52 +79,55 @@ export default class extends Controller {
     // Create the Add Visit control
     const AddVisitControl = L.Control.extend({
       onAdd: (map) => {
-        const button = L.DomUtil.create('button', 'leaflet-control-button add-visit-button');
-        button.innerHTML = '➕';
-        button.title = 'Add a visit';
+        const button = L.DomUtil.create(
+          "button",
+          "leaflet-control-button add-visit-button"
+        );
+        button.innerHTML = "➕";
+        button.title = "Add a visit";
 
         // Style the button to match other map controls
-        button.style.width = '48px';
-        button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
-        button.style.borderRadius = '4px';
-        button.style.padding = '0';
-        button.style.lineHeight = '48px';
-        button.style.fontSize = '18px';
-        button.style.textAlign = 'center';
-        button.style.transition = 'all 0.2s ease';
+        button.style.width = "48px";
+        button.style.height = "48px";
+        button.style.border = "none";
+        button.style.cursor = "pointer";
+        button.style.boxShadow = "0 1px 4px rgba(0,0,0,0.3)";
+        button.style.backgroundColor = "white";
+        button.style.borderRadius = "4px";
+        button.style.padding = "0";
+        button.style.lineHeight = "48px";
+        button.style.fontSize = "18px";
+        button.style.textAlign = "center";
+        button.style.transition = "all 0.2s ease";
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
 
         // Add hover effects
-        button.addEventListener('mouseenter', () => {
+        button.addEventListener("mouseenter", () => {
           if (!this.isAddingVisit) {
-            button.style.backgroundColor = '#f0f0f0';
+            button.style.backgroundColor = "#f0f0f0";
           }
         });
 
-        button.addEventListener('mouseleave', () => {
+        button.addEventListener("mouseleave", () => {
           if (!this.isAddingVisit) {
-            button.style.backgroundColor = 'white';
+            button.style.backgroundColor = "white";
           }
         });
 
         // Toggle add visit mode on button click
-        L.DomEvent.on(button, 'click', () => {
+        L.DomEvent.on(button, "click", () => {
           this.toggleAddVisitMode(button);
         });
 
         this.addVisitButton = button;
         return button;
-      }
+      },
     });
 
     // Add the control to the map (top right, below existing buttons)
-    this.map.addControl(new AddVisitControl({ position: 'topright' }));
+    this.map.addControl(new AddVisitControl({ position: "topright" }));
   }
 
   toggleAddVisitMode(button) {
@@ -134,32 +144,32 @@ export default class extends Controller {
     this.isAddingVisit = true;
 
     // Update button style to show active state
-    button.style.backgroundColor = '#dc3545';
-    button.style.color = 'white';
-    button.innerHTML = '✕';
+    button.style.backgroundColor = "#dc3545";
+    button.style.color = "white";
+    button.innerHTML = "✕";
 
     // Change cursor to crosshair
-    this.map.getContainer().style.cursor = 'crosshair';
+    this.map.getContainer().style.cursor = "crosshair";
 
     // Add map click listener
-    this.map.on('click', this.onMapClick, this);
+    this.map.on("click", this.onMapClick, this);
 
-    showFlashMessage('notice', 'Click on the map to place a visit');
+    showFlashMessage("notice", "Click on the map to place a visit");
   }
 
   exitAddVisitMode(button) {
     this.isAddingVisit = false;
 
     // Reset button style
-    button.style.backgroundColor = 'white';
-    button.style.color = 'black';
-    button.innerHTML = '➕';
+    button.style.backgroundColor = "white";
+    button.style.color = "black";
+    button.innerHTML = "➕";
 
     // Reset cursor
-    this.map.getContainer().style.cursor = '';
+    this.map.getContainer().style.cursor = "";
 
     // Remove map click listener
-    this.map.off('click', this.onMapClick, this);
+    this.map.off("click", this.onMapClick, this);
 
     // Remove any existing marker
     if (this.addVisitMarker) {
@@ -188,11 +198,11 @@ export default class extends Controller {
     this.addVisitMarker = L.marker([lat, lng], {
       draggable: true,
       icon: L.divIcon({
-        className: 'add-visit-marker',
-        html: '📍',
+        className: "add-visit-marker",
+        html: "📍",
         iconSize: [30, 30],
-        iconAnchor: [15, 15]
-      })
+        iconAnchor: [15, 15],
+      }),
     }).addTo(this.map);
 
     // Show the visit form popup
@@ -202,11 +212,14 @@ export default class extends Controller {
   showVisitForm(lat, lng) {
     // Get current date/time for default values
     const now = new Date();
-    const oneHourLater = new Date(now.getTime() + (60 * 60 * 1000));
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
 
-    // Format dates for datetime-local input
+    // Format dates for datetime-local input (2011-10-05T14:48) (YYYY-MM-DDTHH:mm)
     const formatDateTime = (date) => {
-      return date.toISOString().slice(0, 16);
+      const pad = (n) => n.toString().padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+        date.getDate()
+      )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
     const startTime = formatDateTime(now);
@@ -257,7 +270,7 @@ export default class extends Controller {
       closeOnClick: false,
       autoClose: false,
       maxWidth: 300,
-      className: 'visit-form-popup'
+      className: "visit-form-popup",
     })
       .setLatLng([lat, lng])
       .setContent(formHTML)
@@ -265,16 +278,16 @@ export default class extends Controller {
 
     // Add event listeners after the popup is added to DOM
     setTimeout(() => {
-      const form = document.getElementById('add-visit-form');
-      const cancelButton = document.getElementById('cancel-visit');
-      const nameInput = document.getElementById('visit-name');
+      const form = document.getElementById("add-visit-form");
+      const cancelButton = document.getElementById("cancel-visit");
+      const nameInput = document.getElementById("visit-name");
 
       if (form) {
-        form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+        form.addEventListener("submit", (e) => this.handleFormSubmit(e));
       }
 
       if (cancelButton) {
-        cancelButton.addEventListener('click', () => {
+        cancelButton.addEventListener("click", () => {
           this.exitAddVisitMode(this.addVisitButton);
         });
       }
@@ -292,15 +305,21 @@ export default class extends Controller {
     const form = event.target;
     const formData = new FormData(form);
 
+    // Convert local datetime to UTC ISO string
+    const localToUTCISOString = (localDateTimeString) => {
+      const local = new Date(localDateTimeString);
+      return local.toISOString(); // always UTC
+    };
+
     // Get form values
     const visitData = {
       visit: {
-        name: formData.get('name'),
-        started_at: formData.get('started_at'),
-        ended_at: formData.get('ended_at'),
-        latitude: formData.get('latitude'),
-        longitude: formData.get('longitude')
-      }
+        name: formData.get("name"),
+        started_at: localToUTCISOString(formData.get("started_at")),
+        ended_at: localToUTCISOString(formData.get("ended_at")),
+        latitude: formData.get("latitude"),
+        longitude: formData.get("longitude"),
+      },
     };
 
     // Validate that end time is after start time
@@ -308,7 +327,7 @@ export default class extends Controller {
     const endTime = new Date(visitData.visit.ended_at);
 
     if (endTime <= startTime) {
-      showFlashMessage('error', 'End time must be after start time');
+      showFlashMessage("error", "End time must be after start time");
       return;
     }
 
@@ -316,23 +335,26 @@ export default class extends Controller {
     const submitButton = form.querySelector('button[type="submit"]');
     const originalText = submitButton.textContent;
     submitButton.disabled = true;
-    submitButton.textContent = 'Creating...';
+    submitButton.textContent = "Creating...";
 
     try {
       const response = await fetch(`/api/v1/visits`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${this.apiKeyValue}`
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${this.apiKeyValue}`,
         },
-        body: JSON.stringify(visitData)
+        body: JSON.stringify(visitData),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        showFlashMessage('notice', `Visit "${visitData.visit.name}" created successfully!`);
+        showFlashMessage(
+          "notice",
+          `Visit "${visitData.visit.name}" created successfully!`
+        );
         this.exitAddVisitMode(this.addVisitButton);
 
         // Refresh visits layer - this will clear and refetch data
@@ -343,12 +365,13 @@ export default class extends Controller {
           this.ensureVisitsLayersEnabled();
         }, 300);
       } else {
-        const errorMessage = data.error || data.message || 'Failed to create visit';
-        showFlashMessage('error', errorMessage);
+        const errorMessage =
+          data.error || data.message || "Failed to create visit";
+        showFlashMessage("error", errorMessage);
       }
     } catch (error) {
-      console.error('Error creating visit:', error);
-      showFlashMessage('error', 'Network error: Failed to create visit');
+      console.error("Error creating visit:", error);
+      showFlashMessage("error", "Network error: Failed to create visit");
     } finally {
       // Re-enable form
       submitButton.disabled = false;
@@ -357,16 +380,20 @@ export default class extends Controller {
   }
 
   refreshVisitsLayer() {
-    console.log('Attempting to refresh visits layer...');
+    console.log("Attempting to refresh visits layer...");
 
     // Try multiple approaches to refresh the visits layer
     const mapsController = document.querySelector('[data-controller*="maps"]');
     if (mapsController) {
       // Try to get the Stimulus controller instance
-      const stimulusController = this.application.getControllerForElementAndIdentifier(mapsController, 'maps');
+      const stimulusController =
+        this.application.getControllerForElementAndIdentifier(
+          mapsController,
+          "maps"
+        );
 
       if (stimulusController && stimulusController.visitsManager) {
-        console.log('Found maps controller with visits manager');
+        console.log("Found maps controller with visits manager");
 
         // Clear existing visits and fetch fresh data
         if (stimulusController.visitsManager.visitCircles) {
@@ -377,48 +404,62 @@ export default class extends Controller {
         }
 
         // Refresh the visits data
-        if (typeof stimulusController.visitsManager.fetchAndDisplayVisits === 'function') {
-          console.log('Refreshing visits data...');
+        if (
+          typeof stimulusController.visitsManager.fetchAndDisplayVisits ===
+          "function"
+        ) {
+          console.log("Refreshing visits data...");
           stimulusController.visitsManager.fetchAndDisplayVisits();
         }
       } else {
-        console.log('Could not find maps controller or visits manager');
+        console.log("Could not find maps controller or visits manager");
 
         // Fallback: Try to dispatch a custom event
-        const refreshEvent = new CustomEvent('visits:refresh', { bubbles: true });
+        const refreshEvent = new CustomEvent("visits:refresh", {
+          bubbles: true,
+        });
         mapsController.dispatchEvent(refreshEvent);
       }
     } else {
-      console.log('Could not find maps controller element');
+      console.log("Could not find maps controller element");
     }
   }
 
   ensureVisitsLayersEnabled() {
-    console.log('Ensuring visits layers are enabled...');
+    console.log("Ensuring visits layers are enabled...");
 
     const mapsController = document.querySelector('[data-controller*="maps"]');
     if (mapsController) {
-      const stimulusController = this.application.getControllerForElementAndIdentifier(mapsController, 'maps');
+      const stimulusController =
+        this.application.getControllerForElementAndIdentifier(
+          mapsController,
+          "maps"
+        );
 
-      if (stimulusController && stimulusController.map && stimulusController.visitsManager) {
+      if (
+        stimulusController &&
+        stimulusController.map &&
+        stimulusController.visitsManager
+      ) {
         const map = stimulusController.map;
         const visitsManager = stimulusController.visitsManager;
 
         // Get the confirmed visits layer (newly created visits are always confirmed)
-        const confirmedVisitsLayer = visitsManager.getConfirmedVisitCirclesLayer();
+        const confirmedVisitsLayer =
+          visitsManager.getConfirmedVisitCirclesLayer();
 
         // Ensure confirmed visits layer is added to map since we create confirmed visits
         if (confirmedVisitsLayer && !map.hasLayer(confirmedVisitsLayer)) {
-          console.log('Adding confirmed visits layer to map');
+          console.log("Adding confirmed visits layer to map");
           map.addLayer(confirmedVisitsLayer);
 
           // Update the layer control checkbox to reflect the layer is now active
-          this.updateLayerControlCheckbox('Confirmed Visits', true);
+          this.updateLayerControlCheckbox("Confirmed Visits", true);
         }
 
         // Refresh visits data to include the new visit
-        if (typeof visitsManager.fetchAndDisplayVisits === 'function') {
-          console.log('Final refresh of visits to show new visit...');
+        if (typeof visitsManager.fetchAndDisplayVisits === "function") {
+          console.log("Final refresh of visits to show new visit...");
           visitsManager.fetchAndDisplayVisits();
         }
       }
@@ -427,28 +468,32 @@ export default class extends Controller {
 
   updateLayerControlCheckbox(layerName, isEnabled) {
     // Find the layer control input for the specified layer
-    const layerControlContainer = document.querySelector('.leaflet-control-layers');
+    const layerControlContainer = document.querySelector(
+      ".leaflet-control-layers"
+    );
     if (!layerControlContainer) {
-      console.log('Layer control container not found');
+      console.log("Layer control container not found");
       return;
     }
 
-    const inputs = layerControlContainer.querySelectorAll('input[type="checkbox"]');
-    inputs.forEach(input => {
+    const inputs = layerControlContainer.querySelectorAll(
+      'input[type="checkbox"]'
+    );
+    inputs.forEach((input) => {
       const label = input.nextElementSibling;
       if (label && label.textContent.trim() === layerName) {
         console.log(`Updating ${layerName} checkbox to ${isEnabled}`);
         input.checked = isEnabled;
 
         // Trigger change event to ensure proper state management
-        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
       }
     });
   }
 
   cleanup() {
     if (this.map) {
-      this.map.off('click', this.onMapClick, this);
+      this.map.off("click", this.onMapClick, this);
 
       if (this.addVisitMarker) {
         this.map.removeLayer(this.addVisitMarker);
