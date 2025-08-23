@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - If user already have import with the same name, it will be appended with timestamp during the import process.
+- Export to GPX now adds adds speed and course to each point if they are available.
 
 ## Fixed
 
