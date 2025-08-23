@@ -31,6 +31,7 @@ FactoryBot.define do
     lonlat { "POINT(#{FFaker::Geolocation.lng} #{FFaker::Geolocation.lat})" }
     user
     country_id { nil }
+    device
 
     # Add transient attribute to handle country strings
     transient do

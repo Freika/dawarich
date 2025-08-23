@@ -4,8 +4,6 @@ require 'rails_helper'
 
 RSpec.describe 'Api::V1::Countries::Borders', type: :request do
   describe 'GET /index' do
-    let(:user) { create(:user) }
-
     context 'when user is not authenticated' do
       it 'returns http unauthorized' do
         get '/api/v1/countries/borders'
@@ -22,6 +20,8 @@ RSpec.describe 'Api::V1::Countries::Borders', type: :request do
     end
 
     context 'when user is authenticated' do
+      let(:user) { create(:user) }
+
       it 'returns a list of countries with borders' do
         get '/api/v1/countries/borders', headers: { 'Authorization' => "Bearer #{user.api_key}" }
 
