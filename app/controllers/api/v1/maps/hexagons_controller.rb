@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
 class Api::V1::Maps::HexagonsController < ApiController
-  skip_before_action :authenticate_api_key
-
   before_action :validate_bbox_params
 
   def index
-    service = Maps::HexagonGrid.new(bbox_params)
+    service = Maps::HexagonGrid.new(hexagon_params)
     result = service.call
     
     render json: result
@@ -25,6 +23,14 @@ class Api::V1::Maps::HexagonsController < ApiController
 
   def bbox_params
     params.permit(:min_lon, :min_lat, :max_lon, :max_lat, :hex_size)
+  end
+
+  def hexagon_params
+    bbox_params.merge(
+      user_id: current_api_user&.id,
+      start_date: params[:start_date],
+      end_date: params[:end_date]
+    )
   end
 
   def validate_bbox_params

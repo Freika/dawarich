@@ -182,12 +182,21 @@ export class HexagonGrid {
     this.loadingController = new AbortController();
 
     try {
+      // Get current date range from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const startDate = urlParams.get('start_at');
+      const endDate = urlParams.get('end_at');
+
       const params = new URLSearchParams({
         min_lon: bounds.getWest(),
         min_lat: bounds.getSouth(),
         max_lon: bounds.getEast(),
         max_lat: bounds.getNorth()
       });
+
+      // Add date parameters if they exist
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
 
       const response = await fetch(`${this.options.apiEndpoint}&${params}`, {
         signal: this.loadingController.signal,
@@ -241,19 +250,78 @@ export class HexagonGrid {
       return;
     }
 
+    // Calculate max point count for color scaling
+    const maxPoints = Math.max(...geojsonData.features.map(f => f.properties.point_count));
+    
     const geoJsonLayer = L.geoJSON(geojsonData, {
-      style: () => this.options.style,
+      style: (feature) => this.styleHexagonByData(feature, maxPoints),
       onEachFeature: (feature, layer) => {
+        // Add popup with statistics
+        const props = feature.properties;
+        const popupContent = this.buildPopupContent(props);
+        layer.bindPopup(popupContent);
+
         // Add hover effects
         layer.on({
-          mouseover: (e) => this.onHexagonMouseOver(e),
-          mouseout: (e) => this.onHexagonMouseOut(e),
+          mouseover: (e) => this.onHexagonMouseOver(e, feature),
+          mouseout: (e) => this.onHexagonMouseOut(e, feature),
           click: (e) => this.onHexagonClick(e, feature)
         });
       }
     });
 
     geoJsonLayer.addTo(this.hexagonLayer);
+  }
+
+  /**
+   * Style hexagon based on point density and other data
+   */
+  styleHexagonByData(feature, maxPoints) {
+    const props = feature.properties;
+    const pointCount = props.point_count || 0;
+    
+    // Calculate opacity based on point density (0.2 to 0.8)
+    const opacity = 0.2 + (pointCount / maxPoints) * 0.6;
+    
+    // Calculate color based on density
+    let color = '#3388ff'; // Default blue
+    if (pointCount > maxPoints * 0.7) {
+      color = '#d73027'; // High density - red
+    } else if (pointCount > maxPoints * 0.4) {
+      color = '#fc8d59'; // Medium-high density - orange
+    } else if (pointCount > maxPoints * 0.2) {
+      color = '#fee08b'; // Medium density - yellow
+    } else {
+      color = '#91bfdb'; // Low density - light blue
+    }
+
+    return {
+      fillColor: color,
+      fillOpacity: opacity,
+      color: color,
+      weight: 1,
+      opacity: opacity + 0.2
+    };
+  }
+
+  /**
+   * Build popup content with hexagon statistics
+   */
+  buildPopupContent(props) {
+    const startDate = props.earliest_point ? new Date(props.earliest_point).toLocaleDateString() : 'N/A';
+    const endDate = props.latest_point ? new Date(props.latest_point).toLocaleDateString() : 'N/A';
+    
+    return `
+      <div style="font-size: 12px; line-height: 1.4;">
+        <h4 style="margin: 0 0 8px 0; color: #2c5aa0;">Hexagon Stats</h4>
+        <strong>Points:</strong> ${props.point_count || 0}<br>
+        <strong>Density:</strong> ${props.density || 0} pts/km²<br>
+        ${props.avg_speed ? `<strong>Avg Speed:</strong> ${props.avg_speed} km/h<br>` : ''}
+        ${props.avg_battery ? `<strong>Avg Battery:</strong> ${props.avg_battery}%<br>` : ''}
+        <strong>Date Range:</strong><br>
+        <small>${startDate} - ${endDate}</small>
+      </div>
+    `;
   }
 
   /**
