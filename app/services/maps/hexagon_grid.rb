@@ -5,6 +5,7 @@ class Maps::HexagonGrid
 
   # Constants for configuration
   DEFAULT_HEX_SIZE = 500 # meters (center to edge)
+  TARGET_HEX_EDGE_PX = 20 # pixels (edge length target)
   MAX_HEXAGONS_PER_REQUEST = 5000
   MAX_AREA_KM2 = 250_000 # 500km x 500km
 
@@ -13,7 +14,7 @@ class Maps::HexagonGrid
   class InvalidCoordinatesError < StandardError; end
   class PostGISError < StandardError; end
 
-  attr_reader :min_lon, :min_lat, :max_lon, :max_lat, :hex_size, :user_id, :start_date, :end_date
+  attr_reader :min_lon, :min_lat, :max_lon, :max_lat, :hex_size, :user_id, :start_date, :end_date, :viewport_width, :viewport_height
 
   validates :min_lon, :max_lon, inclusion: { in: -180..180 }
   validates :min_lat, :max_lat, inclusion: { in: -90..90 }
@@ -27,7 +28,9 @@ class Maps::HexagonGrid
     @min_lat = params[:min_lat].to_f
     @max_lon = params[:max_lon].to_f
     @max_lat = params[:max_lat].to_f
-    @hex_size = params[:hex_size]&.to_f || DEFAULT_HEX_SIZE
+    @viewport_width = params[:viewport_width]&.to_f
+    @viewport_height = params[:viewport_height]&.to_f
+    @hex_size = calculate_dynamic_hex_size(params)
     @user_id = params[:user_id]
     @start_date = params[:start_date]
     @end_date = params[:end_date]
@@ -58,6 +61,37 @@ class Maps::HexagonGrid
   end
 
   private
+
+  def calculate_dynamic_hex_size(params)
+    # If viewport dimensions are provided, calculate hex_size for 20px edge length
+    if viewport_width && viewport_height && viewport_width > 0 && viewport_height > 0
+      # Calculate the geographic width of the bounding box in meters
+      avg_lat = (min_lat + max_lat) / 2
+      bbox_width_degrees = (max_lon - min_lon).abs
+      bbox_width_meters = bbox_width_degrees * 111_320 * Math.cos(avg_lat * Math::PI / 180)
+      
+      # Calculate how many meters per pixel based on current viewport span (zoom-independent)
+      meters_per_pixel = bbox_width_meters / viewport_width
+      
+      # For a regular hexagon, the edge length is approximately 0.866 times the radius (center to vertex)
+      # So if we want a 20px edge, we need: edge_length_meters = 20 * meters_per_pixel
+      # And radius = edge_length / 0.866
+      edge_length_meters = TARGET_HEX_EDGE_PX * meters_per_pixel
+      hex_radius_meters = edge_length_meters / 0.866
+      
+      # Clamp to reasonable bounds to prevent excessive computation
+      calculated_size = hex_radius_meters.clamp(50, 10_000)
+      
+      Rails.logger.debug "Dynamic hex size calculation: bbox_width=#{bbox_width_meters.round}m, viewport=#{viewport_width}px, meters_per_pixel=#{meters_per_pixel.round(2)}, hex_size=#{calculated_size.round}m"
+      
+      calculated_size
+    else
+      # Fallback to provided hex_size or default
+      fallback_size = params[:hex_size]&.to_f || DEFAULT_HEX_SIZE
+      Rails.logger.debug "Using fallback hex size: #{fallback_size}m (no viewport dimensions provided)"
+      fallback_size
+    end
+  end
 
   def validate_bbox_order
     errors.add(:base, 'min_lon must be less than max_lon') if min_lon >= max_lon

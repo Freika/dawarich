@@ -19,23 +19,23 @@ export class HexagonGrid {
       minZoom: 8,  // Don't show hexagons below this zoom level
       ...options
     };
-    
+
     this.hexagonLayer = null;
     this.loadingController = null; // For aborting requests
     this.lastBounds = null;
     this.isVisible = false;
-    
+
     this.init();
   }
 
   init() {
     // Create the hexagon layer group
     this.hexagonLayer = L.layerGroup();
-    
+
     // Bind map events
     this.map.on('moveend', this.debounce(this.onMapMove.bind(this), this.options.debounceDelay));
     this.map.on('zoomend', this.onZoomChange.bind(this));
-    
+
     // Initial load if within zoom range
     if (this.shouldShowHexagons()) {
       this.show();
@@ -94,7 +94,7 @@ export class HexagonGrid {
     }
 
     const currentBounds = this.map.getBounds();
-    
+
     // Only reload if bounds have changed significantly
     if (this.boundsChanged(currentBounds)) {
       this.loadHexagons();
@@ -187,11 +187,18 @@ export class HexagonGrid {
       const startDate = urlParams.get('start_at');
       const endDate = urlParams.get('end_at');
 
+      // Get viewport dimensions
+      const mapContainer = this.map.getContainer();
+      const viewportWidth = mapContainer.offsetWidth;
+      const viewportHeight = mapContainer.offsetHeight;
+
       const params = new URLSearchParams({
         min_lon: bounds.getWest(),
         min_lat: bounds.getSouth(),
         max_lon: bounds.getEast(),
-        max_lat: bounds.getNorth()
+        max_lat: bounds.getNorth(),
+        viewport_width: viewportWidth,
+        viewport_height: viewportHeight
       });
 
       // Add date parameters if they exist
@@ -210,7 +217,7 @@ export class HexagonGrid {
       }
 
       const geojsonData = await response.json();
-      
+
       // Clear existing hexagons and add new ones
       this.clearHexagons();
       this.addHexagonsToMap(geojsonData);
@@ -252,7 +259,7 @@ export class HexagonGrid {
 
     // Calculate max point count for color scaling
     const maxPoints = Math.max(...geojsonData.features.map(f => f.properties.point_count));
-    
+
     const geoJsonLayer = L.geoJSON(geojsonData, {
       style: (feature) => this.styleHexagonByData(feature, maxPoints),
       onEachFeature: (feature, layer) => {
@@ -279,21 +286,22 @@ export class HexagonGrid {
   styleHexagonByData(feature, maxPoints) {
     const props = feature.properties;
     const pointCount = props.point_count || 0;
-    
+
     // Calculate opacity based on point density (0.2 to 0.8)
     const opacity = 0.2 + (pointCount / maxPoints) * 0.6;
-    
+
     // Calculate color based on density
-    let color = '#3388ff'; // Default blue
-    if (pointCount > maxPoints * 0.7) {
-      color = '#d73027'; // High density - red
-    } else if (pointCount > maxPoints * 0.4) {
-      color = '#fc8d59'; // Medium-high density - orange
-    } else if (pointCount > maxPoints * 0.2) {
-      color = '#fee08b'; // Medium density - yellow
-    } else {
-      color = '#91bfdb'; // Low density - light blue
-    }
+    let color = '#3388ff'
+    // let color = '#3388ff'; // Default blue
+    // if (pointCount > maxPoints * 0.7) {
+    //   color = '#d73027'; // High density - red
+    // } else if (pointCount > maxPoints * 0.4) {
+    //   color = '#fc8d59'; // Medium-high density - orange
+    // } else if (pointCount > maxPoints * 0.2) {
+    //   color = '#fee08b'; // Medium density - yellow
+    // } else {
+    //   color = '#91bfdb'; // Low density - light blue
+    // }
 
     return {
       fillColor: color,
@@ -310,7 +318,7 @@ export class HexagonGrid {
   buildPopupContent(props) {
     const startDate = props.earliest_point ? new Date(props.earliest_point).toLocaleDateString() : 'N/A';
     const endDate = props.latest_point ? new Date(props.latest_point).toLocaleDateString() : 'N/A';
-    
+
     return `
       <div style="font-size: 12px; line-height: 1.4;">
         <h4 style="margin: 0 0 8px 0; color: #2c5aa0;">Hexagon Stats</h4>
@@ -356,7 +364,7 @@ export class HexagonGrid {
    */
   updateStyle(newStyle) {
     this.options.style = { ...this.options.style, ...newStyle };
-    
+
     // Update existing hexagons
     this.hexagonLayer.eachLayer((layer) => {
       if (layer.setStyle) {

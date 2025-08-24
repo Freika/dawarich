@@ -22,7 +22,7 @@ class Api::V1::Maps::HexagonsController < ApiController
   private
 
   def bbox_params
-    params.permit(:min_lon, :min_lat, :max_lon, :max_lat, :hex_size)
+    params.permit(:min_lon, :min_lat, :max_lon, :max_lat, :hex_size, :viewport_width, :viewport_height)
   end
 
   def hexagon_params
