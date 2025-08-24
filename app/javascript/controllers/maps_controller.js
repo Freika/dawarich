@@ -42,6 +42,7 @@ import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fo
 import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
 import { createAllMapLayers } from "../maps/layers";
+import { createHexagonGrid } from "../maps/hexagon_grid";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -201,7 +202,8 @@ export default class extends BaseController {
       Areas: this.areasLayer,
       Photos: this.photoMarkers,
       "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
-      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
+      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer(),
+      "Hexagon Grid": this.hexagonGrid?.hexagonLayer || L.layerGroup()
     };
 
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
@@ -237,6 +239,9 @@ export default class extends BaseController {
 
     // Initialize Live Map Handler
     this.initializeLiveMapHandler();
+
+    // Initialize Hexagon Grid
+    this.initializeHexagonGrid();
   }
 
   disconnect() {
@@ -250,6 +255,9 @@ export default class extends BaseController {
     }
     if (this.visitsManager) {
       this.visitsManager.destroy();
+    }
+    if (this.hexagonGrid) {
+      this.hexagonGrid.destroy();
     }
     if (this.layerControl) {
       this.map.removeControl(this.layerControl);
@@ -307,6 +315,25 @@ export default class extends BaseController {
         this.map.addLayer(this.tracksLayer);
       }
     }
+  }
+
+  /**
+   * Initialize the Hexagon Grid
+   */
+  initializeHexagonGrid() {
+    this.hexagonGrid = createHexagonGrid(this.map, {
+      apiEndpoint: `/api/v1/maps/hexagons?api_key=${this.apiKey}`,
+      style: {
+        fillColor: '#3388ff',
+        fillOpacity: 0.1,
+        color: '#3388ff',
+        weight: 1,
+        opacity: 0.5
+      },
+      debounceDelay: 300,
+      maxZoom: 16, // Don't show hexagons beyond this zoom
+      minZoom: 8   // Don't show hexagons below this zoom
+    });
   }
 
   /**
@@ -498,6 +525,12 @@ export default class extends BaseController {
         if (this.markers && this.markers.length > 0) {
           this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
         }
+      } else if (event.name === 'Hexagon Grid') {
+        // Enable hexagon grid when layer is added
+        console.log('Hexagon Grid layer enabled via layer control');
+        if (this.hexagonGrid) {
+          this.hexagonGrid.show();
+        }
       }
 
       // Manage pane visibility when layers are manually toggled
@@ -533,6 +566,12 @@ export default class extends BaseController {
       } else if (event.name === 'Fog of War') {
         // Fog canvas will be automatically removed by the layer's onRemove method
         this.fogOverlay = null;
+      } else if (event.name === 'Hexagon Grid') {
+        // Hide hexagon grid when layer is disabled
+        console.log('Hexagon Grid layer disabled via layer control');
+        if (this.hexagonGrid) {
+          this.hexagonGrid.hide();
+        }
       }
     });
   }
@@ -609,7 +648,8 @@ export default class extends BaseController {
           "Fog of War": this.fogOverlay,
           "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
           Areas: this.areasLayer || L.layerGroup(),
-          Photos: this.photoMarkers || L.layerGroup()
+          Photos: this.photoMarkers || L.layerGroup(),
+          "Hexagon Grid": this.hexagonGrid?.hexagonLayer || L.layerGroup()
         };
         this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
       }
@@ -1023,7 +1063,8 @@ export default class extends BaseController {
         "Fog of War": this.fogOverlay,
         "Scratch map": this.scratchLayer || L.layerGroup(),
         Areas: this.areasLayer || L.layerGroup(),
-        Photos: this.photoMarkers || L.layerGroup()
+        Photos: this.photoMarkers || L.layerGroup(),
+        "Hexagon Grid": this.hexagonGrid?.hexagonLayer || L.layerGroup()
       };
 
       // Re-add the layer control in the same position

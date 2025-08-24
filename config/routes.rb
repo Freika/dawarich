@@ -135,6 +135,7 @@ Rails.application.routes.draw do
 
       namespace :maps do
         resources :tile_usage, only: [:create]
+        resources :hexagons, only: [:index]
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
