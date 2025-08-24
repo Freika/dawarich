@@ -189,7 +189,7 @@ export class HexagonGrid {
         max_lat: bounds.getNorth()
       });
 
-      const response = await fetch(`${this.options.apiEndpoint}?${params}`, {
+      const response = await fetch(`${this.options.apiEndpoint}&${params}`, {
         signal: this.loadingController.signal,
         headers: {
           'Content-Type': 'application/json'
