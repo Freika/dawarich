@@ -4,11 +4,11 @@
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-5">
     <div class="text-center lg:text-left">
       <h1 class="text-5xl font-bold mb-5">Edit your account!</h1>
-      <% if current_user.active? %>
-        <%= render 'devise/registrations/api_key' %>
-      <% else %>
+      <%= render 'devise/registrations/api_key' %>
+      <% if current_user.trial? %>
+        <p>Your trial period ends at <%= human_datetime current_user.active_until %>.</p>
         <p>
-          <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success glass' %> to access your API key and start tracking your location.
+          <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success glass' %> to continue using Dawarich after your trial ends.
         </p>
       <% end %>
       <% if !DawarichSettings.self_hosted? %>

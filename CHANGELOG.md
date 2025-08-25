@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Number of user points is not being cached resulting in performance boost on certain pages and operations.
-
+- Logout bug
+- Api key is now shown even in trial period
 
 # [0.30.11] - 2025-08-23
 
