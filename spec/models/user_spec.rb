@@ -5,9 +5,8 @@ require 'rails_helper'
 RSpec.describe User, type: :model do
   describe 'associations' do
     it { is_expected.to have_many(:imports).dependent(:destroy) }
-    it { is_expected.to have_many(:points).through(:imports) }
     it { is_expected.to have_many(:stats) }
-    it { is_expected.to have_many(:tracked_points).class_name('Point').dependent(:destroy) }
+    it { is_expected.to have_many(:points).class_name('Point').dependent(:destroy) }
     it { is_expected.to have_many(:exports).dependent(:destroy) }
     it { is_expected.to have_many(:notifications).dependent(:destroy) }
     it { is_expected.to have_many(:areas).dependent(:destroy) }
@@ -76,6 +75,14 @@ RSpec.describe User, type: :model do
         expect(Users::TrialWebhookJob).to receive(:perform_later).with(user.id)
         user.send(:start_trial)
       end
+
+      it 'schedules welcome emails' do
+        allow(user).to receive(:schedule_welcome_emails)
+
+        user.send(:start_trial)
+
+        expect(user).to have_received(:schedule_welcome_emails)
+      end
     end
 
     describe '#schedule_welcome_emails' do
@@ -124,7 +131,7 @@ RSpec.describe User, type: :model do
         end
 
         it 'returns true' do
-          user.tracked_points.destroy_all
+          user.points.destroy_all
 
           expect(user.trial_state?).to be_truthy
         end

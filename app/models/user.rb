@@ -4,14 +4,13 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable
 
-  has_many :tracked_points, class_name: 'Point', dependent: :destroy
+  has_many :points, dependent: :destroy, counter_cache: true
   has_many :imports,        dependent: :destroy
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
-  has_many :points, through: :imports
   has_many :places, through: :visits
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
@@ -19,7 +18,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? }
-  after_commit :schedule_welcome_emails, on: :create, if: -> { !DawarichSettings.self_hosted? }
+
   before_save :sanitize_input
 
   validates :email, presence: true
@@ -35,7 +34,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def countries_visited
-    tracked_points
+    points
       .where.not(country_name: [nil, ''])
       .distinct
       .pluck(:country_name)
@@ -43,7 +42,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def cities_visited
-    tracked_points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+    points.where.not(city: [nil, '']).distinct.pluck(:city).compact
   end
 
   def total_distance
@@ -60,11 +59,11 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def total_reverse_geocoded_points
-    tracked_points.where.not(reverse_geocoded_at: nil).count
+    points.where.not(reverse_geocoded_at: nil).count
   end
 
   def total_reverse_geocoded_points_without_data
-    tracked_points.where(geodata: {}).count
+    points.where(geodata: {}).count
   end
 
   def immich_integration_configured?
@@ -118,7 +117,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def trial_state?
-    tracked_points.none? && trial?
+    points_count.zero? && trial?
   end
 
   private
@@ -141,6 +140,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
 
   def start_trial
     update(status: :trial, active_until: 7.days.from_now)
+    schedule_welcome_emails
 
     Users::TrialWebhookJob.perform_later(id)
   end

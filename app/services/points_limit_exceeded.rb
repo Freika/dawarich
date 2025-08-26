@@ -9,7 +9,7 @@ class PointsLimitExceeded
     return false if DawarichSettings.self_hosted?
 
     Rails.cache.fetch(cache_key, expires_in: 1.day) do
-      @user.tracked_points.count >= points_limit
+      @user.points_count >= points_limit
     end
   end
 

@@ -6,7 +6,7 @@ class Point < ApplicationRecord
 
   belongs_to :import, optional: true, counter_cache: true
   belongs_to :visit, optional: true
-  belongs_to :user
+  belongs_to :user, counter_cache: true
   belongs_to :country, optional: true
   belongs_to :track, optional: true
 
