@@ -62,10 +62,10 @@ class Imports::SourceDetector
 
   def self.new_from_file_header(file_path)
     filename = File.basename(file_path)
-    
+
     # For detection, read only first 2KB to optimize performance
     header_content = File.open(file_path, 'rb') { |f| f.read(2048) }
-    
+
     new(header_content, filename, file_path)
   end
 
@@ -103,7 +103,7 @@ class Imports::SourceDetector
 
     # Must have .gpx extension AND contain GPX XML structure
     return false unless filename.downcase.end_with?('.gpx')
-    
+
     # Check content for GPX structure
     content_to_check = if file_path && File.exist?(file_path)
                         # Read first 1KB for GPX detection
@@ -111,7 +111,7 @@ class Imports::SourceDetector
                       else
                         file_content
                       end
-    
+
     content_to_check.strip.start_with?('<?xml') && content_to_check.include?('<gpx')
   end
 
@@ -120,7 +120,7 @@ class Imports::SourceDetector
 
     # Check for .rec extension first (fastest check)
     return true if filename.downcase.end_with?('.rec')
-    
+
     # Check for specific OwnTracks line format in content
     content_to_check = if file_path && File.exist?(file_path)
                         # For OwnTracks, read first few lines only
@@ -128,7 +128,7 @@ class Imports::SourceDetector
                       else
                         file_content
                       end
-    
+
     content_to_check.lines.any? { |line| line.include?('"_type":"location"') }
   end
 

@@ -16,7 +16,13 @@ class Imports::Create
 
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
 
-    source = import.source.presence || detect_source_from_file(temp_file_path)
+    source = if import.source.nil? || should_detect_source?
+               detect_source_from_file(temp_file_path)
+             else
+               import.source
+             end
+
+    import.update!(source: source)
     importer(source).new(import, user.id, temp_file_path).call
 
     schedule_stats_creating(user.id)
@@ -43,7 +49,9 @@ class Imports::Create
   private
 
   def importer(source)
-    case source
+    raise ArgumentError, 'Import source cannot be nil' if source.nil?
+
+    case source.to_s
     when 'google_semantic_history'      then GoogleMaps::SemanticHistoryImporter
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
@@ -51,6 +59,8 @@ class Imports::Create
     when 'gpx'                          then Gpx::TrackImporter
     when 'geojson'                      then Geojson::Importer
     when 'immich_api', 'photoprism_api' then Photos::Importer
+    else
+      raise ArgumentError, "Unsupported source: #{source}"
     end
   end
 
@@ -88,8 +98,14 @@ class Imports::Create
     ).call
   end
 
+  def should_detect_source?
+    # Don't override API-based sources that can't be reliably detected
+    !%w[immich_api photoprism_api].include?(import.source)
+  end
+
   def detect_source_from_file(temp_file_path)
     detector = Imports::SourceDetector.new_from_file_header(temp_file_path)
+
     detector.detect_source!
   end
 
