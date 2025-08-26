@@ -4,13 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [UNRELEASED] - 2025-08-26
+# [0.30.12] - 2025-08-26
 
 ## Fixed
 
 - Number of user points is not being cached resulting in performance boost on certain pages and operations.
 - Logout bug
 - Api key is now shown even in trial period
+
 
 # [0.30.11] - 2025-08-23
 
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Some types of imports were not being detected correctly and were failing to import. #1678
+
 
 # [0.30.10] - 2025-08-22
 
@@ -49,7 +51,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trial version for cloud users is now available.
 
 
-
 # [0.30.8] - 2025-08-01
 
 ## Fixed
@@ -57,7 +58,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fog of war is now working correctly on zoom and map movement. #1603
 - Possibly fixed a bug where visits were no suggested correctly. #984
 - Scratch map is now working correctly.
-
 
 
 # [0.30.7] - 2025-08-01
@@ -107,7 +107,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - Prometheus metrics are now available at `/metrics`. Configure `METRICS_USERNAME` and `METRICS_PASSWORD` environment variables for basic authentication, default values are `prometheus` for both. All other prometheus-related environment variables are also necessary.
-
 
 ## Fixed
 
