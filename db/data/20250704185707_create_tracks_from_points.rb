@@ -8,7 +8,7 @@ class CreateTracksFromPoints < ActiveRecord::Migration[8.0]
     processed_users = 0
 
     User.find_each do |user|
-      points_count = user.tracked_points.count
+      points_count = user.points.count
 
       if points_count > 0
         puts "Enqueuing track creation for user #{user.id} (#{points_count} points)"

@@ -312,33 +312,33 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       trips: user.trips.count,
       stats: user.stats.count,
       notifications: user.notifications.count,
-      points: user.tracked_points.count,
+      points: user.points.count,
       visits: user.visits.count,
       places: user.places.count
     }
   end
 
   def verify_relationships_preserved(original_user, target_user)
-    original_points_with_imports = original_user.tracked_points.where.not(import_id: nil).count
-    target_points_with_imports = target_user.tracked_points.where.not(import_id: nil).count
+    original_points_with_imports = original_user.points.where.not(import_id: nil).count
+    target_points_with_imports = target_user.points.where.not(import_id: nil).count
     expect(target_points_with_imports).to eq(original_points_with_imports)
 
-    original_points_with_countries = original_user.tracked_points.where.not(country_id: nil).count
-    target_points_with_countries = target_user.tracked_points.where.not(country_id: nil).count
+    original_points_with_countries = original_user.points.where.not(country_id: nil).count
+    target_points_with_countries = target_user.points.where.not(country_id: nil).count
     expect(target_points_with_countries).to eq(original_points_with_countries)
 
-    original_points_with_visits = original_user.tracked_points.where.not(visit_id: nil).count
-    target_points_with_visits = target_user.tracked_points.where.not(visit_id: nil).count
+    original_points_with_visits = original_user.points.where.not(visit_id: nil).count
+    target_points_with_visits = target_user.points.where.not(visit_id: nil).count
     expect(target_points_with_visits).to eq(original_points_with_visits)
 
     original_visits_with_places = original_user.visits.where.not(place_id: nil).count
     target_visits_with_places = target_user.visits.where.not(place_id: nil).count
     expect(target_visits_with_places).to eq(original_visits_with_places)
 
-    original_office_points = original_user.tracked_points.where(
+    original_office_points = original_user.points.where(
       latitude: 40.7589, longitude: -73.9851
     ).first
-    target_office_points = target_user.tracked_points.where(
+    target_office_points = target_user.points.where(
       latitude: 40.7589, longitude: -73.9851
     ).first
 

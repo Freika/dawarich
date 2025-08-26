@@ -14,9 +14,9 @@ class Jobs::Create
     points =
       case job_name
       when 'start_reverse_geocoding'
-        user.tracked_points
+        user.points
       when 'continue_reverse_geocoding'
-        user.tracked_points.not_reverse_geocoded
+        user.points.not_reverse_geocoded
       else
         raise InvalidJobName, 'Invalid job name'
       end

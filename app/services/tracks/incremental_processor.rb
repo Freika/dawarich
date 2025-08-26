@@ -50,7 +50,7 @@ class Tracks::IncrementalProcessor
 
   def find_previous_point
     @previous_point ||=
-      user.tracked_points
+      user.points
         .where('timestamp < ?', new_point.timestamp)
         .order(:timestamp)
         .last

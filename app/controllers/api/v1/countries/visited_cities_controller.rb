@@ -8,7 +8,7 @@ class Api::V1::Countries::VisitedCitiesController < ApiController
     end_at = DateTime.parse(params[:end_at]).to_i
 
     points = current_api_user
-             .tracked_points
+             .points
              .where(timestamp: start_at..end_at)
 
     render json: { data: CountriesAndCities.new(points).call }

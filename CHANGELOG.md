@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED] - 2025-08-26
+
+## Fixed
+
+- Number of user points is not being cached resulting in performance boost on certain pages and operations.
+
+
 # [0.30.11] - 2025-08-23
 
 ## Changed

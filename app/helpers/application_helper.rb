@@ -86,7 +86,7 @@ module ApplicationHelper
   end
 
   def points_exist?(year, month, user)
-    user.tracked_points.where(
+    user.points.where(
       timestamp: DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
     ).exists?
   end

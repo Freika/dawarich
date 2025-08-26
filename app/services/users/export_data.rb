@@ -331,7 +331,7 @@ class Users::ExportData
       trips: user.trips.count,
       stats: user.stats.count,
       notifications: user.notifications.count,
-      points: user.tracked_points.count,
+      points: user.points_count,
       visits: user.visits.count,
       places: user.places.count
     }

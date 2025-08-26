@@ -27,7 +27,7 @@ RSpec.describe Visits::SmartDetect do
       let(:created_visits) { [instance_double(Visit)] }
 
       before do
-        allow(user).to receive_message_chain(:tracked_points, :not_visited, :order, :where).and_return(points)
+        allow(user).to receive_message_chain(:points, :not_visited, :order, :where).and_return(points)
         allow(Visits::Detector).to receive(:new).with(points).and_return(visit_detector)
         allow(Visits::Merger).to receive(:new).with(points).and_return(visit_merger)
         allow(Visits::Creator).to receive(:new).with(user).and_return(visit_creator)
