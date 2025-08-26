@@ -27,6 +27,15 @@ RSpec.describe Imports::Create do
         expect(import.reload.source).to eq('owntracks')
       end
 
+      it 'resets points counter cache' do
+        allow(User).to receive(:reset_counters)
+
+        service.call
+
+        expect(User).to have_received(:reset_counters).with(user.id, :points)
+      end
+
+
       context 'when import succeeds' do
         it 'sets status to completed' do
           service.call
