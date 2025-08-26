@@ -18,7 +18,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? }
-  after_commit :schedule_welcome_emails, on: :create, if: -> { !DawarichSettings.self_hosted? }
+
   before_save :sanitize_input
 
   validates :email, presence: true
@@ -140,6 +140,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
 
   def start_trial
     update(status: :trial, active_until: 7.days.from_now)
+    schedule_welcome_emails
 
     Users::TrialWebhookJob.perform_later(id)
   end

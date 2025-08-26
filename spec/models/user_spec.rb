@@ -75,6 +75,14 @@ RSpec.describe User, type: :model do
         expect(Users::TrialWebhookJob).to receive(:perform_later).with(user.id)
         user.send(:start_trial)
       end
+
+      it 'schedules welcome emails' do
+        allow(user).to receive(:schedule_welcome_emails)
+
+        user.send(:start_trial)
+
+        expect(user).to have_received(:schedule_welcome_emails)
+      end
     end
 
     describe '#schedule_welcome_emails' do
