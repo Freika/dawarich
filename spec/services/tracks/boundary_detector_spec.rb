@@ -30,7 +30,7 @@ RSpec.describe Tracks::BoundaryDetector do
         expect(detector.resolve_cross_chunk_tracks).to eq(0)
       end
 
-      it 'does not log boundary operations when no candidates found' do
+      it 'returns 0 without boundary side effects when no candidates found' do
         # This test may log other things, but should not log boundary-related messages
         result = detector.resolve_cross_chunk_tracks
         expect(result).to eq(0)
@@ -107,7 +107,7 @@ RSpec.describe Tracks::BoundaryDetector do
         allow(detector).to receive(:create_track_from_points).and_return(nil)
       end
 
-      it 'returns 0 and logs warning' do
+      it 'returns 0' do
         expect(detector.resolve_cross_chunk_tracks).to eq(0)
       end
 
@@ -291,7 +291,7 @@ RSpec.describe Tracks::BoundaryDetector do
 
       it 'sorts points by timestamp' do
         # Create points out of order
-        point_early = create(:point, user: user, track: track2, timestamp: 3.hours.ago.to_i)
+        create(:point, user: user, track: track2, timestamp: 3.hours.ago.to_i)
 
         captured_points = nil
         allow(detector).to receive(:create_track_from_points) do |points, _distance|

@@ -70,16 +70,6 @@ class Tracks::Generator
     end
   end
 
-  def load_points
-    case mode
-    when :bulk then load_bulk_points
-    when :incremental then load_incremental_points
-    when :daily then load_daily_points
-    else
-      raise ArgumentError, "Tracks::Generator: Unknown mode: #{mode}"
-    end
-  end
-
   def load_bulk_points
     scope = user.points.order(:timestamp)
     scope = scope.where(timestamp: timestamp_range) if time_range_defined?
@@ -154,8 +144,7 @@ class Tracks::Generator
     case mode
     when :bulk then clean_bulk_tracks
     when :daily then clean_daily_tracks
-    else
-      raise ArgumentError, "Tracks::Generator: Unknown mode: #{mode}"
+    else unknown_mode!
     end
   end
 
@@ -179,8 +168,7 @@ class Tracks::Generator
     when :bulk then bulk_timestamp_range
     when :daily then daily_timestamp_range
     when :incremental then incremental_timestamp_range
-    else
-      raise ArgumentError, "Tracks::Generator: Unknown mode: #{mode}"
+    else unknown_mode!
     end
   end
 
@@ -211,5 +199,9 @@ class Tracks::Generator
 
   def time_threshold_minutes
     @time_threshold_minutes ||= user.safe_settings.minutes_between_routes.to_i
+  end
+
+  def unknown_mode!
+    raise ArgumentError, "Tracks::Generator: Unknown mode: #{mode}"
   end
 end

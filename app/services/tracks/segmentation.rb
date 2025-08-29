@@ -142,18 +142,13 @@ module Tracks::Segmentation
 
   # In-memory distance calculation using Geocoder (no SQL dependency)
   def calculate_km_distance_between_points_geocoder(point1, point2)
-    begin
-      distance = point1.distance_to_geocoder(point2, :km)
+    distance = point1.distance_to_geocoder(point2, :km)
 
-      # Validate result
-      if !distance.finite? || distance < 0
-        return 0
-      end
+    return 0 unless distance.finite? && distance >= 0
 
-      distance
-    rescue StandardError => e
-      0
-    end
+    distance
+  rescue StandardError => _e
+    0
   end
 
   def should_finalize_segment?(segment_points, grace_period_minutes = 5)

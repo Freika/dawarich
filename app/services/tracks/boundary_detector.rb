@@ -38,7 +38,6 @@ class Tracks::BoundaryDetector
     return [] if recent_tracks.empty?
 
     # Group tracks that might be connected
-    boundary_groups = []
     potential_groups = []
 
     recent_tracks.each do |track|

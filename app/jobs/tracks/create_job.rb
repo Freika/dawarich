@@ -8,6 +8,9 @@ class Tracks::CreateJob < ApplicationJob
 
     Tracks::Generator.new(user, start_at:, end_at:, mode:).call
   rescue StandardError => e
-    ExceptionReporter.call(e, 'Failed to create tracks for user')
+    ExceptionReporter.call(
+      e,
+      "Failed to create tracks for user #{user_id} (mode: #{mode}, start_at: #{start_at.inspect}, end_at: #{end_at.inspect})"
+    )
   end
 end

@@ -8,7 +8,7 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
   before do
     # Clear any existing jobs
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
-    
+
     # Mock the incremental processing callback to avoid interference
     allow_any_instance_of(Point).to receive(:trigger_incremental_track_generation)
   end
@@ -28,10 +28,10 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       before do
         # User1 - has points created yesterday (should be processed)
         create(:point, user: user1, created_at: 1.day.ago, timestamp: 1.day.ago.to_i)
-        
+
         # User2 - has points created 1.5 days ago (should be processed)
         create(:point, user: user2, created_at: 1.5.days.ago, timestamp: 1.5.days.ago.to_i)
-        
+
         # User3 - has points created 3 days ago (should NOT be processed)
         create(:point, user: user3, created_at: 3.days.ago, timestamp: 3.days.ago.to_i)
       end
@@ -54,7 +54,7 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
           args = enqueued_job['arguments']
           user_id = args[0]
           options = args[1]
-          
+
           expect([user1.id, user2.id]).to include(user_id)
           expect(options['mode']['value']).to eq('daily')  # ActiveJob serializes symbols
           expect(options['chunk_size']['value']).to eq(6.hours.to_i)  # ActiveJob serializes durations
@@ -76,7 +76,7 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
 
       it 'logs the process' do
         allow(Rails.logger).to receive(:info)
-        
+
         expect(Rails.logger).to receive(:info).with("Starting daily track generation for users with recent activity")
         expect(Rails.logger).to receive(:info).with("Completed daily track generation")
 
@@ -91,14 +91,12 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       end
 
       it 'does not enqueue any parallel generation jobs' do
-        expect {
-          job.perform
-        }.not_to have_enqueued_job(Tracks::ParallelGeneratorJob)
+        expect { job.perform }.not_to have_enqueued_job(Tracks::ParallelGeneratorJob)
       end
 
       it 'still logs start and completion' do
         allow(Rails.logger).to receive(:info)
-        
+
         expect(Rails.logger).to receive(:info).with("Starting daily track generation for users with recent activity")
         expect(Rails.logger).to receive(:info).with("Completed daily track generation")
 
@@ -109,7 +107,7 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
     context 'when user processing fails' do
       before do
         create(:point, user: user1, created_at: 1.day.ago, timestamp: 1.day.ago.to_i)
-        
+
         # Mock Tracks::ParallelGeneratorJob to raise an error
         allow(Tracks::ParallelGeneratorJob).to receive(:perform_later).and_raise(StandardError.new("Job failed"))
         allow(Rails.logger).to receive(:info)
@@ -119,19 +117,15 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
         expect(Rails.logger).to receive(:error).with("Failed to enqueue daily track generation for user #{user1.id}: Job failed")
         expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), "Daily track generation failed for user #{user1.id}")
 
-        expect {
-          job.perform
-        }.not_to raise_error
+        expect { job.perform }.not_to raise_error
       end
     end
 
     context 'with users having no points' do
       it 'does not process users without any points' do
         # user1, user2, user3 exist but have no points
-        
-        expect {
-          job.perform
-        }.not_to have_enqueued_job(Tracks::ParallelGeneratorJob)
+
+        expect { job.perform }.not_to have_enqueued_job(Tracks::ParallelGeneratorJob)
       end
     end
   end

@@ -44,7 +44,7 @@ class Tracks::SessionManager
   def get_session_data
     data = Rails.cache.read(cache_key)
     return nil unless data
-    
+
     # Rails.cache already deserializes the data, no need for JSON parsing
     data
   end

@@ -7,7 +7,7 @@ class Tracks::DailyGenerationJob < ApplicationJob
 
   def perform
     Rails.logger.info "Starting daily track generation for users with recent activity"
-    
+
     users_with_recent_activity.find_each do |user|
       process_user_tracks(user)
     end
@@ -18,11 +18,10 @@ class Tracks::DailyGenerationJob < ApplicationJob
   private
 
   def users_with_recent_activity
-    # Find users who have created points in the last 2 days
-    # This gives buffer to handle cross-day tracks
-    User.joins(:points)
-        .where(points: { created_at: 2.days.ago..Time.current })
-        .distinct
+    # Users with points in last 2 days (buffer for cross-day tracks), via subquery
+
+    user_ids = Point.where(created_at: 2.days.ago..Time.current).select(:user_id).distinct
+    User.where(id: user_ids)
   end
 
   def process_user_tracks(user)

@@ -14,7 +14,7 @@ RSpec.describe Tracks::CreateJob, type: :job do
       allow(generator_instance).to receive(:call).and_return(2)
     end
 
-    it 'calls the generator and creates a notification' do
+    it 'calls the generator' do
       described_class.new.perform(user.id)
 
       expect(Tracks::Generator).to have_received(:new).with(
@@ -75,10 +75,9 @@ RSpec.describe Tracks::CreateJob, type: :job do
       before do
         allow(User).to receive(:find).with(999).and_raise(ActiveRecord::RecordNotFound)
         allow(ExceptionReporter).to receive(:call)
-        allow(Notifications::Create).to receive(:new).and_return(instance_double(Notifications::Create, call: nil))
       end
 
-      it 'handles the error gracefully and creates error notification' do
+      it 'handles the error gracefully' do
         expect { described_class.new.perform(999) }.not_to raise_error
 
         expect(ExceptionReporter).to have_received(:call)

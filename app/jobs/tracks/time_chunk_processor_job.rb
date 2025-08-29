@@ -58,6 +58,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
 
   def load_chunk_points
     user.points
+        .without_raw_data
         .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
         .order(:timestamp)
   end
