@@ -121,14 +121,57 @@ RSpec.describe Point, type: :model do
       end
     end
 
-    xdescribe '#trigger_incremental_track_generation' do
+    describe '#trigger_incremental_track_generation' do
+      let(:user) { create(:user) }
       let(:point) do
-        create(:point, track: track, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)
+        create(:point, user: user, import_id: nil, timestamp: 1.hour.ago.to_i, reverse_geocoded_at: 1.hour.ago)
       end
-      let(:track) { create(:track) }
 
-      it 'enqueues Tracks::IncrementalCheckJob' do
-        expect { point.send(:trigger_incremental_track_generation) }.to have_enqueued_job(Tracks::IncrementalCheckJob).with(point.user_id, point.id)
+      before do
+        # Stub user settings that might be called during incremental processing
+        allow_any_instance_of(User).to receive_message_chain(:safe_settings, :minutes_between_routes).and_return(30)
+        allow_any_instance_of(User).to receive_message_chain(:safe_settings, :meters_between_routes).and_return(500)
+        allow_any_instance_of(User).to receive_message_chain(:safe_settings, :live_map_enabled).and_return(false)
+      end
+
+      it 'calls Tracks::IncrementalProcessor with user and point' do
+        processor_double = double('processor')
+        expect(Tracks::IncrementalProcessor).to receive(:new).with(user, point).and_return(processor_double)
+        expect(processor_double).to receive(:call)
+
+        point.send(:trigger_incremental_track_generation)
+      end
+
+      it 'does not raise error when processor fails' do
+        allow(Tracks::IncrementalProcessor).to receive(:new).and_raise(StandardError.new("Processor failed"))
+
+        expect {
+          point.send(:trigger_incremental_track_generation)
+        }.to raise_error(StandardError, "Processor failed")
+      end
+    end
+
+    describe 'after_create_commit callback' do
+      let(:user) { create(:user) }
+
+      before do
+        # Stub user settings that might be called during incremental processing
+        allow_any_instance_of(User).to receive_message_chain(:safe_settings, :minutes_between_routes).and_return(30)
+        allow_any_instance_of(User).to receive_message_chain(:safe_settings, :meters_between_routes).and_return(500)
+        allow_any_instance_of(User).to receive_message_chain(:safe_settings, :live_map_enabled).and_return(false)
+      end
+
+      it 'triggers incremental track generation for non-imported points' do
+        expect_any_instance_of(Point).to receive(:trigger_incremental_track_generation)
+
+        create(:point, user: user, import_id: nil, timestamp: 1.hour.ago.to_i)
+      end
+
+      it 'does not trigger incremental track generation for imported points' do
+        import = create(:import, user: user)
+        expect_any_instance_of(Point).not_to receive(:trigger_incremental_track_generation)
+
+        create(:point, user: user, import: import, timestamp: 1.hour.ago.to_i)
       end
     end
   end

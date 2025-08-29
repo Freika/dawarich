@@ -64,6 +64,29 @@ module Tracks::Segmentation
     segments
   end
 
+  # Alternative segmentation using Geocoder (no SQL dependency)
+  def split_points_into_segments_geocoder(points)
+    return [] if points.empty?
+
+    segments = []
+    current_segment = []
+
+    points.each do |point|
+      if should_start_new_segment_geocoder?(point, current_segment.last)
+        # Finalize current segment if it has enough points
+        segments << current_segment if current_segment.size >= 2
+        current_segment = [point]
+      else
+        current_segment << point
+      end
+    end
+
+    # Don't forget the last segment
+    segments << current_segment if current_segment.size >= 2
+
+    segments
+  end
+
   def should_start_new_segment?(current_point, previous_point)
     return false if previous_point.nil?
 
@@ -85,6 +108,28 @@ module Tracks::Segmentation
     false
   end
 
+  # Alternative segmentation logic using Geocoder (no SQL dependency)
+  def should_start_new_segment_geocoder?(current_point, previous_point)
+    return false if previous_point.nil?
+
+    # Check time threshold (convert minutes to seconds)
+    current_timestamp = current_point.timestamp
+    previous_timestamp = previous_point.timestamp
+
+    time_diff_seconds = current_timestamp - previous_timestamp
+    time_threshold_seconds = time_threshold_minutes.to_i * 60
+
+    return true if time_diff_seconds > time_threshold_seconds
+
+    # Check distance threshold using Geocoder
+    distance_km = calculate_km_distance_between_points_geocoder(previous_point, current_point)
+    distance_meters = distance_km * 1000 # Convert km to meters
+
+    return true if distance_meters > distance_threshold_meters
+
+    false
+  end
+
   def calculate_km_distance_between_points(point1, point2)
     distance_meters = Point.connection.select_value(
       'SELECT ST_Distance(ST_GeomFromEWKT($1)::geography, ST_GeomFromEWKT($2)::geography)',
@@ -93,6 +138,22 @@ module Tracks::Segmentation
     )
 
     distance_meters.to_f / 1000.0 # Convert meters to kilometers
+  end
+
+  # In-memory distance calculation using Geocoder (no SQL dependency)
+  def calculate_km_distance_between_points_geocoder(point1, point2)
+    begin
+      distance = point1.distance_to_geocoder(point2, :km)
+
+      # Validate result
+      if !distance.finite? || distance < 0
+        return 0
+      end
+
+      distance
+    rescue StandardError => e
+      0
+    end
   end
 
   def should_finalize_segment?(segment_points, grace_period_minutes = 5)

@@ -33,8 +33,8 @@ class Point < ApplicationRecord
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates
-  # after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? }
-  # after_commit :recalculate_track, on: :update, if: -> { track.present? }
+  after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? }
+  after_commit :recalculate_track, on: :update, if: -> { track.present? }
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
@@ -103,6 +103,6 @@ class Point < ApplicationRecord
   end
 
   def trigger_incremental_track_generation
-    Tracks::IncrementalCheckJob.perform_later(user.id, id)
+    Tracks::IncrementalProcessor.new(user, self).call
   end
 end
