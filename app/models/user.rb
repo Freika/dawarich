@@ -118,7 +118,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def trial_state?
-    points_count.zero? && trial?
+    (points_count || 0).zero? && trial?
   end
 
   private
