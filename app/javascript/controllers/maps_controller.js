@@ -214,7 +214,9 @@ export default class extends BaseController {
     this.setupTracksSubscription();
 
     // Handle routes/tracks mode selection
-    // this.addRoutesTracksSelector(); # Temporarily disabled
+    if (this.shouldShowTracksSelector()) {
+      this.addRoutesTracksSelector();
+    }
     this.switchRouteMode('routes', true);
 
     // Initialize layers based on settings
@@ -1102,6 +1104,11 @@ export default class extends BaseController {
 
     // Add the control to the map
     this.map.addControl(new TogglePanelControl({ position: 'topright' }));
+  }
+
+  shouldShowTracksSelector() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('tracks_debug') === 'true';
   }
 
   addRoutesTracksSelector() {
