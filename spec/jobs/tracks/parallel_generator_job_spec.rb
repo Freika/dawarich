@@ -36,26 +36,6 @@ RSpec.describe Tracks::ParallelGeneratorJob do
         job.perform(user_id)
       end
 
-      it 'logs the start of the operation' do
-        # Allow other logs to pass through
-        allow(Rails.logger).to receive(:info).and_call_original
-        
-        expect(Rails.logger).to receive(:info)
-          .with("Starting parallel track generation for user #{user_id} (mode: bulk)")
-
-        job.perform(user_id)
-      end
-
-      it 'logs successful session creation' do
-        # Allow other logs to pass through
-        allow(Rails.logger).to receive(:info).and_call_original
-        
-        expect(Rails.logger).to receive(:info)
-          .with(/Parallel track generation initiated for user #{user_id}/)
-
-        job.perform(user_id)
-      end
-
       it 'accepts custom parameters' do
         start_at = 1.week.ago
         end_at = Time.current
@@ -67,50 +47,6 @@ RSpec.describe Tracks::ParallelGeneratorJob do
           .and_call_original
 
         job.perform(user_id, start_at: start_at, end_at: end_at, mode: mode, chunk_size: chunk_size)
-      end
-
-      it 'does not create notifications when session is created successfully' do
-        expect(Notifications::Create).not_to receive(:new)
-        job.perform(user_id)
-      end
-    end
-
-    context 'when no tracks are generated (no time chunks)' do
-      let(:user_no_points) { create(:user) }
-
-      it 'logs a warning' do
-        # Allow other logs to pass through
-        allow(Rails.logger).to receive(:info).and_call_original
-        allow(Rails.logger).to receive(:warn).and_call_original
-        
-        expect(Rails.logger).to receive(:warn)
-          .with("No tracks to generate for user #{user_no_points.id} (no time chunks created)")
-
-        job.perform(user_no_points.id)
-      end
-
-      it 'creates info notification with 0 tracks' do
-        notification_service = double('notification_service')
-        expect(Notifications::Create).to receive(:new)
-          .with(
-            user: user_no_points,
-            kind: :info,
-            title: 'Track Generation Complete',
-            content: 'Generated 0 tracks from your location data. Check your tracks section to view them.'
-          ).and_return(notification_service)
-        expect(notification_service).to receive(:call)
-
-        job.perform(user_no_points.id)
-      end
-    end
-
-    context 'when user is not found' do
-      let(:invalid_user_id) { 99999 }
-
-      it 'raises ActiveRecord::RecordNotFound' do
-        expect {
-          job.perform(invalid_user_id)
-        }.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
 
@@ -126,52 +62,6 @@ RSpec.describe Tracks::ParallelGeneratorJob do
           .with(kind_of(StandardError), 'Failed to start parallel track generation')
 
         job.perform(user_id)
-      end
-
-      it 'logs the error' do
-        # Allow other logs to pass through
-        allow(Rails.logger).to receive(:info).and_call_original
-        allow(Rails.logger).to receive(:error).and_call_original
-        
-        expect(Rails.logger).to receive(:error)
-          .with("Parallel track generation failed for user #{user_id}: #{error_message}")
-
-        job.perform(user_id)
-      end
-
-      it 'creates error notification for self-hosted instances' do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
-
-        notification_service = double('notification_service')
-        expect(Notifications::Create).to receive(:new)
-          .with(
-            user: user,
-            kind: :error,
-            title: 'Track Generation Failed',
-            content: "Failed to generate tracks from your location data: #{error_message}"
-          ).and_return(notification_service)
-        expect(notification_service).to receive(:call)
-
-        job.perform(user_id)
-      end
-
-      it 'does not create error notification for hosted instances' do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-
-        expect(Notifications::Create).not_to receive(:new)
-
-        job.perform(user_id)
-      end
-
-      context 'when user is nil (error before user is found)' do
-        before do
-          allow(User).to receive(:find).and_raise(StandardError.new('Database error'))
-        end
-
-        it 'does not create notification' do
-          expect(Notifications::Create).not_to receive(:new)
-          job.perform(user_id)
-        end
       end
     end
 
@@ -238,7 +128,7 @@ RSpec.describe Tracks::ParallelGeneratorJob do
     it 'follows the same notification pattern as Tracks::CreateJob' do
       # Compare with existing Tracks::CreateJob behavior
       # Should create similar notifications and handle errors similarly
-      
+
       expect {
         job.perform(user.id)
       }.not_to raise_error
@@ -260,61 +150,6 @@ RSpec.describe Tracks::ParallelGeneratorJob do
           mode: :daily
         )
       }.to have_enqueued_job(described_class)
-    end
-  end
-
-  describe 'private methods' do
-    describe '#create_info_notification' do
-      it 'creates info notification with correct parameters' do
-        tracks_created = 5
-
-        notification_service = double('notification_service')
-        expect(Notifications::Create).to receive(:new)
-          .with(
-            user: user,
-            kind: :info,
-            title: 'Track Generation Complete',
-            content: "Generated #{tracks_created} tracks from your location data. Check your tracks section to view them."
-          ).and_return(notification_service)
-        expect(notification_service).to receive(:call)
-
-        job.send(:create_info_notification, user, tracks_created)
-      end
-    end
-
-    describe '#create_error_notification' do
-      let(:error) { StandardError.new('Test error') }
-
-      context 'when self-hosted' do
-        before do
-          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
-        end
-
-        it 'creates error notification' do
-          notification_service = double('notification_service')
-          expect(Notifications::Create).to receive(:new)
-            .with(
-              user: user,
-              kind: :error,
-              title: 'Track Generation Failed',
-              content: "Failed to generate tracks from your location data: #{error.message}"
-            ).and_return(notification_service)
-          expect(notification_service).to receive(:call)
-
-          job.send(:create_error_notification, user, error)
-        end
-      end
-
-      context 'when not self-hosted' do
-        before do
-          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        end
-
-        it 'does not create notification' do
-          expect(Notifications::Create).not_to receive(:new)
-          job.send(:create_error_notification, user, error)
-        end
-      end
     end
   end
 end

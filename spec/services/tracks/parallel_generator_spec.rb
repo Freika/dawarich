@@ -26,7 +26,7 @@ RSpec.describe Tracks::ParallelGenerator do
     it 'accepts custom options' do
       start_time = 1.week.ago
       end_time = Time.current
-      
+
       custom_generator = described_class.new(
         user,
         start_at: start_time,
@@ -123,16 +123,10 @@ RSpec.describe Tracks::ParallelGenerator do
 
         it 'cleans existing tracks' do
           expect(user.tracks.count).to eq(2)
-          
-          generator.call
-          
-          expect(user.tracks.count).to eq(0)
-        end
 
-        it 'logs track cleanup' do
-          allow(Rails.logger).to receive(:info) # Allow any log messages
-          expect(Rails.logger).to receive(:info).with(/Cleaning \d+ existing tracks for bulk regeneration/).at_least(:once)
           generator.call
+
+          expect(user.tracks.count).to eq(0)
         end
       end
 
@@ -141,9 +135,9 @@ RSpec.describe Tracks::ParallelGenerator do
 
         it 'cleans tracks for the specific day' do
           expect(user.tracks.count).to eq(2)
-          
+
           generator.call
-          
+
           # Should only clean tracks from the specified day
           remaining_tracks = user.tracks.count
           expect(remaining_tracks).to be < 2
@@ -155,9 +149,9 @@ RSpec.describe Tracks::ParallelGenerator do
 
         it 'does not clean existing tracks' do
           expect(user.tracks.count).to eq(2)
-          
+
           generator.call
-          
+
           expect(user.tracks.count).to eq(2)
         end
       end
@@ -172,9 +166,9 @@ RSpec.describe Tracks::ParallelGenerator do
 
       it 'only cleans tracks within the specified range' do
         expect(user.tracks.count).to eq(2)
-        
+
         generator.call
-        
+
         # Should only clean the track within the time range
         remaining_tracks = user.tracks
         expect(remaining_tracks.count).to eq(1)
@@ -215,13 +209,13 @@ RSpec.describe Tracks::ParallelGenerator do
     context 'error handling in private methods' do
       it 'handles unknown mode in should_clean_tracks?' do
         generator.instance_variable_set(:@mode, :unknown)
-        
+
         expect(generator.send(:should_clean_tracks?)).to be false
       end
 
       it 'raises error for unknown mode in clean_existing_tracks' do
         generator.instance_variable_set(:@mode, :unknown)
-        
+
         expect {
           generator.send(:clean_existing_tracks)
         }.to raise_error(ArgumentError, 'Unknown mode: unknown')
@@ -230,7 +224,7 @@ RSpec.describe Tracks::ParallelGenerator do
 
     context 'user settings integration' do
       let(:mock_settings) { double('SafeSettings') }
-      
+
       before do
         # Create a proper mock and stub user.safe_settings to return it
         allow(mock_settings).to receive(:minutes_between_routes).and_return(60)

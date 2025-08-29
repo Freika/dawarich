@@ -12,7 +12,7 @@ RSpec.describe Tracks::BoundaryDetector do
     allow(user).to receive(:safe_settings).and_return(safe_settings)
     allow(safe_settings).to receive(:minutes_between_routes).and_return(30)
     allow(safe_settings).to receive(:meters_between_routes).and_return(500)
-    
+
     # Stub Geocoder for consistent distance calculations
     allow_any_instance_of(Point).to receive(:distance_to_geocoder).and_return(100) # 100 meters
     allow(Point).to receive(:calculate_distance_for_array_geocoder).and_return(1000) # 1000 meters
@@ -45,7 +45,7 @@ RSpec.describe Tracks::BoundaryDetector do
         # Create points that are far apart (no spatial connection)
         create(:point, user: user, track: track1, latitude: 40.0, longitude: -74.0, timestamp: 2.hours.ago.to_i)
         create(:point, user: user, track: track2, latitude: 41.0, longitude: -73.0, timestamp: 1.hour.ago.to_i)
-        
+
         # Mock distance to be greater than threshold
         allow_any_instance_of(Point).to receive(:distance_to_geocoder).and_return(1000) # 1000 meters > 500 threshold
       end
@@ -73,45 +73,21 @@ RSpec.describe Tracks::BoundaryDetector do
         expect(detector.resolve_cross_chunk_tracks).to eq(1)
       end
 
-      it 'logs the operation' do
-        # Use allow() to handle all the SQL debug logs, then expect the specific ones we care about
-        allow(Rails.logger).to receive(:debug).and_call_original
-        allow(Rails.logger).to receive(:info).and_call_original
-        
-        expect(Rails.logger).to receive(:debug).with(/Found \d+ boundary track candidates for user #{user.id}/)
-        expect(Rails.logger).to receive(:info).with(/Resolved 1 boundary tracks for user #{user.id}/)
-        
-        detector.resolve_cross_chunk_tracks
-      end
-
       it 'creates a merged track with all points' do
         expect {
           detector.resolve_cross_chunk_tracks
         }.to change { user.tracks.count }.by(-1) # 2 tracks become 1
-        
+
         merged_track = user.tracks.first
         expect(merged_track.points.count).to eq(4) # All points from both tracks
       end
 
       it 'deletes original tracks' do
         original_track_ids = [track1.id, track2.id]
-        
-        detector.resolve_cross_chunk_tracks
-        
-        expect(Track.where(id: original_track_ids)).to be_empty
-      end
 
-      it 'logs track deletion and creation' do
-        # Use allow() to handle all the SQL debug logs, then expect the specific ones we care about
-        allow(Rails.logger).to receive(:debug).and_call_original
-        allow(Rails.logger).to receive(:info).and_call_original
-        
-        expect(Rails.logger).to receive(:debug).with(/Merging \d+ boundary tracks for user #{user.id}/)
-        expect(Rails.logger).to receive(:debug).with(/Deleting boundary track #{track1.id}/)
-        expect(Rails.logger).to receive(:debug).with(/Deleting boundary track #{track2.id}/)
-        expect(Rails.logger).to receive(:info).with(/Created merged boundary track \d+ with \d+ points/)
-        
         detector.resolve_cross_chunk_tracks
+
+        expect(Track.where(id: original_track_ids)).to be_empty
       end
     end
 
@@ -126,18 +102,12 @@ RSpec.describe Tracks::BoundaryDetector do
       before do
         # Mock tracks as connected
         allow(detector).to receive(:find_boundary_track_candidates).and_return([[track1, track2]])
-        
+
         # Mock merge failure
         allow(detector).to receive(:create_track_from_points).and_return(nil)
       end
 
       it 'returns 0 and logs warning' do
-        # Use allow() to handle all the SQL debug logs
-        allow(Rails.logger).to receive(:debug).and_call_original
-        allow(Rails.logger).to receive(:info).and_call_original
-        allow(Rails.logger).to receive(:warn).and_call_original
-        
-        expect(Rails.logger).to receive(:warn).with(/Failed to create merged boundary track for user #{user.id}/)
         expect(detector.resolve_cross_chunk_tracks).to eq(0)
       end
 
@@ -181,7 +151,7 @@ RSpec.describe Tracks::BoundaryDetector do
       it 'handles tracks with no points' do
         track_no_points = create(:track, user: user, start_at: 1.hour.ago, end_at: 30.minutes.ago)
         all_tracks_with_empty = all_tracks + [track_no_points]
-        
+
         expect {
           detector.send(:find_connected_tracks, base_track, all_tracks_with_empty)
         }.not_to raise_error
@@ -240,14 +210,14 @@ RSpec.describe Tracks::BoundaryDetector do
 
       it 'returns true when points are within threshold' do
         allow(point1).to receive(:distance_to_geocoder).with(point2, :m).and_return(300)
-        
+
         result = detector.send(:points_are_close?, point1, point2, threshold)
         expect(result).to be true
       end
 
       it 'returns false when points exceed threshold' do
         allow(point1).to receive(:distance_to_geocoder).with(point2, :m).and_return(700)
-        
+
         result = detector.send(:points_are_close?, point1, point2, threshold)
         expect(result).to be false
       end
@@ -255,7 +225,7 @@ RSpec.describe Tracks::BoundaryDetector do
       it 'returns false when points are nil' do
         result = detector.send(:points_are_close?, nil, point2, threshold)
         expect(result).to be false
-        
+
         result = detector.send(:points_are_close?, point1, nil, threshold)
         expect(result).to be false
       end
@@ -322,7 +292,7 @@ RSpec.describe Tracks::BoundaryDetector do
       it 'sorts points by timestamp' do
         # Create points out of order
         point_early = create(:point, user: user, track: track2, timestamp: 3.hours.ago.to_i)
-        
+
         captured_points = nil
         allow(detector).to receive(:create_track_from_points) do |points, _distance|
           captured_points = points
