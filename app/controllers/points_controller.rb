@@ -24,7 +24,7 @@ class PointsController < ApplicationController
                 alert: 'No points selected.',
                 status: :see_other and return if point_ids.blank?
 
-    current_user.tracked_points.where(id: point_ids).destroy_all
+    current_user.points.where(id: point_ids).destroy_all
 
     redirect_to points_url(preserved_params),
                 notice: 'Points were successfully destroyed.',
@@ -58,7 +58,7 @@ class PointsController < ApplicationController
   end
 
   def user_points
-    current_user.tracked_points
+    current_user.points
   end
 
   def order_by

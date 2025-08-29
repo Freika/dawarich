@@ -35,13 +35,13 @@ RSpec.describe Users::ImportData::Points, type: :service do
 
       it 'assigns the correct country association' do
         service.call
-        point = user.tracked_points.last
+        point = user.points.last
         expect(point.country).to eq(country)
       end
 
       it 'excludes the string country field from attributes' do
         service.call
-        point = user.tracked_points.last
+        point = user.points.last
         # The country association should be set, not the string attribute
         expect(point.read_attribute(:country)).to be_nil
         expect(point.country).to eq(country)
@@ -68,7 +68,7 @@ RSpec.describe Users::ImportData::Points, type: :service do
       it 'does not create country and leaves country_id nil' do
         expect { service.call }.not_to change(Country, :count)
 
-        point = user.tracked_points.last
+        point = user.points.last
         expect(point.country_id).to be_nil
         expect(point.city).to eq('Berlin')
       end
@@ -126,10 +126,10 @@ RSpec.describe Users::ImportData::Points, type: :service do
 
       it 'imports valid points and reconstructs lonlat when needed' do
         expect(service.call).to eq(2)  # Two valid points (original + reconstructed)
-        expect(user.tracked_points.count).to eq(2)
+        expect(user.points.count).to eq(2)
 
         # Check that lonlat was reconstructed properly
-        munich_point = user.tracked_points.find_by(city: 'Munich')
+        munich_point = user.points.find_by(city: 'Munich')
         expect(munich_point).to be_present
         expect(munich_point.lonlat.to_s).to match(/POINT\s*\(11\.582\s+48\.1351\)/)
       end

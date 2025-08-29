@@ -2,9 +2,17 @@
 
 class ApiController < ApplicationController
   skip_before_action :verify_authenticity_token
+  before_action :set_version_header
   before_action :authenticate_api_key
 
   private
+
+  def set_version_header
+    message = "Hey, I\'m alive#{current_api_user ? ' and authenticated' : ''}!"
+
+    response.set_header('X-Dawarich-Response', message)
+    response.set_header('X-Dawarich-Version', APP_VERSION)
+  end
 
   def authenticate_api_key
     return head :unauthorized unless current_api_user

@@ -23,9 +23,9 @@ class Tracks::CleanupJob < ApplicationJob
   private
 
   def users_with_old_untracked_points(older_than)
-    User.active.joins(:tracked_points)
-        .where(tracked_points: { track_id: nil, timestamp: ..older_than.to_i })
-        .having('COUNT(tracked_points.id) >= 2') # Only users with enough points for tracks
+    User.active.joins(:points)
+        .where(points: { track_id: nil, timestamp: ..older_than.to_i })
+        .having('COUNT(points.id) >= 2') # Only users with enough points for tracks
         .group(:id)
   end
 end

@@ -5,7 +5,8 @@ import { showFlashMessage } from "../maps/helpers"
 export default class extends Controller {
   static targets = ["input", "progress", "progressBar", "submit", "form"]
   static values = {
-    url: String
+    url: String,
+    userTrial: Boolean
   }
 
   connect() {
@@ -49,6 +50,22 @@ export default class extends Controller {
   upload() {
     const files = this.inputTarget.files
     if (files.length === 0) return
+
+    // Check file size limits for trial users
+    if (this.userTrialValue) {
+      const MAX_FILE_SIZE = 11 * 1024 * 1024 // 11MB in bytes
+      const oversizedFiles = Array.from(files).filter(file => file.size > MAX_FILE_SIZE)
+
+      if (oversizedFiles.length > 0) {
+        const fileNames = oversizedFiles.map(f => f.name).join(', ')
+        const message = `File size limit exceeded. Trial users can only upload files up to 10MB. Oversized files: ${fileNames}`
+        showFlashMessage('error', message)
+
+        // Clear the file input
+        this.inputTarget.value = ''
+        return
+      }
+    }
 
     console.log(`Uploading ${files.length} files`)
     this.isUploading = true

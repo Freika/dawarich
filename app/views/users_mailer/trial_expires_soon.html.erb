@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #f59e0b; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .urgent { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⏰ Your Trial Expires Soon</h1>
+    </div>
+    <div class="content">
+      <p>Hi <%= @user.email %>,</p>
+
+      <div class="urgent">
+        <p><strong>⚠️ Important:</strong> Your Dawarich trial expires in just <strong>2 days</strong>!</p>
+      </div>
+
+      <p>We hope you've enjoyed exploring your location data with Dawarich over the past 5 days.</p>
+
+      <p>To continue using all of Dawarich's powerful features after your trial ends, you'll need to subscribe to a plan.</p>
+
+      <h3>✨ What you'll keep with a subscription:</h3>
+      <ul>
+        <li>Location tracking and data storage</li>
+        <li>Travel analytics and insights</li>
+        <li>Data export in multiple formats</li>
+        <li>Beautiful interactive maps</li>
+        <li>Visit detection and places management</li>
+      </ul>
+
+      <a href="https://my.dawarich.app?utm_source=email&utm_medium=email&utm_campaign=trial_expires_soon&utm_content=subscribe_now" class="cta">Subscribe Now</a>
+
+      <p>Don't lose access to your location insights. Subscribe today and continue your journey with Dawarich!</p>
+
+      <p>Questions? Drop us a message at hi@dawarich.app or just reply to this email.</p>
+
+      <p>Best regards,<br>
+      Evgenii from Dawarich</p>
+    </div>
+  </div>
+</body>
+</html>

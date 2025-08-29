@@ -18,7 +18,7 @@ class BulkVisitsSuggestingJob < ApplicationJob
 
     users.active.find_each do |user|
       next unless user.safe_settings.visits_suggestions_enabled?
-      next if user.tracked_points.empty?
+      next unless user.points_count.positive?
 
       schedule_chunked_jobs(user, time_chunks)
     end

@@ -10,7 +10,8 @@ class Photos::Thumbnail
   end
 
   def call
-    raise unsupported_source_error unless SUPPORTED_SOURCES.include?(source)
+    raise ArgumentError, 'Photo source cannot be nil' if source.nil?
+    unsupported_source_error unless SUPPORTED_SOURCES.include?(source)
 
     HTTParty.get(request_url, headers: headers)
   end

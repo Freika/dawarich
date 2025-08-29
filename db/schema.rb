@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_23_125940) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -99,7 +99,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
   create_table "imports", force: :cascade do |t|
     t.string "name", null: false
     t.bigint "user_id", null: false
-    t.integer "source", default: 0
+    t.integer "source"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "raw_points", default: 0
@@ -230,7 +230,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.datetime "end_at", null: false
     t.bigint "user_id", null: false
     t.geometry "original_path", limit: {srid: 0, type: "line_string"}, null: false
-    t.integer "distance"
+    t.decimal "distance", precision: 8, scale: 2
     t.float "avg_speed"
     t.integer "duration"
     t.integer "elevation_gain"
@@ -274,6 +274,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.string "last_sign_in_ip"
     t.integer "status", default: 0
     t.datetime "active_until"
+    t.integer "points_count", default: 0, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end

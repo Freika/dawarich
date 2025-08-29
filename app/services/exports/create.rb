@@ -35,7 +35,7 @@ class Exports::Create
 
   def time_framed_points
     user
-      .tracked_points
+      .points
       .where(timestamp: start_at.to_i..end_at.to_i)
       .order(timestamp: :asc)
   end

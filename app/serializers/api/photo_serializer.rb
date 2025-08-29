@@ -68,6 +68,8 @@ class Api::PhotoSerializer
       photo.dig('exifInfo', 'orientation') == '6' ? 'portrait' : 'landscape'
     when 'photoprism'
       photo['Portrait'] ? 'portrait' : 'landscape'
+    else
+      'landscape' # default orientation for nil or unknown source
     end
   end
 end
