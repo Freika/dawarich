@@ -15,7 +15,7 @@ class CreateTracksFromPoints < ActiveRecord::Migration[8.0]
 
         # Use explicit parameters for bulk historical processing:
         # - No time limits (start_at: nil, end_at: nil) = process ALL historical data
-        Tracks::CreateJob.perform_later(
+        Tracks::ParallelGeneratorJob.perform_later(
           user.id,
           start_at: nil,
           end_at: nil,
