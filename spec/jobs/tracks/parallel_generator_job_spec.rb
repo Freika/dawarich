@@ -8,9 +8,10 @@ RSpec.describe Tracks::ParallelGeneratorJob do
 
   before do
     Rails.cache.clear
-    # Stub user settings
+    # Stub user settings that might be called during point creation or track processing
     allow_any_instance_of(User).to receive_message_chain(:safe_settings, :minutes_between_routes).and_return(30)
     allow_any_instance_of(User).to receive_message_chain(:safe_settings, :meters_between_routes).and_return(500)
+    allow_any_instance_of(User).to receive_message_chain(:safe_settings, :live_map_enabled).and_return(false)
   end
 
   describe 'queue configuration' do
@@ -36,6 +37,9 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       end
 
       it 'logs the start of the operation' do
+        # Allow other logs to pass through
+        allow(Rails.logger).to receive(:info).and_call_original
+        
         expect(Rails.logger).to receive(:info)
           .with("Starting parallel track generation for user #{user_id} (mode: bulk)")
 
@@ -43,6 +47,9 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       end
 
       it 'logs successful session creation' do
+        # Allow other logs to pass through
+        allow(Rails.logger).to receive(:info).and_call_original
+        
         expect(Rails.logger).to receive(:info)
           .with(/Parallel track generation initiated for user #{user_id}/)
 
@@ -72,6 +79,10 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       let(:user_no_points) { create(:user) }
 
       it 'logs a warning' do
+        # Allow other logs to pass through
+        allow(Rails.logger).to receive(:info).and_call_original
+        allow(Rails.logger).to receive(:warn).and_call_original
+        
         expect(Rails.logger).to receive(:warn)
           .with("No tracks to generate for user #{user_no_points.id} (no time chunks created)")
 
@@ -118,6 +129,10 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       end
 
       it 'logs the error' do
+        # Allow other logs to pass through
+        allow(Rails.logger).to receive(:info).and_call_original
+        allow(Rails.logger).to receive(:error).and_call_original
+        
         expect(Rails.logger).to receive(:error)
           .with("Parallel track generation failed for user #{user_id}: #{error_message}")
 

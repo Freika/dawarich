@@ -18,13 +18,16 @@ class Tracks::ParallelGeneratorJob < ApplicationJob
       chunk_size: chunk_size
     ).call
 
-    if session
+    if session && session != 0
       Rails.logger.info "Parallel track generation initiated for user #{user_id} (session: #{session.session_id})"
     else
       Rails.logger.warn "No tracks to generate for user #{user_id} (no time chunks created)"
       create_info_notification(user, 0)
     end
 
+  rescue ActiveRecord::RecordNotFound => e
+    # Re-raise RecordNotFound as it indicates a programming error
+    raise
   rescue StandardError => e
     ExceptionReporter.call(e, 'Failed to start parallel track generation')
     Rails.logger.error "Parallel track generation failed for user #{user_id}: #{e.message}"
