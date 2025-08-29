@@ -144,16 +144,14 @@ module Tracks::Segmentation
   def calculate_km_distance_between_points_geocoder(point1, point2)
     begin
       distance = point1.distance_to_geocoder(point2, :km)
-      
+
       # Validate result
       if !distance.finite? || distance < 0
-        Rails.logger.warn "Invalid distance calculated between points: #{point1.id} (#{point1.latitude}, #{point1.longitude}) and #{point2.id} (#{point2.latitude}, #{point2.longitude})"
         return 0
       end
-      
+
       distance
     rescue StandardError => e
-      Rails.logger.error "Error calculating distance between points #{point1.id} and #{point2.id}: #{e.message}"
       0
     end
   end

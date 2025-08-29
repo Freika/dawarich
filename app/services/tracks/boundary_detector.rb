@@ -17,16 +17,11 @@ class Tracks::BoundaryDetector
     boundary_candidates = find_boundary_track_candidates
     return 0 if boundary_candidates.empty?
 
-    Rails.logger.debug "Found #{boundary_candidates.size} boundary track candidates for user #{user.id}"
-
     resolved_count = 0
     boundary_candidates.each do |group|
-      if merge_boundary_tracks(group)
-        resolved_count += 1
-      end
+      resolved_count += 1 if merge_boundary_tracks(group)
     end
 
-    Rails.logger.info "Resolved #{resolved_count} boundary tracks for user #{user.id}"
     resolved_count
   end
 
@@ -49,11 +44,11 @@ class Tracks::BoundaryDetector
     recent_tracks.each do |track|
       # Look for tracks that end close to where another begins
       connected_tracks = find_connected_tracks(track, recent_tracks)
-      
+
       if connected_tracks.any?
         # Create or extend a boundary group
         existing_group = potential_groups.find { |group| group.include?(track) }
-        
+
         if existing_group
           existing_group.concat(connected_tracks).uniq!
         else
@@ -71,60 +66,60 @@ class Tracks::BoundaryDetector
     connected = []
     track_end_time = track.end_at.to_i
     track_start_time = track.start_at.to_i
-    
+
     # Look for tracks that start shortly after this one ends (within 30 minutes)
     time_window = 30.minutes.to_i
-    
+
     all_tracks.each do |candidate|
       next if candidate.id == track.id
-      
+
       candidate_start = candidate.start_at.to_i
       candidate_end = candidate.end_at.to_i
-      
+
       # Check if tracks are temporally adjacent
       if (candidate_start - track_end_time).abs <= time_window ||
          (track_start_time - candidate_end).abs <= time_window
-        
+
         # Check if they're spatially connected
         if tracks_spatially_connected?(track, candidate)
           connected << candidate
         end
       end
     end
-    
+
     connected
   end
 
   # Check if two tracks are spatially connected (endpoints are close)
   def tracks_spatially_connected?(track1, track2)
     return false unless track1.points.exists? && track2.points.exists?
-    
+
     # Get endpoints of both tracks
     track1_start = track1.points.order(:timestamp).first
     track1_end = track1.points.order(:timestamp).last
     track2_start = track2.points.order(:timestamp).first
     track2_end = track2.points.order(:timestamp).last
-    
+
     # Check various connection scenarios
     connection_threshold = distance_threshold_meters
-    
+
     # Track1 end connects to Track2 start
     return true if points_are_close?(track1_end, track2_start, connection_threshold)
-    
-    # Track2 end connects to Track1 start  
+
+    # Track2 end connects to Track1 start
     return true if points_are_close?(track2_end, track1_start, connection_threshold)
-    
+
     # Tracks overlap or are very close
     return true if points_are_close?(track1_start, track2_start, connection_threshold) ||
                    points_are_close?(track1_end, track2_end, connection_threshold)
-    
+
     false
   end
 
   # Check if two points are within the specified distance
   def points_are_close?(point1, point2, threshold_meters)
     return false unless point1 && point2
-    
+
     distance_meters = point1.distance_to_geocoder(point2, :m)
     distance_meters <= threshold_meters
   end
@@ -132,59 +127,52 @@ class Tracks::BoundaryDetector
   # Validate that a group of tracks represents a legitimate boundary case
   def valid_boundary_group?(group)
     return false if group.size < 2
-    
+
     # Check that tracks are sequential in time
     sorted_tracks = group.sort_by(&:start_at)
-    
+
     # Ensure no large time gaps that would indicate separate journeys
     max_gap = 1.hour.to_i
-    
+
     sorted_tracks.each_cons(2) do |track1, track2|
       time_gap = track2.start_at.to_i - track1.end_at.to_i
       return false if time_gap > max_gap
     end
-    
+
     true
   end
 
   # Merge a group of boundary tracks into a single track
   def merge_boundary_tracks(track_group)
     return false if track_group.size < 2
-    
-    Rails.logger.debug "Merging #{track_group.size} boundary tracks for user #{user.id}"
-    
+
     # Sort tracks by start time
     sorted_tracks = track_group.sort_by(&:start_at)
-    
+
     # Collect all points from all tracks
     all_points = []
     sorted_tracks.each do |track|
       track_points = track.points.order(:timestamp).to_a
       all_points.concat(track_points)
     end
-    
+
     # Remove duplicates and sort by timestamp
     unique_points = all_points.uniq(&:id).sort_by(&:timestamp)
-    
+
     return false if unique_points.size < 2
-    
+
     # Calculate merged track distance
     merged_distance = Point.calculate_distance_for_array_geocoder(unique_points, :m)
-    
+
     # Create new merged track
     merged_track = create_track_from_points(unique_points, merged_distance)
-    
+
     if merged_track
       # Delete the original boundary tracks
-      sorted_tracks.each do |track|
-        Rails.logger.debug "Deleting boundary track #{track.id} (merged into #{merged_track.id})"
-        track.destroy
-      end
-      
-      Rails.logger.info "Created merged boundary track #{merged_track.id} with #{unique_points.size} points"
+      sorted_tracks.each(&:destroy)
+
       true
     else
-      Rails.logger.warn "Failed to create merged boundary track for user #{user.id}"
       false
     end
   end

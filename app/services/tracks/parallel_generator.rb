@@ -34,7 +34,7 @@ class Tracks::ParallelGenerator
     enqueue_boundary_resolver(session.session_id, time_chunks.size)
 
     Rails.logger.info "Started parallel track generation for user #{user.id} with #{time_chunks.size} chunks (session: #{session.session_id})"
-    
+
     session
   end
 
@@ -54,7 +54,7 @@ class Tracks::ParallelGenerator
       end_at: end_at,
       chunk_size: chunk_size
     )
-    
+
     chunker.call
   end
 
@@ -88,7 +88,7 @@ class Tracks::ParallelGenerator
   def enqueue_boundary_resolver(session_id, chunk_count)
     # Delay based on estimated processing time (30 seconds per chunk + buffer)
     estimated_delay = [chunk_count * 30.seconds, 5.minutes].max
-    
+
     Tracks::BoundaryResolverJob.set(wait: estimated_delay).perform_later(
       user.id,
       session_id
@@ -105,20 +105,14 @@ class Tracks::ParallelGenerator
   end
 
   def clean_bulk_tracks
-    scope = user.tracks
-    scope = scope.where(start_at: time_range) if time_range_defined?
-    
-    Rails.logger.info "Cleaning #{scope.count} existing tracks for bulk regeneration (user: #{user.id})"
-    scope.destroy_all
+    user.tracks.where(start_at: time_range).destroy_all if time_range_defined?
   end
 
   def clean_daily_tracks
     day_range = daily_time_range
     range = Time.zone.at(day_range.begin)..Time.zone.at(day_range.end)
 
-    scope = user.tracks.where(start_at: range)
-    Rails.logger.info "Cleaning #{scope.count} existing tracks for daily regeneration (user: #{user.id})"
-    scope.destroy_all
+    user.tracks.where(start_at: range).destroy_all
   end
 
   def time_range_defined?

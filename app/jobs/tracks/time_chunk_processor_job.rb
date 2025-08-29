@@ -13,18 +13,13 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
     @session_manager = Tracks::SessionManager.new(user_id, session_id)
     @chunk_data = chunk_data
 
-    Rails.logger.debug "Processing chunk #{chunk_data[:chunk_id]} for user #{user_id} (session: #{session_id})"
-
     return unless session_exists?
 
     tracks_created = process_chunk
     update_session_progress(tracks_created)
 
-    Rails.logger.debug "Chunk #{chunk_data[:chunk_id]} processed: #{tracks_created} tracks created"
-
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to process time chunk for user #{user_id}")
-    Rails.logger.error "Chunk processing failed for user #{user_id}, chunk #{chunk_data[:chunk_id]}: #{e.message}"
 
     mark_session_failed(e.message)
   end
@@ -117,8 +112,6 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
 
       track
     rescue StandardError => e
-      Rails.logger.error "Error calculating distance for track in chunk #{chunk_data[:chunk_id]}: #{e.message}"
-      Rails.logger.debug "Point details: #{points.map { |p| { id: p.id, lat: p.latitude, lon: p.longitude, timestamp: p.timestamp } }.inspect}"
       nil
     end
   end
