@@ -21,56 +21,24 @@ module Distanceable
       return 0 if points.length < 2
 
       total_meters = points.each_cons(2).sum do |p1, p2|
-        # Extract coordinates from lonlat (source of truth)
+        next 0 unless valid_point_pair?(p1, p2)
+
         begin
-          # Check if lonlat exists and is valid
-          if p1.lonlat.nil? || p2.lonlat.nil?
-            next 0
-          end
-
-          lat1, lon1 = p1.lat, p1.lon
-          lat2, lon2 = p2.lat, p2.lon
-
-          # Check for nil coordinates extracted from lonlat
-          if lat1.nil? || lon1.nil? || lat2.nil? || lon2.nil?
-            next 0
-          end
-
-          # Check for NaN or infinite coordinates
-          if [lat1, lon1, lat2, lon2].any? { |coord| !coord.finite? }
-            next 0
-          end
-
-          # Check for valid latitude/longitude ranges
-          if lat1.abs > 90 || lat2.abs > 90 || lon1.abs > 180 || lon2.abs > 180
-            next 0
-          end
-
           distance_km = Geocoder::Calculations.distance_between(
-            [lat1, lon1],
-            [lat2, lon2],
+            [p1.lat, p1.lon],
+            [p2.lat, p2.lon],
             units: :km
           )
-
-          # Check if Geocoder returned NaN or infinite value
-          if !distance_km.finite?
-            next 0
-          end
-
-          distance_km * 1000 # Convert km to meters
-        rescue StandardError => e
+        rescue StandardError
           next 0
         end
+
+        # Check if Geocoder returned valid value
+        distance_km.finite? ? distance_km * 1000 : 0 # Convert km to meters
       end
 
       result = total_meters.to_f / ::DISTANCE_UNITS[unit.to_sym]
-
-      # Final validation of result
-      if !result.finite?
-        return 0
-      end
-
-      result
+      result.finite? ? result : 0
     end
 
     private
@@ -229,6 +197,25 @@ module Distanceable
   end
 
   private
+
+  def valid_point_pair?(p1, p2)
+    return false if p1.lonlat.nil? || p2.lonlat.nil?
+
+    lat1, lon1 = p1.lat, p1.lon
+    lat2, lon2 = p2.lat, p2.lon
+
+    # Check for nil coordinates
+    return false if lat1.nil? || lon1.nil? || lat2.nil? || lon2.nil?
+
+    # Check for NaN or infinite coordinates
+    coords = [lat1, lon1, lat2, lon2]
+    return false if coords.any? { |coord| !coord.finite? }
+
+    # Check for valid latitude/longitude ranges
+    return false if lat1.abs > 90 || lat2.abs > 90 || lon1.abs > 180 || lon2.abs > 180
+
+    true
+  end
 
   def extract_point(point)
     case point

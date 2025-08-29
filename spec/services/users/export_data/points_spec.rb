@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Users::ExportData::Points, type: :service do
+  before do
+    allow_any_instance_of(Point).to receive(:trigger_incremental_track_generation)
+  end
+
   let(:user) { create(:user) }
   let(:service) { described_class.new(user) }
 

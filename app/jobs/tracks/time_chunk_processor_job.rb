@@ -11,7 +11,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   def perform(user_id, session_id, chunk_data)
     @user = User.find(user_id)
     @session_manager = Tracks::SessionManager.new(user_id, session_id)
-    @chunk_data = chunk_data
+    @chunk_data = chunk_data.with_indifferent_access
 
     return unless session_exists?
 
@@ -58,6 +58,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
 
   def load_chunk_points
     user.points
+        .without_raw_data
         .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
         .order(:timestamp)
   end
@@ -98,7 +99,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
       # Additional validation for the distance result
       if !distance.finite? || distance < 0
         Rails.logger.error "Invalid distance calculated (#{distance}) for #{points.size} points in chunk #{chunk_data[:chunk_id]}"
-        Rails.logger.debug "Point coordinates: #{points.map { |p| [p.latitude, p.longitude] }.inspect}"
+        Rails.logger.debug "Point coordinates: #{points.map { |p| [p.lat, p.lon] }.inspect}"
         return nil
       end
 

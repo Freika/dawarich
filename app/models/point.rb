@@ -34,7 +34,9 @@ class Point < ApplicationRecord
   after_create :set_country
   after_create_commit :broadcast_coordinates
   after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? }
-  after_commit :recalculate_track, on: :update, if: -> { track.present? }
+  after_commit :recalculate_track,
+               on: :update,
+               if: -> { track_id.present? && (saved_change_to_lonlat? || saved_change_to_timestamp? || saved_change_to_track_id?) }
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
