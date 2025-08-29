@@ -30,10 +30,10 @@ cache_preheating_job:
   class: "Cache::PreheatingJob"
   queue: default
 
-# tracks_cleanup_job:
-#   cron: "0 2 * * 0" # every Sunday at 02:00
-#   class: "Tracks::CleanupJob"
-#   queue: tracks
+tracks_daily_generation_job:
+  cron: "0 2 * * *" # every day at 02:00
+  class: "Tracks::DailyGenerationJob"
+  queue: tracks
 
 place_name_fetching_job:
   cron: "30 0 * * *" # every day at 00:30

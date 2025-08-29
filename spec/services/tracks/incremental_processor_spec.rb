@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::IncrementalProcessor do
+  before do
+    # Mock the incremental processing callback to avoid double calls
+    allow_any_instance_of(Point).to receive(:trigger_incremental_track_generation)
+  end
   let(:user) { create(:user) }
   let(:safe_settings) { user.safe_settings }
 
@@ -18,7 +22,7 @@ RSpec.describe Tracks::IncrementalProcessor do
       let(:processor) { described_class.new(user, imported_point) }
 
       it 'does not process imported points' do
-        expect(Tracks::CreateJob).not_to receive(:perform_later)
+        expect(Tracks::ParallelGeneratorJob).not_to receive(:perform_later)
 
         processor.call
       end
@@ -29,7 +33,7 @@ RSpec.describe Tracks::IncrementalProcessor do
       let(:processor) { described_class.new(user, new_point) }
 
       it 'processes first point' do
-        expect(Tracks::CreateJob).to receive(:perform_later)
+        expect(Tracks::ParallelGeneratorJob).to receive(:perform_later)
           .with(user.id, start_at: nil, end_at: nil, mode: :incremental)
         processor.call
       end
@@ -46,7 +50,7 @@ RSpec.describe Tracks::IncrementalProcessor do
       end
 
       it 'processes when time threshold exceeded' do
-        expect(Tracks::CreateJob).to receive(:perform_later)
+        expect(Tracks::ParallelGeneratorJob).to receive(:perform_later)
           .with(user.id, start_at: nil, end_at: Time.zone.at(previous_point.timestamp), mode: :incremental)
         processor.call
       end
@@ -64,7 +68,7 @@ RSpec.describe Tracks::IncrementalProcessor do
       end
 
       it 'uses existing track end time as start_at' do
-        expect(Tracks::CreateJob).to receive(:perform_later)
+        expect(Tracks::ParallelGeneratorJob).to receive(:perform_later)
           .with(user.id, start_at: existing_track.end_at, end_at: Time.zone.at(previous_point.timestamp), mode: :incremental)
         processor.call
       end
@@ -87,7 +91,7 @@ RSpec.describe Tracks::IncrementalProcessor do
       end
 
       it 'processes when distance threshold exceeded' do
-        expect(Tracks::CreateJob).to receive(:perform_later)
+        expect(Tracks::ParallelGeneratorJob).to receive(:perform_later)
           .with(user.id, start_at: nil, end_at: Time.zone.at(previous_point.timestamp), mode: :incremental)
         processor.call
       end
@@ -106,7 +110,7 @@ RSpec.describe Tracks::IncrementalProcessor do
       end
 
       it 'does not process when thresholds not exceeded' do
-        expect(Tracks::CreateJob).not_to receive(:perform_later)
+        expect(Tracks::ParallelGeneratorJob).not_to receive(:perform_later)
         processor.call
       end
     end
