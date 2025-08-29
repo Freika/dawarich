@@ -10,7 +10,7 @@ class Api::V1::PointsController < ApiController
     order    = params[:order] || 'desc'
 
     points = current_api_user
-             .tracked_points
+             .points
              .where(timestamp: start_at..end_at)
              .order(timestamp: order)
              .page(params[:page])
@@ -31,7 +31,7 @@ class Api::V1::PointsController < ApiController
   end
 
   def update
-    point = current_api_user.tracked_points.find(params[:id])
+    point = current_api_user.points.find(params[:id])
 
     point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
 
@@ -39,7 +39,7 @@ class Api::V1::PointsController < ApiController
   end
 
   def destroy
-    point = current_api_user.tracked_points.find(params[:id])
+    point = current_api_user.points.find(params[:id])
     point.destroy
 
     render json: { message: 'Point deleted successfully' }

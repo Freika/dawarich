@@ -20,7 +20,9 @@
           </details>
         </li>
         <% if user_signed_in? && current_user.can_subscribe? %>
-          <li><%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %></li>
+          <li>
+            <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %>
+          </li>
         <% end %>
       </ul>
     </div>
@@ -71,7 +73,15 @@
     <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
       <% if user_signed_in? %>
         <% if current_user.can_subscribe? %>
-          <li><%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %></li>
+          <div class="join">
+            <%= link_to "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" do %>
+              <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
+                <span class="tooltip tooltip-bottom" data-tip="Your trial will end in <%= distance_of_time_in_words(current_user.active_until, Time.current) %>"><%= (current_user.active_until.to_date - Time.current.to_date).to_i %> days remaining</span>
+              </span><span class="join-item btn btn-sm btn-success">
+                Subscribe
+              </span>
+            <% end %>
+          </div>
         <% end %>
 
         <div class="dropdown dropdown-end dropdown-bottom dropdown-hover"
@@ -113,6 +123,9 @@
           <details>
             <summary>
               <%= "#{current_user.email}" %>
+              <% if onboarding_modal_showable?(current_user) %>
+                <span class="indicator-item badge badge-secondary badge-xs"></span>
+              <% end %>
               <% if current_user.admin? %>
                 <span class='tooltip tooltip-bottom' data-tip="You're an admin, Harry!">⭐️</span>
               <% end %>
@@ -123,6 +136,14 @@
               <% if !DawarichSettings.self_hosted? %>
                 <li><%= link_to 'Subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
               <% end %>
+              <li>
+                <a onclick="getting_started.showModal()" class="relative">
+                  Get started
+                  <% if onboarding_modal_showable?(current_user) %>
+                    <span class="indicator-item badge badge-secondary badge-xs"></span>
+                  <% end %>
+                </a>
+              </li>
 
               <li><%= link_to 'Logout', destroy_user_session_path, method: :delete, data: { turbo: false } %></li>
             </ul>
@@ -137,4 +158,3 @@
     </ul>
   </div>
 </div>
-

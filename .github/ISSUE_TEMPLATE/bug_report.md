@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+**BEFORE OPENING AN ISSUE, MAKE SURE YOU READ THIS: https://github.com/Freika/dawarich/issues/1382**
+
 **OS & Hardware**
 Provide your software and hardware specs
 

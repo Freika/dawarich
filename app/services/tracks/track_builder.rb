@@ -59,7 +59,8 @@ module Tracks::TrackBuilder
       original_path: build_path(points)
     )
 
-    track.distance  = pre_calculated_distance.round
+    # TODO: Move trips attrs to columns with more precision and range
+    track.distance  = [[pre_calculated_distance.round, 999999.99].min, 0].max
     track.duration  = calculate_duration(points)
     track.avg_speed = calculate_average_speed(track.distance, track.duration)
 
@@ -99,8 +100,10 @@ module Tracks::TrackBuilder
 
     # Speed in meters per second, then convert to km/h for storage
     speed_mps = distance_in_meters.to_f / duration_seconds
+    speed_kmh = (speed_mps * 3.6).round(2) # m/s to km/h
 
-    (speed_mps * 3.6).round(2) # m/s to km/h
+    # Cap the speed to prevent database precision overflow (max 999999.99)
+    [speed_kmh, 999999.99].min
   end
 
   def calculate_elevation_stats(points)

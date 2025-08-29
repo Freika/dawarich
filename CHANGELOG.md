@@ -4,6 +4,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED]
+
+## Fixed
+
+- Default value for `points_count` attribute is now set to 0 in the User model.
+
+# [0.30.12] - 2025-08-26
+
+## Fixed
+
+- Number of user points is not being cached resulting in performance boost on certain pages and operations.
+- Logout bug
+- Api key is now shown even in trial period
+
+
+# [0.30.11] - 2025-08-23
+
+## Changed
+
+- If user already have import with the same name, it will be appended with timestamp during the import process.
+
+## Fixed
+
+- Some types of imports were not being detected correctly and were failing to import. #1678
+
+
+# [0.30.10] - 2025-08-22
+
+## Added
+
+- `POST /api/v1/visits` endpoint.
+- User now can create visits manually on the map.
+- User can now delete a visit by clicking on the delete button in the visit popup.
+- Import failure now throws an internal server error.
+
+## Changed
+
+- Source of imports is now being detected automatically.
+
+
+# [0.30.9] - 2025-08-19
+
+## Changed
+
+- Countries, visited during a trip, are now being calculated from points to improve performance.
+
+## Added
+
+- QR code for API key is implemented but hidden under feature flag until the iOS app supports it.
+- X-Dawarich-Response and X-Dawarich-Version headers are now returned for all API responses.
+- Trial version for cloud users is now available.
+
+
+# [0.30.8] - 2025-08-01
+
+## Fixed
+
+- Fog of war is now working correctly on zoom and map movement. #1603
+- Possibly fixed a bug where visits were no suggested correctly. #984
+- Scratch map is now working correctly.
+
+
 # [0.30.7] - 2025-08-01
 
 ## Fixed
@@ -51,7 +113,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - Prometheus metrics are now available at `/metrics`. Configure `METRICS_USERNAME` and `METRICS_PASSWORD` environment variables for basic authentication, default values are `prometheus` for both. All other prometheus-related environment variables are also necessary.
-
 
 ## Fixed
 

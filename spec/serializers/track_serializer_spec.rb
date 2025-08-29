@@ -123,7 +123,7 @@ RSpec.describe TrackSerializer do
     context 'with very large values' do
       let(:track) do
         create(:track, user: user,
-               distance: 1_000_000.0,
+               distance: 999_999.99,
                avg_speed: 999.99,
                duration: 86_400, # 24 hours in seconds
                elevation_gain: 10_000,
@@ -133,7 +133,7 @@ RSpec.describe TrackSerializer do
       end
 
       it 'handles large values correctly' do
-        expect(serialized_track[:distance]).to eq(1_000_000)
+        expect(serialized_track[:distance]).to eq(999_999)
         expect(serialized_track[:avg_speed]).to eq(999.99)
         expect(serialized_track[:duration]).to eq(86_400)
         expect(serialized_track[:elevation_gain]).to eq(10_000)

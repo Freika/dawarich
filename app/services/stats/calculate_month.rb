@@ -47,7 +47,7 @@ class Stats::CalculateMonth
     return @points if defined?(@points)
 
     @points = user
-              .tracked_points
+              .points
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
               .select(:lonlat, :timestamp)
@@ -60,7 +60,7 @@ class Stats::CalculateMonth
 
   def toponyms
     toponym_points = user
-                      .tracked_points
+                      .points
                       .without_raw_data
                       .where(timestamp: start_timestamp..end_timestamp)
                       .select(:city, :country_name)

@@ -86,7 +86,7 @@ class Tracks::Generator
   end
 
   def load_bulk_points
-    scope = user.tracked_points.order(:timestamp)
+    scope = user.points.order(:timestamp)
     scope = scope.where(timestamp: timestamp_range) if time_range_defined?
 
     scope
@@ -95,7 +95,7 @@ class Tracks::Generator
   def load_incremental_points
     # For incremental mode, we process untracked points
     # If end_at is specified, only process points up to that time
-    scope = user.tracked_points.where(track_id: nil).order(:timestamp)
+    scope = user.points.where(track_id: nil).order(:timestamp)
     scope = scope.where(timestamp: ..end_at.to_i) if end_at.present?
 
     scope
@@ -104,7 +104,7 @@ class Tracks::Generator
   def load_daily_points
     day_range = daily_time_range
 
-    user.tracked_points.where(timestamp: day_range).order(:timestamp)
+    user.points.where(timestamp: day_range).order(:timestamp)
   end
 
   def create_track_from_segment(segment_data)
@@ -195,8 +195,8 @@ class Tracks::Generator
   def bulk_timestamp_range
     return [start_at.to_i, end_at.to_i] if start_at && end_at
 
-    first_point = user.tracked_points.order(:timestamp).first
-    last_point = user.tracked_points.order(:timestamp).last
+    first_point = user.points.order(:timestamp).first
+    last_point = user.points.order(:timestamp).last
 
     [first_point&.timestamp || 0, last_point&.timestamp || Time.current.to_i]
   end
@@ -207,7 +207,7 @@ class Tracks::Generator
   end
 
   def incremental_timestamp_range
-    first_point = user.tracked_points.where(track_id: nil).order(:timestamp).first
+    first_point = user.points.where(track_id: nil).order(:timestamp).first
     end_timestamp = end_at ? end_at.to_i : Time.current.to_i
 
     [first_point&.timestamp || 0, end_timestamp]

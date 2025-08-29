@@ -59,11 +59,11 @@ class StatsController < ApplicationController
 
     @stats.each do |year, stats|
       stats_by_month = stats.index_by(&:month)
-      
+
       year_distances[year] = (1..12).map do |month|
         month_name = Date::MONTHNAMES[month]
         distance = stats_by_month[month]&.distance || 0
-        
+
         [month_name, distance]
       end
     end

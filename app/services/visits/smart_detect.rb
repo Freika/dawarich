@@ -13,7 +13,7 @@ module Visits
       @user = user
       @start_at = start_at.to_i
       @end_at = end_at.to_i
-      @points = user.tracked_points.not_visited
+      @points = user.points.not_visited
                     .order(timestamp: :asc)
                     .where(timestamp: start_at..end_at)
     end

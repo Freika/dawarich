@@ -10,6 +10,7 @@ module Calculateable
 
   def calculate_distance
     calculated_distance_meters = calculate_distance_from_coordinates
+
     self.distance = convert_distance_for_storage(calculated_distance_meters)
   end
 

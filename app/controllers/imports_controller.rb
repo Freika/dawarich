@@ -43,8 +43,7 @@ class ImportsController < ApplicationController
     raw_files = Array(files_params).reject(&:blank?)
 
     if raw_files.empty?
-      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_entity
-      return
+      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_entity and return
     end
 
     created_imports = []
@@ -59,11 +58,11 @@ class ImportsController < ApplicationController
     if created_imports.any?
       redirect_to imports_url,
                   notice: "#{created_imports.size} files are queued to be imported in background",
-                  status: :see_other
+                  status: :see_other and return
     else
       redirect_to new_import_path,
                   alert: 'No valid file references were found. Please upload files using the file selector.',
-                  status: :unprocessable_entity
+                  status: :unprocessable_entity and return
     end
   rescue StandardError => e
     if created_imports.present?
@@ -95,7 +94,7 @@ class ImportsController < ApplicationController
   end
 
   def import_params
-    params.require(:import).permit(:name, :source, files: [])
+    params.require(:import).permit(:name, files: [])
   end
 
   def create_import_from_signed_id(signed_id)
@@ -103,16 +102,25 @@ class ImportsController < ApplicationController
 
     blob = ActiveStorage::Blob.find_signed(signed_id)
 
-    import = current_user.imports.build(
-      name: blob.filename.to_s,
-      source: params[:import][:source]
-    )
-
+    import_name = generate_unique_import_name(blob.filename.to_s)
+    import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
 
     import.save!
 
     import
+  end
+
+  def generate_unique_import_name(original_name)
+    return original_name unless current_user.imports.exists?(name: original_name)
+
+    # Extract filename and extension
+    basename = File.basename(original_name, File.extname(original_name))
+    extension = File.extname(original_name)
+    
+    # Add current datetime
+    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
+    "#{basename}_#{timestamp}#{extension}"
   end
 
   def validate_points_limit

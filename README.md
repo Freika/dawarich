@@ -1,4 +1,4 @@
-# 🌍 Dawarich: Your Self-Hosted Location History Tracker
+# 🌍 Dawarich: Your Self-Hostable Location History Tracker
 
 [![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika)
 
@@ -21,9 +21,14 @@
 
 ## 🗺️ About Dawarich
 
-**Dawarich** is a self-hosted web app designed to replace Google Timeline (aka Google Location History). It enables you to:
+If you're looking for Dawarich Cloud, where everything is managed for you, check out [Dawarich Cloud](https://dawarich.app).
+
+**Dawarich** is a self-hostable web app designed to replace Google Timeline (aka Google Location History).
+It enables you to:
+
+- Track your location history.
 - Visualize your data on an interactive map.
-- Import your location history from Google Maps Timeline and Owntracks.
+- Import your location history from Google Maps Timeline, OwnTracks, GPX, GeoJSON and some other sources
 - Explore statistics like the number of countries and cities visited, total distance traveled, and more!
 
 📄 **Changelog**: Find the latest updates [here](CHANGELOG.md).
@@ -62,7 +67,7 @@ Simply install one of the supported apps on your device and configure it to send
 1. Clone the repository.
 2. Run the following command to start the app:
    ```bash
-   docker-compose up
+   docker-compose -f docker/docker-compose.yml up
    ```
 3. Access the app at `http://localhost:3000`.
 

@@ -4,11 +4,14 @@
 # via the UI, vs the CLI, which uses the `GoogleMaps::RecordsImporter` class.
 
 class GoogleMaps::RecordsStorageImporter
+  include Imports::FileLoader
+  
   BATCH_SIZE = 1000
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user = User.find_by(id: user_id)
+    @file_path = file_path
   end
 
   def call
@@ -20,19 +23,14 @@ class GoogleMaps::RecordsStorageImporter
 
   private
 
-  attr_reader :import, :user
+  attr_reader :import, :user, :file_path
 
   def process_file_in_batches
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-    locations = parse_file(file_content)
+    parsed_file = load_json_data
+    return unless parsed_file.is_a?(Hash) && parsed_file['locations']
+
+    locations = parsed_file['locations']
     process_locations_in_batches(locations) if locations.present?
-  end
-
-  def parse_file(file_content)
-    parsed_file = Oj.load(file_content, mode: :compat)
-    return nil unless parsed_file.is_a?(Hash) && parsed_file['locations']
-
-    parsed_file['locations']
   end
 
   def process_locations_in_batches(locations)
