@@ -105,7 +105,11 @@ class Tracks::ParallelGenerator
   end
 
   def clean_bulk_tracks
-    user.tracks.where(start_at: time_range).destroy_all if time_range_defined?
+    if time_range_defined?
+      user.tracks.where(start_at: time_range).destroy_all
+    else
+      user.tracks.destroy_all
+    end
   end
 
   def clean_daily_tracks
