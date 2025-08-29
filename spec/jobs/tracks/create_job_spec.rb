@@ -66,7 +66,7 @@ RSpec.describe Tracks::CreateJob, type: :job do
 
         expect(ExceptionReporter).to have_received(:call).with(
           kind_of(StandardError),
-          'Failed to create tracks for user'
+          "Failed to create tracks for user #{user.id} (mode: daily, start_at: nil, end_at: nil)"
         )
       end
     end

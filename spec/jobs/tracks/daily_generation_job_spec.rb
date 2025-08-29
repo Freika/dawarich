@@ -74,11 +74,11 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
         expect(user_ids).not_to include(user3.id)
       end
 
-      it 'logs the process' do
+      it 'logs the process with counts' do
         allow(Rails.logger).to receive(:info)
 
-        expect(Rails.logger).to receive(:info).with("Starting daily track generation for users with recent activity")
-        expect(Rails.logger).to receive(:info).with("Completed daily track generation")
+        expect(Rails.logger).to receive(:info).with('Starting daily track generation for users with recent activity')
+        expect(Rails.logger).to receive(:info).with('Completed daily track generation: 2 users processed, 0 users failed')
 
         job.perform
       end
@@ -94,11 +94,11 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
         expect { job.perform }.not_to have_enqueued_job(Tracks::ParallelGeneratorJob)
       end
 
-      it 'still logs start and completion' do
+      it 'still logs start and completion with zero counts' do
         allow(Rails.logger).to receive(:info)
 
-        expect(Rails.logger).to receive(:info).with("Starting daily track generation for users with recent activity")
-        expect(Rails.logger).to receive(:info).with("Completed daily track generation")
+        expect(Rails.logger).to receive(:info).with('Starting daily track generation for users with recent activity')
+        expect(Rails.logger).to receive(:info).with('Completed daily track generation: 0 users processed, 0 users failed')
 
         job.perform
       end
@@ -114,8 +114,11 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       end
 
       it 'logs the error and continues processing' do
+        allow(Rails.logger).to receive(:info)
+        
         expect(Rails.logger).to receive(:error).with("Failed to enqueue daily track generation for user #{user1.id}: Job failed")
         expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), "Daily track generation failed for user #{user1.id}")
+        expect(Rails.logger).to receive(:info).with('Completed daily track generation: 0 users processed, 1 users failed')
 
         expect { job.perform }.not_to raise_error
       end

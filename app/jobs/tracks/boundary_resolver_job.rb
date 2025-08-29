@@ -45,6 +45,8 @@ class Tracks::BoundaryResolverJob < ApplicationJob
     session_data = session_manager.get_session_data
     total_tracks = session_data['tracks_created'] + boundary_tracks_resolved
 
+    session_manager.update_session(tracks_created: total_tracks)
+
     session_manager.mark_completed
   end
 

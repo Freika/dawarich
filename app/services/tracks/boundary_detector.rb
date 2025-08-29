@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 # Service to detect and resolve tracks that span across multiple time chunks
 # Handles merging partial tracks and cleaning up duplicates from parallel processing
 class Tracks::BoundaryDetector
@@ -17,9 +19,25 @@ class Tracks::BoundaryDetector
     boundary_candidates = find_boundary_track_candidates
     return 0 if boundary_candidates.empty?
 
+    processed_ids = Set.new
     resolved_count = 0
+
     boundary_candidates.each do |group|
-      resolved_count += 1 if merge_boundary_tracks(group)
+      group_ids = group.map(&:id)
+
+      # Skip if all tracks in this group have already been processed
+      next if group_ids.all? { |id| processed_ids.include?(id) }
+
+      # Filter group to only include unprocessed tracks
+      unprocessed_group = group.reject { |track| processed_ids.include?(track.id) }
+      next if unprocessed_group.size < 2
+
+      # Attempt to merge the unprocessed tracks
+      if merge_boundary_tracks(unprocessed_group)
+        # Add all original member IDs to processed set
+        processed_ids.merge(group_ids)
+        resolved_count += 1
+      end
     end
 
     resolved_count
@@ -94,10 +112,12 @@ class Tracks::BoundaryDetector
     return false unless track1.points.exists? && track2.points.exists?
 
     # Get endpoints of both tracks
-    track1_start = track1.points.order(:timestamp).first
-    track1_end = track1.points.order(:timestamp).last
-    track2_start = track2.points.order(:timestamp).first
-    track2_end = track2.points.order(:timestamp).last
+    pts1 = track1.association(:points).loaded? ? track1.points : track1.points.to_a
+    pts2 = track2.association(:points).loaded? ? track2.points : track2.points.to_a
+    track1_start = pts1.min_by(&:timestamp)
+    track1_end   = pts1.max_by(&:timestamp)
+    track2_start = pts2.min_by(&:timestamp)
+    track2_end   = pts2.max_by(&:timestamp)
 
     # Check various connection scenarios
     connection_threshold = distance_threshold_meters
