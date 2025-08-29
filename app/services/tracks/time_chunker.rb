@@ -25,10 +25,10 @@ class Tracks::TimeChunker
 
     while current_time < end_time
       chunk_end = [current_time + chunk_size, end_time].min
-      
+
       chunk = create_chunk(current_time, chunk_end, start_time, end_time)
       chunks << chunk if chunk_has_points?(chunk)
-      
+
       current_time = chunk_end
     end
 
@@ -44,14 +44,14 @@ class Tracks::TimeChunker
     when start_at
       [start_at.to_time, Time.current]
     when end_at
-      first_point_time = user.tracked_points.minimum(:timestamp)
+      first_point_time = user.points.minimum(:timestamp)
       return nil unless first_point_time
       [Time.at(first_point_time), end_at.to_time]
     else
       # Get full range from user's points
-      first_point_time = user.tracked_points.minimum(:timestamp)
-      last_point_time = user.tracked_points.maximum(:timestamp)
-      
+      first_point_time = user.points.minimum(:timestamp)
+      last_point_time = user.points.maximum(:timestamp)
+
       return nil unless first_point_time && last_point_time
       [Time.at(first_point_time), Time.at(last_point_time)]
     end
@@ -77,7 +77,7 @@ class Tracks::TimeChunker
 
   def chunk_has_points?(chunk)
     # Check if there are any points in the buffer range to avoid empty chunks
-    user.tracked_points
+    user.points
         .where(timestamp: chunk[:buffer_start_timestamp]..chunk[:buffer_end_timestamp])
         .exists?
   end

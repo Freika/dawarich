@@ -62,7 +62,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   end
 
   def load_chunk_points
-    user.tracked_points
+    user.points
         .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
         .order(:timestamp)
   end
@@ -99,7 +99,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
     begin
       # Calculate distance using Geocoder with validation
       distance = Point.calculate_distance_for_array_geocoder(points, :km)
-      
+
       # Additional validation for the distance result
       if !distance.finite? || distance < 0
         Rails.logger.error "Invalid distance calculated (#{distance}) for #{points.size} points in chunk #{chunk_data[:chunk_id]}"

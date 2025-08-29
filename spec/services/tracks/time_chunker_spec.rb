@@ -19,7 +19,7 @@ RSpec.describe Tracks::TimeChunker do
     it 'accepts custom options' do
       start_time = 1.week.ago
       end_time = Time.current
-      
+
       custom_chunker = described_class.new(
         user,
         start_at: start_time,
@@ -75,7 +75,7 @@ RSpec.describe Tracks::TimeChunker do
           # Buffer zones should be at or beyond chunk boundaries (may be constrained by global boundaries)
           expect(chunk[:buffer_start_time]).to be <= chunk[:start_time]
           expect(chunk[:buffer_end_time]).to be >= chunk[:end_time]
-          
+
           # Verify buffer timestamps are consistent
           expect(chunk[:buffer_start_timestamp]).to eq(chunk[:buffer_start_time].to_i)
           expect(chunk[:buffer_end_timestamp]).to eq(chunk[:buffer_end_time].to_i)
@@ -96,7 +96,7 @@ RSpec.describe Tracks::TimeChunker do
             :buffer_start_time,
             :buffer_end_time
           )
-          
+
           expect(chunk[:chunk_id]).to match(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/)
         end
       end
@@ -148,7 +148,7 @@ RSpec.describe Tracks::TimeChunker do
 
           # Should create more chunks with smaller chunk size
           expect(chunks.size).to be > 2
-          
+
           # Each chunk should be approximately 12 hours
           chunk = chunks.first
           duration = chunk[:end_time] - chunk[:start_time]
@@ -165,7 +165,7 @@ RSpec.describe Tracks::TimeChunker do
           chunk = chunks.first
           buffer_start_diff = chunk[:start_time] - chunk[:buffer_start_time]
           buffer_end_diff = chunk[:buffer_end_time] - chunk[:end_time]
-          
+
           expect(buffer_start_diff).to be <= 1.hour
           expect(buffer_end_diff).to be <= 1.hour
         end
@@ -200,7 +200,7 @@ RSpec.describe Tracks::TimeChunker do
           expect(chunks).not_to be_empty
           chunks.each do |chunk|
             # Verify each chunk has points in its buffer range
-            points_exist = user.tracked_points
+            points_exist = user.points
               .where(timestamp: chunk[:buffer_start_timestamp]..chunk[:buffer_end_timestamp])
               .exists?
             expect(points_exist).to be true
@@ -270,14 +270,14 @@ RSpec.describe Tracks::TimeChunker do
       it 'handles all time range scenarios correctly' do
         test_start_time = 2.days.ago
         test_end_time = Time.current
-        
+
         # Both provided
         chunker_both = described_class.new(user, start_at: test_start_time, end_at: test_end_time)
         result_both = chunker_both.send(:determine_time_range)
         expect(result_both[0]).to be_within(1.second).of(test_start_time.to_time)
         expect(result_both[1]).to be_within(1.second).of(test_end_time.to_time)
 
-        # Only start provided  
+        # Only start provided
         chunker_start = described_class.new(user, start_at: test_start_time)
         result_start = chunker_start.send(:determine_time_range)
         expect(result_start[0]).to be_within(1.second).of(test_start_time.to_time)
