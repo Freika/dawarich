@@ -36,6 +36,7 @@ import { fetchAndDisplayPhotos } from "../maps/photos";
 import { countryCodesMap } from "../maps/country_codes";
 import { VisitsManager } from "../maps/visits";
 import { ScratchLayer } from "../maps/scratch_layer";
+import { LocationSearch } from "../maps/location_search";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
@@ -239,6 +240,9 @@ export default class extends BaseController {
 
     // Initialize Live Map Handler
     this.initializeLiveMapHandler();
+
+    // Initialize Location Search
+    this.initializeLocationSearch();
   }
 
   disconnect() {
@@ -1822,6 +1826,12 @@ export default class extends BaseController {
 
     if (this.tracksLayer) {
       toggleTracksVisibility(this.tracksLayer, this.map, this.tracksVisible);
+    }
+  }
+
+  initializeLocationSearch() {
+    if (this.map && this.apiKey) {
+      this.locationSearch = new LocationSearch(this.map, this.apiKey);
     }
   }
 }
