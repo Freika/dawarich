@@ -26,6 +26,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   validates :reset_password_token, uniqueness: true, allow_nil: true
 
   attribute :admin, :boolean, default: false
+  attribute :points_count, :integer, default: 0
 
   enum :status, { inactive: 0, active: 1, trial: 2 }
 
@@ -117,7 +118,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def trial_state?
-    points_count.zero? && trial?
+    (points_count || 0).zero? && trial?
   end
 
   private

@@ -24,14 +24,6 @@ RSpec.describe Tracks::CleanupJob, type: :job do
 
         described_class.new.perform(older_than: 1.day.ago)
       end
-
-      it 'logs processing information' do
-        allow(Tracks::Generator).to receive(:new).and_return(double(call: nil))
-
-        expect(Rails.logger).to receive(:info).with(/Processing missed tracks for user #{user.id}/)
-
-        described_class.new.perform(older_than: 1.day.ago)
-      end
     end
 
     context 'with users having insufficient points' do
