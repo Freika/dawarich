@@ -251,4 +251,118 @@ RSpec.describe Api::V1::LocationsController, type: :request do
       end
     end
   end
+
+  describe 'GET /api/v1/locations/suggestions' do
+    context 'with valid authentication' do
+      let(:mock_suggestions) do
+        [
+          {
+            lat: 52.5200,
+            lon: 13.4050,
+            name: 'Kaufland Mitte',
+            address: 'Alexanderplatz 1, Berlin',
+            type: 'shop'
+          },
+          {
+            lat: 52.5100,
+            lon: 13.4000,
+            name: 'Kaufland Friedrichshain',
+            address: 'Warschauer Str. 80, Berlin',
+            type: 'shop'
+          }
+        ]
+      end
+
+      before do
+        allow_any_instance_of(LocationSearch::GeocodingService)
+          .to receive(:search).and_return(mock_suggestions)
+      end
+
+      context 'with valid search query' do
+        it 'returns formatted suggestions' do
+          get '/api/v1/locations/suggestions', params: { q: 'Kaufland' }, headers: headers
+
+          expect(response).to have_http_status(:ok)
+          
+          json_response = JSON.parse(response.body)
+          expect(json_response['suggestions']).to be_an(Array)
+          expect(json_response['suggestions'].length).to eq(2)
+          
+          first_suggestion = json_response['suggestions'].first
+          expect(first_suggestion).to include(
+            'name' => 'Kaufland Mitte',
+            'address' => 'Alexanderplatz 1, Berlin',
+            'coordinates' => [52.5200, 13.4050],
+            'type' => 'shop'
+          )
+        end
+
+        it 'limits suggestions to 5 results' do
+          large_suggestions = Array.new(10) do |i|
+            {
+              lat: 52.5000 + i * 0.001,
+              lon: 13.4000 + i * 0.001,
+              name: "Location #{i}",
+              address: "Address #{i}",
+              type: 'place'
+            }
+          end
+          
+          allow_any_instance_of(LocationSearch::GeocodingService)
+            .to receive(:search).and_return(large_suggestions)
+
+          get '/api/v1/locations/suggestions', params: { q: 'test' }, headers: headers
+
+          json_response = JSON.parse(response.body)
+          expect(json_response['suggestions'].length).to eq(5)
+        end
+      end
+
+      context 'with short search query' do
+        it 'returns empty suggestions for queries shorter than 2 characters' do
+          get '/api/v1/locations/suggestions', params: { q: 'a' }, headers: headers
+
+          expect(response).to have_http_status(:ok)
+          
+          json_response = JSON.parse(response.body)
+          expect(json_response['suggestions']).to be_empty
+        end
+      end
+
+      context 'with blank query' do
+        it 'returns empty suggestions' do
+          get '/api/v1/locations/suggestions', params: { q: '' }, headers: headers
+
+          expect(response).to have_http_status(:ok)
+          
+          json_response = JSON.parse(response.body)
+          expect(json_response['suggestions']).to be_empty
+        end
+      end
+
+      context 'when geocoding service raises an error' do
+        before do
+          allow_any_instance_of(LocationSearch::GeocodingService)
+            .to receive(:search).and_raise(StandardError.new('Geocoding error'))
+        end
+
+        it 'returns empty suggestions gracefully' do
+          get '/api/v1/locations/suggestions', params: { q: 'test' }, headers: headers
+
+          expect(response).to have_http_status(:ok)
+          
+          json_response = JSON.parse(response.body)
+          expect(json_response['suggestions']).to be_empty
+        end
+      end
+    end
+
+    context 'without authentication' do
+      it 'returns unauthorized error' do
+        get '/api/v1/locations/suggestions', params: { q: 'test' }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

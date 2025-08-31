@@ -6,9 +6,13 @@ class LocationSearch {
     this.searchResults = [];
     this.searchMarkersLayer = null;
     this.currentSearchQuery = '';
+    this.searchTimeout = null;
+    this.suggestionsVisible = false;
+    this.currentSuggestionIndex = -1;
 
     this.initializeSearchBar();
     this.initializeSearchResults();
+    this.initializeSuggestions();
   }
 
   initializeSearchBar() {
@@ -101,6 +105,18 @@ class LocationSearch {
     this.resultsContainer = resultsContainer;
   }
 
+  initializeSuggestions() {
+    // Create suggestions dropdown (positioned below search input)
+    const suggestionsContainer = document.createElement('div');
+    suggestionsContainer.className = 'location-search-suggestions fixed z-50 w-80 max-h-48 overflow-y-auto bg-white rounded-lg shadow-xl border hidden';
+    suggestionsContainer.id = 'location-search-suggestions';
+
+    const mapContainer = document.getElementById('map');
+    mapContainer.appendChild(suggestionsContainer);
+
+    this.suggestionsContainer = suggestionsContainer;
+  }
+
   bindSearchEvents() {
     // Toggle search bar visibility
     this.toggleButton.addEventListener('click', () => {
@@ -124,12 +140,43 @@ class LocationSearch {
       this.clearSearch();
     });
 
-    // Show clear button when input has content
+    // Show clear button when input has content and handle real-time suggestions
     this.searchInput.addEventListener('input', (e) => {
-      if (e.target.value.length > 0) {
+      const query = e.target.value.trim();
+      
+      if (query.length > 0) {
         this.clearButton.classList.remove('hidden');
+        this.debouncedSuggestionSearch(query);
       } else {
         this.clearButton.classList.add('hidden');
+        this.hideSuggestions();
+      }
+    });
+
+    // Handle keyboard navigation for suggestions
+    this.searchInput.addEventListener('keydown', (e) => {
+      if (this.suggestionsVisible) {
+        switch (e.key) {
+          case 'ArrowDown':
+            e.preventDefault();
+            this.navigateSuggestions(1);
+            break;
+          case 'ArrowUp':
+            e.preventDefault();
+            this.navigateSuggestions(-1);
+            break;
+          case 'Enter':
+            e.preventDefault();
+            if (this.currentSuggestionIndex >= 0) {
+              this.selectSuggestion(this.currentSuggestionIndex);
+            } else {
+              this.performSearch();
+            }
+            break;
+          case 'Escape':
+            this.hideSuggestions();
+            break;
+        }
       }
     });
 
@@ -137,8 +184,10 @@ class LocationSearch {
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.location-search-container') &&
           !e.target.closest('.location-search-results') &&
+          !e.target.closest('.location-search-suggestions') &&
           !e.target.closest('#location-search-toggle')) {
         this.hideResults();
+        this.hideSuggestions();
         if (this.searchVisible) {
           this.hideSearchBar();
         }
@@ -404,6 +453,181 @@ class LocationSearch {
 
   hideResults() {
     this.resultsContainer.classList.add('hidden');
+  }
+
+  // Suggestion-related methods
+  debouncedSuggestionSearch(query) {
+    // Clear existing timeout
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+
+    // Set new timeout for debounced search
+    this.searchTimeout = setTimeout(() => {
+      this.performSuggestionSearch(query);
+    }, 300); // 300ms debounce delay
+  }
+
+  async performSuggestionSearch(query) {
+    if (query.length < 2) {
+      this.hideSuggestions();
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/locations/suggestions?q=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Suggestions failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      this.displaySuggestions(data.suggestions || []);
+
+    } catch (error) {
+      console.error('Suggestion search error:', error);
+      this.hideSuggestions();
+    }
+  }
+
+  displaySuggestions(suggestions) {
+    if (!suggestions.length) {
+      this.hideSuggestions();
+      return;
+    }
+
+    // Position suggestions container below search input, aligned with the search container
+    const searchRect = this.searchContainer.getBoundingClientRect();
+    const suggestionsTop = searchRect.bottom + 2;
+    const suggestionsRight = window.innerWidth - searchRect.left;
+
+    this.suggestionsContainer.style.top = suggestionsTop + 'px';
+    this.suggestionsContainer.style.right = suggestionsRight + 'px';
+
+    // Build suggestions HTML
+    let suggestionsHtml = '';
+    suggestions.forEach((suggestion, index) => {
+      const isActive = index === this.currentSuggestionIndex;
+      suggestionsHtml += `
+        <div class="suggestion-item p-2 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm ${isActive ? 'bg-blue-50 text-blue-700' : ''}" 
+             data-suggestion-index="${index}">
+          <div class="font-medium">${this.escapeHtml(suggestion.name)}</div>
+          <div class="text-xs text-gray-600">${this.escapeHtml(suggestion.address || '')}</div>
+        </div>
+      `;
+    });
+
+    this.suggestionsContainer.innerHTML = suggestionsHtml;
+    this.suggestionsContainer.classList.remove('hidden');
+    this.suggestionsVisible = true;
+    this.suggestions = suggestions;
+
+    // Bind click events to suggestions
+    this.bindSuggestionEvents();
+  }
+
+  bindSuggestionEvents() {
+    const suggestionItems = this.suggestionsContainer.querySelectorAll('.suggestion-item');
+    suggestionItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        const index = parseInt(e.currentTarget.dataset.suggestionIndex);
+        this.selectSuggestion(index);
+      });
+    });
+  }
+
+  navigateSuggestions(direction) {
+    if (!this.suggestions || !this.suggestions.length) return;
+
+    const maxIndex = this.suggestions.length - 1;
+    
+    if (direction > 0) {
+      // Arrow down
+      this.currentSuggestionIndex = this.currentSuggestionIndex < maxIndex 
+        ? this.currentSuggestionIndex + 1 
+        : 0;
+    } else {
+      // Arrow up
+      this.currentSuggestionIndex = this.currentSuggestionIndex > 0 
+        ? this.currentSuggestionIndex - 1 
+        : maxIndex;
+    }
+
+    this.highlightActiveSuggestion();
+  }
+
+  highlightActiveSuggestion() {
+    const suggestionItems = this.suggestionsContainer.querySelectorAll('.suggestion-item');
+    
+    suggestionItems.forEach((item, index) => {
+      if (index === this.currentSuggestionIndex) {
+        item.classList.add('bg-blue-50', 'text-blue-700');
+        item.classList.remove('bg-gray-50');
+      } else {
+        item.classList.remove('bg-blue-50', 'text-blue-700');
+        item.classList.add('bg-gray-50');
+      }
+    });
+  }
+
+  selectSuggestion(index) {
+    if (!this.suggestions || index < 0 || index >= this.suggestions.length) return;
+
+    const suggestion = this.suggestions[index];
+    this.searchInput.value = suggestion.name;
+    this.hideSuggestions();
+    this.performCoordinateSearch(suggestion); // Use coordinate-based search for selected suggestion
+  }
+
+  async performCoordinateSearch(suggestion) {
+    this.currentSearchQuery = suggestion.name;
+    this.showLoading();
+
+    try {
+      const params = new URLSearchParams({
+        lat: suggestion.coordinates[0],
+        lon: suggestion.coordinates[1],
+        name: suggestion.name,
+        address: suggestion.address || ''
+      });
+
+      const response = await fetch(`/api/v1/locations?${params}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Coordinate search failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      this.displaySearchResults(data);
+
+    } catch (error) {
+      console.error('Coordinate search error:', error);
+      this.showError('Failed to search locations. Please try again.');
+    }
+  }
+
+  hideSuggestions() {
+    this.suggestionsContainer.classList.add('hidden');
+    this.suggestionsVisible = false;
+    this.currentSuggestionIndex = -1;
+    this.suggestions = [];
+    
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = null;
+    }
   }
 
   // Utility methods

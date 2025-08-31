@@ -29,17 +29,39 @@ module LocationSearch
     private
 
     def perform_geocoding_search(query)
+      Rails.logger.info "LocationSearch::GeocodingService: Searching for '#{query}' using #{provider_name}"
+      
+      # Try original query first
       results = Geocoder.search(query, limit: MAX_RESULTS)
+      Rails.logger.info "LocationSearch::GeocodingService: Raw geocoder returned #{results.length} results"
+      
+      # If we got results but they seem too generic (common chain names), 
+      # also try with location context
+      if results.length > 1 && looks_like_chain_store?(query)
+        Rails.logger.info "LocationSearch::GeocodingService: Query looks like chain store, trying with Berlin context"
+        berlin_results = Geocoder.search("#{query} Berlin", limit: MAX_RESULTS)
+        Rails.logger.info "LocationSearch::GeocodingService: Berlin-specific search returned #{berlin_results.length} results"
+        
+        # Prioritize Berlin results
+        results = (berlin_results + results).uniq
+      end
+      
       return [] if results.blank?
 
-      normalize_geocoding_results(results)
+      normalized = normalize_geocoding_results(results)
+      Rails.logger.info "LocationSearch::GeocodingService: After normalization: #{normalized.length} results"
+      
+      normalized
     end
 
     def normalize_geocoding_results(results)
       normalized_results = []
       
-      results.each do |result|
-        next unless valid_result?(result)
+      results.each_with_index do |result, idx|
+        unless valid_result?(result)
+          Rails.logger.warn "LocationSearch::GeocodingService: Result #{idx} is invalid: lat=#{result.latitude}, lon=#{result.longitude}"
+          next
+        end
 
         normalized_result = {
           lat: result.latitude.to_f,
@@ -50,11 +72,16 @@ module LocationSearch
           provider_data: extract_provider_data(result)
         }
 
+        Rails.logger.info "LocationSearch::GeocodingService: Result #{idx}: '#{normalized_result[:name]}' at [#{normalized_result[:lat]}, #{normalized_result[:lon]}]"
+
         normalized_results << normalized_result
       end
 
       # Remove duplicates based on coordinates (within 100m)
-      deduplicate_results(normalized_results)
+      deduplicated = deduplicate_results(normalized_results)
+      Rails.logger.info "LocationSearch::GeocodingService: After deduplication: #{deduplicated.length} results"
+      
+      deduplicated
     end
 
     def valid_result?(result)
@@ -187,6 +214,18 @@ module LocationSearch
       c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
       
       rkm * c
+    end
+
+    def looks_like_chain_store?(query)
+      chain_patterns = [
+        /\b(netto|kaufland|rewe|edeka|aldi|lidl|penny|real)\b/i,
+        /\b(mcdonalds?|burger king|kfc|subway)\b/i,
+        /\b(shell|aral|esso|bp|total)\b/i,
+        /\b(dm|rossmann|müller)\b/i,
+        /\b(h&m|c&a|zara|primark)\b/i
+      ]
+      
+      chain_patterns.any? { |pattern| query.match?(pattern) }
     end
   end
 end

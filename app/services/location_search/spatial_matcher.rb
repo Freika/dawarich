@@ -6,6 +6,38 @@ module LocationSearch
       # Using PostGIS for efficient spatial queries
     end
 
+    # Debug method to test spatial queries directly
+    def debug_points_near(user, latitude, longitude, radius_meters = 1000)
+      query = <<~SQL
+        SELECT 
+          p.id,
+          p.timestamp,
+          ST_Y(p.lonlat::geometry) as latitude,
+          ST_X(p.lonlat::geometry) as longitude,
+          p.city,
+          p.country,
+          ST_Distance(p.lonlat, ST_Point(#{longitude}, #{latitude})::geography) as distance_meters
+        FROM points p
+        WHERE p.user_id = #{user.id}
+          AND ST_DWithin(p.lonlat, ST_Point(#{longitude}, #{latitude})::geography, #{radius_meters})
+        ORDER BY distance_meters ASC
+        LIMIT 10;
+      SQL
+      
+      puts "=== DEBUG SPATIAL QUERY ==="
+      puts "Searching for user #{user.id} near [#{latitude}, #{longitude}] within #{radius_meters}m"
+      puts "Query: #{query}"
+      
+      results = ActiveRecord::Base.connection.exec_query(query)
+      puts "Found #{results.count} points:"
+      
+      results.each do |row|
+        puts "- Point #{row['id']}: [#{row['latitude']}, #{row['longitude']}] - #{row['distance_meters'].to_f.round(2)}m away"
+      end
+      
+      results
+    end
+
     def find_points_near(user, latitude, longitude, radius_meters, date_options = {})
       points_query = build_spatial_query(user, latitude, longitude, radius_meters, date_options)
       
@@ -25,8 +57,8 @@ module LocationSearch
         SELECT 
           p.id,
           p.timestamp,
-          p.latitude,
-          p.longitude,
+          ST_Y(p.lonlat::geometry) as latitude,
+          ST_X(p.lonlat::geometry) as longitude,
           p.city,
           p.country,
           p.altitude,

@@ -333,12 +333,122 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
         expect(page).to have_content('location(s) for "Kaufland Berlin"')
       end
     end
+
+    context 'with real-time suggestions' do
+      before do
+        # Mock the geocoding service to return suggestions
+        allow_any_instance_of(LocationSearch::GeocodingService).to receive(:search) do |_service, query|
+          case query.downcase
+          when /kau/
+            [
+              {
+                lat: 52.5200,
+                lon: 13.4050,
+                name: 'Kaufland Mitte',
+                address: 'Alexanderplatz 1, Berlin',
+                type: 'shop'
+              },
+              {
+                lat: 52.5100,
+                lon: 13.4000,
+                name: 'Kaufland Friedrichshain',
+                address: 'Warschauer Str. 80, Berlin',
+                type: 'shop'
+              }
+            ]
+          else
+            []
+          end
+        end
+
+        # Show the search bar first
+        find('#location-search-toggle').click
+      end
+
+      it 'shows suggestions as user types' do
+        search_input = find('#location-search-input')
+        search_input.fill_in(with: 'Kau')
+
+        # Wait for debounced search to trigger
+        sleep(0.4)
+
+        within('#location-search-suggestions') do
+          expect(page).to have_content('Kaufland Mitte')
+          expect(page).to have_content('Alexanderplatz 1, Berlin')
+          expect(page).to have_content('Kaufland Friedrichshain')
+        end
+      end
+
+      it 'allows selecting suggestions with mouse click' do
+        search_input = find('#location-search-input')
+        search_input.fill_in(with: 'Kau')
+        sleep(0.4)
+
+        within('#location-search-suggestions') do
+          find('.suggestion-item', text: 'Kaufland Mitte').click
+        end
+
+        expect(search_input.value).to eq('Kaufland Mitte')
+        expect(page).to have_css('#location-search-suggestions.hidden')
+      end
+
+      it 'allows keyboard navigation through suggestions' do
+        search_input = find('#location-search-input')
+        search_input.fill_in(with: 'Kau')
+        sleep(0.4)
+
+        # Navigate down through suggestions
+        search_input.send_keys(:arrow_down)
+        within('#location-search-suggestions') do
+          expect(page).to have_css('.suggestion-item.bg-blue-50', text: 'Kaufland Mitte')
+        end
+
+        search_input.send_keys(:arrow_down)
+        within('#location-search-suggestions') do
+          expect(page).to have_css('.suggestion-item.bg-blue-50', text: 'Kaufland Friedrichshain')
+        end
+
+        # Select with Enter
+        search_input.send_keys(:enter)
+        expect(search_input.value).to eq('Kaufland Friedrichshain')
+      end
+
+      it 'hides suggestions when input is cleared' do
+        search_input = find('#location-search-input')
+        search_input.fill_in(with: 'Kau')
+        sleep(0.4)
+
+        expect(page).to have_css('#location-search-suggestions:not(.hidden)')
+
+        search_input.set('')
+        expect(page).to have_css('#location-search-suggestions.hidden')
+      end
+
+      it 'hides suggestions on Escape key' do
+        search_input = find('#location-search-input')
+        search_input.fill_in(with: 'Kau')
+        sleep(0.4)
+
+        expect(page).to have_css('#location-search-suggestions:not(.hidden)')
+
+        search_input.send_keys(:escape)
+        expect(page).to have_css('#location-search-suggestions.hidden')
+      end
+
+      it 'does not show suggestions for queries shorter than 2 characters' do
+        search_input = find('#location-search-input')
+        search_input.fill_in(with: 'K')
+        sleep(0.4)
+
+        expect(page).to have_css('#location-search-suggestions.hidden')
+      end
+    end
   end
 
   private
 
   def sign_in(user)
-    visit new_user_session_path
+    visit '/users/sign_in'
     fill_in 'Email', with: user.email
     fill_in 'Password', with: user.password
     click_button 'Log in'
