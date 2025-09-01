@@ -11,8 +11,6 @@ class LocationSearch {
     this.currentSuggestionIndex = -1;
 
     this.initializeSearchBar();
-    this.initializeSearchResults();
-    this.initializeSuggestions();
   }
 
   initializeSearchBar() {
@@ -43,84 +41,109 @@ class LocationSearch {
     // Get reference to the created button
     const toggleButton = document.getElementById('location-search-toggle');
 
-    // Create search container (initially hidden)
-    // Position it to the left of the search toggle button using fixed positioning
-    const searchContainer = document.createElement('div');
-    searchContainer.className = 'location-search-container fixed z-50 w-80 hidden bg-white rounded-lg shadow-xl border p-2';
-    searchContainer.id = 'location-search-container';
-
-    // Create search input
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Search locations';
-    searchInput.className = 'input input-bordered w-full text-sm bg-white shadow-lg';
-    searchInput.id = 'location-search-input';
-
-    // Create search button
-    const searchButton = document.createElement('button');
-    searchButton.innerHTML = '🔍';
-    searchButton.className = 'btn btn-primary btn-sm absolute right-2 top-1/2 transform -translate-y-1/2';
-    searchButton.type = 'button';
-
-    // Create clear button
-    const clearButton = document.createElement('button');
-    clearButton.innerHTML = '✕';
-    clearButton.className = 'btn btn-ghost btn-xs absolute right-12 top-1/2 transform -translate-y-1/2 hidden';
-    clearButton.id = 'location-search-clear';
-
-    // Assemble search bar
-    const searchWrapper = document.createElement('div');
-    searchWrapper.className = 'relative';
-    searchWrapper.appendChild(searchInput);
-    searchWrapper.appendChild(clearButton);
-    searchWrapper.appendChild(searchButton);
-
-    searchContainer.appendChild(searchWrapper);
-
-    // Add search container to map container
-    const mapContainer = document.getElementById('map');
-    mapContainer.appendChild(searchContainer);
+    // Create sidepanel
+    this.createSidepanel();
 
     // Store references
     this.toggleButton = toggleButton;
-    this.searchContainer = searchContainer;
-    this.searchInput = searchInput;
-    this.searchButton = searchButton;
-    this.clearButton = clearButton;
     this.searchVisible = false;
 
     // Bind events
     this.bindSearchEvents();
   }
 
-  initializeSearchResults() {
-    // Create results container (positioned below search container)
-    const resultsContainer = document.createElement('div');
-    resultsContainer.className = 'location-search-results fixed z-40 w-80 max-h-96 overflow-y-auto bg-white rounded-lg shadow-xl border hidden';
-    resultsContainer.id = 'location-search-results';
+  createSidepanel() {
+    // Create sidepanel container
+    const sidepanel = document.createElement('div');
+    sidepanel.className = 'location-search-sidepanel fixed top-0 right-0 h-full w-96 bg-white shadow-2xl border-l transform translate-x-full transition-transform duration-300 ease-in-out z-50';
+    sidepanel.id = 'location-search-sidepanel';
 
-    const mapContainer = document.getElementById('map');
-    mapContainer.appendChild(resultsContainer);
+    sidepanel.innerHTML = `
+      <div class="flex flex-col h-full">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b bg-gray-50">
+          <h3 class="text-lg font-semibold text-gray-900">Location Search</h3>
+          <button id="location-search-close" class="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+        </div>
 
-    this.resultsContainer = resultsContainer;
+        <!-- Search Bar -->
+        <div class="p-4 border-b">
+          <div class="relative">
+            <input 
+              type="text" 
+              placeholder="Search locations..." 
+              class="w-full px-4 py-3 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              id="location-search-input"
+            />
+            <button 
+              id="location-search-clear" 
+              class="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden"
+            >
+              ✕
+            </button>
+            <button 
+              id="location-search-submit" 
+              class="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-600"
+            >
+              🔍
+            </button>
+          </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-hidden">
+          <!-- Suggestions (when typing) -->
+          <div id="location-search-suggestions-panel" class="hidden">
+            <div class="p-3 border-b bg-gray-50">
+              <h4 class="text-sm font-medium text-gray-700">Suggestions</h4>
+            </div>
+            <div id="location-search-suggestions" class="overflow-y-auto max-h-64"></div>
+          </div>
+
+          <!-- Search Results (after search) -->
+          <div id="location-search-results-panel" class="hidden">
+            <div class="p-3 border-b bg-gray-50">
+              <h4 class="text-sm font-medium text-gray-700">Search Results</h4>
+            </div>
+            <div id="location-search-results" class="overflow-y-auto flex-1"></div>
+          </div>
+
+          <!-- Default state -->
+          <div id="location-search-default" class="p-6 text-center text-gray-500">
+            <div class="text-4xl mb-4">🔍</div>
+            <p class="text-lg font-medium mb-2">Search Your Visits</p>
+            <p class="text-sm">Find locations you've been to by searching for places, addresses, or business names.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add sidepanel to body
+    document.body.appendChild(sidepanel);
+
+    // Store references
+    this.sidepanel = sidepanel;
+    this.searchInput = document.getElementById('location-search-input');
+    this.searchButton = document.getElementById('location-search-submit');
+    this.clearButton = document.getElementById('location-search-clear');
+    this.closeButton = document.getElementById('location-search-close');
+    this.suggestionsContainer = document.getElementById('location-search-suggestions');
+    this.suggestionsPanel = document.getElementById('location-search-suggestions-panel');
+    this.resultsContainer = document.getElementById('location-search-results');
+    this.resultsPanel = document.getElementById('location-search-results-panel');
+    this.defaultPanel = document.getElementById('location-search-default');
   }
 
-  initializeSuggestions() {
-    // Create suggestions dropdown (positioned below search input)
-    const suggestionsContainer = document.createElement('div');
-    suggestionsContainer.className = 'location-search-suggestions fixed z-50 w-80 max-h-48 overflow-y-auto bg-white rounded-lg shadow-xl border hidden';
-    suggestionsContainer.id = 'location-search-suggestions';
-
-    const mapContainer = document.getElementById('map');
-    mapContainer.appendChild(suggestionsContainer);
-
-    this.suggestionsContainer = suggestionsContainer;
-  }
 
   bindSearchEvents() {
-    // Toggle search bar visibility
+    // Toggle sidepanel visibility
     this.toggleButton.addEventListener('click', () => {
-      this.toggleSearchBar();
+      this.showSidepanel();
+    });
+
+    // Close sidepanel
+    this.closeButton.addEventListener('click', () => {
+      this.hideSidepanel();
     });
 
     // Search on button click
@@ -131,7 +154,11 @@ class LocationSearch {
     // Search on Enter key
     this.searchInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
-        this.performSearch();
+        if (this.suggestionsVisible && this.currentSuggestionIndex >= 0) {
+          this.selectSuggestion(this.currentSuggestionIndex);
+        } else {
+          this.performSearch();
+        }
       }
     });
 
@@ -150,6 +177,7 @@ class LocationSearch {
       } else {
         this.clearButton.classList.add('hidden');
         this.hideSuggestions();
+        this.showDefaultState();
       }
     });
 
@@ -165,39 +193,27 @@ class LocationSearch {
             e.preventDefault();
             this.navigateSuggestions(-1);
             break;
-          case 'Enter':
-            e.preventDefault();
-            if (this.currentSuggestionIndex >= 0) {
-              this.selectSuggestion(this.currentSuggestionIndex);
-            } else {
-              this.performSearch();
-            }
-            break;
           case 'Escape':
             this.hideSuggestions();
+            this.showDefaultState();
             break;
         }
       }
     });
 
-    // Hide results and search bar when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.location-search-container') &&
-          !e.target.closest('.location-search-results') &&
-          !e.target.closest('.location-search-suggestions') &&
-          !e.target.closest('#location-search-toggle')) {
-        this.hideResults();
-        this.hideSuggestions();
-        if (this.searchVisible) {
-          this.hideSearchBar();
-        }
+    // Close sidepanel on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.searchVisible) {
+        this.hideSidepanel();
       }
     });
 
-    // Close search bar on Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.searchVisible) {
-        this.hideSearchBar();
+    // Close sidepanel when clicking outside
+    document.addEventListener('click', (e) => {
+      if (this.searchVisible && 
+          !e.target.closest('.location-search-sidepanel') &&
+          !e.target.closest('#location-search-toggle')) {
+        this.hideSidepanel();
       }
     });
   }
@@ -232,50 +248,48 @@ class LocationSearch {
   }
 
   showLoading() {
+    // Hide other panels and show results with loading
+    this.defaultPanel.classList.add('hidden');
+    this.suggestionsPanel.classList.add('hidden');
+    this.resultsPanel.classList.remove('hidden');
+
     this.resultsContainer.innerHTML = `
-      <div class="p-4 text-center">
-        <div class="loading loading-spinner loading-sm"></div>
-        <div class="text-sm text-gray-600 mt-2">Searching for "${this.currentSearchQuery}"...</div>
+      <div class="p-8 text-center">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <div class="text-sm text-gray-600 mt-3">Searching for "${this.currentSearchQuery}"...</div>
       </div>
     `;
-    this.resultsContainer.classList.remove('hidden');
   }
 
   showError(message) {
-    // Position results container below search container using viewport coordinates
-    const searchRect = this.searchContainer.getBoundingClientRect();
-
-    const resultsTop = searchRect.bottom + 5;
-    const resultsRight = window.innerWidth - searchRect.left;
-
-    this.resultsContainer.style.top = resultsTop + 'px';
-    this.resultsContainer.style.right = resultsRight + 'px';
+    // Hide other panels and show results with error
+    this.defaultPanel.classList.add('hidden');
+    this.suggestionsPanel.classList.add('hidden');
+    this.resultsPanel.classList.remove('hidden');
 
     this.resultsContainer.innerHTML = `
-      <div class="p-4 text-center">
-        <div class="text-error text-sm">${message}</div>
+      <div class="p-8 text-center">
+        <div class="text-4xl mb-3">⚠️</div>
+        <div class="text-sm font-medium text-red-600 mb-2">Search Failed</div>
+        <div class="text-xs text-gray-500">${message}</div>
       </div>
     `;
-    this.resultsContainer.classList.remove('hidden');
   }
 
   displaySearchResults(data) {
-    // Position results container below search container using viewport coordinates
-    const searchRect = this.searchContainer.getBoundingClientRect();
-
-    const resultsTop = searchRect.bottom + 5; // 5px gap below search container
-    const resultsRight = window.innerWidth - searchRect.left; // Align with left edge of search container
-
-    this.resultsContainer.style.top = resultsTop + 'px';
-    this.resultsContainer.style.right = resultsRight + 'px';
+    // Hide other panels and show results
+    this.defaultPanel.classList.add('hidden');
+    this.suggestionsPanel.classList.add('hidden');
+    this.resultsPanel.classList.remove('hidden');
 
     if (!data.locations || data.locations.length === 0) {
       this.resultsContainer.innerHTML = `
-        <div class="p-4 text-center">
-          <div class="text-sm text-gray-600">No visits found for "${this.currentSearchQuery}"</div>
+        <div class="p-6 text-center text-gray-500">
+          <div class="text-3xl mb-3">📍</div>
+          <div class="text-sm font-medium">No visits found</div>
+          <div class="text-xs mt-1">No visits found for "${this.currentSearchQuery}"</div>
         </div>
       `;
-      this.resultsContainer.classList.remove('hidden');
       return;
     }
 
@@ -283,8 +297,9 @@ class LocationSearch {
     this.clearSearchMarkers();
 
     let resultsHtml = `
-      <div class="p-3 border-b">
-        <div class="text-sm font-semibold">Found ${data.total_locations} location(s) for "${this.currentSearchQuery}"</div>
+      <div class="p-4 border-b bg-gray-50">
+        <div class="text-sm font-medium text-gray-700">Found ${data.total_locations} location(s)</div>
+        <div class="text-xs text-gray-500 mt-1">for "${this.currentSearchQuery}"</div>
       </div>
     `;
 
@@ -293,7 +308,6 @@ class LocationSearch {
     });
 
     this.resultsContainer.innerHTML = resultsHtml;
-    this.resultsContainer.classList.remove('hidden');
 
     // Add markers to map
     this.addSearchMarkersToMap(data.locations);
@@ -305,37 +319,127 @@ class LocationSearch {
   buildLocationResultHtml(location, index) {
     const firstVisit = location.visits[0];
     const lastVisit = location.visits[location.visits.length - 1];
-
+    
+    // Group visits by year
+    const visitsByYear = this.groupVisitsByYear(location.visits);
+    
     return `
-      <div class="location-result p-3 border-b hover:bg-gray-50 cursor-pointer" data-location-index="${index}">
-        <div class="font-medium text-sm">${this.escapeHtml(location.place_name)}</div>
-        <div class="text-xs text-gray-600 mt-1">${this.escapeHtml(location.address || '')}</div>
-        <div class="flex justify-between items-center mt-2">
-          <div class="text-xs text-blue-600">${location.total_visits} visit(s)</div>
-          <div class="text-xs text-gray-500">
-            ${this.formatDate(firstVisit.date)} - ${this.formatDate(lastVisit.date)}
+      <div class="location-result border-b" data-location-index="${index}">
+        <div class="p-4">
+          <div class="font-medium text-sm">${this.escapeHtml(location.place_name)}</div>
+          <div class="text-xs text-gray-600 mt-1">${this.escapeHtml(location.address || '')}</div>
+          <div class="flex justify-between items-center mt-3">
+            <div class="text-xs text-blue-600">${location.total_visits} visit(s)</div>
+            <div class="text-xs text-gray-500">
+              first ${this.formatDateShort(firstVisit.date)}, last ${this.formatDateShort(lastVisit.date)}
+            </div>
           </div>
         </div>
-        <div class="mt-2 max-h-32 overflow-y-auto">
-          ${location.visits.slice(0, 5).map(visit => `
-            <div class="text-xs text-gray-700 py-1 border-t border-gray-100 first:border-t-0">
-              📍 ${this.formatDateTime(visit.date)} (${visit.distance_meters}m away)
+        
+        <!-- Years Section -->
+        <div class="border-t bg-gray-50">
+          ${Object.entries(visitsByYear).map(([year, yearVisits]) => `
+            <div class="year-section">
+              <div class="year-toggle p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex justify-between items-center" 
+                   data-location-index="${index}" data-year="${year}">
+                <span class="text-sm font-medium text-gray-700">${year}</span>
+                <span class="text-xs text-blue-600">${yearVisits.length} visits</span>
+                <span class="year-arrow text-gray-400 transition-transform">▶</span>
+              </div>
+              <div class="year-visits hidden" id="year-${index}-${year}">
+                ${yearVisits.map((visit, visitIndex) => `
+                  <div class="visit-item text-xs text-gray-700 py-2 px-4 border-b border-gray-100 hover:bg-blue-50 cursor-pointer" 
+                       data-location-index="${index}" data-visit-index="${location.visits.indexOf(visit)}">
+                    <div class="flex justify-between items-start">
+                      <div>
+                        📍 ${this.formatDateTime(visit.date)}
+                        <div class="text-xs text-gray-500 mt-1">
+                          ${visit.duration_estimate}
+                        </div>
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        ${visit.distance_meters}m
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
             </div>
           `).join('')}
-          ${location.visits.length > 5 ? `<div class="text-xs text-gray-500 mt-1">+ ${location.visits.length - 5} more visits</div>` : ''}
         </div>
       </div>
     `;
   }
 
+  groupVisitsByYear(visits) {
+    const groups = {};
+    visits.forEach(visit => {
+      const year = new Date(visit.date).getFullYear().toString();
+      if (!groups[year]) {
+        groups[year] = [];
+      }
+      groups[year].push(visit);
+    });
+    
+    // Sort years descending (most recent first)
+    const sortedGroups = {};
+    Object.keys(groups)
+      .sort((a, b) => parseInt(b) - parseInt(a))
+      .forEach(year => {
+        sortedGroups[year] = groups[year];
+      });
+    
+    return sortedGroups;
+  }
+
+  formatDateShort(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric'
+    });
+  }
+
   bindResultEvents() {
-    const locationResults = this.resultsContainer.querySelectorAll('.location-result');
-    locationResults.forEach(result => {
-      result.addEventListener('click', (e) => {
-        const index = parseInt(e.currentTarget.dataset.locationIndex);
-        this.focusOnLocation(this.searchResults[index]);
+    // Bind click events to year toggles
+    const yearToggles = this.resultsContainer.querySelectorAll('.year-toggle');
+    yearToggles.forEach(toggle => {
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const locationIndex = parseInt(toggle.dataset.locationIndex);
+        const year = toggle.dataset.year;
+        this.toggleYear(locationIndex, year, toggle);
       });
     });
+
+    // Bind click events to individual visits
+    const visitResults = this.resultsContainer.querySelectorAll('.visit-item');
+    visitResults.forEach(visit => {
+      visit.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent triggering other clicks
+        const locationIndex = parseInt(visit.dataset.locationIndex);
+        const visitIndex = parseInt(visit.dataset.visitIndex);
+        this.focusOnVisit(this.searchResults[locationIndex], visitIndex);
+      });
+    });
+  }
+
+  toggleYear(locationIndex, year, toggleElement) {
+    const yearVisitsContainer = document.getElementById(`year-${locationIndex}-${year}`);
+    const arrow = toggleElement.querySelector('.year-arrow');
+    
+    if (yearVisitsContainer.classList.contains('hidden')) {
+      // Show visits
+      yearVisitsContainer.classList.remove('hidden');
+      arrow.style.transform = 'rotate(90deg)';
+      arrow.textContent = '▼';
+    } else {
+      // Hide visits
+      yearVisitsContainer.classList.add('hidden');
+      arrow.style.transform = 'rotate(0deg)';
+      arrow.textContent = '▶';
+    }
   }
 
   addSearchMarkersToMap(locations) {
@@ -394,54 +498,189 @@ class LocationSearch {
     this.hideResults();
   }
 
+  focusOnVisit(location, visitIndex) {
+    const visit = location.visits[visitIndex];
+    if (!visit) return;
+
+    // Navigate to the visit coordinates (more precise than location coordinates)
+    const [lat, lon] = visit.coordinates || location.coordinates;
+    this.map.setView([lat, lon], 18); // Higher zoom for individual visit
+
+    // Parse the visit timestamp to create a time filter
+    const visitDate = new Date(visit.date);
+    const startTime = new Date(visitDate.getTime() - (2 * 60 * 60 * 1000)); // 2 hours before
+    const endTime = new Date(visitDate.getTime() + (2 * 60 * 60 * 1000));   // 2 hours after
+
+    // Emit custom event for time filtering that other parts of the app can listen to
+    const timeFilterEvent = new CustomEvent('locationSearch:timeFilter', {
+      detail: {
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        visitDate: visit.date,
+        location: location.place_name,
+        coordinates: [lat, lon]
+      }
+    });
+    
+    document.dispatchEvent(timeFilterEvent);
+
+    // Create a special marker for the specific visit
+    this.addVisitMarker(lat, lon, visit, location);
+
+    // Show visit details in a popup or notification
+    this.showVisitDetails(visit, location);
+
+    // DON'T hide results - keep sidebar open
+    // this.hideResults();
+  }
+
+  addVisitMarker(lat, lon, visit, location) {
+    // Remove existing visit marker if any
+    if (this.visitMarker) {
+      this.map.removeLayer(this.visitMarker);
+    }
+
+    // Create a highlighted marker for the specific visit
+    this.visitMarker = L.circleMarker([lat, lon], {
+      radius: 12,
+      fillColor: '#22c55e', // Green color to distinguish from search results
+      color: '#ffffff',
+      weight: 3,
+      opacity: 1,
+      fillOpacity: 0.9
+    });
+
+    const popupContent = `
+      <div class="text-sm">
+        <div class="font-semibold text-green-600">${this.escapeHtml(location.place_name)}</div>
+        <div class="text-gray-600 mt-1">${this.escapeHtml(location.address || '')}</div>
+        <div class="mt-2">
+          <div class="text-xs text-gray-500">Visit Details:</div>
+          <div class="text-sm">${this.formatDateTime(visit.date)}</div>
+          <div class="text-xs text-gray-500">Duration: ${visit.duration_estimate}</div>
+        </div>
+        <div class="mt-3 pt-2 border-t border-gray-200">
+          <button onclick="this.getRootNode().host?.closePopup?.() || this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button')?.click()" 
+                  class="text-xs text-blue-600 hover:text-blue-800">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.visitMarker.bindPopup(popupContent, {
+      closeButton: true,
+      autoClose: false, // Don't auto-close when clicking elsewhere
+      closeOnEscapeKey: true, // Allow closing with Escape key
+      closeOnClick: false // Don't close when clicking on map
+    });
+    
+    this.visitMarker.addTo(this.map);
+    this.visitMarker.openPopup();
+
+    // Add event listener to clean up when popup is closed
+    this.visitMarker.on('popupclose', () => {
+      if (this.visitMarker) {
+        this.map.removeLayer(this.visitMarker);
+        this.visitMarker = null;
+      }
+    });
+
+    // Store reference for manual cleanup if needed
+    this.currentVisitMarker = this.visitMarker;
+  }
+
+  showVisitDetails(visit, location) {
+    // Remove any existing notification
+    const existingNotification = document.querySelector('.visit-navigation-notification');
+    if (existingNotification) {
+      existingNotification.remove();
+    }
+
+    // Create a persistent notification showing visit details
+    const notification = document.createElement('div');
+    notification.className = 'visit-navigation-notification fixed top-4 right-4 z-40 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm';
+    notification.innerHTML = `
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+            📍
+          </div>
+        </div>
+        <div class="ml-3 flex-1">
+          <div class="text-sm font-medium text-green-800">
+            Viewing visit
+          </div>
+          <div class="text-sm text-green-600 mt-1">
+            ${this.escapeHtml(location.place_name)}
+          </div>
+          <div class="text-xs text-green-500 mt-1">
+            ${this.formatDateTime(visit.date)} • ${visit.duration_estimate}
+          </div>
+        </div>
+        <button class="flex-shrink-0 ml-3 text-green-400 hover:text-green-500" onclick="this.parentElement.parentElement.remove()">
+          ✕
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Auto-remove notification after 10 seconds (longer duration)
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, 10000);
+  }
+
   clearSearch() {
     this.searchInput.value = '';
     this.clearButton.classList.add('hidden');
     this.hideResults();
     this.clearSearchMarkers();
+    this.clearVisitMarker();
     this.currentSearchQuery = '';
   }
 
-  toggleSearchBar() {
-    if (this.searchVisible) {
-      this.hideSearchBar();
-    } else {
-      this.showSearchBar();
+  clearVisitMarker() {
+    if (this.visitMarker) {
+      this.map.removeLayer(this.visitMarker);
+      this.visitMarker = null;
+    }
+    if (this.currentVisitMarker) {
+      this.map.removeLayer(this.currentVisitMarker);
+      this.currentVisitMarker = null;
+    }
+    
+    // Remove any visit notifications
+    const existingNotification = document.querySelector('.visit-navigation-notification');
+    if (existingNotification) {
+      existingNotification.remove();
     }
   }
 
-  showSearchBar() {
-    // Calculate position relative to the toggle button using viewport coordinates
-    const buttonRect = this.toggleButton.getBoundingClientRect();
-
-    // Position search container to the left of the button, aligned vertically
-    // Using fixed positioning relative to viewport
-    const searchTop = buttonRect.top; // Same vertical position as button (viewport coordinates)
-    const searchRight = window.innerWidth - buttonRect.left + 10; // 10px gap to the left of button
-
-    // Debug logging to see actual values
-    console.log('Button rect:', buttonRect);
-    console.log('Window width:', window.innerWidth);
-    console.log('Calculated top:', searchTop);
-    console.log('Calculated right:', searchRight);
-
-    this.searchContainer.style.top = searchTop + 'px';
-    this.searchContainer.style.right = searchRight + 'px';
-
-    this.searchContainer.classList.remove('hidden');
+  showSidepanel() {
+    this.sidepanel.classList.remove('translate-x-full');
     this.searchVisible = true;
 
     // Focus the search input for immediate typing
     setTimeout(() => {
       this.searchInput.focus();
-    }, 100);
+    }, 300); // Wait for animation to complete
   }
 
-  hideSearchBar() {
-    this.searchContainer.classList.add('hidden');
-    this.hideResults();
-    this.clearSearch();
+  hideSidepanel() {
+    this.sidepanel.classList.add('translate-x-full');
     this.searchVisible = false;
+    this.clearSearch();
+    this.showDefaultState();
+  }
+
+  showDefaultState() {
+    this.defaultPanel.classList.remove('hidden');
+    this.suggestionsPanel.classList.add('hidden');
+    this.resultsPanel.classList.add('hidden');
   }
 
   clearSearchMarkers() {
@@ -474,6 +713,9 @@ class LocationSearch {
       return;
     }
 
+    // Show loading state for suggestions
+    this.showSuggestionsLoading();
+
     try {
       const response = await fetch(`/api/v1/locations/suggestions?q=${encodeURIComponent(query)}`, {
         method: 'GET',
@@ -496,35 +738,46 @@ class LocationSearch {
     }
   }
 
+  showSuggestionsLoading() {
+    // Hide other panels and show suggestions with loading
+    this.defaultPanel.classList.add('hidden');
+    this.resultsPanel.classList.add('hidden');
+    this.suggestionsPanel.classList.remove('hidden');
+
+    this.suggestionsContainer.innerHTML = `
+      <div class="p-6 text-center">
+        <div class="text-2xl animate-bounce">⏳</div>
+        <div class="text-sm text-gray-500 mt-2">Finding suggestions...</div>
+      </div>
+    `;
+  }
+
   displaySuggestions(suggestions) {
     if (!suggestions.length) {
       this.hideSuggestions();
       return;
     }
 
-    // Position suggestions container below search input, aligned with the search container
-    const searchRect = this.searchContainer.getBoundingClientRect();
-    const suggestionsTop = searchRect.bottom + 2;
-    const suggestionsRight = window.innerWidth - searchRect.left;
-
-    this.suggestionsContainer.style.top = suggestionsTop + 'px';
-    this.suggestionsContainer.style.right = suggestionsRight + 'px';
+    // Hide other panels and show suggestions
+    this.defaultPanel.classList.add('hidden');
+    this.resultsPanel.classList.add('hidden');
+    this.suggestionsPanel.classList.remove('hidden');
 
     // Build suggestions HTML
     let suggestionsHtml = '';
     suggestions.forEach((suggestion, index) => {
       const isActive = index === this.currentSuggestionIndex;
       suggestionsHtml += `
-        <div class="suggestion-item p-2 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm ${isActive ? 'bg-blue-50 text-blue-700' : ''}" 
+        <div class="suggestion-item p-4 border-b border-gray-100 hover:bg-blue-50 cursor-pointer ${isActive ? 'bg-blue-50 text-blue-700' : ''}" 
              data-suggestion-index="${index}">
-          <div class="font-medium">${this.escapeHtml(suggestion.name)}</div>
-          <div class="text-xs text-gray-600">${this.escapeHtml(suggestion.address || '')}</div>
+          <div class="font-medium text-sm">${this.escapeHtml(suggestion.name)}</div>
+          <div class="text-xs text-gray-500 mt-1">${this.escapeHtml(suggestion.address || '')}</div>
+          <div class="text-xs text-gray-400 mt-1">${suggestion.type}</div>
         </div>
       `;
     });
 
     this.suggestionsContainer.innerHTML = suggestionsHtml;
-    this.suggestionsContainer.classList.remove('hidden');
     this.suggestionsVisible = true;
     this.suggestions = suggestions;
 
@@ -582,12 +835,28 @@ class LocationSearch {
     const suggestion = this.suggestions[index];
     this.searchInput.value = suggestion.name;
     this.hideSuggestions();
+    this.showSearchLoading(suggestion.name);
     this.performCoordinateSearch(suggestion); // Use coordinate-based search for selected suggestion
+  }
+
+  showSearchLoading(locationName) {
+    // Hide other panels and show loading for search results
+    this.defaultPanel.classList.add('hidden');
+    this.suggestionsPanel.classList.add('hidden');
+    this.resultsPanel.classList.remove('hidden');
+
+    this.resultsContainer.innerHTML = `
+      <div class="p-8 text-center">
+        <div class="text-3xl animate-bounce">⏳</div>
+        <div class="text-sm text-gray-600 mt-3">Searching visits to</div>
+        <div class="text-sm font-medium text-gray-800">${this.escapeHtml(locationName)}</div>
+      </div>
+    `;
   }
 
   async performCoordinateSearch(suggestion) {
     this.currentSearchQuery = suggestion.name;
-    this.showLoading();
+    // Loading state already shown by showSearchLoading
 
     try {
       const params = new URLSearchParams({
@@ -619,7 +888,7 @@ class LocationSearch {
   }
 
   hideSuggestions() {
-    this.suggestionsContainer.classList.add('hidden');
+    this.suggestionsPanel.classList.add('hidden');
     this.suggestionsVisible = false;
     this.currentSuggestionIndex = -1;
     this.suggestions = [];

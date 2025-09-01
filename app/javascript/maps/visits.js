@@ -535,6 +535,8 @@ export class VisitsManager {
     return drawer;
   }
 
+
+
   /**
    * Fetches visits data from the API and displays them
    */

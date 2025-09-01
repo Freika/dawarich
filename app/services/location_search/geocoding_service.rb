@@ -2,7 +2,7 @@
 
 module LocationSearch
   class GeocodingService
-    MAX_RESULTS = 5
+    MAX_RESULTS = 10
     CACHE_TTL = 1.hour
 
     def initialize

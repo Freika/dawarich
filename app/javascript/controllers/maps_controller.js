@@ -190,6 +190,9 @@ export default class extends BaseController {
 
     // Initialize the visits manager
     this.visitsManager = new VisitsManager(this.map, this.apiKey);
+    
+    // Expose visits manager globally for location search integration
+    window.visitsManager = this.visitsManager;
 
     // Initialize layers for the layer control
     const controlsLayer = {

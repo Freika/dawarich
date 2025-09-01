@@ -20,9 +20,9 @@ class Api::V1::LocationsController < ApiController
   def suggestions
     if search_query.present? && search_query.length >= 2
       suggestions = LocationSearch::GeocodingService.new.search(search_query)
-      
+
       # Format suggestions for the frontend
-      formatted_suggestions = suggestions.take(5).map do |suggestion|
+      formatted_suggestions = suggestions.map do |suggestion|
         {
           name: suggestion[:name],
           address: suggestion[:address],
@@ -30,7 +30,7 @@ class Api::V1::LocationsController < ApiController
           type: suggestion[:type]
         }
       end
-      
+
       render json: { suggestions: formatted_suggestions }
     else
       render json: { suggestions: [] }
@@ -78,9 +78,10 @@ class Api::V1::LocationsController < ApiController
     if coordinate_search?
       lat = params[:lat]&.to_f
       lon = params[:lon]&.to_f
-      
+
       if lat.abs > 90 || lon.abs > 180
-        render json: { error: 'Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180' }, status: :bad_request
+        render json: { error: 'Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180' },
+               status: :bad_request
         return false
       end
     end
@@ -99,7 +100,7 @@ class Api::V1::LocationsController < ApiController
 
   def parse_date(date_string)
     return nil if date_string.blank?
-    
+
     Date.parse(date_string)
   rescue ArgumentError
     nil
