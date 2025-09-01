@@ -36,114 +36,107 @@ class LocationSearch {
     });
 
     // Add the search toggle control to the map
-    this.map.addControl(new SearchToggleControl({ position: 'topright' }));
+    this.map.addControl(new SearchToggleControl({ position: 'topleft' }));
 
-    // Get reference to the created button
-    const toggleButton = document.getElementById('location-search-toggle');
+    // Use setTimeout to ensure the DOM element is available
+    setTimeout(() => {
+      // Get reference to the created button
+      const toggleButton = document.getElementById('location-search-toggle');
+      
+      if (toggleButton) {
+        // Create inline search bar
+        this.createInlineSearchBar();
 
-    // Create sidepanel
-    this.createSidepanel();
+        // Store references
+        this.toggleButton = toggleButton;
+        this.searchVisible = false;
 
-    // Store references
-    this.toggleButton = toggleButton;
-    this.searchVisible = false;
-
-    // Bind events
-    this.bindSearchEvents();
+        // Bind events
+        this.bindSearchEvents();
+        
+        console.log('LocationSearch: Search button initialized successfully');
+      } else {
+        console.error('LocationSearch: Could not find search toggle button');
+      }
+    }, 100);
   }
 
-  createSidepanel() {
-    // Create sidepanel container
-    const sidepanel = document.createElement('div');
-    sidepanel.className = 'location-search-sidepanel fixed top-0 right-0 h-full w-96 bg-white shadow-2xl border-l transform translate-x-full transition-transform duration-300 ease-in-out z-50';
-    sidepanel.id = 'location-search-sidepanel';
+  createInlineSearchBar() {
+    // Create inline search bar that appears next to the search button
+    const searchBar = document.createElement('div');
+    searchBar.className = 'location-search-bar absolute bg-white border border-gray-300 rounded-lg shadow-lg';
+    searchBar.id = 'location-search-bar';
+    searchBar.style.width = '300px';
+    searchBar.style.padding = '8px';
+    searchBar.style.display = 'none'; // Start hidden with inline style instead of class
+    searchBar.style.zIndex = '9999'; // Very high z-index to ensure visibility
 
-    sidepanel.innerHTML = `
-      <div class="flex flex-col h-full">
-        <!-- Header -->
-        <div class="flex items-center justify-between p-4 border-b bg-gray-50">
-          <h3 class="text-lg font-semibold text-gray-900">Location Search</h3>
-          <button id="location-search-close" class="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
-        </div>
-
-        <!-- Search Bar -->
-        <div class="p-4 border-b">
-          <div class="relative">
-            <input 
-              type="text" 
-              placeholder="Search locations..." 
-              class="w-full px-4 py-3 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              id="location-search-input"
-            />
-            <button 
-              id="location-search-clear" 
-              class="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden"
-            >
-              ✕
-            </button>
-            <button 
-              id="location-search-submit" 
-              class="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-600"
-            >
-              🔍
-            </button>
-          </div>
-        </div>
-
-        <!-- Content Area -->
-        <div class="flex-1 overflow-hidden">
-          <!-- Suggestions (when typing) -->
-          <div id="location-search-suggestions-panel" class="hidden">
-            <div class="p-3 border-b bg-gray-50">
-              <h4 class="text-sm font-medium text-gray-700">Suggestions</h4>
-            </div>
-            <div id="location-search-suggestions" class="overflow-y-auto max-h-64"></div>
-          </div>
-
-          <!-- Search Results (after search) -->
-          <div id="location-search-results-panel" class="hidden">
-            <div class="p-3 border-b bg-gray-50">
-              <h4 class="text-sm font-medium text-gray-700">Search Results</h4>
-            </div>
-            <div id="location-search-results" class="overflow-y-auto flex-1"></div>
-          </div>
-
-          <!-- Default state -->
-          <div id="location-search-default" class="p-6 text-center text-gray-500">
-            <div class="text-4xl mb-4">🔍</div>
-            <p class="text-lg font-medium mb-2">Search Your Visits</p>
-            <p class="text-sm">Find locations you've been to by searching for places, addresses, or business names.</p>
-          </div>
-        </div>
+    searchBar.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <input 
+          type="text" 
+          placeholder="Search locations..." 
+          class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          id="location-search-input"
+        />
+        <button 
+          id="location-search-submit" 
+          class="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+        >
+          Search
+        </button>
+        <button 
+          id="location-search-close" 
+          class="px-2 py-2 text-gray-400 hover:text-gray-600"
+        >
+          ✕
+        </button>
+      </div>
+      
+      <!-- Suggestions dropdown -->
+      <div id="location-search-suggestions-panel" class="hidden mt-2">
+        <div class="bg-gray-50 px-3 py-2 border-b text-xs font-medium text-gray-700">Suggestions</div>
+        <div id="location-search-suggestions" class="max-h-48 overflow-y-auto"></div>
+      </div>
+      
+      <!-- Results dropdown -->
+      <div id="location-search-results-panel" class="hidden mt-2">
+        <div class="bg-gray-50 px-3 py-2 border-b text-xs font-medium text-gray-700">Results</div>
+        <div id="location-search-results" class="max-h-64 overflow-y-auto"></div>
       </div>
     `;
 
-    // Add sidepanel to body
-    document.body.appendChild(sidepanel);
+    // Add search bar to the map container
+    this.map.getContainer().appendChild(searchBar);
 
     // Store references
-    this.sidepanel = sidepanel;
+    this.searchBar = searchBar;
     this.searchInput = document.getElementById('location-search-input');
     this.searchButton = document.getElementById('location-search-submit');
-    this.clearButton = document.getElementById('location-search-clear');
     this.closeButton = document.getElementById('location-search-close');
     this.suggestionsContainer = document.getElementById('location-search-suggestions');
     this.suggestionsPanel = document.getElementById('location-search-suggestions-panel');
     this.resultsContainer = document.getElementById('location-search-results');
     this.resultsPanel = document.getElementById('location-search-results-panel');
-    this.defaultPanel = document.getElementById('location-search-default');
+    
+    // No clear button or default panel in inline mode
+    this.clearButton = null;
+    this.defaultPanel = null;
   }
 
 
   bindSearchEvents() {
-    // Toggle sidepanel visibility
-    this.toggleButton.addEventListener('click', () => {
-      this.showSidepanel();
+    // Toggle search bar visibility
+    this.toggleButton.addEventListener('click', (e) => {
+      console.log('Search button clicked!');
+      e.preventDefault();
+      e.stopPropagation();
+      this.showSearchBar();
     });
 
-    // Close sidepanel
+    // Close search bar
     this.closeButton.addEventListener('click', () => {
-      this.hideSidepanel();
+      this.hideSearchBar();
     });
 
     // Search on button click
@@ -162,20 +155,15 @@ class LocationSearch {
       }
     });
 
-    // Clear search
-    this.clearButton.addEventListener('click', () => {
-      this.clearSearch();
-    });
+    // Clear search (no clear button in inline mode, handled by close button)
 
-    // Show clear button when input has content and handle real-time suggestions
+    // Handle real-time suggestions
     this.searchInput.addEventListener('input', (e) => {
       const query = e.target.value.trim();
       
       if (query.length > 0) {
-        this.clearButton.classList.remove('hidden');
         this.debouncedSuggestionSearch(query);
       } else {
-        this.clearButton.classList.add('hidden');
         this.hideSuggestions();
         this.showDefaultState();
       }
@@ -204,16 +192,16 @@ class LocationSearch {
     // Close sidepanel on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.searchVisible) {
-        this.hideSidepanel();
+        this.hideSearchBar();
       }
     });
 
-    // Close sidepanel when clicking outside
+    // Close search bar when clicking outside
     document.addEventListener('click', (e) => {
       if (this.searchVisible && 
-          !e.target.closest('.location-search-sidepanel') &&
+          !e.target.closest('.location-search-bar') &&
           !e.target.closest('#location-search-toggle')) {
-        this.hideSidepanel();
+        this.hideSearchBar();
       }
     });
   }
@@ -249,7 +237,6 @@ class LocationSearch {
 
   showLoading() {
     // Hide other panels and show results with loading
-    this.defaultPanel.classList.add('hidden');
     this.suggestionsPanel.classList.add('hidden');
     this.resultsPanel.classList.remove('hidden');
 
@@ -263,7 +250,6 @@ class LocationSearch {
 
   showError(message) {
     // Hide other panels and show results with error
-    this.defaultPanel.classList.add('hidden');
     this.suggestionsPanel.classList.add('hidden');
     this.resultsPanel.classList.remove('hidden');
 
@@ -278,7 +264,6 @@ class LocationSearch {
 
   displaySearchResults(data) {
     // Hide other panels and show results
-    this.defaultPanel.classList.add('hidden');
     this.suggestionsPanel.classList.add('hidden');
     this.resultsPanel.classList.remove('hidden');
 
@@ -636,7 +621,6 @@ class LocationSearch {
 
   clearSearch() {
     this.searchInput.value = '';
-    this.clearButton.classList.add('hidden');
     this.hideResults();
     this.clearSearchMarkers();
     this.clearVisitMarker();
@@ -660,27 +644,62 @@ class LocationSearch {
     }
   }
 
-  showSidepanel() {
-    this.sidepanel.classList.remove('translate-x-full');
+  showSearchBar() {
+    console.log('showSearchBar called');
+    console.log('Search bar element:', this.searchBar);
+    
+    if (!this.searchBar) {
+      console.error('Search bar element not found!');
+      return;
+    }
+    
+    // Position the search bar next to the search button
+    const buttonRect = this.toggleButton.getBoundingClientRect();
+    const mapRect = this.map.getContainer().getBoundingClientRect();
+    
+    // Position relative to the map container with more space and higher z-index
+    const left = buttonRect.right - mapRect.left + 15; // Increase gap to 15px
+    const top = buttonRect.top - mapRect.top;
+    
+    console.log('Positioning search bar at:', { left, top });
+    
+    // Temporarily use center position for testing
+    this.searchBar.style.left = '50%';
+    this.searchBar.style.top = '50%';
+    this.searchBar.style.transform = 'translate(-50%, -50%)';
+    this.searchBar.style.position = 'fixed';
+    
+    // Show the search bar - try different approaches
+    this.searchBar.style.setProperty('display', 'block', 'important');
+    this.searchBar.style.visibility = 'visible';
+    this.searchBar.style.opacity = '1';
     this.searchVisible = true;
+    
+    console.log('Search bar should now be visible');
+    console.log('Search bar display style after setting:', this.searchBar.style.display);
+    console.log('Search bar computed style:', window.getComputedStyle(this.searchBar).display);
+    console.log('Search bar HTML after showing:', this.searchBar.outerHTML);
 
     // Focus the search input for immediate typing
     setTimeout(() => {
-      this.searchInput.focus();
-    }, 300); // Wait for animation to complete
+      if (this.searchInput) {
+        this.searchInput.focus();
+      }
+    }, 100);
   }
 
-  hideSidepanel() {
-    this.sidepanel.classList.add('translate-x-full');
+  hideSearchBar() {
+    this.searchBar.style.display = 'none';
     this.searchVisible = false;
     this.clearSearch();
-    this.showDefaultState();
+    this.hideResults();
+    this.hideSuggestions();
   }
 
   showDefaultState() {
-    this.defaultPanel.classList.remove('hidden');
-    this.suggestionsPanel.classList.add('hidden');
-    this.resultsPanel.classList.add('hidden');
+    // No default panel in inline mode, just hide suggestions and results
+    this.hideSuggestions();
+    this.hideResults();
   }
 
   clearSearchMarkers() {
@@ -691,7 +710,9 @@ class LocationSearch {
   }
 
   hideResults() {
-    this.resultsContainer.classList.add('hidden');
+    if (this.resultsPanel) {
+      this.resultsPanel.classList.add('hidden');
+    }
   }
 
   // Suggestion-related methods
@@ -740,7 +761,6 @@ class LocationSearch {
 
   showSuggestionsLoading() {
     // Hide other panels and show suggestions with loading
-    this.defaultPanel.classList.add('hidden');
     this.resultsPanel.classList.add('hidden');
     this.suggestionsPanel.classList.remove('hidden');
 
@@ -759,7 +779,6 @@ class LocationSearch {
     }
 
     // Hide other panels and show suggestions
-    this.defaultPanel.classList.add('hidden');
     this.resultsPanel.classList.add('hidden');
     this.suggestionsPanel.classList.remove('hidden');
 
@@ -841,7 +860,6 @@ class LocationSearch {
 
   showSearchLoading(locationName) {
     // Hide other panels and show loading for search results
-    this.defaultPanel.classList.add('hidden');
     this.suggestionsPanel.classList.add('hidden');
     this.resultsPanel.classList.remove('hidden');
 
