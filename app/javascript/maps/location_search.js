@@ -66,8 +66,8 @@ class LocationSearch {
     const searchBar = document.createElement('div');
     searchBar.className = 'location-search-bar absolute bg-white border border-gray-300 rounded-lg shadow-lg';
     searchBar.id = 'location-search-bar';
-    searchBar.style.width = '300px';
-    searchBar.style.padding = '8px';
+    searchBar.style.width = '400px'; // Increased width for better usability
+    searchBar.style.padding = '12px'; // Increased padding
     searchBar.style.display = 'none'; // Start hidden with inline style instead of class
     searchBar.style.zIndex = '9999'; // Very high z-index to ensure visibility
 
@@ -196,12 +196,29 @@ class LocationSearch {
       }
     });
 
-    // Close search bar when clicking outside
+    // Close search bar when clicking outside (but not on map interactions)
     document.addEventListener('click', (e) => {
       if (this.searchVisible && 
           !e.target.closest('.location-search-bar') &&
-          !e.target.closest('#location-search-toggle')) {
+          !e.target.closest('#location-search-toggle') &&
+          !e.target.closest('.leaflet-container')) { // Don't close on map interactions
         this.hideSearchBar();
+      }
+    });
+
+    // Maintain search bar position during map movements
+    this.map.on('movestart zoomstart', () => {
+      if (this.searchVisible) {
+        // Store current button position before map movement
+        this.storedButtonPosition = this.toggleButton.getBoundingClientRect();
+      }
+    });
+
+    // Reposition search bar after map movements to maintain relative position
+    this.map.on('moveend zoomend', () => {
+      if (this.searchVisible && this.storedButtonPosition) {
+        // Recalculate position based on new button position
+        this.repositionSearchBar();
       }
     });
   }
@@ -646,39 +663,35 @@ class LocationSearch {
 
   showSearchBar() {
     console.log('showSearchBar called');
-    console.log('Search bar element:', this.searchBar);
     
     if (!this.searchBar) {
       console.error('Search bar element not found!');
       return;
     }
     
-    // Position the search bar next to the search button
+    // Position the search bar to the right of the search button at same height
     const buttonRect = this.toggleButton.getBoundingClientRect();
     const mapRect = this.map.getContainer().getBoundingClientRect();
     
-    // Position relative to the map container with more space and higher z-index
-    const left = buttonRect.right - mapRect.left + 15; // Increase gap to 15px
-    const top = buttonRect.top - mapRect.top;
+    // Calculate position relative to the map container
+    const left = buttonRect.right - mapRect.left + 15; // 15px gap to the right of button
+    const top = buttonRect.top - mapRect.top; // Same height as button
     
     console.log('Positioning search bar at:', { left, top });
     
-    // Temporarily use center position for testing
-    this.searchBar.style.left = '50%';
-    this.searchBar.style.top = '50%';
-    this.searchBar.style.transform = 'translate(-50%, -50%)';
-    this.searchBar.style.position = 'fixed';
+    // Position search bar next to the button
+    this.searchBar.style.left = left + 'px';
+    this.searchBar.style.top = top + 'px';
+    this.searchBar.style.transform = 'none'; // Remove any transforms
+    this.searchBar.style.position = 'absolute'; // Position relative to map container
     
-    // Show the search bar - try different approaches
+    // Show the search bar
     this.searchBar.style.setProperty('display', 'block', 'important');
     this.searchBar.style.visibility = 'visible';
     this.searchBar.style.opacity = '1';
     this.searchVisible = true;
     
-    console.log('Search bar should now be visible');
-    console.log('Search bar display style after setting:', this.searchBar.style.display);
-    console.log('Search bar computed style:', window.getComputedStyle(this.searchBar).display);
-    console.log('Search bar HTML after showing:', this.searchBar.outerHTML);
+    console.log('Search bar positioned next to button');
 
     // Focus the search input for immediate typing
     setTimeout(() => {
@@ -686,6 +699,24 @@ class LocationSearch {
         this.searchInput.focus();
       }
     }, 100);
+  }
+
+  repositionSearchBar() {
+    if (!this.searchBar || !this.searchVisible) return;
+    
+    // Get current button position after map movement
+    const buttonRect = this.toggleButton.getBoundingClientRect();
+    const mapRect = this.map.getContainer().getBoundingClientRect();
+    
+    // Calculate new position
+    const left = buttonRect.right - mapRect.left + 15;
+    const top = buttonRect.top - mapRect.top;
+    
+    // Update search bar position
+    this.searchBar.style.left = left + 'px';
+    this.searchBar.style.top = top + 'px';
+    
+    console.log('Search bar repositioned after map movement');
   }
 
   hideSearchBar() {
