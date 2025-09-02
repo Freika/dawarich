@@ -165,8 +165,8 @@ RSpec.describe LocationSearch::ResultAggregator do
         result = service.group_points_into_visits(separate_visits_points)
 
         expect(result.length).to eq(2)
-        expect(result.first[:points_count]).to eq(2)
-        expect(result.last[:points_count]).to eq(1)
+        expect(result.first[:points_count]).to eq(1) # Most recent visit (20:15)
+        expect(result.last[:points_count]).to eq(2)  # Earlier visit (18:45-19:15)
       end
 
       it 'orders visits by timestamp descending (most recent first)' do
@@ -182,13 +182,21 @@ RSpec.describe LocationSearch::ResultAggregator do
         base_time = 1711814700
 
         [
-          # Short visit (25 minutes)
+          # Short visit (25 minutes) - 2 points 25 minutes apart
           { id: 1, timestamp: base_time, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T18:45:00Z' },
           { id: 2, timestamp: base_time + 25 * 60, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T19:10:00Z' },
           
-          # Long visit (2 hours 15 minutes) - starts 45 minutes after previous to create gap
+          # Long visit (2 hours 15 minutes) - points every 15 minutes to stay within 30min threshold
           { id: 3, timestamp: base_time + 70 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T19:55:00Z' },
-          { id: 4, timestamp: base_time + 205 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T22:10:00Z' }
+          { id: 4, timestamp: base_time + 85 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T20:10:00Z' },
+          { id: 5, timestamp: base_time + 100 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T20:25:00Z' },
+          { id: 6, timestamp: base_time + 115 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T20:40:00Z' },
+          { id: 7, timestamp: base_time + 130 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T20:55:00Z' },
+          { id: 8, timestamp: base_time + 145 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T21:10:00Z' },
+          { id: 9, timestamp: base_time + 160 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T21:25:00Z' },
+          { id: 10, timestamp: base_time + 175 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T21:40:00Z' },
+          { id: 11, timestamp: base_time + 190 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T21:55:00Z' },
+          { id: 12, timestamp: base_time + 205 * 60, accuracy: 10, coordinates: [52.5300, 13.4100], distance_meters: 30, date: '2024-03-20T22:10:00Z' }
         ]
       end
 
@@ -207,10 +215,14 @@ RSpec.describe LocationSearch::ResultAggregator do
       end
 
       it 'formats duration correctly for hours only' do
-        # Create points exactly 2 hours apart
+        # Create points within threshold but exactly 2 hours apart from first to last
         exact_hour_points = [
           { id: 1, timestamp: 1711814700, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T18:45:00Z' },
-          { id: 2, timestamp: 1711814700 + 120 * 60, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T20:45:00Z' }
+          { id: 2, timestamp: 1711814700 + 25 * 60, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T19:10:00Z' },
+          { id: 3, timestamp: 1711814700 + 50 * 60, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T19:35:00Z' },
+          { id: 4, timestamp: 1711814700 + 75 * 60, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T20:00:00Z' },
+          { id: 5, timestamp: 1711814700 + 100 * 60, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T20:25:00Z' },
+          { id: 6, timestamp: 1711814700 + 120 * 60, accuracy: 10, coordinates: [52.5200, 13.4050], distance_meters: 50, date: '2024-03-20T20:45:00Z' }
         ]
         
         result = service.group_points_into_visits(exact_hour_points)

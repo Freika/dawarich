@@ -166,7 +166,24 @@ RSpec.describe LocationSearch::GeocodingService do
       end
 
       before do
-        allow(service).to receive(:perform_geocoding_search).and_return(duplicate_results)
+        # Create mock geocoder results that will be normalized and deduplicated
+        mock_geocoder_results = duplicate_results.map do |result|
+          double(
+            latitude: result[:lat],
+            longitude: result[:lon],
+            address: result[:address],
+            data: {
+              'display_name' => result[:name],
+              'type' => result[:type],
+              'properties' => {
+                'name' => result[:name],
+                'osm_key' => result[:type]
+              }
+            }
+          )
+        end
+        
+        allow(Geocoder).to receive(:search).and_return(mock_geocoder_results)
       end
 
       it 'removes locations within 100m of each other' do

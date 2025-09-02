@@ -73,16 +73,18 @@ module LocationSearch
         # Debug: Log the geocoded location
         Rails.logger.info "LocationSearch: Searching for points near #{location[:name]} at [#{location[:lat]}, #{location[:lon]}]"
 
+        search_radius = @radius_override || determine_search_radius(location[:type])
+        
         matching_points = spatial_matcher.find_points_near(
           @user,
           location[:lat],
           location[:lon],
-          @radius_override || 500, # Allow radius override, default 500 meters
+          search_radius,
           date_filter_options
         )
 
         # Debug: Log the number of matching points found
-        Rails.logger.info "LocationSearch: Found #{matching_points.length} points within #{@radius_override || 500}m radius"
+        Rails.logger.info "LocationSearch: Found #{matching_points.length} points within #{search_radius}m radius"
 
         if matching_points.empty?
           # Try with a larger radius to see if there are any points nearby
@@ -135,6 +137,25 @@ module LocationSearch
         date_from: @date_from,
         date_to: @date_to
       }
+    end
+
+    def determine_search_radius(location_type)
+      case location_type.to_s.downcase
+      when 'shop', 'store', 'retail'
+        75   # Small radius for specific shops
+      when 'restaurant', 'cafe', 'food'
+        75   # Small radius for specific restaurants
+      when 'building', 'house', 'address'
+        50   # Very small radius for specific addresses
+      when 'street', 'road'
+        50   # Very small radius for streets
+      when 'neighbourhood', 'neighborhood', 'district', 'suburb'
+        300  # Medium radius for neighborhoods
+      when 'city', 'town', 'village'
+        1000 # Large radius for cities
+      else
+        500  # Default radius for unknown types
+      end
     end
 
     def empty_result

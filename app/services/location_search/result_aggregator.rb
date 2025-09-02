@@ -10,10 +10,13 @@ module LocationSearch
     def group_points_into_visits(points)
       return [] if points.empty?
 
+      # Sort points by timestamp to handle unordered input
+      sorted_points = points.sort_by { |p| p[:timestamp] }
+
       visits = []
       current_visit_points = []
 
-      points.each do |point|
+      sorted_points.each do |point|
         if current_visit_points.empty? || within_visit_threshold?(current_visit_points.last, point)
           current_visit_points << point
         else
