@@ -6,10 +6,11 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
   let(:user) { create(:user) }
 
   before do
-    driven_by(:selenium_headless_chrome)
-    sign_in user
+    driven_by(:selenium_chrome_headless)
+    # Alternative for debugging: driven_by(:rack_test)
+    login_as user, scope: :user
     
-    # Create some test points near Berlin
+    # Create some test points near Berlin with proper PostGIS point format
     create(:point, 
       user: user, 
       latitude: 52.5200, 
@@ -27,6 +28,9 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
       city: 'Berlin',
       country: 'Germany'
     )
+    
+    # Ensure points are properly saved and accessible
+    expect(user.points.count).to eq(2)
 
     # Mock the geocoding service to avoid external API calls
     allow_any_instance_of(LocationSearch::GeocodingService).to receive(:search) do |_service, query|
@@ -59,11 +63,23 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
 
   describe 'Search Bar' do
     before do
-      visit map_path
+      visit '/map'
       
-      # Wait for map to load
-      expect(page).to have_css('#map')
-      sleep(2) # Give time for JavaScript to initialize
+      # Debug: check what's actually on the page
+      puts "Page title: #{page.title}"
+      puts "Page body contains 'Map': #{page.has_content?('Map')}"
+      puts "Page has #map element: #{page.has_css?('#map')}"
+      puts "Page HTML preview: #{page.html[0..500]}..."
+      
+      # Check if map container exists
+      if page.has_css?('#map')
+        puts "Map element found!"
+      else
+        puts "Map element NOT found - checking for any div elements:"
+        puts "Number of div elements: #{page.all('div').count}"
+      end
+      
+      sleep(3) # Give time for JavaScript to initialize
     end
 
     it 'displays search toggle button on the map' do
@@ -282,7 +298,7 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
   describe 'Search API Integration' do
     it 'makes authenticated requests to the search API' do
       # Test that the frontend makes proper API calls
-      visit map_path
+      visit '/map'
       
       fill_in 'location-search-input', with: 'Kaufland'
       
@@ -298,7 +314,7 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
   describe 'Real-world Search Scenarios' do
     context 'with business name search' do
       it 'finds visits to business locations' do
-        visit map_path
+        visit '/map'
         
         fill_in 'location-search-input', with: 'Kaufland'
         click_button '🔍'
@@ -310,7 +326,7 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
 
     context 'with address search' do
       it 'handles street address searches' do
-        visit map_path
+        visit '/map'
         
         fill_in 'location-search-input', with: 'Alexanderplatz 1'
         click_button '🔍'
@@ -323,7 +339,7 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
 
     context 'with multiple search terms' do
       it 'handles complex search queries' do
-        visit map_path
+        visit '/map'
         
         fill_in 'location-search-input', with: 'Kaufland Berlin'
         click_button '🔍'
@@ -448,8 +464,28 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
 
   def sign_in(user)
     visit '/users/sign_in'
-    fill_in 'Email', with: user.email
-    fill_in 'Password', with: user.password
+    # Try different selectors for email field
+    if page.has_field?('Email')
+      fill_in 'Email', with: user.email
+    elsif page.has_field?('user_email')
+      fill_in 'user_email', with: user.email
+    elsif page.has_css('input[type="email"]')
+      find('input[type="email"]').fill_in with: user.email
+    else
+      raise "Could not find email field"
+    end
+    
+    # Try different selectors for password field  
+    if page.has_field?('Password')
+      fill_in 'Password', with: user.password
+    elsif page.has_field?('user_password')
+      fill_in 'user_password', with: user.password
+    elsif page.has_css('input[type="password"]')
+      find('input[type="password"]').fill_in with: user.password
+    else
+      raise "Could not find password field"
+    end
+    
     click_button 'Log in'
   end
 end

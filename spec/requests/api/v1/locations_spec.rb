@@ -52,7 +52,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations', params: { q: search_query }, headers: headers
 
           expect(response).to have_http_status(:ok)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['query']).to eq(search_query)
           expect(json_response['locations']).to be_an(Array)
@@ -150,7 +150,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations', params: { q: 'NonexistentPlace' }, headers: headers
 
           expect(response).to have_http_status(:ok)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['locations']).to be_empty
           expect(json_response['total_locations']).to eq(0)
@@ -162,9 +162,9 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations', headers: headers
 
           expect(response).to have_http_status(:bad_request)
-          
+
           json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Search query parameter (q) is required')
+          expect(json_response['error']).to eq('Search query parameter (q) or coordinates (lat, lon) are required')
         end
       end
 
@@ -173,9 +173,9 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations', params: { q: '   ' }, headers: headers
 
           expect(response).to have_http_status(:bad_request)
-          
+
           json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Search query parameter (q) is required')
+          expect(json_response['error']).to eq('Search query parameter (q) or coordinates (lat, lon) are required')
         end
       end
 
@@ -186,7 +186,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations', params: { q: long_query }, headers: headers
 
           expect(response).to have_http_status(:bad_request)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['error']).to eq('Search query too long (max 200 characters)')
         end
@@ -202,7 +202,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations', params: { q: 'test' }, headers: headers
 
           expect(response).to have_http_status(:internal_server_error)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['error']).to eq('Search failed. Please try again.')
         end
@@ -283,11 +283,11 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations/suggestions', params: { q: 'Kaufland' }, headers: headers
 
           expect(response).to have_http_status(:ok)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['suggestions']).to be_an(Array)
           expect(json_response['suggestions'].length).to eq(2)
-          
+
           first_suggestion = json_response['suggestions'].first
           expect(first_suggestion).to include(
             'name' => 'Kaufland Mitte',
@@ -307,7 +307,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
               type: 'place'
             }
           end
-          
+
           allow_any_instance_of(LocationSearch::GeocodingService)
             .to receive(:search).and_return(large_suggestions)
 
@@ -323,7 +323,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations/suggestions', params: { q: 'a' }, headers: headers
 
           expect(response).to have_http_status(:ok)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['suggestions']).to be_empty
         end
@@ -334,7 +334,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations/suggestions', params: { q: '' }, headers: headers
 
           expect(response).to have_http_status(:ok)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['suggestions']).to be_empty
         end
@@ -350,7 +350,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations/suggestions', params: { q: 'test' }, headers: headers
 
           expect(response).to have_http_status(:ok)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['suggestions']).to be_empty
         end
