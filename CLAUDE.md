@@ -87,7 +87,7 @@ This file contains essential information for Claude to work effectively with the
 ### Setup
 1. **Docker Development**: Use `docker-compose -f docker/docker-compose.yml up`
 2. **DevContainer**: VS Code devcontainer support available
-3. **Local Development**: 
+3. **Local Development**:
    - `bundle exec rails db:prepare`
    - `bundle exec sidekiq` (background jobs)
    - `bundle exec bin/dev` (main application)
@@ -138,7 +138,7 @@ npx playwright test                  # E2E tests
 - `users` - User accounts and settings
 - `points` - Location points with PostGIS geometry
 - `tracks` - Route collections
-- `areas` - User-defined geographic areas  
+- `areas` - User-defined geographic areas
 - `visits` - Detected area visits
 - `trips` - Travel periods
 - `imports`/`exports` - Data transfer operations
@@ -196,6 +196,7 @@ bundle exec bundle-audit             # Dependency security
 
 1. **Location Data**: Always handle location data with appropriate precision and privacy considerations
 2. **PostGIS**: Leverage PostGIS features for geographic calculations rather than Ruby-based solutions
+2.1 **Coordinates**: Use `lonlat` column in `points` table for geographic calculations
 3. **Background Jobs**: Use Sidekiq for any potentially long-running operations
 4. **Testing**: Include both unit and integration tests for location-based features
 5. **Performance**: Consider database indexes for geographic queries
