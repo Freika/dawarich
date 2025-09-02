@@ -33,7 +33,7 @@ module LocationSearch
 
     def coordinate_based_search
       Rails.logger.info "LocationSearch: Coordinate-based search at [#{@latitude}, #{@longitude}] for '#{@name}'"
-      
+
       # Create a single location object with the provided coordinates
       location = {
         lat: @latitude,
@@ -42,7 +42,7 @@ module LocationSearch
         address: @address,
         type: 'coordinate_search'
       }
-      
+
       find_matching_points([location])
     end
 
@@ -50,13 +50,13 @@ module LocationSearch
       return empty_result if @query.blank?
 
       geocoded_locations = geocoding_service.search(@query)
-      
+
       # Debug: Log geocoding results
       Rails.logger.info "LocationSearch: Geocoding '#{@query}' returned #{geocoded_locations.length} locations"
       geocoded_locations.each_with_index do |loc, idx|
         Rails.logger.info "LocationSearch: [#{idx}] #{loc[:name]} at [#{loc[:lat]}, #{loc[:lon]}] - #{loc[:address]}"
       end
-      
+
       return empty_result if geocoded_locations.empty?
 
       find_matching_points(geocoded_locations)
@@ -72,7 +72,7 @@ module LocationSearch
       geocoded_locations.each do |location|
         # Debug: Log the geocoded location
         Rails.logger.info "LocationSearch: Searching for points near #{location[:name]} at [#{location[:lat]}, #{location[:lon]}]"
-        
+
         matching_points = spatial_matcher.find_points_near(
           @user,
           location[:lat],

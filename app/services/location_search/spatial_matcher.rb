@@ -9,7 +9,7 @@ module LocationSearch
     # Debug method to test spatial queries directly
     def debug_points_near(user, latitude, longitude, radius_meters = 1000)
       query = <<~SQL
-        SELECT 
+        SELECT
           p.id,
           p.timestamp,
           ST_Y(p.lonlat::geometry) as latitude,
@@ -23,24 +23,24 @@ module LocationSearch
         ORDER BY distance_meters ASC
         LIMIT 10;
       SQL
-      
+
       puts "=== DEBUG SPATIAL QUERY ==="
       puts "Searching for user #{user.id} near [#{latitude}, #{longitude}] within #{radius_meters}m"
       puts "Query: #{query}"
-      
+
       results = ActiveRecord::Base.connection.exec_query(query)
       puts "Found #{results.count} points:"
-      
+
       results.each do |row|
         puts "- Point #{row['id']}: [#{row['latitude']}, #{row['longitude']}] - #{row['distance_meters'].to_f.round(2)}m away"
       end
-      
+
       results
     end
 
     def find_points_near(user, latitude, longitude, radius_meters, date_options = {})
       points_query = build_spatial_query(user, latitude, longitude, radius_meters, date_options)
-      
+
       # Execute query and return results with calculated distance
       ActiveRecord::Base.connection.exec_query(points_query)
         .map { |row| format_point_result(row) }
@@ -52,9 +52,9 @@ module LocationSearch
 
     def build_spatial_query(user, latitude, longitude, radius_meters, date_options = {})
       date_filter = build_date_filter(date_options)
-      
+
       <<~SQL
-        SELECT 
+        SELECT
           p.id,
           p.timestamp,
           ST_Y(p.lonlat::geometry) as latitude,
@@ -75,22 +75,22 @@ module LocationSearch
 
     def build_date_filter(date_options)
       return '' unless date_options[:date_from] || date_options[:date_to]
-      
+
       filters = []
-      
+
       if date_options[:date_from]
         timestamp_from = date_options[:date_from].to_time.to_i
         filters << "p.timestamp >= #{timestamp_from}"
       end
-      
+
       if date_options[:date_to]
         # Add one day to include the entire end date
         timestamp_to = (date_options[:date_to] + 1.day).to_time.to_i
         filters << "p.timestamp < #{timestamp_to}"
       end
-      
+
       return '' if filters.empty?
-      
+
       "AND #{filters.join(' AND ')}"
     end
 

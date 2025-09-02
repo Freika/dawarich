@@ -42,7 +42,7 @@ RSpec.describe LocationSearch::ResultAggregator do
         result = service.group_points_into_visits([single_point])
 
         visit = result.first
-        expect(visit[:duration_estimate]).to eq('~15m')
+        expect(visit[:duration_estimate]).to eq('~15 minutes')
         expect(visit[:visit_details][:duration_minutes]).to eq(15)
       end
     end
@@ -95,7 +95,7 @@ RSpec.describe LocationSearch::ResultAggregator do
         result = service.group_points_into_visits(consecutive_points)
 
         visit = result.first
-        expect(visit[:duration_estimate]).to eq('~45m')
+        expect(visit[:duration_estimate]).to eq('~45 minutes')
         expect(visit[:visit_details][:duration_minutes]).to eq(45)
       end
 
@@ -196,14 +196,14 @@ RSpec.describe LocationSearch::ResultAggregator do
         short_visit_points = points_with_various_durations.take(2)
         result = service.group_points_into_visits(short_visit_points)
 
-        expect(result.first[:duration_estimate]).to eq('~25m')
+        expect(result.first[:duration_estimate]).to eq('~25 minutes')
       end
 
       it 'formats duration correctly for hours and minutes' do
         long_visit_points = points_with_various_durations.drop(2)
         result = service.group_points_into_visits(long_visit_points)
 
-        expect(result.first[:duration_estimate]).to eq('~2h 15m')
+        expect(result.first[:duration_estimate]).to eq('~2 hours 15 minutes')
       end
 
       it 'formats duration correctly for hours only' do
@@ -215,7 +215,7 @@ RSpec.describe LocationSearch::ResultAggregator do
         
         result = service.group_points_into_visits(exact_hour_points)
 
-        expect(result.first[:duration_estimate]).to eq('~2h')
+        expect(result.first[:duration_estimate]).to eq('~2 hours')
       end
     end
 

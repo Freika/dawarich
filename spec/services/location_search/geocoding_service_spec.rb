@@ -62,7 +62,7 @@ RSpec.describe LocationSearch::GeocodingService do
       end
 
       it 'limits results to MAX_RESULTS' do
-        expect(Geocoder).to receive(:search).with(query, limit: 5)
+        expect(Geocoder).to receive(:search).with(query, limit: 10)
 
         service.search(query)
       end

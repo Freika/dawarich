@@ -2,6 +2,8 @@
 
 module LocationSearch
   class ResultAggregator
+    include ActionView::Helpers::TextHelper
+
     # Time threshold for grouping consecutive points into visits (minutes)
     VISIT_TIME_THRESHOLD = 30
 
@@ -10,7 +12,7 @@ module LocationSearch
 
       visits = []
       current_visit_points = []
-      
+
       points.each do |point|
         if current_visit_points.empty? || within_visit_threshold?(current_visit_points.last, point)
           current_visit_points << point
@@ -20,10 +22,10 @@ module LocationSearch
           current_visit_points = [point]
         end
       end
-      
+
       # Don't forget the last visit
       visits << create_visit_from_points(current_visit_points) if current_visit_points.any?
-      
+
       visits.sort_by { |visit| -visit[:timestamp] } # Most recent first
     end
 
@@ -41,7 +43,7 @@ module LocationSearch
       sorted_points = points.sort_by { |p| p[:timestamp] }
       first_point = sorted_points.first
       last_point = sorted_points.last
-      
+
       # Calculate visit duration
       duration_minutes = if sorted_points.length > 1
         ((last_point[:timestamp] - first_point[:timestamp]) / 60.0).round
@@ -52,7 +54,7 @@ module LocationSearch
 
       # Find the most accurate point (lowest accuracy value means higher precision)
       most_accurate_point = points.min_by { |p| p[:accuracy] || 999999 }
-      
+
       # Calculate average distance from search center
       average_distance = (points.sum { |p| p[:distance_meters] } / points.length).round(2)
 
@@ -76,25 +78,25 @@ module LocationSearch
     end
 
     def format_duration(minutes)
-      return "~#{minutes}m" if minutes < 60
+      return "~#{pluralize(minutes, 'minute')}" if minutes < 60
 
       hours = minutes / 60
       remaining_minutes = minutes % 60
-      
+
       if remaining_minutes == 0
-        "~#{hours}h"
+        "~#{pluralize(hours, 'hour')}"
       else
-        "~#{hours}h #{remaining_minutes}m"
+        "~#{pluralize(hours, 'hour')} #{pluralize(remaining_minutes, 'minute')}"
       end
     end
 
     def calculate_altitude_range(points)
       altitudes = points.map { |p| p[:altitude] }.compact
       return nil if altitudes.empty?
-      
+
       min_altitude = altitudes.min
       max_altitude = altitudes.max
-      
+
       if min_altitude == max_altitude
         "#{min_altitude}m"
       else

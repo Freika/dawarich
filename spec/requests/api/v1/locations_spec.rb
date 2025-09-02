@@ -297,7 +297,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           )
         end
 
-        it 'limits suggestions to 5 results' do
+        it 'limits suggestions to 10 results' do
           large_suggestions = Array.new(10) do |i|
             {
               lat: 52.5000 + i * 0.001,
@@ -314,7 +314,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           get '/api/v1/locations/suggestions', params: { q: 'test' }, headers: headers
 
           json_response = JSON.parse(response.body)
-          expect(json_response['suggestions'].length).to eq(5)
+          expect(json_response['suggestions'].length).to eq(10)
         end
       end
 

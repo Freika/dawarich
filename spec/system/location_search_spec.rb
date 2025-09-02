@@ -224,7 +224,7 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
         find('#location-search-toggle').click
       end
 
-      it 'adds search markers to the map' do
+      it 'completes search and shows results without location markers' do
         fill_in 'location-search-input', with: 'Kaufland'
         within('#location-search-container') do
           click_button '🔍'
@@ -233,8 +233,7 @@ RSpec.describe 'Location Search Feature', type: :system, js: true do
         # Wait for search to complete
         expect(page).to have_content('Kaufland Mitte')
 
-        # Check that markers are added (this would require inspecting the map object)
-        # For now, we'll verify the search completed successfully
+        # Verify search results are displayed (no location markers are added to keep map clean)
         expect(page).to have_content('Found 1 location(s)')
       end
 
