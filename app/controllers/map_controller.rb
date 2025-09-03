@@ -36,6 +36,8 @@ class MapController < ApplicationController
   end
 
   def calculate_distance
+    return 0 if @coordinates.size < 2
+
     total_distance = 0
 
     @coordinates.each_cons(2) do

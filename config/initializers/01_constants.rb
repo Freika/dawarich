@@ -36,7 +36,3 @@ MANAGER_URL = SELF_HOSTED ? nil : ENV.fetch('MANAGER_URL', nil)
 METRICS_USERNAME = ENV.fetch('METRICS_USERNAME', 'prometheus')
 METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', 'prometheus')
 # /Prometheus metrics
-
-FEATURES = {
-  location_search: !!ENV.fetch('PHOTON_API_HOST', nil)
-}
