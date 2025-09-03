@@ -4,11 +4,8 @@ module LocationSearch
   class PointFinder
     def initialize(user, params = {})
       @user = user
-      @query = params[:query]
       @latitude = params[:latitude]
       @longitude = params[:longitude]
-      @name = params[:name] || 'Selected Location'
-      @address = params[:address] || ''
       @limit = params[:limit] || 50
       @date_from = params[:date_from]
       @date_to = params[:date_to]
@@ -18,8 +15,6 @@ module LocationSearch
     def call
       if coordinate_search?
         return coordinate_based_search
-      elsif @query.present?
-        return text_based_search
       else
         return empty_result
       end
@@ -32,38 +27,13 @@ module LocationSearch
     end
 
     def coordinate_based_search
-      Rails.logger.info "LocationSearch: Coordinate-based search at [#{@latitude}, #{@longitude}] for '#{@name}'"
-
-      # Create a single location object with the provided coordinates
       location = {
         lat: @latitude,
         lon: @longitude,
-        name: @name,
-        address: @address,
         type: 'coordinate_search'
       }
 
       find_matching_points([location])
-    end
-
-    def text_based_search
-      return empty_result if @query.blank?
-
-      geocoded_locations = LocationSearch::GeocodingService.new(@query).search
-
-      # Debug: Log geocoding results
-      Rails.logger.info "LocationSearch: Geocoding '#{@query}' returned #{geocoded_locations.length} locations"
-      geocoded_locations.each_with_index do |loc, idx|
-        Rails.logger.info "LocationSearch: [#{idx}] #{loc[:name]} at [#{loc[:lat]}, #{loc[:lon]}] - #{loc[:address]}"
-      end
-
-      return empty_result if geocoded_locations.empty?
-
-      find_matching_points(geocoded_locations)
-    end
-
-    def geocoding_service
-      @geocoding_service ||= LocationSearch::GeocodingService.new(@query || '')
     end
 
     def find_matching_points(geocoded_locations)
@@ -74,7 +44,7 @@ module LocationSearch
         Rails.logger.info "LocationSearch: Searching for points near #{location[:name]} at [#{location[:lat]}, #{location[:lon]}]"
 
         search_radius = @radius_override || determine_search_radius(location[:type])
-        
+
         matching_points = spatial_matcher.find_points_near(
           @user,
           location[:lat],
@@ -113,14 +83,9 @@ module LocationSearch
       end
 
       {
-        query: @query,
         locations: results,
         total_locations: results.length,
-        search_metadata: {
-          geocoding_provider: geocoding_service.provider_name,
-          candidates_found: geocoded_locations.length,
-          search_time_ms: nil # TODO: implement timing
-        }
+        search_metadata: {}
       }
     end
 
@@ -160,11 +125,9 @@ module LocationSearch
 
     def empty_result
       {
-        query: @query,
         locations: [],
         total_locations: 0,
         search_metadata: {
-          geocoding_provider: nil,
           candidates_found: 0,
           search_time_ms: 0
         }

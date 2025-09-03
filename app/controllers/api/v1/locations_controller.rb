@@ -5,11 +5,12 @@ class Api::V1::LocationsController < ApiController
   before_action :validate_suggestion_params, only: [:suggestions]
 
   def index
-    if search_query.present? || coordinate_search?
+    if coordinate_search?
       search_results = LocationSearch::PointFinder.new(current_api_user, search_params).call
+
       render json: Api::LocationSearchResultSerializer.new(search_results).call
     else
-      render json: { error: 'Search query parameter (q) or coordinates (lat, lon) are required' }, status: :bad_request
+      render json: { error: 'Coordinates (lat, lon) are required' }, status: :bad_request
     end
   rescue StandardError => e
     Rails.logger.error "Location search error: #{e.message}"
@@ -48,11 +49,8 @@ class Api::V1::LocationsController < ApiController
 
   def search_params
     {
-      query: search_query,
       latitude: params[:lat]&.to_f,
       longitude: params[:lon]&.to_f,
-      name: params[:name],
-      address: params[:address],
       limit: params[:limit]&.to_i || 50,
       date_from: parse_date(params[:date_from]),
       date_to: parse_date(params[:date_to]),
