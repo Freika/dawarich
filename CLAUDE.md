@@ -130,7 +130,7 @@ npx playwright test                  # E2E tests
 
 - **Framework**: rSwag (Swagger/OpenAPI)
 - **Location**: `/api-docs` endpoint
-- **Authentication**: JWT-based for API access
+- **Authentication**: API key (Bearer) for API access
 
 ## Database Schema
 

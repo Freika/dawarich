@@ -84,12 +84,6 @@ class LocationSearch {
           id="location-search-input"
         />
         <button
-          id="location-search-submit"
-          class="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-        >
-          Search
-        </button>
-        <button
           id="location-search-close"
           class="px-2 py-2 text-gray-400 hover:text-gray-600"
         >
@@ -116,7 +110,6 @@ class LocationSearch {
     // Store references
     this.searchBar = searchBar;
     this.searchInput = document.getElementById('location-search-input');
-    this.searchButton = document.getElementById('location-search-submit');
     this.closeButton = document.getElementById('location-search-close');
     this.suggestionsContainer = document.getElementById('location-search-suggestions');
     this.suggestionsPanel = document.getElementById('location-search-suggestions-panel');
@@ -200,18 +193,11 @@ class LocationSearch {
       this.hideSearchBar();
     });
 
-    // Search on button click
-    this.searchButton.addEventListener('click', () => {
-      this.performSearch();
-    });
-
     // Search on Enter key
     this.searchInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         if (this.suggestionsVisible && this.currentSuggestionIndex >= 0) {
           this.selectSuggestion(this.currentSuggestionIndex);
-        } else {
-          this.performSearch();
         }
       }
     });
@@ -282,35 +268,6 @@ class LocationSearch {
         this.repositionSearchBar();
       }
     });
-  }
-
-  async performSearch() {
-    const query = this.searchInput.value.trim();
-    if (!query) return;
-
-    this.currentSearchQuery = query;
-    this.showLoading();
-
-    try {
-      const response = await fetch(`/api/v1/locations?q=${encodeURIComponent(query)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Search failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      this.displaySearchResults(data);
-
-    } catch (error) {
-      console.error('Location search error:', error);
-      this.showError('Failed to search locations. Please try again.');
-    }
   }
 
   showLoading() {
