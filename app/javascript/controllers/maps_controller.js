@@ -81,6 +81,12 @@ export default class extends BaseController {
       console.error('Error parsing user_settings data:', error);
       this.userSettings = {};
     }
+    try {
+      this.features = this.element.dataset.features ? JSON.parse(this.element.dataset.features) : {};
+    } catch (error) {
+      console.error('Error parsing features data:', error);
+      this.features = {};
+    }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.fogLineThreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
     // Store route opacity as decimal (0-1) internally
@@ -1833,7 +1839,7 @@ export default class extends BaseController {
   }
 
   initializeLocationSearch() {
-    if (this.map && this.apiKey) {
+    if (this.map && this.apiKey && this.features.reverse_geocoding) {
       this.locationSearch = new LocationSearch(this.map, this.apiKey);
     }
   }

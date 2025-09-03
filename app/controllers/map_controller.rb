@@ -12,6 +12,7 @@ class MapController < ApplicationController
     @end_at = parsed_end_at
     @years = years_range
     @points_number = points_count
+    @features = DawarichSettings.features
   end
 
   private
