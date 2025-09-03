@@ -33,12 +33,8 @@ module LocationSearch
     end
 
     def normalize_geocoding_results(results)
-      normalized_results = []
-
-      results.each do |result|
-        next unless valid_result?(result)
-
-        normalized_result = {
+      normalized_results = results.map do |result|
+        {
           lat: result.latitude.to_f,
           lon: result.longitude.to_f,
           name: result.address&.split(',')&.first || 'Unknown location',
@@ -50,21 +46,10 @@ module LocationSearch
             importance: result.data&.dig('importance')
           }
         }
-
-        normalized_results << normalized_result
       end
 
       deduplicate_results(normalized_results)
     end
-
-    def valid_result?(result)
-      result.present? &&
-        result.latitude.present? &&
-        result.longitude.present? &&
-        result.latitude.to_f.abs <= 90 &&
-        result.longitude.to_f.abs <= 180
-    end
-
 
     def deduplicate_results(results)
       deduplicated = []
@@ -92,10 +77,10 @@ module LocationSearch
         [lat2, lon2],
         units: :km
       )
-      
+
       # Convert to meters and handle potential nil/invalid results
       return 0 unless distance_km.is_a?(Numeric) && distance_km.finite?
-      
+
       distance_km * 1000 # Convert km to meters
     end
   end
