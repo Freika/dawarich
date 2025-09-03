@@ -18,7 +18,7 @@ RSpec.describe Points::RawDataLonlatExtractor do
           }
         }
       end
-      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: nil, latitude: nil) }
+      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: 0.0, latitude: 0.0) }
 
       it 'extracts longitude and latitude correctly' do
         expect { described_class.new(point).call }.to \
@@ -36,7 +36,7 @@ RSpec.describe Points::RawDataLonlatExtractor do
           'latitudeE7' => 512_345_678
         }
       end
-      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: nil, latitude: nil) }
+      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: 0.0, latitude: 0.0) }
 
       it 'extracts longitude and latitude correctly' do
         expect { described_class.new(point).call }.to \
@@ -55,7 +55,7 @@ RSpec.describe Points::RawDataLonlatExtractor do
           }
         }
       end
-      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: nil, latitude: nil) }
+      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: 0.0, latitude: 0.0) }
 
       it 'extracts longitude and latitude correctly' do
         expect { described_class.new(point).call }.to \
@@ -74,7 +74,7 @@ RSpec.describe Points::RawDataLonlatExtractor do
           }
         }
       end
-      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: nil, latitude: nil) }
+      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: 0.0, latitude: 0.0) }
 
       it 'extracts longitude and latitude correctly' do
         expect { described_class.new(point).call }.to \
@@ -92,7 +92,7 @@ RSpec.describe Points::RawDataLonlatExtractor do
           'lat' => 51.2345678
         }
       end
-      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: nil, latitude: nil) }
+      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: 0.0, latitude: 0.0) }
 
       it 'extracts longitude and latitude correctly' do
         expect { described_class.new(point).call }.to \
@@ -111,7 +111,7 @@ RSpec.describe Points::RawDataLonlatExtractor do
           }
         }
       end
-      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: nil, latitude: nil) }
+      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: 0.0, latitude: 0.0) }
 
       it 'extracts longitude and latitude correctly' do
         expect { described_class.new(point).call }.to \
@@ -129,7 +129,7 @@ RSpec.describe Points::RawDataLonlatExtractor do
           'latitude' => 51.2345678
         }
       end
-      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: nil, latitude: nil) }
+      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: 0.0, latitude: 0.0) }
 
       it 'extracts longitude and latitude correctly' do
         expect { described_class.new(point).call }.to \
@@ -148,7 +148,7 @@ RSpec.describe Points::RawDataLonlatExtractor do
           }
         }
       end
-      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: nil, latitude: nil) }
+      let(:point) { create(:point, user: user, raw_data: raw_data, longitude: 0.0, latitude: 0.0) }
 
       # Mock the entire call method since service doesn't have nil check
       before do
