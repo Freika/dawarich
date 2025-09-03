@@ -51,31 +51,10 @@ RSpec.describe LocationSearch::GeocodingService do
         )
       end
 
-      it 'caches results' do
-        expect(Rails.cache).to receive(:fetch).and_call_original
-
-        service.search
-      end
-
       it 'limits results to MAX_RESULTS' do
         expect(Geocoder).to receive(:search).with(query, limit: 10)
 
         service.search
-      end
-
-      context 'with cached results' do
-        let(:cached_results) { [{ lat: 1.0, lon: 2.0, name: 'Cached' }] }
-
-        before do
-          allow(Rails.cache).to receive(:fetch).and_return(cached_results)
-        end
-
-        it 'returns cached results without calling Geocoder' do
-          expect(Geocoder).not_to receive(:search)
-
-          results = service.search
-          expect(results).to eq(cached_results)
-        end
       end
     end
 

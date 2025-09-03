@@ -13,20 +13,6 @@ module LocationSearch
     end
 
     def call
-      if coordinate_search?
-        return coordinate_based_search
-      else
-        return empty_result
-      end
-    end
-
-    private
-
-    def coordinate_search?
-      @latitude.present? && @longitude.present?
-    end
-
-    def coordinate_based_search
       location = {
         lat: @latitude,
         lon: @longitude,
@@ -36,13 +22,12 @@ module LocationSearch
       find_matching_points([location])
     end
 
+    private
+
     def find_matching_points(geocoded_locations)
       results = []
 
       geocoded_locations.each do |location|
-        # Debug: Log the geocoded location
-        Rails.logger.info "LocationSearch: Searching for points near #{location[:name]} at [#{location[:lat]}, #{location[:lon]}]"
-
         search_radius = @radius_override || determine_search_radius(location[:type])
 
         matching_points = spatial_matcher.find_points_near(
@@ -53,11 +38,7 @@ module LocationSearch
           date_filter_options
         )
 
-        # Debug: Log the number of matching points found
-        Rails.logger.info "LocationSearch: Found #{matching_points.length} points within #{search_radius}m radius"
-
         if matching_points.empty?
-          # Try with a larger radius to see if there are any points nearby
           wider_search = spatial_matcher.find_points_near(
             @user,
             location[:lat],
@@ -65,7 +46,7 @@ module LocationSearch
             1000, # 1km radius for debugging
             date_filter_options
           )
-          Rails.logger.info "LocationSearch: Found #{wider_search.length} points within 1000m radius (debug)"
+
           next
         end
 
@@ -121,17 +102,6 @@ module LocationSearch
       else
         500  # Default radius for unknown types
       end
-    end
-
-    def empty_result
-      {
-        locations: [],
-        total_locations: 0,
-        search_metadata: {
-          candidates_found: 0,
-          search_time_ms: 0
-        }
-      }
     end
   end
 end

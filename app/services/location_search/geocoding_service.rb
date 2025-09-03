@@ -3,21 +3,15 @@
 module LocationSearch
   class GeocodingService
     MAX_RESULTS = 10
-    CACHE_TTL = 1.hour
 
     def initialize(query)
       @query = query
-      @cache_key_prefix = 'location_search:geocoding'
     end
 
     def search
       return [] if query.blank?
 
-      cache_key = "#{@cache_key_prefix}:#{Digest::SHA256.hexdigest(query.downcase)}"
-
-      Rails.cache.fetch(cache_key, expires_in: CACHE_TTL) do
-        perform_geocoding_search(query)
-      end
+      perform_geocoding_search(query)
     rescue StandardError => e
       Rails.logger.error "Geocoding search failed for query '#{query}': #{e.message}"
       []
