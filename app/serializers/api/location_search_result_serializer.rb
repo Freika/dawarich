@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class LocationSearchResultSerializer
+class Api::LocationSearchResultSerializer
   def initialize(search_result)
     @search_result = search_result
   end

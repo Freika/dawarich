@@ -7,7 +7,7 @@ class Api::V1::LocationsController < ApiController
   def index
     if search_query.present? || coordinate_search?
       search_results = LocationSearch::PointFinder.new(current_api_user, search_params).call
-      render json: LocationSearchResultSerializer.new(search_results).call
+      render json: Api::LocationSearchResultSerializer.new(search_results).call
     else
       render json: { error: 'Search query parameter (q) or coordinates (lat, lon) are required' }, status: :bad_request
     end
@@ -65,25 +65,18 @@ class Api::V1::LocationsController < ApiController
   end
 
   def validate_search_params
-    if search_query.blank? && !coordinate_search?
-      render json: { error: 'Search query parameter (q) or coordinates (lat, lon) are required' }, status: :bad_request
+    unless coordinate_search?
+      render json: { error: 'Coordinates (lat, lon) are required' }, status: :bad_request
       return false
     end
 
-    if search_query.present? && search_query.length > 200
-      render json: { error: 'Search query too long (max 200 characters)' }, status: :bad_request
+    lat = params[:lat]&.to_f
+    lon = params[:lon]&.to_f
+
+    if lat.abs > 90 || lon.abs > 180
+      render json: { error: 'Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180' },
+             status: :bad_request
       return false
-    end
-
-    if coordinate_search?
-      lat = params[:lat]&.to_f
-      lon = params[:lon]&.to_f
-
-      if lat.abs > 90 || lon.abs > 180
-        render json: { error: 'Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180' },
-               status: :bad_request
-        return false
-      end
     end
 
     true

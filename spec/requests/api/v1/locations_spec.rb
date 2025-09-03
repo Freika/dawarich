@@ -9,11 +9,12 @@ RSpec.describe Api::V1::LocationsController, type: :request do
 
   describe 'GET /api/v1/locations' do
     context 'with valid authentication' do
-      context 'when search query is provided' do
-        let(:search_query) { 'Kaufland' }
+      context 'when coordinates are provided' do
+        let(:latitude) { 52.5200 }
+        let(:longitude) { 13.4050 }
         let(:mock_search_result) do
           {
-            query: search_query,
+            query: nil,
             locations: [
               {
                 place_name: 'Kaufland Mitte',
@@ -49,19 +50,19 @@ RSpec.describe Api::V1::LocationsController, type: :request do
         end
 
         it 'returns successful response with search results' do
-          get '/api/v1/locations', params: { q: search_query }, headers: headers
+          get '/api/v1/locations', params: { lat: latitude, lon: longitude }, headers: headers
 
           expect(response).to have_http_status(:ok)
 
           json_response = JSON.parse(response.body)
-          expect(json_response['query']).to eq(search_query)
+          expect(json_response['query']).to be_nil
           expect(json_response['locations']).to be_an(Array)
           expect(json_response['locations'].first['place_name']).to eq('Kaufland Mitte')
           expect(json_response['total_locations']).to eq(1)
         end
 
         it 'includes search metadata in response' do
-          get '/api/v1/locations', params: { q: search_query }, headers: headers
+          get '/api/v1/locations', params: { lat: latitude, lon: longitude }, headers: headers
 
           json_response = JSON.parse(response.body)
           expect(json_response['search_metadata']).to include(
@@ -74,7 +75,8 @@ RSpec.describe Api::V1::LocationsController, type: :request do
           expect(LocationSearch::PointFinder)
             .to receive(:new)
             .with(user, hash_including(
-              query: search_query,
+              latitude: latitude,
+              longitude: longitude,
               limit: 50,
               date_from: nil,
               date_to: nil,
@@ -82,13 +84,14 @@ RSpec.describe Api::V1::LocationsController, type: :request do
             ))
             .and_return(double(call: mock_search_result))
 
-          get '/api/v1/locations', params: { q: search_query }, headers: headers
+          get '/api/v1/locations', params: { lat: latitude, lon: longitude }, headers: headers
         end
 
         context 'with additional search parameters' do
           let(:params) do
             {
-              q: search_query,
+              lat: latitude,
+              lon: longitude,
               limit: 20,
               date_from: '2024-01-01',
               date_to: '2024-03-31',
@@ -100,7 +103,8 @@ RSpec.describe Api::V1::LocationsController, type: :request do
             expect(LocationSearch::PointFinder)
               .to receive(:new)
               .with(user, hash_including(
-                query: search_query,
+                latitude: latitude,
+                longitude: longitude,
                 limit: 20,
                 date_from: Date.parse('2024-01-01'),
                 date_to: Date.parse('2024-03-31'),
@@ -115,7 +119,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
         context 'with invalid date parameters' do
           it 'handles invalid date_from gracefully' do
             expect {
-              get '/api/v1/locations', params: { q: search_query, date_from: 'invalid-date' }, headers: headers
+              get '/api/v1/locations', params: { lat: latitude, lon: longitude, date_from: 'invalid-date' }, headers: headers
             }.not_to raise_error
 
             expect(response).to have_http_status(:ok)
@@ -123,7 +127,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
 
           it 'handles invalid date_to gracefully' do
             expect {
-              get '/api/v1/locations', params: { q: search_query, date_to: 'invalid-date' }, headers: headers
+              get '/api/v1/locations', params: { lat: latitude, lon: longitude, date_to: 'invalid-date' }, headers: headers
             }.not_to raise_error
 
             expect(response).to have_http_status(:ok)
@@ -147,7 +151,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
         end
 
         it 'returns empty results successfully' do
-          get '/api/v1/locations', params: { q: 'NonexistentPlace' }, headers: headers
+          get '/api/v1/locations', params: { lat: 0.0, lon: 0.0 }, headers: headers
 
           expect(response).to have_http_status(:ok)
 
@@ -157,38 +161,45 @@ RSpec.describe Api::V1::LocationsController, type: :request do
         end
       end
 
-      context 'when search query is missing' do
+      context 'when coordinates are missing' do
         it 'returns bad request error' do
           get '/api/v1/locations', headers: headers
 
           expect(response).to have_http_status(:bad_request)
 
           json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Search query parameter (q) or coordinates (lat, lon) are required')
+          expect(json_response['error']).to eq('Coordinates (lat, lon) are required')
         end
       end
 
-      context 'when search query is blank' do
+      context 'when only latitude is provided' do
         it 'returns bad request error' do
-          get '/api/v1/locations', params: { q: '   ' }, headers: headers
+          get '/api/v1/locations', params: { lat: 52.5200 }, headers: headers
 
           expect(response).to have_http_status(:bad_request)
 
           json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Search query parameter (q) or coordinates (lat, lon) are required')
+          expect(json_response['error']).to eq('Coordinates (lat, lon) are required')
         end
       end
 
-      context 'when search query is too long' do
-        let(:long_query) { 'a' * 201 }
-
-        it 'returns bad request error' do
-          get '/api/v1/locations', params: { q: long_query }, headers: headers
+      context 'when coordinates are invalid' do
+        it 'returns bad request error for invalid latitude' do
+          get '/api/v1/locations', params: { lat: 91, lon: 0 }, headers: headers
 
           expect(response).to have_http_status(:bad_request)
 
           json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Search query too long (max 200 characters)')
+          expect(json_response['error']).to eq('Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180')
+        end
+
+        it 'returns bad request error for invalid longitude' do
+          get '/api/v1/locations', params: { lat: 0, lon: 181 }, headers: headers
+
+          expect(response).to have_http_status(:bad_request)
+
+          json_response = JSON.parse(response.body)
+          expect(json_response['error']).to eq('Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180')
         end
       end
 
@@ -199,7 +210,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
         end
 
         it 'returns internal server error' do
-          get '/api/v1/locations', params: { q: 'test' }, headers: headers
+          get '/api/v1/locations', params: { lat: 52.5200, lon: 13.4050 }, headers: headers
 
           expect(response).to have_http_status(:internal_server_error)
 
@@ -211,7 +222,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
 
     context 'without authentication' do
       it 'returns unauthorized error' do
-        get '/api/v1/locations', params: { q: 'test' }
+        get '/api/v1/locations', params: { lat: 52.5200, lon: 13.4050 }
 
         expect(response).to have_http_status(:unauthorized)
       end
@@ -221,7 +232,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
       let(:invalid_headers) { { 'Authorization' => 'Bearer invalid_key' } }
 
       it 'returns unauthorized error' do
-        get '/api/v1/locations', params: { q: 'test' }, headers: invalid_headers
+        get '/api/v1/locations', params: { lat: 52.5200, lon: 13.4050 }, headers: invalid_headers
 
         expect(response).to have_http_status(:unauthorized)
       end
@@ -240,12 +251,12 @@ RSpec.describe Api::V1::LocationsController, type: :request do
         # Mock service to verify user isolation
         allow(LocationSearch::PointFinder).to receive(:new) do |user, _params|
           expect(user).to eq(user1)  # Should only be called with user1
-          double(call: { query: 'test', locations: [], total_locations: 0, search_metadata: {} })
+          double(call: { query: nil, locations: [], total_locations: 0, search_metadata: {} })
         end
       end
 
       it 'only searches within the authenticated user data' do
-        get '/api/v1/locations', params: { q: 'test' }, headers: user1_headers
+        get '/api/v1/locations', params: { lat: 52.5200, lon: 13.4050 }, headers: user1_headers
 
         expect(response).to have_http_status(:ok)
       end
