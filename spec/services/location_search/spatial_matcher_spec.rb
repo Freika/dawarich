@@ -11,10 +11,9 @@ RSpec.describe LocationSearch::SpatialMatcher do
 
   describe '#find_points_near' do
     let!(:near_point) do
-      create(:point, 
-        user: user, 
-        latitude: 52.5201, 
-        longitude: 13.4051,
+      create(:point,
+        user: user,
+        lonlat: "POINT(13.4051 52.5201)",
         timestamp: 1.hour.ago.to_i,
         city: 'Berlin',
         country: 'Germany',
@@ -26,8 +25,7 @@ RSpec.describe LocationSearch::SpatialMatcher do
     let!(:far_point) do
       create(:point,
         user: user,
-        latitude: 52.6000, # ~9km away
-        longitude: 13.5000,
+        lonlat: "POINT(13.5000 52.6000)",
         timestamp: 2.hours.ago.to_i
       )
     end
@@ -35,8 +33,7 @@ RSpec.describe LocationSearch::SpatialMatcher do
     let!(:other_user_point) do
       create(:point,
         user: create(:user),
-        latitude: 52.5201,
-        longitude: 13.4051,
+        lonlat: "POINT(13.4051 52.5201)",
         timestamp: 30.minutes.ago.to_i
       )
     end
@@ -77,7 +74,7 @@ RSpec.describe LocationSearch::SpatialMatcher do
         expect(point).to include(
           id: near_point.id,
           timestamp: near_point.timestamp,
-          coordinates: [near_point.latitude.to_f, near_point.longitude.to_f],
+          coordinates: [52.5201, 13.4051],
           city: 'Berlin',
           country: 'Germany',
           altitude: 100,
@@ -95,8 +92,7 @@ RSpec.describe LocationSearch::SpatialMatcher do
         # Create another nearby point with older timestamp
         older_point = create(:point,
           user: user,
-          latitude: 52.5199,
-          longitude: 13.4049,
+          lonlat: "POINT(13.4049 52.5199)",
           timestamp: 3.hours.ago.to_i
         )
 
@@ -118,8 +114,7 @@ RSpec.describe LocationSearch::SpatialMatcher do
       let!(:old_point) do
         create(:point,
           user: user,
-          latitude: 52.5201,
-          longitude: 13.4051,
+          lonlat: "POINT(13.4051 52.5201)",
           timestamp: 1.week.ago.to_i
         )
       end
@@ -177,8 +172,7 @@ RSpec.describe LocationSearch::SpatialMatcher do
         # Create point with negative coordinates
         negative_point = create(:point,
           user: user,
-          latitude: -33.8688,  # Sydney
-          longitude: 151.2093,
+          lonlat: "POINT(151.2093 -33.8688)",
           timestamp: 1.hour.ago.to_i
         )
 
@@ -192,8 +186,7 @@ RSpec.describe LocationSearch::SpatialMatcher do
         # Create point near north pole
         polar_point = create(:point,
           user: user,
-          latitude: 89.0,
-          longitude: 0.0,
+          lonlat: "POINT(0.0 89.0)",
           timestamp: 1.hour.ago.to_i
         )
 
@@ -210,8 +203,7 @@ RSpec.describe LocationSearch::SpatialMatcher do
         50.times do |i|
           create(:point,
             user: user,
-            latitude: latitude + (i * 0.0001), # Spread points slightly
-            longitude: longitude + (i * 0.0001),
+            lonlat: "POINT(#{longitude + (i * 0.0001)} #{latitude + (i * 0.0001)})", # Spread points slightly
             timestamp: i.hours.ago.to_i
           )
         end
