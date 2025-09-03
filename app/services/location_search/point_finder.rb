@@ -13,6 +13,8 @@ module LocationSearch
     end
 
     def call
+      return empty_result unless valid_coordinates?
+
       location = {
         lat: @latitude,
         lon: @longitude,
@@ -102,6 +104,19 @@ module LocationSearch
       else
         500  # Default radius for unknown types
       end
+    end
+
+    def valid_coordinates?
+      @latitude.present? && @longitude.present? &&
+        @latitude.to_f.between?(-90, 90) && @longitude.to_f.between?(-180, 180)
+    end
+
+    def empty_result
+      {
+        locations: [],
+        total_locations: 0,
+        search_metadata: {}
+      }
     end
   end
 end

@@ -321,7 +321,7 @@ class LocationSearch {
     this.resultsContainer.innerHTML = `
       <div class="p-8 text-center">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        <div class="text-sm text-gray-600 mt-3">Searching for "${this.currentSearchQuery}"...</div>
+        <div class="text-sm text-gray-600 mt-3">Searching for "${this.escapeHtml(this.currentSearchQuery)}"...</div>
       </div>
     `;
   }
@@ -335,7 +335,7 @@ class LocationSearch {
       <div class="p-8 text-center">
         <div class="text-4xl mb-3">⚠️</div>
         <div class="text-sm font-medium text-red-600 mb-2">Search Failed</div>
-        <div class="text-xs text-gray-500">${message}</div>
+        <div class="text-xs text-gray-500">${this.escapeHtml(message)}</div>
       </div>
     `;
   }
@@ -350,7 +350,7 @@ class LocationSearch {
         <div class="p-6 text-center text-gray-500">
           <div class="text-3xl mb-3">📍</div>
           <div class="text-sm font-medium">No visits found</div>
-          <div class="text-xs mt-1">No visits found for "${this.currentSearchQuery}"</div>
+          <div class="text-xs mt-1">No visits found for "${this.escapeHtml(this.currentSearchQuery)}"</div>
         </div>
       `;
       return;
@@ -362,7 +362,7 @@ class LocationSearch {
     let resultsHtml = `
       <div class="p-4 border-b bg-gray-50">
         <div class="text-sm font-medium text-gray-700">Found ${data.total_locations} location(s)</div>
-        <div class="text-xs text-gray-500 mt-1">for "${this.currentSearchQuery}"</div>
+        <div class="text-xs text-gray-500 mt-1">for "${this.escapeHtml(this.currentSearchQuery)}"</div>
       </div>
     `;
 

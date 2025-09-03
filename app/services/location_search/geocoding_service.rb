@@ -33,10 +33,15 @@ module LocationSearch
     end
 
     def normalize_geocoding_results(results)
-      normalized_results = results.map do |result|
+      normalized_results = results.filter_map do |result|
+        lat = result.latitude.to_f
+        lon = result.longitude.to_f
+
+        next unless valid_coordinates?(lat, lon)
+
         {
-          lat: result.latitude.to_f,
-          lon: result.longitude.to_f,
+          lat: lat,
+          lon: lon,
           name: result.address&.split(',')&.first || 'Unknown location',
           address: result.address || '',
           type: result.data&.dig('type') || result.data&.dig('class') || 'unknown',
@@ -82,6 +87,10 @@ module LocationSearch
       return 0 unless distance_km.is_a?(Numeric) && distance_km.finite?
 
       distance_km * 1000 # Convert km to meters
+    end
+
+    def valid_coordinates?(lat, lon)
+      lat.between?(-90, 90) && lon.between?(-180, 180)
     end
   end
 end

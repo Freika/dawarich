@@ -37,7 +37,7 @@ RSpec.describe LocationSearch::PointFinder do
       before do
         allow_any_instance_of(LocationSearch::SpatialMatcher)
           .to receive(:find_points_near).and_return(mock_matching_points)
-        
+
         allow_any_instance_of(LocationSearch::ResultAggregator)
           .to receive(:group_points_into_visits).and_return(mock_visits)
       end
@@ -62,7 +62,7 @@ RSpec.describe LocationSearch::PointFinder do
 
       context 'with custom radius override' do
         let(:search_params) { { latitude: 52.5200, longitude: 13.4050, radius_override: 150 } }
-        
+
         it 'uses custom radius when override provided' do
           expect_any_instance_of(LocationSearch::SpatialMatcher)
             .to receive(:find_points_near)
@@ -101,7 +101,7 @@ RSpec.describe LocationSearch::PointFinder do
         before do
           allow_any_instance_of(LocationSearch::SpatialMatcher)
             .to receive(:find_points_near).and_return([{}])
-          
+
           allow_any_instance_of(LocationSearch::ResultAggregator)
             .to receive(:group_points_into_visits).and_return(many_visits)
         end
@@ -116,7 +116,7 @@ RSpec.describe LocationSearch::PointFinder do
 
     context 'when no matching points found' do
       let(:search_params) { { latitude: 52.5200, longitude: 13.4050 } }
-      
+
       before do
         allow_any_instance_of(LocationSearch::SpatialMatcher)
           .to receive(:find_points_near).and_return([])
@@ -137,7 +137,7 @@ RSpec.describe LocationSearch::PointFinder do
         expect(LocationSearch::SpatialMatcher).not_to receive(:new)
 
         result = service.call
-        
+
         expect(result[:locations]).to be_empty
       end
     end
@@ -147,7 +147,7 @@ RSpec.describe LocationSearch::PointFinder do
 
       it 'returns empty result' do
         result = service.call
-        
+
         expect(result[:locations]).to be_empty
       end
     end
@@ -157,7 +157,7 @@ RSpec.describe LocationSearch::PointFinder do
 
       it 'returns empty result' do
         result = service.call
-        
+
         expect(result[:locations]).to be_empty
       end
     end
