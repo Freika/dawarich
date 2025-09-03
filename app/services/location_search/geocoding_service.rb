@@ -5,11 +5,12 @@ module LocationSearch
     MAX_RESULTS = 10
     CACHE_TTL = 1.hour
 
-    def initialize
+    def initialize(query)
+      @query = query
       @cache_key_prefix = 'location_search:geocoding'
     end
 
-    def search(query)
+    def search
       return [] if query.blank?
 
       cache_key = "#{@cache_key_prefix}:#{Digest::SHA256.hexdigest(query.downcase)}"
@@ -28,60 +29,38 @@ module LocationSearch
 
     private
 
+    attr_reader :query
+
     def perform_geocoding_search(query)
-      Rails.logger.info "LocationSearch::GeocodingService: Searching for '#{query}' using #{provider_name}"
-
-      # Try original query first
       results = Geocoder.search(query, limit: MAX_RESULTS)
-      Rails.logger.info "LocationSearch::GeocodingService: Raw geocoder returned #{results.length} results"
-
-      # If we got results but they seem too generic (common chain names),
-      # also try with location context
-      if results.length > 1 && looks_like_chain_store?(query)
-        Rails.logger.info 'LocationSearch::GeocodingService: Query looks like chain store, trying with Berlin context'
-        berlin_results = Geocoder.search("#{query} Berlin", limit: MAX_RESULTS)
-        Rails.logger.info "LocationSearch::GeocodingService: Berlin-specific search returned #{berlin_results.length} results"
-
-        # Prioritize Berlin results
-        results = (berlin_results + results).uniq
-      end
-
       return [] if results.blank?
 
-      normalized = normalize_geocoding_results(results)
-      Rails.logger.info "LocationSearch::GeocodingService: After normalization: #{normalized.length} results"
-
-      normalized
+      normalize_geocoding_results(results)
     end
 
     def normalize_geocoding_results(results)
       normalized_results = []
 
-      results.each_with_index do |result, idx|
-        unless valid_result?(result)
-          Rails.logger.warn "LocationSearch::GeocodingService: Result #{idx} is invalid: lat=#{result.latitude}, lon=#{result.longitude}"
-          next
-        end
+      results.each do |result|
+        next unless valid_result?(result)
 
         normalized_result = {
           lat: result.latitude.to_f,
           lon: result.longitude.to_f,
-          name: extract_name(result),
-          address: extract_address(result),
-          type: extract_type(result),
-          provider_data: extract_provider_data(result)
+          name: result.address&.split(',')&.first || 'Unknown location',
+          address: result.address || '',
+          type: result.data&.dig('type') || result.data&.dig('class') || 'unknown',
+          provider_data: {
+            osm_id: result.data&.dig('osm_id'),
+            place_rank: result.data&.dig('place_rank'),
+            importance: result.data&.dig('importance')
+          }
         }
-
-        Rails.logger.info "LocationSearch::GeocodingService: Result #{idx}: '#{normalized_result[:name]}' at [#{normalized_result[:lat]}, #{normalized_result[:lon]}]"
 
         normalized_results << normalized_result
       end
 
-      # Remove duplicates based on coordinates (within 100m)
-      deduplicated = deduplicate_results(normalized_results)
-      Rails.logger.info "LocationSearch::GeocodingService: After deduplication: #{deduplicated.length} results"
-
-      deduplicated
+      deduplicate_results(normalized_results)
     end
 
     def valid_result?(result)
@@ -92,93 +71,6 @@ module LocationSearch
         result.longitude.to_f.abs <= 180
     end
 
-    def extract_name(result)
-      case provider_name.downcase
-      when 'photon'
-        extract_photon_name(result)
-      when 'nominatim'
-        extract_nominatim_name(result)
-      when 'geoapify'
-        extract_geoapify_name(result)
-      else
-        result.address || result.data&.dig('display_name') || 'Unknown location'
-      end
-    end
-
-    def extract_address(result)
-      case provider_name.downcase
-      when 'photon'
-        extract_photon_address(result)
-      when 'nominatim'
-        extract_nominatim_address(result)
-      when 'geoapify'
-        extract_geoapify_address(result)
-      else
-        result.address || result.data&.dig('display_name') || ''
-      end
-    end
-
-    def extract_type(result)
-      data = result.data || {}
-
-      case provider_name.downcase
-      when 'photon'
-        data.dig('properties', 'osm_key') || data.dig('properties', 'type') || 'unknown'
-      when 'nominatim'
-        data['type'] || data['class'] || 'unknown'
-      when 'geoapify'
-        data.dig('properties', 'datasource', 'sourcename') || data.dig('properties', 'place_type') || 'unknown'
-      else
-        'unknown'
-      end
-    end
-
-    def extract_provider_data(result)
-      {
-        osm_id: result.data&.dig('properties', 'osm_id'),
-        osm_type: result.data&.dig('properties', 'osm_type'),
-        place_rank: result.data&.dig('place_rank'),
-        importance: result.data&.dig('importance')
-      }
-    end
-
-    # Provider-specific extractors
-    def extract_photon_name(result)
-      properties = result.data&.dig('properties') || {}
-      properties['name'] || properties['street'] || properties['city'] || 'Unknown location'
-    end
-
-    def extract_photon_address(result)
-      properties = result.data&.dig('properties') || {}
-      parts = []
-
-      parts << properties['street'] if properties['street'].present?
-      parts << properties['housenumber'] if properties['housenumber'].present?
-      parts << properties['city'] if properties['city'].present?
-      parts << properties['state'] if properties['state'].present?
-      parts << properties['country'] if properties['country'].present?
-
-      parts.join(', ')
-    end
-
-    def extract_nominatim_name(result)
-      data = result.data || {}
-      data['display_name']&.split(',')&.first || 'Unknown location'
-    end
-
-    def extract_nominatim_address(result)
-      result.data&.dig('display_name') || ''
-    end
-
-    def extract_geoapify_name(result)
-      properties = result.data&.dig('properties') || {}
-      properties['name'] || properties['street'] || properties['city'] || 'Unknown location'
-    end
-
-    def extract_geoapify_address(result)
-      properties = result.data&.dig('properties') || {}
-      properties['formatted'] || ''
-    end
 
     def deduplicate_results(results)
       deduplicated = []
@@ -216,16 +108,5 @@ module LocationSearch
       rkm * c
     end
 
-    def looks_like_chain_store?(query)
-      chain_patterns = [
-        /\b(netto|kaufland|rewe|edeka|aldi|lidl|penny|real)\b/i,
-        /\b(mcdonalds?|burger king|kfc|subway)\b/i,
-        /\b(shell|aral|esso|bp|total)\b/i,
-        /\b(dm|rossmann|müller)\b/i,
-        /\b(h&m|c&a|zara|primark)\b/i
-      ]
-
-      chain_patterns.any? { |pattern| query.match?(pattern) }
-    end
   end
 end

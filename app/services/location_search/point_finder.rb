@@ -49,7 +49,7 @@ module LocationSearch
     def text_based_search
       return empty_result if @query.blank?
 
-      geocoded_locations = geocoding_service.search(@query)
+      geocoded_locations = LocationSearch::GeocodingService.new(@query).search
 
       # Debug: Log geocoding results
       Rails.logger.info "LocationSearch: Geocoding '#{@query}' returned #{geocoded_locations.length} locations"
@@ -63,7 +63,7 @@ module LocationSearch
     end
 
     def geocoding_service
-      @geocoding_service ||= LocationSearch::GeocodingService.new
+      @geocoding_service ||= LocationSearch::GeocodingService.new(@query || '')
     end
 
     def find_matching_points(geocoded_locations)

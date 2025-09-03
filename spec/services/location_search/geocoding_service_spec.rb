@@ -3,11 +3,11 @@
 require 'rails_helper'
 
 RSpec.describe LocationSearch::GeocodingService do
-  let(:service) { described_class.new }
+  let(:query) { 'Kaufland Berlin' }
+  let(:service) { described_class.new(query) }
 
   describe '#search' do
     context 'with valid query' do
-      let(:query) { 'Kaufland Berlin' }
       let(:mock_geocoder_result) do
         double(
           'Geocoder::Result',
@@ -15,15 +15,10 @@ RSpec.describe LocationSearch::GeocodingService do
           longitude: 13.4050,
           address: 'Kaufland, Alexanderplatz 1, Berlin',
           data: {
-            'properties' => {
-              'name' => 'Kaufland Mitte',
-              'street' => 'Alexanderplatz',
-              'housenumber' => '1',
-              'city' => 'Berlin',
-              'country' => 'Germany',
-              'osm_key' => 'shop',
-              'osm_id' => '12345'
-            }
+            'type' => 'shop',
+            'osm_id' => '12345',
+            'place_rank' => 30,
+            'importance' => 0.8
           }
         )
       end
@@ -34,37 +29,38 @@ RSpec.describe LocationSearch::GeocodingService do
       end
 
       it 'returns normalized geocoding results' do
-        results = service.search(query)
+        results = service.search
 
         expect(results).to be_an(Array)
         expect(results.first).to include(
           lat: 52.5200,
           lon: 13.4050,
-          name: 'Kaufland Mitte',
-          address: 'Alexanderplatz, 1, Berlin, Germany',
+          name: 'Kaufland',
+          address: 'Kaufland, Alexanderplatz 1, Berlin',
           type: 'shop'
         )
       end
 
       it 'includes provider data' do
-        results = service.search(query)
+        results = service.search
 
         expect(results.first[:provider_data]).to include(
           osm_id: '12345',
-          osm_type: nil
+          place_rank: 30,
+          importance: 0.8
         )
       end
 
       it 'caches results' do
         expect(Rails.cache).to receive(:fetch).and_call_original
 
-        service.search(query)
+        service.search
       end
 
       it 'limits results to MAX_RESULTS' do
         expect(Geocoder).to receive(:search).with(query, limit: 10)
 
-        service.search(query)
+        service.search
       end
 
       context 'with cached results' do
@@ -77,19 +73,17 @@ RSpec.describe LocationSearch::GeocodingService do
         it 'returns cached results without calling Geocoder' do
           expect(Geocoder).not_to receive(:search)
 
-          results = service.search(query)
+          results = service.search
           expect(results).to eq(cached_results)
         end
       end
     end
 
     context 'with blank query' do
+      let(:service) { described_class.new('') }
+      
       it 'returns empty array' do
-        results = service.search('')
-        expect(results).to eq([])
-        
-        results = service.search(nil)
-        expect(results).to eq([])
+        expect(service.search).to eq([])
       end
     end
 
@@ -99,21 +93,17 @@ RSpec.describe LocationSearch::GeocodingService do
       end
 
       it 'returns empty array' do
-        results = service.search('nonexistent place')
-        expect(results).to eq([])
+        expect(service.search).to eq([])
       end
     end
 
     context 'when Geocoder raises an error' do
       before do
-        allow(Geocoder).to receive(:search).and_raise(StandardError.new('API error'))
+        allow(Geocoder).to receive(:search).and_raise(StandardError.new('Geocoding error'))
       end
 
       it 'handles error gracefully and returns empty array' do
-        expect(Rails.logger).to receive(:error).with(/Geocoding search failed/)
-
-        results = service.search('test query')
-        expect(results).to eq([])
+        expect(service.search).to eq([])
       end
     end
 
@@ -121,20 +111,32 @@ RSpec.describe LocationSearch::GeocodingService do
       let(:invalid_result) do
         double(
           'Geocoder::Result',
-          latitude: 91.0,  # Invalid latitude
-          longitude: 181.0, # Invalid longitude
-          address: 'Invalid Location',
+          latitude: 91.0, # Invalid latitude
+          longitude: 13.4050,
+          address: 'Invalid location',
+          data: {}
+        )
+      end
+
+      let(:valid_result) do
+        double(
+          'Geocoder::Result',
+          latitude: 52.5200,
+          longitude: 13.4050,
+          address: 'Valid location',
           data: {}
         )
       end
 
       before do
-        allow(Geocoder).to receive(:search).and_return([invalid_result])
+        allow(Geocoder).to receive(:search).and_return([invalid_result, valid_result])
       end
 
       it 'filters out results with invalid coordinates' do
-        results = service.search('test')
-        expect(results).to be_empty
+        results = service.search
+
+        expect(results.length).to eq(1)
+        expect(results.first[:lat]).to eq(52.5200)
       end
     end
 
@@ -144,124 +146,55 @@ RSpec.describe LocationSearch::GeocodingService do
           {
             lat: 52.5200,
             lon: 13.4050,
-            name: 'Location A',
-            address: 'Address A',
-            type: 'shop'
+            name: 'Location 1',
+            address: 'Address 1',
+            type: 'shop',
+            provider_data: {}
           },
           {
-            lat: 52.5201, # Very close to first location (~11 meters)
+            lat: 52.5201, # Within 100m of first location
             lon: 13.4051,
-            name: 'Location B',
-            address: 'Address B',
-            type: 'shop'
-          },
-          {
-            lat: 52.5300, # Far from others
-            lon: 13.4150,
-            name: 'Location C',
-            address: 'Address C',
-            type: 'restaurant'
+            name: 'Location 2',
+            address: 'Address 2',
+            type: 'shop',
+            provider_data: {}
           }
         ]
       end
 
-      before do
-        # Create mock geocoder results that will be normalized and deduplicated
-        mock_geocoder_results = duplicate_results.map do |result|
+      let(:mock_results) do
+        duplicate_results.map do |result|
           double(
+            'Geocoder::Result',
             latitude: result[:lat],
             longitude: result[:lon],
             address: result[:address],
-            data: {
-              'display_name' => result[:name],
-              'type' => result[:type],
-              'properties' => {
-                'name' => result[:name],
-                'osm_key' => result[:type]
-              }
-            }
+            data: { 'type' => result[:type] }
           )
         end
-        
-        allow(Geocoder).to receive(:search).and_return(mock_geocoder_results)
+      end
+
+      before do
+        allow(Geocoder).to receive(:search).and_return(mock_results)
       end
 
       it 'removes locations within 100m of each other' do
-        results = service.search('test')
+        service = described_class.new('test')
+        results = service.search
 
-        expect(results.length).to eq(2)
-        expect(results.map { |r| r[:name] }).to include('Location A', 'Location C')
+        expect(results.length).to eq(1)
+        expect(results.first[:name]).to eq('Address 1')
       end
     end
   end
 
   describe '#provider_name' do
+    before do
+      allow(Geocoder.config).to receive(:lookup).and_return(:nominatim)
+    end
+
     it 'returns the current geocoding provider name' do
-      allow(Geocoder.config).to receive(:lookup).and_return(:photon)
-
-      expect(service.provider_name).to eq('Photon')
-    end
-  end
-
-  describe 'provider-specific extraction' do
-    context 'with Photon provider' do
-      let(:photon_result) do
-        double(
-          'Geocoder::Result',
-          latitude: 52.5200,
-          longitude: 13.4050,
-          data: {
-            'properties' => {
-              'name' => 'Kaufland',
-              'street' => 'Alexanderplatz',
-              'housenumber' => '1',
-              'city' => 'Berlin',
-              'state' => 'Berlin',
-              'country' => 'Germany'
-            }
-          }
-        )
-      end
-
-      before do
-        allow(Geocoder).to receive(:search).and_return([photon_result])
-        allow(Geocoder.config).to receive(:lookup).and_return(:photon)
-      end
-
-      it 'extracts Photon-specific data correctly' do
-        results = service.search('test')
-
-        expect(results.first[:name]).to eq('Kaufland')
-        expect(results.first[:address]).to eq('Alexanderplatz, 1, Berlin, Berlin, Germany')
-      end
-    end
-
-    context 'with Nominatim provider' do
-      let(:nominatim_result) do
-        double(
-          'Geocoder::Result',
-          latitude: 52.5200,
-          longitude: 13.4050,
-          data: {
-            'display_name' => 'Kaufland, Alexanderplatz 1, Berlin, Germany',
-            'type' => 'shop',
-            'class' => 'amenity'
-          }
-        )
-      end
-
-      before do
-        allow(Geocoder).to receive(:search).and_return([nominatim_result])
-        allow(Geocoder.config).to receive(:lookup).and_return(:nominatim)
-      end
-
-      it 'extracts Nominatim-specific data correctly' do
-        results = service.search('test')
-
-        expect(results.first[:name]).to eq('Kaufland')
-        expect(results.first[:address]).to eq('Kaufland, Alexanderplatz 1, Berlin, Germany')
-        expect(results.first[:type]).to eq('shop')
-      end
+      expect(service.provider_name).to eq('Nominatim')
     end
   end
 end

@@ -47,8 +47,9 @@ RSpec.describe LocationSearch::PointFinder do
       end
 
       before do
-        allow_any_instance_of(LocationSearch::GeocodingService)
-          .to receive(:search).and_return(mock_geocoded_locations)
+        allow(LocationSearch::GeocodingService).to receive(:new).and_return(
+          double('GeocodingService', search: mock_geocoded_locations, provider_name: 'Test Provider')
+        )
         
         allow_any_instance_of(LocationSearch::SpatialMatcher)
           .to receive(:find_points_near).and_return(mock_matching_points)
@@ -82,8 +83,9 @@ RSpec.describe LocationSearch::PointFinder do
       end
 
       it 'calls geocoding service with the query' do
-        expect_any_instance_of(LocationSearch::GeocodingService)
-          .to receive(:search).with('Kaufland')
+        expect(LocationSearch::GeocodingService)
+          .to receive(:new).with('Kaufland')
+          .and_return(double('GeocodingService', search: mock_geocoded_locations, provider_name: 'Test Provider'))
 
         service.call
       end
@@ -160,8 +162,9 @@ RSpec.describe LocationSearch::PointFinder do
 
     context 'when no geocoding results found' do
       before do
-        allow_any_instance_of(LocationSearch::GeocodingService)
-          .to receive(:search).and_return([])
+        allow(LocationSearch::GeocodingService).to receive(:new).and_return(
+          double('GeocodingService', search: [], provider_name: 'Test Provider')
+        )
       end
 
       it 'returns empty result' do
@@ -174,8 +177,9 @@ RSpec.describe LocationSearch::PointFinder do
 
     context 'when no matching points found' do
       before do
-        allow_any_instance_of(LocationSearch::GeocodingService)
-          .to receive(:search).and_return([{ lat: 52.5200, lon: 13.4050, name: 'Test' }])
+        allow(LocationSearch::GeocodingService).to receive(:new).and_return(
+          double('GeocodingService', search: [{ lat: 52.5200, lon: 13.4050, name: 'Test' }], provider_name: 'Test Provider')
+        )
         
         allow_any_instance_of(LocationSearch::SpatialMatcher)
           .to receive(:find_points_near).and_return([])
@@ -206,8 +210,9 @@ RSpec.describe LocationSearch::PointFinder do
       let(:many_visits) { Array.new(15) { |i| { timestamp: i, date: "2024-01-#{i+1}T12:00:00Z" } } }
 
       before do
-        allow_any_instance_of(LocationSearch::GeocodingService)
-          .to receive(:search).and_return([{ lat: 52.5200, lon: 13.4050, name: 'Test' }])
+        allow(LocationSearch::GeocodingService).to receive(:new).and_return(
+          double('GeocodingService', search: [{ lat: 52.5200, lon: 13.4050, name: 'Test' }], provider_name: 'Test Provider')
+        )
         
         allow_any_instance_of(LocationSearch::SpatialMatcher)
           .to receive(:find_points_near).and_return([{}])
