@@ -39,5 +39,11 @@ class DawarichSettings
     def store_geodata?
       @store_geodata ||= STORE_GEODATA
     end
+
+    def features
+      @features ||= {
+        reverse_geocoding: reverse_geocoding_enabled?
+      }
+    end
   end
 end

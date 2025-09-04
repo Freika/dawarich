@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.31.0] - 2025-09-04
+
+The Search release
+
+In this release we're introducing a new search feature that allows users to search for places and see when they visited them. On the map page, click on Search icon, enter a place name (e.g. "Alexanderplatz"), wait for suggestions to load, and click on the suggestion you want to search for. You then will see a list of years you visited that place. Click on the year to unfold list of visits for that year. Then click on the visit you want to see on the map and you will be moved to that visit on the map. From the opened visit popup you can create a new visit to save it in the database.
+
+Important: This feature relies on reverse geocoding. Without reverse geocoding, the search feature will not work.
+
+## Added
+
+- User can now search for places and see when they visited them.
+
+## Fixed
+
+- Default value for `points_count` attribute is now set to 0 in the User model.
+
+## Changed
+
+- Tracks are not being calculated by server instead of the database. This feature is still in progress.
+
+
 # [0.30.12] - 2025-08-26
 
 ## Fixed

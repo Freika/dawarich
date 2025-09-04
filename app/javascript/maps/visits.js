@@ -1572,7 +1572,7 @@ export class VisitsManager {
 
     // Show confirmation dialog
     const confirmDelete = confirm('Are you sure you want to delete this visit? This action cannot be undone.');
-    
+
     if (!confirmDelete) {
       return;
     }

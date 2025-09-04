@@ -9,8 +9,6 @@ class Tracks::CleanupJob < ApplicationJob
 
   def perform(older_than: 1.day.ago)
     users_with_old_untracked_points(older_than).find_each do |user|
-      Rails.logger.info "Processing missed tracks for user #{user.id}"
-
       # Process only the old untracked points
       Tracks::Generator.new(
         user,

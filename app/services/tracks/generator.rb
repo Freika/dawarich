@@ -42,8 +42,6 @@ class Tracks::Generator
 
     start_timestamp, end_timestamp = get_timestamp_range
 
-    Rails.logger.debug "Generator: querying points for user #{user.id} in #{mode} mode"
-
     segments = Track.get_segments_with_points(
       user.id,
       start_timestamp,
@@ -53,8 +51,6 @@ class Tracks::Generator
       untracked_only: mode == :incremental
     )
 
-    Rails.logger.debug "Generator: created #{segments.size} segments via SQL"
-
     tracks_created = 0
 
     segments.each do |segment|
@@ -62,7 +58,6 @@ class Tracks::Generator
       tracks_created += 1 if track
     end
 
-    Rails.logger.info "Generated #{tracks_created} tracks for user #{user.id} in #{mode} mode"
     tracks_created
   end
 
@@ -81,7 +76,7 @@ class Tracks::Generator
     when :incremental then load_incremental_points
     when :daily then load_daily_points
     else
-      raise ArgumentError, "Unknown mode: #{mode}"
+      raise ArgumentError, "Tracks::Generator: Unknown mode: #{mode}"
     end
   end
 
@@ -111,12 +106,9 @@ class Tracks::Generator
     points = segment_data[:points]
     pre_calculated_distance = segment_data[:pre_calculated_distance]
 
-    Rails.logger.debug "Generator: processing segment with #{points.size} points"
     return unless points.size >= 2
 
-    track = create_track_from_points(points, pre_calculated_distance)
-    Rails.logger.debug "Generator: created track #{track&.id}"
-    track
+    create_track_from_points(points, pre_calculated_distance)
   end
 
   def time_range_defined?
@@ -163,7 +155,7 @@ class Tracks::Generator
     when :bulk then clean_bulk_tracks
     when :daily then clean_daily_tracks
     else
-      raise ArgumentError, "Unknown mode: #{mode}"
+      raise ArgumentError, "Tracks::Generator: Unknown mode: #{mode}"
     end
   end
 
@@ -188,7 +180,7 @@ class Tracks::Generator
     when :daily then daily_timestamp_range
     when :incremental then incremental_timestamp_range
     else
-      raise ArgumentError, "Unknown mode: #{mode}"
+      raise ArgumentError, "Tracks::Generator: Unknown mode: #{mode}"
     end
   end
 

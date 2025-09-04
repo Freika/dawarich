@@ -100,6 +100,11 @@ Rails.application.routes.draw do
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index create update destroy]
+      resources :locations, only: %i[index] do
+        collection do
+          get 'suggestions'
+        end
+      end
       resources :points,    only: %i[index create update destroy]
       resources :visits,    only: %i[index create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member

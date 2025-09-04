@@ -7,13 +7,10 @@ RSpec.describe Tracks::CreateJob, type: :job do
 
   describe '#perform' do
     let(:generator_instance) { instance_double(Tracks::Generator) }
-    let(:notification_service) { instance_double(Notifications::Create) }
 
     before do
       allow(Tracks::Generator).to receive(:new).and_return(generator_instance)
       allow(generator_instance).to receive(:call)
-      allow(Notifications::Create).to receive(:new).and_return(notification_service)
-      allow(notification_service).to receive(:call)
       allow(generator_instance).to receive(:call).and_return(2)
     end
 
@@ -27,13 +24,6 @@ RSpec.describe Tracks::CreateJob, type: :job do
         mode: :daily
       )
       expect(generator_instance).to have_received(:call)
-      expect(Notifications::Create).to have_received(:new).with(
-        user: user,
-        kind: :info,
-        title: 'Tracks Generated',
-        content: 'Created 2 tracks from your location data. Check your tracks section to view them.'
-      )
-      expect(notification_service).to have_received(:call)
     end
 
     context 'with custom parameters' do
@@ -44,8 +34,6 @@ RSpec.describe Tracks::CreateJob, type: :job do
       before do
         allow(Tracks::Generator).to receive(:new).and_return(generator_instance)
         allow(generator_instance).to receive(:call)
-        allow(Notifications::Create).to receive(:new).and_return(notification_service)
-        allow(notification_service).to receive(:call)
         allow(generator_instance).to receive(:call).and_return(1)
       end
 
@@ -59,37 +47,16 @@ RSpec.describe Tracks::CreateJob, type: :job do
           mode: :daily
         )
         expect(generator_instance).to have_received(:call)
-        expect(Notifications::Create).to have_received(:new).with(
-          user: user,
-          kind: :info,
-          title: 'Tracks Generated',
-          content: 'Created 1 tracks from your location data. Check your tracks section to view them.'
-        )
-        expect(notification_service).to have_received(:call)
       end
     end
 
     context 'when generator raises an error' do
       let(:error_message) { 'Something went wrong' }
-      let(:notification_service) { instance_double(Notifications::Create) }
 
       before do
         allow(Tracks::Generator).to receive(:new).and_return(generator_instance)
         allow(generator_instance).to receive(:call).and_raise(StandardError, error_message)
-        allow(Notifications::Create).to receive(:new).and_return(notification_service)
-        allow(notification_service).to receive(:call)
-      end
-
-      it 'creates an error notification' do
-        described_class.new.perform(user.id)
-
-        expect(Notifications::Create).to have_received(:new).with(
-          user: user,
-          kind: :error,
-          title: 'Track Generation Failed',
-          content: "Failed to generate tracks from your location data: #{error_message}"
-        )
-        expect(notification_service).to have_received(:call)
+        allow(ExceptionReporter).to receive(:call)
       end
 
       it 'reports the error using ExceptionReporter' do
@@ -135,13 +102,6 @@ RSpec.describe Tracks::CreateJob, type: :job do
           mode: :incremental
         )
         expect(generator_instance).to have_received(:call)
-        expect(Notifications::Create).to have_received(:new).with(
-          user: user,
-          kind: :info,
-          title: 'Tracks Generated',
-          content: 'Created 2 tracks from your location data. Check your tracks section to view them.'
-        )
-        expect(notification_service).to have_received(:call)
       end
     end
   end
@@ -149,32 +109,6 @@ RSpec.describe Tracks::CreateJob, type: :job do
   describe 'queue' do
     it 'is queued on tracks queue' do
       expect(described_class.new.queue_name).to eq('tracks')
-    end
-  end
-
-  context 'when self-hosted' do
-    let(:generator_instance) { instance_double(Tracks::Generator) }
-    let(:notification_service) { instance_double(Notifications::Create) }
-    let(:error_message) { 'Something went wrong' }
-
-    before do
-      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
-      allow(Tracks::Generator).to receive(:new).and_return(generator_instance)
-      allow(generator_instance).to receive(:call).and_raise(StandardError, error_message)
-      allow(Notifications::Create).to receive(:new).and_return(notification_service)
-      allow(notification_service).to receive(:call)
-    end
-
-    it 'creates a failure notification when self-hosted' do
-      described_class.new.perform(user.id)
-
-      expect(Notifications::Create).to have_received(:new).with(
-        user: user,
-        kind: :error,
-        title: 'Track Generation Failed',
-        content: "Failed to generate tracks from your location data: #{error_message}"
-      )
-      expect(notification_service).to have_received(:call)
     end
   end
 

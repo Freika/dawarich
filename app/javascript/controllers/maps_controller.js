@@ -36,6 +36,7 @@ import { fetchAndDisplayPhotos } from "../maps/photos";
 import { countryCodesMap } from "../maps/country_codes";
 import { VisitsManager } from "../maps/visits";
 import { ScratchLayer } from "../maps/scratch_layer";
+import { LocationSearch } from "../maps/location_search";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
@@ -79,6 +80,12 @@ export default class extends BaseController {
     } catch (error) {
       console.error('Error parsing user_settings data:', error);
       this.userSettings = {};
+    }
+    try {
+      this.features = this.element.dataset.features ? JSON.parse(this.element.dataset.features) : {};
+    } catch (error) {
+      console.error('Error parsing features data:', error);
+      this.features = {};
     }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.fogLineThreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
@@ -189,6 +196,9 @@ export default class extends BaseController {
 
     // Initialize the visits manager
     this.visitsManager = new VisitsManager(this.map, this.apiKey);
+    
+    // Expose visits manager globally for location search integration
+    window.visitsManager = this.visitsManager;
 
     // Initialize layers for the layer control
     const controlsLayer = {
@@ -214,7 +224,9 @@ export default class extends BaseController {
     this.setupTracksSubscription();
 
     // Handle routes/tracks mode selection
-    // this.addRoutesTracksSelector(); # Temporarily disabled
+    if (this.shouldShowTracksSelector()) {
+      this.addRoutesTracksSelector();
+    }
     this.switchRouteMode('routes', true);
 
     // Initialize layers based on settings
@@ -237,6 +249,9 @@ export default class extends BaseController {
 
     // Initialize Live Map Handler
     this.initializeLiveMapHandler();
+
+    // Initialize Location Search
+    this.initializeLocationSearch();
   }
 
   disconnect() {
@@ -1104,6 +1119,11 @@ export default class extends BaseController {
     this.map.addControl(new TogglePanelControl({ position: 'topright' }));
   }
 
+  shouldShowTracksSelector() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('tracks_debug') === 'true';
+  }
+
   addRoutesTracksSelector() {
     // Store reference to the controller instance for use in the control
     const controller = this;
@@ -1815,6 +1835,12 @@ export default class extends BaseController {
 
     if (this.tracksLayer) {
       toggleTracksVisibility(this.tracksLayer, this.map, this.tracksVisible);
+    }
+  }
+
+  initializeLocationSearch() {
+    if (this.map && this.apiKey && this.features.reverse_geocoding) {
+      this.locationSearch = new LocationSearch(this.map, this.apiKey);
     }
   }
 }
