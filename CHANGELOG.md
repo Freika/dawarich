@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED]
+
+## Changed
+
+- Stats page now loads significantly faster due to caching
+- Data on the Stats page is being updated daily, except for total distance and number of geopoints tracked, which are being updated on the fly. Also, charts with yearly and monthly stats are being updated every hour.
+
+## Fixed
+
+- Tracked distance on year card on the Stats page will always be equal to the sum of distances on the monthly chart below it. #466
+- Stats are now being calculated for trial users as well as active ones.
+
 # [0.31.0] - 2025-09-04
 
 The Search release

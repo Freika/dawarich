@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_23_125940) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_05_120121) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -205,6 +205,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_125940) do
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["trigger"], name: "index_points_on_trigger"
+    t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
