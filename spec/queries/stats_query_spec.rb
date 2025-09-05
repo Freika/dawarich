@@ -3,6 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe StatsQuery do
+  before do
+    Rails.cache.clear
+  end
   describe '#points_stats' do
     subject(:points_stats) { described_class.new(user).points_stats }
 
@@ -124,6 +127,47 @@ RSpec.describe StatsQuery do
           geocoded: 0,
           without_data: 0
         })
+      end
+    end
+
+    describe 'caching behavior' do
+      let!(:points) do
+        create_list(:point, 2,
+                    user: user,
+                    import: import,
+                    reverse_geocoded_at: Time.current,
+                    geodata: { 'address' => 'Test Address' })
+      end
+
+      it 'caches the geocoded stats' do
+        expect(Rails.cache).to receive(:fetch).with(
+          "dawarich/user_#{user.id}_points_geocoded_stats",
+          expires_in: 1.day
+        ).and_call_original
+
+        points_stats
+      end
+
+      it 'returns cached results on subsequent calls' do
+        # First call - should hit database and cache
+        expect(Point.connection).to receive(:select_one).once.and_call_original
+        first_result = points_stats
+
+        # Second call - should use cache, not hit database
+        expect(Point.connection).not_to receive(:select_one)
+        second_result = points_stats
+
+        expect(first_result).to eq(second_result)
+      end
+
+      it 'uses counter cache for total count' do
+        # Ensure counter cache is set correctly
+        user.reload
+        expect(user.points_count).to eq(2)
+
+        # The total should come from counter cache, not from SQL
+        result = points_stats
+        expect(result[:total]).to eq(user.points_count)
       end
     end
   end
