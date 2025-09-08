@@ -113,10 +113,14 @@ class Tracks::ParallelGenerator
   end
 
   def clean_daily_tracks
-    day_range = daily_time_range
-    range = Time.zone.at(day_range.begin)..Time.zone.at(day_range.end)
-
-    user.tracks.where(start_at: range).destroy_all
+    # For daily mode, we don't want to clean all tracks for the day
+    # Instead, we clean tracks that overlap with the time range we're processing
+    # This allows for incremental processing without losing existing tracks
+    
+    return unless time_range_defined?
+    
+    # Only clean tracks that overlap with our processing time range
+    user.tracks.where(start_at: time_range).destroy_all
   end
 
   def time_range_defined?

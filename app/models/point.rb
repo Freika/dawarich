@@ -17,7 +17,8 @@ class Point < ApplicationRecord
     index: true
   }
 
-  enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3, connected_not_charging: 4, discharging: 5 }, suffix: true
+  enum :battery_status, { unknown: 0, unplugged: 1, charging: 2, full: 3, connected_not_charging: 4, discharging: 5 },
+       suffix: true
   enum :trigger, {
     unknown: 0, background_event: 1, circular_region_event: 2, beacon_event: 3,
     report_location_message_event: 4, manual_event: 5, timer_based_event: 6,
@@ -33,7 +34,6 @@ class Point < ApplicationRecord
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
   after_create_commit :broadcast_coordinates
-  # after_create_commit :trigger_incremental_track_generation, if: -> { import_id.nil? }
   # after_commit :recalculate_track, on: :update, if: -> { track.present? }
 
   def self.without_raw_data
@@ -68,7 +68,7 @@ class Point < ApplicationRecord
 
   def country_name
     # TODO: Remove the country column in the future.
-    read_attribute(:country_name) || self.country&.name || read_attribute(:country) || ''
+    read_attribute(:country_name) || country&.name || self[:country] || ''
   end
 
   private
@@ -100,9 +100,5 @@ class Point < ApplicationRecord
 
   def recalculate_track
     track.recalculate_path_and_distance!
-  end
-
-  def trigger_incremental_track_generation
-    Tracks::IncrementalCheckJob.perform_later(user.id, id)
   end
 end
