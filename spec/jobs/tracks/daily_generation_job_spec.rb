@@ -26,7 +26,7 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       # Update points_count for users to reflect actual points
       active_user.update!(points_count: active_user.points.count)
       trial_user.update!(points_count: trial_user.points.count)
-      
+
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
     end
 
@@ -49,28 +49,62 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       end.not_to have_enqueued_job(Tracks::ParallelGeneratorJob)
     end
 
-    it 'enqueues parallel generation for users with new points' do
+    it 'enqueues correct number of parallel generation jobs for users with new points' do
       described_class.perform_now
 
-      # Check that jobs were enqueued with correct parameters
       enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
         job[:job] == Tracks::ParallelGeneratorJob
       end
 
       expect(enqueued_jobs.count).to eq(2)
+    end
 
-      # Check active user job
+    it 'enqueues parallel generation job for active user with correct parameters' do
+      described_class.perform_now
+
+      enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
+        job[:job] == Tracks::ParallelGeneratorJob
+      end
+
       active_user_job = enqueued_jobs.find { |job| job[:args].first == active_user.id }
       expect(active_user_job).to be_present
-      job_kwargs = active_user_job[:args].last
-      expect(job_kwargs['start_at']).to eq(active_user_old_track.end_at.to_i) # start_at
-      expect(job_kwargs['mode']).to eq('daily') # mode
+    end
 
-      # Check trial user job
+    it 'uses correct start_at timestamp for active user' do
+      described_class.perform_now
+
+      enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
+        job[:job] == Tracks::ParallelGeneratorJob
+      end
+
+      active_user_job = enqueued_jobs.find { |job| job[:args].first == active_user.id }
+      job_kwargs = active_user_job[:args].last
+
+      expect(job_kwargs['start_at']).to eq(active_user_old_track.end_at.to_i)
+    end
+
+    it 'uses daily mode for parallel generation jobs' do
+      described_class.perform_now
+
+      enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
+        job[:job] == Tracks::ParallelGeneratorJob
+      end
+
+      active_user_job = enqueued_jobs.find { |job| job[:args].first == active_user.id }
+      job_kwargs = active_user_job[:args].last
+
+      expect(job_kwargs['mode']).to eq('daily')
+    end
+
+    it 'enqueues parallel generation job for trial user' do
+      described_class.perform_now
+
+      enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
+        job[:job] == Tracks::ParallelGeneratorJob
+      end
+
       trial_user_job = enqueued_jobs.find { |job| job[:args].first == trial_user.id }
       expect(trial_user_job).to be_present
-      trial_job_kwargs = trial_user_job[:args].last
-      expect(trial_job_kwargs['mode']).to eq('daily') # mode
     end
 
     it 'does not enqueue jobs for users without new points' do
@@ -80,7 +114,7 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
         have_enqueued_job(Tracks::ParallelGeneratorJob)
     end
 
-    it 'handles users with no existing tracks' do
+    it 'enqueues parallel generation job for users with no existing tracks' do
       # Create user with no tracks but with points spread over time
       user_no_tracks = create(:user, points_count: 5)
       # Create points with different timestamps so there are "new" points since the first one
@@ -92,23 +126,48 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
         job[:job] == Tracks::ParallelGeneratorJob && job[:args].first == user_no_tracks.id
       end
-      
-      expect(enqueued_jobs.count).to eq(1)
 
-      # For users with no tracks, should start from first point timestamp  
+      expect(enqueued_jobs.count).to eq(1)
+    end
+
+    it 'uses first point timestamp as start_at for users with no tracks' do
+      # Create user with no tracks but with points spread over time
+      user_no_tracks = create(:user, points_count: 5)
+      # Create points with different timestamps so there are "new" points since the first one
+      create(:point, user: user_no_tracks, timestamp: 2.hours.ago.to_i)
+      create_list(:point, 4, user: user_no_tracks, timestamp: 1.hour.ago.to_i)
+
+      described_class.perform_now
+
+      enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select do |job|
+        job[:job] == Tracks::ParallelGeneratorJob && job[:args].first == user_no_tracks.id
+      end
+
+      # For users with no tracks, should start from first point timestamp
       job_kwargs = enqueued_jobs.first[:args].last
       expect(job_kwargs['start_at']).to eq(user_no_tracks.points.minimum(:timestamp))
     end
 
-    it 'handles exceptions gracefully' do
+    it 'does not raise errors when processing fails' do
       # Ensure users have points so they're not skipped
       active_user.update!(points_count: 5)
       trial_user.update!(points_count: 3)
-      
+
       allow_any_instance_of(User).to receive(:tracks).and_raise(StandardError, 'Database error')
       allow(ExceptionReporter).to receive(:call)
 
       expect { described_class.perform_now }.not_to raise_error
+    end
+
+    it 'reports exceptions when processing fails' do
+      # Ensure users have points so they're not skipped
+      active_user.update!(points_count: 5)
+      trial_user.update!(points_count: 3)
+
+      allow_any_instance_of(User).to receive(:tracks).and_raise(StandardError, 'Database error')
+      allow(ExceptionReporter).to receive(:call)
+
+      described_class.perform_now
 
       expect(ExceptionReporter).to have_received(:call).at_least(:once)
     end

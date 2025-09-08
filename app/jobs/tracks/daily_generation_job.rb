@@ -57,11 +57,9 @@ class Tracks::DailyGenerationJob < ApplicationJob
   def find_last_processed_timestamp(user)
     last_track_end = user.tracks.maximum(:end_at)&.to_i
 
-    if last_track_end
-      last_track_end
-    else
-      first_point_timestamp = user.points.minimum(:timestamp)
-      first_point_timestamp || 1.week.ago.to_i
-    end
+    return last_track_end if last_track_end
+
+    first_point_timestamp = user.points.minimum(:timestamp)
+    first_point_timestamp || 1.week.ago.to_i
   end
 end
