@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED]
+
+## Added
+
+- A cron job to generate daily tracks for users with new points since their last track generation. Being run every 4 hours.
+
+## Changed
+
+- Minor versions are now being built only for amd64 architecture to speed up the build process.
+
 # [0.31.0] - 2025-09-04
 
 The Search release
