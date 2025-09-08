@@ -21,8 +21,8 @@
 # time_threshold_minutes methods.
 #
 # Used by:
-# - Tracks::Generator for splitting points during track generation
-# - Tracks::CreateFromPoints for legacy compatibility
+# - Tracks::ParallelGenerator and related jobs for splitting points during parallel track generation
+# - Tracks::BoundaryDetector for cross-chunk track merging
 #
 # Example usage:
 #   class MyTrackProcessor

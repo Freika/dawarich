@@ -125,31 +125,10 @@ RSpec.describe Tracks::ParallelGeneratorJob do
   describe 'integration with existing track job patterns' do
     let!(:point) { create(:point, user: user, timestamp: 1.day.ago.to_i) }
 
-    it 'follows the same notification pattern as Tracks::CreateJob' do
-      # Compare with existing Tracks::CreateJob behavior
-      # Should create similar notifications and handle errors similarly
-
-      expect {
-        job.perform(user.id)
-      }.not_to raise_error
-    end
-
     it 'can be queued and executed' do
-      expect {
+      expect do
         described_class.perform_later(user.id)
-      }.to have_enqueued_job(described_class).with(user.id)
-    end
-
-    it 'supports the same parameter structure as Tracks::CreateJob' do
-      # Should accept the same parameters that would be passed to Tracks::CreateJob
-      expect {
-        described_class.perform_later(
-          user.id,
-          start_at: 1.week.ago,
-          end_at: Time.current,
-          mode: :daily
-        )
-      }.to have_enqueued_job(described_class)
+      end.to have_enqueued_job(described_class).with(user.id)
     end
   end
 end

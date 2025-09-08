@@ -22,11 +22,12 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   before_save :sanitize_input
 
   validates :email, presence: true
-
   validates :reset_password_token, uniqueness: true, allow_nil: true
 
   attribute :admin, :boolean, default: false
   attribute :points_count, :integer, default: 0
+
+  scope :active_or_trial, -> { where(status: %i[active trial]) }
 
   enum :status, { inactive: 0, active: 1, trial: 2 }
 

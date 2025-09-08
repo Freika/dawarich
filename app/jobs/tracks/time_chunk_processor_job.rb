@@ -17,7 +17,6 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
 
     tracks_created = process_chunk
     update_session_progress(tracks_created)
-
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to process time chunk for user #{user_id}")
 
@@ -48,9 +47,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
     # Create tracks from segments
     tracks_created = 0
     segments.each do |segment_points|
-      if create_track_from_points_array(segment_points)
-        tracks_created += 1
-      end
+      tracks_created += 1 if create_track_from_points_array(segment_points)
     end
 
     tracks_created

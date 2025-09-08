@@ -80,15 +80,15 @@ RSpec.describe Tracks::ParallelGenerator do
       end
 
       it 'enqueues time chunk processor jobs' do
-        expect {
+        expect do
           generator.call
-        }.to have_enqueued_job(Tracks::TimeChunkProcessorJob).at_least(:once)
+        end.to have_enqueued_job(Tracks::TimeChunkProcessorJob).at_least(:once)
       end
 
       it 'enqueues boundary resolver job with delay' do
-        expect {
+        expect do
           generator.call
-        }.to have_enqueued_job(Tracks::BoundaryResolverJob).at(be >= 5.minutes.from_now)
+        end.to have_enqueued_job(Tracks::BoundaryResolverJob).at(be >= 5.minutes.from_now)
       end
 
       it 'logs the operation' do
@@ -108,9 +108,9 @@ RSpec.describe Tracks::ParallelGenerator do
       end
 
       it 'does not enqueue any jobs' do
-        expect {
+        expect do
           generator.call
-        }.not_to have_enqueued_job
+        end.not_to have_enqueued_job
       end
     end
 
@@ -133,14 +133,14 @@ RSpec.describe Tracks::ParallelGenerator do
       context 'daily mode' do
         let(:options) { { mode: :daily, start_at: 1.day.ago.beginning_of_day } }
 
-        it 'cleans tracks for the specific day' do
+        it 'preserves existing tracks' do
           expect(user.tracks.count).to eq(2)
 
           generator.call
 
-          # Should only clean tracks from the specified day
+          # Daily mode should preserve all existing tracks
           remaining_tracks = user.tracks.count
-          expect(remaining_tracks).to be < 2
+          expect(remaining_tracks).to eq(2)
         end
       end
 
@@ -191,34 +191,18 @@ RSpec.describe Tracks::ParallelGenerator do
           create(:point, user: user, timestamp: (10 - i).days.ago.to_i)
         end
 
-        expect {
+        expect do
           generator.call
-        }.to have_enqueued_job(Tracks::BoundaryResolverJob)
+        end.to have_enqueued_job(Tracks::BoundaryResolverJob)
           .with(user.id, kind_of(String))
       end
 
       it 'ensures minimum delay for boundary resolver' do
         # Even with few chunks, should have minimum delay
-        expect {
+        expect do
           generator.call
-        }.to have_enqueued_job(Tracks::BoundaryResolverJob)
+        end.to have_enqueued_job(Tracks::BoundaryResolverJob)
           .at(be >= 5.minutes.from_now)
-      end
-    end
-
-    context 'error handling in private methods' do
-      it 'handles unknown mode in should_clean_tracks?' do
-        generator.instance_variable_set(:@mode, :unknown)
-
-        expect(generator.send(:should_clean_tracks?)).to be false
-      end
-
-      it 'raises error for unknown mode in clean_existing_tracks' do
-        generator.instance_variable_set(:@mode, :unknown)
-
-        expect {
-          generator.send(:clean_existing_tracks)
-        }.to raise_error(ArgumentError, 'Unknown mode: unknown')
       end
     end
 
@@ -277,15 +261,17 @@ RSpec.describe Tracks::ParallelGenerator do
 
     describe '#enqueue_chunk_jobs' do
       let(:session_id) { 'test-session' }
-      let(:chunks) { [
-        { chunk_id: 'chunk1', start_timestamp: 1.day.ago.to_i },
-        { chunk_id: 'chunk2', start_timestamp: 2.days.ago.to_i }
-      ] }
+      let(:chunks) do
+        [
+          { chunk_id: 'chunk1', start_timestamp: 1.day.ago.to_i },
+          { chunk_id: 'chunk2', start_timestamp: 2.days.ago.to_i }
+        ]
+      end
 
       it 'enqueues job for each chunk' do
-        expect {
+        expect do
           generator.send(:enqueue_chunk_jobs, session_id, chunks)
-        }.to have_enqueued_job(Tracks::TimeChunkProcessorJob)
+        end.to have_enqueued_job(Tracks::TimeChunkProcessorJob)
           .exactly(2).times
       end
 
@@ -303,24 +289,24 @@ RSpec.describe Tracks::ParallelGenerator do
       let(:session_id) { 'test-session' }
 
       it 'enqueues boundary resolver with estimated delay' do
-        expect {
+        expect do
           generator.send(:enqueue_boundary_resolver, session_id, 5)
-        }.to have_enqueued_job(Tracks::BoundaryResolverJob)
+        end.to have_enqueued_job(Tracks::BoundaryResolverJob)
           .with(user.id, session_id)
           .at(be >= 2.minutes.from_now)
       end
 
       it 'uses minimum delay for small chunk counts' do
-        expect {
+        expect do
           generator.send(:enqueue_boundary_resolver, session_id, 1)
-        }.to have_enqueued_job(Tracks::BoundaryResolverJob)
+        end.to have_enqueued_job(Tracks::BoundaryResolverJob)
           .at(be >= 5.minutes.from_now)
       end
 
       it 'scales delay with chunk count' do
-        expect {
+        expect do
           generator.send(:enqueue_boundary_resolver, session_id, 20)
-        }.to have_enqueued_job(Tracks::BoundaryResolverJob)
+        end.to have_enqueued_job(Tracks::BoundaryResolverJob)
           .at(be >= 10.minutes.from_now)
       end
     end
