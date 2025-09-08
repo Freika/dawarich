@@ -15,14 +15,7 @@
 #
 # The job leverages the existing parallel track generation infrastructure,
 # ensuring consistency with bulk operations while providing automatic daily processing.
-#
-# Usage:
-#   # Manual trigger
-#   Tracks::DailyGenerationJob.perform_now
-#
-#   # Scheduled execution (recommended)
-#   # Add to cron or Rails scheduler to run every 2-4 hours
-#
+
 class Tracks::DailyGenerationJob < ApplicationJob
   queue_as :tracks
 
