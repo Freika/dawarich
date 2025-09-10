@@ -27,6 +27,12 @@ class Tracks::SessionManager
     }
 
     Rails.cache.write(cache_key, session_data, expires_in: DEFAULT_TTL)
+    # Initialize counters atomically using Redis SET
+    Rails.cache.redis.with do |redis|
+      redis.set(counter_key('completed_chunks'), 0, ex: DEFAULT_TTL.to_i)
+      redis.set(counter_key('tracks_created'), 0, ex: DEFAULT_TTL.to_i)
+    end
+
     self
   end
 
@@ -45,7 +51,9 @@ class Tracks::SessionManager
     data = Rails.cache.read(cache_key)
     return nil unless data
 
-    # Rails.cache already deserializes the data, no need for JSON parsing
+    # Include current counter values
+    data['completed_chunks'] = counter_value('completed_chunks')
+    data['tracks_created'] = counter_value('tracks_created')
     data
   end
 
@@ -65,20 +73,18 @@ class Tracks::SessionManager
 
   # Increment completed chunks
   def increment_completed_chunks
-    session_data = get_session_data
-    return false unless session_data
+    return false unless session_exists?
 
-    new_completed = session_data['completed_chunks'] + 1
-    update_session(completed_chunks: new_completed)
+    atomic_increment(counter_key('completed_chunks'), 1)
+    true
   end
 
   # Increment tracks created
   def increment_tracks_created(count = 1)
-    session_data = get_session_data
-    return false unless session_data
+    return false unless session_exists?
 
-    new_count = session_data['tracks_created'] + count
-    update_session(tracks_created: new_count)
+    atomic_increment(counter_key('tracks_created'), count)
+    true
   end
 
   # Mark session as completed
@@ -103,7 +109,8 @@ class Tracks::SessionManager
     session_data = get_session_data
     return false unless session_data
 
-    session_data['completed_chunks'] >= session_data['total_chunks']
+    completed_chunks = counter_value('completed_chunks')
+    completed_chunks >= session_data['total_chunks']
   end
 
   # Get progress percentage
@@ -114,13 +121,16 @@ class Tracks::SessionManager
     total = session_data['total_chunks']
     return 100 if total.zero?
 
-    completed = session_data['completed_chunks']
+    completed = counter_value('completed_chunks')
     (completed.to_f / total * 100).round(2)
   end
 
   # Delete session
   def cleanup_session
     Rails.cache.delete(cache_key)
+    Rails.cache.redis.with do |redis|
+      redis.del(counter_key('completed_chunks'), counter_key('tracks_created'))
+    end
   end
 
   # Class methods for session management
@@ -148,5 +158,21 @@ class Tracks::SessionManager
 
   def cache_key
     "#{CACHE_KEY_PREFIX}:user:#{user_id}:session:#{session_id}"
+  end
+
+  def counter_key(field)
+    "#{cache_key}:#{field}"
+  end
+
+  def counter_value(field)
+    Rails.cache.redis.with do |redis|
+      (redis.get(counter_key(field)) || 0).to_i
+    end
+  end
+
+  def atomic_increment(key, amount)
+    Rails.cache.redis.with do |redis|
+      redis.incrby(key, amount)
+    end
   end
 end

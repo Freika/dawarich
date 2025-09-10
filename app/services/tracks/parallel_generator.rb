@@ -89,7 +89,11 @@ class Tracks::ParallelGenerator
 
   def clean_bulk_tracks
     if time_range_defined?
-      user.tracks.where(start_at: time_range).destroy_all
+      user.tracks.where(
+        '(start_at, end_at) OVERLAPS (?, ?)',
+        start_at&.in_time_zone,
+        end_at&.in_time_zone
+      ).destroy_all
     else
       user.tracks.destroy_all
     end

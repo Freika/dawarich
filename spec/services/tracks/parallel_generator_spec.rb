@@ -161,8 +161,8 @@ RSpec.describe Tracks::ParallelGenerator do
       let(:start_time) { 3.days.ago }
       let(:end_time) { 1.day.ago }
       let(:options) { { start_at: start_time, end_at: end_time, mode: :bulk } }
-      let!(:track_in_range) { create(:track, user: user, start_at: 2.days.ago) }
-      let!(:track_out_of_range) { create(:track, user: user, start_at: 1.week.ago) }
+      let!(:track_in_range) { create(:track, user: user, start_at: 2.days.ago, end_at: 2.days.ago + 1.hour) }
+      let!(:track_out_of_range) { create(:track, user: user, start_at: 1.week.ago, end_at: 1.week.ago + 1.hour) }
 
       it 'only cleans tracks within the specified range' do
         expect(user.tracks.count).to eq(2)

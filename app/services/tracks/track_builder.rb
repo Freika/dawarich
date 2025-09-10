@@ -60,7 +60,7 @@ module Tracks::TrackBuilder
     )
 
     # TODO: Move trips attrs to columns with more precision and range
-    track.distance  = [[pre_calculated_distance.round, 999_999.99].min, 0].max
+    track.distance  = [[pre_calculated_distance.round, 999_999].min, 0].max
     track.duration  = calculate_duration(points)
     track.avg_speed = calculate_average_speed(track.distance, track.duration)
 

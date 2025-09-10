@@ -32,27 +32,22 @@ class Tracks::DailyGenerationJob < ApplicationJob
   private
 
   def process_user_daily_tracks(user)
-    last_processed_timestamp = find_last_processed_timestamp(user)
+    start_timestamp = start_timestamp(user)
 
-    new_points_count =
-      user.points.where('timestamp > ?', last_processed_timestamp).count
-
-    return if new_points_count.zero?
+    return unless user.points.where('timestamp >= ?', start_timestamp).exists?
 
     Tracks::ParallelGeneratorJob.perform_later(
       user.id,
-      start_at: last_processed_timestamp,
+      start_at: start_timestamp,
       end_at: Time.current.to_i,
       mode: 'daily'
     )
   end
 
-  def find_last_processed_timestamp(user)
-    last_track_end = user.tracks.maximum(:end_at)&.to_i
+  def start_timestamp(user)
+    last_end = user.tracks.maximum(:end_at)&.to_i
+    return last_end + 1 if last_end
 
-    return last_track_end if last_track_end
-
-    first_point_timestamp = user.points.minimum(:timestamp)
-    first_point_timestamp || 1.week.ago.to_i
+    user.points.minimum(:timestamp) || 1.week.ago.to_i
   end
 end

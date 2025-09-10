@@ -111,6 +111,10 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
         create(:track, user: user_with_current_tracks, start_at: 1.hour.ago, end_at: 30.minutes.ago)
       end
 
+      before do
+        user_with_current_tracks.update!(points_count: user_with_current_tracks.points.count)
+      end
+
       it 'skips users without new points since last track' do
         expect { described_class.perform_now }.not_to \
           have_enqueued_job(Tracks::ParallelGeneratorJob).with(user_with_current_tracks.id, any_args)
