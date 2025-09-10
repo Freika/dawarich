@@ -70,6 +70,7 @@ Rails.application.routes.draw do
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
+  get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /\d{1,2}/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
       as: :update_year_month_stats,

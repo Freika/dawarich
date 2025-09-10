@@ -17,14 +17,6 @@ module ApplicationHelper
     { start_at:, end_at: }
   end
 
-  def timespan(month, year)
-    month = DateTime.new(year, month)
-    start_at = month.beginning_of_month.to_time.strftime('%Y-%m-%dT%H:%M')
-    end_at = month.end_of_month.to_time.strftime('%Y-%m-%dT%H:%M')
-
-    { start_at:, end_at: }
-  end
-
   def header_colors
     %w[info success warning error accent secondary primary]
   end
@@ -79,16 +71,6 @@ module ApplicationHelper
     # Distance is now stored in meters, convert to user's preferred unit for display
     total_distance_meters = Stat.year_distance(year, user).sum { _1[1] }
     Stat.convert_distance(total_distance_meters, user.safe_settings.distance_unit)
-  end
-
-  def past?(year, month)
-    DateTime.new(year, month).past?
-  end
-
-  def points_exist?(year, month, user)
-    user.points.where(
-      timestamp: DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
-    ).exists?
   end
 
   def new_version_available?
