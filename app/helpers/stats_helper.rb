@@ -14,14 +14,14 @@ module StatsHelper
     "#{number_with_delimiter(value)} #{distance_unit}"
   end
 
-  def x_than_average_distance(stat, average_distance)
-    return '' if average_distance.zero?
+  def x_than_average_distance(stat, average_distance_this_year)
+    return '' if average_distance_this_year.zero?
 
-    difference = stat.distance / 1000 - average_distance
-    percentage = ((difference / average_distance) * 100).round
+    difference = stat.distance / 1000 - average_distance_this_year
+    percentage = ((difference / average_distance_this_year) * 100).round
 
-    sign = difference.positive? ? '+' : '-'
-    "#{sign} #{difference.abs.round} (#{percentage.abs}% of your average (#{average_distance.round} km))"
+    more_or_less = difference.positive? ? 'more' : 'less'
+    "#{percentage.abs}% #{more_or_less} than your average this year"
   end
 
   def x_than_previous_active_days(stat, previous_stat)
@@ -117,5 +117,14 @@ module StatsHelper
     end_str = quietest_end_date.strftime('%b %d')
 
     "#{start_str} - #{end_str}"
+  end
+
+  def month_icon(stat)
+    case stat.month
+    when 1..2, 12 then 'snowflake'
+    when 3..5 then 'flower'
+    when 6..8 then 'tree-palm'
+    when 9..11 then 'leaf'
+    end
   end
 end

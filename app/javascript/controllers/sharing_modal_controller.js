@@ -128,5 +128,4 @@ export default class extends Controller {
       toast.remove()
     }, 3000)
   }
-
 }

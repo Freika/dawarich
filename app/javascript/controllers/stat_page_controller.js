@@ -37,9 +37,9 @@ export default class extends Controller {
     try {
       // Initialize Leaflet map
       this.map = L.map(this.mapTarget, {
-        zoomControl: false,
+        zoomControl: true,
         scrollWheelZoom: true,
-        doubleClickZoom: false,
+        doubleClickZoom: true,
         boxZoom: false,
         keyboard: false,
         dragging: true,
@@ -54,7 +54,7 @@ export default class extends Controller {
 
       // Add small scale control
       L.control.scale({
-        position: 'bottomleft',
+        position: 'bottomright',
         maxWidth: 100,
         imperial: true,
         metric: true

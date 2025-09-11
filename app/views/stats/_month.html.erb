@@ -2,7 +2,9 @@
 <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-lg shadow-lg mb-8">
   <div class="hero-content text-center relative w-full">
     <div class="max-w-md mt-5">
-      <h1 class="text-4xl font-bold">📍 <%= Date::MONTHNAMES[month] %> <%= year %></h1>
+      <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
+        <%= "#{icon month_icon(stat)} #{Date::MONTHNAMES[month]} #{year}".html_safe %>
+      </h1>
       <p class="py-4">Monthly Digest</p>
       <button class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
               onclick="sharing_modal.showModal()">
@@ -17,8 +19,8 @@
     <div class="stat-title flex items-center justify-center gap-1">
       <%= icon 'map-plus' %> Distance traveled
     </div>
-    <div class="stat-value text-success"><%= distance_traveled(current_user, stat) %></div>
-    <div class="stat-desc"><%= x_than_average_distance(stat, @average_distance) %></div>
+    <div class="stat-value text-success">~<%= distance_traveled(current_user, stat) %></div>
+    <div class="stat-desc"><%= x_than_average_distance(stat, @average_distance_this_year) %></div>
   </div>
 
   <div class="stat place-items-center text-center">
@@ -79,7 +81,7 @@
     </div>
 
     <!-- Map Stats -->
-    <div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+    <!--div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
       <div class="stat">
         <div class="stat-title text-xs">Most visited</div>
         <div class="stat-value text-sm">Downtown Area</div>
@@ -100,7 +102,7 @@
         <div class="stat-value text-sm">45km²</div>
         <div class="stat-desc text-xs">explored</div>
       </div>
-    </div>
+    </div-->
   </div>
 </div>
 
