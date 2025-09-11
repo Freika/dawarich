@@ -1,121 +1,32 @@
-<div class="card bg-base-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-base-300">
-  <div class="card-body p-6">
-    <!-- Header with Title and Details Link -->
-    <div class="flex justify-between items-start mb-4">
-      <div class="flex items-center space-x-3">
-        <div class="avatar placeholder">
-          <div class="bg-primary text-primary-content rounded-full w-12 h-12">
-            <span class="text-sm font-bold"><%= stat.month %></span>
-          </div>
-        </div>
-        <div>
-          <h3 class="card-title text-xl font-bold">
-            <%= link_to "#{Date::MONTHNAMES[stat.month]} #{stat.year}",
-                "#{stat.year}/#{stat.month}",
-                class: "hover:text-primary transition-colors" %>
-          </h3>
-          <div class="text-base-content opacity-60 text-sm">Monthly Statistics</div>
-        </div>
-      </div>
+<%= link_to "#{stat.year}/#{stat.month}",
+    class: "group block p-6 bg-base-100 hover:bg-base-200/50 rounded-xl border border-base-300 hover:border-primary/40 hover:shadow-lg transition-all duration-200 hover:scale-[1.02]" do %>
 
-      <div class="dropdown dropdown-end">
-        <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-          </svg>
-        </div>
-        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
-          <li>
-            <%= link_to points_path(year: stat.year, month: stat.month) do %>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              View Details
-            <% end %>
-          </li>
-          <li>
-            <%= link_to "stats/#{stat.year}/#{stat.month}" do %>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-              Monthly Digest
-            <% end %>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Distance Stats -->
-    <div class="stats stats-vertical lg:stats-horizontal shadow-inner bg-base-200 mb-6">
-      <div class="stat">
-        <div class="stat-figure text-primary">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-          </svg>
-        </div>
-        <div class="stat-title">Total Distance</div>
-        <div class="stat-value text-primary text-2xl">
-          <%= number_with_delimiter stat.distance_in_unit(current_user.safe_settings.distance_unit).round %>
-        </div>
-        <div class="stat-desc font-semibold text-primary">
-          <%= current_user.safe_settings.distance_unit %>
-        </div>
-      </div>
-    </div>
-
-    <!-- Countries and Cities Info -->
-    <div class="mb-6">
-      <div class="flex items-center space-x-2 mb-3">
-        <div class="badge badge-outline badge-primary">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current mr-1">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          Locations
-        </div>
-      </div>
-      <div class="text-sm leading-relaxed bg-base-200 p-3 rounded-lg">
-        <%= countries_and_cities_stat_for_month(stat) %>
-      </div>
-    </div>
-
-    <!-- Daily Distance Chart -->
-    <div class="mb-2">
-      <div class="flex items-center justify-between mb-3">
-        <h4 class="text-lg font-semibold flex items-center space-x-2">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current text-secondary">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-          </svg>
-          <span>Daily Activity</span>
-        </h4>
-        <div class="text-xs text-base-content opacity-60 font-medium">
-          <%= current_user.safe_settings.distance_unit %> per day
-        </div>
-      </div>
-      <div class="bg-base-200 p-3 rounded-lg">
-        <%= area_chart(
-          stat.daily_distance.map { |day, distance_meters|
-            [day, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
-          },
-          height: '200px',
-          suffix: " #{current_user.safe_settings.distance_unit}",
-          xtitle: 'Day',
-          ytitle: 'Distance',
-          colors: ['#570df8'],
-          library: {
-            plugins: {
-              legend: { display: false }
-            },
-            scales: {
-              x: {
-                grid: { color: 'rgba(0,0,0,0.1)' }
-              },
-              y: {
-                grid: { color: 'rgba(0,0,0,0.1)' }
-              }
-            }
-          }
-        ) %>
-      </div>
+  <!-- Month and Year -->
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-medium text-base-content group-hover:text-primary transition-colors flex items-center gap-2" style="color: <%= month_color(stat) %>;">
+      <%= "#{icon month_icon(stat)} #{Date::MONTHNAMES[stat.month]} #{stat.year}".html_safe %>
+    </h3>
+    <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+      <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
     </div>
   </div>
-</div>
+
+  <!-- Main Stats -->
+  <div class="space-y-3">
+    <!-- Distance -->
+    <div>
+      <div class="text-2xl font-semibold text-base-content" style="color: <%= month_color(stat) %>;">
+        <%= number_with_delimiter stat.distance_in_unit(current_user.safe_settings.distance_unit).round %>
+        <span class="text-sm font-normal text-base-content/60 ml-1"><%= current_user.safe_settings.distance_unit %></span>
+      </div>
+      <div class="text-sm text-base-content/60">Total distance</div>
+    </div>
+
+    <!-- Location Summary -->
+    <div class="text-sm text-gray-600">
+      <%= countries_and_cities_stat_for_month(stat) %>
+    </div>
+  </div>
+<% end %>

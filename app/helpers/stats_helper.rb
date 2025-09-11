@@ -127,4 +127,21 @@ module StatsHelper
     when 9..11 then 'leaf'
     end
   end
+
+  def month_color(stat)
+    case stat.month
+    when 1 then '#397bb5'
+    when 2 then '#5A4E9D'
+    when 3 then '#3B945E'
+    when 4 then '#7BC96F'
+    when 5 then '#FFD54F'
+    when 6 then '#FFA94D'
+    when 7 then '#FF6B6B'
+    when 8 then '#FF8C42'
+    when 9 then '#C97E4F'
+    when 10 then '#8B4513'
+    when 11 then '#5A2E2E'
+    when 12 then '#265d7d'
+    end
+  end
 end
