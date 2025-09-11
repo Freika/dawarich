@@ -144,4 +144,21 @@ module StatsHelper
     when 12 then '#265d7d'
     end
   end
+
+  def month_gradient_classes(stat)
+    case stat.month
+    when 1 then 'bg-gradient-to-br from-blue-500 to-blue-800' # Winter blue
+    when 2 then 'bg-gradient-to-bl from-blue-600 to-purple-600' # Purple
+    when 3 then 'bg-gradient-to-tr from-green-400 to-green-700'     # Spring green
+    when 4 then 'bg-gradient-to-tl from-green-500 to-green-700'     # Light green
+    when 5 then 'bg-gradient-to-br from-yellow-400 to-yellow-600'   # Spring yellow
+    when 6 then 'bg-gradient-to-bl from-orange-400 to-orange-600'   # Summer orange
+    when 7 then 'bg-gradient-to-tr from-red-400 to-red-600'         # Summer red
+    when 8 then 'bg-gradient-to-tl from-orange-600 to-red-400'      # Orange-red
+    when 9 then 'bg-gradient-to-br from-orange-600 to-yellow-400'   # Autumn orange
+    when 10 then 'bg-gradient-to-bl from-yellow-700 to-orange-700'  # Autumn brown
+    when 11 then 'bg-gradient-to-tr from-red-800 to-red-900'        # Dark red
+    when 12 then 'bg-gradient-to-tl from-blue-600 to-blue-700'      # Winter dark blue
+    end
+  end
 end
