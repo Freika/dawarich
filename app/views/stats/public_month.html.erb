@@ -24,10 +24,12 @@
   <div class="min-h-screen bg-base-100 mx-auto">
     <div class="container mx-auto px-4 py-8">
       <!-- Monthly Digest Header -->
-      <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-lg shadow-lg mb-8">
-        <div class="hero-content text-center">
+      <div class="hero <%= month_gradient_classes(@stat) %> text-white rounded-lg shadow-lg mb-8">
+        <div class="hero-content text-center py-6">
           <div class="max-w-md">
-            <h1 class="text-4xl font-bold">📍 <%= Date::MONTHNAMES[@month] %> <%= @year %></h1>
+            <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
+              <%= "#{icon month_icon(@stat)} #{Date::MONTHNAMES[@month]} #{@year}".html_safe %>
+            </h1>
             <p class="py-6">Monthly Digest (Shared)</p>
             <div class="badge badge-warning">Approximate locations only</div>
           </div>
@@ -86,30 +88,6 @@
             <!-- Privacy overlay -->
             <div class="absolute top-2 left-2 bg-warning text-warning-content text-xs px-2 py-1 rounded">
               🔒 Approximate locations only
-            </div>
-          </div>
-
-          <!-- Map Stats - Limited Info -->
-          <div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-            <div class="stat">
-              <div class="stat-title text-xs">Total points</div>
-              <div class="stat-value text-sm"><%#= @stat.points.count %></div>
-              <div class="stat-desc text-xs">tracked locations</div>
-            </div>
-            <div class="stat">
-              <div class="stat-title text-xs">Active days</div>
-              <div class="stat-value text-sm"><%= active_days(@stat) %></div>
-              <div class="stat-desc text-xs">with movement</div>
-            </div>
-            <div class="stat">
-              <div class="stat-title text-xs">Countries</div>
-              <div class="stat-value text-sm"><%= countries_visited(@stat) %></div>
-              <div class="stat-desc text-xs">visited</div>
-            </div>
-            <div class="stat">
-              <div class="stat-title text-xs">Distance</div>
-              <div class="stat-value text-sm"><%= (@stat.distance / 1000).round %>km</div>
-              <div class="stat-desc text-xs">traveled</div>
             </div>
           </div>
         </div>
@@ -185,42 +163,6 @@
                 <div class="badge badge-ghost">+<%= country['cities'].length - 5 %> more</div>
               <% end %>
             <% end %>
-          </div>
-        </div>
-      </div>
-
-      <!-- Month Highlights -->
-      <div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-xl mb-8">
-        <div class="card-body">
-          <h2 class="card-title text-white">📸 Month Highlights</h2>
-
-          <div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 my-4">
-            <div class="stat">
-              <div class="stat-title text-white opacity-70">Active days</div>
-              <div class="stat-value text-white"><%= active_days(@stat) %></div>
-            </div>
-            <div class="stat">
-              <div class="stat-title text-white opacity-70">Total distance</div>
-              <div class="stat-value text-white"><%= (@stat.distance / 1000).round %>km</div>
-            </div>
-            <div class="stat">
-              <div class="stat-title text-white opacity-70">Countries</div>
-              <div class="stat-value text-white"><%= countries_visited(@stat) %></div>
-            </div>
-            <div class="stat">
-              <div class="stat-title text-white opacity-70">Cities</div>
-              <div class="stat-value text-white"><%= @stat.toponyms.sum { |c| c['cities'].length } %></div>
-            </div>
-          </div>
-
-          <div class="alert bg-white bg-opacity-10 border-white border-opacity-20">
-            <div>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <div class="text-white">
-                <h3 class="font-bold">🔒 Privacy Protected</h3>
-                <p class="text-sm">This is a shared view with approximate locations only. Exact coordinates and personal details are protected.</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
