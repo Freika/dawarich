@@ -7,14 +7,14 @@ export default class extends Controller {
 
   connect() {
     console.log("StatPage controller connected");
-    
+
     // Get data attributes from the element (will be passed from the view)
     this.year = parseInt(this.element.dataset.year || new Date().getFullYear());
     this.month = parseInt(this.element.dataset.month || new Date().getMonth() + 1);
     this.apiKey = this.element.dataset.apiKey;
-    
+
     console.log(`Loading data for ${this.month}/${this.year} with API key: ${this.apiKey ? 'present' : 'missing'}`);
-    
+
     // Initialize map after a short delay to ensure container is ready
     setTimeout(() => {
       this.initializeMap();
@@ -56,17 +56,17 @@ export default class extends Controller {
       L.control.scale({
         position: 'bottomleft',
         maxWidth: 100,
-        imperial: false,
+        imperial: true,
         metric: true
       }).addTo(this.map);
 
       // Initialize layers
       this.markersLayer = L.layerGroup(); // Don't add to map initially
       this.heatmapLayer = null;
-      
+
       // Load data for this month
       this.loadMonthData();
-      
+
     } catch (error) {
       console.error("Error initializing map:", error);
       this.showError("Failed to initialize map");
@@ -74,12 +74,6 @@ export default class extends Controller {
   }
 
   async loadMonthData() {
-    if (!this.apiKey) {
-      console.warn("No API key provided, using mock data");
-      this.loadMockData();
-      return;
-    }
-
     try {
       // Show loading
       this.showLoading(true);
@@ -99,7 +93,7 @@ export default class extends Controller {
           'Authorization': `Bearer ${this.apiKey}`
         }
       });
-      
+
       if (!response.ok) {
         console.error(`API request failed with status: ${response.status}`);
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -107,7 +101,7 @@ export default class extends Controller {
 
       const data = await response.json();
       console.log(`Received ${Array.isArray(data) ? data.length : 0} points from API`);
-      
+
       if (Array.isArray(data) && data.length > 0) {
         this.processPointsData(data);
       } else {
@@ -134,7 +128,7 @@ export default class extends Controller {
     const markers = points.map(point => {
       const lat = parseFloat(point.latitude);
       const lng = parseFloat(point.longitude);
-      
+
       return L.circleMarker([lat, lng], {
         radius: 3,
         fillColor: '#570df8',
@@ -159,13 +153,13 @@ export default class extends Controller {
 
     // Show heatmap by default
     if (this.heatmapData.length > 0) {
-      this.heatmapLayer = L.heatLayer(this.heatmapData, { 
+      this.heatmapLayer = L.heatLayer(this.heatmapData, {
         radius: 25,
         blur: 15,
         maxZoom: 17,
         max: 1.0
       }).addTo(this.map);
-      
+
       // Set button states
       this.heatmapBtnTarget.classList.add('btn-active');
       this.pointsBtnTarget.classList.remove('btn-active');
@@ -180,27 +174,6 @@ export default class extends Controller {
     console.log("Points processed successfully");
   }
 
-  loadMockData() {
-    console.log("Loading mock data for demonstration");
-    
-    // Mock data for San Francisco area (hardcoded for demo)
-    const mockPoints = [
-      { latitude: 37.7749, longitude: -122.4194 },
-      { latitude: 37.7849, longitude: -122.4094 },
-      { latitude: 37.7649, longitude: -122.4294 },
-      { latitude: 37.7949, longitude: -122.3994 },
-      { latitude: 37.7549, longitude: -122.4394 },
-      { latitude: 37.8049, longitude: -122.3894 },
-      { latitude: 37.7449, longitude: -122.4494 },
-      { latitude: 37.8149, longitude: -122.3794 },
-      { latitude: 37.7349, longitude: -122.4594 },
-      { latitude: 37.8249, longitude: -122.3694 }
-    ];
-
-    this.processPointsData(mockPoints);
-    this.showLoading(false);
-  }
-
   toggleHeatmap() {
     if (!this.heatmapData || this.heatmapData.length === 0) {
       console.warn("No heatmap data available");
@@ -212,7 +185,7 @@ export default class extends Controller {
       this.map.removeLayer(this.heatmapLayer);
       this.heatmapLayer = null;
       this.heatmapBtnTarget.classList.remove('btn-active');
-      
+
       // Show points
       if (!this.map.hasLayer(this.markersLayer)) {
         this.map.addLayer(this.markersLayer);
@@ -220,15 +193,15 @@ export default class extends Controller {
       }
     } else {
       // Add heatmap
-      this.heatmapLayer = L.heatLayer(this.heatmapData, { 
+      this.heatmapLayer = L.heatLayer(this.heatmapData, {
         radius: 25,
         blur: 15,
         maxZoom: 17,
         max: 1.0
       }).addTo(this.map);
-      
+
       this.heatmapBtnTarget.classList.add('btn-active');
-      
+
       // Hide points
       if (this.map.hasLayer(this.markersLayer)) {
         this.map.removeLayer(this.markersLayer);
@@ -246,7 +219,7 @@ export default class extends Controller {
       // Add points
       this.map.addLayer(this.markersLayer);
       this.pointsBtnTarget.classList.add('btn-active');
-      
+
       // Remove heatmap if active
       if (this.heatmapLayer && this.map.hasLayer(this.heatmapLayer)) {
         this.map.removeLayer(this.heatmapLayer);

@@ -1,0 +1,99 @@
+<!-- Sharing Settings Modal -->
+<dialog id="sharing_modal" class="modal">
+  <div class="modal-box">
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+    </form>
+
+    <h3 class="font-bold text-lg mb-4">🔗 Sharing Settings</h3>
+
+    <div data-controller="sharing-modal"
+         data-sharing-modal-url-value="<%= sharing_stats_path(year: @year, month: @month) %>">
+
+      <!-- Enable/Disable Sharing Toggle -->
+      <div class="form-control mb-4">
+        <label class="label cursor-pointer">
+          <span class="label-text font-medium">Enable public access</span>
+          <input type="checkbox"
+                 name="enabled"
+                 <%= 'checked' if @stat&.sharing_enabled? %>
+                 class="toggle toggle-primary"
+                 data-action="change->sharing-modal#toggleSharing"
+                 data-sharing-modal-target="enableToggle" />
+        </label>
+        <div class="label">
+          <span class="label-text-alt text-gray-500">Allow others to view this monthly digest • Auto-saves on change</span>
+        </div>
+      </div>
+
+      <!-- Expiration Settings (shown when enabled) -->
+      <div data-sharing-modal-target="expirationSettings"
+           class="<%= 'hidden' unless @stat&.sharing_enabled? %>">
+
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text font-medium">Link expiration</span>
+          </label>
+          <select name="expiration"
+                  class="select select-bordered w-full"
+                  data-sharing-modal-target="expirationSelect"
+                  data-action="change->sharing-modal#expirationChanged">
+            <%= options_for_select([
+                  ['1 hour', '1h'],
+                  ['12 hours', '12h'],
+                  ['24 hours', '24h'],
+                  ['Permanent', 'permanent']
+                ], @stat&.sharing_settings&.dig('expiration') || '1h') %>
+          </select>
+        </div>
+
+        <!-- Sharing Link Display (shown when sharing is enabled) -->
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text font-medium">Sharing link</span>
+          </label>
+          <div class="join w-full">
+            <input type="text"
+                   readonly
+                   class="input input-bordered join-item flex-1"
+                   data-sharing-modal-target="sharingLink"
+                   value="<%= @stat&.sharing_enabled? ? public_stat_url(@stat.sharing_uuid) : '' %>" />
+            <button type="button"
+                    class="btn btn-outline join-item"
+                    data-action="click->sharing-modal#copyLink">
+              📋 Copy
+            </button>
+          </div>
+          <div class="label">
+            <span class="label-text-alt text-gray-500">Share this link to allow others to view your stats</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Privacy Notice (always visible) -->
+      <div class="alert alert-info mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div>
+          <h3 class="font-bold">Privacy Protection</h3>
+          <div class="text-sm">
+            • Exact coordinates are hidden (approximate locations only)<br>
+            • Map interaction is disabled<br>
+            • Personal information is not included
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="modal-action">
+        <button type="button"
+                class="btn btn-primary"
+                onclick="sharing_modal.close()">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+</dialog>

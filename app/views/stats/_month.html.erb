@@ -1,33 +1,43 @@
 <!-- Monthly Digest Header -->
 <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-lg shadow-lg mb-8">
-  <div class="hero-content text-center">
-    <div class="max-w-md">
-      <h1 class="text-5xl font-bold">📍 <%= Date::MONTHNAMES[month] %> <%= year %></h1>
-      <p class="py-6">Monthly Digest</p>
+  <div class="hero-content text-center relative w-full">
+    <div class="max-w-md mt-5">
+      <h1 class="text-4xl font-bold">📍 <%= Date::MONTHNAMES[month] %> <%= year %></h1>
+      <p class="py-4">Monthly Digest</p>
+      <button class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
+              onclick="sharing_modal.showModal()">
+        <%= icon 'share' %> Share
+      </button>
     </div>
   </div>
 </div>
 
-<div class="stats shadow mx-auto mb-8 w-full">
+<div class="stats shadow shadow-lg mx-auto mb-8 w-full">
   <div class="stat place-items-center text-center">
-    <div class="stat-title">Distance traveled</div>
-    <div class="stat-value"><%= distance_traveled(current_user, stat) %></div>
+    <div class="stat-title flex items-center justify-center gap-1">
+      <%= icon 'map-plus' %> Distance traveled
+    </div>
+    <div class="stat-value text-success"><%= distance_traveled(current_user, stat) %></div>
     <div class="stat-desc"><%= x_than_average_distance(stat, @average_distance) %></div>
   </div>
 
   <div class="stat place-items-center text-center">
-    <div class="stat-title">Active days</div>
+    <div class="stat-title flex items-center justify-center gap-1">
+      <%= icon 'calendar-check-2' %> Active days
+    </div>
     <div class="stat-value text-secondary">
       <%= active_days(stat) %>
     </div>
-    <div class="stat-desc text-secondary">
+    <div class="stat-desc">
       <%= x_than_previous_active_days(stat, previous_stat) %>
     </div>
   </div>
 
   <div class="stat place-items-center text-center">
-    <div class="stat-title">Countries visited</div>
-    <div class="stat-value">
+    <div class="stat-title flex items-center justify-center gap-1">
+      <%= icon 'map-pin-plus' %> Countries visited
+    </div>
+    <div class="stat-value text-accent">
       <%= countries_visited(stat) %>
     </div>
     <div class="stat-desc">
@@ -44,13 +54,16 @@
      data-month="<%= month %>">
   <div class="card-body">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="card-title">🗺️ Map Summary</h2>
+      <h2 class="card-title">
+        <%= icon 'map' %>
+        Map Summary
+      </h2>
       <div class="flex gap-2">
         <button class="btn btn-sm btn-outline btn-active" data-stat-page-target="heatmapBtn" data-action="click->stat-page#toggleHeatmap">
-          🔥 Heatmap
+          <%= icon 'flame' %> Heatmap
         </button>
         <button class="btn btn-sm btn-outline" data-stat-page-target="pointsBtn" data-action="click->stat-page#togglePoints">
-          📍 Points
+          <%= icon 'map-pin' %> Points
         </button>
       </div>
     </div>
@@ -94,7 +107,9 @@
 <!-- Daily Activity Chart -->
 <div class="card bg-base-100 shadow-xl mb-8">
   <div class="card-body">
-    <h2 class="card-title">📈 Daily Activity</h2>
+    <h2 class="card-title">
+      <%= icon 'activity' %> Daily Activity
+    </h2>
     <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
       <%= column_chart(
           stat.daily_distance.map { |day, distance_meters|
@@ -134,12 +149,16 @@
 </div>
 
 <!-- Top Destinations -->
-<div class="card bg-base-100 shadow-xl mb-8">
+<!--div class="card bg-base-100 shadow-xl mb-8">
   <div class="card-body">
-    <h2 class="card-title">🏆 Top Destinations</h2>
+    <h2 class="card-title">
+      <%= icon 'trophy' %> Top Destinations
+    </h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-        <div class="text-2xl">🏢</div>
+        <div class="text-2xl">
+          <%= icon 'building' %>
+        </div>
         <div class="flex-1">
           <div class="font-bold">Downtown Office</div>
           <div class="text-sm opacity-70">42 visits • 8.5 hrs</div>
@@ -147,7 +166,9 @@
         <div class="badge badge-primary">1st</div>
       </div>
       <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-        <div class="text-2xl">🏠</div>
+        <div class="text-2xl">
+          <%= icon 'house' %>
+        </div>
         <div class="flex-1">
           <div class="font-bold">Home Area</div>
           <div class="text-sm opacity-70">31 visits • 156 hrs</div>
@@ -155,7 +176,9 @@
         <div class="badge badge-secondary">2nd</div>
       </div>
       <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-        <div class="text-2xl">🛒</div>
+        <div class="text-2xl">
+          <%= icon 'shopping-cart' %>
+        </div>
         <div class="flex-1">
           <div class="font-bold">Shopping District</div>
           <div class="text-sm opacity-70">18 visits • 3.2 hrs</div>
@@ -163,7 +186,9 @@
         <div class="badge badge-accent">3rd</div>
       </div>
       <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-        <div class="text-2xl">✈️</div>
+        <div class="text-2xl">
+          <%= icon 'plane' %>
+        </div>
         <div class="flex-1">
           <div class="font-bold">Airport</div>
           <div class="text-sm opacity-70">4 visits • 2.1 hrs</div>
@@ -172,62 +197,65 @@
       </div>
     </div>
   </div>
-</div>
+</div-->
 
 <!-- Countries & Cities -->
 <div class="card bg-base-100 shadow-xl mb-8">
   <div class="card-body">
-    <h2 class="card-title">🌍 Countries & Cities</h2>
+    <h2 class="card-title">
+      <%= icon 'globe' %> Countries & Cities
+    </h2>
     <div class="space-y-4">
-      <!-- United States -->
-      <div class="space-y-2">
-        <div class="flex justify-between items-center">
-          <span class="font-semibold">🇺🇸 United States</span>
-          <span class="text-sm">89% (1,110km)</span>
-        </div>
-        <progress class="progress progress-primary w-full" value="89" max="100"></progress>
-      </div>
+      <% if stat.toponyms.present? %>
+        <% max_cities = stat.toponyms.map { |country| country['cities'].length }.max %>
+        <% progress_colors = ['progress-primary', 'progress-secondary', 'progress-accent', 'progress-info', 'progress-success', 'progress-warning'] %>
 
-      <!-- Canada -->
-      <div class="space-y-2">
-        <div class="flex justify-between items-center">
-          <span class="font-semibold">🇨🇦 Canada</span>
-          <span class="text-sm">8% (102km)</span>
-        </div>
-        <progress class="progress progress-secondary w-full" value="8" max="100"></progress>
-      </div>
+        <% stat.toponyms.each_with_index do |country, index| %>
+          <% cities_count = country['cities'].length %>
+          <% progress_value = max_cities > 0 ? (cities_count.to_f / max_cities * 100).round : 0 %>
+          <% color_class = progress_colors[index % progress_colors.length] %>
 
-      <!-- Mexico -->
-      <div class="space-y-2">
-        <div class="flex justify-between items-center">
-          <span class="font-semibold">🇲🇽 Mexico</span>
-          <span class="text-sm">3% (35km)</span>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold"><%= country['country'] %></span>
+              <span class="text-sm">
+                <%= pluralize(cities_count, 'city') %>
+                <% if progress_value > 0 %>
+                  (<%= progress_value %>%)
+                <% end %>
+              </span>
+            </div>
+            <progress class="progress <%= color_class %> w-full" value="<%= progress_value %>" max="100"></progress>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="text-center text-gray-500">
+          <p>No location data available for this month</p>
         </div>
-        <progress class="progress progress-accent w-full" value="3" max="100"></progress>
-      </div>
+      <% end %>
     </div>
 
     <div class="divider"></div>
 
     <div class="flex flex-wrap gap-2">
       <span class="text-sm font-medium">Cities visited:</span>
-      <div class="badge badge-outline">San Francisco</div>
-      <div class="badge badge-outline">Vancouver</div>
-      <div class="badge badge-outline">Oakland</div>
-      <div class="badge badge-outline">San Jose</div>
-      <div class="badge badge-outline">Berkeley</div>
-      <div class="badge badge-outline">Tijuana</div>
-      <div class="badge badge-outline">+6 more</div>
+      <% stat.toponyms.each do |country| %>
+        <% country['cities'].each do |city| %>
+          <div class="badge badge-outline"><%= city['city'] %></div>
+        <% end %>
+      <% end %>
     </div>
   </div>
 </div>
 
 <!-- Month Highlights -->
-<div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-xl">
+<!--div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-xl">
   <div class="card-body">
-    <h2 class="card-title text-white">📸 Month Highlights</h2>
+    <h2 class="card-title text-white">
+      <%= icon 'camera' %> Month Highlights
+    </h2>
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 my-4">
+    <div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 my-4">
       <div class="stat">
         <div class="stat-title text-white opacity-70">Photos taken</div>
         <div class="stat-value text-white">127</div>
@@ -248,15 +276,15 @@
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
       <div class="flex items-center space-x-2">
-        <span class="text-white">🏃 Walking:</span>
+        <span class="text-white"><%= icon 'flame' %> Walking:</span>
         <span class="font-bold text-white">45km</span>
       </div>
       <div class="flex items-center space-x-2">
-        <span class="text-white">🚌 Public transport:</span>
+        <span class="text-white"><%= icon 'bus' %> Public transport:</span>
         <span class="font-bold text-white">12km</span>
       </div>
       <div class="flex items-center space-x-2">
-        <span class="text-white">🚗 Driving:</span>
+        <span class="text-white"><%= icon 'car' %> Driving:</span>
         <span class="font-bold text-white">1,190km</span>
       </div>
     </div>
@@ -265,18 +293,23 @@
       <div>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         <div class="text-white">
-          <h3 class="font-bold">💡 Monthly Insights</h3>
+          <h3 class="font-bold">
+            <%= icon 'lightbulb' %> Monthly Insights
+          </h3>
           <p class="text-sm">You explored 3 new neighborhoods this month and visited your favorite coffee shop 15 times - that's every other day! ☕</p>
         </div>
       </div>
     </div>
   </div>
-</div>
+</div-->
 
 <!-- Action Buttons -->
 <div class="flex flex-wrap gap-4 mt-8 justify-center">
-  <button class="btn btn-primary">📧 Email This Digest</button>
-  <button class="btn btn-secondary">📊 Compare with Previous Month</button>
-  <button class="btn btn-accent">📱 Share Stats</button>
   <a href="/stats/<%= year %>" class="btn btn-outline">← Back to <%= year %></a>
+  <button class="btn btn-outline" onclick="sharing_modal.showModal()">
+    <%= icon 'share' %> Share
+  </button>
 </div>
+
+<!-- Include Sharing Modal -->
+<%= render 'shared/sharing_modal' %>

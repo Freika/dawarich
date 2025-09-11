@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared Stats - <%= Date::MONTHNAMES[@month] %> <%= @year %></title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+</head>
+<body data-theme="dark">
+  <div class="min-h-screen bg-base-100 mx-auto">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Monthly Digest Header -->
+      <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-lg shadow-lg mb-8">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-4xl font-bold">📍 <%= Date::MONTHNAMES[@month] %> <%= @year %></h1>
+            <p class="py-6">Monthly Digest (Shared)</p>
+            <div class="badge badge-warning">Approximate locations only</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats shadow mx-auto mb-8 w-full">
+        <div class="stat place-items-center text-center">
+          <div class="stat-title">Distance traveled</div>
+          <div class="stat-value"><%= distance_traveled(@user, @stat) %></div>
+          <div class="stat-desc">Total distance for this month</div>
+        </div>
+
+        <div class="stat place-items-center text-center">
+          <div class="stat-title">Active days</div>
+          <div class="stat-value text-secondary">
+            <%= active_days(@stat) %>
+          </div>
+          <div class="stat-desc text-secondary">
+            Days with tracked activity
+          </div>
+        </div>
+
+        <div class="stat place-items-center text-center">
+          <div class="stat-title">Countries visited</div>
+          <div class="stat-value">
+            <%= countries_visited(@stat) %>
+          </div>
+          <div class="stat-desc">
+            Different countries
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Summary - Restricted View -->
+      <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="card-title">🗺️ Map Summary</h2>
+            <div class="badge badge-warning">Limited view</div>
+          </div>
+
+          <!-- Restricted Map Container -->
+          <div class="w-full h-96 rounded-lg border border-base-300 relative overflow-hidden">
+            <div id="public-monthly-stats-map" class="w-full h-full"
+                 data-controller="public-stat-map"
+                 data-year="<%= @year %>"
+                 data-month="<%= @month %>"
+                 data-uuid="<%= @stat.sharing_uuid %>"></div>
+
+            <!-- Loading overlay -->
+            <div id="map-loading" class="absolute inset-0 bg-base-200 flex items-center justify-center">
+              <span class="loading loading-spinner loading-lg text-primary"></span>
+            </div>
+
+            <!-- Privacy overlay -->
+            <div class="absolute top-2 left-2 bg-warning text-warning-content text-xs px-2 py-1 rounded">
+              🔒 Approximate locations only
+            </div>
+          </div>
+
+          <!-- Map Stats - Limited Info -->
+          <div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+            <div class="stat">
+              <div class="stat-title text-xs">Total points</div>
+              <div class="stat-value text-sm"><%#= @stat.points.count %></div>
+              <div class="stat-desc text-xs">tracked locations</div>
+            </div>
+            <div class="stat">
+              <div class="stat-title text-xs">Active days</div>
+              <div class="stat-value text-sm"><%= active_days(@stat) %></div>
+              <div class="stat-desc text-xs">with movement</div>
+            </div>
+            <div class="stat">
+              <div class="stat-title text-xs">Countries</div>
+              <div class="stat-value text-sm"><%= countries_visited(@stat) %></div>
+              <div class="stat-desc text-xs">visited</div>
+            </div>
+            <div class="stat">
+              <div class="stat-title text-xs">Distance</div>
+              <div class="stat-value text-sm"><%= (@stat.distance / 1000).round %>km</div>
+              <div class="stat-desc text-xs">traveled</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Activity Chart -->
+      <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+          <h2 class="card-title">📈 Daily Activity</h2>
+          <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
+            <%= column_chart(
+                @stat.daily_distance.map { |day, distance_meters|
+                  [day, Stat.convert_distance(distance_meters, 'km').round]
+                },
+                height: '200px',
+                suffix: " km",
+                xtitle: 'Day',
+                ytitle: 'Distance',
+                colors: [
+                  '#570df8', '#f000b8', '#ffea00',
+                  '#00d084', '#3abff8', '#ff5724',
+                  '#8e24aa', '#3949ab', '#00897b',
+                  '#d81b60', '#5e35b1', '#039be5',
+                  '#43a047', '#f4511e', '#6d4c41',
+                  '#757575', '#546e7a', '#d32f2f'
+                ],
+                library: {
+                  plugins: {
+                    legend: { display: false }
+                  },
+                  scales: {
+                    x: {
+                      grid: { color: 'rgba(0,0,0,0.1)' }
+                    },
+                    y: {
+                      grid: { color: 'rgba(0,0,0,0.1)' }
+                    }
+                  }
+                }
+              ) %>
+          </div>
+          <div class="text-sm opacity-70 text-center mt-2">
+            Peak day: <%= peak_day(@stat) %> • Quietest week: <%= quietest_week(@stat) %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Countries & Cities - General Info Only -->
+      <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+          <h2 class="card-title">🌍 Countries & Cities</h2>
+          <div class="space-y-4">
+            <% @stat.toponyms.each_with_index do |country, index| %>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="font-semibold"><%= country['country'] %></span>
+                  <span class="text-sm"><%= country['cities'].length %> cities</span>
+                </div>
+                <progress class="progress progress-primary w-full" value="<%= 100 - (index * 20) %>" max="100"></progress>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="flex flex-wrap gap-2">
+            <span class="text-sm font-medium">Cities visited:</span>
+            <% @stat.toponyms.each do |country| %>
+              <% country['cities'].first(5).each do |city| %>
+                <div class="badge badge-outline"><%= city['city'] %></div>
+              <% end %>
+              <% if country['cities'].length > 5 %>
+                <div class="badge badge-ghost">+<%= country['cities'].length - 5 %> more</div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Month Highlights -->
+      <div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-xl mb-8">
+        <div class="card-body">
+          <h2 class="card-title text-white">📸 Month Highlights</h2>
+
+          <div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 my-4">
+            <div class="stat">
+              <div class="stat-title text-white opacity-70">Active days</div>
+              <div class="stat-value text-white"><%= active_days(@stat) %></div>
+            </div>
+            <div class="stat">
+              <div class="stat-title text-white opacity-70">Total distance</div>
+              <div class="stat-value text-white"><%= (@stat.distance / 1000).round %>km</div>
+            </div>
+            <div class="stat">
+              <div class="stat-title text-white opacity-70">Countries</div>
+              <div class="stat-value text-white"><%= countries_visited(@stat) %></div>
+            </div>
+            <div class="stat">
+              <div class="stat-title text-white opacity-70">Cities</div>
+              <div class="stat-value text-white"><%= @stat.toponyms.sum { |c| c['cities'].length } %></div>
+            </div>
+          </div>
+
+          <div class="alert bg-white bg-opacity-10 border-white border-opacity-20">
+            <div>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <div class="text-white">
+                <h3 class="font-bold">🔒 Privacy Protected</h3>
+                <p class="text-sm">This is a shared view with approximate locations only. Exact coordinates and personal details are protected.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="text-center py-8">
+        <div class="text-sm text-gray-500">
+          Powered by <a href="https://dawarich.app" class="link link-primary" target="_blank">Dawarich</a>, your personal memories mapper.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stimulus Controller for Public Map -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const mapElement = document.getElementById('public-monthly-stats-map');
+      if (mapElement) {
+        initPublicMap(mapElement);
+      }
+    });
+
+    function initPublicMap(mapElement) {
+      const year = mapElement.dataset.year;
+      const month = mapElement.dataset.month;
+      const uuid = mapElement.dataset.uuid;
+
+      // Initialize restricted map
+      const map = L.map('public-monthly-stats-map', {
+        zoomControl: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        touchZoom: false,
+        dragging: false,
+        keyboard: false
+      }).setView([40.0, -100.0], 4); // Default centered view
+
+      // Add tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 10 // Limit zoom level for privacy
+      }).addTo(map);
+
+      // Add restricted data overlay
+      const restrictedOverlay = L.divIcon({
+        className: 'restricted-map-overlay',
+        html: '<div style="background: rgba(255,193,7,0.8); padding: 10px; border-radius: 5px; text-align: center; font-weight: bold;">Map interaction disabled for privacy</div>',
+        iconSize: [200, 50]
+      });
+
+      // Hide loading
+      document.getElementById('map-loading').style.display = 'none';
+
+      // Show privacy notice on map
+      setTimeout(() => {
+        const marker = L.marker([40.0, -100.0], { icon: restrictedOverlay }).addTo(map);
+      }, 1000);
+    }
+  </script>
+</body>
+</html>

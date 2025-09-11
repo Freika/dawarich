@@ -10,14 +10,14 @@
         </div>
         <div>
           <h3 class="card-title text-xl font-bold">
-            <%= link_to "#{Date::MONTHNAMES[stat.month]} #{stat.year}", 
-                "stats/#{stat.year}/#{stat.month}",
+            <%= link_to "#{Date::MONTHNAMES[stat.month]} #{stat.year}",
+                "#{stat.year}/#{stat.month}",
                 class: "hover:text-primary transition-colors" %>
           </h3>
           <div class="text-base-content opacity-60 text-sm">Monthly Statistics</div>
         </div>
       </div>
-      
+
       <div class="dropdown dropdown-end">
         <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
@@ -101,15 +101,15 @@
           xtitle: 'Day',
           ytitle: 'Distance',
           colors: ['#570df8'],
-          library: { 
+          library: {
             plugins: {
               legend: { display: false }
             },
             scales: {
-              x: { 
+              x: {
                 grid: { color: 'rgba(0,0,0,0.1)' }
               },
-              y: { 
+              y: {
                 grid: { color: 'rgba(0,0,0,0.1)' }
               }
             }
