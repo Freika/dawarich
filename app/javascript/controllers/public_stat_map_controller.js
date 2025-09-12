@@ -4,14 +4,15 @@ import { createHexagonGrid } from "../maps/hexagon_grid";
 
 export default class extends Controller {
   static targets = ["container"];
-  static values = { 
-    year: Number, 
-    month: Number, 
+  static values = {
+    year: Number,
+    month: Number,
     uuid: String,
     dataBounds: Object
   };
 
   connect() {
+    console.log('🏁 Controller connected - loading overlay should be visible');
     this.initializeMap();
     this.loadHexagons();
   }
@@ -47,31 +48,33 @@ export default class extends Controller {
   }
 
   async loadHexagons() {
-    try {
-      // Calculate date range for the month
-      const startDate = new Date(this.yearValue, this.monthValue - 1, 1);
-      const endDate = new Date(this.yearValue, this.monthValue, 0, 23, 59, 59);
+    console.log('🎯 loadHexagons started - checking overlay state');
+    const initialLoadingElement = document.getElementById('map-loading');
+    console.log('📊 Initial overlay display:', initialLoadingElement?.style.display || 'default');
 
+    try {
       // Use server-provided data bounds
       const dataBounds = this.dataBoundsValue;
-      
+
       if (dataBounds && dataBounds.point_count > 0) {
         // Set map view to data bounds BEFORE creating hexagon grid
         this.map.fitBounds([
           [dataBounds.min_lat, dataBounds.min_lng],
           [dataBounds.max_lat, dataBounds.max_lng]
         ], { padding: [20, 20] });
-        
+
         // Wait for the map to finish fitting bounds
+        console.log('⏳ About to wait for map moveend - overlay should still be visible');
         await new Promise(resolve => {
           this.map.once('moveend', resolve);
           // Fallback timeout in case moveend doesn't fire
           setTimeout(resolve, 1000);
         });
+        console.log('✅ Map fitBounds complete - checking overlay state');
+        const afterFitBoundsElement = document.getElementById('map-loading');
+        console.log('📊 After fitBounds overlay display:', afterFitBoundsElement?.style.display || 'default');
       }
 
-      // Create hexagon grid with API endpoint for public sharing
-      // Note: We need to prevent automatic showing during init
       this.hexagonGrid = createHexagonGrid(this.map, {
         apiEndpoint: '/api/v1/maps/hexagons',
         style: {
@@ -94,40 +97,64 @@ export default class extends Controller {
       this.map.off('zoomend');
 
       // Load hexagons only once on page load (static behavior)
+      // NOTE: Do NOT hide loading overlay here - let loadStaticHexagons() handle it
       if (dataBounds && dataBounds.point_count > 0) {
         await this.loadStaticHexagons();
       } else {
         console.warn('No data bounds or points available - not showing hexagons');
-      }
-
-      // Hide loading indicator
-      const loadingElement = document.getElementById('map-loading');
-      if (loadingElement) {
-        loadingElement.style.display = 'none';
+        // Only hide loading indicator if no hexagons to load
+        const loadingElement = document.getElementById('map-loading');
+        if (loadingElement) {
+          loadingElement.style.display = 'none';
+        }
       }
 
     } catch (error) {
       console.error('Error initializing hexagon grid:', error);
-      
-      // Hide loading indicator even on error
+
+      // Hide loading indicator on initialization error
       const loadingElement = document.getElementById('map-loading');
       if (loadingElement) {
         loadingElement.style.display = 'none';
       }
     }
+
+    // Do NOT hide loading overlay here - let loadStaticHexagons() handle it completely
   }
 
   async loadStaticHexagons() {
     console.log('🔄 Loading static hexagons for public sharing...');
-    
+
+    // Ensure loading overlay is visible and disable map interaction
+    const loadingElement = document.getElementById('map-loading');
+    console.log('🔍 Loading element found:', !!loadingElement);
+    if (loadingElement) {
+      loadingElement.style.display = 'flex';
+      loadingElement.style.visibility = 'visible';
+      loadingElement.style.zIndex = '9999';
+      console.log('👁️ Loading overlay ENSURED visible - should be visible now');
+    }
+
+    // Disable map interaction during loading
+    this.map.dragging.disable();
+    this.map.touchZoom.disable();
+    this.map.doubleClickZoom.disable();
+    this.map.scrollWheelZoom.disable();
+    this.map.boxZoom.disable();
+    this.map.keyboard.disable();
+    if (this.map.tap) this.map.tap.disable();
+
+    // Add delay to ensure loading overlay is visible
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     try {
       // Calculate date range for the month
       const startDate = new Date(this.yearValue, this.monthValue - 1, 1);
       const endDate = new Date(this.yearValue, this.monthValue, 0, 23, 59, 59);
-      
+
       // Use the full data bounds for hexagon request (not current map viewport)
       const dataBounds = this.dataBoundsValue;
-      
+
       const params = new URLSearchParams({
         min_lon: dataBounds.min_lng,
         min_lat: dataBounds.min_lat,
@@ -141,7 +168,7 @@ export default class extends Controller {
 
       const url = `/api/v1/maps/hexagons?${params}`;
       console.log('📍 Fetching static hexagons from:', url);
-      
+
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json'
@@ -164,6 +191,22 @@ export default class extends Controller {
 
     } catch (error) {
       console.error('Failed to load static hexagons:', error);
+    } finally {
+      // Re-enable map interaction after loading (success or failure)
+      this.map.dragging.enable();
+      this.map.touchZoom.enable();
+      this.map.doubleClickZoom.enable();
+      this.map.scrollWheelZoom.enable();
+      this.map.boxZoom.enable();
+      this.map.keyboard.enable();
+      if (this.map.tap) this.map.tap.enable();
+
+      // Hide loading overlay
+      const loadingElement = document.getElementById('map-loading');
+      if (loadingElement) {
+        loadingElement.style.display = 'none';
+        console.log('🚫 Loading overlay hidden - hexagons are fully loaded');
+      }
     }
   }
 
@@ -172,7 +215,7 @@ export default class extends Controller {
     const maxPoints = Math.max(...geojsonData.features.map(f => f.properties.point_count));
 
     const staticHexagonLayer = L.geoJSON(geojsonData, {
-      style: (feature) => this.styleHexagon(feature, maxPoints),
+      style: (feature) => this.styleHexagon(),
       onEachFeature: (feature, layer) => {
         // Add popup with statistics
         const props = feature.properties;
@@ -190,20 +233,13 @@ export default class extends Controller {
     staticHexagonLayer.addTo(this.map);
   }
 
-  styleHexagon(feature, maxPoints) {
-    const props = feature.properties;
-    const pointCount = props.point_count || 0;
-
-    // Calculate opacity based on point density
-    const opacity = 0.2 + (pointCount / maxPoints) * 0.6;
-    const color = '#3388ff';
-
+  styleHexagon() {
     return {
-      fillColor: color,
-      fillOpacity: opacity,
-      color: color,
+      fillColor: '#3388ff',
+      fillOpacity: 0.3,
+      color: '#3388ff',
       weight: 1,
-      opacity: opacity + 0.2
+      opacity: 0.3
     };
   }
 
@@ -213,11 +249,6 @@ export default class extends Controller {
 
     return `
       <div style="font-size: 12px; line-height: 1.4;">
-        <h4 style="margin: 0 0 8px 0; color: #2c5aa0;">Hexagon Stats</h4>
-        <strong>Points:</strong> ${props.point_count || 0}<br>
-        <strong>Density:</strong> ${props.density || 0} pts/km²<br>
-        ${props.avg_speed ? `<strong>Avg Speed:</strong> ${props.avg_speed} km/h<br>` : ''}
-        ${props.avg_battery ? `<strong>Avg Battery:</strong> ${props.avg_battery}%<br>` : ''}
         <strong>Date Range:</strong><br>
         <small>${startDate} - ${endDate}</small>
       </div>
@@ -234,7 +265,7 @@ export default class extends Controller {
         opacity: layer.options.opacity
       };
     }
-    
+
     layer.setStyle({
       fillOpacity: 0.8,
       weight: 2,
@@ -249,6 +280,4 @@ export default class extends Controller {
       layer.setStyle(layer._originalStyle);
     }
   }
-
-  // getDataBounds method removed - now using server-provided data bounds
 }

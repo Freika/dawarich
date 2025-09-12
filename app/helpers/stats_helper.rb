@@ -71,7 +71,7 @@ module StatsHelper
 
     date = Date.new(stat.year, stat.month, peak[0])
     distance_km = (peak[1] / 1000).round(2)
-    distance_unit = current_user.safe_settings.distance_unit
+    distance_unit = stat.user.safe_settings.distance_unit
 
     distance_value =
       if distance_unit == 'mi'
@@ -90,7 +90,7 @@ module StatsHelper
 
     # Create a hash with date as key and distance as value
     distance_by_date = stat.daily_distance.to_h.transform_keys do |timestamp|
-      Time.at(timestamp).in_time_zone(current_user.timezone || 'UTC').to_date
+      Time.at(timestamp).in_time_zone(stat.user.timezone || 'UTC').to_date
     end
 
     # Initialize variables to track the quietest week
@@ -159,6 +159,23 @@ module StatsHelper
     when 10 then 'bg-gradient-to-bl from-yellow-700 to-orange-700'  # Autumn brown
     when 11 then 'bg-gradient-to-tr from-red-800 to-red-900'        # Dark red
     when 12 then 'bg-gradient-to-tl from-blue-600 to-blue-700'      # Winter dark blue
+    end
+  end
+
+  def month_bg_image(stat)
+    case stat.month
+    when 1 then image_url('backgrounds/months/anne-nygard-VwzfdVT6_9s-unsplash.jpg')
+    when 2 then image_url('backgrounds/months/ainars-cekuls-buAAKQiMfoI-unsplash.jpg')
+    when 3 then image_url('backgrounds/months/ahmad-hasan-xEYWelDHYF0-unsplash.jpg')
+    when 4 then image_url('backgrounds/months/lily-Rg1nSqXNPN4-unsplash.jpg')
+    when 5 then image_url('backgrounds/months/milan-de-clercq-YtllSzi2JLY-unsplash.jpg')
+    when 6 then image_url('backgrounds/months/liana-mikah-6B05zlnPOEc-unsplash.jpg')
+    when 7 then image_url('backgrounds/months/irina-iriser-fKAl8Oid6zM-unsplash.jpg')
+    when 8 then image_url('backgrounds/months/nadiia-ploshchenko-ZnDtJaIec_E-unsplash.jpg')
+    when 9 then image_url('backgrounds/months/gracehues-photography-AYtup7uqimA-unsplash.jpg')
+    when 10 then image_url('backgrounds/months/babi-hdNa4GCCgbg-unsplash.jpg')
+    when 11 then image_url('backgrounds/months/foto-phanatic-8LaUOtP-de4-unsplash.jpg')
+    when 12 then image_url('backgrounds/months/henry-schneider-FqKPySIaxuE-unsplash.jpg')
     end
   end
 end

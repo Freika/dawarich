@@ -92,7 +92,7 @@
 }
 
 .loading-spinner::before {
-  content: '🔵';
+  content: '';
   font-size: 18px;
   animation: spinner 1s linear infinite;
 }

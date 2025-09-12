@@ -1,5 +1,7 @@
 <!-- Monthly Digest Header -->
-<div class="hero <%= month_gradient_classes(stat) %> text-white rounded-lg shadow-lg mb-8">
+<div class="hero text-white rounded-lg shadow-lg mb-8"
+     style="background-image: url('<%= month_bg_image(stat) %>');">
+  <div class="hero-overlay bg-opacity-60"></div>
   <div class="hero-content text-center relative w-full">
     <div class="max-w-md mt-5">
       <h1 class="text-4xl font-bold flex items-center justify-center gap-2">

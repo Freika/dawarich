@@ -24,14 +24,14 @@
   <div class="min-h-screen bg-base-100 mx-auto">
     <div class="container mx-auto px-4 py-8">
       <!-- Monthly Digest Header -->
-      <div class="hero <%= month_gradient_classes(@stat) %> text-white rounded-lg shadow-lg mb-8">
-        <div class="hero-content text-center py-6">
-          <div class="max-w-md">
+      <div class="hero text-white rounded-lg shadow-lg mb-8" style="background-image: url('<%= month_bg_image(@stat) %>');">
+        <div class="hero-overlay bg-opacity-60"></div>
+        <div class="hero-content text-center py-8">
+          <div class="max-w-lg">
             <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
               <%= "#{icon month_icon(@stat)} #{Date::MONTHNAMES[@month]} #{@year}".html_safe %>
             </h1>
-            <p class="py-6">Monthly Digest (Shared)</p>
-            <div class="badge badge-warning">Approximate locations only</div>
+            <p class="pt-6 pb-2">Monthly Digest</p>
           </div>
         </div>
       </div>
@@ -66,12 +66,7 @@
 
       <!-- Map Summary - Hexagon View -->
       <div class="card bg-base-100 shadow-xl mb-8">
-        <div class="card-body">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="card-title">🗺️ Activity Overview</h2>
-            <div class="badge badge-warning">Privacy-safe view</div>
-          </div>
-
+        <div class="card-body p-0">
           <!-- Hexagon Map Container -->
           <div class="w-full h-96 rounded-lg border border-base-300 relative overflow-hidden">
             <div id="public-monthly-stats-map" class="w-full h-full"
@@ -82,13 +77,11 @@
                  data-public-stat-map-data-bounds-value="<%= @data_bounds.to_json if @data_bounds %>"></div>
 
             <!-- Loading overlay -->
-            <div id="map-loading" class="absolute inset-0 bg-base-200 flex items-center justify-center">
-              <span class="loading loading-spinner loading-lg text-primary"></span>
-            </div>
-
-            <!-- Privacy overlay -->
-            <div class="absolute top-2 left-2 bg-warning text-warning-content text-xs px-2 py-1 rounded">
-              🔒 Approximate locations only
+            <div id="map-loading" class="absolute inset-0 bg-base-200 bg-opacity-80 flex items-center justify-center z-50">
+              <div class="text-center">
+                <span class="loading loading-spinner loading-lg text-primary"></span>
+                <p class="text-sm mt-2 text-base-content">Loading hexagons...</p>
+              </div>
             </div>
           </div>
         </div>

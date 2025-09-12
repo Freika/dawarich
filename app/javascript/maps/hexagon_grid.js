@@ -316,11 +316,6 @@ export class HexagonGrid {
 
     return `
       <div style="font-size: 12px; line-height: 1.4;">
-        <h4 style="margin: 0 0 8px 0; color: #2c5aa0;">Hexagon Stats</h4>
-        <strong>Points:</strong> ${props.point_count || 0}<br>
-        <strong>Density:</strong> ${props.density || 0} pts/km²<br>
-        ${props.avg_speed ? `<strong>Avg Speed:</strong> ${props.avg_speed} km/h<br>` : ''}
-        ${props.avg_battery ? `<strong>Avg Battery:</strong> ${props.avg_battery}%<br>` : ''}
         <strong>Date Range:</strong><br>
         <small>${startDate} - ${endDate}</small>
       </div>
