@@ -329,5 +329,11 @@ RSpec.describe User, type: :model do
         expect { user.export_data }.to have_enqueued_job(Users::ExportDataJob).with(user.id)
       end
     end
+
+    describe '#timezone' do
+      it 'returns the app timezone' do
+        expect(user.timezone).to eq(Time.zone.name)
+      end
+    end
   end
 end

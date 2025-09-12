@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - A cron job to generate daily tracks for users with new points since their last track generation. Being run every 4 hours.
 - A new month stat page, featuring insights on how user's month went: distance traveled, active days, countries visited and more.
+- Month stat page can now be shared via public link. User can limit access to the page by sharing period: 1/12/24 hours or permanent.
 
 ## Changed
 

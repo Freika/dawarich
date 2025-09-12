@@ -6,9 +6,6 @@ class Api::V1::Maps::HexagonsController < ApiController
   before_action :set_user_and_dates
 
   def index
-    Rails.logger.debug "Hexagon API request params: #{params.inspect}"
-    Rails.logger.debug "Hexagon params: #{hexagon_params}"
-
     service = Maps::HexagonGrid.new(hexagon_params)
     result = service.call
 
@@ -16,13 +13,11 @@ class Api::V1::Maps::HexagonsController < ApiController
     render json: result
   rescue Maps::HexagonGrid::BoundingBoxTooLargeError,
          Maps::HexagonGrid::InvalidCoordinatesError => e
-    Rails.logger.error "Hexagon validation error: #{e.message}"
     render json: { error: e.message }, status: :bad_request
   rescue Maps::HexagonGrid::PostGISError => e
-    Rails.logger.error "Hexagon PostGIS error: #{e.message}"
     render json: { error: e.message }, status: :internal_server_error
-  rescue StandardError => e
-    handle_service_error(e)
+  rescue StandardError => _e
+    handle_service_error
   end
 
   def bounds
@@ -82,21 +77,17 @@ class Api::V1::Maps::HexagonsController < ApiController
   end
 
   def set_public_sharing_context
-    Rails.logger.debug "Public sharing request with UUID: #{params[:uuid]}"
     @stat = Stat.find_by(sharing_uuid: params[:uuid])
 
     unless @stat&.public_accessible?
-      Rails.logger.error "Stat not found or not public accessible for UUID: #{params[:uuid]}"
-      return render json: {
+      render json: {
         error: 'Shared stats not found or no longer available'
-      }, status: :not_found
+      }, status: :not_found and return
     end
 
     @target_user = @stat.user
     @start_date = Date.new(@stat.year, @stat.month, 1).beginning_of_day
     @end_date = @start_date.end_of_month.end_of_day
-
-    Rails.logger.debug "Found stat for user #{@target_user.id}, date range: #{@start_date} to #{@end_date}"
   end
 
   def set_authenticated_context
@@ -105,8 +96,7 @@ class Api::V1::Maps::HexagonsController < ApiController
     @end_date = params[:end_date]
   end
 
-  def handle_service_error(error)
-    Rails.logger.error "Hexagon generation error: #{error.message}\n#{error.backtrace.join("\n")}"
+  def handle_service_error
     render json: { error: 'Failed to generate hexagon grid' }, status: :internal_server_error
   end
 
