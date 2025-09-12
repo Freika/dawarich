@@ -64,21 +64,22 @@
         </div>
       </div>
 
-      <!-- Map Summary - Restricted View -->
+      <!-- Map Summary - Hexagon View -->
       <div class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="card-title">🗺️ Map Summary</h2>
-            <div class="badge badge-warning">Limited view</div>
+            <h2 class="card-title">🗺️ Activity Overview</h2>
+            <div class="badge badge-warning">Privacy-safe view</div>
           </div>
 
-          <!-- Restricted Map Container -->
+          <!-- Hexagon Map Container -->
           <div class="w-full h-96 rounded-lg border border-base-300 relative overflow-hidden">
             <div id="public-monthly-stats-map" class="w-full h-full"
                  data-controller="public-stat-map"
-                 data-year="<%= @year %>"
-                 data-month="<%= @month %>"
-                 data-uuid="<%= @stat.sharing_uuid %>"></div>
+                 data-public-stat-map-year-value="<%= @year %>"
+                 data-public-stat-map-month-value="<%= @month %>"
+                 data-public-stat-map-uuid-value="<%= @stat.sharing_uuid %>"
+                 data-public-stat-map-data-bounds-value="<%= @data_bounds.to_json if @data_bounds %>"></div>
 
             <!-- Loading overlay -->
             <div id="map-loading" class="absolute inset-0 bg-base-200 flex items-center justify-center">
@@ -176,51 +177,6 @@
     </div>
   </div>
 
-  <!-- Stimulus Controller for Public Map -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const mapElement = document.getElementById('public-monthly-stats-map');
-      if (mapElement) {
-        initPublicMap(mapElement);
-      }
-    });
-
-    function initPublicMap(mapElement) {
-      const year = mapElement.dataset.year;
-      const month = mapElement.dataset.month;
-      const uuid = mapElement.dataset.uuid;
-
-      // Initialize restricted map
-      const map = L.map('public-monthly-stats-map', {
-        zoomControl: false,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
-        touchZoom: false,
-        dragging: false,
-        keyboard: false
-      }).setView([40.0, -100.0], 4); // Default centered view
-
-      // Add tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 10 // Limit zoom level for privacy
-      }).addTo(map);
-
-      // Add restricted data overlay
-      const restrictedOverlay = L.divIcon({
-        className: 'restricted-map-overlay',
-        html: '<div style="background: rgba(255,193,7,0.8); padding: 10px; border-radius: 5px; text-align: center; font-weight: bold;">Map interaction disabled for privacy</div>',
-        iconSize: [200, 50]
-      });
-
-      // Hide loading
-      document.getElementById('map-loading').style.display = 'none';
-
-      // Show privacy notice on map
-      setTimeout(() => {
-        const marker = L.marker([40.0, -100.0], { icon: restrictedOverlay }).addTo(map);
-      }, 1000);
-    }
-  </script>
+  <!-- Map is now handled by the Stimulus controller -->
 </body>
 </html>
