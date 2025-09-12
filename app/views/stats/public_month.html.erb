@@ -90,7 +90,9 @@
       <!-- Daily Activity Chart -->
       <div class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
-          <h2 class="card-title">📈 Daily Activity</h2>
+          <h2 class="card-title">
+            <%= icon 'trending-up' %> Daily Activity
+            </h2>
           <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
             <%= column_chart(
                 @stat.daily_distance.map { |day, distance_meters|
@@ -132,7 +134,9 @@
       <!-- Countries & Cities - General Info Only -->
       <div class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
-          <h2 class="card-title">🌍 Countries & Cities</h2>
+          <h2 class="card-title">
+            <%= icon 'earth' %> Countries & Cities
+          </h2>
           <div class="space-y-4">
             <% @stat.toponyms.each_with_index do |country, index| %>
               <div class="space-y-2">

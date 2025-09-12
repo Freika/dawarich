@@ -47,7 +47,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       it 'returns http unprocessable entity' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 'invalid' } }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it 'returns an error message' do

@@ -27,7 +27,7 @@ class ExportsController < ApplicationController
 
     ExceptionReporter.call(e)
 
-    redirect_to exports_url, alert: "Export failed to initiate: #{e.message}", status: :unprocessable_entity
+    redirect_to exports_url, alert: "Export failed to initiate: #{e.message}", status: :unprocessable_content
   end
 
   def destroy

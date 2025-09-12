@@ -81,9 +81,9 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       let(:existing_place) { create(:place, latitude: 52.52, longitude: 13.405) }
 
       it 'creates a new visit' do
-        expect {
+        expect do
           post '/api/v1/visits', params: valid_create_params, headers: auth_headers
-        }.to change { user.visits.count }.by(1)
+        end.to change { user.visits.count }.by(1)
 
         expect(response).to have_http_status(:ok)
       end
@@ -100,9 +100,9 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'creates a place for the visit' do
-        expect {
+        expect do
           post '/api/v1/visits', params: valid_create_params, headers: auth_headers
-        }.to change { Place.count }.by(1)
+        end.to change { Place.count }.by(1)
 
         created_place = Place.last
         expect(created_place.name).to eq('Test Visit')
@@ -114,9 +114,9 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       it 'reuses existing place when coordinates are exactly the same' do
         create(:visit, user: user, place: existing_place)
 
-        expect {
+        expect do
           post '/api/v1/visits', params: valid_create_params, headers: auth_headers
-        }.not_to change { Place.count }
+        end.not_to(change { Place.count })
 
         json_response = JSON.parse(response.body)
         expect(json_response['place']['id']).to eq(existing_place.id)
@@ -132,7 +132,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         it 'returns unprocessable entity status' do
           post '/api/v1/visits', params: missing_name_params, headers: auth_headers
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
 
         it 'returns error message' do
@@ -144,9 +144,9 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         end
 
         it 'does not create a visit' do
-          expect {
+          expect do
             post '/api/v1/visits', params: missing_name_params, headers: auth_headers
-          }.not_to change { Visit.count }
+          end.not_to(change { Visit.count })
         end
       end
     end
@@ -199,7 +199,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       it 'renders a JSON response with errors for the visit' do
         put "/api/v1/visits/#{visit.id}", params: invalid_attributes, headers: auth_headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end
@@ -234,7 +234,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       it 'returns an error when fewer than 2 visits are specified' do
         post '/api/v1/visits/merge', params: { visit_ids: [visit1.id] }, headers: auth_headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to include('At least 2 visits must be selected')
       end
@@ -264,7 +264,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
 
         post '/api/v1/visits/merge', params: { visit_ids: [visit1.id, visit2.id] }, headers: auth_headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to include('Failed to merge visits')
       end
@@ -316,7 +316,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
 
         post '/api/v1/visits/bulk_update', params: invalid_update_params, headers: auth_headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to include('Invalid status')
       end
@@ -329,9 +329,9 @@ RSpec.describe 'Api::V1::Visits', type: :request do
 
     context 'when visit exists and belongs to current user' do
       it 'deletes the visit' do
-        expect {
+        expect do
           delete "/api/v1/visits/#{visit.id}", headers: auth_headers
-        }.to change { user.visits.count }.by(-1)
+        end.to change { user.visits.count }.by(-1)
 
         expect(response).to have_http_status(:no_content)
       end
@@ -363,9 +363,9 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'does not delete the visit' do
-        expect {
+        expect do
           delete "/api/v1/visits/#{other_user_visit.id}", headers: auth_headers
-        }.not_to change { Visit.count }
+        end.not_to(change { Visit.count })
       end
     end
 

@@ -19,7 +19,7 @@ class Api::V1::VisitsController < ApiController
       render json: Api::VisitSerializer.new(service.visit).call
     else
       error_message = service.errors || 'Failed to create visit'
-      render json: { error: error_message }, status: :unprocessable_entity
+      render json: { error: error_message }, status: :unprocessable_content
     end
   end
 
@@ -34,7 +34,7 @@ class Api::V1::VisitsController < ApiController
     # Validate that we have at least 2 visit IDs
     visit_ids = params[:visit_ids]
     if visit_ids.blank? || visit_ids.length < 2
-      return render json: { error: 'At least 2 visits must be selected for merging' }, status: :unprocessable_entity
+      return render json: { error: 'At least 2 visits must be selected for merging' }, status: :unprocessable_content
     end
 
     # Find all visits that belong to the current user
@@ -52,7 +52,7 @@ class Api::V1::VisitsController < ApiController
     if merged_visit&.persisted?
       render json: Api::VisitSerializer.new(merged_visit).call, status: :ok
     else
-      render json: { error: service.errors.join(', ') }, status: :unprocessable_entity
+      render json: { error: service.errors.join(', ') }, status: :unprocessable_content
     end
   end
 
@@ -71,7 +71,7 @@ class Api::V1::VisitsController < ApiController
         updated_count: result[:count]
       }, status: :ok
     else
-      render json: { error: service.errors.join(', ') }, status: :unprocessable_entity
+      render json: { error: service.errors.join(', ') }, status: :unprocessable_content
     end
   end
 
@@ -84,7 +84,7 @@ class Api::V1::VisitsController < ApiController
       render json: {
         error: 'Failed to delete visit',
         errors: visit.errors.full_messages
-      }, status: :unprocessable_entity
+      }, status: :unprocessable_content
     end
   rescue ActiveRecord::RecordNotFound
     render json: { error: 'Visit not found' }, status: :not_found

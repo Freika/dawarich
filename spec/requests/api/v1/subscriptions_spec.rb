@@ -102,7 +102,7 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
 
             post '/api/v1/subscriptions/callback', params: { token: token }
 
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
             expect(JSON.parse(response.body)['message']).to eq('Invalid subscription data received.')
           end
         end

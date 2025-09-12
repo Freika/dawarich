@@ -18,7 +18,7 @@ class Api::V1::SettingsController < ApiController
              status: :ok
     else
       render json: { message: 'Something went wrong', errors: current_api_user.errors.full_messages },
-             status: :unprocessable_entity
+             status: :unprocessable_content
     end
   end
 

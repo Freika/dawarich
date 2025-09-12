@@ -75,13 +75,16 @@ Rails.application.routes.draw do
       to: 'stats#update',
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
+  # Public shared stats routes
+  get 'shared/stats/:uuid', to: 'shared/stats#show', as: :shared_stat
+  # Backward compatibility
+  get 'shared/stats/:uuid', to: 'shared/stats#show', as: :public_stat
+
+  # Sharing management endpoint (requires auth)
   patch 'stats/:year/:month/sharing',
-        to: 'stats#update_sharing',
+        to: 'shared/stats#update',
         as: :sharing_stats,
         constraints: { year: /\d{4}/, month: /\d{1,2}/ }
-
-  # Public shared stats page
-  get 'shared/stats/:uuid', to: 'stats#public_show', as: :public_stat
 
   root to: 'home#index'
 

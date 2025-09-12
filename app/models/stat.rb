@@ -81,6 +81,34 @@ class Stat < ApplicationRecord
     )
   end
 
+  def calculate_data_bounds
+    start_date = Date.new(year, month, 1).beginning_of_day
+    end_date = start_date.end_of_month.end_of_day
+    
+    points_relation = user.points.where(timestamp: start_date.to_i..end_date.to_i)
+    point_count = points_relation.count
+    
+    return nil if point_count.zero?
+
+    bounds_result = ActiveRecord::Base.connection.exec_query(
+      "SELECT MIN(latitude) as min_lat, MAX(latitude) as max_lat,
+              MIN(longitude) as min_lng, MAX(longitude) as max_lng
+       FROM points
+       WHERE user_id = $1
+       AND timestamp BETWEEN $2 AND $3",
+      'data_bounds_query',
+      [user.id, start_date.to_i, end_date.to_i]
+    ).first
+
+    {
+      min_lat: bounds_result['min_lat'].to_f,
+      max_lat: bounds_result['max_lat'].to_f,
+      min_lng: bounds_result['min_lng'].to_f,
+      max_lng: bounds_result['max_lng'].to_f,
+      point_count: point_count
+    }
+  end
+
   private
 
   def generate_sharing_uuid
