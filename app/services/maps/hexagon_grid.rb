@@ -41,7 +41,25 @@ class Maps::HexagonGrid
     generate_hexagons
   end
 
+  def area_km2
+    @area_km2 ||= calculate_area_km2
+  end
+
   private
+
+  def calculate_area_km2
+    width = (max_lon - min_lon).abs
+    height = (max_lat - min_lat).abs
+
+    # Convert degrees to approximate kilometers
+    # 1 degree latitude ≈ 111 km
+    # 1 degree longitude ≈ 111 km * cos(latitude)
+    avg_lat = (min_lat + max_lat) / 2
+    width_km = width * 111 * Math.cos(avg_lat * Math::PI / 180)
+    height_km = height * 111
+
+    width_km * height_km
+  end
 
   def validate_bbox_order
     errors.add(:base, 'min_lon must be less than max_lon') if min_lon >= max_lon

@@ -69,11 +69,9 @@ class Api::V1::Maps::HexagonsController < ApiController
   end
 
   def set_user_and_dates
-    if params[:uuid].present?
-      set_public_sharing_context
-    else
-      set_authenticated_context
-    end
+    return set_public_sharing_context if params[:uuid].present?
+
+    set_authenticated_context
   end
 
   def set_public_sharing_context
