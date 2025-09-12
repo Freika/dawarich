@@ -34,9 +34,9 @@
               <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
               <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
-            <div class="gap-2">
+            <div class="flex items-center gap-2">
               <span class='text-xs text-gray-500'>Last update: <%= human_date(stats.first.updated_at) %></span>
-              <%= link_to '🔄', update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:underline' %>
+              <%= link_to icon('refresh-ccw'), update_year_month_stats_path(year, :all), data: { turbo_method: :put }, class: 'text-sm text-gray-500 hover:text-primary' %>
             </div>
           </h2>
           <p>
