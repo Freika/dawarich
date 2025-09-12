@@ -20,7 +20,7 @@ FactoryBot.define do
     end
 
     trait :with_sharing_enabled do
-      after(:create) do |stat, evaluator|
+      after(:create) do |stat, _evaluator|
         stat.enable_sharing!(expiration: 'permanent')
       end
     end

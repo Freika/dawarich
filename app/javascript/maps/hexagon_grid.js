@@ -285,18 +285,7 @@ export class HexagonGrid {
     // Calculate opacity based on point density (0.2 to 0.8)
     const opacity = 0.2 + (pointCount / maxPoints) * 0.6;
 
-    // Calculate color based on density
     let color = '#3388ff'
-    // let color = '#3388ff'; // Default blue
-    // if (pointCount > maxPoints * 0.7) {
-    //   color = '#d73027'; // High density - red
-    // } else if (pointCount > maxPoints * 0.4) {
-    //   color = '#fc8d59'; // Medium-high density - orange
-    // } else if (pointCount > maxPoints * 0.2) {
-    //   color = '#fee08b'; // Medium density - yellow
-    // } else {
-    //   color = '#91bfdb'; // Low density - light blue
-    // }
 
     return {
       fillColor: color,

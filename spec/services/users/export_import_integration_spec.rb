@@ -179,19 +179,23 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       import_stats = import_service.import
 
       # Verify all entities were imported correctly
-      expect(import_stats[:places_created]).to eq(original_places_count),
-                                               "Expected #{original_places_count} places to be created, got #{import_stats[:places_created]}"
-      expect(import_stats[:visits_created]).to eq(original_visits_count),
-                                               "Expected #{original_visits_count} visits to be created, got #{import_stats[:visits_created]}"
+      expect(import_stats[:places_created]).to \
+        eq(original_places_count),
+        "Expected #{original_places_count} places to be created, got #{import_stats[:places_created]}"
+      expect(import_stats[:visits_created]).to \
+        eq(original_visits_count),
+        "Expected #{original_visits_count} visits to be created, got #{import_stats[:visits_created]}"
 
       # Verify the imported user has access to all their data
       imported_places_count = import_user.places.distinct.count
       imported_visits_count = import_user.visits.count
 
-      expect(imported_places_count).to eq(original_places_count),
-                                       "Expected user to have access to #{original_places_count} places, got #{imported_places_count}"
-      expect(imported_visits_count).to eq(original_visits_count),
-                                       "Expected user to have #{original_visits_count} visits, got #{imported_visits_count}"
+      expect(imported_places_count).to \
+        eq(original_places_count),
+        "Expected user to have access to #{original_places_count} places, got #{imported_places_count}"
+      expect(imported_visits_count).to \
+        eq(original_visits_count),
+        "Expected user to have #{original_visits_count} visits, got #{imported_visits_count}"
 
       # Verify specific visits have their place associations
       imported_visits = import_user.visits.includes(:place)
@@ -211,12 +215,13 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
   private
 
   def create_full_user_dataset(user)
-    user.update!(settings: {
-                   'distance_unit' => 'km',
-      'timezone' => 'America/New_York',
-      'immich_url' => 'https://immich.example.com',
-      'immich_api_key' => 'test-api-key'
-                 })
+    user.update!(settings:
+      {
+        'distance_unit' => 'km',
+        'timezone' => 'America/New_York',
+        'immich_url' => 'https://immich.example.com',
+        'immich_api_key' => 'test-api-key'
+      })
 
     usa = create(:country, name: 'United States', iso_a2: 'US', iso_a3: 'USA')
     canada = create(:country, name: 'Canada', iso_a2: 'CA', iso_a3: 'CAN')

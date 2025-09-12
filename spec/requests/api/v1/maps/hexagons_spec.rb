@@ -29,8 +29,8 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       before do
         # Create test points within the date range and bounding box
         10.times do |i|
-          create(:point, 
-                 user:, 
+          create(:point,
+                 user:,
                  latitude: 40.7 + (i * 0.001), # Slightly different coordinates
                  longitude: -74.0 + (i * 0.001),
                  timestamp: Time.new(2024, 6, 15, 12, i).to_i) # Different times
@@ -41,7 +41,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         get '/api/v1/maps/hexagons', params: valid_params, headers: headers
 
         expect(response).to have_http_status(:success)
-        
+
         json_response = JSON.parse(response.body)
         expect(json_response).to have_key('type')
         expect(json_response['type']).to eq('FeatureCollection')
@@ -51,11 +51,11 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
 
       it 'requires all bbox parameters' do
         incomplete_params = valid_params.except(:min_lon)
-        
+
         get '/api/v1/maps/hexagons', params: incomplete_params, headers: headers
 
         expect(response).to have_http_status(:bad_request)
-        
+
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to include('Missing required parameters')
         expect(json_response['error']).to include('min_lon')
@@ -63,7 +63,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
 
       it 'handles service validation errors' do
         invalid_params = valid_params.merge(min_lon: 200) # Invalid longitude
-        
+
         get '/api/v1/maps/hexagons', params: invalid_params, headers: headers
 
         expect(response).to have_http_status(:bad_request)
@@ -71,7 +71,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
 
       it 'uses custom hex_size when provided' do
         custom_params = valid_params.merge(hex_size: 500)
-        
+
         get '/api/v1/maps/hexagons', params: custom_params, headers: headers
 
         expect(response).to have_http_status(:success)
@@ -85,9 +85,9 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       before do
         # Create test points within the stat's month
         15.times do |i|
-          create(:point, 
-                 user:, 
-                 latitude: 40.7 + (i * 0.002), 
+          create(:point,
+                 user:,
+                 latitude: 40.7 + (i * 0.002),
                  longitude: -74.0 + (i * 0.002),
                  timestamp: Time.new(2024, 6, 20, 10, i).to_i)
         end
@@ -97,7 +97,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         get '/api/v1/maps/hexagons', params: uuid_params
 
         expect(response).to have_http_status(:success)
-        
+
         json_response = JSON.parse(response.body)
         expect(json_response).to have_key('type')
         expect(json_response['type']).to eq('FeatureCollection')
@@ -107,9 +107,9 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       it 'uses stat date range automatically' do
         # Points outside the stat's month should not be included
         5.times do |i|
-          create(:point, 
-                 user:, 
-                 latitude: 40.7 + (i * 0.003), 
+          create(:point,
+                 user:,
+                 latitude: 40.7 + (i * 0.003),
                  longitude: -74.0 + (i * 0.003),
                  timestamp: Time.new(2024, 7, 1, 8, i).to_i) # July points
         end
@@ -122,11 +122,11 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       context 'with invalid sharing UUID' do
         it 'returns not found' do
           invalid_uuid_params = valid_params.merge(uuid: 'invalid-uuid')
-          
+
           get '/api/v1/maps/hexagons', params: invalid_uuid_params
 
           expect(response).to have_http_status(:not_found)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['error']).to eq('Shared stats not found or no longer available')
         end
@@ -139,7 +139,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
           get '/api/v1/maps/hexagons', params: uuid_params
 
           expect(response).to have_http_status(:not_found)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['error']).to eq('Shared stats not found or no longer available')
         end
@@ -152,7 +152,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
           get '/api/v1/maps/hexagons', params: uuid_params
 
           expect(response).to have_http_status(:not_found)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['error']).to eq('Shared stats not found or no longer available')
         end
@@ -199,7 +199,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         get '/api/v1/maps/hexagons/bounds', params: date_params, headers: headers
 
         expect(response).to have_http_status(:success)
-        
+
         json_response = JSON.parse(response.body)
         expect(json_response).to include('min_lat', 'max_lat', 'min_lng', 'max_lng', 'point_count')
         expect(json_response['min_lat']).to eq(40.6)
@@ -210,12 +210,12 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       end
 
       it 'returns not found when no points exist in date range' do
-        get '/api/v1/maps/hexagons/bounds', 
-            params: { start_date: '2023-01-01T00:00:00Z', end_date: '2023-01-31T23:59:59Z' }, 
+        get '/api/v1/maps/hexagons/bounds',
+            params: { start_date: '2023-01-01T00:00:00Z', end_date: '2023-01-31T23:59:59Z' },
             headers: headers
 
         expect(response).to have_http_status(:not_found)
-        
+
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to eq('No data found for the specified date range')
         expect(json_response['point_count']).to eq(0)
@@ -235,7 +235,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         get '/api/v1/maps/hexagons/bounds', params: { uuid: stat.sharing_uuid }
 
         expect(response).to have_http_status(:success)
-        
+
         json_response = JSON.parse(response.body)
         expect(json_response).to include('min_lat', 'max_lat', 'min_lng', 'max_lng', 'point_count')
         expect(json_response['min_lat']).to eq(41.0)
@@ -248,7 +248,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
           get '/api/v1/maps/hexagons/bounds', params: { uuid: 'invalid-uuid' }
 
           expect(response).to have_http_status(:not_found)
-          
+
           json_response = JSON.parse(response.body)
           expect(json_response['error']).to eq('Shared stats not found or no longer available')
         end
@@ -257,7 +257,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
 
     context 'without authentication' do
       it 'returns unauthorized' do
-        get '/api/v1/maps/hexagons/bounds', 
+        get '/api/v1/maps/hexagons/bounds',
             params: { start_date: '2024-06-01T00:00:00Z', end_date: '2024-06-30T23:59:59Z' }
 
         expect(response).to have_http_status(:unauthorized)

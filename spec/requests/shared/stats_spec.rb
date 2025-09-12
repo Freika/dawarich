@@ -81,31 +81,31 @@ RSpec.describe 'Shared::Stats', type: :request do
     describe 'PATCH /stats/:year/:month/sharing' do
       context 'when user is signed in' do
         let!(:stat_to_share) { create(:stat, user:, year: 2024, month: 6) }
-        
+
         before { sign_in user }
 
         context 'enabling sharing' do
           it 'enables sharing and returns success' do
-            patch sharing_stats_path(year: 2024, month: 6), 
-                params: { enabled: '1' }, 
-                as: :json
+            patch sharing_stats_path(year: 2024, month: 6),
+                  params: { enabled: '1' },
+                  as: :json
 
             expect(response).to have_http_status(:success)
-            
+
             json_response = JSON.parse(response.body)
             expect(json_response['success']).to be(true)
             expect(json_response['sharing_url']).to be_present
             expect(json_response['message']).to eq('Sharing enabled successfully')
-            
+
             stat_to_share.reload
             expect(stat_to_share.sharing_enabled?).to be(true)
             expect(stat_to_share.sharing_uuid).to be_present
           end
 
           it 'sets custom expiration when provided' do
-            patch sharing_stats_path(year: 2024, month: 6), 
-                params: { enabled: '1', expiration: '1_week' }, 
-                as: :json
+            patch sharing_stats_path(year: 2024, month: 6),
+                  params: { enabled: '1', expiration: '1_week' },
+                  as: :json
 
             expect(response).to have_http_status(:success)
             stat_to_share.reload
@@ -117,16 +117,16 @@ RSpec.describe 'Shared::Stats', type: :request do
           let!(:enabled_stat) { create(:stat, :with_sharing_enabled, user:, year: 2024, month: 7) }
 
           it 'disables sharing and returns success' do
-            patch sharing_stats_path(year: 2024, month: 7), 
-                params: { enabled: '0' }, 
-                as: :json
+            patch sharing_stats_path(year: 2024, month: 7),
+                  params: { enabled: '0' },
+                  as: :json
 
             expect(response).to have_http_status(:success)
-            
+
             json_response = JSON.parse(response.body)
             expect(json_response['success']).to be(true)
             expect(json_response['message']).to eq('Sharing disabled successfully')
-            
+
             enabled_stat.reload
             expect(enabled_stat.sharing_enabled?).to be(false)
           end
@@ -134,9 +134,9 @@ RSpec.describe 'Shared::Stats', type: :request do
 
         context 'when stat does not exist' do
           it 'returns not found' do
-            patch sharing_stats_path(year: 2024, month: 12), 
-                params: { enabled: '1' }, 
-                as: :json
+            patch sharing_stats_path(year: 2024, month: 12),
+                  params: { enabled: '1' },
+                  as: :json
 
             expect(response).to have_http_status(:not_found)
           end
@@ -145,9 +145,9 @@ RSpec.describe 'Shared::Stats', type: :request do
 
       context 'when user is not signed in' do
         it 'returns unauthorized' do
-          patch sharing_stats_path(year: 2024, month: 6), 
-              params: { enabled: '1' }, 
-              as: :json
+          patch sharing_stats_path(year: 2024, month: 6),
+                params: { enabled: '1' },
+                as: :json
 
           expect(response).to have_http_status(:unauthorized)
         end
