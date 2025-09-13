@@ -2,8 +2,8 @@
 
 class Settings::UsersController < ApplicationController
   before_action :authenticate_self_hosted!, except: %i[export import]
-  before_action :authenticate_admin!, except: %i[export import]
   before_action :authenticate_user!
+  before_action :authenticate_admin!, except: %i[export import]
 
   def index
     @users = User.order(created_at: :desc)

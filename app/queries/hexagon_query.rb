@@ -47,8 +47,8 @@ class HexagonQuery
         WHERE #{user_filter}
           #{date_filter}
           AND ST_Intersects(
-            lonlat::geometry,
-            (SELECT geom FROM bbox_geom)
+            lonlat,
+            (SELECT geom FROM bbox_geom)::geometry
           )
       ),
       hex_grid AS (

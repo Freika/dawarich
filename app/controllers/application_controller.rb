@@ -46,8 +46,8 @@ class ApplicationController < ActionController::Base
   end
 
   def user_not_authorized
-    redirect_back_or_to root_path,
-                        alert: 'You are not authorized to perform this action.',
-                        status: :see_other
+    redirect_back fallback_location: root_path,
+                  alert: 'You are not authorized to perform this action.',
+                  status: :see_other
   end
 end

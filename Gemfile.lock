@@ -545,7 +545,7 @@ DEPENDENCIES
   groupdate
   httparty
   importmap-rails
-  jwt
+  jwt (~> 2.8)
   kaminari
   lograge
   oj

@@ -37,10 +37,19 @@ class Stat < ApplicationRecord
   end
 
   def sharing_expired?
-    return false unless sharing_settings['expiration']
-    return false if sharing_settings['expiration'] == 'permanent'
+    expiration = sharing_settings['expiration']
+    return false if expiration.blank? || expiration == 'permanent'
 
-    Time.current > sharing_settings['expires_at']
+    expires_at_value = sharing_settings['expires_at']
+    return true if expires_at_value.blank?
+
+    expires_at = begin
+      Time.zone.parse(expires_at_value)
+    rescue StandardError
+      nil
+    end
+
+    expires_at.present? ? Time.current > expires_at : true
   end
 
   def public_accessible?
@@ -53,12 +62,9 @@ class Stat < ApplicationRecord
 
   def enable_sharing!(expiration: '1h')
     expires_at = case expiration
-                 when '1h'
-                   1.hour.from_now
-                 when '12h'
-                   12.hours.from_now
-                 when '24h'
-                   24.hours.from_now
+                 when '1h' then 1.hour.from_now
+                 when '12h' then 12.hours.from_now
+                 when '24h' then 24.hours.from_now
                  end
 
     update!(
@@ -84,10 +90,10 @@ class Stat < ApplicationRecord
   def calculate_data_bounds
     start_date = Date.new(year, month, 1).beginning_of_day
     end_date = start_date.end_of_month.end_of_day
-    
+
     points_relation = user.points.where(timestamp: start_date.to_i..end_date.to_i)
     point_count = points_relation.count
-    
+
     return nil if point_count.zero?
 
     bounds_result = ActiveRecord::Base.connection.exec_query(

@@ -67,10 +67,11 @@ module StatsHelper
   end
 
   def x_than_average_distance(stat, average_distance_this_year)
-    return '' if average_distance_this_year.zero?
+    return '' if average_distance_this_year&.zero?
 
-    difference = stat.distance / 1000 - average_distance_this_year
-    percentage = ((difference / average_distance_this_year) * 100).round
+    current_km = stat.distance / 1000.0
+    difference = current_km - average_distance_this_year.to_f
+    percentage = ((difference / average_distance_this_year.to_f) * 100).round
 
     more_or_less = difference.positive? ? 'more' : 'less'
     "#{percentage.abs}% #{more_or_less} than your average this year"
