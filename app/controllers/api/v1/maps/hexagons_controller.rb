@@ -25,7 +25,35 @@ class Api::V1::Maps::HexagonsController < ApiController
     return render json: { error: 'No user found' }, status: :not_found unless @target_user
     return render json: { error: 'No date range specified' }, status: :bad_request unless @start_date && @end_date
 
-    points_relation = @target_user.points.where(timestamp: @start_date..@end_date)
+    # Convert dates to timestamps (handle both string and timestamp formats)
+    start_timestamp = case @start_date
+                      when String
+                        # Check if it's a numeric string (timestamp) or date string
+                        if @start_date.match?(/^\d+$/)
+                          @start_date.to_i
+                        else
+                          Time.parse(@start_date).to_i
+                        end
+                      when Integer
+                        @start_date
+                      else
+                        @start_date.to_i
+                      end
+    end_timestamp = case @end_date
+                    when String
+                      # Check if it's a numeric string (timestamp) or date string
+                      if @end_date.match?(/^\d+$/)
+                        @end_date.to_i
+                      else
+                        Time.parse(@end_date).to_i
+                      end
+                    when Integer
+                      @end_date
+                    else
+                      @end_date.to_i
+                    end
+
+    points_relation = @target_user.points.where(timestamp: start_timestamp..end_timestamp)
     point_count = points_relation.count
 
     if point_count.positive?
@@ -36,7 +64,7 @@ class Api::V1::Maps::HexagonsController < ApiController
          WHERE user_id = $1
          AND timestamp BETWEEN $2 AND $3",
         'bounds_query',
-        [@target_user.id, @start_date.to_i, @end_date.to_i]
+        [@target_user.id, start_timestamp, end_timestamp]
       ).first
 
       render json: {
