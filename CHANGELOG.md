@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Changed
 
-- Stats page now loads significantly faster due to caching
+- Stats page now loads significantly faster due to caching.
 - Data on the Stats page is being updated daily, except for total distance and number of geopoints tracked, which are being updated on the fly. Also, charts with yearly and monthly stats are being updated every hour.
 - Minor versions are now being built only for amd64 architecture to speed up the build process.
 - If user is not authorized to see a page, they will be redirected to the home page with appropriate message instead of seeing an error.

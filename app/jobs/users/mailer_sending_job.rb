@@ -26,10 +26,6 @@ class Users::MailerSendingJob < ApplicationJob
       user.active?
     when 'post_trial_reminder_early', 'post_trial_reminder_late'
       user.active? || !user.trial?
-    when 'subscription_expires_soon_early', 'subscription_expires_soon_late'
-      !user.active? || !user.active_until&.future?
-    when 'subscription_expired_early', 'subscription_expired_late'
-      user.active? || user.active_until&.future? || user.trial?
     else
       false
     end
@@ -41,10 +37,6 @@ class Users::MailerSendingJob < ApplicationJob
       'user is already subscribed'
     when 'post_trial_reminder_early', 'post_trial_reminder_late'
       user.active? ? 'user is subscribed' : 'user is not in trial state'
-    when 'subscription_expires_soon_early', 'subscription_expires_soon_late'
-      'user is not active or subscription already expired'
-    when 'subscription_expired_early', 'subscription_expired_late'
-      'user is active, subscription not expired, or user is in trial'
     else
       'unknown reason'
     end

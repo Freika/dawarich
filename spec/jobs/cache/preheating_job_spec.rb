@@ -3,9 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Cache::PreheatingJob do
-  before do
-    Rails.cache.clear
-  end
+  before { Rails.cache.clear }
 
   describe '#perform' do
     let!(:user1) { create(:user) }
@@ -59,9 +57,9 @@ RSpec.describe Cache::PreheatingJob do
 
     it 'handles users with no points gracefully' do
       user_no_points = create(:user)
-      
+
       expect { described_class.new.perform }.not_to raise_error
-      
+
       cached_stats = Rails.cache.read("dawarich/user_#{user_no_points.id}_points_geocoded_stats")
       expect(cached_stats).to eq({ geocoded: 0, without_data: 0 })
     end

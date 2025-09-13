@@ -25,7 +25,6 @@
     All stats data above except for total distance and number of geopoints tracked is being updated daily
   </div>
 
-
   <% if current_user.active? %>
     <%= link_to 'Update stats', update_all_stats_path, data: { turbo_method: :put }, class: 'btn btn-primary mt-5' %>
   <% end %>

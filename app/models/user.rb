@@ -18,7 +18,6 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? }
-  after_commit :schedule_subscription_emails_on_activation, if: :should_schedule_subscription_emails?
 
   before_save :sanitize_input
 
@@ -168,45 +167,6 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   def schedule_post_trial_emails
     Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
     Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
-  end
-
-  def schedule_subscription_expiry_emails
-    return unless active? && active_until&.future?
-
-    days_until_expiry = (active_until.to_date - Time.current.to_date).to_i
-
-    if days_until_expiry >= 14
-      Users::MailerSendingJob.set(wait: (days_until_expiry - 14).days).perform_later(id,
-                                                                                     'subscription_expires_soon_early')
-    end
-
-    if days_until_expiry >= 2
-      Users::MailerSendingJob.set(wait: (days_until_expiry - 2).days).perform_later(id,
-                                                                                    'subscription_expires_soon_late')
-    end
-
-    schedule_subscription_expired_emails
-  end
-
-  def schedule_subscription_expired_emails
-    return unless active? && active_until&.future?
-
-    days_until_expiry = (active_until.to_date - Time.current.to_date).to_i
-
-    Users::MailerSendingJob.set(wait: (days_until_expiry + 7).days).perform_later(id, 'subscription_expired_early')
-    Users::MailerSendingJob.set(wait: (days_until_expiry + 14).days).perform_later(id, 'subscription_expired_late')
-  end
-
-  def should_schedule_subscription_emails?
-    return false unless persisted?
-
-    # Schedule if status changed to active or active_until was updated for an active user
-    (saved_change_to_status? && status == 'active') ||
-      (saved_change_to_active_until? && active? && active_until&.future?)
-  end
-
-  def schedule_subscription_emails_on_activation
-    schedule_subscription_expiry_emails
   end
 
   def countries_visited_uncached

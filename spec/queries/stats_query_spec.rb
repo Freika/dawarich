@@ -3,9 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe StatsQuery do
-  before do
-    Rails.cache.clear
-  end
+  before { Rails.cache.clear }
+
   describe '#points_stats' do
     subject(:points_stats) { described_class.new(user).points_stats }
 
@@ -14,11 +13,13 @@ RSpec.describe StatsQuery do
 
     context 'when user has no points' do
       it 'returns zero counts for all statistics' do
-        expect(points_stats).to eq({
-          total: 0,
-          geocoded: 0,
-          without_data: 0
-        })
+        expect(points_stats).to eq(
+          {
+            total: 0,
+            geocoded: 0,
+            without_data: 0
+          }
+        )
       end
     end
 
@@ -48,11 +49,13 @@ RSpec.describe StatsQuery do
       end
 
       it 'returns correct counts for all statistics' do
-        expect(points_stats).to eq({
-          total: 3,
-          geocoded: 2,
-          without_data: 1
-        })
+        expect(points_stats).to eq(
+          {
+            total: 3,
+            geocoded: 2,
+            without_data: 1
+          }
+        )
       end
 
       context 'when another user has points' do
@@ -67,11 +70,13 @@ RSpec.describe StatsQuery do
         end
 
         it 'only counts points for the specified user' do
-          expect(points_stats).to eq({
-            total: 3,
-            geocoded: 2,
-            without_data: 1
-          })
+          expect(points_stats).to eq(
+            {
+              total: 3,
+              geocoded: 2,
+              without_data: 1
+            }
+          )
         end
       end
     end
@@ -86,11 +91,13 @@ RSpec.describe StatsQuery do
       end
 
       it 'returns correct statistics' do
-        expect(points_stats).to eq({
-          total: 5,
-          geocoded: 5,
-          without_data: 0
-        })
+        expect(points_stats).to eq(
+          {
+            total: 5,
+            geocoded: 5,
+            without_data: 0
+          }
+        )
       end
     end
 
@@ -104,11 +111,13 @@ RSpec.describe StatsQuery do
       end
 
       it 'returns correct statistics' do
-        expect(points_stats).to eq({
-          total: 3,
-          geocoded: 3,
-          without_data: 3
-        })
+        expect(points_stats).to eq(
+          {
+            total: 3,
+            geocoded: 3,
+            without_data: 3
+          }
+        )
       end
     end
 
@@ -122,11 +131,13 @@ RSpec.describe StatsQuery do
       end
 
       it 'returns correct statistics' do
-        expect(points_stats).to eq({
-          total: 4,
-          geocoded: 0,
-          without_data: 0
-        })
+        expect(points_stats).to eq(
+          {
+            total: 4,
+            geocoded: 0,
+            without_data: 0
+          }
+        )
       end
     end
 
