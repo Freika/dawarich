@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [UNRELEASED]
 
+## Fixed
+
+- Tracked distance on year card on the Stats page will always be equal to the sum of distances on the monthly chart below it. #466
+- Stats are now being calculated for trial users as well as active ones.
+
 ## Added
 
 - A cron job to generate daily tracks for users with new points since their last track generation. Being run every 4 hours.
@@ -14,6 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Changed
 
+- Stats page now loads significantly faster due to caching.
+- Data on the Stats page is being updated daily, except for total distance and number of geopoints tracked, which are being updated on the fly. Also, charts with yearly and monthly stats are being updated every hour.
 - Minor versions are now being built only for amd64 architecture to speed up the build process.
 - If user is not authorized to see a page, they will be redirected to the home page with appropriate message instead of seeing an error.
 

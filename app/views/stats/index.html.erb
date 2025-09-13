@@ -1,7 +1,7 @@
 <% content_for :title, 'Statistics' %>
 
 <div class="w-full my-5">
-  <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200">
+  <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 relative">
     <div class="stat text-center">
       <div class="stat-value text-primary">
         <%= number_with_delimiter(current_user.total_distance.round) %> <%= current_user.safe_settings.distance_unit %>
@@ -19,6 +19,10 @@
     <% if DawarichSettings.reverse_geocoding_enabled? %>
       <%= render 'stats/reverse_geocoding_stats' %>
     <% end %>
+  </div>
+
+  <div class='text-xs text-gray-500 text-center mt-5'>
+    All stats data above except for total distance and number of geopoints tracked is being updated daily
   </div>
 
   <% if current_user.active? %>
@@ -40,9 +44,7 @@
             </div>
           </h2>
           <p>
-            <% cache [current_user, 'year_distance_stat', year], skip_digest: true do %>
-              <%= number_with_delimiter year_distance_stat(year, current_user).round %> <%= current_user.safe_settings.distance_unit %>
-            <% end %>
+            <%= number_with_delimiter year_distance_stat(@year_distances[year], current_user).round %> <%= current_user.safe_settings.distance_unit %>
           </p>
           <% if DawarichSettings.reverse_geocoding_enabled? %>
             <div class="card-actions justify-end">
