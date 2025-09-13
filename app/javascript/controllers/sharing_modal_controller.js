@@ -34,7 +34,7 @@ export default class extends Controller {
 
     const formData = new FormData()
     formData.append('enabled', this.enableToggleTarget.checked ? '1' : '0')
-    
+
     if (this.enableToggleTarget.checked && this.hasExpirationSelectTarget) {
       formData.append('expiration', this.expirationSelectTarget.value || '1h')
     } else if (this.enableToggleTarget.checked) {
@@ -55,13 +55,13 @@ export default class extends Controller {
     .then(response => response.json())
     .then(data => {
       this.hideLoadingState()
-      
+
       if (data.success) {
         // Update sharing link if provided
         if (data.sharing_url) {
           this.sharingLinkTarget.value = data.sharing_url
         }
-        
+
         // Show a subtle notification for auto-save
         this.showNotification("✓ Auto-saved", "success")
       } else {

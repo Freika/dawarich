@@ -19,9 +19,11 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin=""></script>
-  
-  <!-- ProtomapsL for vector tiles -->
-  <script src="https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js"></script>
+
+  <% if @self_hosted %>
+    <!-- ProtomapsL for vector tiles -->
+    <script src="https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js"></script>
+  <% end %>
 </head>
 <body data-theme="dark">
   <div class="min-h-screen bg-base-100 mx-auto">
