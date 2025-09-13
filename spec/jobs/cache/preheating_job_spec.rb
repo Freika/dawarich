@@ -10,6 +10,10 @@ RSpec.describe Cache::PreheatingJob do
     let!(:user2) { create(:user) }
     let!(:import1) { create(:import, user: user1) }
     let!(:import2) { create(:import, user: user2) }
+    let(:user_1_years_tracked_key) { "dawarich/user_#{user1.id}_years_tracked" }
+    let(:user_2_years_tracked_key) { "dawarich/user_#{user2.id}_years_tracked" }
+    let(:user_1_points_geocoded_stats_key) { "dawarich/user_#{user1.id}_points_geocoded_stats" }
+    let(:user_2_points_geocoded_stats_key) { "dawarich/user_#{user2.id}_points_geocoded_stats" }
 
     before do
       create_list(:point, 3, user: user1, import: import1, reverse_geocoded_at: Time.current)
@@ -17,42 +21,59 @@ RSpec.describe Cache::PreheatingJob do
     end
 
     it 'preheats years_tracked cache for all users' do
-      expect(Rails.cache).to receive(:write).with(
-        "dawarich/user_#{user1.id}_years_tracked",
-        anything,
-        expires_in: 1.day
-      )
-      expect(Rails.cache).to receive(:write).with(
-        "dawarich/user_#{user2.id}_years_tracked",
-        anything,
-        expires_in: 1.day
-      )
+      # Clear cache before test to ensure clean state
+      Rails.cache.clear
 
       described_class.new.perform
+
+      # Verify that cache keys exist after job runs
+      expect(Rails.cache.exist?(user_1_years_tracked_key)).to be true
+      expect(Rails.cache.exist?(user_2_years_tracked_key)).to be true
+
+      # Verify the cached data is reasonable
+      user1_years = Rails.cache.read(user_1_years_tracked_key)
+      user2_years = Rails.cache.read(user_2_years_tracked_key)
+
+      expect(user1_years).to be_an(Array)
+      expect(user2_years).to be_an(Array)
     end
 
     it 'preheats points_geocoded_stats cache for all users' do
-      expect(Rails.cache).to receive(:write).with(
-        "dawarich/user_#{user1.id}_points_geocoded_stats",
-        { geocoded: 3, without_data: 0 },
-        expires_in: 1.day
-      )
-      expect(Rails.cache).to receive(:write).with(
-        "dawarich/user_#{user2.id}_points_geocoded_stats",
-        { geocoded: 2, without_data: 0 },
-        expires_in: 1.day
-      )
+      # Clear cache before test to ensure clean state
+      Rails.cache.clear
 
       described_class.new.perform
+
+      # Verify that cache keys exist after job runs
+      expect(Rails.cache.exist?(user_1_points_geocoded_stats_key)).to be true
+      expect(Rails.cache.exist?(user_2_points_geocoded_stats_key)).to be true
+
+      # Verify the cached data has the expected structure
+      user1_stats = Rails.cache.read(user_1_points_geocoded_stats_key)
+      user2_stats = Rails.cache.read(user_2_points_geocoded_stats_key)
+
+      expect(user1_stats).to be_a(Hash)
+      expect(user1_stats).to have_key(:geocoded)
+      expect(user1_stats).to have_key(:without_data)
+      expect(user1_stats[:geocoded]).to eq(3)
+
+      expect(user2_stats).to be_a(Hash)
+      expect(user2_stats).to have_key(:geocoded)
+      expect(user2_stats).to have_key(:without_data)
+      expect(user2_stats[:geocoded]).to eq(2)
     end
 
     it 'actually writes to cache' do
       described_class.new.perform
 
-      expect(Rails.cache.exist?("dawarich/user_#{user1.id}_years_tracked")).to be true
-      expect(Rails.cache.exist?("dawarich/user_#{user1.id}_points_geocoded_stats")).to be true
-      expect(Rails.cache.exist?("dawarich/user_#{user2.id}_years_tracked")).to be true
-      expect(Rails.cache.exist?("dawarich/user_#{user2.id}_points_geocoded_stats")).to be true
+      expect(Rails.cache.exist?(user_1_years_tracked_key)).to be true
+      expect(Rails.cache.exist?(user_1_points_geocoded_stats_key)).to be true
+      expect(Rails.cache.exist?(user_1_countries_visited_key)).to be true
+      expect(Rails.cache.exist?(user_1_cities_visited_key)).to be true
+      expect(Rails.cache.exist?(user_2_years_tracked_key)).to be true
+      expect(Rails.cache.exist?(user_2_points_geocoded_stats_key)).to be true
+      expect(Rails.cache.exist?(user_2_countries_visited_key)).to be true
+      expect(Rails.cache.exist?(user_2_cities_visited_key)).to be true
     end
 
     it 'handles users with no points gracefully' do

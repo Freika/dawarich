@@ -7,7 +7,11 @@ class Users::MailerSendingJob < ApplicationJob
     user = User.find(user_id)
 
     if should_skip_email?(user, email_type)
-      Rails.logger.info "Skipping #{email_type} email for user #{user_id} - #{skip_reason(user, email_type)}"
+      ExceptionReporter.call(
+        'Users::MailerSendingJob',
+        "Skipping #{email_type} email for user ID #{user_id} - #{skip_reason(user, email_type)}"
+      )
+
       return
     end
 
@@ -15,7 +19,10 @@ class Users::MailerSendingJob < ApplicationJob
 
     UsersMailer.with(params).public_send(email_type).deliver_later
   rescue ActiveRecord::RecordNotFound
-    Rails.logger.warn "User with ID #{user_id} not found. Skipping #{email_type} email."
+    ExceptionReporter.call(
+      'Users::MailerSendingJob',
+      "User with ID #{user_id} not found. Skipping #{email_type} email."
+    )
   end
 
   private

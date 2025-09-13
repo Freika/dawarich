@@ -48,4 +48,22 @@ RSpec.describe UsersMailer, type: :mailer do
       expect(mail.to).to eq(['test@example.com'])
     end
   end
+
+  describe 'post_trial_reminder_early' do
+    let(:mail) { UsersMailer.with(user: user).post_trial_reminder_early }
+
+    it 'renders the headers' do
+      expect(mail.subject).to eq('🚀 Still interested in Dawarich? Subscribe now!')
+      expect(mail.to).to eq(['test@example.com'])
+    end
+  end
+
+  describe 'post_trial_reminder_late' do
+    let(:mail) { UsersMailer.with(user: user).post_trial_reminder_late }
+
+    it 'renders the headers' do
+      expect(mail.subject).to eq('📍 Your location data is waiting - Subscribe to Dawarich')
+      expect(mail.to).to eq(['test@example.com'])
+    end
+  end
 end

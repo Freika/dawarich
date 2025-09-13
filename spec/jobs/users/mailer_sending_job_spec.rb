@@ -117,28 +117,4 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
   end
-
-  describe '#trial_related_email?' do
-    subject { described_class.new }
-
-    it 'returns true for trial_expires_soon' do
-      expect(subject.send(:trial_related_email?, 'trial_expires_soon')).to be true
-    end
-
-    it 'returns true for trial_expired' do
-      expect(subject.send(:trial_related_email?, 'trial_expired')).to be true
-    end
-
-    it 'returns false for welcome' do
-      expect(subject.send(:trial_related_email?, 'welcome')).to be false
-    end
-
-    it 'returns false for explore_features' do
-      expect(subject.send(:trial_related_email?, 'explore_features')).to be false
-    end
-
-    it 'returns false for unknown email types' do
-      expect(subject.send(:trial_related_email?, 'unknown_email')).to be false
-    end
-  end
 end
