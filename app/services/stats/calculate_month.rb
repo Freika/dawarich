@@ -59,12 +59,13 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    toponym_points = user
-                      .points
-                      .without_raw_data
-                      .where(timestamp: start_timestamp..end_timestamp)
-                      .select(:city, :country_name)
-                      .distinct
+    toponym_points =
+      user
+      .points
+      .without_raw_data
+      .where(timestamp: start_timestamp..end_timestamp)
+      .select(:city, :country_name)
+      .distinct
 
     CountriesAndCities.new(toponym_points).call
   end

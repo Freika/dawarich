@@ -64,7 +64,7 @@ RSpec.describe '/settings/users', type: :request do
             it 'renders a response with 422 status (i.e. to display the "new" template)' do
               post settings_users_url, params: { user: invalid_attributes }
 
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to have_http_status(:unprocessable_content)
             end
           end
         end
@@ -101,7 +101,7 @@ RSpec.describe '/settings/users', type: :request do
         get settings_users_url
 
         expect(response).to redirect_to(root_url)
-        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
 
@@ -110,7 +110,7 @@ RSpec.describe '/settings/users', type: :request do
         post settings_users_url, params: { user: valid_attributes }
 
         expect(response).to redirect_to(root_url)
-        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
 
@@ -121,7 +121,7 @@ RSpec.describe '/settings/users', type: :request do
         patch settings_user_url(user), params: { user: valid_attributes }
 
         expect(response).to redirect_to(root_url)
-        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
   end

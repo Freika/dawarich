@@ -1,0 +1,5 @@
+<% content_for :title, "#{Date::MONTHNAMES[@month]} #{@year} Monthly Digest" %>
+
+<div class="w-full my-5">
+  <%= render partial: 'stats/month', locals: { year: @year, month: @month, stat: @stat, previous_stat: @previous_stat } %>
+</div>

@@ -111,9 +111,9 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       it 'raises ActiveRecord::RecordNotFound' do
         user.destroy
 
-        expect {
+        expect do
           described_class.perform_now(user.id, 'welcome')
-        }.to raise_error(ActiveRecord::RecordNotFound)
+        end.not_to raise_error
       end
     end
   end

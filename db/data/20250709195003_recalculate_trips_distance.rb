@@ -2,9 +2,7 @@
 
 class RecalculateTripsDistance < ActiveRecord::Migration[8.0]
   def up
-    Trip.find_each do |trip|
-      trip.enqueue_calculation_jobs
-    end
+    Trip.find_each(&:enqueue_calculation_jobs)
   end
 
   def down

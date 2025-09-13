@@ -122,6 +122,10 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     (points_count || 0).zero? && trial?
   end
 
+  def timezone
+    Time.zone.name
+  end
+
   private
 
   def create_api_key

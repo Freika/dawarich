@@ -11,7 +11,7 @@ class CountriesAndCities
   def call
     points
       .reject { |point| point.country_name.nil? || point.city.nil? }
-      .group_by { |point| point.country_name }
+      .group_by(&:country_name)
       .transform_values { |country_points| process_country_points(country_points) }
       .map { |country, cities| CountryData.new(country: country, cities: cities) }
   end
