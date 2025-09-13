@@ -101,7 +101,7 @@ RSpec.describe '/settings/users', type: :request do
         get settings_users_url
 
         expect(response).to redirect_to(root_url)
-        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
 
@@ -110,7 +110,7 @@ RSpec.describe '/settings/users', type: :request do
         post settings_users_url, params: { user: valid_attributes }
 
         expect(response).to redirect_to(root_url)
-        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
 
@@ -121,7 +121,7 @@ RSpec.describe '/settings/users', type: :request do
         patch settings_user_url(user), params: { user: valid_attributes }
 
         expect(response).to redirect_to(root_url)
-        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
   end

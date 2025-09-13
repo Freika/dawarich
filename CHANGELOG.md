@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Minor versions are now being built only for amd64 architecture to speed up the build process.
+- If user is not authorized to see a page, they will be redirected to the home page with appropriate message instead of seeing an error.
 
 # [0.31.0] - 2025-09-04
 
