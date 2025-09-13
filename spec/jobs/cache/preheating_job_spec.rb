@@ -14,6 +14,10 @@ RSpec.describe Cache::PreheatingJob do
     let(:user_2_years_tracked_key) { "dawarich/user_#{user2.id}_years_tracked" }
     let(:user_1_points_geocoded_stats_key) { "dawarich/user_#{user1.id}_points_geocoded_stats" }
     let(:user_2_points_geocoded_stats_key) { "dawarich/user_#{user2.id}_points_geocoded_stats" }
+    let(:user_1_countries_visited_key) { "dawarich/user_#{user1.id}_countries_visited" }
+    let(:user_2_countries_visited_key) { "dawarich/user_#{user2.id}_countries_visited" }
+    let(:user_1_cities_visited_key) { "dawarich/user_#{user1.id}_cities_visited" }
+    let(:user_2_cities_visited_key) { "dawarich/user_#{user2.id}_cities_visited" }
 
     before do
       create_list(:point, 3, user: user1, import: import1, reverse_geocoded_at: Time.current)
