@@ -59,7 +59,7 @@
                    readonly
                    class="input input-bordered join-item flex-1"
                    data-sharing-modal-target="sharingLink"
-                   value="<%= @stat.sharing_enabled? ? public_stat_url(@stat.sharing_uuid) : '' %>" />
+                   value="<%= @stat.sharing_enabled? ? shared_stat_url(@stat.sharing_uuid) : '' %>" />
             <button type="button"
                     class="btn btn-outline join-item"
                     data-action="click->sharing-modal#copyLink">

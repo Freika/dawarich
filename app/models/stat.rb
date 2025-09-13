@@ -97,11 +97,12 @@ class Stat < ApplicationRecord
     return nil if point_count.zero?
 
     bounds_result = ActiveRecord::Base.connection.exec_query(
-      "SELECT MIN(latitude) as min_lat, MAX(latitude) as max_lat,
-              MIN(longitude) as min_lng, MAX(longitude) as max_lng
+      "SELECT MIN(ST_Y(lonlat::geometry)) as min_lat, MAX(ST_Y(lonlat::geometry)) as max_lat,
+              MIN(ST_X(lonlat::geometry)) as min_lng, MAX(ST_X(lonlat::geometry)) as max_lng
        FROM points
        WHERE user_id = $1
-       AND timestamp BETWEEN $2 AND $3",
+       AND timestamp BETWEEN $2 AND $3
+       AND lonlat IS NOT NULL",
       'data_bounds_query',
       [user.id, start_date.to_i, end_date.to_i]
     ).first
