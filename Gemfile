@@ -7,9 +7,9 @@ ruby File.read('.ruby-version').strip
 
 gem 'activerecord-postgis-adapter'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
-gem 'aws-sdk-s3', '~> 1.177.0', require: false
 gem 'aws-sdk-core', '~> 3.215.1', require: false
 gem 'aws-sdk-kms', '~> 1.96.0', require: false
+gem 'aws-sdk-s3', '~> 1.177.0', require: false
 gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'data_migrate'
@@ -19,37 +19,38 @@ gem 'gpx'
 gem 'groupdate'
 gem 'httparty'
 gem 'importmap-rails'
+gem 'jwt', '~> 2.8'
 gem 'kaminari'
 gem 'lograge'
 gem 'oj'
 gem 'parallel'
 gem 'pg'
 gem 'prometheus_exporter'
-gem 'rqrcode', '~> 3.0'
 gem 'puma'
 gem 'pundit'
 gem 'rails', '~> 8.0'
+gem 'rails_icons'
 gem 'redis'
 gem 'rexml'
 gem 'rgeo'
 gem 'rgeo-activerecord'
 gem 'rgeo-geojson'
+gem 'rqrcode', '~> 3.0'
 gem 'rswag-api'
 gem 'rswag-ui'
 gem 'rubyzip', '~> 2.4'
-gem 'sentry-ruby'
 gem 'sentry-rails'
-gem 'stackprof'
+gem 'sentry-ruby'
 gem 'sidekiq'
 gem 'sidekiq-cron'
 gem 'sidekiq-limit_fetch'
 gem 'sprockets-rails'
+gem 'stackprof'
 gem 'stimulus-rails'
 gem 'strong_migrations'
 gem 'tailwindcss-rails'
 gem 'turbo-rails'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
-gem 'jwt'
 
 group :development, :test do
   gem 'brakeman', require: false

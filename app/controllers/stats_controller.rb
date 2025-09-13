@@ -16,6 +16,14 @@ class StatsController < ApplicationController
     @year_distances = { @year => Stat.year_distance(@year, current_user) }
   end
 
+  def month
+    @year = params[:year].to_i
+    @month = params[:month].to_i
+    @stat = current_user.stats.find_by(year: @year, month: @month)
+    @previous_stat = current_user.stats.find_by(year: @year, month: @month - 1) if @month > 1
+    @average_distance_this_year = current_user.stats.where(year: @year).average(:distance).to_i / 1000
+  end
+
   def update
     if params[:month] == 'all'
       (1..12).each do |month|

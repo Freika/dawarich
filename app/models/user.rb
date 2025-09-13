@@ -22,11 +22,12 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   before_save :sanitize_input
 
   validates :email, presence: true
-
   validates :reset_password_token, uniqueness: true, allow_nil: true
 
   attribute :admin, :boolean, default: false
   attribute :points_count, :integer, default: 0
+
+  scope :active_or_trial, -> { where(status: %i[active trial]) }
 
   enum :status, { inactive: 0, active: 1, trial: 2 }
 
@@ -35,15 +36,20 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def countries_visited
-    points
-      .where.not(country_name: [nil, ''])
-      .distinct
-      .pluck(:country_name)
-      .compact
+    Rails.cache.fetch("dawarich/user_#{id}_countries_visited", expires_in: 1.day) do
+      points
+        .without_raw_data
+        .where.not(country_name: [nil, ''])
+        .distinct
+        .pluck(:country_name)
+        .compact
+    end
   end
 
   def cities_visited
-    points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+    Rails.cache.fetch("dawarich/user_#{id}_cities_visited", expires_in: 1.day) do
+      points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+    end
   end
 
   def total_distance
@@ -121,6 +127,23 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     (points_count || 0).zero? && trial?
   end
 
+  def timezone
+    Time.zone.name
+  end
+
+  def countries_visited_uncached
+    points
+      .without_raw_data
+      .where.not(country_name: [nil, ''])
+      .distinct
+      .pluck(:country_name)
+      .compact
+  end
+
+  def cities_visited_uncached
+    points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+  end
+
   private
 
   def create_api_key
@@ -151,5 +174,11 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
     Users::MailerSendingJob.set(wait: 5.days).perform_later(id, 'trial_expires_soon')
     Users::MailerSendingJob.set(wait: 7.days).perform_later(id, 'trial_expired')
+    schedule_post_trial_emails
+  end
+
+  def schedule_post_trial_emails
+    Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
+    Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
   end
 end

@@ -17,8 +17,7 @@ class Tracks::ParallelGenerator
   end
 
   def call
-    # Clean existing tracks if needed
-    clean_existing_tracks if should_clean_tracks?
+    clean_bulk_tracks if mode == :bulk
 
     # Generate time chunks
     time_chunks = generate_time_chunks
@@ -39,13 +38,6 @@ class Tracks::ParallelGenerator
   end
 
   private
-
-  def should_clean_tracks?
-    case mode
-    when :bulk, :daily then true
-    else false
-    end
-  end
 
   def generate_time_chunks
     chunker = Tracks::TimeChunker.new(
@@ -95,28 +87,16 @@ class Tracks::ParallelGenerator
     )
   end
 
-  def clean_existing_tracks
-    case mode
-    when :bulk then clean_bulk_tracks
-    when :daily then clean_daily_tracks
-    else
-      raise ArgumentError, "Unknown mode: #{mode}"
-    end
-  end
-
   def clean_bulk_tracks
     if time_range_defined?
-      user.tracks.where(start_at: time_range).destroy_all
+      user.tracks.where(
+        '(start_at, end_at) OVERLAPS (?, ?)',
+        start_at&.in_time_zone,
+        end_at&.in_time_zone
+      ).destroy_all
     else
       user.tracks.destroy_all
     end
-  end
-
-  def clean_daily_tracks
-    day_range = daily_time_range
-    range = Time.zone.at(day_range.begin)..Time.zone.at(day_range.end)
-
-    user.tracks.where(start_at: range).destroy_all
   end
 
   def time_range_defined?
@@ -162,8 +142,8 @@ class Tracks::ParallelGenerator
     else
       # Convert seconds to readable format
       seconds = duration.to_i
-      if seconds >= 86400 # days
-        days = seconds / 86400
+      if seconds >= 86_400 # days
+        days = seconds / 86_400
         "#{days} day#{'s' if days != 1}"
       elsif seconds >= 3600 # hours
         hours = seconds / 3600

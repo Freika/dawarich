@@ -7,6 +7,8 @@ class Cache::Clean
       delete_control_flag
       delete_version_cache
       delete_years_tracked_cache
+      delete_points_geocoded_stats_cache
+      delete_countries_cities_cache
       Rails.logger.info('Cache cleaned')
     end
 
@@ -23,6 +25,19 @@ class Cache::Clean
     def delete_years_tracked_cache
       User.find_each do |user|
         Rails.cache.delete("dawarich/user_#{user.id}_years_tracked")
+      end
+    end
+
+    def delete_points_geocoded_stats_cache
+      User.find_each do |user|
+        Rails.cache.delete("dawarich/user_#{user.id}_points_geocoded_stats")
+      end
+    end
+
+    def delete_countries_cities_cache
+      User.find_each do |user|
+        Rails.cache.delete("dawarich/user_#{user.id}_countries")
+        Rails.cache.delete("dawarich/user_#{user.id}_cities")
       end
     end
   end

@@ -70,10 +70,18 @@ Rails.application.routes.draw do
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
+  get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
+  get 'shared/stats/:uuid', to: 'shared/stats#show', as: :shared_stat
+
+  # Sharing management endpoint (requires auth)
+  patch 'stats/:year/:month/sharing',
+        to: 'shared/stats#update',
+        as: :sharing_stats,
+        constraints: { year: /\d{4}/, month: /\d{1,2}/ }
 
   root to: 'home#index'
 
@@ -140,6 +148,11 @@ Rails.application.routes.draw do
 
       namespace :maps do
         resources :tile_usage, only: [:create]
+        resources :hexagons, only: [:index] do
+          collection do
+            get :bounds
+          end
+        end
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'

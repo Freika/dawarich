@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared Stats - <%= Date::MONTHNAMES[@month] %> <%= @year %></title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+
+  <% if @self_hosted %>
+    <!-- ProtomapsL for vector tiles -->
+    <script src="https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js"></script>
+  <% end %>
+</head>
+<body data-theme="dark">
+  <div class="min-h-screen bg-base-100 mx-auto">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Monthly Digest Header -->
+      <div class="hero text-white rounded-lg shadow-lg mb-8" style="background-image: url('<%= month_bg_image(@stat) %>');">
+        <div class="hero-overlay bg-opacity-60"></div>
+        <div class="hero-content text-center py-8">
+          <div class="max-w-lg">
+            <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
+              <%= "#{icon month_icon(@stat)} #{Date::MONTHNAMES[@month]} #{@year}".html_safe %>
+            </h1>
+            <p class="pt-6 pb-2">Monthly Digest</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats shadow mx-auto mb-8 w-full">
+        <div class="stat place-items-center text-center">
+          <div class="stat-title">Distance traveled</div>
+          <div class="stat-value"><%= distance_traveled(@user, @stat) %></div>
+          <div class="stat-desc">Total distance for this month</div>
+        </div>
+
+        <div class="stat place-items-center text-center">
+          <div class="stat-title">Active days</div>
+          <div class="stat-value text-secondary">
+            <%= active_days(@stat) %>
+          </div>
+          <div class="stat-desc text-secondary">
+            Days with tracked activity
+          </div>
+        </div>
+
+        <div class="stat place-items-center text-center">
+          <div class="stat-title">Countries visited</div>
+          <div class="stat-value">
+            <%= countries_visited(@stat) %>
+          </div>
+          <div class="stat-desc">
+            Different countries
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Summary - Hexagon View -->
+      <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body p-0">
+          <!-- Hexagon Map Container -->
+          <div class="w-full h-96 rounded-lg border border-base-300 relative overflow-hidden">
+            <div id="public-monthly-stats-map" class="w-full h-full"
+                 data-controller="public-stat-map"
+                 data-public-stat-map-year-value="<%= @year %>"
+                 data-public-stat-map-month-value="<%= @month %>"
+                 data-public-stat-map-uuid-value="<%= @stat.sharing_uuid %>"
+                 data-public-stat-map-data-bounds-value="<%= @data_bounds.to_json if @data_bounds %>"
+                 data-public-stat-map-self-hosted-value="<%= @self_hosted %>"></div>
+
+            <!-- Loading overlay -->
+            <div id="map-loading" class="absolute inset-0 bg-base-200 bg-opacity-80 flex items-center justify-center z-50">
+              <div class="text-center">
+                <span class="loading loading-spinner loading-lg text-primary"></span>
+                <p class="text-sm mt-2 text-base-content">Loading hexagons...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Activity Chart -->
+      <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+          <h2 class="card-title">
+            <%= icon 'trending-up' %> Daily Activity
+            </h2>
+          <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
+            <%= column_chart(
+                @stat.daily_distance.map { |day, distance_meters|
+                  [day, Stat.convert_distance(distance_meters, 'km').round]
+                },
+                height: '200px',
+                suffix: " km",
+                xtitle: 'Day',
+                ytitle: 'Distance',
+                colors: [
+                  '#570df8', '#f000b8', '#ffea00',
+                  '#00d084', '#3abff8', '#ff5724',
+                  '#8e24aa', '#3949ab', '#00897b',
+                  '#d81b60', '#5e35b1', '#039be5',
+                  '#43a047', '#f4511e', '#6d4c41',
+                  '#757575', '#546e7a', '#d32f2f'
+                ],
+                library: {
+                  plugins: {
+                    legend: { display: false }
+                  },
+                  scales: {
+                    x: {
+                      grid: { color: 'rgba(0,0,0,0.1)' }
+                    },
+                    y: {
+                      grid: { color: 'rgba(0,0,0,0.1)' }
+                    }
+                  }
+                }
+              ) %>
+          </div>
+          <div class="text-sm opacity-70 text-center mt-2">
+            Peak day: <%= peak_day(@stat) %> • Quietest week: <%= quietest_week(@stat) %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Countries & Cities - General Info Only -->
+      <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+          <h2 class="card-title">
+            <%= icon 'earth' %> Countries & Cities
+          </h2>
+          <div class="space-y-4">
+            <% @stat.toponyms.each_with_index do |country, index| %>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="font-semibold"><%= country['country'] %></span>
+                  <span class="text-sm"><%= country['cities'].length %> cities</span>
+                </div>
+                <progress class="progress progress-primary w-full" value="<%= 100 - (index * 20) %>" max="100"></progress>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="flex flex-wrap gap-2">
+            <span class="text-sm font-medium">Cities visited:</span>
+            <% @stat.toponyms.each do |country| %>
+              <% country['cities'].first(5).each do |city| %>
+                <div class="badge badge-outline"><%= city['city'] %></div>
+              <% end %>
+              <% if country['cities'].length > 5 %>
+                <div class="badge badge-ghost">+<%= country['cities'].length - 5 %> more</div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="text-center py-8">
+        <div class="text-sm text-gray-500">
+          Powered by <a href="https://dawarich.app" class="link link-primary" target="_blank">Dawarich</a>, your personal memories mapper.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map is now handled by the Stimulus controller -->
+</body>
+</html>
