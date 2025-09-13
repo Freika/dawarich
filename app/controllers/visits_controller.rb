@@ -22,7 +22,7 @@ class VisitsController < ApplicationController
     if @visit.update(visit_params)
       redirect_back(fallback_location: visits_path(status: :suggested))
     else
-      render :edit, status: :unprocessable_entity
+      render :edit, status: :unprocessable_content
     end
   end
 

@@ -8,7 +8,7 @@ class Tracks::ParallelGeneratorJob < ApplicationJob
   def perform(user_id, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day)
     user = User.find(user_id)
 
-    session = Tracks::ParallelGenerator.new(
+    Tracks::ParallelGenerator.new(
       user,
       start_at: start_at,
       end_at: end_at,

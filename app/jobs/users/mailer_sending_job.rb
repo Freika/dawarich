@@ -14,6 +14,8 @@ class Users::MailerSendingJob < ApplicationJob
     params = { user: user }.merge(options)
 
     UsersMailer.with(params).public_send(email_type).deliver_later
+  rescue ActiveRecord::RecordNotFound
+    Rails.logger.warn "User with ID #{user_id} not found. Skipping #{email_type} email."
   end
 
   private

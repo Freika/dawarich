@@ -13,9 +13,9 @@ class ImportsController < ApplicationController
 
   def index
     @imports = policy_scope(Import)
-      .select(:id, :name, :source, :created_at, :processed, :status)
-      .order(created_at: :desc)
-      .page(params[:page])
+               .select(:id, :name, :source, :created_at, :processed, :status)
+               .order(created_at: :desc)
+               .page(params[:page])
   end
 
   def show; end
@@ -43,7 +43,7 @@ class ImportsController < ApplicationController
     raw_files = Array(files_params).reject(&:blank?)
 
     if raw_files.empty?
-      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_entity and return
+      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_content and return
     end
 
     created_imports = []
@@ -62,7 +62,7 @@ class ImportsController < ApplicationController
     else
       redirect_to new_import_path,
                   alert: 'No valid file references were found. Please upload files using the file selector.',
-                  status: :unprocessable_entity and return
+                  status: :unprocessable_content and return
     end
   rescue StandardError => e
     if created_imports.present?
@@ -74,7 +74,7 @@ class ImportsController < ApplicationController
     Rails.logger.error e.backtrace.join("\n")
     ExceptionReporter.call(e)
 
-    redirect_to new_import_path, alert: e.message, status: :unprocessable_entity
+    redirect_to new_import_path, alert: e.message, status: :unprocessable_content
   end
 
   def destroy
@@ -117,7 +117,7 @@ class ImportsController < ApplicationController
     # Extract filename and extension
     basename = File.basename(original_name, File.extname(original_name))
     extension = File.extname(original_name)
-    
+
     # Add current datetime
     timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
     "#{basename}_#{timestamp}#{extension}"
@@ -126,6 +126,6 @@ class ImportsController < ApplicationController
   def validate_points_limit
     limit_exceeded = PointsLimitExceeded.new(current_user).call
 
-    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_entity if limit_exceeded
+    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_content if limit_exceeded
   end
 end

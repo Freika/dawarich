@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class Settings::UsersController < ApplicationController
-  before_action :authenticate_self_hosted!, except: [:export, :import]
-  before_action :authenticate_admin!, except: [:export, :import]
+  before_action :authenticate_self_hosted!, except: %i[export import]
+  before_action :authenticate_admin!, except: %i[export import]
   before_action :authenticate_user!
 
   def index
@@ -19,7 +19,7 @@ class Settings::UsersController < ApplicationController
     if @user.update(user_params)
       redirect_to settings_users_url, notice: 'User was successfully updated.'
     else
-      redirect_to settings_users_url, notice: 'User could not be updated.', status: :unprocessable_entity
+      redirect_to settings_users_url, notice: 'User could not be updated.', status: :unprocessable_content
     end
   end
 
@@ -33,7 +33,7 @@ class Settings::UsersController < ApplicationController
     if @user.save
       redirect_to settings_users_url, notice: 'User was successfully created'
     else
-      redirect_to settings_users_url, notice: 'User could not be created.', status: :unprocessable_entity
+      redirect_to settings_users_url, notice: 'User could not be created.', status: :unprocessable_content
     end
   end
 
@@ -43,7 +43,7 @@ class Settings::UsersController < ApplicationController
     if @user.destroy
       redirect_to settings_url, notice: 'User was successfully deleted.'
     else
-      redirect_to settings_url, notice: 'User could not be deleted.', status: :unprocessable_entity
+      redirect_to settings_url, notice: 'User could not be deleted.', status: :unprocessable_content
     end
   end
 
@@ -90,8 +90,7 @@ class Settings::UsersController < ApplicationController
   end
 
   def validate_archive_file(archive_file)
-    unless archive_file.content_type == 'application/zip' ||
-           archive_file.content_type == 'application/x-zip-compressed' ||
+    unless ['application/zip', 'application/x-zip-compressed'].include?(archive_file.content_type) ||
            File.extname(archive_file.original_filename).downcase == '.zip'
 
       redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.' and return

@@ -15,7 +15,7 @@ class Api::V1::AreasController < ApiController
     if @area.save
       render json: @area, status: :created
     else
-      render json: { errors: @area.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: @area.errors.full_messages }, status: :unprocessable_content
     end
   end
 
@@ -23,7 +23,7 @@ class Api::V1::AreasController < ApiController
     if @area.update(area_params)
       render json: @area, status: :ok
     else
-      render json: { errors: @area.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: @area.errors.full_messages }, status: :unprocessable_content
     end
   end
 

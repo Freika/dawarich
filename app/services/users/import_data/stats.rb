@@ -60,11 +60,12 @@ class Users::ImportData::Stats
   end
 
   def prepare_stat_attributes(stat_data)
-    attributes = stat_data.except('created_at', 'updated_at')
+    attributes = stat_data.except('created_at', 'updated_at', 'sharing_uuid')
 
     attributes['user_id'] = user.id
     attributes['created_at'] = Time.current
     attributes['updated_at'] = Time.current
+    attributes['sharing_uuid'] = SecureRandom.uuid
 
     attributes.symbolize_keys
   rescue StandardError => e

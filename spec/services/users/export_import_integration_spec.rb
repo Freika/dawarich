@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Users Export-Import Integration', type: :service do
   let(:original_user) { create(:user, email: 'original@example.com') }
   let(:target_user) { create(:user, email: 'target@example.com') }
-  let(:temp_archive_path) { Rails.root.join('tmp', 'test_export.zip') }
+  let(:temp_archive_path) { Rails.root.join('tmp/test_export.zip') }
 
   after do
     File.delete(temp_archive_path) if File.exist?(temp_archive_path)
@@ -40,16 +40,11 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
         Rails.logger.level = original_log_level
       end
 
-      puts "Import stats: #{import_stats.inspect}"
-
       user_notifications_count = original_user.notifications.where.not(
         title: ['Data import completed', 'Data import failed', 'Export completed', 'Export failed']
       ).count
 
       target_counts = calculate_user_entity_counts(target_user)
-
-      puts "Original counts: #{original_counts.inspect}"
-      puts "Target counts: #{target_counts.inspect}"
 
       expect(target_counts[:areas]).to eq(original_counts[:areas])
       expect(target_counts[:imports]).to eq(original_counts[:imports])
@@ -184,18 +179,22 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       import_stats = import_service.import
 
       # Verify all entities were imported correctly
-      expect(import_stats[:places_created]).to eq(original_places_count),
+      expect(import_stats[:places_created]).to \
+        eq(original_places_count),
         "Expected #{original_places_count} places to be created, got #{import_stats[:places_created]}"
-      expect(import_stats[:visits_created]).to eq(original_visits_count),
+      expect(import_stats[:visits_created]).to \
+        eq(original_visits_count),
         "Expected #{original_visits_count} visits to be created, got #{import_stats[:visits_created]}"
 
       # Verify the imported user has access to all their data
       imported_places_count = import_user.places.distinct.count
       imported_visits_count = import_user.visits.count
 
-      expect(imported_places_count).to eq(original_places_count),
+      expect(imported_places_count).to \
+        eq(original_places_count),
         "Expected user to have access to #{original_places_count} places, got #{imported_places_count}"
-      expect(imported_visits_count).to eq(original_visits_count),
+      expect(imported_visits_count).to \
+        eq(original_visits_count),
         "Expected user to have #{original_visits_count} visits, got #{imported_visits_count}"
 
       # Verify specific visits have their place associations
@@ -205,7 +204,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
 
       # Verify place names are preserved
       place_names = visits_with_places.map { |v| v.place.name }.sort
-      expect(place_names).to eq(['Gym', 'Home', 'Office'])
+      expect(place_names).to eq(%w[Gym Home Office])
 
       # Cleanup
       temp_export_file.unlink
@@ -216,12 +215,13 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
   private
 
   def create_full_user_dataset(user)
-    user.update!(settings: {
-      'distance_unit' => 'km',
-      'timezone' => 'America/New_York',
-      'immich_url' => 'https://immich.example.com',
-      'immich_api_key' => 'test-api-key'
-    })
+    user.update!(settings:
+      {
+        'distance_unit' => 'km',
+        'timezone' => 'America/New_York',
+        'immich_url' => 'https://immich.example.com',
+        'immich_api_key' => 'test-api-key'
+      })
 
     usa = create(:country, name: 'United States', iso_a2: 'US', iso_a3: 'USA')
     canada = create(:country, name: 'Canada', iso_a2: 'CA', iso_a3: 'CAN')
@@ -271,37 +271,32 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
     visit3 = create(:visit, user: user, place: nil, name: 'Unknown Location')
 
     create_list(:point, 5,
-      user: user,
-      import: import1,
-      country: usa,
-      visit: visit1,
-      latitude: 40.7589,
-      longitude: -73.9851
-    )
+                user: user,
+                import: import1,
+                country: usa,
+                visit: visit1,
+                latitude: 40.7589,
+                longitude: -73.9851)
 
     create_list(:point, 3,
-      user: user,
-      import: import2,
-      country: canada,
-      visit: visit2,
-      latitude: 40.7128,
-      longitude: -74.0060
-    )
+                user: user,
+                import: import2,
+                country: canada,
+                visit: visit2,
+                latitude: 40.7128,
+                longitude: -74.0060)
 
     create_list(:point, 2,
-      user: user,
-      import: nil,
-      country: nil,
-      visit: nil
-    )
+                user: user,
+                import: nil,
+                country: nil,
+                visit: nil)
 
     create_list(:point, 2,
-      user: user,
-      import: import1,
-      country: usa,
-      visit: visit3
-    )
-
+                user: user,
+                import: import1,
+                country: usa,
+                visit: visit3)
   end
 
   def calculate_user_entity_counts(user)
@@ -342,11 +337,13 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       latitude: 40.7589, longitude: -73.9851
     ).first
 
-    if original_office_points && target_office_points
-      expect(target_office_points.import.name).to eq(original_office_points.import.name) if original_office_points.import
-      expect(target_office_points.country.name).to eq(original_office_points.country.name) if original_office_points.country
-      expect(target_office_points.visit.name).to eq(original_office_points.visit.name) if original_office_points.visit
+    return unless original_office_points && target_office_points
+
+    expect(target_office_points.import.name).to eq(original_office_points.import.name) if original_office_points.import
+    if original_office_points.country
+      expect(target_office_points.country.name).to eq(original_office_points.country.name)
     end
+    expect(target_office_points.visit.name).to eq(original_office_points.visit.name) if original_office_points.visit
   end
 
   def verify_settings_preserved(original_user, target_user)
@@ -375,9 +372,9 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
     original_export = original_user.exports.find_by(name: 'Q1 2024 Export')
     target_export = target_user.exports.find_by(name: 'Q1 2024 Export')
 
-    if original_export&.file&.attached?
-      expect(target_export).to be_present
-      expect(target_export.file).to be_attached
-    end
+    return unless original_export&.file&.attached?
+
+    expect(target_export).to be_present
+    expect(target_export.file).to be_attached
   end
 end

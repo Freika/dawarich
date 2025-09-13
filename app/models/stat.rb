@@ -7,6 +7,8 @@ class Stat < ApplicationRecord
 
   belongs_to :user
 
+  before_create :generate_sharing_uuid
+
   def distance_by_day
     monthly_points = points
     calculate_daily_distances(monthly_points)
@@ -30,7 +32,88 @@ class Stat < ApplicationRecord
         .order(timestamp: :asc)
   end
 
+  def sharing_enabled?
+    sharing_settings['enabled'] == true
+  end
+
+  def sharing_expired?
+    return false unless sharing_settings['expiration']
+    return false if sharing_settings['expiration'] == 'permanent'
+
+    Time.current > sharing_settings['expires_at']
+  end
+
+  def public_accessible?
+    sharing_enabled? && !sharing_expired?
+  end
+
+  def generate_new_sharing_uuid!
+    update!(sharing_uuid: SecureRandom.uuid)
+  end
+
+  def enable_sharing!(expiration: '1h')
+    expires_at = case expiration
+                 when '1h'
+                   1.hour.from_now
+                 when '12h'
+                   12.hours.from_now
+                 when '24h'
+                   24.hours.from_now
+                 end
+
+    update!(
+      sharing_settings: {
+        'enabled' => true,
+        'expiration' => expiration,
+        'expires_at' => expires_at&.iso8601
+      },
+      sharing_uuid: sharing_uuid || SecureRandom.uuid
+    )
+  end
+
+  def disable_sharing!
+    update!(
+      sharing_settings: {
+        'enabled' => false,
+        'expiration' => nil,
+        'expires_at' => nil
+      }
+    )
+  end
+
+  def calculate_data_bounds
+    start_date = Date.new(year, month, 1).beginning_of_day
+    end_date = start_date.end_of_month.end_of_day
+    
+    points_relation = user.points.where(timestamp: start_date.to_i..end_date.to_i)
+    point_count = points_relation.count
+    
+    return nil if point_count.zero?
+
+    bounds_result = ActiveRecord::Base.connection.exec_query(
+      "SELECT MIN(latitude) as min_lat, MAX(latitude) as max_lat,
+              MIN(longitude) as min_lng, MAX(longitude) as max_lng
+       FROM points
+       WHERE user_id = $1
+       AND timestamp BETWEEN $2 AND $3",
+      'data_bounds_query',
+      [user.id, start_date.to_i, end_date.to_i]
+    ).first
+
+    {
+      min_lat: bounds_result['min_lat'].to_f,
+      max_lat: bounds_result['max_lat'].to_f,
+      min_lng: bounds_result['min_lng'].to_f,
+      max_lng: bounds_result['max_lng'].to_f,
+      point_count: point_count
+    }
+  end
+
   private
+
+  def generate_sharing_uuid
+    self.sharing_uuid ||= SecureRandom.uuid
+  end
 
   def timespan
     DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
@@ -39,8 +122,6 @@ class Stat < ApplicationRecord
   def calculate_daily_distances(monthly_points)
     Stats::DailyDistanceQuery.new(monthly_points, timespan, user_timezone).call
   end
-
-  private
 
   def user_timezone
     # Future: Once user.timezone column exists, uncomment the line below
