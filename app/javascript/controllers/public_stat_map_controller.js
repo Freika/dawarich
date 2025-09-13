@@ -1,18 +1,22 @@
-import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import { createHexagonGrid } from "../maps/hexagon_grid";
+import { createAllMapLayers } from "../maps/layers";
+import BaseController from "./base_controller";
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["container"];
   static values = {
     year: Number,
     month: Number,
     uuid: String,
-    dataBounds: Object
+    dataBounds: Object,
+    selfHosted: String
   };
 
   connect() {
+    super.connect();
     console.log('🏁 Controller connected - loading overlay should be visible');
+    this.selfHosted = this.selfHostedValue || 'false';
     this.initializeMap();
     this.loadHexagons();
   }
@@ -37,14 +41,36 @@ export default class extends Controller {
       keyboard: false
     });
 
-    // Add tile layer
+    // Add dynamic tile layer based on self-hosted setting
+    this.addMapLayers();
+
+    // Default view
+    this.map.setView([40.0, -100.0], 4);
+  }
+
+  addMapLayers() {
+    try {
+      // Use appropriate default layer based on self-hosted mode
+      const selectedLayerName = this.selfHosted === "true" ? "OpenStreetMap" : "Light";
+      const maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted);
+
+      // If no layers were created, fall back to OSM
+      if (Object.keys(maps).length === 0) {
+        console.warn('No map layers available, falling back to OSM');
+        this.addFallbackOSMLayer();
+      }
+    } catch (error) {
+      console.error('Error creating map layers:', error);
+      console.log('Falling back to OSM tile layer');
+      this.addFallbackOSMLayer();
+    }
+  }
+
+  addFallbackOSMLayer() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 15
     }).addTo(this.map);
-
-    // Default view
-    this.map.setView([40.0, -100.0], 4);
   }
 
   async loadHexagons() {

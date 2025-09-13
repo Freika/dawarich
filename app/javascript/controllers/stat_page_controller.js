@@ -1,17 +1,20 @@
-import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import "leaflet.heat";
+import { createAllMapLayers } from "../maps/layers";
+import BaseController from "./base_controller";
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["map", "loading", "heatmapBtn", "pointsBtn"];
 
   connect() {
+    super.connect();
     console.log("StatPage controller connected");
 
     // Get data attributes from the element (will be passed from the view)
     this.year = parseInt(this.element.dataset.year || new Date().getFullYear());
     this.month = parseInt(this.element.dataset.month || new Date().getMonth() + 1);
     this.apiKey = this.element.dataset.apiKey;
+    this.selfHosted = this.element.dataset.selfHosted || this.selfHostedValue;
 
     console.log(`Loading data for ${this.month}/${this.year} with API key: ${this.apiKey ? 'present' : 'missing'}`);
 
@@ -46,11 +49,8 @@ export default class extends Controller {
         touchZoom: true
       }).setView([52.520008, 13.404954], 10); // Default to Berlin
 
-      // Add tile layer
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(this.map);
+      // Add dynamic tile layer based on self-hosted setting
+      this.addMapLayers();
 
       // Add small scale control
       L.control.scale({
@@ -258,5 +258,30 @@ export default class extends Controller {
       `;
       this.loadingTarget.style.display = 'flex';
     }
+  }
+
+  addMapLayers() {
+    try {
+      // Use appropriate default layer based on self-hosted mode
+      const selectedLayerName = this.selfHosted === "true" ? "OpenStreetMap" : "Light";
+      const maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted);
+
+      // If no layers were created, fall back to OSM
+      if (Object.keys(maps).length === 0) {
+        console.warn('No map layers available, falling back to OSM');
+        this.addFallbackOSMLayer();
+      }
+    } catch (error) {
+      console.error('Error creating map layers:', error);
+      console.log('Falling back to OSM tile layer');
+      this.addFallbackOSMLayer();
+    }
+  }
+
+  addFallbackOSMLayer() {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(this.map);
   }
 }
