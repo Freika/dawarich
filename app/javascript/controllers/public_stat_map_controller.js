@@ -10,6 +10,7 @@ export default class extends BaseController {
     month: Number,
     uuid: String,
     dataBounds: Object,
+    hexagonsAvailable: Boolean,
     selfHosted: String
   };
 
@@ -122,13 +123,16 @@ export default class extends BaseController {
       this.map.off('moveend');
       this.map.off('zoomend');
 
-      // Load hexagons only once on page load (static behavior)
-      // NOTE: Do NOT hide loading overlay here - let loadStaticHexagons() handle it
-      if (dataBounds && dataBounds.point_count > 0) {
+      // Load hexagons only if they are pre-calculated and data exists
+      if (dataBounds && dataBounds.point_count > 0 && this.hexagonsAvailableValue) {
         await this.loadStaticHexagons();
       } else {
-        console.warn('No data bounds or points available - not showing hexagons');
-        // Only hide loading indicator if no hexagons to load
+        if (!this.hexagonsAvailableValue) {
+          console.log('No pre-calculated hexagons available - skipping hexagon loading');
+        } else {
+          console.warn('No data bounds or points available - not showing hexagons');
+        }
+        // Hide loading indicator if no hexagons to load
         const loadingElement = document.getElementById('map-loading');
         if (loadingElement) {
           loadingElement.style.display = 'none';

@@ -17,6 +17,7 @@ class Shared::StatsController < ApplicationController
     @user = @stat.user
     @is_public_view = true
     @data_bounds = @stat.calculate_data_bounds
+    @hexagons_available = @stat.hexagons_available?
 
     render 'stats/public_month'
   end

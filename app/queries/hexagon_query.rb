@@ -35,10 +35,7 @@ class HexagonQuery
         SELECT ST_MakeEnvelope($1, $2, $3, $4, 4326) as geom
       ),
       bbox_utm AS (
-        SELECT
-          ST_Transform(geom, 3857) as geom_utm,
-          geom as geom_wgs84
-        FROM bbox_geom
+        SELECT ST_Transform(geom, 3857) as geom_utm FROM bbox_geom
       ),
       user_points AS (
         SELECT
@@ -49,25 +46,22 @@ class HexagonQuery
         FROM points
         WHERE #{user_sql}
           #{date_filter}
-          AND ST_Intersects(
-            lonlat,
-            (SELECT geom FROM bbox_geom)::geometry
-          )
+          AND lonlat && (SELECT geom FROM bbox_geom)
       ),
       hex_grid AS (
         SELECT
-          (ST_HexagonGrid($5, bbox_utm.geom_utm)).geom as hex_geom_utm,
-          (ST_HexagonGrid($5, bbox_utm.geom_utm)).i as hex_i,
-          (ST_HexagonGrid($5, bbox_utm.geom_utm)).j as hex_j
+          (ST_HexagonGrid($5, geom_utm)).geom as hex_geom_utm,
+          (ST_HexagonGrid($5, geom_utm)).i as hex_i,
+          (ST_HexagonGrid($5, geom_utm)).j as hex_j
         FROM bbox_utm
       ),
       hexagons_with_points AS (
         SELECT DISTINCT
-          hex_geom_utm,
-          hex_i,
-          hex_j
+          hg.hex_geom_utm,
+          hg.hex_i,
+          hg.hex_j
         FROM hex_grid hg
-        INNER JOIN user_points up ON ST_Intersects(hg.hex_geom_utm, up.point_geom_utm)
+        JOIN user_points up ON ST_Intersects(hg.hex_geom_utm, up.point_geom_utm)
       ),
       hexagon_stats AS (
         SELECT
@@ -78,7 +72,7 @@ class HexagonQuery
           MIN(up.timestamp) as earliest_point,
           MAX(up.timestamp) as latest_point
         FROM hexagons_with_points hwp
-        INNER JOIN user_points up ON ST_Intersects(hwp.hex_geom_utm, up.point_geom_utm)
+        JOIN user_points up ON ST_Intersects(hwp.hex_geom_utm, up.point_geom_utm)
         GROUP BY hwp.hex_geom_utm, hwp.hex_i, hwp.hex_j
       )
       SELECT

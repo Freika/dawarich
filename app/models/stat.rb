@@ -56,6 +56,10 @@ class Stat < ApplicationRecord
     sharing_enabled? && !sharing_expired?
   end
 
+  def hexagons_available?(hex_size = 1000)
+    hexagon_data&.dig(hex_size.to_s, 'geojson').present?
+  end
+
   def generate_new_sharing_uuid!
     update!(sharing_uuid: SecureRandom.uuid)
   end
