@@ -120,6 +120,10 @@ class Stat < ApplicationRecord
     }
   end
 
+  def process!
+    Stats::CalculatingJob.perform_later(user.id, year, month)
+  end
+
   private
 
   def generate_sharing_uuid
