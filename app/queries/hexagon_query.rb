@@ -18,18 +18,21 @@ class HexagonQuery
   end
 
   def call
-    ActiveRecord::Base.connection.execute(build_hexagon_sql)
+    binds = []
+    user_sql = build_user_filter(binds)
+    date_filter = build_date_filter(binds)
+
+    sql = build_hexagon_sql(user_sql, date_filter)
+
+    ActiveRecord::Base.connection.exec_query(sql, 'hexagon_sql', binds)
   end
 
   private
 
-  def build_hexagon_sql
-    user_filter = user_id ? "user_id = #{user_id}" : '1=1'
-    date_filter = build_date_filter
-
+  def build_hexagon_sql(user_sql, date_filter)
     <<~SQL
       WITH bbox_geom AS (
-        SELECT ST_MakeEnvelope(#{min_lon}, #{min_lat}, #{max_lon}, #{max_lat}, 4326) as geom
+        SELECT ST_MakeEnvelope($1, $2, $3, $4, 4326) as geom
       ),
       bbox_utm AS (
         SELECT
@@ -44,7 +47,7 @@ class HexagonQuery
           id,
           timestamp
         FROM points
-        WHERE #{user_filter}
+        WHERE #{user_sql}
           #{date_filter}
           AND ST_Intersects(
             lonlat,
@@ -53,9 +56,9 @@ class HexagonQuery
       ),
       hex_grid AS (
         SELECT
-          (ST_HexagonGrid(#{hex_size}, bbox_utm.geom_utm)).geom as hex_geom_utm,
-          (ST_HexagonGrid(#{hex_size}, bbox_utm.geom_utm)).i as hex_i,
-          (ST_HexagonGrid(#{hex_size}, bbox_utm.geom_utm)).j as hex_j
+          (ST_HexagonGrid($5, bbox_utm.geom_utm)).geom as hex_geom_utm,
+          (ST_HexagonGrid($5, bbox_utm.geom_utm)).i as hex_i,
+          (ST_HexagonGrid($5, bbox_utm.geom_utm)).j as hex_j
         FROM bbox_utm
       ),
       hexagons_with_points AS (
@@ -88,17 +91,58 @@ class HexagonQuery
         row_number() OVER (ORDER BY point_count DESC) as id
       FROM hexagon_stats
       ORDER BY point_count DESC
-      LIMIT #{MAX_HEXAGONS_PER_REQUEST};
+      LIMIT $6;
     SQL
   end
 
-  def build_date_filter
+  def build_user_filter(binds)
+    # Add bbox coordinates: min_lon, min_lat, max_lon, max_lat
+    binds << min_lon
+    binds << min_lat
+    binds << max_lon
+    binds << max_lat
+
+    # Add hex_size
+    binds << hex_size
+
+    # Add limit
+    binds << MAX_HEXAGONS_PER_REQUEST
+
+    if user_id
+      binds << user_id
+      'user_id = $7'
+    else
+      '1=1'
+    end
+  end
+
+  def build_date_filter(binds)
     return '' unless start_date || end_date
 
     conditions = []
-    conditions << "timestamp >= EXTRACT(EPOCH FROM '#{start_date}'::timestamp)" if start_date
-    conditions << "timestamp <= EXTRACT(EPOCH FROM '#{end_date}'::timestamp)" if end_date
+    current_param_index = user_id ? 8 : 7 # Account for bbox, hex_size, limit, and potential user_id
+
+    if start_date
+      start_timestamp = parse_date_to_timestamp(start_date)
+      binds << start_timestamp
+      conditions << "timestamp >= $#{current_param_index}"
+      current_param_index += 1
+    end
+
+    if end_date
+      end_timestamp = parse_date_to_timestamp(end_date)
+      binds << end_timestamp
+      conditions << "timestamp <= $#{current_param_index}"
+    end
 
     conditions.any? ? "AND #{conditions.join(' AND ')}" : ''
+  end
+
+  def parse_date_to_timestamp(date_string)
+    # Convert ISO date string to timestamp integer
+    Time.parse(date_string).to_i
+  rescue ArgumentError => e
+    ExceptionReporter.call(e, "Invalid date format: #{date_string}")
+    raise ArgumentError, "Invalid date format: #{date_string}"
   end
 end

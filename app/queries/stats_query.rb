@@ -17,21 +17,19 @@ class StatsQuery
     }
   end
 
-  private
-
-  attr_reader :user
-
   def cached_points_geocoded_stats
-    sql = ActiveRecord::Base.sanitize_sql_array([
-      <<~SQL.squish,
-        SELECT
-          COUNT(reverse_geocoded_at) as geocoded,
-          COUNT(CASE WHEN geodata = '{}'::jsonb THEN 1 END) as without_data
-        FROM points
-        WHERE user_id = ?
-      SQL
-      user.id
-    ])
+    sql = ActiveRecord::Base.sanitize_sql_array(
+      [
+        <<~SQL.squish,
+          SELECT
+            COUNT(reverse_geocoded_at) as geocoded,
+            COUNT(CASE WHEN geodata = '{}'::jsonb THEN 1 END) as without_data
+          FROM points
+          WHERE user_id = ?
+        SQL
+        user.id
+      ]
+    )
 
     result = Point.connection.select_one(sql)
 
@@ -40,4 +38,8 @@ class StatsQuery
       without_data: result['without_data'].to_i
     }
   end
+
+  private
+
+  attr_reader :user
 end

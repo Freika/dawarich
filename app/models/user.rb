@@ -131,6 +131,19 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     Time.zone.name
   end
 
+  def countries_visited_uncached
+    points
+      .without_raw_data
+      .where.not(country_name: [nil, ''])
+      .distinct
+      .pluck(:country_name)
+      .compact
+  end
+
+  def cities_visited_uncached
+    points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+  end
+
   private
 
   def create_api_key
@@ -167,18 +180,5 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   def schedule_post_trial_emails
     Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
     Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
-  end
-
-  def countries_visited_uncached
-    points
-      .without_raw_data
-      .where.not(country_name: [nil, ''])
-      .distinct
-      .pluck(:country_name)
-      .compact
-  end
-
-  def cities_visited_uncached
-    points.where.not(city: [nil, '']).distinct.pluck(:city).compact
   end
 end

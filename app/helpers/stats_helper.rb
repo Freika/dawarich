@@ -55,13 +55,7 @@ module StatsHelper
 
   def distance_traveled(user, stat)
     distance_unit = user.safe_settings.distance_unit
-
-    value =
-      if distance_unit == 'mi'
-        (stat.distance / 1609.34).round(2)
-      else
-        (stat.distance / 1000).round(2)
-      end
+    value = Stat.convert_distance(stat.distance, distance_unit).round
 
     "#{number_with_delimiter(value)} #{distance_unit}"
   end
@@ -103,7 +97,7 @@ module StatsHelper
     stat.toponyms.count { _1['country'] }
   end
 
-  def x_than_prevopis_countries_visited(stat, previous_stat)
+  def x_than_previous_countries_visited(stat, previous_stat)
     return '' unless previous_stat
 
     previous_countries = previous_stat.toponyms.count { _1['country'] }
@@ -123,16 +117,9 @@ module StatsHelper
     return 'N/A' unless peak && peak[1].positive?
 
     date = Date.new(stat.year, stat.month, peak[0])
-    distance_km = (peak[1] / 1000).round(2)
     distance_unit = stat.user.safe_settings.distance_unit
 
-    distance_value =
-      if distance_unit == 'mi'
-        (peak[1] / 1609.34).round(2)
-      else
-        distance_km
-      end
-
+    distance_value = Stat.convert_distance(peak[1], distance_unit).round
     text = "#{date.strftime('%B %d')} (#{distance_value} #{distance_unit})"
 
     link_to text, map_url(start_at: date.beginning_of_day, end_at: date.end_of_day), class: 'underline'

@@ -108,7 +108,7 @@ RSpec.describe Users::MailerSendingJob, type: :job do
     end
 
     context 'when user is deleted' do
-      it 'raises ActiveRecord::RecordNotFound' do
+      it 'does not raise an error' do
         user.destroy
 
         expect do

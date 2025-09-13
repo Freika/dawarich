@@ -59,6 +59,25 @@ RSpec.describe Cache::Clean do
       expect(Rails.cache.exist?(user_2_points_geocoded_stats_key)).to be false
     end
 
+    it 'deletes countries and cities cache for all users' do
+      Rails.cache.write(user_1_countries_key, %w[USA Canada])
+      Rails.cache.write(user_2_countries_key, %w[France Germany])
+      Rails.cache.write(user_1_cities_key, ['New York', 'Toronto'])
+      Rails.cache.write(user_2_cities_key, %w[Paris Berlin])
+
+      expect(Rails.cache.exist?(user_1_countries_key)).to be true
+      expect(Rails.cache.exist?(user_2_countries_key)).to be true
+      expect(Rails.cache.exist?(user_1_cities_key)).to be true
+      expect(Rails.cache.exist?(user_2_cities_key)).to be true
+
+      described_class.call
+
+      expect(Rails.cache.exist?(user_1_countries_key)).to be false
+      expect(Rails.cache.exist?(user_2_countries_key)).to be false
+      expect(Rails.cache.exist?(user_1_cities_key)).to be false
+      expect(Rails.cache.exist?(user_2_cities_key)).to be false
+    end
+
     it 'logs cache cleaning process' do
       expect(Rails.logger).to receive(:info).with('Cleaning cache...')
       expect(Rails.logger).to receive(:info).with('Cache cleaned')

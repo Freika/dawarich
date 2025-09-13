@@ -13,19 +13,19 @@ class Cache::PreheatingJob < ApplicationJob
 
       Rails.cache.write(
         "dawarich/user_#{user.id}_points_geocoded_stats",
-        StatsQuery.new(user).send(:cached_points_geocoded_stats),
+        StatsQuery.new(user).cached_points_geocoded_stats,
         expires_in: 1.day
       )
 
       Rails.cache.write(
         "dawarich/user_#{user.id}_countries_visited",
-        user.send(:countries_visited_uncached),
+        user.countries_visited_uncached,
         expires_in: 1.day
       )
 
       Rails.cache.write(
         "dawarich/user_#{user.id}_cities_visited",
-        user.send(:cities_visited_uncached),
+        user.cities_visited_uncached,
         expires_in: 1.day
       )
     end
