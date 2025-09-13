@@ -116,16 +116,16 @@ class Maps::HexagonGrid
     end
 
     {
-      type: 'FeatureCollection',
-      features: hexagons,
-      metadata: {
-        bbox: [min_lon, min_lat, max_lon, max_lat],
-        area_km2: area_km2.round(2),
-        hex_size_m: hex_size,
-        count: hexagons.count,
-        total_points: total_points,
-        user_id: user_id,
-        date_range: build_date_range_metadata
+      'type' => 'FeatureCollection',
+      'features' => hexagons,
+      'metadata' => {
+        'bbox' => [min_lon, min_lat, max_lon, max_lat],
+        'area_km2' => area_km2.round(2),
+        'hex_size_m' => hex_size,
+        'count' => hexagons.count,
+        'total_points' => total_points,
+        'user_id' => user_id,
+        'date_range' => build_date_range_metadata
       }
     }
   end
@@ -133,7 +133,7 @@ class Maps::HexagonGrid
   def build_date_range_metadata
     return nil unless start_date || end_date
 
-    { start_date:, end_date: }
+    { 'start_date' => start_date, 'end_date' => end_date }
   end
 
   def validate!

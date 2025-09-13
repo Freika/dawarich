@@ -84,8 +84,8 @@ class Api::V1::Maps::HexagonsController < ApiController
     end
 
     @target_user = @stat.user
-    @start_date = Date.new(@stat.year, @stat.month, 1).beginning_of_day
-    @end_date = @start_date.end_of_month.end_of_day
+    @start_date = Date.new(@stat.year, @stat.month, 1).beginning_of_day.iso8601
+    @end_date = Date.new(@stat.year, @stat.month, 1).end_of_month.end_of_day.iso8601
   end
 
   def set_authenticated_context
