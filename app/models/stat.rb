@@ -57,6 +57,10 @@ class Stat < ApplicationRecord
   end
 
   def hexagons_available?(hex_size = 1000)
+    # Check new optimized format (hexagon_centers) first
+    return true if hexagon_centers.present? && hexagon_centers.is_a?(Array) && hexagon_centers.any?
+
+    # Fallback to legacy format (hexagon_data) for backwards compatibility
     hexagon_data&.dig(hex_size.to_s, 'geojson').present?
   end
 

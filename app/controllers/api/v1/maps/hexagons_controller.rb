@@ -6,25 +6,31 @@ class Api::V1::Maps::HexagonsController < ApiController
   before_action :set_user_and_dates
 
   def index
-    hex_size = bbox_params[:hex_size]&.to_f || 1000.0
-    cache_service = HexagonCacheService.new(
-      user: @target_user,
-      stat: @stat,
-      start_date: @start_date,
-      end_date: @end_date
-    )
+    # Try to use pre-calculated hexagon centers from stats
+    if @stat&.hexagon_centers.present?
+      result = build_hexagons_from_centers(@stat.hexagon_centers)
+      Rails.logger.debug "Using pre-calculated hexagon centers: #{@stat.hexagon_centers.size} centers"
+      return render json: result
+    end
 
-    # Try to use pre-calculated hexagon data if available
-    if cache_service.available?(hex_size)
-      cached_result = cache_service.cached_geojson(hex_size)
-      if cached_result
-        Rails.logger.debug 'Using cached hexagon data'
-        return render json: cached_result
+    # Handle legacy "area too large" entries - recalculate them now that we can handle large areas
+    if @stat&.hexagon_centers&.dig('area_too_large')
+      Rails.logger.info "Recalculating previously skipped large area hexagons for stat #{@stat.id}"
+
+      # Trigger recalculation
+      service = Stats::CalculateMonth.new(@target_user.id, @stat.year, @stat.month)
+      new_centers = service.send(:calculate_hexagon_centers)
+
+      if new_centers && !new_centers.dig(:area_too_large)
+        @stat.update(hexagon_centers: new_centers)
+        result = build_hexagons_from_centers(new_centers)
+        Rails.logger.debug "Successfully recalculated hexagon centers: #{new_centers.size} centers"
+        return render json: result
       end
     end
 
-    # Fall back to on-the-fly calculation
-    Rails.logger.debug 'Calculating hexagons on-the-fly'
+    # Fall back to on-the-fly calculation for legacy/missing data
+    Rails.logger.debug 'No pre-calculated data available, calculating hexagons on-the-fly'
     result = Maps::HexagonGrid.new(hexagon_params).call
     Rails.logger.debug "Hexagon service result: #{result['features']&.count || 0} features"
     render json: result
@@ -76,6 +82,66 @@ class Api::V1::Maps::HexagonsController < ApiController
   end
 
   private
+
+  def build_hexagons_from_centers(centers)
+    # Convert stored centers back to hexagon polygons
+    # Each center is [lng, lat, earliest_timestamp, latest_timestamp]
+    hexagon_features = centers.map.with_index do |center, index|
+      lng, lat, earliest, latest = center
+
+      # Generate hexagon polygon from center point (1000m hexagons)
+      hexagon_geojson = generate_hexagon_polygon(lng, lat, 1000)
+
+      {
+        type: 'Feature',
+        id: index + 1,
+        geometry: hexagon_geojson,
+        properties: {
+          hex_id: index + 1,
+          hex_size: 1000,
+          earliest_point: earliest ? Time.zone.at(earliest).iso8601 : nil,
+          latest_point: latest ? Time.zone.at(latest).iso8601 : nil
+        }
+      }
+    end
+
+    {
+      'type' => 'FeatureCollection',
+      'features' => hexagon_features,
+      'metadata' => {
+        'hex_size_m' => 1000,
+        'count' => hexagon_features.count,
+        'user_id' => @target_user.id,
+        'pre_calculated' => true
+      }
+    }
+  end
+
+  def generate_hexagon_polygon(center_lng, center_lat, size_meters)
+    # Generate hexagon vertices around center point
+    # This is a simplified hexagon generation - for production you might want more precise calculations
+    earth_radius = 6_371_000 # meters
+    angular_size = size_meters / earth_radius
+
+    vertices = []
+    6.times do |i|
+      angle = (i * 60) * Math::PI / 180 # 60 degrees between vertices
+
+      # Calculate offset in degrees (rough approximation)
+      lat_offset = angular_size * Math.cos(angle) * 180 / Math::PI
+      lng_offset = angular_size * Math.sin(angle) * 180 / Math::PI / Math.cos(center_lat * Math::PI / 180)
+
+      vertices << [center_lng + lng_offset, center_lat + lat_offset]
+    end
+
+    # Close the polygon
+    vertices << vertices.first
+
+    {
+      type: 'Polygon',
+      coordinates: [vertices]
+    }
+  end
 
   def bbox_params
     params.permit(:min_lon, :min_lat, :max_lon, :max_lat, :hex_size, :viewport_width, :viewport_height)

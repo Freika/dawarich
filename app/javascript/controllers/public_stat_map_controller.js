@@ -23,9 +23,7 @@ export default class extends BaseController {
   }
 
   disconnect() {
-    if (this.hexagonGrid) {
-      this.hexagonGrid.destroy();
-    }
+    // No hexagonGrid to destroy for public sharing
     if (this.map) {
       this.map.remove();
     }
@@ -102,35 +100,24 @@ export default class extends BaseController {
         console.log('📊 After fitBounds overlay display:', afterFitBoundsElement?.style.display || 'default');
       }
 
-      this.hexagonGrid = createHexagonGrid(this.map, {
-        apiEndpoint: '/api/v1/maps/hexagons',
-        style: {
-          fillColor: '#3388ff',
-          fillOpacity: 0.3,
-          color: '#3388ff',
-          weight: 1,
-          opacity: 0.7
-        },
-        debounceDelay: 300,
-        maxZoom: 15,
-        minZoom: 4
-      });
+      // Don't create hexagonGrid for public sharing - we handle hexagons manually
+      // this.hexagonGrid = createHexagonGrid(this.map, {...});
 
-      // Force hide immediately after creation to prevent auto-showing
-      this.hexagonGrid.hide();
-
-      // Disable all dynamic behavior by removing event listeners
-      this.map.off('moveend');
-      this.map.off('zoomend');
+      console.log('🎯 Public sharing: skipping HexagonGrid creation, using manual loading');
+      console.log('🔍 Debug values:');
+      console.log('  dataBounds:', dataBounds);
+      console.log('  point_count:', dataBounds?.point_count);
+      console.log('  hexagonsAvailableValue:', this.hexagonsAvailableValue);
+      console.log('  hexagonsAvailableValue type:', typeof this.hexagonsAvailableValue);
 
       // Load hexagons only if they are pre-calculated and data exists
       if (dataBounds && dataBounds.point_count > 0 && this.hexagonsAvailableValue) {
         await this.loadStaticHexagons();
       } else {
         if (!this.hexagonsAvailableValue) {
-          console.log('No pre-calculated hexagons available - skipping hexagon loading');
+          console.log('📋 No pre-calculated hexagons available for public sharing - skipping hexagon loading');
         } else {
-          console.warn('No data bounds or points available - not showing hexagons');
+          console.warn('⚠️ No data bounds or points available - not showing hexagons');
         }
         // Hide loading indicator if no hexagons to load
         const loadingElement = document.getElementById('map-loading');
