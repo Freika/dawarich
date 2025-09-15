@@ -85,12 +85,6 @@ RSpec.describe OwnTracks::Importer do
       it 'creates points' do
         expect { parser }.to change { Point.count }.by(9)
       end
-
-      it 'correctly writes attributes' do
-        parser
-
-        point = Point.first
-      end
     end
   end
 end

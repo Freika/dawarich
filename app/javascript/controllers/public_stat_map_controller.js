@@ -297,4 +297,5 @@ export default class extends BaseController {
       layer.setStyle(layer._originalStyle);
     }
   }
+
 }
