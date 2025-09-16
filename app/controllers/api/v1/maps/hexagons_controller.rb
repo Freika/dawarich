@@ -2,10 +2,9 @@
 
 class Api::V1::Maps::HexagonsController < ApiController
   skip_before_action :authenticate_api_key, if: :public_sharing_request?
-  before_action :validate_bbox_params, except: [:bounds]
 
   def index
-    result = Maps::HexagonRequestHandler.call(
+    result = Maps::H3HexagonRenderer.call(
       params: params,
       current_api_user: current_api_user
     )
@@ -15,11 +14,10 @@ class Api::V1::Maps::HexagonsController < ApiController
     render json: { error: e.message }, status: :not_found
   rescue Maps::DateParameterCoercer::InvalidDateFormatError => e
     render json: { error: e.message }, status: :bad_request
-  rescue Maps::HexagonGrid::BoundingBoxTooLargeError,
-         Maps::HexagonGrid::InvalidCoordinatesError => e
+  rescue Maps::H3HexagonCenters::TooManyHexagonsError,
+         Maps::H3HexagonCenters::InvalidCoordinatesError,
+         Maps::H3HexagonCenters::PostGISError => e
     render json: { error: e.message }, status: :bad_request
-  rescue Maps::HexagonGrid::PostGISError => e
-    render json: { error: e.message }, status: :internal_server_error
   rescue StandardError => _e
     handle_service_error
   end
@@ -56,8 +54,8 @@ class Api::V1::Maps::HexagonsController < ApiController
 
   private
 
-  def bbox_params
-    params.permit(:min_lon, :min_lat, :max_lon, :max_lat, :hex_size, :viewport_width, :viewport_height)
+  def hexagon_params
+    params.permit(:h3_resolution, :uuid, :start_date, :end_date)
   end
 
   def handle_service_error
@@ -66,16 +64,5 @@ class Api::V1::Maps::HexagonsController < ApiController
 
   def public_sharing_request?
     params[:uuid].present?
-  end
-
-  def validate_bbox_params
-    required_params = %w[min_lon min_lat max_lon max_lat]
-    missing_params = required_params.select { |param| params[param].blank? }
-
-    return unless missing_params.any?
-
-    render json: {
-      error: "Missing required parameters: #{missing_params.join(', ')}"
-    }, status: :bad_request
   end
 end

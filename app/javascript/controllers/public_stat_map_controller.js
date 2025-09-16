@@ -1,5 +1,4 @@
 import L from "leaflet";
-import { createHexagonGrid } from "../maps/hexagon_grid";
 import { createAllMapLayers } from "../maps/layers";
 import BaseController from "./base_controller";
 
@@ -18,6 +17,7 @@ export default class extends BaseController {
     super.connect();
     console.log('🏁 Controller connected - loading overlay should be visible');
     this.selfHosted = this.selfHostedValue || 'false';
+    this.currentHexagonLayer = null;
     this.initializeMap();
     this.loadHexagons();
   }
@@ -43,8 +43,8 @@ export default class extends BaseController {
     // Add dynamic tile layer based on self-hosted setting
     this.addMapLayers();
 
-    // Default view
-    this.map.setView([40.0, -100.0], 4);
+    // Default view with higher zoom level for better hexagon detail
+    this.map.setView([40.0, -100.0], 9);
   }
 
   addMapLayers() {
@@ -100,10 +100,7 @@ export default class extends BaseController {
         console.log('📊 After fitBounds overlay display:', afterFitBoundsElement?.style.display || 'default');
       }
 
-      // Don't create hexagonGrid for public sharing - we handle hexagons manually
-      // this.hexagonGrid = createHexagonGrid(this.map, {...});
-
-      console.log('🎯 Public sharing: skipping HexagonGrid creation, using manual loading');
+      console.log('🎯 Public sharing: using manual hexagon loading');
       console.log('🔍 Debug values:');
       console.log('  dataBounds:', dataBounds);
       console.log('  point_count:', dataBounds?.point_count);
@@ -177,7 +174,7 @@ export default class extends BaseController {
         min_lat: dataBounds.min_lat,
         max_lon: dataBounds.max_lng,
         max_lat: dataBounds.max_lat,
-        hex_size: 1000, // Fixed 1km hexagons
+        h3_resolution: 8,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
         uuid: this.uuidValue
@@ -228,6 +225,11 @@ export default class extends BaseController {
   }
 
   addStaticHexagonsToMap(geojsonData) {
+    // Remove existing hexagon layer if it exists
+    if (this.currentHexagonLayer) {
+      this.map.removeLayer(this.currentHexagonLayer);
+    }
+
     // Calculate max point count for color scaling
     const maxPoints = Math.max(...geojsonData.features.map(f => f.properties.point_count));
 
@@ -247,6 +249,7 @@ export default class extends BaseController {
       }
     });
 
+    this.currentHexagonLayer = staticHexagonLayer;
     staticHexagonLayer.addTo(this.map);
   }
 
@@ -263,11 +266,31 @@ export default class extends BaseController {
   buildPopupContent(props) {
     const startDate = props.earliest_point ? new Date(props.earliest_point).toLocaleDateString() : 'N/A';
     const endDate = props.latest_point ? new Date(props.latest_point).toLocaleDateString() : 'N/A';
+    const startTime = props.earliest_point ? new Date(props.earliest_point).toLocaleTimeString() : '';
+    const endTime = props.latest_point ? new Date(props.latest_point).toLocaleTimeString() : '';
 
     return `
-      <div style="font-size: 12px; line-height: 1.4;">
-        <strong>Date Range:</strong><br>
-        <small>${startDate} - ${endDate}</small>
+      <div style="font-size: 12px; line-height: 1.6; max-width: 200px;">
+        <strong style="color: #3388ff;">📍 Location Data</strong><br>
+        <div style="margin: 4px 0;">
+          <strong>Points:</strong> ${props.point_count || 0}
+        </div>
+        ${props.h3_index ? `
+        <div style="margin: 4px 0;">
+          <strong>H3 Index:</strong><br>
+          <code style="font-size: 10px; background: #f5f5f5; padding: 2px;">${props.h3_index}</code>
+        </div>
+        ` : ''}
+        <div style="margin: 4px 0;">
+          <strong>Time Range:</strong><br>
+          <small>${startDate} ${startTime}<br>→ ${endDate} ${endTime}</small>
+        </div>
+        ${props.center ? `
+        <div style="margin: 4px 0;">
+          <strong>Center:</strong><br>
+          <small>${props.center[0].toFixed(6)}, ${props.center[1].toFixed(6)}</small>
+        </div>
+        ` : ''}
       </div>
     `;
   }
@@ -297,5 +320,6 @@ export default class extends BaseController {
       layer.setStyle(layer._originalStyle);
     }
   }
+
 
 }

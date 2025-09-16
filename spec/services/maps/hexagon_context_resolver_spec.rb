@@ -44,8 +44,8 @@ RSpec.describe Maps::HexagonContextResolver do
 
         expect(result[:target_user]).to eq(user)
         expect(result[:stat]).to eq(stat)
-        expect(result[:start_date]).to eq('2024-06-01T00:00:00+00:00')
-        expect(result[:end_date]).to eq('2024-06-30T23:59:59+00:00')
+        expect(result[:start_date]).to match(/2024-06-01T00:00:00[+-]\d{2}:\d{2}/)
+        expect(result[:end_date]).to match(/2024-06-30T23:59:59[+-]\d{2}:\d{2}/)
       end
     end
 

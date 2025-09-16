@@ -88,31 +88,26 @@ class Stats::CalculateMonth
     return nil if points.empty?
 
     begin
-      service = Maps::HexagonCenters.new(
+      service = Maps::H3HexagonCenters.new(
         user_id: user.id,
         start_date: start_date_iso8601,
-        end_date: end_date_iso8601
+        end_date: end_date_iso8601,
+        h3_resolution: 8 # Small hexagons for good detail
       )
 
       result = service.call
 
-      if result.nil?
-        Rails.logger.info "No hexagon centers calculated for user #{user.id}, #{year}-#{month} (no data)"
+      if result.empty?
+        Rails.logger.info "No H3 hexagon centers calculated for user #{user.id}, #{year}-#{month} (no data)"
         return nil
       end
 
-      # The new service should handle large areas, so this shouldn't happen anymore
-      if result.is_a?(Hash) && result[:area_too_large]
-        Rails.logger.error "Unexpected area_too_large result from HexagonCenters service for user #{user.id}, #{year}-#{month}"
-        return { area_too_large: true }
-      end
-
-      Rails.logger.info "Pre-calculated #{result.size} hexagon centers for user #{user.id}, #{year}-#{month}"
+      Rails.logger.info "Pre-calculated #{result.size} H3 hexagon centers for user #{user.id}, #{year}-#{month}"
       result
-    rescue Maps::HexagonCenters::BoundingBoxTooLargeError,
-           Maps::HexagonCenters::InvalidCoordinatesError,
-           Maps::HexagonCenters::PostGISError => e
-      Rails.logger.warn "Hexagon centers calculation failed for user #{user.id}, #{year}-#{month}: #{e.message}"
+    rescue Maps::H3HexagonCenters::TooManyHexagonsError,
+           Maps::H3HexagonCenters::InvalidCoordinatesError,
+           Maps::H3HexagonCenters::PostGISError => e
+      Rails.logger.warn "H3 hexagon centers calculation failed for user #{user.id}, #{year}-#{month}: #{e.message}"
       nil
     end
   end

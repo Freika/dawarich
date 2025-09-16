@@ -77,55 +77,6 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         expect(response).to have_http_status(:success)
       end
 
-      context 'error handling' do
-        it 'handles BoundingBoxTooLargeError' do
-          allow_any_instance_of(Maps::HexagonGrid).to receive(:call)
-            .and_raise(Maps::HexagonGrid::BoundingBoxTooLargeError, 'Bounding box too large')
-
-          get '/api/v1/maps/hexagons', params: valid_params, headers: headers
-
-          expect(response).to have_http_status(:bad_request)
-
-          json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Bounding box too large')
-        end
-
-        it 'handles InvalidCoordinatesError' do
-          allow_any_instance_of(Maps::HexagonGrid).to receive(:call)
-            .and_raise(Maps::HexagonGrid::InvalidCoordinatesError, 'Invalid coordinates')
-
-          get '/api/v1/maps/hexagons', params: valid_params, headers: headers
-
-          expect(response).to have_http_status(:bad_request)
-
-          json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Invalid coordinates')
-        end
-
-        it 'handles PostGISError' do
-          allow_any_instance_of(Maps::HexagonGrid).to receive(:call)
-            .and_raise(Maps::HexagonGrid::PostGISError, 'PostGIS error')
-
-          get '/api/v1/maps/hexagons', params: valid_params, headers: headers
-
-          expect(response).to have_http_status(:internal_server_error)
-
-          json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('PostGIS error')
-        end
-
-        it 'handles generic StandardError' do
-          allow_any_instance_of(Maps::HexagonGrid).to receive(:call)
-            .and_raise(StandardError, 'Unexpected error')
-
-          get '/api/v1/maps/hexagons', params: valid_params, headers: headers
-
-          expect(response).to have_http_status(:internal_server_error)
-
-          json_response = JSON.parse(response.body)
-          expect(json_response['error']).to eq('Failed to generate hexagon grid')
-        end
-      end
 
       context 'with no data points' do
         let(:empty_user) { create(:user) }

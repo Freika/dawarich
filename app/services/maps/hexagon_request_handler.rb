@@ -41,22 +41,57 @@ module Maps
     end
 
     def generate_hexagons_on_the_fly(context)
-      hexagon_params = build_hexagon_params(context)
-      result = Maps::HexagonGrid.new(hexagon_params).call
-      Rails.logger.debug "Hexagon service result: #{result['features']&.count || 0} features"
-      result
+      # Parse dates for H3 calculator which expects Time objects
+      start_date = parse_date_for_h3(context[:start_date])
+      end_date = parse_date_for_h3(context[:end_date])
+
+      result = Maps::H3HexagonCalculator.new(
+        context[:target_user]&.id,
+        start_date,
+        end_date,
+        h3_resolution
+      ).call
+
+      return result[:data] if result[:success]
+
+      # If H3 calculation fails, log error and return empty feature collection
+      Rails.logger.error "H3 calculation failed: #{result[:error]}"
+      empty_feature_collection
     end
 
-    def build_hexagon_params(context)
-      bbox_params.merge(
-        user_id: context[:target_user]&.id,
-        start_date: context[:start_date],
-        end_date: context[:end_date]
-      )
+    def empty_feature_collection
+      {
+        type: 'FeatureCollection',
+        features: [],
+        metadata: {
+          hexagon_count: 0,
+          total_points: 0,
+          source: 'h3'
+        }
+      }
     end
 
-    def bbox_params
-      params.permit(:min_lon, :min_lat, :max_lon, :max_lat, :hex_size, :viewport_width, :viewport_height)
+    def h3_resolution
+      # Allow custom resolution via parameter, default to 8
+      resolution = params[:h3_resolution]&.to_i || 8
+
+      # Clamp to valid H3 resolution range (0-15)
+      resolution.clamp(0, 15)
+    end
+
+    def parse_date_for_h3(date_param)
+      # If already a Time object (from public sharing context), return as-is
+      return date_param if date_param.is_a?(Time)
+
+      # If it's a string ISO date, parse it directly to Time
+      return Time.parse(date_param) if date_param.is_a?(String)
+
+      # If it's an integer timestamp, convert to Time
+      return Time.at(date_param) if date_param.is_a?(Integer)
+
+      # For other cases, try coercing and converting
+      timestamp = Maps::DateParameterCoercer.call(date_param)
+      Time.at(timestamp)
     end
   end
 end

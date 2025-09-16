@@ -172,6 +172,12 @@ GEM
       railties (>= 6.1.0)
     fakeredis (0.1.4)
     ffaker (2.24.0)
+    ffi (1.17.2-aarch64-linux-gnu)
+    ffi (1.17.2-arm-linux-gnu)
+    ffi (1.17.2-arm64-darwin)
+    ffi (1.17.2-x86-linux-gnu)
+    ffi (1.17.2-x86_64-darwin)
+    ffi (1.17.2-x86_64-linux-gnu)
     foreman (0.90.0)
       thor (~> 1.4)
     fugit (1.11.1)
@@ -185,6 +191,10 @@ GEM
       rake
     groupdate (6.7.0)
       activesupport (>= 7.1)
+    h3 (3.7.4)
+      ffi (~> 1.9)
+      rgeo-geojson (~> 2.1)
+      zeitwerk (~> 2.5)
     hashdiff (1.1.2)
     httparty (0.23.1)
       csv
@@ -543,6 +553,7 @@ DEPENDENCIES
   geocoder!
   gpx
   groupdate
+  h3 (~> 3.7)
   httparty
   importmap-rails
   jwt (~> 2.8)

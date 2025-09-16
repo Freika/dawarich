@@ -30,9 +30,7 @@ module Maps
     def resolve_public_sharing_context
       stat = Stat.find_by(sharing_uuid: params[:uuid])
 
-      unless stat&.public_accessible?
-        raise SharedStatsNotFoundError, 'Shared stats not found or no longer available'
-      end
+      raise SharedStatsNotFoundError, 'Shared stats not found or no longer available' unless stat&.public_accessible?
 
       target_user = stat.user
       start_date = Date.new(stat.year, stat.month, 1).beginning_of_day.iso8601

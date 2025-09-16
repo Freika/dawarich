@@ -43,8 +43,20 @@
   <!-- Map Summary - Hexagon View -->
   <div class="card bg-base-100 shadow-xl mb-8">
     <div class="card-body p-0">
+      <!-- Map Controls -->
+      <div class="p-4 border-b border-base-300 bg-base-50">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-4">
+            <h3 class="font-semibold text-lg">📍 Location Hexagons</h3>
+            <% if @hexagons_available %>
+              <div class="badge badge-success badge-sm">H3 Enhanced</div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
       <!-- Hexagon Map Container -->
-      <div class="w-full h-96 rounded-lg border border-base-300 relative overflow-hidden">
+      <div class="w-full h-96 border border-base-300 relative overflow-hidden">
         <div id="public-monthly-stats-map" class="w-full h-full"
               data-controller="public-stat-map"
               data-public-stat-map-year-value="<%= @year %>"

@@ -23,7 +23,7 @@ module Maps
     attr_reader :stat, :target_user
 
     def pre_calculated_centers_available?
-      return false unless stat&.hexagon_centers.present?
+      return false if stat&.hexagon_centers.blank?
 
       # Handle legacy hash format
       if stat.hexagon_centers.is_a?(Hash)
@@ -49,46 +49,60 @@ module Maps
     def handle_legacy_area_too_large
       Rails.logger.info "Recalculating previously skipped large area hexagons for stat #{stat.id}"
 
-      # Trigger recalculation
+      new_centers = recalculate_hexagon_centers
+      return nil unless new_centers.is_a?(Array)
+
+      update_stat_with_new_centers(new_centers)
+    end
+
+    def recalculate_hexagon_centers
       service = Stats::CalculateMonth.new(target_user.id, stat.year, stat.month)
-      new_centers = service.send(:calculate_hexagon_centers)
+      service.send(:calculate_hexagon_centers)
+    end
 
-      if new_centers && new_centers.is_a?(Array)
-        stat.update(hexagon_centers: new_centers)
-        result = build_hexagons_from_centers(new_centers)
-        Rails.logger.debug "Successfully recalculated hexagon centers: #{new_centers.size} centers"
-        return { success: true, data: result, pre_calculated: true }
-      end
-
-      nil # Recalculation failed or still too large
+    def update_stat_with_new_centers(new_centers)
+      stat.update(hexagon_centers: new_centers)
+      result = build_hexagons_from_centers(new_centers)
+      Rails.logger.debug "Successfully recalculated hexagon centers: #{new_centers.size} centers"
+      { success: true, data: result, pre_calculated: true }
     end
 
     def build_hexagons_from_centers(centers)
       # Convert stored centers back to hexagon polygons
-      # Each center is [lng, lat, earliest_timestamp, latest_timestamp]
-      hexagon_features = centers.map.with_index do |center, index|
-        lng, lat, earliest, latest = center
+      hexagon_features = centers.map.with_index { |center, index| build_hexagon_feature(center, index) }
 
-        # Generate hexagon polygon from center point (1000m hexagons)
-        hexagon_geojson = Maps::HexagonPolygonGenerator.call(
-          center_lng: lng,
-          center_lat: lat,
-          size_meters: 1000
-        )
+      build_feature_collection(hexagon_features)
+    end
 
-        {
-          'type' => 'Feature',
-          'id' => index + 1,
-          'geometry' => hexagon_geojson,
-          'properties' => {
-            'hex_id' => index + 1,
-            'hex_size' => 1000,
-            'earliest_point' => earliest ? Time.zone.at(earliest).iso8601 : nil,
-            'latest_point' => latest ? Time.zone.at(latest).iso8601 : nil
-          }
-        }
-      end
+    def build_hexagon_feature(center, index)
+      lng, lat, earliest, latest = center
 
+      {
+        'type' => 'Feature',
+        'id' => index + 1,
+        'geometry' => generate_hexagon_geometry(lng, lat),
+        'properties' => build_hexagon_properties(index, earliest, latest)
+      }
+    end
+
+    def generate_hexagon_geometry(lng, lat)
+      Maps::HexagonPolygonGenerator.call(
+        center_lng: lng,
+        center_lat: lat,
+        size_meters: 1000
+      )
+    end
+
+    def build_hexagon_properties(index, earliest, latest)
+      {
+        'hex_id' => index + 1,
+        'hex_size' => 1000,
+        'earliest_point' => earliest ? Time.zone.at(earliest).iso8601 : nil,
+        'latest_point' => latest ? Time.zone.at(latest).iso8601 : nil
+      }
+    end
+
+    def build_feature_collection(hexagon_features)
       {
         'type' => 'FeatureCollection',
         'features' => hexagon_features,
