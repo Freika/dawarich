@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_14_095157) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_10_224714) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -222,10 +222,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_14_095157) do
     t.jsonb "daily_distance", default: {}
     t.jsonb "sharing_settings", default: {}
     t.uuid "sharing_uuid"
-    t.jsonb "hexagon_data"
-    t.jsonb "hexagon_centers"
     t.index ["distance"], name: "index_stats_on_distance"
-    t.index ["hexagon_centers"], name: "index_stats_on_hexagon_centers", where: "(hexagon_centers IS NOT NULL)", using: :gin
     t.index ["month"], name: "index_stats_on_month"
     t.index ["sharing_uuid"], name: "index_stats_on_sharing_uuid", unique: true
     t.index ["user_id"], name: "index_stats_on_user_id"

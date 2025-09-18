@@ -9,7 +9,6 @@ module Maps
 
     def call
       return build_response_from_centers if pre_calculated_centers_available?
-      return handle_legacy_area_too_large if legacy_area_too_large?
 
       nil # No pre-calculated data available
     end
@@ -19,78 +18,59 @@ module Maps
     attr_reader :stat, :user
 
     def pre_calculated_centers_available?
-      return false if stat&.hexagon_centers.blank?
+      return false if stat&.h3_hex_ids.blank?
 
-      # Handle legacy hash format
-      if stat.hexagon_centers.is_a?(Hash)
-        !stat.hexagon_centers['area_too_large']
-      else
-        # Handle array format (actual hexagon centers)
-        stat.hexagon_centers.is_a?(Array) && stat.hexagon_centers.any?
-      end
-    end
-
-    def legacy_area_too_large?
-      stat&.hexagon_centers.is_a?(Hash) && stat.hexagon_centers['area_too_large']
+      stat.h3_hex_ids.is_a?(Hash) && stat.h3_hex_ids.any?
     end
 
     def build_response_from_centers
-      centers = stat.hexagon_centers
-      Rails.logger.debug "Using pre-calculated hexagon centers: #{centers.size} centers"
+      hex_ids = stat.h3_hex_ids
+      Rails.logger.debug "Using pre-calculated H3 hex IDs: #{hex_ids.size} hexagons"
 
-      result = build_hexagons_from_centers(centers)
+      result = build_hexagons_from_h3_ids(hex_ids)
       { success: true, data: result, pre_calculated: true }
     end
 
-    def handle_legacy_area_too_large
-      Rails.logger.info "Recalculating previously skipped large area hexagons for stat #{stat.id}"
-
-      new_centers = recalculate_hexagon_centers
-      return nil unless new_centers.is_a?(Array)
-
-      update_stat_with_new_centers(new_centers)
-    end
-
-    def recalculate_hexagon_centers
+    def recalculate_h3_hex_ids
       service = Stats::CalculateMonth.new(user.id, stat.year, stat.month)
-      service.send(:calculate_hexagon_centers)
+      service.send(:calculate_h3_hex_ids)
     end
 
-    def update_stat_with_new_centers(new_centers)
-      stat.update(hexagon_centers: new_centers)
-      result = build_hexagons_from_centers(new_centers)
-      Rails.logger.debug "Successfully recalculated hexagon centers: #{new_centers.size} centers"
+    def update_stat_with_new_hex_ids(new_hex_ids)
+      stat.update(h3_hex_ids: new_hex_ids)
+      result = build_hexagons_from_h3_ids(new_hex_ids)
+      Rails.logger.debug "Successfully recalculated H3 hex IDs: #{new_hex_ids.size} hexagons"
       { success: true, data: result, pre_calculated: true }
     end
 
-    def build_hexagons_from_centers(centers)
-      # Convert stored centers back to hexagon polygons
-      hexagon_features = centers.map.with_index { |center, index| build_hexagon_feature(center, index) }
+    def build_hexagons_from_h3_ids(hex_ids)
+      # Convert stored H3 IDs back to hexagon polygons
+      hexagon_features = hex_ids.map.with_index do |(h3_index, data), index|
+        build_hexagon_feature_from_h3(h3_index, data, index)
+      end
 
       build_feature_collection(hexagon_features)
     end
 
-    def build_hexagon_feature(center, index)
-      lng, lat, earliest, latest = center
+    def build_hexagon_feature_from_h3(h3_index, data, index)
+      count, earliest, latest = data
 
       {
         'type' => 'Feature',
         'id' => index + 1,
-        'geometry' => generate_hexagon_geometry(lng, lat),
-        'properties' => build_hexagon_properties(index, earliest, latest)
+        'geometry' => generate_hexagon_geometry_from_h3(h3_index),
+        'properties' => build_hexagon_properties(index, count, earliest, latest)
       }
     end
 
-    def generate_hexagon_geometry(lng, lat)
-      Maps::HexagonPolygonGenerator.new(
-        center_lng: lng,
-        center_lat: lat
-      ).call
+    def generate_hexagon_geometry_from_h3(h3_index)
+      Maps::HexagonPolygonGenerator.new(h3_index: h3_index).call
     end
 
-    def build_hexagon_properties(index, earliest, latest)
+    def build_hexagon_properties(index, count, earliest, latest)
       {
         'hex_id' => index + 1,
+        'point_count' => count,
         'earliest_point' => earliest ? Time.zone.at(earliest).iso8601 : nil,
         'latest_point' => latest ? Time.zone.at(latest).iso8601 : nil
       }

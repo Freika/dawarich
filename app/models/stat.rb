@@ -57,9 +57,9 @@ class Stat < ApplicationRecord
   end
 
   def hexagons_available?
-    hexagon_centers.present? &&
-      hexagon_centers.is_a?(Array) &&
-      hexagon_centers.any?
+    h3_hex_ids.present? &&
+      h3_hex_ids.is_a?(Hash) &&
+      h3_hex_ids.any?
   end
 
   def generate_new_sharing_uuid!

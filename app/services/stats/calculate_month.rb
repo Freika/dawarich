@@ -86,7 +86,7 @@ class Stats::CalculateMonth
         daily_distance: distance_by_day,
         distance: distance(distance_by_day),
         toponyms: toponyms,
-        hexagon_centers: calculate_hexagon_centers
+        h3_hex_ids: calculate_h3_hex_ids
       )
       stat.save
     end
@@ -132,22 +132,28 @@ class Stats::CalculateMonth
     Stat.where(year:, month:, user:).destroy_all
   end
 
-  def calculate_hexagon_centers
-    return nil if points.empty?
+  def calculate_h3_hex_ids
+    return {} if points.empty?
 
     begin
       result = calculate_h3_hexagon_centers
 
       if result.empty?
-        Rails.logger.info "No H3 hexagon centers calculated for user #{user.id}, #{year}-#{month} (no data)"
-        return nil
+        Rails.logger.info "No H3 hex IDs calculated for user #{user.id}, #{year}-#{month} (no data)"
+        return {}
       end
 
-      Rails.logger.info "Pre-calculated #{result.size} H3 hexagon centers for user #{user.id}, #{year}-#{month}"
-      result
+      # Convert array format to hash format: { h3_index => [count, earliest, latest] }
+      hex_hash = result.each_with_object({}) do |hex_data, hash|
+        h3_index, count, earliest, latest = hex_data
+        hash[h3_index] = [count, earliest, latest]
+      end
+
+      Rails.logger.info "Pre-calculated #{hex_hash.size} H3 hex IDs for user #{user.id}, #{year}-#{month}"
+      hex_hash
     rescue PostGISError => e
-      Rails.logger.warn "H3 hexagon centers calculation failed for user #{user.id}, #{year}-#{month}: #{e.message}"
-      nil
+      Rails.logger.warn "H3 hex IDs calculation failed for user #{user.id}, #{year}-#{month}: #{e.message}"
+      {}
     end
   end
 

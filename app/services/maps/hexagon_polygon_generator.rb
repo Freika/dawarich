@@ -2,10 +2,11 @@
 
 module Maps
   class HexagonPolygonGenerator
-    def initialize(center_lng:, center_lat:, h3_resolution: 5)
+    def initialize(center_lng: nil, center_lat: nil, h3_resolution: 5, h3_index: nil)
       @center_lng = center_lng
       @center_lat = center_lat
       @h3_resolution = h3_resolution
+      @h3_index = h3_index
     end
 
     def call
@@ -14,7 +15,7 @@ module Maps
 
     private
 
-    attr_reader :center_lng, :center_lat, :h3_resolution
+    attr_reader :center_lng, :center_lat, :h3_resolution, :h3_index
 
     def generate_h3_hexagon_polygon
       # Convert coordinates to H3 format [lat, lng]
