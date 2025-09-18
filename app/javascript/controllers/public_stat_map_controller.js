@@ -23,7 +23,6 @@ export default class extends BaseController {
   }
 
   disconnect() {
-    // No hexagonGrid to destroy for public sharing
     if (this.map) {
       this.map.remove();
     }
@@ -174,7 +173,6 @@ export default class extends BaseController {
         min_lat: dataBounds.min_lat,
         max_lon: dataBounds.max_lng,
         max_lat: dataBounds.max_lat,
-        h3_resolution: 8,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
         uuid: this.uuidValue
@@ -320,6 +318,4 @@ export default class extends BaseController {
       layer.setStyle(layer._originalStyle);
     }
   }
-
-
 }

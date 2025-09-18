@@ -91,8 +91,7 @@ class Stats::CalculateMonth
       service = Maps::H3HexagonCenters.new(
         user_id: user.id,
         start_date: start_date_iso8601,
-        end_date: end_date_iso8601,
-        h3_resolution: 8 # Small hexagons for good detail
+        end_date: end_date_iso8601
       )
 
       result = service.call

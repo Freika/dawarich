@@ -103,8 +103,7 @@ RSpec.describe Maps::HexagonPolygonGenerator do
           center_lng: center_lng,
           center_lat: center_lat,
           size_meters: size_meters,
-          use_h3: true,
-          h3_resolution: 5
+          use_h3: true
         )
       end
 
@@ -143,34 +142,6 @@ RSpec.describe Maps::HexagonPolygonGenerator do
 
         expect(longitudes.uniq.size).to be > 1 # Should have different longitudes
         expect(latitudes.uniq.size).to be > 1 # Should have different latitudes
-      end
-
-      context 'with different H3 resolution' do
-        it 'generates different sized hexagons' do
-          low_res_result = described_class.call(
-            center_lng: center_lng,
-            center_lat: center_lat,
-            use_h3: true,
-            h3_resolution: 3
-          )
-
-          high_res_result = described_class.call(
-            center_lng: center_lng,
-            center_lat: center_lat,
-            use_h3: true,
-            h3_resolution: 7
-          )
-
-          # Different resolutions should produce different hexagon sizes
-          low_res_coords = low_res_result['coordinates'].first
-          high_res_coords = high_res_result['coordinates'].first
-
-          # Calculate approximate size by measuring distance between vertices
-          low_res_size = calculate_hexagon_size(low_res_coords)
-          high_res_size = calculate_hexagon_size(high_res_coords)
-
-          expect(low_res_size).to be > high_res_size
-        end
       end
 
       context 'when H3 operations fail' do

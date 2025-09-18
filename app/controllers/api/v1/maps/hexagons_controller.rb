@@ -57,7 +57,7 @@ class Api::V1::Maps::HexagonsController < ApiController
   private
 
   def hexagon_params
-    params.permit(:h3_resolution, :uuid, :start_date, :end_date)
+    params.permit(:uuid, :start_date, :end_date)
   end
 
   def handle_service_error
@@ -79,7 +79,7 @@ class Api::V1::Maps::HexagonsController < ApiController
     end
 
     # Validate coordinate ranges
-    if !valid_coordinate_ranges?
+    unless valid_coordinate_ranges?
       render json: { error: 'Invalid coordinate ranges' }, status: :bad_request
       return false
     end
