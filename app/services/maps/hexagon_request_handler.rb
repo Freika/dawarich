@@ -2,24 +2,20 @@
 
 module Maps
   class HexagonRequestHandler
-    def initialize(params:, user: nil, context: nil)
+    def initialize(params:, user: nil, stat: nil, start_date: nil, end_date: nil)
       @params = params
       @user = user
-      @context = context
+      @stat = stat
+      @start_date = start_date
+      @end_date = end_date
     end
 
     def call
-      context = @context || resolve_context
-
       # For authenticated users, we need to find the matching stat
-      stat = context[:stat] || find_matching_stat(context)
+      stat ||= find_matching_stat
 
-      # Use pre-calculated hexagon centers
       if stat
-        cached_result = Maps::HexagonCenterManager.call(
-          stat: stat,
-          user: context[:user]
-        )
+        cached_result = Maps::HexagonCenterManager.new(stat:, user:).call
 
         return cached_result[:data] if cached_result&.dig(:success)
       end
@@ -31,22 +27,22 @@ module Maps
 
     private
 
-    attr_reader :params, :user, :context
+    attr_reader :params, :user, :stat, :start_date, :end_date
 
-    def find_matching_stat(context)
-      return unless context[:user] && context[:start_date]
+    def find_matching_stat
+      return unless user && start_date
 
       # Parse the date to extract year and month
-      if context[:start_date].is_a?(String)
-        date = Date.parse(context[:start_date])
-      elsif context[:start_date].is_a?(Time)
-        date = context[:start_date].to_date
+      if start_date.is_a?(String)
+        date = Date.parse(start_date)
+      elsif start_date.is_a?(Time)
+        date = start_date.to_date
       else
         return
       end
 
       # Find the stat for this user, year, and month
-      context[:user].stats.find_by(year: date.year, month: date.month)
+      user.stats.find_by(year: date.year, month: date.month)
     rescue Date::Error
       nil
     end

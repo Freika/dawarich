@@ -4,12 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Maps::HexagonCenterManager do
   describe '.call' do
-    subject(:manage_centers) do
-      described_class.call(
-        stat: stat,
-        target_user: target_user
-      )
-    end
+    subject(:manage_centers) { described_class.new(stat:, user:).call }
 
     let(:user) { create(:user) }
     let(:target_user) { user }

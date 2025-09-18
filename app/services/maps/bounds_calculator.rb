@@ -72,8 +72,6 @@ module Maps
         if param.match?(/^\d+$/)
           param.to_i
         else
-          # Use Time.parse for strict validation, then convert via Time.zone
-          parsed_time = Time.parse(param)  # This will raise ArgumentError for invalid dates
           Time.zone.parse(param).to_i
         end
       when Integer

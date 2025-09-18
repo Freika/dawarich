@@ -7,22 +7,14 @@ RSpec.describe Maps::HexagonRequestHandler do
     subject(:handle_request) do
       described_class.new(
         params: params,
-        user: current_api_user
+        user: user,
+        stat: nil,
+        start_date: params[:start_date],
+        end_date: params[:end_date]
       ).call
     end
 
     let(:user) { create(:user) }
-    let(:current_api_user) { user }
-
-    before do
-      stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-        .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-
-      # Clean up database state to avoid conflicts - order matters due to foreign keys
-      Point.delete_all
-      Stat.delete_all
-      User.delete_all
-    end
 
     context 'with authenticated user but no pre-calculated data' do
       let(:params) do
@@ -71,7 +63,6 @@ RSpec.describe Maps::HexagonRequestHandler do
           }
         )
       end
-      let(:current_api_user) { nil }
 
       it 'returns pre-calculated hexagon data' do
         result = handle_request
@@ -96,7 +87,6 @@ RSpec.describe Maps::HexagonRequestHandler do
           }
         )
       end
-      let(:current_api_user) { nil }
 
       it 'returns empty feature collection when no pre-calculated centers' do
         result = handle_request
@@ -124,7 +114,6 @@ RSpec.describe Maps::HexagonRequestHandler do
           }
         )
       end
-      let(:current_api_user) { nil }
 
       before do
         # Mock successful recalculation
@@ -141,23 +130,6 @@ RSpec.describe Maps::HexagonRequestHandler do
 
         # Verify that the stat was updated with new centers (reload to check persistence)
         expect(stat.reload.hexagon_centers).to eq([[-74.0, 40.7, 1_717_200_000, 1_717_203_600]])
-      end
-    end
-
-    context 'error handling' do
-      let(:params) do
-        ActionController::Parameters.new(
-          {
-            uuid: 'invalid-uuid'
-          }
-        )
-      end
-      let(:current_api_user) { nil }
-
-      it 'raises ActiveRecord::RecordNotFound for invalid UUID' do
-        expect { handle_request }.to raise_error(
-          ActiveRecord::RecordNotFound
-        )
       end
     end
   end

@@ -2,10 +2,6 @@
 
 module Maps
   class HexagonCenterManager
-    def self.call(stat:, user:)
-      new(stat: stat, user: user).call
-    end
-
     def initialize(stat:, user:)
       @stat = stat
       @user = user
@@ -86,11 +82,10 @@ module Maps
     end
 
     def generate_hexagon_geometry(lng, lat)
-      Maps::HexagonPolygonGenerator.call(
+      Maps::HexagonPolygonGenerator.new(
         center_lng: lng,
-        center_lat: lat,
-        size_meters: 1000
-      )
+        center_lat: lat
+      ).call
     end
 
     def build_hexagon_properties(index, earliest, latest)
