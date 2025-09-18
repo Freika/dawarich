@@ -31,12 +31,9 @@ module Maps
     end
 
     def coerce_string_param(param)
-      # Check if it's a numeric string (timestamp) or date string
-      if param.match?(/^\d+$/)
-        param.to_i
-      else
-        Time.parse(param).to_i
-      end
+      return param.to_i if param.match?(/^\d+$/)
+
+      Time.parse(param).to_i
     end
   end
 end
