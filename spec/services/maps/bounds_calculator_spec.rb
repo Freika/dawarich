@@ -6,7 +6,7 @@ RSpec.describe Maps::BoundsCalculator do
   describe '.call' do
     subject(:calculate_bounds) do
       described_class.new(
-        target_user: target_user,
+        user: target_user,
         start_date: start_date,
         end_date: end_date
       ).call

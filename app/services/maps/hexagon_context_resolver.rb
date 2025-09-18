@@ -4,13 +4,13 @@ module Maps
   class HexagonContextResolver
     class SharedStatsNotFoundError < StandardError; end
 
-    def self.call(params:, current_api_user: nil)
-      new(params: params, current_api_user: current_api_user).call
+    def self.call(params:, user: nil)
+      new(params: params, user: user).call
     end
 
-    def initialize(params:, current_api_user: nil)
+    def initialize(params:, user: nil)
       @params = params
-      @current_api_user = current_api_user
+      @user = user
     end
 
     def call
@@ -21,7 +21,7 @@ module Maps
 
     private
 
-    attr_reader :params, :current_api_user
+    attr_reader :params, :user
 
     def public_sharing_request?
       params[:uuid].present?
@@ -46,7 +46,7 @@ module Maps
 
     def resolve_authenticated_context
       {
-        target_user: current_api_user,
+        user: user,
         start_date: params[:start_date],
         end_date: params[:end_date],
         stat: nil

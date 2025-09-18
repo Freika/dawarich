@@ -2,9 +2,9 @@
 
 module Maps
   class H3HexagonRenderer
-    def initialize(params:, current_api_user: nil)
+    def initialize(params:, user: nil)
       @params = params
-      @current_api_user = current_api_user
+      @user = user
     end
 
     def call
@@ -18,12 +18,12 @@ module Maps
 
     private
 
-    attr_reader :params, :current_api_user
+    attr_reader :params, :user
 
     def resolve_context
       Maps::HexagonContextResolver.call(
         params: params,
-        current_api_user: current_api_user
+        user: user
       )
     end
 

@@ -7,7 +7,7 @@ RSpec.describe Maps::HexagonRequestHandler do
     subject(:handle_request) do
       described_class.new(
         params: params,
-        current_api_user: current_api_user
+        user: current_api_user
       ).call
     end
 

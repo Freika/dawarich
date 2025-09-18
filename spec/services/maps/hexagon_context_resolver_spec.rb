@@ -7,7 +7,7 @@ RSpec.describe Maps::HexagonContextResolver do
     subject(:resolve_context) do
       described_class.call(
         params: params,
-        current_api_user: current_api_user
+        user: current_api_user
       )
     end
 
@@ -25,12 +25,14 @@ RSpec.describe Maps::HexagonContextResolver do
       it 'resolves authenticated context' do
         result = resolve_context
 
-        expect(result).to match({
-          target_user: current_api_user,
-          start_date: '2024-06-01T00:00:00Z',
-          end_date: '2024-06-30T23:59:59Z',
-          stat: nil
-        })
+        expect(result).to match(
+          {
+            user: current_api_user,
+            start_date: '2024-06-01T00:00:00Z',
+            end_date: '2024-06-30T23:59:59Z',
+            stat: nil
+          }
+        )
       end
     end
 
