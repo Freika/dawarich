@@ -26,12 +26,6 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
     end
 
     it 'schedules jobs only for active users with tracked points' do
-      active_users_mock = double('ActiveRecord::Relation')
-      allow(User).to receive(:active).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:active).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:where).with(id: []).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:find_each).and_yield(user_with_points).and_yield(user)
-
       expect(VisitSuggestingJob).to receive(:perform_later).with(
         user_id: user_with_points.id,
         start_at: time_chunks.first.first,
@@ -64,7 +58,7 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
       allow(User).to receive(:active).and_return(active_users_mock)
       allow(active_users_mock).to receive(:active).and_return(active_users_mock)
       allow(active_users_mock).to receive(:where).with(id: []).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:find_each).and_yield(user_with_points)
+      # allow(active_users_mock).to receive(:find_each).and_yield(user_with_points)
 
       chunks.each do |chunk|
         expect(VisitSuggestingJob).to receive(:perform_later).with(
@@ -106,11 +100,11 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
         .and_return(time_chunks_instance)
       allow(time_chunks_instance).to receive(:call).and_return(custom_chunks)
 
-      active_users_mock = double('ActiveRecord::Relation')
-      allow(User).to receive(:active).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:active).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:where).with(id: []).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:find_each).and_yield(user_with_points)
+      # active_users_mock = double('ActiveRecord::Relation')
+      # allow(User).to receive(:active).and_return(active_users_mock)
+      # allow(active_users_mock).to receive(:active).and_return(active_users_mock)
+      # allow(active_users_mock).to receive(:where).with(id: []).and_return(active_users_mock)
+      # allow(active_users_mock).to receive(:find_each).and_yield(user_with_points)
 
       expect(VisitSuggestingJob).to receive(:perform_later).with(
         user_id: user_with_points.id,

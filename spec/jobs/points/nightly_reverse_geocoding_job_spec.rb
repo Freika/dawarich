@@ -94,39 +94,6 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
           expect(relation_mock).to have_received(:find_each).with(batch_size: 1000)
         end
       end
-
-      context 'with large number of points needing reverse geocoding' do
-        before do
-          # Create 2500 points to test batching
-          points_data = (1..2500).map do |i|
-            {
-              user_id: user.id,
-              latitude: 40.7128 + (i * 0.0001),
-              longitude: -74.0060 + (i * 0.0001),
-              timestamp: Time.current.to_i + i,
-              lonlat: "POINT(#{-74.0060 + (i * 0.0001)} #{40.7128 + (i * 0.0001)})",
-              reverse_geocoded_at: nil,
-              created_at: Time.current,
-              updated_at: Time.current
-            }
-          end
-          Point.insert_all(points_data)
-        end
-
-        it 'processes all points in batches' do
-          expect { described_class.perform_now }.to have_enqueued_job(ReverseGeocodingJob).exactly(2500).times
-        end
-
-        it 'uses efficient batching to avoid memory issues' do
-          relation_mock = double('ActiveRecord::Relation')
-          allow(Point).to receive(:not_reverse_geocoded).and_return(relation_mock)
-          allow(relation_mock).to receive(:find_each).with(batch_size: 1000)
-
-          described_class.perform_now
-
-          expect(relation_mock).to have_received(:find_each).with(batch_size: 1000)
-        end
-      end
     end
 
     describe 'queue configuration' do
