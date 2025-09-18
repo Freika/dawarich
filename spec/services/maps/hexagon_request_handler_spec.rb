@@ -154,9 +154,9 @@ RSpec.describe Maps::HexagonRequestHandler do
       end
       let(:current_api_user) { nil }
 
-      it 'raises SharedStatsNotFoundError for invalid UUID' do
+      it 'raises ActiveRecord::RecordNotFound for invalid UUID' do
         expect { handle_request }.to raise_error(
-          Maps::HexagonContextResolver::SharedStatsNotFoundError
+          ActiveRecord::RecordNotFound
         )
       end
     end

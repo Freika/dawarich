@@ -2,13 +2,13 @@
 
 module Maps
   class HexagonCenterManager
-    def self.call(stat:, target_user:)
-      new(stat: stat, target_user: target_user).call
+    def self.call(stat:, user:)
+      new(stat: stat, user: user).call
     end
 
-    def initialize(stat:, target_user:)
+    def initialize(stat:, user:)
       @stat = stat
-      @target_user = target_user
+      @user = user
     end
 
     def call
@@ -20,7 +20,7 @@ module Maps
 
     private
 
-    attr_reader :stat, :target_user
+    attr_reader :stat, :user
 
     def pre_calculated_centers_available?
       return false if stat&.hexagon_centers.blank?
@@ -56,7 +56,7 @@ module Maps
     end
 
     def recalculate_hexagon_centers
-      service = Stats::CalculateMonth.new(target_user.id, stat.year, stat.month)
+      service = Stats::CalculateMonth.new(user.id, stat.year, stat.month)
       service.send(:calculate_hexagon_centers)
     end
 
@@ -107,7 +107,7 @@ module Maps
         'features' => hexagon_features,
         'metadata' => {
           'count' => hexagon_features.count,
-          'user_id' => target_user.id,
+          'user_id' => user.id,
           'pre_calculated' => true
         }
       }

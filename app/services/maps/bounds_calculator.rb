@@ -14,8 +14,8 @@ module Maps
     def call
       validate_inputs!
 
-      start_timestamp = Maps::DateParameterCoercer.new(@start_date).call
-      end_timestamp = Maps::DateParameterCoercer.new(@end_date).call
+      start_timestamp = parse_date_parameter(@start_date)
+      end_timestamp = parse_date_parameter(@end_date)
 
       points_relation = @user.points.where(timestamp: start_timestamp..end_timestamp)
       point_count = points_relation.count
@@ -64,6 +64,26 @@ module Maps
         error: 'No data found for the specified date range',
         point_count: 0
       }
+    end
+
+    def parse_date_parameter(param)
+      case param
+      when String
+        if param.match?(/^\d+$/)
+          param.to_i
+        else
+          # Use Time.parse for strict validation, then convert via Time.zone
+          parsed_time = Time.parse(param)  # This will raise ArgumentError for invalid dates
+          Time.zone.parse(param).to_i
+        end
+      when Integer
+        param
+      else
+        param.to_i
+      end
+    rescue ArgumentError => e
+      Rails.logger.error "Invalid date format: #{param} - #{e.message}"
+      raise ArgumentError, "Invalid date format: #{param}"
     end
   end
 end

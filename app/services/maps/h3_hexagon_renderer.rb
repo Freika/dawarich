@@ -2,13 +2,14 @@
 
 module Maps
   class H3HexagonRenderer
-    def initialize(params:, user: nil)
+    def initialize(params:, user: nil, context: nil)
       @params = params
       @user = user
+      @context = context
     end
 
     def call
-      context = resolve_context
+      context = @context || resolve_context
       h3_data = get_h3_hexagon_data(context)
 
       return empty_feature_collection if h3_data.empty?
@@ -18,14 +19,7 @@ module Maps
 
     private
 
-    attr_reader :params, :user
-
-    def resolve_context
-      Maps::HexagonContextResolver.call(
-        params: params,
-        user: user
-      )
-    end
+    attr_reader :params, :user, :context
 
     def get_h3_hexagon_data(context)
       # For public sharing, get pre-calculated data from stat
@@ -52,12 +46,14 @@ module Maps
       end_date = parse_date_for_h3(context[:end_date])
       h3_resolution = params[:h3_resolution]&.to_i&.clamp(0, 15) || 6
 
-      Maps::H3HexagonCenters.new(
-        user_id: context[:target_user]&.id,
+      # Use dummy year/month since we're only using the H3 calculation method
+      stats_service = Stats::CalculateMonth.new(context[:user]&.id, 2024, 1)
+      stats_service.calculate_h3_hexagon_centers(
+        user_id: context[:user]&.id,
         start_date: start_date,
         end_date: end_date,
         h3_resolution: h3_resolution
-      ).call
+      )
     end
 
     def convert_h3_to_geojson(h3_data)
@@ -124,8 +120,17 @@ module Maps
       return Time.zone.at(date_param) if date_param.is_a?(Integer)
 
       # For other cases, try coercing and converting
-      timestamp = Maps::DateParameterCoercer.new(date_param).call
-      Time.zone.at(timestamp)
+      case date_param
+      when String
+        date_param.match?(/^\d+$/) ? Time.zone.at(date_param.to_i) : Time.zone.parse(date_param)
+      when Integer
+        Time.zone.at(date_param)
+      else
+        Time.zone.at(date_param.to_i)
+      end
+    rescue ArgumentError => e
+      Rails.logger.error "Invalid date format: #{date_param} - #{e.message}"
+      raise ArgumentError, "Invalid date format: #{date_param}"
     end
   end
 end

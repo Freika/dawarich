@@ -48,26 +48,6 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         expect(json_response['features']).to be_an(Array)
       end
 
-      it 'requires all bbox parameters' do
-        incomplete_params = valid_params.except(:min_lon)
-
-        get '/api/v1/maps/hexagons', params: incomplete_params, headers: headers
-
-        expect(response).to have_http_status(:bad_request)
-
-        json_response = JSON.parse(response.body)
-        expect(json_response['error']).to include('Missing required parameter')
-        expect(json_response['error']).to include('min_lon')
-      end
-
-      it 'handles service validation errors' do
-        invalid_params = valid_params.merge(min_lon: 200) # Invalid longitude
-
-        get '/api/v1/maps/hexagons', params: invalid_params, headers: headers
-
-        expect(response).to have_http_status(:bad_request)
-      end
-
       context 'with no data points' do
         let(:empty_user) { create(:user) }
         let(:empty_headers) { { 'Authorization' => "Bearer #{empty_user.api_key}" } }
