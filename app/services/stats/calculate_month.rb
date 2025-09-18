@@ -103,9 +103,7 @@ class Stats::CalculateMonth
 
       Rails.logger.info "Pre-calculated #{result.size} H3 hexagon centers for user #{user.id}, #{year}-#{month}"
       result
-    rescue Maps::H3HexagonCenters::TooManyHexagonsError,
-           Maps::H3HexagonCenters::InvalidCoordinatesError,
-           Maps::H3HexagonCenters::PostGISError => e
+    rescue Maps::H3HexagonCenters::PostGISError => e
       Rails.logger.warn "H3 hexagon centers calculation failed for user #{user.id}, #{year}-#{month}: #{e.message}"
       nil
     end

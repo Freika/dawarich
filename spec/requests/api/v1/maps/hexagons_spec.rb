@@ -17,7 +17,6 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         min_lat: 40.6,
         max_lon: -73.9,
         max_lat: 40.8,
-        hex_size: 1000,
         start_date: '2024-06-01T00:00:00Z',
         end_date: '2024-06-30T23:59:59Z'
       }
@@ -57,7 +56,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         expect(response).to have_http_status(:bad_request)
 
         json_response = JSON.parse(response.body)
-        expect(json_response['error']).to include('Missing required parameters')
+        expect(json_response['error']).to include('Missing required parameter')
         expect(json_response['error']).to include('min_lon')
       end
 
@@ -68,15 +67,6 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
 
         expect(response).to have_http_status(:bad_request)
       end
-
-      it 'uses custom hex_size when provided' do
-        custom_params = valid_params.merge(hex_size: 500)
-
-        get '/api/v1/maps/hexagons', params: custom_params, headers: headers
-
-        expect(response).to have_http_status(:success)
-      end
-
 
       context 'with no data points' do
         let(:empty_user) { create(:user) }
@@ -233,7 +223,6 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
           # Verify properties include timestamp data
           expect(feature['properties']['earliest_point']).to be_present
           expect(feature['properties']['latest_point']).to be_present
-          expect(feature['properties']['hex_size']).to eq(1000)
         end
 
         it 'generates proper hexagon polygons from centers' do

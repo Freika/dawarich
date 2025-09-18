@@ -48,7 +48,6 @@ RSpec.describe Maps::HexagonCenterManager do
 
           properties = feature['properties']
           expect(properties['hex_id']).to eq(index + 1)
-          expect(properties['hex_size']).to eq(1000)
           expect(properties['earliest_point']).to be_present
           expect(properties['latest_point']).to be_present
         end

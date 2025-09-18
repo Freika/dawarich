@@ -96,7 +96,6 @@ module Maps
     def build_hexagon_properties(index, earliest, latest)
       {
         'hex_id' => index + 1,
-        'hex_size' => 1000,
         'earliest_point' => earliest ? Time.zone.at(earliest).iso8601 : nil,
         'latest_point' => latest ? Time.zone.at(latest).iso8601 : nil
       }
@@ -107,7 +106,6 @@ module Maps
         'type' => 'FeatureCollection',
         'features' => hexagon_features,
         'metadata' => {
-          'hex_size_m' => 1000,
           'count' => hexagon_features.count,
           'user_id' => target_user.id,
           'pre_calculated' => true

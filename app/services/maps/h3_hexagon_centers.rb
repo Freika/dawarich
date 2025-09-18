@@ -7,14 +7,9 @@ class Maps::H3HexagonCenters
   DEFAULT_H3_RESOLUTION = 8 # Small hexagons for good detail
   MAX_HEXAGONS = 10_000 # Maximum number of hexagons to prevent memory issues
 
-  # Validation error classes
-  class TooManyHexagonsError < StandardError; end
-  class InvalidCoordinatesError < StandardError; end
   class PostGISError < StandardError; end
 
   attr_reader :user_id, :start_date, :end_date, :h3_resolution
-
-  validates :user_id, presence: true
 
   def initialize(user_id:, start_date:, end_date:, h3_resolution: DEFAULT_H3_RESOLUTION)
     @user_id = user_id
@@ -24,8 +19,6 @@ class Maps::H3HexagonCenters
   end
 
   def call
-    validate!
-
     points = fetch_user_points
     return [] if points.empty?
 
@@ -103,11 +96,5 @@ class Maps::H3HexagonCenters
     )
 
     service.call
-  end
-
-  def validate!
-    return if valid?
-
-    raise InvalidCoordinatesError, errors.full_messages.join(', ')
   end
 end

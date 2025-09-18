@@ -4,10 +4,9 @@ module Maps
   class BoundsCalculator
     class NoUserFoundError < StandardError; end
     class NoDateRangeError < StandardError; end
-    class NoDataFoundError < StandardError; end
 
-    def initialize(target_user:, start_date:, end_date:)
-      @target_user = target_user
+    def initialize(user:, start_date:, end_date:)
+      @user = user
       @start_date = start_date
       @end_date = end_date
     end
@@ -18,7 +17,7 @@ module Maps
       start_timestamp = Maps::DateParameterCoercer.new(@start_date).call
       end_timestamp = Maps::DateParameterCoercer.new(@end_date).call
 
-      points_relation = @target_user.points.where(timestamp: start_timestamp..end_timestamp)
+      points_relation = @user.points.where(timestamp: start_timestamp..end_timestamp)
       point_count = points_relation.count
 
       return build_no_data_response if point_count.zero?
@@ -30,7 +29,7 @@ module Maps
     private
 
     def validate_inputs!
-      raise NoUserFoundError, 'No user found' unless @target_user
+      raise NoUserFoundError, 'No user found' unless @user
       raise NoDateRangeError, 'No date range specified' unless @start_date && @end_date
     end
 
@@ -42,7 +41,7 @@ module Maps
          WHERE user_id = $1
          AND timestamp BETWEEN $2 AND $3",
         'bounds_query',
-        [@target_user.id, start_timestamp, end_timestamp]
+        [@user.id, start_timestamp, end_timestamp]
       ).first
     end
 

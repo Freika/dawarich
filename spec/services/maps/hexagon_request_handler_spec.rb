@@ -5,10 +5,10 @@ require 'rails_helper'
 RSpec.describe Maps::HexagonRequestHandler do
   describe '.call' do
     subject(:handle_request) do
-      described_class.call(
+      described_class.new(
         params: params,
         current_api_user: current_api_user
-      )
+      ).call
     end
 
     let(:user) { create(:user) }
@@ -32,7 +32,6 @@ RSpec.describe Maps::HexagonRequestHandler do
             min_lat: 40.6,
             max_lon: -73.9,
             max_lat: 40.8,
-            hex_size: 1000,
             start_date: '2024-06-01T00:00:00Z',
             end_date: '2024-06-30T23:59:59Z'
           }
@@ -68,8 +67,7 @@ RSpec.describe Maps::HexagonRequestHandler do
             min_lon: -74.1,
             min_lat: 40.6,
             max_lon: -73.9,
-            max_lat: 40.8,
-            hex_size: 1000
+            max_lat: 40.8
           }
         )
       end
@@ -94,8 +92,7 @@ RSpec.describe Maps::HexagonRequestHandler do
             min_lon: -74.1,
             min_lat: 40.6,
             max_lon: -73.9,
-            max_lat: 40.8,
-            hex_size: 1000
+            max_lat: 40.8
           }
         )
       end
@@ -123,8 +120,7 @@ RSpec.describe Maps::HexagonRequestHandler do
             min_lon: -74.1,
             min_lat: 40.6,
             max_lon: -73.9,
-            max_lat: 40.8,
-            hex_size: 1000
+            max_lat: 40.8
           }
         )
       end
@@ -147,7 +143,6 @@ RSpec.describe Maps::HexagonRequestHandler do
         expect(stat.reload.hexagon_centers).to eq([[-74.0, 40.7, 1_717_200_000, 1_717_203_600]])
       end
     end
-
 
     context 'error handling' do
       let(:params) do
