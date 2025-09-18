@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Maps::DateParameterCoercer do
   describe '.call' do
-    subject(:coerce_date) { described_class.call(param) }
+    subject(:coerce_date) { described_class.new(param).call }
 
     context 'with integer parameter' do
       let(:param) { 1_717_200_000 }

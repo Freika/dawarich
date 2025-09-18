@@ -4,7 +4,9 @@ class Api::V1::Maps::HexagonsController < ApiController
   skip_before_action :authenticate_api_key, if: :public_sharing_request?
 
   def index
-    result = Maps::H3HexagonRenderer.call(
+    return unless public_sharing_request? || validate_required_parameters
+
+    result = Maps::HexagonRequestHandler.call(
       params: params,
       current_api_user: current_api_user
     )
@@ -28,11 +30,11 @@ class Api::V1::Maps::HexagonsController < ApiController
       current_api_user: current_api_user
     )
 
-    result = Maps::BoundsCalculator.call(
+    result = Maps::BoundsCalculator.new(
       target_user: context[:target_user],
       start_date: context[:start_date],
       end_date: context[:end_date]
-    )
+    ).call
 
     if result[:success]
       render json: result[:data]
@@ -64,5 +66,40 @@ class Api::V1::Maps::HexagonsController < ApiController
 
   def public_sharing_request?
     params[:uuid].present?
+  end
+
+  def validate_required_parameters
+    required_params = %i[min_lon max_lon min_lat max_lat start_date end_date]
+    missing_params = required_params.select { |param| params[param].blank? }
+
+    unless missing_params.empty?
+      error_message = "Missing required parameters: #{missing_params.join(', ')}"
+      render json: { error: error_message }, status: :bad_request
+      return false
+    end
+
+    # Validate coordinate ranges
+    if !valid_coordinate_ranges?
+      render json: { error: 'Invalid coordinate ranges' }, status: :bad_request
+      return false
+    end
+
+    true
+  end
+
+  def valid_coordinate_ranges?
+    min_lon = params[:min_lon].to_f
+    max_lon = params[:max_lon].to_f
+    min_lat = params[:min_lat].to_f
+    max_lat = params[:max_lat].to_f
+
+    # Check longitude range (-180 to 180)
+    return false unless (-180..180).cover?(min_lon) && (-180..180).cover?(max_lon)
+    # Check latitude range (-90 to 90)
+    return false unless (-90..90).cover?(min_lat) && (-90..90).cover?(max_lat)
+    # Check that min values are less than max values
+    return false unless min_lon < max_lon && min_lat < max_lat
+
+    true
   end
 end

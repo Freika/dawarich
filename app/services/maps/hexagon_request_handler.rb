@@ -14,19 +14,22 @@ module Maps
     def call
       context = resolve_context
 
-      # Try to use pre-calculated hexagon centers first
-      if context[:stat]
+      # For authenticated users, we need to find the matching stat
+      stat = context[:stat] || find_matching_stat(context)
+
+      # Use pre-calculated hexagon centers
+      if stat
         cached_result = Maps::HexagonCenterManager.call(
-          stat: context[:stat],
+          stat: stat,
           target_user: context[:target_user]
         )
 
         return cached_result[:data] if cached_result&.dig(:success)
       end
 
-      # Fall back to on-the-fly calculation
-      Rails.logger.debug 'No pre-calculated data available, calculating hexagons on-the-fly'
-      generate_hexagons_on_the_fly(context)
+      # No pre-calculated data available - return empty feature collection
+      Rails.logger.debug 'No pre-calculated hexagon centers available'
+      empty_feature_collection
     end
 
     private
@@ -40,58 +43,35 @@ module Maps
       )
     end
 
-    def generate_hexagons_on_the_fly(context)
-      # Parse dates for H3 calculator which expects Time objects
-      start_date = parse_date_for_h3(context[:start_date])
-      end_date = parse_date_for_h3(context[:end_date])
 
-      result = Maps::H3HexagonCalculator.new(
-        context[:target_user]&.id,
-        start_date,
-        end_date,
-        h3_resolution
-      ).call
+    def find_matching_stat(context)
+      return unless context[:target_user] && context[:start_date]
 
-      return result[:data] if result[:success]
+      # Parse the date to extract year and month
+      if context[:start_date].is_a?(String)
+        date = Date.parse(context[:start_date])
+      elsif context[:start_date].is_a?(Time)
+        date = context[:start_date].to_date
+      else
+        return
+      end
 
-      # If H3 calculation fails, log error and return empty feature collection
-      Rails.logger.error "H3 calculation failed: #{result[:error]}"
-      empty_feature_collection
+      # Find the stat for this user, year, and month
+      context[:target_user].stats.find_by(year: date.year, month: date.month)
+    rescue Date::Error
+      nil
     end
 
     def empty_feature_collection
       {
-        type: 'FeatureCollection',
-        features: [],
-        metadata: {
-          hexagon_count: 0,
-          total_points: 0,
-          source: 'h3'
+        'type' => 'FeatureCollection',
+        'features' => [],
+        'metadata' => {
+          'hexagon_count' => 0,
+          'total_points' => 0,
+          'source' => 'pre_calculated'
         }
       }
-    end
-
-    def h3_resolution
-      # Allow custom resolution via parameter, default to 8
-      resolution = params[:h3_resolution]&.to_i || 8
-
-      # Clamp to valid H3 resolution range (0-15)
-      resolution.clamp(0, 15)
-    end
-
-    def parse_date_for_h3(date_param)
-      # If already a Time object (from public sharing context), return as-is
-      return date_param if date_param.is_a?(Time)
-
-      # If it's a string ISO date, parse it directly to Time
-      return Time.parse(date_param) if date_param.is_a?(String)
-
-      # If it's an integer timestamp, convert to Time
-      return Time.at(date_param) if date_param.is_a?(Integer)
-
-      # For other cases, try coercing and converting
-      timestamp = Maps::DateParameterCoercer.call(date_param)
-      Time.at(timestamp)
     end
   end
 end

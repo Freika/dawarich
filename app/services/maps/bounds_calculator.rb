@@ -6,10 +6,6 @@ module Maps
     class NoDateRangeError < StandardError; end
     class NoDataFoundError < StandardError; end
 
-    def self.call(target_user:, start_date:, end_date:)
-      new(target_user: target_user, start_date: start_date, end_date: end_date).call
-    end
-
     def initialize(target_user:, start_date:, end_date:)
       @target_user = target_user
       @start_date = start_date
@@ -19,8 +15,8 @@ module Maps
     def call
       validate_inputs!
 
-      start_timestamp = Maps::DateParameterCoercer.call(@start_date)
-      end_timestamp = Maps::DateParameterCoercer.call(@end_date)
+      start_timestamp = Maps::DateParameterCoercer.new(@start_date).call
+      end_timestamp = Maps::DateParameterCoercer.new(@end_date).call
 
       points_relation = @target_user.points.where(timestamp: start_timestamp..end_timestamp)
       point_count = points_relation.count

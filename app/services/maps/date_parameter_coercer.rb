@@ -4,10 +4,6 @@ module Maps
   class DateParameterCoercer
     class InvalidDateFormatError < StandardError; end
 
-    def self.call(param)
-      new(param).call
-    end
-
     def initialize(param)
       @param = param
     end

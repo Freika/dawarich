@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Fix a bug where some points from Owntracks were not being processed correctly which prevented import from being created. #1745
+- Hexagons for the stats page are now being calculated a lot faster.
+- Prometheus exporter is now not being started when console is being run.
+- Stats will now properly reflect countries and cities visited after importing new points.
+
+## Changed
+
+- Onboarding modal window now features a link to the App Store and a QR code to configure the Dawarich iOS app.
+
 
 # [0.32.0] - 2025-09-13
 

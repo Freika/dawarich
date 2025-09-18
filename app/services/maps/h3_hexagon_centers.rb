@@ -34,7 +34,7 @@ class Maps::H3HexagonCenters
     if h3_indexes_with_counts.size > MAX_HEXAGONS
       Rails.logger.warn "Too many hexagons (#{h3_indexes_with_counts.size}), using lower resolution"
       # Try with lower resolution (larger hexagons)
-      return recalculate_with_lower_resolution(points)
+      return recalculate_with_lower_resolution
     end
 
     Rails.logger.info "Generated #{h3_indexes_with_counts.size} H3 hexagons at resolution #{h3_resolution} for user #{user_id}"
@@ -50,20 +50,23 @@ class Maps::H3HexagonCenters
     end
   rescue StandardError => e
     message = "Failed to calculate H3 hexagon centers: #{e.message}"
-    ExceptionReporter.call(e, message) if defined?(ExceptionReporter)
+    ExceptionReporter.call(e, message)
     raise PostGISError, message
   end
 
   private
 
   def fetch_user_points
-    start_timestamp = parse_date_to_timestamp(start_date)
-    end_timestamp = parse_date_to_timestamp(end_date)
+    start_timestamp = Maps::DateParameterCoercer.new(start_date).call
+    end_timestamp = Maps::DateParameterCoercer.new(end_date).call
 
     Point.where(user_id: user_id)
          .where(timestamp: start_timestamp..end_timestamp)
          .where.not(lonlat: nil)
          .select(:id, :lonlat, :timestamp)
+  rescue Maps::DateParameterCoercer::InvalidDateFormatError => e
+    ExceptionReporter.call(e, e.message) if defined?(ExceptionReporter)
+    raise ArgumentError, e.message
   end
 
   def calculate_h3_indexes(points)
@@ -86,7 +89,7 @@ class Maps::H3HexagonCenters
     h3_data
   end
 
-  def recalculate_with_lower_resolution(points)
+  def recalculate_with_lower_resolution
     # Try with resolution 2 levels lower (4x larger hexagons)
     lower_resolution = [h3_resolution - 2, 0].max
 
@@ -100,24 +103,6 @@ class Maps::H3HexagonCenters
     )
 
     service.call
-  end
-
-  def parse_date_to_timestamp(date)
-    case date
-    when String
-      if date.match?(/^\d+$/)
-        date.to_i
-      else
-        Time.parse(date).to_i
-      end
-    when Integer
-      date
-    else
-      Time.parse(date.to_s).to_i
-    end
-  rescue ArgumentError => e
-    ExceptionReporter.call(e, "Invalid date format: #{date}") if defined?(ExceptionReporter)
-    raise ArgumentError, "Invalid date format: #{date}"
   end
 
   def validate!

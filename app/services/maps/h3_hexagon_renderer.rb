@@ -2,10 +2,6 @@
 
 module Maps
   class H3HexagonRenderer
-    def self.call(params:, current_api_user: nil)
-      new(params: params, current_api_user: current_api_user).call
-    end
-
     def initialize(params:, current_api_user: nil)
       @params = params
       @current_api_user = current_api_user
@@ -47,7 +43,7 @@ module Maps
       end
 
       # For authenticated users, calculate on-the-fly if no pre-calculated data
-      Rails.logger.debug "No pre-calculated H3 data, calculating on-the-fly"
+      Rails.logger.debug 'No pre-calculated H3 data, calculating on-the-fly'
       generate_h3_data_on_the_fly(context)
     end
 
@@ -56,14 +52,12 @@ module Maps
       end_date = parse_date_for_h3(context[:end_date])
       h3_resolution = params[:h3_resolution]&.to_i&.clamp(0, 15) || 6
 
-      service = Maps::H3HexagonCenters.new(
+      Maps::H3HexagonCenters.new(
         user_id: context[:target_user]&.id,
         start_date: start_date,
         end_date: end_date,
         h3_resolution: h3_resolution
-      )
-
-      service.call
+      ).call
     end
 
     def convert_h3_to_geojson(h3_data)
@@ -124,14 +118,14 @@ module Maps
       return date_param if date_param.is_a?(Time)
 
       # If it's a string ISO date, parse it directly to Time
-      return Time.parse(date_param) if date_param.is_a?(String)
+      return Time.zone.parse(date_param) if date_param.is_a?(String)
 
       # If it's an integer timestamp, convert to Time
-      return Time.at(date_param) if date_param.is_a?(Integer)
+      return Time.zone.at(date_param) if date_param.is_a?(Integer)
 
       # For other cases, try coercing and converting
-      timestamp = Maps::DateParameterCoercer.call(date_param)
-      Time.at(timestamp)
+      timestamp = Maps::DateParameterCoercer.new(date_param).call
+      Time.zone.at(timestamp)
     end
   end
 end

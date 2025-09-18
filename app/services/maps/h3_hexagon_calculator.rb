@@ -2,7 +2,7 @@
 
 module Maps
   class H3HexagonCalculator
-    def initialize(user_id, start_date, end_date, h3_resolution = 5)
+    def initialize(user_id, start_date, end_date, h3_resolution = 8)
       @user_id = user_id
       @start_date = start_date
       @end_date = end_date
@@ -32,7 +32,8 @@ module Maps
     attr_reader :user_id, :start_date, :end_date, :h3_resolution
 
     def fetch_user_points
-      Point.where(user_id: user_id)
+      Point.without_raw_data
+           .where(user_id: user_id)
            .where(timestamp: start_date.to_i..end_date.to_i)
            .where.not(lonlat: nil)
            .select(:id, :lonlat, :timestamp)

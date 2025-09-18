@@ -5,11 +5,11 @@ require 'rails_helper'
 RSpec.describe Maps::BoundsCalculator do
   describe '.call' do
     subject(:calculate_bounds) do
-      described_class.call(
+      described_class.new(
         target_user: target_user,
         start_date: start_date,
         end_date: end_date
-      )
+      ).call
     end
 
     let(:user) { create(:user) }
@@ -29,16 +29,18 @@ RSpec.describe Maps::BoundsCalculator do
       end
 
       it 'returns success with bounds data' do
-        expect(calculate_bounds).to match({
-          success: true,
-          data: {
-            min_lat: 40.6,
-            max_lat: 40.8,
-            min_lng: -74.1,
-            max_lng: -73.9,
-            point_count: 3
+        expect(calculate_bounds).to match(
+          {
+            success: true,
+            data: {
+              min_lat: 40.6,
+              max_lat: 40.8,
+              min_lng: -74.1,
+              max_lng: -73.9,
+              point_count: 3
+            }
           }
-        })
+        )
       end
     end
 
@@ -50,11 +52,13 @@ RSpec.describe Maps::BoundsCalculator do
       end
 
       it 'returns failure with no data message' do
-        expect(calculate_bounds).to match({
-          success: false,
-          error: 'No data found for the specified date range',
-          point_count: 0
-        })
+        expect(calculate_bounds).to match(
+          {
+            success: false,
+            error: 'No data found for the specified date range',
+            point_count: 0
+          }
+        )
       end
     end
 
