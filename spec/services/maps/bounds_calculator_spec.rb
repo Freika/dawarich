@@ -95,14 +95,11 @@ RSpec.describe Maps::BoundsCalculator do
       end
     end
 
-    context 'with lenient date parsing' do
+    context 'with invalid date parsing' do
       let(:start_date) { 'invalid-date' }
 
-      it 'handles invalid dates gracefully via Time.zone.parse' do
-        # Time.zone.parse is very lenient and rarely raises errors
-        # It will parse 'invalid-date' as a valid time
-        result = calculate_bounds
-        expect(result[:success]).to be false # No points in weird date range
+      it 'raises ArgumentError for invalid dates' do
+        expect { calculate_bounds }.to raise_error(ArgumentError, 'Invalid date format: invalid-date')
       end
     end
 

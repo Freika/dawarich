@@ -8,15 +8,18 @@ RSpec.describe Maps::HexagonRequestHandler do
       described_class.new(
         params: params,
         user: user,
-        stat: nil,
-        start_date: params[:start_date],
-        end_date: params[:end_date]
+        stat: stat,
+        start_date: start_date,
+        end_date: end_date
       ).call
     end
 
     let(:user) { create(:user) }
 
     context 'with authenticated user but no pre-calculated data' do
+      let(:stat) { nil }
+      let(:start_date) { '2024-06-01T00:00:00Z' }
+      let(:end_date) { '2024-06-30T23:59:59Z' }
       let(:params) do
         ActionController::Parameters.new(
           {
@@ -24,8 +27,8 @@ RSpec.describe Maps::HexagonRequestHandler do
             min_lat: 40.6,
             max_lon: -73.9,
             max_lat: 40.8,
-            start_date: '2024-06-01T00:00:00Z',
-            end_date: '2024-06-30T23:59:59Z'
+            start_date: start_date,
+            end_date: end_date
           }
         )
       end
@@ -52,6 +55,8 @@ RSpec.describe Maps::HexagonRequestHandler do
         create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6,
                h3_hex_ids: pre_calculated_centers)
       end
+      let(:start_date) { Date.new(2024, 6, 1).beginning_of_day.iso8601 }
+      let(:end_date) { Date.new(2024, 6, 1).end_of_month.end_of_day.iso8601 }
       let(:params) do
         ActionController::Parameters.new(
           {
@@ -76,6 +81,8 @@ RSpec.describe Maps::HexagonRequestHandler do
 
     context 'with public sharing UUID but no pre-calculated centers' do
       let(:stat) { create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6) }
+      let(:start_date) { Date.new(2024, 6, 1).beginning_of_day.iso8601 }
+      let(:end_date) { Date.new(2024, 6, 1).end_of_month.end_of_day.iso8601 }
       let(:params) do
         ActionController::Parameters.new(
           {
@@ -98,11 +105,13 @@ RSpec.describe Maps::HexagonRequestHandler do
       end
     end
 
-    context 'with legacy area_too_large that can be recalculated' do
+    context 'with stat containing empty h3_hex_ids data' do
       let(:stat) do
         create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6,
-               h3_hex_ids: { 'area_too_large' => true })
+               h3_hex_ids: {})
       end
+      let(:start_date) { Date.new(2024, 6, 1).beginning_of_day.iso8601 }
+      let(:end_date) { Date.new(2024, 6, 1).end_of_month.end_of_day.iso8601 }
       let(:params) do
         ActionController::Parameters.new(
           {
@@ -115,21 +124,13 @@ RSpec.describe Maps::HexagonRequestHandler do
         )
       end
 
-      before do
-        # Mock successful recalculation
-        allow_any_instance_of(Stats::CalculateMonth).to receive(:calculate_hexagon_centers)
-          .and_return([[-74.0, 40.7, 1_717_200_000, 1_717_203_600]])
-      end
-
-      it 'recalculates and returns pre-calculated data' do
+      it 'returns empty feature collection for empty data' do
         result = handle_request
 
         expect(result['type']).to eq('FeatureCollection')
-        expect(result['features'].length).to eq(1)
-        expect(result['metadata']['pre_calculated']).to be true
-
-        # Verify that the stat was updated with new centers (reload to check persistence)
-        expect(stat.reload.h3_hex_ids).to eq([[-74.0, 40.7, 1_717_200_000, 1_717_203_600]])
+        expect(result['features']).to eq([])
+        expect(result['metadata']['hexagon_count']).to eq(0)
+        expect(result['metadata']['source']).to eq('pre_calculated')
       end
     end
   end

@@ -49,52 +49,6 @@ RSpec.describe Maps::HexagonCenterManager do
       end
     end
 
-    context 'with legacy area_too_large flag' do
-      let(:stat) do
-        create(:stat, user:, year: 2024, month: 6, h3_hex_ids: { 'area_too_large' => true })
-      end
-
-      before do
-        # Mock the Stats::CalculateMonth service
-        allow_any_instance_of(Stats::CalculateMonth).to receive(:calculate_hexagon_centers)
-          .and_return(new_centers)
-      end
-
-      context 'when recalculation succeeds' do
-        let(:new_centers) do
-          [
-            [-74.0, 40.7, 1_717_200_000, 1_717_203_600],
-            [-74.01, 40.71, 1_717_210_000, 1_717_213_600]
-          ]
-        end
-
-        it 'recalculates and updates the stat' do
-          expect(stat).to receive(:update).with(h3_hex_ids: new_centers)
-
-          result = manage_centers
-
-          expect(result[:success]).to be true
-          expect(result[:pre_calculated]).to be true
-          expect(result[:data]['features'].length).to eq(2)
-        end
-      end
-
-      context 'when recalculation fails' do
-        let(:new_centers) { nil }
-
-        it 'returns nil' do
-          expect(manage_centers).to be_nil
-        end
-      end
-
-      context 'when recalculation returns area_too_large again' do
-        let(:new_centers) { { area_too_large: true } }
-
-        it 'returns nil' do
-          expect(manage_centers).to be_nil
-        end
-      end
-    end
 
     context 'with no stat' do
       let(:stat) { nil }
@@ -113,7 +67,7 @@ RSpec.describe Maps::HexagonCenterManager do
     end
 
     context 'with empty hexagon_centers' do
-      let(:stat) { create(:stat, user:, year: 2024, month: 6, h3_hex_ids: []) }
+      let(:stat) { create(:stat, user:, year: 2024, month: 6, h3_hex_ids: {}) }
 
       it 'returns nil' do
         expect(manage_centers).to be_nil

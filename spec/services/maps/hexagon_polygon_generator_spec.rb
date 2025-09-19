@@ -5,17 +5,14 @@ require 'rails_helper'
 RSpec.describe Maps::HexagonPolygonGenerator do
   describe '.call' do
     subject(:generate_polygon) do
-      described_class.new(
-        center_lng: center_lng,
-        center_lat: center_lat
-      ).call
+      described_class.new(h3_index: h3_index).call
     end
 
-    let(:center_lng) { -74.0 }
-    let(:center_lat) { 40.7 }
+    # Valid H3 index for NYC area (resolution 6)
+    let(:h3_index) { '8a1fb46622dffff' }
 
-    it 'returns a polygon geometry using H3' do
-      result = generate_h3_polygon
+    it 'returns a polygon geometry' do
+      result = generate_polygon
 
       expect(result['type']).to eq('Polygon')
       expect(result['coordinates']).to be_an(Array)
@@ -23,7 +20,7 @@ RSpec.describe Maps::HexagonPolygonGenerator do
     end
 
     it 'generates a hexagon with 7 coordinate pairs (6 vertices + closing)' do
-      result = generate_h3_polygon
+      result = generate_polygon
       coordinates = result['coordinates'].first
 
       expect(coordinates.length).to eq(7) # 6 vertices + closing vertex
@@ -31,7 +28,7 @@ RSpec.describe Maps::HexagonPolygonGenerator do
     end
 
     it 'generates unique vertices' do
-      result = generate_h3_polygon
+      result = generate_polygon
       coordinates = result['coordinates'].first
 
       # Remove the closing vertex for uniqueness check
@@ -39,44 +36,55 @@ RSpec.describe Maps::HexagonPolygonGenerator do
       expect(unique_vertices.uniq.length).to eq(6) # All vertices should be unique
     end
 
-    it 'generates vertices around the center point' do
-      result = generate_h3_polygon
+    it 'generates vertices in proper [lng, lat] format' do
+      result = generate_polygon
       coordinates = result['coordinates'].first
 
-      # Check that vertices have some variation in coordinates
-      longitudes = coordinates[0..5].map { |vertex| vertex[0] }
-      latitudes = coordinates[0..5].map { |vertex| vertex[1] }
+      coordinates.each do |vertex|
+        lng, lat = vertex
+        expect(lng).to be_a(Float)
+        expect(lat).to be_a(Float)
+        expect(lng).to be_between(-180, 180)
+        expect(lat).to be_between(-90, 90)
+      end
+    end
 
-      expect(longitudes.uniq.size).to be > 1 # Should have different longitudes
-      expect(latitudes.uniq.size).to be > 1 # Should have different latitudes
+    context 'with hex string index' do
+      let(:h3_index) { '8a1fb46622dffff' }
+
+      it 'handles hex string format' do
+        result = generate_polygon
+        expect(result['type']).to eq('Polygon')
+        expect(result['coordinates'].first.length).to eq(7)
+      end
+    end
+
+    context 'with integer index' do
+      let(:h3_index) { 0x8a1fb46622dffff }
+
+      it 'handles integer format' do
+        result = generate_polygon
+        expect(result['type']).to eq('Polygon')
+        expect(result['coordinates'].first.length).to eq(7)
+      end
     end
 
     context 'when H3 operations fail' do
       before do
-        allow(H3).to receive(:from_geo_coordinates).and_raise(StandardError, 'H3 error')
+        allow(H3).to receive(:to_boundary).and_raise(StandardError, 'H3 error')
       end
 
       it 'raises the H3 error' do
-        expect { generate_h3_polygon }.to raise_error(StandardError, 'H3 error')
+        expect { generate_polygon }.to raise_error(StandardError, 'H3 error')
       end
     end
 
-    private
+    context 'with invalid H3 index' do
+      let(:h3_index) { nil }
 
-    def calculate_hexagon_size(coordinates)
-      # Calculate distance between first two vertices as size approximation
-      vertex1 = coordinates[0]
-      vertex2 = coordinates[1]
-
-      lng_diff = vertex2[0] - vertex1[0]
-      lat_diff = vertex2[1] - vertex1[1]
-
-      Math.sqrt(lng_diff**2 + lat_diff**2)
-    end
-
-    def calculate_distance_from_center(vertex)
-      lng, lat = vertex
-      Math.sqrt((lng - center_lng)**2 + (lat - center_lat)**2)
+      it 'raises an error for invalid index' do
+        expect { generate_polygon }.to raise_error(TypeError)
+      end
     end
   end
 end
