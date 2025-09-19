@@ -30,7 +30,7 @@ class Shared::StatsController < ApplicationController
     return head :not_found unless @stat
 
     if params[:enabled] == '1'
-      @stat.enable_sharing!(expiration: params[:expiration] || 'permanent')
+      @stat.enable_sharing!(expiration: params[:expiration] || '24h')
       sharing_url = shared_stat_url(@stat.sharing_uuid)
 
       render json: {

@@ -38,7 +38,7 @@ class Stat < ApplicationRecord
 
   def sharing_expired?
     expiration = sharing_settings['expiration']
-    return false if expiration.blank? || expiration == 'permanent'
+    return false if expiration.blank?
 
     expires_at_value = sharing_settings['expires_at']
     return true if expires_at_value.blank?
@@ -67,6 +67,9 @@ class Stat < ApplicationRecord
   end
 
   def enable_sharing!(expiration: '1h')
+    # Default to 24h if an invalid expiration is provided
+    expiration = '24h' unless %w[1h 12h 24h].include?(expiration)
+
     expires_at = case expiration
                  when '1h' then 1.hour.from_now
                  when '12h' then 12.hours.from_now
@@ -77,7 +80,7 @@ class Stat < ApplicationRecord
       sharing_settings: {
         'enabled' => true,
         'expiration' => expiration,
-        'expires_at' => expires_at&.iso8601
+        'expires_at' => expires_at.iso8601
       },
       sharing_uuid: sharing_uuid || SecureRandom.uuid
     )
