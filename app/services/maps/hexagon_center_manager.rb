@@ -58,13 +58,9 @@ module Maps
       {
         'type' => 'Feature',
         'id' => index + 1,
-        'geometry' => generate_hexagon_geometry_from_h3(h3_index),
+        'geometry' => Maps::HexagonPolygonGenerator.new(h3_index:).call,
         'properties' => build_hexagon_properties(index, count, earliest, latest)
       }
-    end
-
-    def generate_hexagon_geometry_from_h3(h3_index)
-      Maps::HexagonPolygonGenerator.new(h3_index: h3_index).call
     end
 
     def build_hexagon_properties(index, count, earliest, latest)

@@ -8,8 +8,10 @@ class Api::V1::Maps::HexagonsController < ApiController
 
     result = Maps::HexagonRequestHandler.new(
       params: params,
-      user: current_api_user,
-      context: context
+      user: context[:user] || current_api_user,
+      stat: context[:stat],
+      start_date: context[:start_date],
+      end_date: context[:end_date]
     ).call
 
     render json: result

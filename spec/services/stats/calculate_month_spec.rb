@@ -162,14 +162,15 @@ RSpec.describe Stats::CalculateMonth do
         expect(total_points).to eq(2)
       end
 
-
       context 'when H3 raises an error' do
         before do
           allow(H3).to receive(:from_geo_coordinates).and_raise(StandardError, 'H3 error')
         end
 
         it 'raises PostGISError' do
-          expect { calculate_hexagons }.to raise_error(Stats::CalculateMonth::PostGISError, /Failed to calculate H3 hexagon centers/)
+          expect do
+            calculate_hexagons
+          end.to raise_error(Stats::CalculateMonth::PostGISError, /Failed to calculate H3 hexagon centers/)
         end
 
         it 'reports the exception' do
@@ -185,7 +186,7 @@ RSpec.describe Stats::CalculateMonth do
 
       it 'handles string timestamps' do
         result = service.send(:parse_date_parameter, '1640995200')
-        expect(result).to eq(1640995200)
+        expect(result).to eq(1_640_995_200)
       end
 
       it 'handles ISO date strings' do
@@ -194,8 +195,8 @@ RSpec.describe Stats::CalculateMonth do
       end
 
       it 'handles integer timestamps' do
-        result = service.send(:parse_date_parameter, 1640995200)
-        expect(result).to eq(1640995200)
+        result = service.send(:parse_date_parameter, 1_640_995_200)
+        expect(result).to eq(1_640_995_200)
       end
 
       it 'handles edge case gracefully' do

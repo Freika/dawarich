@@ -72,7 +72,11 @@ module Maps
         if param.match?(/^\d+$/)
           param.to_i
         else
-          Time.zone.parse(param).to_i
+          parsed_time = Time.zone.parse(param)
+          if parsed_time.nil?
+            raise ArgumentError, "Invalid date format: #{param}"
+          end
+          parsed_time.to_i
         end
       when Integer
         param

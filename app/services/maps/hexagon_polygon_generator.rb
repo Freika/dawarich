@@ -2,30 +2,16 @@
 
 module Maps
   class HexagonPolygonGenerator
-    def initialize(center_lng: nil, center_lat: nil, h3_resolution: 5, h3_index: nil)
-      @center_lng = center_lng
-      @center_lat = center_lat
-      @h3_resolution = h3_resolution
+    def initialize(h3_index:)
       @h3_index = h3_index
     end
 
     def call
-      generate_h3_hexagon_polygon
-    end
-
-    private
-
-    attr_reader :center_lng, :center_lat, :h3_resolution, :h3_index
-
-    def generate_h3_hexagon_polygon
-      # Convert coordinates to H3 format [lat, lng]
-      coordinates = [center_lat, center_lng]
-
-      # Get H3 index for these coordinates at specified resolution
-      h3_index = H3.from_geo_coordinates(coordinates, h3_resolution)
+      # Parse H3 index from hex string if needed
+      index = h3_index.is_a?(String) ? h3_index.to_i(16) : h3_index
 
       # Get the boundary coordinates for this H3 hexagon
-      boundary_coordinates = H3.to_boundary(h3_index)
+      boundary_coordinates = H3.to_boundary(index)
 
       # Convert to GeoJSON polygon format (lng, lat)
       polygon_coordinates = boundary_coordinates.map { [_2, _1] }
@@ -38,5 +24,9 @@ module Maps
         'coordinates' => [polygon_coordinates]
       }
     end
+
+    private
+
+    attr_reader :h3_index
   end
 end

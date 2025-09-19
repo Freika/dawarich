@@ -172,14 +172,14 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
 
       context 'with pre-calculated hexagon centers' do
         let(:pre_calculated_centers) do
-          [
-            [-74.0, 40.7, 1_717_200_000, 1_717_203_600], # lng, lat, earliest, latest timestamps
-            [-74.01, 40.71, 1_717_210_000, 1_717_213_600],
-            [-74.02, 40.72, 1_717_220_000, 1_717_223_600]
-          ]
+          {
+            '8a1fb46622dffff' => [5, 1_717_200_000, 1_717_203_600], # count, earliest, latest timestamps
+            '8a1fb46622e7fff' => [3, 1_717_210_000, 1_717_213_600],
+            '8a1fb46632dffff' => [8, 1_717_220_000, 1_717_223_600]
+          }
         end
         let(:stat) do
-          create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6, hexagon_centers: pre_calculated_centers)
+          create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6, h3_hex_ids: pre_calculated_centers)
         end
 
         it 'uses pre-calculated hexagon centers instead of on-the-fly calculation' do
@@ -228,7 +228,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       context 'with legacy area_too_large hexagon data' do
         let(:stat) do
           create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6,
-                 hexagon_centers: { 'area_too_large' => true })
+                 h3_hex_ids: { 'area_too_large' => true })
         end
 
         before do
@@ -246,7 +246,7 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
           get '/api/v1/maps/hexagons', params: uuid_params
 
           # The endpoint should handle the legacy data gracefully and not crash
-          # We're primarily testing that the condition `@stat&.hexagon_centers&.dig('area_too_large')` is covered
+          # We're primarily testing that the condition `@stat&.h3_hex_ids&.dig('area_too_large')` is covered
           expect([200, 400, 500]).to include(response.status)
         end
       end

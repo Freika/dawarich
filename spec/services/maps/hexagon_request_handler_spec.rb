@@ -43,14 +43,14 @@ RSpec.describe Maps::HexagonRequestHandler do
 
     context 'with public sharing UUID and pre-calculated centers' do
       let(:pre_calculated_centers) do
-        [
-          [-74.0, 40.7, 1_717_200_000, 1_717_203_600],
-          [-74.01, 40.71, 1_717_210_000, 1_717_213_600]
-        ]
+        {
+          '8a1fb46622dffff' => [5, 1_717_200_000, 1_717_203_600],
+          '8a1fb46622e7fff' => [3, 1_717_210_000, 1_717_213_600]
+        }
       end
       let(:stat) do
         create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6,
-               hexagon_centers: pre_calculated_centers)
+               h3_hex_ids: pre_calculated_centers)
       end
       let(:params) do
         ActionController::Parameters.new(
@@ -101,7 +101,7 @@ RSpec.describe Maps::HexagonRequestHandler do
     context 'with legacy area_too_large that can be recalculated' do
       let(:stat) do
         create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6,
-               hexagon_centers: { 'area_too_large' => true })
+               h3_hex_ids: { 'area_too_large' => true })
       end
       let(:params) do
         ActionController::Parameters.new(
@@ -129,7 +129,7 @@ RSpec.describe Maps::HexagonRequestHandler do
         expect(result['metadata']['pre_calculated']).to be true
 
         # Verify that the stat was updated with new centers (reload to check persistence)
-        expect(stat.reload.hexagon_centers).to eq([[-74.0, 40.7, 1_717_200_000, 1_717_203_600]])
+        expect(stat.reload.h3_hex_ids).to eq([[-74.0, 40.7, 1_717_200_000, 1_717_203_600]])
       end
     end
   end
