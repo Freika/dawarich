@@ -5,15 +5,10 @@ require 'rails_helper'
 RSpec.describe Maps::BoundsCalculator do
   describe '.call' do
     subject(:calculate_bounds) do
-      described_class.new(
-        user: target_user,
-        start_date: start_date,
-        end_date: end_date
-      ).call
+      described_class.new(user:, start_date:, end_date:).call
     end
 
     let(:user) { create(:user) }
-    let(:target_user) { user }
     let(:start_date) { '2024-06-01T00:00:00Z' }
     let(:end_date) { '2024-06-30T23:59:59Z' }
 
@@ -63,7 +58,7 @@ RSpec.describe Maps::BoundsCalculator do
     end
 
     context 'with no user' do
-      let(:target_user) { nil }
+      let(:user) { nil }
 
       it 'raises NoUserFoundError' do
         expect { calculate_bounds }.to raise_error(

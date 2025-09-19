@@ -28,11 +28,9 @@ class Stats::CalculateMonth
   end
 
   # Public method for calculating H3 hexagon centers with custom parameters
-  def calculate_h3_hexagon_centers(user_id: nil, start_date: nil, end_date: nil, h3_resolution: DEFAULT_H3_RESOLUTION)
-    target_start_date = start_date || start_date_iso8601
-    target_end_date = end_date || end_date_iso8601
+  def calculate_h3_hexagon_centers
+    points = fetch_user_points_for_period
 
-    points = fetch_user_points_for_period(user_id, target_start_date, target_end_date)
     return [] if points.empty?
 
     h3_indexes_with_counts = calculate_h3_indexes(points, h3_resolution)
@@ -43,14 +41,14 @@ class Stats::CalculateMonth
       lower_resolution = [h3_resolution - 2, 0].max
       Rails.logger.info "Recalculating with lower H3 resolution: #{lower_resolution}"
       return calculate_h3_hexagon_centers(
-        user_id: user_id,
-        start_date: target_start_date,
-        end_date: target_end_date,
+        user_id: user.id,
+        start_date: start_date_iso8601,
+        end_date: end_date_iso8601,
         h3_resolution: lower_resolution
       )
     end
 
-    Rails.logger.info "Generated #{h3_indexes_with_counts.size} H3 hexagons at resolution #{h3_resolution} for user #{user_id}"
+    Rails.logger.info "Generated #{h3_indexes_with_counts.size} H3 hexagons at resolution #{h3_resolution} for user #{user.id}"
 
     # Convert to format: [h3_index_string, point_count, earliest_timestamp, latest_timestamp]
     h3_indexes_with_counts.map do |h3_index, data|
@@ -136,7 +134,10 @@ class Stats::CalculateMonth
     return {} if points.empty?
 
     begin
-      result = calculate_h3_hexagon_centers
+      result = calculate_h3_hexagon_centers(
+        user_id: user.id, h3_resolution: DEFAULT_H3_RESOLUTION,
+        start_date: start_date_iso8601, end_date: end_date_iso8601
+      )
 
       if result.empty?
         Rails.logger.info "No H3 hex IDs calculated for user #{user.id}, #{year}-#{month} (no data)"
@@ -158,18 +159,18 @@ class Stats::CalculateMonth
   end
 
   def start_date_iso8601
-    DateTime.new(year, month, 1).beginning_of_day.iso8601
+    @start_date_iso8601 ||= DateTime.new(year, month, 1).beginning_of_day.iso8601
   end
 
   def end_date_iso8601
-    DateTime.new(year, month, -1).end_of_day.iso8601
+    @end_date_iso8601 ||= DateTime.new(year, month, -1).end_of_day.iso8601
   end
 
-  def fetch_user_points_for_period(user_id, start_date, end_date)
-    start_timestamp = parse_date_parameter(start_date)
-    end_timestamp = parse_date_parameter(end_date)
+  def fetch_user_points_for_period
+    start_timestamp = start_date_iso8601.to_i
+    end_timestamp = end_date_iso8601.to_i
 
-    Point.where(user_id: user_id)
+    Point.where(user_id: user.id)
          .where(timestamp: start_timestamp..end_timestamp)
          .where.not(lonlat: nil)
          .select(:id, :lonlat, :timestamp)

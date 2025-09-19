@@ -155,11 +155,13 @@ Converts H3 indexes back to polygon geometry:
 **Features:**
 - Uses H3 library for accurate hexagon boundaries
 - Converts coordinates to GeoJSON Polygon format
-- Supports both center-based and H3-index-based generation
-- Direct H3 index to polygon conversion for efficiency
+- H3-index-only generation for maximum efficiency
+- Direct H3 index to polygon conversion with coordinate transformation
 
-**Usage Modes:**
-- **Center-based**: `new(center_lng: lng, center_lat: lat)`
+**Usage:**
+- **H3-index only**: `new(h3_index: h3_index_string_or_integer)`
+- Supports both hex string (`"8a1fb46622dffff"`) and integer formats
+- Converts H3 boundary coordinates to [lng, lat] GeoJSON format
 
 ## H3 Hexagon System
 
@@ -193,8 +195,8 @@ Dawarich uses H3 resolution 8 by default:
 ```mermaid
 graph TD
     A[User Data Import] --> B[Stats::CalculateMonth Service]
-    B --> C[Calculate H3 Hexagon Centers]
-    C --> D[Store in hexagon_centers Column]
+    B --> C[Calculate H3 Hex IDs]
+    C --> D[Store in h3_hex_ids Column]
     D --> E[Stats Available for Sharing]
 ```
 
@@ -203,7 +205,7 @@ graph TD
 2. Background job triggers `Stats::CalculateMonth`
 3. Service calculates monthly statistics including H3 hex IDs
 4. H3 indexes are calculated for all points in the month
-5. Results stored in `stats.h3_hex_ids` as JSON hash
+5. Results stored in `stats.h3_hex_ids` as JSON hash with format `{"h3_index": [count, earliest, latest]}`
 
 ### 2. Sharing Activation
 
@@ -251,16 +253,17 @@ graph TD
     D --> E[HexagonRequestHandler]
     E --> F[Find Stat by UUID]
     F --> G[HexagonCenterManager]
-    G --> H[Load Pre-calculated Centers]
+    G --> H[Load Pre-calculated H3 Hex IDs]
     H --> I[Convert to GeoJSON Polygons]
     I --> J[Return FeatureCollection]
 ```
 
 **Data Transformation:**
 1. Retrieve stored H3 hex IDs hash from database
-2. Convert each H3 index to hexagon boundary coordinates
-3. Build GeoJSON Feature with properties (point count, timestamps)
-4. Return complete FeatureCollection for map rendering
+2. For each H3 index, use H3 library to get hexagon boundary coordinates
+3. Convert coordinates to GeoJSON Polygon format ([lng, lat] ordering)
+4. Build GeoJSON Feature with properties (point count, earliest/latest timestamps)
+5. Return complete FeatureCollection for map rendering
 
 ## API Endpoints
 
@@ -354,9 +357,9 @@ PATCH /stats/:year/:month/sharing
 ## Performance Considerations
 
 ### Pre-calculation Strategy
-- **Background processing**: Hexagons calculated during stats job
-- **Storage efficiency**: H3 indexes are compact
-- **Query optimization**: GIN index on hexagon_centers column
+- **Background processing**: H3 hex IDs calculated during stats job
+- **Storage efficiency**: H3 indexes are compact and stored as hash keys
+- **Query optimization**: GIN index on h3_hex_ids column
 - **Caching**: Pre-calculated data serves multiple requests
 
 ### Memory Management
@@ -367,14 +370,17 @@ PATCH /stats/:year/:month/sharing
 
 ### Database Optimization
 ```sql
--- Optimized queries
+-- Optimized queries for H3 hex data
 SELECT h3_hex_ids FROM stats
 WHERE sharing_uuid = ? AND sharing_settings->>'enabled' = 'true';
 
--- Index for performance
+-- GIN index for efficient JSONB queries
 CREATE INDEX index_stats_on_h3_hex_ids
 ON stats USING gin (h3_hex_ids)
 WHERE (h3_hex_ids IS NOT NULL AND h3_hex_ids != '{}'::jsonb);
+
+-- Example H3 hex data structure in database
+-- h3_hex_ids: {"8a1fb46622dffff": [15, 1640995200, 1640998800], ...}
 ```
 
 ## Error Handling
@@ -430,10 +436,11 @@ ENABLE_PUBLIC_SHARING=true
 ### Common Issues
 
 #### No Hexagons Displayed
-1. Check if `hexagons_available?` returns true
-2. Verify `h3_hex_ids` column has data
-3. Confirm H3 library is properly installed
-4. Check API endpoint returns valid GeoJSON
+1. Check if `hexagons_available?` returns true for the stat
+2. Verify `h3_hex_ids` column contains non-empty hash data
+3. Confirm H3 gem is properly installed and accessible
+4. Check API endpoint returns valid GeoJSON FeatureCollection
+5. Verify H3 indexes are valid and can be converted to boundaries
 
 #### Sharing Link Not Working
 1. Verify UUID exists in database
@@ -457,11 +464,18 @@ puts stat.public_accessible?
 puts stat.hexagons_available?
 "
 
-# Verify H3 hex data format
+# Verify H3 hex data format and structure
 rails runner "
-stat = Stat.first
-puts stat.h3_hex_ids.class
-puts stat.h3_hex_ids.first
+stat = Stat.where.not(h3_hex_ids: {}).first
+puts \"Data type: #{stat.h3_hex_ids.class}\"
+puts \"Sample entry: #{stat.h3_hex_ids.first}\"
+puts \"Total hexagons: #{stat.h3_hex_ids.size}\"
+puts \"Available: #{stat.hexagons_available?}\"
+
+# Test H3 polygon generation
+h3_index, data = stat.h3_hex_ids.first
+polygon = Maps::HexagonPolygonGenerator.new(h3_index: h3_index).call
+puts \"Generated polygon type: #{polygon['type']}\"
 "
 ```
 
@@ -475,13 +489,14 @@ puts stat.h3_hex_ids.first
 
 ### Technical Improvements
 - **CDN integration**: Faster global access to shared stats
-- **Compression**: Further optimize H3 hex data storage
+- **Compression**: Further optimize H3 hex data storage format
 - **Real-time updates**: Live sharing for ongoing activities
 - **API versioning**: Stable API contracts for external integration
-- **H3 resolution optimization**: Dynamic resolution based on geographic area
+- **Adaptive H3 resolution**: Dynamic resolution based on geographic area and zoom level
+- **Polygon caching**: Cache generated polygons for frequently accessed stats
 
 ## Conclusion
 
 The Shareable Stats feature provides a robust, secure, and performant way for Dawarich users to share their location insights. The H3 hexagon system offers excellent visualization while maintaining privacy through aggregated data. The UUID-based security model ensures that only intended recipients can access shared statistics, while the configurable expiration system gives users complete control over data visibility.
 
-The architecture is designed for scalability and performance, with pre-calculated data reducing server load and providing fast response times for public viewers. The comprehensive error handling and monitoring ensure reliable operation in production environments.
+The architecture is designed for scalability and performance, with pre-calculated H3 hex data reducing server load and providing fast response times for public viewers. The streamlined H3-only implementation ensures consistent polygon generation and efficient storage. The comprehensive error handling and monitoring ensure reliable operation in production environments.

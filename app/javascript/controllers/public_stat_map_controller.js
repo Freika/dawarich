@@ -268,7 +268,7 @@ export default class extends BaseController {
     const endTime = props.latest_point ? new Date(props.latest_point).toLocaleTimeString() : '';
 
     return `
-      <div style="font-size: 12px; line-height: 1.6; max-width: 200px;">
+      <div style="font-size: 12px; line-height: 1.6; max-width: 300px;">
         <strong style="color: #3388ff;">📍 Location Data</strong><br>
         <div style="margin: 4px 0;">
           <strong>Points:</strong> ${props.point_count || 0}

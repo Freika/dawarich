@@ -17,8 +17,12 @@ module Maps
       start_timestamp = parse_date_parameter(@start_date)
       end_timestamp = parse_date_parameter(@end_date)
 
-      points_relation = @user.points.where(timestamp: start_timestamp..end_timestamp)
-      point_count = points_relation.count
+      point_count =
+        @user
+        .points
+        .where(timestamp: start_timestamp..end_timestamp)
+        .select(:id)
+        .count
 
       return build_no_data_response if point_count.zero?
 
@@ -73,9 +77,8 @@ module Maps
           param.to_i
         else
           parsed_time = Time.zone.parse(param)
-          if parsed_time.nil?
-            raise ArgumentError, "Invalid date format: #{param}"
-          end
+          raise ArgumentError, "Invalid date format: #{param}" if parsed_time.nil?
+
           parsed_time.to_i
         end
       when Integer
