@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe UsersMailer, type: :mailer do
-  let(:user) { create(:user, email: 'test@example.com') }
+  let(:user) { create(:user) }
 
   before do
     stub_const('ENV', ENV.to_hash.merge('SMTP_FROM' => 'hi@dawarich.app'))
@@ -14,11 +14,11 @@ RSpec.describe UsersMailer, type: :mailer do
 
     it 'renders the headers' do
       expect(mail.subject).to eq('Welcome to Dawarich!')
-      expect(mail.to).to eq(['test@example.com'])
+      expect(mail.to).to eq([user.email])
     end
 
     it 'renders the body' do
-      expect(mail.body.encoded).to match('test@example.com')
+      expect(mail.body.encoded).to match(user.email)
     end
   end
 
@@ -27,7 +27,7 @@ RSpec.describe UsersMailer, type: :mailer do
 
     it 'renders the headers' do
       expect(mail.subject).to eq('Explore Dawarich features!')
-      expect(mail.to).to eq(['test@example.com'])
+      expect(mail.to).to eq([user.email])
     end
   end
 
@@ -36,7 +36,7 @@ RSpec.describe UsersMailer, type: :mailer do
 
     it 'renders the headers' do
       expect(mail.subject).to eq('⚠️ Your Dawarich trial expires in 2 days')
-      expect(mail.to).to eq(['test@example.com'])
+      expect(mail.to).to eq([user.email])
     end
   end
 
@@ -45,7 +45,7 @@ RSpec.describe UsersMailer, type: :mailer do
 
     it 'renders the headers' do
       expect(mail.subject).to eq('💔 Your Dawarich trial expired')
-      expect(mail.to).to eq(['test@example.com'])
+      expect(mail.to).to eq([user.email])
     end
   end
 
@@ -54,7 +54,7 @@ RSpec.describe UsersMailer, type: :mailer do
 
     it 'renders the headers' do
       expect(mail.subject).to eq('🚀 Still interested in Dawarich? Subscribe now!')
-      expect(mail.to).to eq(['test@example.com'])
+      expect(mail.to).to eq([user.email])
     end
   end
 
@@ -63,7 +63,7 @@ RSpec.describe UsersMailer, type: :mailer do
 
     it 'renders the headers' do
       expect(mail.subject).to eq('📍 Your location data is waiting - Subscribe to Dawarich')
-      expect(mail.to).to eq(['test@example.com'])
+      expect(mail.to).to eq([user.email])
     end
   end
 end

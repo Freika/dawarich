@@ -1,21 +1,94 @@
 <% if user_signed_in? %>
 <div data-controller="onboarding-modal"
-     data-onboarding-modal-showable-value="<%= onboarding_modal_showable?(current_user) %>">
+     data-onboarding-modal-showable-value="true">
   <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
-    <div class="modal-box">
-      <h3 class="text-lg font-bold">Start tracking your location!</h3>
-      <p class="py-4">
-        To start tracking your location and putting it on the map, you need to configure your mobile application.
-      </p>
-      <p>
-        To do so, grab the API key from <%= link_to 'here', settings_path, class: 'link' %> and follow the instructions in the <%= link_to 'documentation', 'https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&utm_medium=referral&utm_campaign=onboarding', class: 'link' %>.
-      </p>
-      <div class="modal-action">
+    <div class="modal-box max-w-2xl bg-base-200">
+      <!-- Header -->
+      <div class="text-center mb-6">
+        <h3 class="text-2xl font-bold text-primary mb-2 flex items-center justify-center gap-2">
+          <%= icon 'goal' %> Start Tracking Your Location!</h3>
+        <p class="text-base-content/70">
+          Welcome to Dawarich! Let's get you set up to start tracking and visualizing your location data.
+        </p>
+      </div>
+
+      <!-- Steps -->
+      <div class="space-y-6">
+        <!-- Step 1: Download App -->
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="badge badge-primary badge-lg">1</div>
+              <h4 class="text-lg font-semibold">Download the Official App</h4>
+            </div>
+            <p class="text-sm text-base-content/80 mb-4">
+              Get the official Dawarich app from the App Store to start tracking your location.
+            </p>
+            <div class="flex justify-center">
+              <%= link_to 'https://apps.apple.com/de/app/dawarich/id6739544999?itscg=30200&itsct=apps_box_badge&mttnsubad=6739544999',
+                  class: 'inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105' do %>
+                <%= image_tag 'Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg',
+                    class: 'h-12 transition-opacity duration-300' %>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="card-body p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="badge badge-primary badge-lg">2</div>
+              <h4 class="text-lg font-semibold">Scan QR Code to Connect</h4>
+            </div>
+            <p class="text-sm text-base-content/80 mb-4">
+              Scan this QR code with the Dawarich app to automatically configure your connection.
+            </p>
+            <div class="flex justify-center">
+              <div class="bg-white p-3 rounded-lg shadow-inner">
+                <%= api_key_qr_code(current_user, size: 3) %>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="badge badge-secondary badge-lg">3</div>
+              <h4 class="text-lg font-semibold">Manual Setup (Alternative)</h4>
+            </div>
+            <p class="text-sm text-base-content/80">
+              Alternatively, you can manually grab your API key from
+              <%= link_to 'Settings', settings_path, class: 'link link-primary font-medium' %>
+              and follow the setup instructions in our
+              <%= link_to 'documentation', 'https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
+                  class: 'link link-primary font-medium', target: '_blank', rel: 'noopener' %>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-action mt-8">
+        <div class="text-center flex-1">
+          <p class="text-xs text-base-content/60 mb-4">
+            Need help? Check out our
+            <%= link_to 'documentation', 'https://dawarich.app/docs/category/tutorials?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
+                class: 'link link-primary text-xs', target: '_blank', rel: 'noopener' %>
+            for more guidance.
+          </p>
+        </div>
         <form method="dialog">
-          <button class="btn">Close</button>
+          <button class="btn btn-primary btn-wide">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Got it, let's start!
+          </button>
         </form>
       </div>
     </div>
+
+    <!-- Modal backdrop -->
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
   </dialog>
 </div>
 <% end %>
