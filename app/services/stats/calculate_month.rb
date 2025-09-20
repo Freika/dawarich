@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Stats::CalculateMonth
-  include ActiveModel::Validations
-
   def initialize(user_id, year, month)
     @user = User.find(user_id)
     @year = year.to_i
@@ -87,6 +85,6 @@ class Stats::CalculateMonth
   end
 
   def calculate_h3_hex_ids
-    Stats::HexagonCalculator.new(user.id, year, month).calculate_h3_hex_ids
+    Stats::HexagonCalculator.new(user.id, year, month).call
   end
 end
