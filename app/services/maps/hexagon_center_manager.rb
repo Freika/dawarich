@@ -20,7 +20,7 @@ module Maps
     def pre_calculated_centers_available?
       return false if stat&.h3_hex_ids.blank?
 
-      stat.h3_hex_ids.is_a?(Hash) && stat.h3_hex_ids.any?
+      stat.h3_hex_ids.is_a?(Array) && stat.h3_hex_ids.any?
     end
 
     def build_response_from_centers
@@ -45,8 +45,10 @@ module Maps
 
     def build_hexagons_from_h3_ids(hex_ids)
       # Convert stored H3 IDs back to hexagon polygons
-      hexagon_features = hex_ids.map.with_index do |(h3_index, data), index|
-        build_hexagon_feature_from_h3(h3_index, data, index)
+      # Array format: [[h3_index, point_count, earliest, latest], ...]
+      hexagon_features = hex_ids.map.with_index do |row, index|
+        h3_index, count, earliest, latest = row
+        build_hexagon_feature_from_h3(h3_index, [count, earliest, latest], index)
       end
 
       build_feature_collection(hexagon_features)

@@ -58,7 +58,7 @@ class Stat < ApplicationRecord
 
   def hexagons_available?
     h3_hex_ids.present? &&
-      h3_hex_ids.is_a?(Hash) &&
+      (h3_hex_ids.is_a?(Hash) || h3_hex_ids.is_a?(Array)) &&
       h3_hex_ids.any?
   end
 
