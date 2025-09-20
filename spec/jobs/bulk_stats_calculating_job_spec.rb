@@ -23,8 +23,6 @@ RSpec.describe BulkStatsCalculatingJob, type: :job do
       end
 
       before do
-        # Remove any leftover users from other tests, keeping only our test users
-        User.where.not(id: [active_user1.id, active_user2.id]).destroy_all
         allow(Stats::BulkCalculator).to receive(:new).and_call_original
         allow_any_instance_of(Stats::BulkCalculator).to receive(:call)
       end
@@ -69,8 +67,6 @@ RSpec.describe BulkStatsCalculatingJob, type: :job do
       end
 
       before do
-        # Remove any leftover users from other tests, keeping only our test users
-        User.where.not(id: [trial_user1.id, trial_user2.id]).destroy_all
         allow(Stats::BulkCalculator).to receive(:new).and_call_original
         allow_any_instance_of(Stats::BulkCalculator).to receive(:call)
       end

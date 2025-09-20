@@ -6,7 +6,7 @@ RSpec.describe Api::UserSerializer do
   describe '#call' do
     subject(:serializer) { described_class.new(user).call }
 
-    let(:user) { create(:user, email: 'test@example.com', theme: 'dark') }
+    let(:user) { create(:user) }
 
     it 'returns JSON with correct user attributes' do
       expect(serializer[:user][:email]).to eq(user.email)

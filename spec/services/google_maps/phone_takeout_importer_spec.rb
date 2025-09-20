@@ -39,13 +39,13 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         it 'creates points with correct data' do
           parser
 
-          expect(Point.all[6].lat).to eq(27.696576)
-          expect(Point.all[6].lon).to eq(-97.376949)
-          expect(Point.all[6].timestamp).to eq(1_693_180_140)
+          expect(user.points[6].lat).to eq(27.696576)
+          expect(user.points[6].lon).to eq(-97.376949)
+          expect(user.points[6].timestamp).to eq(1_693_180_140)
 
-          expect(Point.last.lat).to eq(27.709617)
-          expect(Point.last.lon).to eq(-97.375988)
-          expect(Point.last.timestamp).to eq(1_693_180_320)
+          expect(user.points.last.lat).to eq(27.709617)
+          expect(user.points.last.lon).to eq(-97.375988)
+          expect(user.points.last.timestamp).to eq(1_693_180_320)
         end
       end
     end

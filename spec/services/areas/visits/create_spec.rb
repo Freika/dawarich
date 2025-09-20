@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Areas::Visits::Create do
   describe '#call' do
-    let(:user) { create(:user) }
+    let!(:user) { create(:user) }
     let(:home_area) { create(:area, user:, latitude: 0, longitude: 0, radius: 100) }
     let(:work_area) { create(:area, user:, latitude: 1, longitude: 1, radius: 100) }
 

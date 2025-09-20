@@ -54,6 +54,12 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
       ]
       allow_any_instance_of(Visits::TimeChunks).to receive(:call).and_return(chunks)
 
+      active_users_mock = double('ActiveRecord::Relation')
+      allow(User).to receive(:active).and_return(active_users_mock)
+      allow(active_users_mock).to receive(:active).and_return(active_users_mock)
+      allow(active_users_mock).to receive(:where).with(id: []).and_return(active_users_mock)
+      allow(active_users_mock).to receive(:find_each).and_yield(user_with_points)
+
       chunks.each do |chunk|
         expect(VisitSuggestingJob).to receive(:perform_later).with(
           user_id: user_with_points.id,
@@ -93,6 +99,12 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
         .with(start_at: custom_start, end_at: custom_end)
         .and_return(time_chunks_instance)
       allow(time_chunks_instance).to receive(:call).and_return(custom_chunks)
+
+      active_users_mock = double('ActiveRecord::Relation')
+      allow(User).to receive(:active).and_return(active_users_mock)
+      allow(active_users_mock).to receive(:active).and_return(active_users_mock)
+      allow(active_users_mock).to receive(:where).with(id: []).and_return(active_users_mock)
+      allow(active_users_mock).to receive(:find_each).and_yield(user_with_points)
 
       expect(VisitSuggestingJob).to receive(:perform_later).with(
         user_id: user_with_points.id,
