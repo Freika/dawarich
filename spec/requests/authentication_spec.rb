@@ -83,23 +83,30 @@ RSpec.describe 'Authentication', type: :request do
       expect(response.location).to include('token=')
     end
 
-    it 'does not redirect to iOS success path when using turbo_stream format' do
-      # This test demonstrates the issue: when iOS app sends turbo_stream format,
-      # it doesn't get the iOS-specific redirect behavior
+    it 'stores iOS client header in session' do
+      # Test that the header gets stored when accessing sign-in page
+      get new_user_session_path, headers: { 'X-Dawarich-Client' => 'ios' }
+
+      expect(session[:dawarich_client]).to eq('ios')
+    end
+
+    it 'redirects to iOS success path using stored session value' do
+      # Simulate iOS app accessing sign-in page first (stores header in session)
+      get new_user_session_path, headers: { 'X-Dawarich-Client' => 'ios' }
+
+      # Then sign-in POST request without header (relies on session)
       post user_session_path, params: {
         user: { email: user.email, password: 'password123' }
       }, headers: {
-        'X-Dawarich-Client' => 'ios',
-        'Accept' => 'text/vnd.turbo-stream.html'
+        'Accept' => 'text/html'
       }
 
-      # With turbo_stream format, it doesn't redirect at all (no location header)
-      # This demonstrates why iOS authentication fails when using turbo_stream
-      expect(response.location).to be_nil
-      expect(response.status).to eq(200)  # Returns turbo_stream response instead of redirect
+      # Should still redirect to iOS success endpoint using session value
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+      expect(response.location).to include('token=')
     end
 
-    it 'returns JSON response with JWT token for iOS success endpoint' do
+    it 'returns plain text response for iOS success endpoint with token' do
       # Generate a test JWT token using the same service as the controller
       payload = { api_key: user.api_key, exp: 5.minutes.from_now.to_i }
       test_token = Subscription::EncodeJwtToken.new(
@@ -109,12 +116,19 @@ RSpec.describe 'Authentication', type: :request do
       get ios_success_path, params: { token: test_token }
 
       expect(response).to be_successful
+      expect(response.content_type).to include('text/plain')
+      expect(response.body).to eq('Authentication successful! You can close this window.')
+    end
+
+    it 'returns JSON response when no token is provided to iOS success endpoint' do
+      get ios_success_path
+
+      expect(response).to be_successful
       expect(response.content_type).to include('application/json')
 
       json_response = JSON.parse(response.body)
       expect(json_response['success']).to be true
       expect(json_response['message']).to eq('iOS authentication successful')
-      expect(json_response['token']).to eq(test_token)
       expect(json_response['redirect_url']).to eq(root_url)
     end
 

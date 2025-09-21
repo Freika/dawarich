@@ -67,9 +67,6 @@ class ApplicationController < ActionController::Base
     return unless request.headers['X-Dawarich-Client']
 
     session[:dawarich_client] = request.headers['X-Dawarich-Client']
-
-    # Force HTML format for iOS clients to ensure proper authentication flow
-    request.format = :html if request.headers['X-Dawarich-Client'] == 'ios'
   end
 
   def user_not_authorized
