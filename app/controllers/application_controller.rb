@@ -39,6 +39,21 @@ class ApplicationController < ActionController::Base
     user_not_authorized
   end
 
+  def after_sign_in_path_for(resource)
+    payload = { api_key: resource.api_key, exp: 5.minutes.from_now.to_i }
+
+    token = Subscription::EncodeJwtToken.new(
+      payload, ENV['AUTH_JWT_SECRET_KEY']
+    ).call
+
+    case request.headers['X-Dawarich-Client']
+    when 'ios'
+      ios_success_path(token:)
+    else
+      super
+    end
+  end
+
   private
 
   def set_self_hosted_status
