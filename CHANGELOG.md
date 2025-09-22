@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Hexagons for the stats page are now being calculated a lot faster.
 - Prometheus exporter is now not being started when console is being run.
 - Stats will now properly reflect countries and cities visited after importing new points.
+- `GET /api/v1/points will now return correct latitude and longitude values. #1502
 
 ## Changed
 

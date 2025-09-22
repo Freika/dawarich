@@ -48,15 +48,16 @@ module LocationSearch
       last_point = sorted_points.last
 
       # Calculate visit duration
-      duration_minutes = if sorted_points.length > 1
-        ((last_point[:timestamp] - first_point[:timestamp]) / 60.0).round
-      else
-        # Single point visit - estimate based on typical stay time
-        15 # minutes
-      end
+      duration_minutes =
+        if sorted_points.any?
+          ((last_point[:timestamp] - first_point[:timestamp]) / 60.0).round
+        else
+          # Single point visit - estimate based on typical stay time
+          15 # minutes
+        end
 
       # Find the most accurate point (lowest accuracy value means higher precision)
-      most_accurate_point = points.min_by { |p| p[:accuracy] || 999999 }
+      most_accurate_point = points.min_by { |p| p[:accuracy] || 999_999 }
 
       # Calculate average distance from search center
       average_distance = (points.sum { |p| p[:distance_meters] } / points.length).round(2)
@@ -86,7 +87,7 @@ module LocationSearch
       hours = minutes / 60
       remaining_minutes = minutes % 60
 
-      if remaining_minutes == 0
+      if remaining_minutes.zero?
         "~#{pluralize(hours, 'hour')}"
       else
         "~#{pluralize(hours, 'hour')} #{pluralize(remaining_minutes, 'minute')}"
