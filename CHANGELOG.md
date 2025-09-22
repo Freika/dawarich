@@ -12,11 +12,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Hexagons for the stats page are now being calculated a lot faster.
 - Prometheus exporter is now not being started when console is being run.
 - Stats will now properly reflect countries and cities visited after importing new points.
+- `GET /api/v1/points will now return correct latitude and longitude values. #1502
+- Deleting an import will now trigger stats recalculation for affected months. #1789
 
 ## Changed
 
 - Onboarding modal window now features a link to the App Store and a QR code to configure the Dawarich iOS app.
 - A permanent option was removed from stats sharing options. Now, stats can be shared for 1, 12 or 24 hours only.
+
+## Added
+
+- Added foundation for upcoming authentication from iOS app.
 
 
 # [0.32.0] - 2025-09-13

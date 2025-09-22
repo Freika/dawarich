@@ -11,6 +11,7 @@ class Import < ApplicationRecord
 
   after_commit -> { Import::ProcessJob.perform_later(id) unless skip_background_processing }, on: :create
   after_commit :remove_attached_file, on: :destroy
+  before_commit :recalculate_stats, on: :destroy, if: -> { points.exists? }
 
   validates :name, presence: true, uniqueness: { scope: :user_id }
   validate :file_size_within_limit, if: -> { user.trial? }
@@ -63,8 +64,14 @@ class Import < ApplicationRecord
   def file_size_within_limit
     return unless file.attached?
 
-    if file.blob.byte_size > 11.megabytes
-      errors.add(:file, 'is too large. Trial users can only upload files up to 10MB.')
+    return unless file.blob.byte_size > 11.megabytes
+
+    errors.add(:file, 'is too large. Trial users can only upload files up to 10MB.')
+  end
+
+  def recalculate_stats
+    years_and_months_tracked.each do |year, month|
+      Stats::CalculatingJob.perform_later(user.id, year, month)
     end
   end
 end
