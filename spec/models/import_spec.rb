@@ -31,7 +31,7 @@ RSpec.describe Import, type: :model do
 
     describe 'file size validation' do
       context 'when user is a trial user' do
-        let(:user) do 
+        let(:user) do
           user = create(:user)
           user.update!(status: :trial)
           user
@@ -113,6 +113,30 @@ RSpec.describe Import, type: :model do
         import.migrate_to_new_storage
 
         expect { import.process! }.to change(Point, :count).by(10)
+      end
+    end
+  end
+
+  describe '#recalculate_stats' do
+    let(:import) { create(:import, user:) }
+    let!(:point1) { create(:point, import:, user:, timestamp: Time.zone.local(2024, 11, 15).to_i) }
+    let!(:point2) { create(:point, import:, user:, timestamp: Time.zone.local(2024, 12, 5).to_i) }
+
+    it 'enqueues stats calculation jobs for each tracked month' do
+      expect do
+        import.send(:recalculate_stats)
+      end.to have_enqueued_job(Stats::CalculatingJob)
+        .with(user.id, 2024, 11)
+        .and have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 12)
+    end
+
+    context 'when import has no points' do
+      let(:empty_import) { create(:import, user:) }
+
+      it 'does not enqueue any jobs' do
+        expect do
+          empty_import.send(:recalculate_stats)
+        end.not_to have_enqueued_job(Stats::CalculatingJob)
       end
     end
   end

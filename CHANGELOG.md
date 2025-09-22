@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Prometheus exporter is now not being started when console is being run.
 - Stats will now properly reflect countries and cities visited after importing new points.
 - `GET /api/v1/points will now return correct latitude and longitude values. #1502
+- Deleting an import will now trigger stats recalculation for affected months. #1789
 
 ## Changed
 
