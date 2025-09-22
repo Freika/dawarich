@@ -49,7 +49,7 @@ module LocationSearch
 
       # Calculate visit duration
       duration_minutes =
-        if sorted_points.any?
+        if sorted_points.length > 1
           ((last_point[:timestamp] - first_point[:timestamp]) / 60.0).round
         else
           # Single point visit - estimate based on typical stay time

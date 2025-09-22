@@ -7,7 +7,7 @@ RSpec.describe Api::PointSerializer do
     subject(:serializer) { described_class.new(point).call }
 
     let(:point) { create(:point) }
-    let(:all_excluded) { PointSerializer::EXCLUDED_ATTRIBUTES + Api::PointSerializer::ADDITIONAL_EXCLUDED_ATTRIBUTES }
+    let(:all_excluded) { Api::PointSerializer::EXCLUDED_ATTRIBUTES }
     let(:expected_json) do
       point.attributes.except(*all_excluded).tap do |attributes|
         # API serializer extracts coordinates from PostGIS geometry

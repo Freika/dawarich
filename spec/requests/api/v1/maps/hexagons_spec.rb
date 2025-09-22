@@ -172,11 +172,11 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
 
       context 'with pre-calculated hexagon centers' do
         let(:pre_calculated_centers) do
-          {
-            '8a1fb46622dffff' => [5, 1_717_200_000, 1_717_203_600], # count, earliest, latest timestamps
-            '8a1fb46622e7fff' => [3, 1_717_210_000, 1_717_213_600],
-            '8a1fb46632dffff' => [8, 1_717_220_000, 1_717_223_600]
-          }
+          [
+            ['8a1fb46622dffff', 5, 1_717_200_000, 1_717_203_600], # h3_index, count, earliest, latest timestamps
+            ['8a1fb46622e7fff', 3, 1_717_210_000, 1_717_213_600],
+            ['8a1fb46632dffff', 8, 1_717_220_000, 1_717_223_600]
+          ]
         end
         let(:stat) do
           create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6, h3_hex_ids: pre_calculated_centers)

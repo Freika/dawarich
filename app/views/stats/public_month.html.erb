@@ -47,10 +47,9 @@
       <div class="p-4 border-b border-base-300 bg-base-50">
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-4">
-            <h3 class="font-semibold text-lg">📍 Location Hexagons</h3>
-            <% if @hexagons_available %>
-              <div class="badge badge-success badge-sm">H3 Enhanced</div>
-            <% end %>
+            <h3 class="font-semibold text-lg flex items-center gap-2">
+              <%= icon 'map' %> Location Hexagons
+            </h3>
           </div>
         </div>
       </div>
