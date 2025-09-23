@@ -6,7 +6,8 @@ export default class extends Controller {
   static targets = ["input", "progress", "progressBar", "submit", "form"]
   static values = {
     url: String,
-    userTrial: Boolean
+    userTrial: Boolean,
+    currentImportsCount: Number
   }
 
   connect() {
@@ -50,6 +51,16 @@ export default class extends Controller {
   upload() {
     const files = this.inputTarget.files
     if (files.length === 0) return
+
+    // Check import count limits for trial users
+    if (this.userTrialValue && this.currentImportsCountValue >= 5) {
+      const message = 'Import limit reached. Trial users can only create up to 5 imports. Please upgrade your account to import more files.'
+      showFlashMessage('error', message)
+
+      // Clear the file input
+      this.inputTarget.value = ''
+      return
+    }
 
     // Check file size limits for trial users
     if (this.userTrialValue) {
