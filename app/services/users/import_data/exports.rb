@@ -62,16 +62,18 @@ class Users::ImportData::Exports
   end
 
   def restore_export_file(export_record, export_data)
-    file_path = files_directory.join(export_data['file_name'])
+    # files_directory is actually a hash mapping archive paths to temp file paths
+    archive_file_path = "files/#{export_data['file_name']}"
+    temp_file_path = files_directory[archive_file_path]
 
-    unless File.exist?(file_path)
-      Rails.logger.warn "Export file not found: #{export_data['file_name']}"
+    unless temp_file_path && File.exist?(temp_file_path)
+      Rails.logger.warn "Export file not found: #{export_data['file_name']} (archive path: #{archive_file_path})"
       return false
     end
 
     begin
       export_record.file.attach(
-        io: File.open(file_path),
+        io: File.open(temp_file_path),
         filename: export_data['original_filename'] || export_data['file_name'],
         content_type: export_data['content_type'] || 'application/octet-stream'
       )
