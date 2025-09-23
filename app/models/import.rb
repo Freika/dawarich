@@ -76,7 +76,7 @@ class Import < ApplicationRecord
     existing_imports_count = user.imports.count
     return unless existing_imports_count >= 5
 
-    errors.add(:base, 'Trial users can only create up to 5 imports. Please upgrade your account to import more files.')
+    errors.add(:base, 'Trial users can only create up to 5 imports. Please subscribe to import more files.')
   end
 
   def recalculate_stats

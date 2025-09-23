@@ -87,7 +87,7 @@ RSpec.describe Import, type: :model do
           new_import = build(:import, user: user, name: 'import_6')
 
           expect(new_import).not_to be_valid
-          expect(new_import.errors[:base]).to include('Trial users can only create up to 5 imports. Please upgrade your account to import more files.')
+          expect(new_import.errors[:base]).to include('Trial users can only create up to 5 imports. Please subscribe to import more files.')
         end
       end
 

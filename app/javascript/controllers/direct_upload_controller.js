@@ -54,7 +54,7 @@ export default class extends Controller {
 
     // Check import count limits for trial users
     if (this.userTrialValue && this.currentImportsCountValue >= 5) {
-      const message = 'Import limit reached. Trial users can only create up to 5 imports. Please upgrade your account to import more files.'
+      const message = 'Import limit reached. Trial users can only create up to 5 imports. Please subscribe to import more files.'
       showFlashMessage('error', message)
 
       // Clear the file input
