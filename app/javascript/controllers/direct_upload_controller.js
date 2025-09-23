@@ -82,31 +82,33 @@ export default class extends Controller {
       this.progressTarget.remove()
     }
 
-    // Create a wrapper div for better positioning and visibility
+    // Create a wrapper div with better DaisyUI styling
     const progressWrapper = document.createElement("div")
-    progressWrapper.className = "mt-4 mb-6 border p-4 rounded-lg bg-gray-50"
+    progressWrapper.className = "w-full mt-4 mb-4"
 
-    // Add a label
+    // Add a label with better typography
     const progressLabel = document.createElement("div")
-    progressLabel.className = "font-medium mb-2 text-gray-700"
-    progressLabel.textContent = "Upload Progress"
+    progressLabel.className = "text-sm font-medium text-base-content mb-2 flex justify-between items-center"
+    progressLabel.innerHTML = `
+      <span>Upload Progress</span>
+      <span class="text-xs text-base-content/70 progress-percentage">0%</span>
+    `
     progressWrapper.appendChild(progressLabel)
 
-    // Create a new progress container
-    const progressContainer = document.createElement("div")
+    // Create DaisyUI progress element
+    const progressContainer = document.createElement("progress")
     progressContainer.setAttribute("data-direct-upload-target", "progress")
-    progressContainer.className = "w-full bg-gray-200 rounded-full h-4"
+    progressContainer.className = "progress progress-primary w-full h-3"
+    progressContainer.value = 0
+    progressContainer.max = 100
 
-    // Create the progress bar fill element
+    // Create a hidden div for the progress bar target (for compatibility)
     const progressBarFill = document.createElement("div")
     progressBarFill.setAttribute("data-direct-upload-target", "progressBar")
-    progressBarFill.className = "bg-blue-600 h-4 rounded-full transition-all duration-300"
-    progressBarFill.style.width = "0%"
+    progressBarFill.style.display = "none"
 
-    // Add the fill element to the container
-    progressContainer.appendChild(progressBarFill)
     progressWrapper.appendChild(progressContainer)
-    progressBarFill.dataset.percentageDisplay = "true"
+    progressWrapper.appendChild(progressBarFill)
 
     // Add the progress wrapper AFTER the file input field but BEFORE the submit button
     this.submitTarget.parentNode.insertBefore(progressWrapper, this.submitTarget)
@@ -158,6 +160,19 @@ export default class extends Controller {
             showFlashMessage('error', 'No files were successfully uploaded. Please try again.')
           } else {
             showFlashMessage('notice', `${successfulUploads} file(s) uploaded successfully. Ready to submit.`)
+
+            // Add a completion animation to the progress bar
+            const percentageDisplay = this.element.querySelector('.progress-percentage')
+            if (percentageDisplay) {
+              percentageDisplay.textContent = '100%'
+              percentageDisplay.classList.add('text-success')
+            }
+
+            if (this.hasProgressTarget) {
+              this.progressTarget.value = 100
+              this.progressTarget.classList.add('progress-success')
+              this.progressTarget.classList.remove('progress-primary')
+            }
           }
           this.isUploading = false
           console.log("All uploads completed")
@@ -169,18 +184,20 @@ export default class extends Controller {
 
     directUploadWillStoreFileWithXHR(request) {
     request.upload.addEventListener("progress", event => {
-      if (!this.hasProgressBarTarget) {
-        console.warn("Progress bar target not found")
+      if (!this.hasProgressTarget) {
+        console.warn("Progress target not found")
         return
       }
 
       const progress = (event.loaded / event.total) * 100
       const progressPercentage = `${progress.toFixed(1)}%`
       console.log(`Upload progress: ${progressPercentage}`)
-      this.progressBarTarget.style.width = progressPercentage
 
-      // Update text percentage if exists
-      const percentageDisplay = this.element.querySelector('[data-percentage-display="true"]')
+      // Update the DaisyUI progress element
+      this.progressTarget.value = progress
+
+      // Update the percentage display
+      const percentageDisplay = this.element.querySelector('.progress-percentage')
       if (percentageDisplay) {
         percentageDisplay.textContent = progressPercentage
       }

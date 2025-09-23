@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Trips
-  BATCH_SIZE = 1000
 
   def initialize(user, trips_data)
     @user = user
@@ -35,6 +34,10 @@ class Users::ImportData::Trips
   private
 
   attr_reader :user, :trips_data
+
+  def batch_size
+    @batch_size ||= DawarichSettings.import_batch_size
+  end
 
   def filter_and_prepare_trips
     valid_trips = []
@@ -111,7 +114,7 @@ class Users::ImportData::Trips
   def bulk_import_trips(trips)
     total_created = 0
 
-    trips.each_slice(BATCH_SIZE) do |batch|
+    trips.each_slice(batch_size) do |batch|
       begin
         result = Trip.upsert_all(
           batch,

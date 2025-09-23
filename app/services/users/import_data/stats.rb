@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Stats
-  BATCH_SIZE = 1000
 
   def initialize(user, stats_data)
     @user = user
@@ -35,6 +34,10 @@ class Users::ImportData::Stats
   private
 
   attr_reader :user, :stats_data
+
+  def batch_size
+    @batch_size ||= DawarichSettings.import_batch_size
+  end
 
   def filter_and_prepare_stats
     valid_stats = []
@@ -99,7 +102,7 @@ class Users::ImportData::Stats
   def bulk_import_stats(stats)
     total_created = 0
 
-    stats.each_slice(BATCH_SIZE) do |batch|
+    stats.each_slice(batch_size) do |batch|
       begin
         result = Stat.upsert_all(
           batch,

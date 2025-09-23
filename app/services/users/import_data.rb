@@ -41,63 +41,164 @@ class Users::ImportData
   end
 
   def import
-    @import_directory = Rails.root.join('tmp', "import_#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{Time.current.to_i}")
-    FileUtils.mkdir_p(@import_directory)
+    data = stream_and_parse_archive
 
-    ActiveRecord::Base.transaction do
-      extract_archive
-      data = load_json_data
+    import_in_segments(data)
 
-      import_in_correct_order(data)
+    create_success_notification
 
-      create_success_notification
-
-      @import_stats
-    end
+    @import_stats
   rescue StandardError => e
     ExceptionReporter.call(e, 'Data import failed')
     create_failure_notification(e)
     raise e
   ensure
-    cleanup_temporary_files(@import_directory) if @import_directory&.exist?
+    # Clean up any temporary files created during streaming
+    cleanup_temporary_files
   end
 
   private
 
   attr_reader :user, :archive_path, :import_stats
 
-  def extract_archive
-    Rails.logger.info "Extracting archive: #{archive_path}"
+  def stream_and_parse_archive
+    Rails.logger.info "Streaming archive: #{archive_path}"
+
+    @temp_files = {}
+    @memory_tracker = Users::ImportData::MemoryTracker.new
+    data_json = nil
+
+    @memory_tracker.log('before_zip_processing')
 
     Zip::File.open(archive_path) do |zip_file|
       zip_file.each do |entry|
-        extraction_path = @import_directory.join(entry.name)
+        if entry.name == 'data.json'
+          Rails.logger.info "Processing data.json (#{entry.size} bytes)"
 
-        FileUtils.mkdir_p(File.dirname(extraction_path))
+          # Use streaming JSON parser for all files to reduce memory usage
+          streamer = Users::ImportData::JsonStreamer.new(entry)
+          data_json = streamer.stream_parse
 
-        entry.extract(extraction_path)
+          @memory_tracker.log('after_json_parsing')
+        elsif entry.name.start_with?('files/')
+          # Only extract files that are needed for file attachments
+          temp_path = stream_file_to_temp(entry)
+          @temp_files[entry.name] = temp_path
+        end
+        # Skip extracting other files to save disk space
       end
+    end
+
+    raise StandardError, 'Data file not found in archive: data.json' unless data_json
+
+    @memory_tracker.log('archive_processing_completed')
+    data_json
+  end
+
+  def stream_file_to_temp(zip_entry)
+    require 'tmpdir'
+
+    # Create a temporary file for this attachment
+    temp_file = Tempfile.new([File.basename(zip_entry.name, '.*'), File.extname(zip_entry.name)])
+    temp_file.binmode
+
+    zip_entry.get_input_stream do |input_stream|
+      IO.copy_stream(input_stream, temp_file)
+    end
+
+    temp_file.close
+    temp_file.path
+  end
+
+  def import_in_segments(data)
+    Rails.logger.info "Starting segmented data import for user: #{user.email}"
+
+    @memory_tracker&.log('before_core_segment')
+    # Segment 1: User settings and core data (small, fast transaction)
+    import_core_data_segment(data)
+
+    @memory_tracker&.log('before_independent_segment')
+    # Segment 2: Independent entities that can be imported in parallel
+    import_independent_entities_segment(data)
+
+    @memory_tracker&.log('before_dependent_segment')
+    # Segment 3: Dependent entities that require references
+    import_dependent_entities_segment(data)
+
+    # Final validation check
+    validate_import_completeness(data['counts']) if data['counts']
+
+    @memory_tracker&.log('import_completed')
+    Rails.logger.info "Segmented data import completed. Stats: #{@import_stats}"
+  end
+
+  def import_core_data_segment(data)
+    ActiveRecord::Base.transaction do
+      Rails.logger.info 'Importing core data segment'
+
+      import_settings(data['settings']) if data['settings']
+      import_areas(data['areas']) if data['areas']
+      import_places(data['places']) if data['places']
+
+      Rails.logger.info 'Core data segment completed'
     end
   end
 
-  def load_json_data
-    json_path = @import_directory.join('data.json')
+  def import_independent_entities_segment(data)
+    # These entities don't depend on each other and can be imported in parallel
+    entity_types = %w[imports exports trips stats notifications].select { |type| data[type] }
 
-    unless File.exist?(json_path)
-      raise StandardError, "Data file not found in archive: data.json"
+    if entity_types.empty?
+      Rails.logger.info 'No independent entities to import'
+      return
     end
 
-    JSON.parse(File.read(json_path))
-  rescue JSON::ParserError => e
-    raise StandardError, "Invalid JSON format in data file: #{e.message}"
+    Rails.logger.info "Processing #{entity_types.size} independent entity types in parallel"
+
+    # Use parallel processing for independent entities
+    Parallel.each(entity_types, in_threads: [entity_types.size, 3].min) do |entity_type|
+      ActiveRecord::Base.connection_pool.with_connection do
+        ActiveRecord::Base.transaction do
+          case entity_type
+          when 'imports'
+            import_imports(data['imports'])
+          when 'exports'
+            import_exports(data['exports'])
+          when 'trips'
+            import_trips(data['trips'])
+          when 'stats'
+            import_stats(data['stats'])
+          when 'notifications'
+            import_notifications(data['notifications'])
+          end
+
+          Rails.logger.info "#{entity_type.capitalize} segment completed in parallel"
+        end
+      end
+    end
+
+    Rails.logger.info 'All independent entities processing completed'
+  end
+
+  def import_dependent_entities_segment(data)
+    ActiveRecord::Base.transaction do
+      Rails.logger.info 'Importing dependent entities segment'
+
+      # Import visits after places to ensure proper place resolution
+      visits_imported = import_visits(data['visits']) if data['visits']
+      Rails.logger.info "Visits import phase completed: #{visits_imported} visits imported"
+
+      # Points are imported in their own optimized batching system
+      import_points(data['points']) if data['points']
+
+      Rails.logger.info 'Dependent entities segment completed'
+    end
   end
 
   def import_in_correct_order(data)
     Rails.logger.info "Starting data import for user: #{user.email}"
 
-    if data['counts']
-      Rails.logger.info "Expected entity counts from export: #{data['counts']}"
-    end
+    Rails.logger.info "Expected entity counts from export: #{data['counts']}" if data['counts']
 
     Rails.logger.debug "Available data keys: #{data.keys.inspect}"
 
@@ -121,9 +222,7 @@ class Users::ImportData
     import_points(data['points']) if data['points']
 
     # Final validation check
-    if data['counts']
-      validate_import_completeness(data['counts'])
-    end
+    validate_import_completeness(data['counts']) if data['counts']
 
     Rails.logger.info "Data import completed. Stats: #{@import_stats}"
   end
@@ -149,14 +248,14 @@ class Users::ImportData
 
   def import_imports(imports_data)
     Rails.logger.debug "Importing #{imports_data&.size || 0} imports"
-    imports_created, files_restored = Users::ImportData::Imports.new(user, imports_data, @import_directory.join('files')).call
+    imports_created, files_restored = Users::ImportData::Imports.new(user, imports_data, @temp_files).call
     @import_stats[:imports_created] = imports_created
     @import_stats[:files_restored] += files_restored
   end
 
   def import_exports(exports_data)
     Rails.logger.debug "Importing #{exports_data&.size || 0} exports"
-    exports_created, files_restored = Users::ImportData::Exports.new(user, exports_data, @import_directory.join('files')).call
+    exports_created, files_restored = Users::ImportData::Exports.new(user, exports_data, @temp_files).call
     @import_stats[:exports_created] = exports_created
     @import_stats[:files_restored] += files_restored
   end
@@ -199,11 +298,18 @@ class Users::ImportData
     end
   end
 
-  def cleanup_temporary_files(import_directory)
-    return unless File.directory?(import_directory)
+  def cleanup_temporary_files
+    return unless @temp_files
 
-    Rails.logger.info "Cleaning up temporary import directory: #{import_directory}"
-    FileUtils.rm_rf(import_directory)
+    Rails.logger.info "Cleaning up #{@temp_files.size} temporary files"
+
+    @temp_files.each_value do |temp_path|
+      File.delete(temp_path) if File.exist?(temp_path)
+    rescue StandardError => e
+      Rails.logger.warn "Failed to delete temporary file #{temp_path}: #{e.message}"
+    end
+
+    @temp_files.clear
   rescue StandardError => e
     ExceptionReporter.call(e, 'Failed to cleanup temporary files')
   end
@@ -238,24 +344,24 @@ class Users::ImportData
   end
 
   def validate_import_completeness(expected_counts)
-    Rails.logger.info "Validating import completeness..."
+    Rails.logger.info 'Validating import completeness...'
 
     discrepancies = []
 
     expected_counts.each do |entity, expected_count|
       actual_count = @import_stats[:"#{entity}_created"] || 0
 
-      if actual_count < expected_count
-        discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{expected_count - actual_count} missing)"
-        discrepancies << discrepancy
-        Rails.logger.warn "Import discrepancy - #{discrepancy}"
-      end
+      next unless actual_count < expected_count
+
+      discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{expected_count - actual_count} missing)"
+      discrepancies << discrepancy
+      Rails.logger.warn "Import discrepancy - #{discrepancy}"
     end
 
     if discrepancies.any?
       Rails.logger.warn "Import completed with discrepancies: #{discrepancies.join(', ')}"
     else
-      Rails.logger.info "Import validation successful - all entities imported correctly"
+      Rails.logger.info 'Import validation successful - all entities imported correctly'
     end
   end
 end

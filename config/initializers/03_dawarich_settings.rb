@@ -40,6 +40,10 @@ class DawarichSettings
       @store_geodata ||= STORE_GEODATA
     end
 
+    def import_batch_size
+      @import_batch_size ||= (ENV['IMPORT_BATCH_SIZE'].presence || 2500).to_i
+    end
+
     def features
       @features ||= {
         reverse_geocoding: reverse_geocoding_enabled?

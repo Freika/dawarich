@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Onboarding modal window now features a link to the App Store and a QR code to configure the Dawarich iOS app.
 - A permanent option was removed from stats sharing options. Now, stats can be shared for 1, 12 or 24 hours only.
+- User data archive importing now uploads the file directly to the storage service instead of uploading it to the app first.
+- Importing progress bars are now looking nice.
 
 ## Added
 
