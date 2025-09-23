@@ -15,6 +15,7 @@ class Import < ApplicationRecord
 
   validates :name, presence: true, uniqueness: { scope: :user_id }
   validate :file_size_within_limit, if: -> { user.trial? }
+  validate :import_count_within_limit, if: -> { user.trial? }
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
 
@@ -67,6 +68,15 @@ class Import < ApplicationRecord
     return unless file.blob.byte_size > 11.megabytes
 
     errors.add(:file, 'is too large. Trial users can only upload files up to 10MB.')
+  end
+
+  def import_count_within_limit
+    return unless new_record?
+
+    existing_imports_count = user.imports.count
+    return unless existing_imports_count >= 5
+
+    errors.add(:base, 'Trial users can only create up to 5 imports. Please subscribe to import more files.')
   end
 
   def recalculate_stats

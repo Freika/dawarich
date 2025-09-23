@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - Added foundation for upcoming authentication from iOS app.
+- [Dawarich Cloud] Trial users can now create up to 5 imports. After that, they will be prompted to subscribe to a paid plan.
 
 
 # [0.32.0] - 2025-09-13

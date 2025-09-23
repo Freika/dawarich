@@ -11,6 +11,13 @@
     <div class="text-xs text-gray-500 mt-2">
       File format is automatically detected during upload.
     </div>
+    <% if current_user.trial? %>
+      <div class="text-xs text-orange-600 mt-2 font-medium">
+        Trial limitations: Max 5 imports, 10MB per file.
+        <br>
+        Current imports: <%= current_user.imports.count %>/5
+      </div>
+    <% end %>
   </div>
 </div>
 
@@ -18,6 +25,7 @@
   controller: "direct-upload",
   direct_upload_url_value: rails_direct_uploads_url,
   direct_upload_user_trial_value: current_user.trial?,
+  direct_upload_current_imports_count_value: current_user.imports.count,
   direct_upload_target: "form"
 } do |form| %>
   <label class="form-control w-full max-w-xs my-5">
