@@ -5,6 +5,11 @@
 >
 > *Dawarich is still in beta and a rapidly evolving project, and some changes may break compatibility with older versions.*
 
+This guide is written for:
+
+- Unraid OS 7.1.4
+- Dawarich 0.32.0
+
 ## Installation methods: CA Templates vs. Docker Compose
 
 For Dawarich to run 4 docker containers are required:
@@ -17,9 +22,9 @@ For Dawarich to run 4 docker containers are required:
 > [!NOTE]
 > Some containers depend on others to be running first. Therefore this guide will follow this order: `dawarich_db` >> `dawarich_redis` >> `dawarich_app` >> `dawarich_sidekiq`.
 
-[Usually](https://dawarich.app/docs/intro/) all 4 containers are created and started together using [Docker Compose](https://docs.docker.com/compose/). Unraid [does not support Docker Compose natively]((https://docs.unraid.net/unraid-os/using-unraid-to/run-docker-containers/overview/)). Instead, it uses its own implementation of `DockerMan` for managing Docker containers via [Community Applications (CA)](https://docs.unraid.net/unraid-os/using-unraid-to/run-docker-containers/community-applications/) plugin.
+[Usually](https://dawarich.app/docs/intro/) all 4 containers are created and started together using [Docker Compose](https://docs.docker.com/compose/). Unraid [does not support Docker Compose natively](https://docs.unraid.net/unraid-os/using-unraid-to/run-docker-containers/overview/). Instead, it uses its own implementation of `DockerMan` for managing Docker containers via [Community Applications (CA)](https://docs.unraid.net/unraid-os/using-unraid-to/run-docker-containers/community-applications/) plugin.
 
-However, there is a [Docker Compose plugin](https://forums.unraid.net/topic/101521-docker-compose-plugin/) that can be used to [setup and run Dawarich using Docker Compose](https://github.com/Freika/dawarich/discussions/150). This method is not covered in this guide.
+However, there is a [Docker Compose Manager](https://forums.unraid.net/topic/114415-plugin-docker-compose-manager/) plugin that can be used to [setup and run Dawarich using Docker Compose](https://github.com/Freika/dawarich/discussions/150). This method is not covered in this guide.
 
 *Feel free to contribute a PR if you want to add it.*
 
@@ -55,7 +60,7 @@ The [docker-compose file](https://github.com/Freika/dawarich/blob/master/docker/
 By default user created networks are removed from Unraid when Docker is being restarted. This is done to prevent potential conflicts with the automatic generation of custom networks. If you want to use a user-defined bridge network for Dawarich containers, you need to change this behavior. Go to `Settings` -> `Docker` -> enable `Advanced View` and set `Preserve user defined networks` to `Yes`.
 Docker has to be stopped so that the setting can be changed.
 
-> [!Warning]
+> [!WARNING]
 > Change this setting to preserve user defined networks, but it is the responsibility of the user to ensure these entries work correctly and are conflict free.
 
 #### 2. Create the user-defined bridge network
@@ -133,7 +138,7 @@ Install the `dawarich_sidekiq` CA template from nwithan8's repository.
 - Set `Extra Parameters` to:
   
   ```bash
-  --entrypoint=sidekiq-entrypoint.sh --restart=on-failure --health-cmd='pgrep -f sidekiq &amp;gt;/dev/null || exit 1' --health-interval=10s --health-retries=30 --health-start-period=30s --health-timeout=10s
+  --entrypoint=sidekiq-entrypoint.sh --restart=on-failure --health-cmd='pgrep -f sidekiq >/dev/null || exit 1' --health-interval=10s --health-retries=30 --health-start-period=30s --health-timeout=10s
   ```
 
   > [!NOTE]
