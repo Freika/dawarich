@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Deleting an import will now trigger stats recalculation for affected months. #1789
 - Importing process should now schedule visits suggestions job a lot faster.
 - Importing GPX files that start with `<gpx` tag will now be detected correctly. #1775
+- Buttons on the map now have correct contrast in both light and dark modes.
 
 ## Changed
 
