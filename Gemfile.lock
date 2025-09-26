@@ -433,7 +433,7 @@ GEM
       rubocop (>= 1.75.0, < 2.0)
       rubocop-ast (>= 1.44.0, < 2.0)
     ruby-progressbar (1.13.0)
-    rubyzip (2.4.1)
+    rubyzip (3.1.0)
     securerandom (0.4.1)
     selenium-webdriver (4.35.0)
       base64 (~> 0.2)
@@ -580,7 +580,7 @@ DEPENDENCIES
   rswag-specs
   rswag-ui
   rubocop-rails
-  rubyzip (~> 2.4)
+  rubyzip (~> 3.1)
   selenium-webdriver
   sentry-rails
   sentry-ruby
