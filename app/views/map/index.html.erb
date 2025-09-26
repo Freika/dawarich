@@ -68,6 +68,7 @@
         data-api_key="<%= current_user.api_key %>"
         data-self_hosted="<%= @self_hosted %>"
         data-user_settings='<%= (current_user.settings || {}).to_json.html_safe %>'
+        data-user_theme="<%= current_user&.theme || 'dark' %>"
         data-coordinates='<%= @coordinates.to_json.html_safe %>'
         data-tracks='<%= @tracks.to_json.html_safe %>'
         data-distance="<%= @distance %>"
