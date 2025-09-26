@@ -15,11 +15,20 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
 
+  # Family associations
+  has_one :family_membership, dependent: :destroy
+  has_one :family, through: :family_membership
+  has_many :created_families, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
+  has_many :sent_family_invitations, class_name: 'FamilyInvitation', foreign_key: 'invited_by_id',
+inverse_of: :invited_by, dependent: :destroy
+
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? }
 
   before_save :sanitize_input
+
+  before_destroy :check_family_ownership
 
   validates :email, presence: true
   validates :reset_password_token, uniqueness: true, allow_nil: true
@@ -162,6 +171,13 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
   end
 
+  def check_family_ownership
+    return if can_delete_account?
+
+    errors.add(:base, 'Cannot delete account while being a family owner with other members')
+    raise ActiveRecord::DeleteRestrictionError, 'Cannot delete user with family members'
+  end
+
   def start_trial
     update(status: :trial, active_until: 7.days.from_now)
     schedule_welcome_emails
@@ -180,5 +196,43 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   def schedule_post_trial_emails
     Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
     Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
+  end
+
+  public
+
+  # Family-related methods
+  def in_family?
+    family_membership.present?
+  end
+
+  def family_owner?
+    family_membership&.owner? == true
+  end
+
+  def can_delete_account?
+    return true unless family_owner?
+    return true unless family
+
+    family.members.count <= 1
+  end
+
+  def family_sharing_enabled?
+    in_family?
+  end
+
+  def latest_location_for_family
+    return nil unless family_sharing_enabled?
+
+    latest_point = points.order(timestamp: :desc).first
+    return nil unless latest_point
+
+    {
+      user_id: id,
+      email: email,
+      latitude: latest_point.latitude,
+      longitude: latest_point.longitude,
+      timestamp: latest_point.timestamp,
+      updated_at: Time.at(latest_point.timestamp)
+    }
   end
 end
