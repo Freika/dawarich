@@ -76,3 +76,4 @@ export function applyThemeToPanel(panel, userTheme) {
     borderRadius: '4px'
   });
 }
+

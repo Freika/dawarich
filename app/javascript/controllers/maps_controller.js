@@ -264,6 +264,7 @@ export default class extends BaseController {
   disconnect() {
     super.disconnect();
     this.removeEventListeners();
+
     if (this.tracksSubscription) {
       this.tracksSubscription.unsubscribe();
     }
@@ -392,7 +393,7 @@ export default class extends BaseController {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-    let maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted, this.userTheme);
+    let maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted);
 
     // Add custom map if it exists in settings
     if (this.userSettings.maps && this.userSettings.maps.url) {
@@ -424,7 +425,7 @@ export default class extends BaseController {
         osmLayer.addTo(this.map);
         maps["OpenStreetMap"] = osmLayer;
       }
-      // Note: createAllMapLayers already added the appropriate theme-aware layer to the map
+      // Note: createAllMapLayers already added the user's preferred layer to the map
     }
 
     return maps;
@@ -1005,11 +1006,6 @@ export default class extends BaseController {
           this.userTheme = newSettings.theme;
           mapElement.setAttribute('data-user_theme', this.userTheme);
           injectThemeStyles(this.userTheme);
-
-          // Update location search theme if it exists
-          if (this.locationSearch) {
-            this.locationSearch.updateTheme(this.userTheme);
-          }
 
           // Dispatch theme change event for other controllers
           document.dispatchEvent(new CustomEvent('theme:changed', {

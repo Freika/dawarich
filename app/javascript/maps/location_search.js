@@ -1160,15 +1160,6 @@ class LocationSearch {
            new Date(dateString).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
   }
 
-  updateTheme(newTheme) {
-    this.userTheme = newTheme;
-
-    // Update search button theme if it exists
-    const searchButton = document.getElementById('location-search-toggle');
-    if (searchButton) {
-      applyThemeToButton(searchButton, newTheme);
-    }
-  }
 }
 
 export { LocationSearch };
