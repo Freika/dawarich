@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `GET /api/v1/points will now return correct latitude and longitude values. #1502
 - Deleting an import will now trigger stats recalculation for affected months. #1789
 - Importing process should now schedule visits suggestions job a lot faster.
+- Importing GPX files that start with `<gpx` tag will now be detected correctly. #1775
 
 ## Changed
 
@@ -23,7 +24,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Added
 
-- Added foundation for upcoming authentication from iOS app.
+- [Dawarich Cloud] Based on preferred theme (light or dark), the map page will now load with the corresponding map layer (light or dark).
+- [Dawarich Cloud] Added foundation for upcoming authentication from iOS app.
 - [Dawarich Cloud] Trial users can now create up to 5 imports. After that, they will be prompted to subscribe to a paid plan.
 
 

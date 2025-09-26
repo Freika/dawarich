@@ -50,7 +50,7 @@ export default class extends BaseController {
     try {
       // Use appropriate default layer based on self-hosted mode
       const selectedLayerName = this.selfHosted === "true" ? "OpenStreetMap" : "Light";
-      const maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted);
+      const maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted, 'dark');
 
       // If no layers were created, fall back to OSM
       if (Object.keys(maps).length === 0) {

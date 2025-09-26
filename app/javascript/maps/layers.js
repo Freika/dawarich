@@ -45,12 +45,54 @@ export function createMapLayer(map, selectedLayerName, layerKey, selfHosted) {
   }
 }
 
+// Helper function to apply theme-aware layer selection
+function getThemeAwareLayerName(preferredLayerName, userTheme, selfHosted) {
+  // Only apply theme-aware logic for non-self-hosted (vector) maps
+  if (selfHosted === "true") {
+    return preferredLayerName;
+  }
+
+  // Define light and dark layer groups
+  const lightLayers = ["Light", "White", "Grayscale"];
+  const darkLayers = ["Dark", "Black"];
+
+  let finalLayerName = preferredLayerName;
+
+  if (userTheme === "light") {
+    // If user theme is light and preferred layer is light-compatible, keep it
+    if (lightLayers.includes(preferredLayerName)) {
+      finalLayerName = preferredLayerName;
+    }
+    // If user theme is light but preferred layer is dark, default to White
+    else if (darkLayers.includes(preferredLayerName)) {
+      finalLayerName = "White";
+    }
+  } else if (userTheme === "dark") {
+    // If user theme is dark and preferred layer is dark-compatible, keep it
+    if (darkLayers.includes(preferredLayerName)) {
+      finalLayerName = preferredLayerName;
+    }
+    // If user theme is dark but preferred layer is light, default to Dark
+    else if (lightLayers.includes(preferredLayerName)) {
+      finalLayerName = "Dark";
+    }
+  }
+
+  return finalLayerName;
+}
+
 // Helper function to create all map layers
-export function createAllMapLayers(map, selectedLayerName, selfHosted) {
+export function createAllMapLayers(map, selectedLayerName, selfHosted, userTheme = 'dark') {
   const layers = {};
   const mapsConfig = selfHosted === "true" ? rasterMapsConfig : vectorMapsConfig;
+
+  // Apply theme-aware selection
+  const themeAwareLayerName = getThemeAwareLayerName(selectedLayerName, userTheme, selfHosted);
+
   Object.keys(mapsConfig).forEach(layerKey => {
-    layers[layerKey] = createMapLayer(map, selectedLayerName, layerKey, selfHosted);
+    // Create the layer and add it to the map if it's the theme-aware selected layer
+    const layer = createMapLayer(map, themeAwareLayerName, layerKey, selfHosted);
+    layers[layerKey] = layer;
   });
 
   return layers;

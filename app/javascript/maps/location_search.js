@@ -1,8 +1,11 @@
 // Location search functionality for the map
+import { applyThemeToButton } from "./theme_utils";
+
 class LocationSearch {
-  constructor(map, apiKey) {
+  constructor(map, apiKey, userTheme = 'dark') {
     this.map = map;
     this.apiKey = apiKey;
+    this.userTheme = userTheme;
     this.searchResults = [];
     this.searchMarkersLayer = null;
     this.currentSearchQuery = '';
@@ -22,12 +25,10 @@ class LocationSearch {
       onAdd: function(map) {
         const button = L.DomUtil.create('button', 'location-search-toggle');
         button.innerHTML = '🔍';
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, this.userTheme);
         button.style.width = '48px';
         button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
         button.style.fontSize = '18px';
@@ -1157,6 +1158,16 @@ class LocationSearch {
   formatDateTime(dateString) {
     return new Date(dateString).toLocaleDateString() + ' ' +
            new Date(dateString).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  }
+
+  updateTheme(newTheme) {
+    this.userTheme = newTheme;
+
+    // Update search button theme if it exists
+    const searchButton = document.getElementById('location-search-toggle');
+    if (searchButton) {
+      applyThemeToButton(searchButton, newTheme);
+    }
   }
 }
 

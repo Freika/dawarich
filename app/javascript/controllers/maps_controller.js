@@ -43,6 +43,8 @@ import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fo
 import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
 import { createAllMapLayers } from "../maps/layers";
+import { applyThemeToControl, applyThemeToButton, applyThemeToPanel } from "../maps/theme_utils";
+import { injectThemeStyles } from "../maps/theme_styles";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -61,6 +63,10 @@ export default class extends BaseController {
 
     this.apiKey = this.element.dataset.api_key;
     this.selfHosted = this.element.dataset.self_hosted;
+    this.userTheme = this.element.dataset.user_theme || 'dark';
+
+    // Inject theme styles for Leaflet controls
+    injectThemeStyles(this.userTheme);
 
     try {
       this.markers = this.element.dataset.coordinates ? JSON.parse(this.element.dataset.coordinates) : [];
@@ -134,10 +140,11 @@ export default class extends BaseController {
 
         const unit = this.distanceUnit === 'km' ? 'km' : 'mi';
         div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
-        div.style.backgroundColor = 'white';
-        div.style.padding = '0 5px';
-        div.style.marginRight = '5px';
-        div.style.display = 'inline-block';
+        applyThemeToControl(div, this.userTheme, {
+          padding: '0 5px',
+          marginRight: '5px',
+          display: 'inline-block'
+        });
         return div;
       }
     });
@@ -195,8 +202,8 @@ export default class extends BaseController {
     }
 
     // Initialize the visits manager
-    this.visitsManager = new VisitsManager(this.map, this.apiKey);
-    
+    this.visitsManager = new VisitsManager(this.map, this.apiKey, this.userTheme);
+
     // Expose visits manager globally for location search integration
     window.visitsManager = this.visitsManager;
 
@@ -385,7 +392,7 @@ export default class extends BaseController {
 
   baseMaps() {
     let selectedLayerName = this.userSettings.preferred_map_layer || "OpenStreetMap";
-    let maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted);
+    let maps = createAllMapLayers(this.map, selectedLayerName, this.selfHosted, this.userTheme);
 
     // Add custom map if it exists in settings
     if (this.userSettings.maps && this.userSettings.maps.url) {
@@ -396,40 +403,28 @@ export default class extends BaseController {
 
       // If this is the preferred layer, add it to the map immediately
       if (selectedLayerName === this.userSettings.maps.name) {
-        customLayer.addTo(this.map);
-        // Remove any other base layers that might be active
+        // Remove any existing base layers first
         Object.values(maps).forEach(layer => {
           if (this.map.hasLayer(layer)) {
             this.map.removeLayer(layer);
           }
         });
+        customLayer.addTo(this.map);
       }
 
       maps[this.userSettings.maps.name] = customLayer;
     } else {
-      // If no custom map is set, ensure a default layer is added
-      // First check if maps object has any entries
+      // If no maps were created (fallback case), add OSM
       if (Object.keys(maps).length === 0) {
-        // Fallback to OSM if no maps are configured
-        maps["OpenStreetMap"] = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        console.warn('No map layers available, adding OSM fallback');
+        const osmLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
           attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>"
         });
+        osmLayer.addTo(this.map);
+        maps["OpenStreetMap"] = osmLayer;
       }
-
-      // Now try to get the selected layer or fall back to alternatives
-      const defaultLayer = maps[selectedLayerName] || Object.values(maps)[0];
-
-      if (defaultLayer) {
-        defaultLayer.addTo(this.map);
-      } else {
-        console.error("Could not find any default map layer");
-        // Ultimate fallback - create and add OSM layer directly
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>"
-        }).addTo(this.map);
-      }
+      // Note: createAllMapLayers already added the appropriate theme-aware layer to the map
     }
 
     return maps;
@@ -731,13 +726,10 @@ export default class extends BaseController {
         const button = L.DomUtil.create('button', 'map-settings-button');
         button.innerHTML = '⚙️'; // Gear icon
 
-        // Style the button
-        button.style.backgroundColor = 'white';
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, this.userTheme);
         button.style.width = '32px';
         button.style.height = '32px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
@@ -863,11 +855,9 @@ export default class extends BaseController {
         </form>
       `;
 
-      // Style the panel
-      div.style.backgroundColor = 'white';
+      // Style the panel with theme-aware styling
+      applyThemeToPanel(div, this.userTheme);
       div.style.padding = '10px';
-      div.style.border = '1px solid #ccc';
-      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
 
       // Prevent map interactions when interacting with the form
       L.DomEvent.disableClickPropagation(div);
@@ -1010,6 +1000,22 @@ export default class extends BaseController {
       const mapElement = document.getElementById('map');
       if (mapElement) {
         mapElement.setAttribute('data-user_settings', JSON.stringify(this.userSettings));
+        // Update theme if it changed
+        if (newSettings.theme && newSettings.theme !== this.userTheme) {
+          this.userTheme = newSettings.theme;
+          mapElement.setAttribute('data-user_theme', this.userTheme);
+          injectThemeStyles(this.userTheme);
+
+          // Update location search theme if it exists
+          if (this.locationSearch) {
+            this.locationSearch.updateTheme(this.userTheme);
+          }
+
+          // Dispatch theme change event for other controllers
+          document.dispatchEvent(new CustomEvent('theme:changed', {
+            detail: { theme: this.userTheme }
+          }));
+        }
       }
 
       // Store current layer states
@@ -1091,12 +1097,10 @@ export default class extends BaseController {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
         button.innerHTML = '📅';
 
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, controller.userTheme);
         button.style.width = '48px';
         button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
         button.style.lineHeight = '48px';
@@ -1131,12 +1135,12 @@ export default class extends BaseController {
     const RouteTracksControl = L.Control.extend({
       onAdd: function(map) {
         const container = L.DomUtil.create('div', 'routes-tracks-selector leaflet-bar');
-        container.style.backgroundColor = 'white';
-        container.style.padding = '8px';
-        container.style.borderRadius = '4px';
-        container.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        container.style.fontSize = '12px';
-        container.style.lineHeight = '1.2';
+        applyThemeToControl(container, controller.userTheme, {
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          lineHeight: '1.2'
+        });
 
         // Get saved preference or default to 'routes'
         const savedPreference = localStorage.getItem('mapRouteMode') || 'routes';
@@ -1395,10 +1399,8 @@ export default class extends BaseController {
 
       this.fetchAndDisplayTrackedMonths(div, currentYear, currentMonth, allMonths);
 
-      div.style.backgroundColor = 'white';
+      applyThemeToPanel(div, this.userTheme);
       div.style.padding = '10px';
-      div.style.border = '1px solid #ccc';
-      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
       div.style.marginRight = '10px';
       div.style.marginTop = '10px';
       div.style.width = '300px';
@@ -1840,7 +1842,7 @@ export default class extends BaseController {
 
   initializeLocationSearch() {
     if (this.map && this.apiKey && this.features.reverse_geocoding) {
-      this.locationSearch = new LocationSearch(this.map, this.apiKey);
+      this.locationSearch = new LocationSearch(this.map, this.apiKey, this.userTheme);
     }
   }
 }
