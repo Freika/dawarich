@@ -17,6 +17,7 @@ class Shared::StatsController < ApplicationController
     @user = @stat.user
     @is_public_view = true
     @data_bounds = @stat.calculate_data_bounds
+    @hexagons_available = @stat.hexagons_available?
 
     render 'stats/public_month'
   end
@@ -29,7 +30,7 @@ class Shared::StatsController < ApplicationController
     return head :not_found unless @stat
 
     if params[:enabled] == '1'
-      @stat.enable_sharing!(expiration: params[:expiration] || 'permanent')
+      @stat.enable_sharing!(expiration: params[:expiration] || '24h')
       sharing_url = shared_stat_url(@stat.sharing_uuid)
 
       render json: {

@@ -38,7 +38,7 @@ class Stat < ApplicationRecord
 
   def sharing_expired?
     expiration = sharing_settings['expiration']
-    return false if expiration.blank? || expiration == 'permanent'
+    return false if expiration.blank?
 
     expires_at_value = sharing_settings['expires_at']
     return true if expires_at_value.blank?
@@ -56,11 +56,20 @@ class Stat < ApplicationRecord
     sharing_enabled? && !sharing_expired?
   end
 
+  def hexagons_available?
+    h3_hex_ids.present? &&
+      (h3_hex_ids.is_a?(Hash) || h3_hex_ids.is_a?(Array)) &&
+      h3_hex_ids.any?
+  end
+
   def generate_new_sharing_uuid!
     update!(sharing_uuid: SecureRandom.uuid)
   end
 
   def enable_sharing!(expiration: '1h')
+    # Default to 24h if an invalid expiration is provided
+    expiration = '24h' unless %w[1h 12h 24h].include?(expiration)
+
     expires_at = case expiration
                  when '1h' then 1.hour.from_now
                  when '12h' then 12.hours.from_now
@@ -71,7 +80,7 @@ class Stat < ApplicationRecord
       sharing_settings: {
         'enabled' => true,
         'expiration' => expiration,
-        'expires_at' => expires_at&.iso8601
+        'expires_at' => expires_at.iso8601
       },
       sharing_uuid: sharing_uuid || SecureRandom.uuid
     )
@@ -114,6 +123,10 @@ class Stat < ApplicationRecord
       max_lng: bounds_result['max_lng'].to_f,
       point_count: point_count
     }
+  end
+
+  def process!
+    Stats::CalculatingJob.perform_later(user.id, year, month)
   end
 
   private

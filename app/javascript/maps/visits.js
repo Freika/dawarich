@@ -1,13 +1,15 @@
 import L from "leaflet";
 import { showFlashMessage } from "./helpers";
+import { applyThemeToButton } from "./theme_utils";
 
 /**
  * Manages visits functionality including displaying, fetching, and interacting with visits
  */
 export class VisitsManager {
-  constructor(map, apiKey) {
+  constructor(map, apiKey, userTheme = 'dark') {
     this.map = map;
     this.apiKey = apiKey;
+    this.userTheme = userTheme;
 
     // Create custom panes for different visit types
     if (!map.getPane('confirmedVisitsPane')) {
@@ -67,12 +69,10 @@ export class VisitsManager {
       onAdd: (map) => {
         const button = L.DomUtil.create('button', 'leaflet-control-button drawer-button');
         button.innerHTML = '⬅️'; // Left arrow icon
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, this.userTheme);
         button.style.width = '48px';
         button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
         button.style.lineHeight = '48px';
@@ -104,12 +104,10 @@ export class VisitsManager {
         button.innerHTML = '⚓️';
         button.title = 'Select Area';
         button.id = 'selection-tool-button';
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, this.userTheme);
         button.style.width = '48px';
         button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
         button.style.lineHeight = '48px';

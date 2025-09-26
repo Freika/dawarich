@@ -53,7 +53,7 @@ export default class extends BaseController {
       this.userSettingsValue.preferred_map_layer || "OpenStreetMap" :
       "OpenStreetMap";
 
-    let maps = createAllMapLayers(this.map, selectedLayerName);
+    let maps = createAllMapLayers(this.map, selectedLayerName, "false", 'dark');
 
     // Add custom map if it exists in settings
     if (this.hasUserSettingsValue && this.userSettingsValue.maps && this.userSettingsValue.maps.url) {

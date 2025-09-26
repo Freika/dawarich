@@ -40,7 +40,7 @@ class Imports::SourceDetector
       ]
     },
     geojson: {
-      required_keys: ['type', 'features'],
+      required_keys: %w[type features],
       required_values: { 'type' => 'FeatureCollection' },
       nested_patterns: [
         ['features', 0, 'type'],
@@ -79,9 +79,7 @@ class Imports::SourceDetector
     DETECTION_RULES.each do |format, rules|
       next if format == :owntracks # Already handled above
 
-      if matches_format?(json_data, rules)
-        return format
-      end
+      return format if matches_format?(json_data, rules)
     end
 
     nil
@@ -105,14 +103,17 @@ class Imports::SourceDetector
     return false unless filename.downcase.end_with?('.gpx')
 
     # Check content for GPX structure
-    content_to_check = if file_path && File.exist?(file_path)
-                        # Read first 1KB for GPX detection
-                        File.open(file_path, 'rb') { |f| f.read(1024) }
-                      else
-                        file_content
-                      end
-
-    content_to_check.strip.start_with?('<?xml') && content_to_check.include?('<gpx')
+    content_to_check =
+      if file_path && File.exist?(file_path)
+        # Read first 1KB for GPX detection
+        File.open(file_path, 'rb') { |f| f.read(1024) }
+      else
+        file_content
+      end
+    (
+      content_to_check.strip.start_with?('<?xml') ||
+      content_to_check.strip.start_with?('<gpx')
+    ) && content_to_check.include?('<gpx')
   end
 
   def owntracks_file?
@@ -123,11 +124,11 @@ class Imports::SourceDetector
 
     # Check for specific OwnTracks line format in content
     content_to_check = if file_path && File.exist?(file_path)
-                        # For OwnTracks, read first few lines only
-                        File.open(file_path, 'r') { |f| f.read(2048) }
-                      else
-                        file_content
-                      end
+                         # For OwnTracks, read first few lines only
+                         File.open(file_path, 'r') { |f| f.read(2048) }
+                       else
+                         file_content
+                       end
 
     content_to_check.lines.any? { |line| line.include?('"_type":"location"') }
   end
@@ -169,19 +170,13 @@ class Imports::SourceDetector
     return false unless structure_matches?(json_data, pattern[:structure])
 
     # Check required keys
-    if pattern[:required_keys]
-      return false unless has_required_keys?(json_data, pattern[:required_keys])
-    end
+    return false if pattern[:required_keys] && !has_required_keys?(json_data, pattern[:required_keys])
 
     # Check required values
-    if pattern[:required_values]
-      return false unless has_required_values?(json_data, pattern[:required_values])
-    end
+    return false if pattern[:required_values] && !has_required_values?(json_data, pattern[:required_values])
 
     # Check nested patterns
-    if pattern[:nested_patterns]
-      return false unless has_nested_patterns?(json_data, pattern[:nested_patterns])
-    end
+    return false if pattern[:nested_patterns] && !has_nested_patterns?(json_data, pattern[:nested_patterns])
 
     true
   end
@@ -221,9 +216,11 @@ class Imports::SourceDetector
 
       if current.is_a?(Array)
         return false if key >= current.length
+
         current = current[key]
       elsif current.is_a?(Hash)
         return false unless current.key?(key)
+
         current = current[key]
       else
         return false

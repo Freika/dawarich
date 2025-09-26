@@ -128,34 +128,45 @@ module StatsHelper
   def quietest_week(stat)
     return 'N/A' if stat.daily_distance.empty?
 
-    # Create a hash with date as key and distance as value
-    distance_by_date = stat.daily_distance.to_h.transform_keys do |timestamp|
-      Time.at(timestamp).in_time_zone(stat.user.timezone || 'UTC').to_date
-    end
-
-    # Initialize variables to track the quietest week
-    quietest_start_date = nil
-    quietest_distance = Float::INFINITY
-
-    # Iterate through each day of the month to find the quietest week
-    start_date = distance_by_date.keys.min.beginning_of_month
-    end_date = distance_by_date.keys.max.end_of_month
-
-    (start_date..end_date).each_cons(7) do |week|
-      week_distance = week.sum { |date| distance_by_date[date] || 0 }
-
-      if week_distance < quietest_distance
-        quietest_distance = week_distance
-        quietest_start_date = week.first
-      end
-    end
+    distance_by_date = build_distance_by_date_hash(stat)
+    quietest_start_date = find_quietest_week_start_date(stat, distance_by_date)
 
     return 'N/A' unless quietest_start_date
 
-    quietest_end_date = quietest_start_date + 6.days
-    start_str = quietest_start_date.strftime('%b %d')
-    end_str = quietest_end_date.strftime('%b %d')
+    format_week_range(quietest_start_date)
+  end
 
+  private
+
+  def build_distance_by_date_hash(stat)
+    stat.daily_distance.to_h.transform_keys do |day_number|
+      Date.new(stat.year, stat.month, day_number)
+    end
+  end
+
+  def find_quietest_week_start_date(stat, distance_by_date)
+    quietest_start_date = nil
+    quietest_distance = Float::INFINITY
+    stat_month_start = Date.new(stat.year, stat.month, 1)
+    stat_month_end = stat_month_start.end_of_month
+
+    (stat_month_start..(stat_month_end - 6.days)).each do |start_date|
+      week_dates = (start_date..(start_date + 6.days)).to_a
+      week_distance = week_dates.sum { |date| distance_by_date[date] || 0 }
+
+      if week_distance < quietest_distance
+        quietest_distance = week_distance
+        quietest_start_date = start_date
+      end
+    end
+
+    quietest_start_date
+  end
+
+  def format_week_range(start_date)
+    end_date = start_date + 6.days
+    start_str = start_date.strftime('%b %d')
+    end_str = end_date.strftime('%b %d')
     "#{start_str} - #{end_str}"
   end
 

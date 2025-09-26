@@ -12,6 +12,9 @@
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <% if ENV['POSTHOG_ENABLED'] == 'true' %>
+      <%= javascript_include_tag "posthog", "data-turbo-track": "reload" %>
+    <% end %>
     <%= javascript_importmap_tags %>
     <%= javascript_include_tag "https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js" %>
 

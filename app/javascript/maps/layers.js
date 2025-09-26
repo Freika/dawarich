@@ -49,8 +49,11 @@ export function createMapLayer(map, selectedLayerName, layerKey, selfHosted) {
 export function createAllMapLayers(map, selectedLayerName, selfHosted) {
   const layers = {};
   const mapsConfig = selfHosted === "true" ? rasterMapsConfig : vectorMapsConfig;
+
   Object.keys(mapsConfig).forEach(layerKey => {
-    layers[layerKey] = createMapLayer(map, selectedLayerName, layerKey, selfHosted);
+    // Create the layer and add it to the map if it's the user's selected layer
+    const layer = createMapLayer(map, selectedLayerName, layerKey, selfHosted);
+    layers[layerKey] = layer;
   });
 
   return layers;

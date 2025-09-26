@@ -71,11 +71,15 @@ class Users::ImportData
 
     Zip::File.open(archive_path) do |zip_file|
       zip_file.each do |entry|
-        extraction_path = @import_directory.join(entry.name)
+        next if entry.directory?
+
+        extraction_path = File.join(@import_directory, entry.name)
+        Rails.logger.debug "Extracting #{entry.name} to #{extraction_path}"
 
         FileUtils.mkdir_p(File.dirname(extraction_path))
 
-        entry.extract(extraction_path)
+        # Use destination_directory parameter for rubyzip 3.x compatibility
+        entry.extract(entry.name, destination_directory: @import_directory)
       end
     end
   end

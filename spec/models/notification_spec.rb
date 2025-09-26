@@ -23,7 +23,12 @@ RSpec.describe Notification, type: :model do
       let(:unread_notification) { create(:notification, read_at: nil) }
 
       it 'returns only unread notifications' do
-        expect(described_class.unread).to eq([unread_notification])
+        read_notification # ensure it's created
+        unread_notification # ensure it's created
+
+        unread_notifications = described_class.unread
+        expect(unread_notifications).to include(unread_notification)
+        expect(unread_notifications).not_to include(read_notification)
       end
     end
   end

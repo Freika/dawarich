@@ -23,4 +23,4 @@ production:
 
 staging:
   <<: *default
-  database: <%= ENV['DATABASE_NAME'] || 'dawarich_staging' %>
+  database: <%= ENV['DATABASE_NAME'] || 'dawarich_production' %>
