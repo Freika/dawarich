@@ -78,12 +78,11 @@ class Imports::Create
   def schedule_visit_suggesting(user_id, import)
     return unless user.safe_settings.visits_suggestions_enabled?
 
-    points = import.points.order(:timestamp)
+    min_max = import.points.pluck('MIN(timestamp), MAX(timestamp)').first
+    return if min_max.compact.empty?
 
-    return if points.none?
-
-    start_at = Time.zone.at(points.first.timestamp)
-    end_at = Time.zone.at(points.last.timestamp)
+    start_at = Time.zone.at(min_max[0])
+    end_at = Time.zone.at(min_max[1])
 
     VisitSuggestingJob.perform_later(user_id:, start_at:, end_at:)
   end
