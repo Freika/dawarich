@@ -74,18 +74,16 @@ class Users::ImportData::Imports
   end
 
   def restore_import_file(import_record, import_data)
-    # files_directory is actually a hash mapping archive paths to temp file paths
-    archive_file_path = "files/#{import_data['file_name']}"
-    temp_file_path = files_directory[archive_file_path]
+    file_path = files_directory.join(import_data['file_name'])
 
-    unless temp_file_path && File.exist?(temp_file_path)
-      Rails.logger.warn "Import file not found: #{import_data['file_name']} (archive path: #{archive_file_path})"
+    unless File.exist?(file_path)
+      Rails.logger.warn "Import file not found: #{import_data['file_name']}"
       return false
     end
 
     begin
       import_record.file.attach(
-        io: File.open(temp_file_path),
+        io: File.open(file_path),
         filename: import_data['original_filename'] || import_data['file_name'],
         content_type: import_data['content_type'] || 'application/octet-stream'
       )

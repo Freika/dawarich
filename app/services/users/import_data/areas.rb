@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Areas
+  BATCH_SIZE = 1000
 
   def initialize(user, areas_data)
     @user = user
@@ -34,10 +35,6 @@ class Users::ImportData::Areas
   private
 
   attr_reader :user, :areas_data
-
-  def batch_size
-    @batch_size ||= DawarichSettings.import_batch_size
-  end
 
   def filter_and_prepare_areas
     valid_areas = []
@@ -103,7 +100,7 @@ class Users::ImportData::Areas
   def bulk_import_areas(areas)
     total_created = 0
 
-    areas.each_slice(batch_size) do |batch|
+    areas.each_slice(BATCH_SIZE) do |batch|
       begin
         result = Area.upsert_all(
           batch,

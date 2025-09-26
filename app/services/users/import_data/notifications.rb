@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Notifications
+  BATCH_SIZE = 1000
 
   def initialize(user, notifications_data)
     @user = user
@@ -34,10 +35,6 @@ class Users::ImportData::Notifications
   private
 
   attr_reader :user, :notifications_data
-
-  def batch_size
-    @batch_size ||= DawarichSettings.import_batch_size
-  end
 
   def filter_and_prepare_notifications
     valid_notifications = []
@@ -126,7 +123,7 @@ class Users::ImportData::Notifications
   def bulk_import_notifications(notifications)
     total_created = 0
 
-    notifications.each_slice(batch_size) do |batch|
+    notifications.each_slice(BATCH_SIZE) do |batch|
       begin
         result = Notification.upsert_all(
           batch,

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Points
+  BATCH_SIZE = 1000
 
   def initialize(user, points_data)
     @user = user
@@ -37,10 +38,6 @@ class Users::ImportData::Points
 
   attr_reader :user, :points_data, :imports_lookup, :countries_lookup, :visits_lookup
 
-  def batch_size
-    @batch_size ||= DawarichSettings.import_batch_size
-  end
-
   def preload_reference_data
     @imports_lookup = {}
     user.imports.each do |import|
@@ -74,12 +71,14 @@ class Users::ImportData::Points
 
       unless valid_point_data?(point_data)
         skipped_count += 1
+        Rails.logger.debug "Skipped point #{index}: invalid data - #{point_data.slice('timestamp', 'longitude', 'latitude', 'lonlat')}"
         next
       end
 
       prepared_attributes = prepare_point_attributes(point_data)
       unless prepared_attributes
         skipped_count += 1
+        Rails.logger.debug "Skipped point #{index}: failed to prepare attributes"
         next
       end
 
@@ -117,7 +116,10 @@ class Users::ImportData::Points
     resolve_country_reference(attributes, point_data['country_info'])
     resolve_visit_reference(attributes, point_data['visit_reference'])
 
-    attributes.symbolize_keys
+    result = attributes.symbolize_keys
+
+    Rails.logger.debug "Prepared point attributes: #{result.slice(:lonlat, :timestamp, :import_id, :country_id, :visit_id)}"
+    result
   rescue StandardError => e
     ExceptionReporter.call(e, 'Failed to prepare point attributes')
 
@@ -192,20 +194,25 @@ class Users::ImportData::Points
   end
 
   def normalize_point_keys(points)
-    # Return points as-is since upsert_all can handle inconsistent keys
-    # This eliminates the expensive hash reconstruction overhead
-    points
+    all_keys = points.flat_map(&:keys).uniq
+
+    # Normalize each point to have all keys (with nil for missing ones)
+    points.map do |point|
+      normalized = {}
+      all_keys.each do |key|
+        normalized[key] = point[key]
+      end
+      normalized
+    end
   end
 
   def bulk_import_points(points)
     total_created = 0
 
-    points.each_slice(batch_size) do |batch|
+    points.each_slice(BATCH_SIZE) do |batch|
       begin
-        # Only log every 10th batch to reduce noise
-        if (total_created / batch_size) % 10 == 0
-          Rails.logger.info "Processed #{total_created} points so far, current batch: #{batch.size}"
-        end
+        Rails.logger.debug "Processing batch of #{batch.size} points"
+        Rails.logger.debug "First point in batch: #{batch.first.inspect}"
 
         normalized_batch = normalize_point_keys(batch)
 
@@ -218,6 +225,8 @@ class Users::ImportData::Points
 
         batch_created = result.count
         total_created += batch_created
+
+        Rails.logger.debug "Processed batch of #{batch.size} points, created #{batch_created}, total created: #{total_created}"
 
       rescue StandardError => e
         Rails.logger.error "Failed to process point batch: #{e.message}"
