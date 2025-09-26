@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Hexagons for the stats page are now being calculated a lot faster.
 - Prometheus exporter is now not being started when console is being run.
 - Stats will now properly reflect countries and cities visited after importing new points.
-- `GET /api/v1/points will now return correct latitude and longitude values. #1502
+- `GET /api/v1/points` will now return correct latitude and longitude values. #1502
 - Deleting an import will now trigger stats recalculation for affected months. #1789
 - Importing process should now schedule visits suggestions job a lot faster.
 - Importing GPX files that start with `<gpx` tag will now be detected correctly. #1775
