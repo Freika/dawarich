@@ -4,7 +4,6 @@ class DawarichSettings
   BASIC_PAID_PLAN_LIMIT = 10_000_000 # 10 million points
 
   class << self
-
     def reverse_geocoding_enabled?
       @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled? || nominatim_enabled?
     end
@@ -38,10 +37,6 @@ class DawarichSettings
 
     def store_geodata?
       @store_geodata ||= STORE_GEODATA
-    end
-
-    def import_batch_size
-      @import_batch_size ||= (ENV['IMPORT_BATCH_SIZE'].presence || 2500).to_i
     end
 
     def features
