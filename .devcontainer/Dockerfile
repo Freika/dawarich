@@ -1,5 +1,5 @@
 # Base-Image for Ruby and Node.js
-FROM ruby:3.4.1-alpine
+FROM ruby:3.4.6-alpine
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21

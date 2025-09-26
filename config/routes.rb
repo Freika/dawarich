@@ -85,6 +85,9 @@ Rails.application.routes.draw do
 
   root to: 'home#index'
 
+  # iOS mobile auth success endpoint
+  get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
+
   if SELF_HOSTED
     devise_for :users, skip: [:registrations]
     as :user do

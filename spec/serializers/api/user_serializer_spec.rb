@@ -6,7 +6,7 @@ RSpec.describe Api::UserSerializer do
   describe '#call' do
     subject(:serializer) { described_class.new(user).call }
 
-    let(:user) { create(:user, email: 'test@example.com', theme: 'dark') }
+    let(:user) { create(:user) }
 
     it 'returns JSON with correct user attributes' do
       expect(serializer[:user][:email]).to eq(user.email)
@@ -79,6 +79,62 @@ RSpec.describe Api::UserSerializer do
         expect(settings[:speed_color_scale]).to eq('rainbow')
         expect(settings[:fog_of_war_threshold]).to eq(5)
         expect(settings[:maps]).to eq({ 'distance_unit' => 'mi' })
+      end
+    end
+
+    context 'subscription data' do
+      context 'when not self-hosted (hosted instance)' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        end
+
+        it 'includes subscription data' do
+          expect(serializer).to have_key(:subscription)
+          expect(serializer[:subscription]).to include(:status, :active_until)
+        end
+
+        it 'returns correct subscription values' do
+          subscription = serializer[:subscription]
+          expect(subscription[:status]).to eq(user.status)
+          expect(subscription[:active_until]).to eq(user.active_until)
+        end
+
+        context 'with specific subscription values' do
+          it 'serializes trial user status correctly' do
+            # When not self-hosted, users start with trial status via start_trial callback
+            test_user = create(:user)
+            serializer_result = described_class.new(test_user).call
+            subscription = serializer_result[:subscription]
+
+            expect(subscription[:status]).to eq('trial')
+            expect(subscription[:active_until]).to be_within(1.second).of(7.days.from_now)
+          end
+
+          it 'serializes subscription data with all expected fields' do
+            test_user = create(:user)
+            serializer_result = described_class.new(test_user).call
+            subscription = serializer_result[:subscription]
+
+            expect(subscription).to include(:status, :active_until)
+            expect(subscription[:status]).to be_a(String)
+            expect(subscription[:active_until]).to be_a(ActiveSupport::TimeWithZone)
+          end
+        end
+      end
+
+      context 'when self-hosted' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        end
+
+        it 'does not include subscription data' do
+          expect(serializer).not_to have_key(:subscription)
+        end
+
+        it 'still includes user and settings data' do
+          expect(serializer).to have_key(:user)
+          expect(serializer[:user]).to include(:email, :theme, :settings)
+        end
       end
     end
   end

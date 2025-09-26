@@ -5,7 +5,7 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
-  before_action :unread_notifications, :set_self_hosted_status
+  before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   protected
 
@@ -39,10 +39,34 @@ class ApplicationController < ActionController::Base
     user_not_authorized
   end
 
+  def after_sign_in_path_for(resource)
+    # Check both current request header and stored session value
+    client_type = request.headers['X-Dawarich-Client'] || session[:dawarich_client]
+
+    case client_type
+    when 'ios'
+      payload = { api_key: resource.api_key, exp: 5.minutes.from_now.to_i }
+
+      token = Subscription::EncodeJwtToken.new(
+        payload, ENV['AUTH_JWT_SECRET_KEY']
+      ).call
+
+      ios_success_path(token:)
+    else
+      super
+    end
+  end
+
   private
 
   def set_self_hosted_status
     @self_hosted = DawarichSettings.self_hosted?
+  end
+
+  def store_client_header
+    return unless request.headers['X-Dawarich-Client']
+
+    session[:dawarich_client] = request.headers['X-Dawarich-Client']
   end
 
   def user_not_authorized

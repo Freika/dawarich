@@ -12,6 +12,7 @@ This file contains essential information for Claude to work effectively with the
 - Import from various sources (Google Maps Timeline, OwnTracks, Strava, GPX, GeoJSON, photos)
 - Export to GeoJSON and GPX formats
 - Statistics and analytics (countries visited, distance traveled, etc.)
+- Public sharing of monthly statistics with time-based expiration
 - Trips management with photo integration
 - Areas and visits tracking
 - Integration with photo management systems (Immich, Photoprism)
@@ -75,7 +76,7 @@ This file contains essential information for Claude to work effectively with the
 - **Trip**: User-defined travel periods with analytics
 - **Import**: Data import operations
 - **Export**: Data export operations
-- **Stat**: Calculated statistics and metrics
+- **Stat**: Calculated statistics and metrics with public sharing capabilities
 
 ### Geographic Features
 - Uses PostGIS for advanced geographic queries
@@ -126,11 +127,41 @@ npx playwright test                  # E2E tests
 - Various import jobs for different data sources
 - Statistical calculation jobs
 
+## Public Sharing System
+
+### Overview
+Dawarich includes a comprehensive public sharing system that allows users to share their monthly statistics with others without requiring authentication. This feature enables users to showcase their location data while maintaining privacy control through configurable expiration settings.
+
+### Key Features
+- **Time-based expiration**: Share links can expire after 1 hour, 12 hours, 24 hours, or be permanent
+- **UUID-based access**: Each shared stat has a unique, unguessable UUID for security
+- **Public API endpoints**: Hexagon map data can be accessed via API without authentication when sharing is enabled
+- **Automatic cleanup**: Expired shares are automatically inaccessible
+- **Privacy controls**: Users can enable/disable sharing and regenerate sharing URLs at any time
+
+### Technical Implementation
+- **Database**: `sharing_settings` (JSONB) and `sharing_uuid` (UUID) columns on `stats` table
+- **Routes**: `/shared/stats/:uuid` for public viewing, `/stats/:year/:month/sharing` for management
+- **API**: `/api/v1/maps/hexagons` supports public access via `uuid` parameter
+- **Controllers**: `Shared::StatsController` handles public views, sharing management integrated into existing stats flow
+
+### Security Features
+- **No authentication bypass**: Public sharing only exposes specifically designed endpoints
+- **UUID-based access**: Sharing URLs use unguessable UUIDs rather than sequential IDs
+- **Expiration enforcement**: Automatic expiration checking prevents access to expired shares
+- **Limited data exposure**: Only monthly statistics and hexagon data are publicly accessible
+
+### Usage Patterns
+- **Social sharing**: Users can share interesting travel months with friends and family
+- **Portfolio/showcase**: Travel bloggers and photographers can showcase location statistics
+- **Data collaboration**: Researchers can share aggregated location data for analysis
+- **Public demonstrations**: Demo instances can provide public examples without compromising user data
+
 ## API Documentation
 
 - **Framework**: rSwag (Swagger/OpenAPI)
 - **Location**: `/api-docs` endpoint
-- **Authentication**: API key (Bearer) for API access
+- **Authentication**: API key (Bearer) for API access, UUID-based access for public shares
 
 ## Database Schema
 
@@ -142,7 +173,7 @@ npx playwright test                  # E2E tests
 - `visits` - Detected area visits
 - `trips` - Travel periods
 - `imports`/`exports` - Data transfer operations
-- `stats` - Calculated metrics
+- `stats` - Calculated metrics with sharing capabilities (`sharing_settings`, `sharing_uuid`)
 
 ### PostGIS Integration
 - Extensive use of PostGIS geometry types
@@ -201,6 +232,11 @@ bundle exec bundle-audit             # Dependency security
 4. **Testing**: Include both unit and integration tests for location-based features
 5. **Performance**: Consider database indexes for geographic queries
 6. **Security**: Never log or expose user location data inappropriately
+7. **Public Sharing**: When implementing features that interact with stats, consider public sharing access patterns:
+   - Use `public_accessible?` method to check if a stat can be publicly accessed
+   - Support UUID-based access in API endpoints when appropriate
+   - Respect expiration settings and disable sharing when expired
+   - Only expose minimal necessary data in public sharing contexts
 
 ## Contributing
 

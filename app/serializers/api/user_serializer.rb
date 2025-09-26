@@ -6,15 +6,19 @@ class Api::UserSerializer
   end
 
   def call
-    {
+    data = {
       user: {
         email:     user.email,
         theme:     user.theme,
         created_at: user.created_at,
         updated_at: user.updated_at,
-        settings: settings,
+        settings: settings
       }
     }
+
+    data.merge!(subscription: subscription) unless DawarichSettings.self_hosted?
+
+    data
   end
 
   private
@@ -39,6 +43,13 @@ class Api::UserSerializer
       visits_suggestions_enabled: user.safe_settings.visits_suggestions_enabled?,
       speed_color_scale: user.safe_settings.speed_color_scale,
       fog_of_war_threshold: user.safe_settings.fog_of_war_threshold
+    }
+  end
+
+  def subscription
+    {
+      status: user.status,
+      active_until: user.active_until
     }
   end
 end
