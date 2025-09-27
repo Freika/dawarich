@@ -56,6 +56,22 @@ Rails.application.routes.draw do
   resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
   resources :trips
+
+  # Family management routes
+  resources :families do
+    member do
+      delete :leave
+    end
+    resources :invitations, except: %i[edit update], controller: 'family_invitations' do
+      member do
+        post :accept
+      end
+    end
+    resources :members, only: %i[index show destroy], controller: 'family_memberships'
+  end
+
+  # Public family invitation acceptance (no auth required)
+  get 'invitations/:id', to: 'family_invitations#show', as: :public_invitation
   resources :points, only: %i[index] do
     collection do
       delete :bulk_destroy

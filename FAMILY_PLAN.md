@@ -1641,11 +1641,11 @@ end
 5. ✅ Write comprehensive model tests
 
 ### Phase 2: Core Business Logic (Week 2)
-1. Implement all service classes
-2. Add invitation token generation and expiry logic
-3. Create email templates and mailer
-4. Write service tests
-5. Add basic Pundit policies
+1. ✅ Implement all service classes
+2. ✅ Add invitation token generation and expiry logic
+3. ✅ Create email templates and mailer
+4. ✅ Write service tests
+5. ✅ Add basic Pundit policies
 
 ### Phase 3: Controllers and Routes (Week 3)
 1. Implement all controller classes
