@@ -9,7 +9,16 @@
 - **Database migrations applied**: All tables created with proper indexes and constraints
 - **Business logic methods implemented**: User family ownership, account deletion protection, etc.
 
-**Ready for Phase 2**: Core Business Logic (Service Classes)
+### ✅ Phase 2: Core Business Logic - COMPLETED
+- **4 Service classes implemented**: Create, Invite, AcceptInvitation, Leave
+- **Comprehensive error handling**: All services return user-friendly error messages for validation failures
+- **Token generation and expiry logic**: Automatically generates secure invitation tokens with 7-day expiry
+- **FamilyMailer and email templates**: HTML and text email templates for invitations
+- **53+ comprehensive service tests**: Full test coverage for all business logic scenarios including error cases
+- **3 Pundit authorization policies**: FamilyPolicy, FamilyMembershipPolicy, FamilyInvitationPolicy
+- **Email integration**: Invitation emails sent via ActionMailer with proper styling
+
+**Ready for Phase 3**: Controllers and Routes
 
 ---
 
@@ -210,10 +219,10 @@ end
 
 ## Service Classes
 
-### 1. Families::CreateService
+### 1. Families::Create
 ```ruby
 module Families
-  class CreateService
+  class Create
     include ActiveModel::Validations
 
     attr_reader :user, :name, :family
@@ -276,10 +285,10 @@ module Families
 end
 ```
 
-### 2. Families::InviteService
+### 2. Families::Invite
 ```ruby
 module Families
-  class InviteService
+  class Invite
     include ActiveModel::Validations
 
     attr_reader :family, :email, :invited_by, :invitation
@@ -352,22 +361,27 @@ module Families
 end
 ```
 
-### 3. Families::AcceptInvitationService
+### 3. Families::AcceptInvitation
 ```ruby
 module Families
-  class AcceptInvitationService
-    attr_reader :invitation, :user
+  class AcceptInvitation
+    attr_reader :invitation, :user, :error_message
 
     def initialize(invitation:, user:)
       @invitation = invitation
       @user = user
+      @error_message = nil
     end
 
     def call
       return false unless can_accept?
 
+      if user.in_family?
+        @error_message = 'You must leave your current family before joining a new one.'
+        return false
+      end
+
       ActiveRecord::Base.transaction do
-        leave_current_family if user.in_family?
         create_membership
         update_invitation
         send_notifications
@@ -375,22 +389,39 @@ module Families
 
       true
     rescue ActiveRecord::RecordInvalid
+      @error_message = 'Failed to join family due to validation errors.'
       false
     end
 
     private
 
     def can_accept?
-      return false unless invitation.pending?
-      return false if invitation.expires_at < Time.current
-      return false unless invitation.email == user.email
-      return false if invitation.family.members.count >= Family::MAX_MEMBERS
+      return false unless validate_invitation
+      return false unless validate_email_match
+      return false unless validate_family_capacity
 
       true
     end
 
-    def leave_current_family
-      Families::LeaveService.new(user: user).call
+    def validate_invitation
+      return true if invitation.can_be_accepted?
+
+      @error_message = 'This invitation is no longer valid or has expired.'
+      false
+    end
+
+    def validate_email_match
+      return true if invitation.email == user.email
+
+      @error_message = 'This invitation is not for your email address.'
+      false
+    end
+
+    def validate_family_capacity
+      return true if invitation.family.members.count < Family::MAX_MEMBERS
+
+      @error_message = 'This family has reached the maximum number of members.'
+      false
     end
 
     def create_membership
@@ -406,50 +437,80 @@ module Families
     end
 
     def send_notifications
-      # Notify the user
-      Notifications::Create.new(
+      send_user_notification
+      send_owner_notification
+    end
+
+    def send_user_notification
+      Notification.create!(
         user: user,
         kind: :info,
         title: 'Welcome to Family',
         content: "You've joined the family '#{invitation.family.name}'"
-      ).call
+      )
+    end
 
-      # Notify family owner
-      Notifications::Create.new(
+    def send_owner_notification
+      Notification.create!(
         user: invitation.family.creator,
         kind: :info,
         title: 'New Family Member',
         content: "#{user.email} has joined your family"
-      ).call
+      )
     end
   end
 end
 ```
 
-### 4. Families::LeaveService
+### 4. Families::Leave
 ```ruby
 module Families
-  class LeaveService
-    attr_reader :user
+  class Leave
+    attr_reader :user, :error_message
 
     def initialize(user:)
       @user = user
+      @error_message = nil
     end
 
     def call
-      return false unless user.in_family?
-      return false if user.family_owner? && family_has_other_members?
+      return false unless validate_can_leave
 
       ActiveRecord::Base.transaction do
         handle_ownership_transfer if user.family_owner?
-        deactivate_membership
+        remove_membership
         send_notification
       end
 
       true
+    rescue ActiveRecord::RecordInvalid
+      @error_message = 'Failed to leave family due to validation errors.'
+      false
     end
 
     private
+
+    def validate_can_leave
+      return false unless validate_in_family
+      return false unless validate_owner_can_leave
+
+      true
+    end
+
+    def validate_in_family
+      return true if user.in_family?
+
+      @error_message = 'You are not currently in a family.'
+      false
+    end
+
+    def validate_owner_can_leave
+      return true unless user.family_owner? && family_has_other_members?
+
+      @error_message = 'You cannot leave the family while you are the owner and there are ' \
+                       'other members. Remove all members first or transfer ownership.'
+      false
+    end
 
     def family_has_other_members?
       user.family.members.count > 1
@@ -457,20 +518,20 @@ module Families
 
     def handle_ownership_transfer
       # If owner is leaving and no other members, family will be deleted via cascade
-      # If owner tries to leave with other members, it is_expected.to be prevented in controller
+      # If owner tries to leave with other members, it should be prevented in validation
     end
 
-    def deactivate_membership
+    def remove_membership
       user.family_membership.destroy!
     end
 
     def send_notification
-      Notifications::Create.new(
+      Notification.create!(
         user: user,
         kind: :info,
         title: 'Left Family',
         content: "You've left the family"
-      ).call
+      )
     end
   end
 end
@@ -506,6 +567,38 @@ module Families
 end
 ```
 
+## Error Handling Approach
+
+All family service classes implement a consistent error handling pattern:
+
+### Service Error Handling
+- **Return Value**: Services return `true` for success, `false` for failure
+- **Error Messages**: Services expose an `error_message` attribute with user-friendly error descriptions
+- **Validation**: Comprehensive validation with specific error messages for each failure case
+- **Transaction Safety**: All database operations wrapped in transactions with proper rollback
+
+### Common Error Messages
+- **AcceptInvitation Service**:
+  - `'You must leave your current family before joining a new one.'`
+  - `'This invitation is no longer valid or has expired.'`
+  - `'This invitation is not for your email address.'`
+  - `'This family has reached the maximum number of members.'`
+
+- **Leave Service**:
+  - `'You cannot leave the family while you are the owner and there are other members. Remove all members first or transfer ownership.'`
+  - `'You are not currently in a family.'`
+
+### Controller Integration
+Controllers should use the service error messages for user feedback:
+
+```ruby
+if service.call
+  redirect_to success_path, notice: 'Success message'
+else
+  redirect_to failure_path, alert: service.error_message || 'Generic fallback message'
+end
+```
+
 ## Controllers
 
 ### 1. FamiliesController
@@ -531,7 +624,7 @@ class FamiliesController < ApplicationController
   end
 
   def create
-    service = Families::CreateService.new(
+    service = Families::Create.new(
       user: current_user,
       name: family_params[:name]
     )
@@ -573,12 +666,12 @@ class FamiliesController < ApplicationController
   def leave
     authorize @family, :leave?
 
-    service = Families::LeaveService.new(user: current_user)
+    service = Families::Leave.new(user: current_user)
 
     if service.call
       redirect_to families_path, notice: 'You have left the family'
     else
-      redirect_to family_path(@family), alert: 'Cannot leave family. Transfer ownership first.'
+      redirect_to family_path(@family), alert: service.error_message || 'Cannot leave family.'
     end
   end
 
@@ -668,7 +761,7 @@ class FamilyInvitationsController < ApplicationController
   def create
     authorize @family, :invite?
 
-    service = Families::InviteService.new(
+    service = Families::Invite.new(
       family: @family,
       email: invitation_params[:email],
       invited_by: current_user
@@ -684,7 +777,7 @@ class FamilyInvitationsController < ApplicationController
   def accept
     authenticate_user!
 
-    service = Families::AcceptInvitationService.new(
+    service = Families::AcceptInvitation.new(
       invitation: @invitation,
       user: current_user
     )
@@ -692,7 +785,7 @@ class FamilyInvitationsController < ApplicationController
     if service.call
       redirect_to family_path(current_user.family), notice: 'Welcome to the family!'
     else
-      redirect_to root_path, alert: 'Unable to accept invitation'
+      redirect_to root_path, alert: service.error_message || 'Unable to accept invitation'
     end
   end
 
@@ -1324,7 +1417,7 @@ end
 ### 2. Service Tests
 ```ruby
 # spec/services/families/create_service_spec.rb
-RSpec.describe Families::CreateService do
+RSpec.describe Families::Create do
   let(:user) { create(:user) }
   let(:service) { described_class.new(user: user, name: 'Test Family') }
 
