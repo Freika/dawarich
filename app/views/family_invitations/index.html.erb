@@ -1,0 +1,57 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-4xl mx-auto">
+    <div class="bg-white shadow rounded-lg p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">
+          <%= t('family_invitations.index.title', default: 'Family Invitations') %>
+        </h1>
+        <%= link_to family_path(@family),
+              class: "bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200" do %>
+          <%= t('family_invitations.index.back_to_family', default: 'Back to Family') %>
+        <% end %>
+      </div>
+
+      <% if @pending_invitations.any? %>
+        <div class="space-y-4">
+          <% @pending_invitations.each do |invitation| %>
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <div class="font-medium text-gray-900"><%= invitation.email %></div>
+                <div class="text-sm text-gray-500">
+                  <%= t('family_invitations.index.invited_on', default: 'Invited') %>
+                  <%= invitation.created_at.strftime('%B %d, %Y') %>
+                </div>
+                <div class="text-xs text-gray-400">
+                  <%= t('family_invitations.index.expires_on', default: 'Expires') %>
+                  <%= invitation.expires_at.strftime('%B %d, %Y at %I:%M %p') %>
+                </div>
+              </div>
+
+              <div class="flex space-x-2">
+                <%= link_to public_invitation_path(invitation.token),
+                      class: "text-blue-600 hover:text-blue-800 text-sm font-medium" do %>
+                  <%= t('family_invitations.index.view_invitation', default: 'View') %>
+                <% end %>
+
+                <% if policy(@family).manage_invitations? %>
+                  <%= link_to family_invitation_path(@family, invitation),
+                        method: :delete,
+                        confirm: t('family_invitations.index.cancel_confirm', default: 'Are you sure you want to cancel this invitation?'),
+                        class: "text-red-600 hover:text-red-800 text-sm font-medium" do %>
+                    <%= t('family_invitations.index.cancel', default: 'Cancel') %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-8">
+          <p class="text-gray-500 text-lg">
+            <%= t('family_invitations.index.no_invitations', default: 'No pending invitations') %>
+          </p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

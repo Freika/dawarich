@@ -8,6 +8,15 @@
         <li><%= link_to 'Map', map_url, class: "#{active_class?(map_url)}" %></li>
         <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
         <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
+        <% if user_signed_in? %>
+          <li>
+            <% if current_user.in_family? %>
+              <%= link_to 'Family', family_path(current_user.family), class: "#{active_class?(families_path)}" %>
+            <% else %>
+              <%= link_to 'Family', families_path, class: "#{active_class?(families_path)}" %>
+            <% end %>
+          </li>
+        <% end %>
         <li>
           <details>
             <summary>My data</summary>
@@ -56,6 +65,15 @@
       <li><%= link_to 'Map', map_url, class: "mx-1 #{active_class?(map_url)}" %></li>
       <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
       <li><%= link_to 'Stats', stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
+      <% if user_signed_in? %>
+        <li>
+          <% if current_user.in_family? %>
+            <%= link_to 'Family', family_path(current_user.family), class: "mx-1 #{active_class?(families_path)}" %>
+          <% else %>
+            <%= link_to 'Family', families_path, class: "mx-1 #{active_class?(families_path)}" %>
+          <% end %>
+        </li>
+      <% end %>
       <li>
         <details>
           <summary>My data</summary>
