@@ -58,7 +58,7 @@ end
 **Columns:**
 - `id` (UUID, primary key)
 - `name` (string, not null)
-- `creator_id` (UUID, foreign key to users, not null)
+- `creator_id` (bigint, foreign key to users, not null)
 - `created_at` (datetime)
 - `updated_at` (datetime)
 
@@ -68,30 +68,21 @@ class FamilyMembership < ApplicationRecord
   # Table: family_memberships
   # Primary Key: id (UUID)
 
-  self.primary_key = :id
-
   belongs_to :family
   belongs_to :user
 
-  validates :family_id, presence: true
   validates :user_id, presence: true, uniqueness: true # One family per user
   validates :role, presence: true
-  validates :status, presence: true
 
-  enum role: { owner: 0, member: 1 }
-  enum status: { active: 0, inactive: 1 }
-
-  scope :active, -> { where(status: :active) }
+  enum :role, { owner: 0, member: 1 }
 end
 ```
 
 **Columns:**
 - `id` (UUID, primary key)
 - `family_id` (UUID, foreign key to families, not null)
-- `user_id` (UUID, foreign key to users, not null, unique)
-- `role` (integer, enum: owner=0, member=1, not null)
-- `status` (integer, enum: active=0, inactive=1, not null, default: active)
-- `location_sharing_enabled` (boolean, default: true)
+- `user_id` (bigint, foreign key to users, not null, unique)
+- `role` (integer, enum: owner=0, member=1, not null, default: member)
 - `created_at` (datetime)
 - `updated_at` (datetime)
 
@@ -100,8 +91,6 @@ end
 class FamilyInvitation < ApplicationRecord
   # Table: family_invitations
   # Primary Key: id (UUID)
-
-  self.primary_key = :id
 
   belongs_to :family
   belongs_to :invited_by, class_name: 'User'
@@ -127,7 +116,7 @@ end
 - `email` (string, not null)
 - `token` (string, not null, unique)
 - `expires_at` (datetime, not null)
-- `invited_by_id` (UUID, foreign key to users, not null)
+- `invited_by_id` (bigint, foreign key to users, not null)
 - `status` (integer, enum: pending=0, accepted=1, expired=2, cancelled=3, default: pending)
 - `created_at` (datetime)
 - `updated_at` (datetime)
@@ -141,7 +130,7 @@ has_many :created_families, class_name: 'Family', foreign_key: 'creator_id', dep
 has_many :sent_family_invitations, class_name: 'FamilyInvitation', foreign_key: 'invited_by_id', dependent: :destroy
 
 def in_family?
-  family_membership&.active?
+  family_membership.present?
 end
 
 def family_owner?
@@ -164,7 +153,7 @@ class CreateFamilies < ActiveRecord::Migration[8.0]
 
     create_table :families, id: :uuid do |t|
       t.string :name, null: false, limit: 50
-      t.uuid :creator_id, null: false
+      t.bigint :creator_id, null: false
       t.timestamps
     end
 
@@ -180,10 +169,8 @@ class CreateFamilyMemberships < ActiveRecord::Migration[8.0]
   def change
     create_table :family_memberships, id: :uuid do |t|
       t.uuid :family_id, null: false
-      t.uuid :user_id, null: false
+      t.bigint :user_id, null: false
       t.integer :role, null: false, default: 1 # member
-      t.integer :status, null: false, default: 0 # active
-      t.boolean :location_sharing_enabled, null: false, default: true
       t.timestamps
     end
 
@@ -205,7 +192,7 @@ class CreateFamilyInvitations < ActiveRecord::Migration[8.0]
       t.string :email, null: false
       t.string :token, null: false
       t.datetime :expires_at, null: false
-      t.uuid :invited_by_id, null: false
+      t.bigint :invited_by_id, null: false
       t.integer :status, null: false, default: 0 # pending
       t.timestamps
     end
@@ -273,8 +260,7 @@ module Families
       FamilyMembership.create!(
         family: family,
         user: user,
-        role: :owner,
-        status: :active
+        role: :owner
       )
     end
 
@@ -334,7 +320,7 @@ module Families
 
     def user_already_in_family?
       User.joins(:family_membership)
-          .where(email: email, family_memberships: { status: :active })
+          .where(email: email)
           .exists?
     end
 
@@ -411,8 +397,7 @@ module Families
       FamilyMembership.create!(
         family: invitation.family,
         user: user,
-        role: :member,
-        status: :active
+        role: :member
       )
     end
 
@@ -476,7 +461,7 @@ module Families
     end
 
     def deactivate_membership
-      user.family_membership.update!(status: :inactive)
+      user.family_membership.destroy!
     end
 
     def send_notification
@@ -500,7 +485,6 @@ module Families
 
       family.members
             .joins(:family_membership)
-            .where(family_memberships: { location_sharing_enabled: true })
             .map { |member| latest_location_for(member) }
             .compact
     end
@@ -643,7 +627,7 @@ class FamilyMembershipsController < ApplicationController
     if @membership.owner? && @family.members.count > 1
       redirect_to family_path(@family), alert: 'Transfer ownership before removing yourself'
     else
-      @membership.update!(status: :inactive)
+      @membership.destroy!
       redirect_to family_path(@family), notice: 'Member removed successfully'
     end
   end
@@ -660,7 +644,7 @@ class FamilyMembershipsController < ApplicationController
   end
 
   def membership_params
-    params.require(:family_membership).permit(:location_sharing_enabled)
+    params.require(:family_membership).permit()
   end
 end
 ```
@@ -946,9 +930,6 @@ get '/family', to: 'families#index', as: 'family_dashboard'
                   <div class="font-medium"><%= member.email %></div>
                   <div class="text-sm text-gray-500">
                     <%= member.family_membership.role.humanize %>
-                    <% unless member.family_membership.location_sharing_enabled? %>
-                      • Location sharing disabled
-                    <% end %>
                   </div>
                 </div>
               </div>
@@ -1116,27 +1097,6 @@ get '/family', to: 'families#index', as: 'family_dashboard'
           <%= form.label :name, "Family Name", class: "label" %>
           <%= form.text_field :name,
               class: "input input-bordered w-full" %>
-        </div>
-
-        <!-- Personal Location Sharing Settings -->
-        <div class="form-control mb-6">
-          <h3 class="text-lg font-semibold mb-3">Your Location Sharing</h3>
-
-          <%= form_with model: [current_user.family, current_user.family_membership],
-              url: family_member_path(current_user.family, current_user.family_membership),
-              method: :patch, local: true do |membership_form| %>
-
-            <label class="label cursor-pointer">
-              <%= membership_form.check_box :location_sharing_enabled,
-                  class: "toggle toggle-primary" %>
-              <span class="label-text">Share my location with family members</span>
-            </label>
-
-            <div class="mt-2">
-              <%= membership_form.submit "Update Sharing Settings",
-                  class: "btn btn-sm btn-outline" %>
-            </div>
-          <% end %>
         </div>
 
         <div class="divider"></div>
@@ -1327,7 +1287,6 @@ RSpec.describe FamilyMembership, type: :model do
 
   describe 'enums' do
     it { is_expected.to define_enum_for(:role).with_values(owner: 0, member: 1) }
-    it { is_expected.to define_enum_for(:status).with_values(active: 0, inactive: 1) }
   end
 end
 
@@ -1381,7 +1340,6 @@ RSpec.describe Families::CreateService do
         service.call
         membership = user.family_membership
         expect(membership.role).to eq('owner')
-        expect(membership.status).to eq('active')
       end
 
       it 'sends notification' do
@@ -1493,7 +1451,6 @@ RSpec.describe 'Family Workflow', type: :request do
       membership = invitee.family_membership
       expect(membership.family).to eq(family)
       expect(membership.role).to eq('member')
-      expect(membership.status).to eq('active')
 
       # Verify invitation updated
       invitation.reload
