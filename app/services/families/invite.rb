@@ -4,7 +4,7 @@ module Families
   class Invite
     include ActiveModel::Validations
 
-    attr_reader :family, :email, :invited_by, :invitation
+    attr_reader :family, :email, :invited_by, :invitation, :errors
 
     validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
 
@@ -12,6 +12,7 @@ module Families
       @family = family
       @email = email.downcase.strip
       @invited_by = invited_by
+      @errors = {}
     end
 
     def call
@@ -25,19 +26,36 @@ module Families
       end
 
       true
-    rescue ActiveRecord::RecordInvalid
+    rescue ActiveRecord::RecordInvalid => e
+      @errors[:base] = e.message
       false
+    end
+
+    def error_message
+      return errors.values.first if errors.any?
+      return validation_error_message unless valid?
+
+      'Failed to send invitation'
     end
 
     private
 
+    def validation_error_message
+      errors.full_messages.first || 'Invalid invitation data'
+    end
+
     def invite_sendable?
-      return false unless invited_by.family_owner?
-      return false if family.members.count >= Family::MAX_MEMBERS
-      return false if user_already_in_family?
-      return false if pending_invitation_exists?
+      return add_error_and_false(:invited_by, 'You must be a family owner to send invitations') unless invited_by.family_owner?
+      return add_error_and_false(:family, 'Family is full') if family.members.count >= Family::MAX_MEMBERS
+      return add_error_and_false(:email, 'User is already in a family') if user_already_in_family?
+      return add_error_and_false(:email, 'Invitation already sent to this email') if pending_invitation_exists?
 
       true
+    end
+
+    def add_error_and_false(attribute, message)
+      @errors[attribute] = message
+      false
     end
 
     def user_already_in_family?

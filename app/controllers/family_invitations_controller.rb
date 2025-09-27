@@ -49,6 +49,7 @@ class FamilyInvitationsController < ApplicationController
     )
 
     if service.call
+      current_user.reload
       redirect_to family_path(current_user.family), notice: 'Welcome to the family!'
     else
       redirect_to root_path, alert: service.error_message || 'Unable to accept invitation'
