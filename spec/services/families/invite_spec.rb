@@ -13,7 +13,9 @@ RSpec.describe Families::Invite do
     context 'when invitation is valid' do
       it 'creates an invitation' do
         expect { service.call }.to change(FamilyInvitation, :count).by(1)
-        invitation = FamilyInvitation.last
+
+        invitation = owner.sent_family_invitations.last
+
         expect(invitation.family).to eq(family)
         expect(invitation.email).to eq(email)
         expect(invitation.invited_by).to eq(owner)
@@ -27,7 +29,9 @@ RSpec.describe Families::Invite do
 
       it 'sends notification to inviter' do
         expect { service.call }.to change(Notification, :count).by(1)
-        notification = Notification.last
+
+        notification = owner.notifications.last
+
         expect(notification.user).to eq(owner)
         expect(notification.title).to eq('Invitation Sent')
       end
@@ -116,7 +120,8 @@ RSpec.describe Families::Invite do
 
     it 'normalizes email to lowercase and strips whitespace' do
       service.call
-      invitation = FamilyInvitation.last
+      invitation = family.family_invitations.last
+
       expect(invitation.email).to eq('upper@example.com')
     end
   end

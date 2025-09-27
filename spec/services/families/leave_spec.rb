@@ -20,8 +20,9 @@ RSpec.describe Families::Leave do
 
       it 'sends notification' do
         expect { service.call }.to change(Notification, :count).by(1)
-        notification = Notification.last
-        expect(notification.user).to eq(member)
+
+        notification = member.notifications.last
+
         expect(notification.title).to eq('Left Family')
       end
 
@@ -36,6 +37,10 @@ RSpec.describe Families::Leave do
       it 'removes the membership' do
         expect { service.call }.to change(FamilyMembership, :count).by(-1)
         expect(user.reload.family_membership).to be_nil
+      end
+
+      it 'deletes the family' do
+        expect { service.call }.to change(Family, :count).by(-1)
       end
 
       it 'returns true' do

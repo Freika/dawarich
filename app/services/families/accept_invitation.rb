@@ -4,10 +4,9 @@ module Families
   class AcceptInvitation
     attr_reader :invitation, :user, :error_message
 
-    def initialize(invitation:, user:, auto_leave: false)
+    def initialize(invitation:, user:)
       @invitation = invitation
       @user = user
-      @auto_leave = auto_leave
       @error_message = nil
     end
 
@@ -15,16 +14,8 @@ module Families
       return false unless can_accept?
 
       if user.in_family?
-        if @auto_leave
-          leave_service = Families::Leave.new(user: user)
-          unless leave_service.call
-            @error_message = leave_service.error_message || 'Failed to leave current family.'
-            return false
-          end
-        else
-          @error_message = 'You must leave your current family before joining a new one.'
-          return false
-        end
+        @error_message = 'You must leave your current family before joining a new one.'
+        return false
       end
 
       ActiveRecord::Base.transaction do

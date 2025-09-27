@@ -18,7 +18,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   # Family associations
   has_one :family_membership, dependent: :destroy
   has_one :family, through: :family_membership
-  has_many :created_families, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
+  has_one :created_family, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
   has_many :sent_family_invitations, class_name: 'FamilyInvitation', foreign_key: 'invited_by_id',
 inverse_of: :invited_by, dependent: :destroy
 

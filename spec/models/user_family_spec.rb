@@ -9,7 +9,7 @@ RSpec.describe User, 'family methods', type: :model do
     it { is_expected.to have_one(:family_membership).dependent(:destroy) }
     it { is_expected.to have_one(:family).through(:family_membership) }
     it {
-      is_expected.to have_many(:created_families).class_name('Family').with_foreign_key('creator_id').dependent(:destroy)
+      is_expected.to have_one(:created_family).class_name('Family').with_foreign_key('creator_id').dependent(:destroy)
     }
     it {
       is_expected.to have_many(:sent_family_invitations).class_name('FamilyInvitation').with_foreign_key('invited_by_id').dependent(:destroy)

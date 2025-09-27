@@ -49,8 +49,7 @@ class FamilyInvitationsController < ApplicationController
     )
 
     if service.call
-      current_user.reload
-      redirect_to family_path(current_user.family), notice: 'Welcome to the family!'
+      redirect_to family_path(current_user.reload.family), notice: 'Welcome to the family!'
     else
       redirect_to root_path, alert: service.error_message || 'Unable to accept invitation'
     end
@@ -67,7 +66,8 @@ class FamilyInvitationsController < ApplicationController
 
   def set_family
     @family = current_user.family
-    redirect_to families_path unless @family
+
+    redirect_to families_path, alert: 'Family not found' and return unless @family
   end
 
   def set_invitation

@@ -53,12 +53,13 @@ module Families
     end
 
     def handle_ownership_transfer
-  # If this is the last member (owner), delete the family
-  if user.family.members.count == 1
-    user.family.destroy!
-  end
-  # If owner tries to leave with other members, it should be prevented in validation
-end
+      # If this is the last member (owner), delete the family
+      return unless user.family.members.count == 1
+
+      user.family.destroy!
+
+      # If owner tries to leave with other members, it should be prevented in validation
+    end
 
     def remove_membership
       user.family_membership.destroy!

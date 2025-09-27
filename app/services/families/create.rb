@@ -16,6 +16,11 @@ module Families
         return false
       end
 
+      if user.created_family.present?
+        @errors[:user] = 'User has already created a family'
+        return false
+      end
+
       unless can_create_family?
         @errors[:base] = 'Cannot create family'
         return false

@@ -65,19 +65,20 @@ class FamiliesController < ApplicationController
   end
 
   def leave
-  authorize @family, :leave?
+    authorize @family, :leave?
 
-  service = Families::Leave.new(user: current_user)
+    service = Families::Leave.new(user: current_user)
 
-  if service.call
-    redirect_to families_path, notice: 'You have left the family'
-  else
-    redirect_to family_path(@family), alert: service.error_message || 'Cannot leave family.'
+    if service.call
+      redirect_to families_path, notice: 'You have left the family'
+    else
+      redirect_to family_path(@family), alert: service.error_message || 'Cannot leave family.'
+    end
+  rescue Pundit::NotAuthorizedError
+    # Handle case where owner with members tries to leave
+    redirect_to family_path(@family),
+                alert: 'You cannot leave the family while you are the owner and there are other members. Remove all members first or transfer ownership.'
   end
-rescue Pundit::NotAuthorizedError
-  # Handle case where owner with members tries to leave
-  redirect_to family_path(@family), alert: 'You cannot leave the family while you are the owner and there are other members. Remove all members first or transfer ownership.'
-end
 
   private
 

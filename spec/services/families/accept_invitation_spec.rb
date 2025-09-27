@@ -41,14 +41,22 @@ RSpec.describe Families::AcceptInvitation do
     context 'when user is already in another family' do
       let(:other_family) { create(:family) }
       let!(:existing_membership) { create(:family_membership, user: invitee, family: other_family) }
-      let(:service) { described_class.new(invitation: invitation, user: invitee, auto_leave: true) }
 
-      it 'leaves current family before joining new one' do
-        expect(Families::Leave).to receive(:new).with(user: invitee).and_call_original
+      it 'returns false' do
+        expect(service.call).to be false
+      end
+
+      it 'does not create membership' do
+        expect { service.call }.not_to change(FamilyMembership, :count)
+      end
+
+      it 'sets appropriate error message' do
         service.call
+        expect(service.error_message).to eq('You must leave your current family before joining a new one.')
+      end
 
-        # Should have new membership in the invited family
-        expect(invitee.reload.family).to eq(family)
+      it 'does not change user family' do
+        expect { service.call }.not_to(change { invitee.reload.family })
       end
     end
 

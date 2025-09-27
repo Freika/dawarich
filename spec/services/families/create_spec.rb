@@ -40,6 +40,38 @@ RSpec.describe Families::Create do
       it 'does not create a membership' do
         expect { service.call }.not_to change(FamilyMembership, :count)
       end
+
+      it 'sets appropriate error message' do
+        service.call
+        expect(service.errors[:user]).to eq('User is already in a family')
+      end
+    end
+
+    context 'when user has already created a family before' do
+      before do
+        # User creates and then deletes their family membership, but family still exists
+        old_family = create(:family, creator: user)
+        membership = create(:family_membership, user: user, family: old_family, role: :owner)
+        membership.destroy! # User leaves the family but family still exists
+        user.reload # Ensure user association is refreshed
+      end
+
+      it 'returns false' do
+        expect(service.call).to be false
+      end
+
+      it 'does not create a family' do
+        expect { service.call }.not_to change(Family, :count)
+      end
+
+      it 'does not create a membership' do
+        expect { service.call }.not_to change(FamilyMembership, :count)
+      end
+
+      it 'sets appropriate error message' do
+        service.call
+        expect(service.errors[:user]).to eq('User has already created a family')
+      end
     end
   end
 end
