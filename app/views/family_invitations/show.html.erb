@@ -1,0 +1,141 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-2xl mx-auto">
+    <div class="bg-white shadow rounded-lg p-8 text-center">
+      <!-- Family Invitation Header -->
+      <div class="mb-8">
+        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-4">
+          <svg class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+          <%= t('family_invitations.show.title', default: 'You\'re Invited!') %>
+        </h1>
+
+        <p class="text-xl text-gray-600 mb-4">
+          <%= t('family_invitations.show.invitation_message',
+                default: 'You have been invited to join %{family_name}',
+                family_name: @invitation.family.name) %>
+        </p>
+      </div>
+
+      <!-- Invitation Details -->
+      <div class="bg-gray-50 rounded-lg p-6 mb-8">
+        <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_invitations.show.family_name', default: 'Family Name') %>
+            </dt>
+            <dd class="text-lg font-semibold text-gray-900"><%= @invitation.family.name %></dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_invitations.show.invited_by', default: 'Invited by') %>
+            </dt>
+            <dd class="text-lg font-semibold text-gray-900"><%= @invitation.invited_by.email %></dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_invitations.show.invited_email', default: 'Invited Email') %>
+            </dt>
+            <dd class="text-lg font-semibold text-gray-900"><%= @invitation.email %></dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_invitations.show.expires_at', default: 'Expires') %>
+            </dt>
+            <dd class="text-lg font-semibold text-gray-900">
+              <%= @invitation.expires_at.strftime('%B %d, %Y at %I:%M %p') %>
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- What This Means -->
+      <div class="bg-blue-50 rounded-lg p-6 mb-8 text-left">
+        <h3 class="text-lg font-medium text-blue-900 mb-3">
+          <%= t('family_invitations.show.what_this_means', default: 'What does joining a family mean?') %>
+        </h3>
+        <ul class="text-sm text-blue-800 space-y-2">
+          <li class="flex items-start">
+            <svg class="flex-shrink-0 h-5 w-5 text-blue-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <%= t('family_invitations.show.benefit_1', default: 'Share your location data with family members') %>
+          </li>
+          <li class="flex items-start">
+            <svg class="flex-shrink-0 h-5 w-5 text-blue-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <%= t('family_invitations.show.benefit_2', default: 'View shared maps and statistics') %>
+          </li>
+          <li class="flex items-start">
+            <svg class="flex-shrink-0 h-5 w-5 text-blue-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <%= t('family_invitations.show.benefit_3', default: 'Stay connected with loved ones\' travels') %>
+          </li>
+          <li class="flex items-start">
+            <svg class="flex-shrink-0 h-5 w-5 text-blue-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <%= t('family_invitations.show.benefit_4', default: 'You can leave the family at any time') %>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="space-y-4">
+        <% if user_signed_in? %>
+          <!-- User is logged in, show accept button -->
+          <%= link_to accept_family_invitation_path(@invitation.family, @invitation),
+                method: :post,
+                class: "w-full bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-md font-medium text-lg transition-colors duration-200 inline-block" do %>
+            <%= t('family_invitations.show.accept_invitation', default: 'Accept Invitation') %>
+          <% end %>
+
+          <p class="text-sm text-gray-500">
+            <%= t('family_invitations.show.logged_in_as', default: 'Logged in as %{email}', email: current_user.email) %>
+            |
+            <%= link_to destroy_user_session_path, method: :delete, class: "text-blue-600 hover:text-blue-800" do %>
+              <%= t('family_invitations.show.logout', default: 'Logout') %>
+            <% end %>
+          </p>
+        <% else %>
+          <!-- User is not logged in, show login/register options -->
+          <div class="space-y-3">
+            <%= link_to new_user_session_path,
+                  class: "w-full bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-md font-medium text-lg transition-colors duration-200 inline-block" do %>
+              <%= t('family_invitations.show.login_to_accept', default: 'Login to Accept Invitation') %>
+            <% end %>
+
+            <% unless DawarichSettings.self_hosted? %>
+              <%= link_to new_user_registration_path,
+                    class: "w-full bg-gray-200 hover:bg-gray-300 text-gray-800 px-8 py-3 rounded-md font-medium text-lg transition-colors duration-200 inline-block" do %>
+                <%= t('family_invitations.show.register_to_accept', default: 'Create Account to Accept') %>
+              <% end %>
+            <% end %>
+          </div>
+
+          <p class="text-sm text-gray-500">
+            <%= t('family_invitations.show.need_account', default: 'You need to be logged in to accept this invitation.') %>
+          </p>
+        <% end %>
+
+        <!-- Decline Option -->
+        <div class="pt-4 border-t border-gray-200">
+          <p class="text-sm text-gray-500 mb-2">
+            <%= t('family_invitations.show.decline_message', default: 'Don\'t want to join this family?') %>
+          </p>
+          <p class="text-xs text-gray-400">
+            <%= t('family_invitations.show.decline_instructions', default: 'You can simply close this page. The invitation will remain valid until it expires.') %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

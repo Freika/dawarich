@@ -8,6 +8,11 @@ RSpec.describe 'Family Invitations', type: :request do
   let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
   let(:invitation) { create(:family_invitation, family: family, invited_by: user) }
 
+  before do
+    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
+      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
+  end
+
   describe 'GET /families/:family_id/invitations' do
     before { sign_in user }
 

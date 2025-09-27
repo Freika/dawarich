@@ -9,7 +9,11 @@ RSpec.describe 'Family Memberships', type: :request do
   let(:member_user) { create(:user) }
   let!(:member_membership) { create(:family_membership, user: member_user, family: family, role: :member) }
 
-  before { sign_in user }
+  before do
+    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
+      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
+    sign_in user
+  end
 
   describe 'GET /families/:family_id/members' do
     it 'shows all family members' do

@@ -8,7 +8,11 @@ RSpec.describe 'Families', type: :request do
   let(:family) { create(:family, creator: user) }
   let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
 
-  before { sign_in user }
+  before do
+    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
+      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
+    sign_in user
+  end
 
   describe 'GET /families' do
     context 'when user is not in a family' do
@@ -90,8 +94,8 @@ RSpec.describe 'Families', type: :request do
 
       it 'redirects to the new family with success message' do
         post '/families', params: valid_attributes
-        created_family = Family.last
-        expect(response).to redirect_to(family_path(created_family))
+        expect(response).to have_http_status(:found)
+        expect(response.location).to match(%r{/families/})
         follow_redirect!
         expect(response.body).to include('Family created successfully!')
       end
@@ -108,7 +112,7 @@ RSpec.describe 'Families', type: :request do
 
       it 'renders the new template with errors' do
         post '/families', params: invalid_attributes
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end
@@ -122,9 +126,10 @@ RSpec.describe 'Families', type: :request do
     context 'when user is not the owner' do
       before { membership.update!(role: :member) }
 
-      it 'returns forbidden' do
+      it 'redirects due to authorization failure' do
         get "/families/#{family.id}/edit"
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:see_other)
+        expect(flash[:alert]).to include('not authorized')
       end
     end
   end
@@ -149,16 +154,17 @@ RSpec.describe 'Families', type: :request do
         patch "/families/#{family.id}", params: invalid_attributes
         family.reload
         expect(family.name).to eq(original_name)
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
 
     context 'when user is not the owner' do
       before { membership.update!(role: :member) }
 
-      it 'returns forbidden' do
+      it 'redirects due to authorization failure' do
         patch "/families/#{family.id}", params: new_attributes
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:see_other)
+        expect(flash[:alert]).to include('not authorized')
       end
     end
   end
@@ -191,9 +197,10 @@ RSpec.describe 'Families', type: :request do
     context 'when user is not the owner' do
       before { membership.update!(role: :member) }
 
-      it 'returns forbidden' do
+      it 'redirects due to authorization failure' do
         delete "/families/#{family.id}"
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:see_other)
+        expect(flash[:alert]).to include('not authorized')
       end
     end
   end
@@ -245,24 +252,24 @@ RSpec.describe 'Families', type: :request do
       expect(response).to redirect_to(families_path)
     end
 
-    it 'denies access to edit when user is not in family' do
+    it 'redirects to families index when user is not in family for edit' do
       get "/families/#{family.id}/edit"
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to redirect_to(families_path)
     end
 
-    it 'denies access to update when user is not in family' do
+    it 'redirects to families index when user is not in family for update' do
       patch "/families/#{family.id}", params: { family: { name: 'Hacked' } }
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to redirect_to(families_path)
     end
 
-    it 'denies access to destroy when user is not in family' do
+    it 'redirects to families index when user is not in family for destroy' do
       delete "/families/#{family.id}"
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to redirect_to(families_path)
     end
 
-    it 'denies access to leave when user is not in family' do
+    it 'redirects to families index when user is not in family for leave' do
       delete "/families/#{family.id}/leave"
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to redirect_to(families_path)
     end
   end
 

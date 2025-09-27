@@ -7,6 +7,11 @@ RSpec.describe 'Family Workflows', type: :request do
   let(:user2) { create(:user, email: 'bob@example.com') }
   let(:user3) { create(:user, email: 'charlie@example.com') }
 
+  before do
+    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
+      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
+  end
+
   describe 'Complete family creation and management workflow' do
     it 'allows creating a family, inviting members, and managing the family' do
       # Step 1: User1 creates a family

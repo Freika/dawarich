@@ -53,10 +53,12 @@ module Families
     end
 
     def handle_ownership_transfer
-      # If owner is leaving and no other members, family will be deleted via cascade
-      # If owner tries to leave with other members, it should be prevented in controller
-      # For now, we prevent this in can_accept? validation
-    end
+  # If this is the last member (owner), delete the family
+  if user.family.members.count == 1
+    user.family.destroy!
+  end
+  # If owner tries to leave with other members, it should be prevented in validation
+end
 
     def remove_membership
       user.family_membership.destroy!

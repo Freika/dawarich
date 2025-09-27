@@ -1,0 +1,66 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-2xl mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-4">
+        <%= t('families.new.title', default: 'Create Your Family') %>
+      </h1>
+      <p class="text-gray-600">
+        <%= t('families.new.description', default: 'Create a family to share your location data with your loved ones.') %>
+      </p>
+    </div>
+
+    <div class="bg-white shadow rounded-lg p-6">
+      <%= form_with model: @family, local: true, class: "space-y-6" do |form| %>
+        <% if @family.errors.any? %>
+          <div class="bg-red-50 border border-red-200 rounded-md p-4">
+            <div class="flex">
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800">
+                  <%= t('families.new.error_title', default: 'There were problems with your submission:') %>
+                </h3>
+                <div class="mt-2 text-sm text-red-700">
+                  <ul class="list-disc pl-5 space-y-1">
+                    <% @family.errors.full_messages.each do |message| %>
+                      <li><%= message %></li>
+                    <% end %>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <div>
+          <%= form.label :name, t('families.form.name', default: 'Family Name'), class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= form.text_field :name,
+                class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                placeholder: t('families.form.name_placeholder', default: 'Enter your family name') %>
+          <p class="mt-1 text-sm text-gray-500">
+            <%= t('families.new.name_help', default: 'Choose a name that all family members will recognize, like "The Smith Family" or "Our Travel Group".') %>
+          </p>
+        </div>
+
+        <div class="bg-blue-50 p-4 rounded-md">
+          <h3 class="text-sm font-medium text-blue-900 mb-2">
+            <%= t('families.new.what_happens_title', default: 'What happens next?') %>
+          </h3>
+          <ul class="text-sm text-blue-800 space-y-1">
+            <li>• <%= t('families.new.what_happens_1', default: 'You will become the family owner') %></li>
+            <li>• <%= t('families.new.what_happens_2', default: 'You can invite others to join your family') %></li>
+            <li>• <%= t('families.new.what_happens_3', default: 'Family members can view shared location data') %></li>
+            <li>• <%= t('families.new.what_happens_4', default: 'You can manage family settings and members') %></li>
+          </ul>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <%= form.submit t('families.new.create_family', default: 'Create Family'),
+                class: "bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors duration-200" %>
+          <%= link_to families_path,
+                class: "text-gray-600 hover:text-gray-800 font-medium" do %>
+            <%= t('families.new.back', default: '← Back') %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

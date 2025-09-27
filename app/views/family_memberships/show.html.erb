@@ -1,0 +1,208 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <div class="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center">
+            <span class="text-xl font-medium text-gray-700">
+              <%= @membership.user.email.first.upcase %>
+            </span>
+          </div>
+
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+              <%= @membership.user.email %>
+            </h1>
+            <div class="flex items-center space-x-2 mt-1">
+              <% if @membership.role == 'owner' %>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                  <%= t('family_memberships.show.owner', default: 'Family Owner') %>
+                </span>
+              <% else %>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                  <%= @membership.role.humanize %>
+                </span>
+              <% end %>
+
+              <% if @membership.user == current_user %>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                  <%= t('family_memberships.show.you', default: 'You') %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex space-x-3">
+          <%= link_to family_members_path(@family),
+                class: "bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium transition-colors duration-200" do %>
+            <%= t('family_memberships.show.back_to_members', default: '← All Members') %>
+          <% end %>
+
+          <% if policy(@membership).destroy? %>
+            <% unless @membership.owner? && @family.members.count > 1 %>
+              <%= link_to family_member_path(@family, @membership),
+                    method: :delete,
+                    confirm: t('family_memberships.show.remove_confirm',
+                             default: 'Are you sure you want to remove %{email} from the family?',
+                             email: @membership.user.email),
+                    class: "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200" do %>
+                <%= t('family_memberships.show.remove_member', default: 'Remove Member') %>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Member Details -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Basic Information -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">
+          <%= t('family_memberships.show.basic_info', default: 'Basic Information') %>
+        </h2>
+
+        <dl class="space-y-4">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_memberships.show.email', default: 'Email Address') %>
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @membership.user.email %></dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_memberships.show.role', default: 'Family Role') %>
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              <%= @membership.role.humanize %>
+              <% if @membership.role == 'owner' %>
+                <span class="text-gray-500">
+                  - <%= t('family_memberships.show.owner_description', default: 'Can manage family settings and members') %>
+                </span>
+              <% end %>
+            </dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_memberships.show.joined_date', default: 'Joined Date') %>
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              <%= @membership.created_at.strftime('%B %d, %Y at %I:%M %p') %>
+            </dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_memberships.show.time_in_family', default: 'Time in Family') %>
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              <%= time_ago_in_words(@membership.created_at) %>
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Family Information -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">
+          <%= t('family_memberships.show.family_info', default: 'Family Information') %>
+        </h2>
+
+        <dl class="space-y-4">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_memberships.show.family_name', default: 'Family Name') %>
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @family.name %></dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_memberships.show.family_creator', default: 'Family Creator') %>
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @family.creator.email %></dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_memberships.show.family_created', default: 'Family Created') %>
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              <%= @family.created_at.strftime('%B %d, %Y') %>
+            </dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              <%= t('family_memberships.show.total_members', default: 'Total Members') %>
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              <%= pluralize(@family.members.count, 'member') %>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Actions and Warnings -->
+    <div class="mt-6 space-y-4">
+      <!-- Owner-specific Warning -->
+      <% if @membership.owner? && @family.members.count > 1 %>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-yellow-800">
+                <%= t('family_memberships.show.owner_warning_title', default: 'Family Owner Protection') %>
+              </h3>
+              <div class="mt-2 text-sm text-yellow-700">
+                <p>
+                  <%= t('family_memberships.show.owner_warning_message',
+                        default: 'This member is the family owner and cannot be removed while other members exist. To remove the owner, first remove all other members or transfer ownership.') %>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Self-removal Info -->
+      <% if @membership.user == current_user %>
+        <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-blue-800">
+                <%= t('family_memberships.show.self_info_title', default: 'Your Membership') %>
+              </h3>
+              <div class="mt-2 text-sm text-blue-700">
+                <p>
+                  <%= t('family_memberships.show.self_info_message',
+                        default: 'This is your own membership. You can leave the family at any time from the family page, unless you are the owner with other members present.') %>
+                </p>
+              </div>
+              <div class="mt-3">
+                <%= link_to family_path(@family),
+                      class: "text-blue-800 hover:text-blue-900 font-medium" do %>
+                  <%= t('family_memberships.show.go_to_family', default: 'Go to Family Page →') %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

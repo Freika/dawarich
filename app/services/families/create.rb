@@ -2,16 +2,24 @@
 
 module Families
   class Create
-    attr_reader :user, :name, :family
+    attr_reader :user, :name, :family, :errors
 
     def initialize(user:, name:)
       @user = user
       @name = name
+      @errors = {}
     end
 
     def call
-      return false if user.in_family?
-      return false unless can_create_family?
+      if user.in_family?
+        @errors[:user] = 'User is already in a family'
+        return false
+      end
+
+      unless can_create_family?
+        @errors[:base] = 'Cannot create family'
+        return false
+      end
 
       ActiveRecord::Base.transaction do
         create_family
@@ -19,7 +27,12 @@ module Families
       end
 
       true
-    rescue ActiveRecord::RecordInvalid
+    rescue ActiveRecord::RecordInvalid => e
+      if @family&.errors&.any?
+        @family.errors.each { |attribute, message| @errors[attribute] = message }
+      else
+        @errors[:base] = e.message
+      end
       false
     end
 
