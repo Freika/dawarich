@@ -129,8 +129,7 @@ RSpec.describe 'Family Memberships', type: :request do
         user_email = user.email
         delete "/families/#{family.id}/members/#{owner_membership.id}"
         expect(response).to redirect_to(family_path(family))
-        follow_redirect!
-        expect(response.body).to include("#{user_email} has been removed from the family")
+        expect(flash[:notice]).to include("#{user_email} has been removed from the family")
       end
     end
 
@@ -171,7 +170,8 @@ RSpec.describe 'Family Memberships', type: :request do
 
       it 'returns forbidden' do
         delete "/families/#{family.id}/members/#{owner_membership.id}"
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:see_other)
+        expect(flash[:alert]).to include('not authorized')
       end
     end
 

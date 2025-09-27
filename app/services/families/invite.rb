@@ -4,7 +4,7 @@ module Families
   class Invite
     include ActiveModel::Validations
 
-    attr_reader :family, :email, :invited_by, :invitation, :errors
+    attr_reader :family, :email, :invited_by, :invitation
 
     validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
 
@@ -12,7 +12,6 @@ module Families
       @family = family
       @email = email.downcase.strip
       @invited_by = invited_by
-      @errors = {}
     end
 
     def call
@@ -27,22 +26,18 @@ module Families
 
       true
     rescue ActiveRecord::RecordInvalid => e
-      @errors[:base] = e.message
+      errors.add(:base, e.message)
       false
     end
 
     def error_message
-      return errors.values.first if errors.any?
-      return validation_error_message unless valid?
+      return errors.full_messages.first if errors.any?
 
       'Failed to send invitation'
     end
 
     private
 
-    def validation_error_message
-      errors.full_messages.first || 'Invalid invitation data'
-    end
 
     def invite_sendable?
       return add_error_and_false(:invited_by, 'You must be a family owner to send invitations') unless invited_by.family_owner?
@@ -54,7 +49,7 @@ module Families
     end
 
     def add_error_and_false(attribute, message)
-      @errors[attribute] = message
+      errors.add(attribute, message)
       false
     end
 

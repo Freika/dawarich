@@ -634,7 +634,7 @@ class FamiliesController < ApplicationController
     else
       @family = Family.new(family_params)
       @family.errors.add(:base, 'Failed to create family')
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 
@@ -648,7 +648,7 @@ class FamiliesController < ApplicationController
     if @family.update(family_params)
       redirect_to family_path(@family), notice: 'Family updated successfully!'
     else
-      render :edit, status: :unprocessable_entity
+      render :edit, status: :unprocessable_content
     end
   end
 
