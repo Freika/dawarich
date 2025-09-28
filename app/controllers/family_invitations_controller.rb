@@ -16,14 +16,19 @@ class FamilyInvitationsController < ApplicationController
   def show
     # Public endpoint for invitation acceptance
     if @invitation.expired?
-      redirect_to root_path, alert: 'This invitation has expired.'
-      return
+      redirect_to root_path, alert: 'This invitation has expired.' and return
     end
 
-    return if @invitation.pending?
+    unless @invitation.pending?
+      redirect_to root_path, alert: 'This invitation is no longer valid.' and return
+    end
 
-    redirect_to root_path, alert: 'This invitation is no longer valid.'
-    nil
+    # If user is not authenticated, redirect to registration with invitation token
+    unless user_signed_in?
+      redirect_to new_user_registration_path(invitation_token: @invitation.token) and return
+    end
+
+    # User is authenticated and invitation is valid - proceed with normal flow
   end
 
   def create
@@ -47,18 +52,15 @@ class FamilyInvitationsController < ApplicationController
 
     # Additional validations before attempting to accept
     unless @invitation.pending?
-      redirect_to root_path, alert: 'This invitation has already been processed'
-      return
+      redirect_to root_path, alert: 'This invitation has already been processed' and return
     end
 
     if @invitation.expired?
-      redirect_to root_path, alert: 'This invitation has expired'
-      return
+      redirect_to root_path, alert: 'This invitation has expired' and return
     end
 
     if @invitation.email != current_user.email
-      redirect_to root_path, alert: 'This invitation is not for your email address'
-      return
+      redirect_to root_path, alert: 'This invitation is not for your email address' and return
     end
 
     service = Families::AcceptInvitation.new(

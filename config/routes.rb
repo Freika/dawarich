@@ -106,15 +106,9 @@ Rails.application.routes.draw do
   # iOS mobile auth success endpoint
   get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
 
-  if SELF_HOSTED
-    devise_for :users, skip: [:registrations]
-    as :user do
-      get 'users/edit' => 'devise/registrations#edit', :as => 'edit_user_registration'
-      put 'users' => 'devise/registrations#update', :as => 'user_registration'
-    end
-  else
-    devise_for :users
-  end
+  devise_for :users, controllers: {
+    registrations: 'users/registrations'
+  }
 
   resources :metrics, only: [:index]
 
