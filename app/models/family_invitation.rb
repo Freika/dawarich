@@ -17,7 +17,8 @@ class FamilyInvitation < ApplicationRecord
 
   before_validation :generate_token, :set_expiry, on: :create
 
-  # Clear family cache when invitation status changes
+  # Clear family cache when invitation status changes or is created/destroyed
+  after_create :clear_family_cache
   after_update :clear_family_cache, if: :saved_change_to_status?
   after_destroy :clear_family_cache
 

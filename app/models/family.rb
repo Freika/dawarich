@@ -15,8 +15,8 @@ class Family < ApplicationRecord
   scope :with_pending_invitations, -> { includes(family_invitations: :invited_by) }
 
   def can_add_members?
-    # Use counter cache if available, otherwise count
-    member_count < MAX_MEMBERS
+    # Check if family can accept more members (including pending invitations)
+    (member_count + pending_invitations_count) < MAX_MEMBERS
   end
 
   def member_count
@@ -40,7 +40,7 @@ class Family < ApplicationRecord
   end
 
   def full?
-    member_count >= MAX_MEMBERS
+    (member_count + pending_invitations_count) >= MAX_MEMBERS
   end
 
   def active_invitations
