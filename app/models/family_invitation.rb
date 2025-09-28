@@ -17,6 +17,10 @@ class FamilyInvitation < ApplicationRecord
 
   before_validation :generate_token, :set_expiry, on: :create
 
+  # Clear family cache when invitation status changes
+  after_update :clear_family_cache, if: :saved_change_to_status?
+  after_destroy :clear_family_cache
+
   def expired?
     expires_at < Time.current
   end
@@ -33,5 +37,9 @@ class FamilyInvitation < ApplicationRecord
 
   def set_expiry
     self.expires_at = EXPIRY_DAYS.days.from_now if expires_at.blank?
+  end
+
+  def clear_family_cache
+    family&.clear_member_cache!
   end
 end

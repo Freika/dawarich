@@ -19,8 +19,11 @@ module Families
       end
 
       true
-    rescue ActiveRecord::RecordInvalid
-      @error_message = 'Failed to leave family due to validation errors.'
+    rescue ActiveRecord::RecordInvalid => e
+      handle_record_invalid_error(e)
+      false
+    rescue StandardError => e
+      handle_generic_error(e)
       false
     end
 
@@ -66,12 +69,31 @@ module Families
     end
 
     def send_notification
+      return unless defined?(Notification)
+
       Notification.create!(
         user: user,
         kind: :info,
         title: 'Left Family',
         content: "You've left the family"
       )
+    rescue StandardError => e
+      # Don't fail the entire operation if notification fails
+      Rails.logger.warn "Failed to send family leave notification: #{e.message}"
+    end
+
+    def handle_record_invalid_error(error)
+      @error_message = if error.record&.errors&.any?
+                         error.record.errors.full_messages.first
+                       else
+                         "Failed to leave family: #{error.message}"
+                       end
+    end
+
+    def handle_generic_error(error)
+      Rails.logger.error "Unexpected error in Families::Leave: #{error.message}"
+      Rails.logger.error error.backtrace.join("\n")
+      @error_message = 'An unexpected error occurred while leaving the family. Please try again'
     end
   end
 end

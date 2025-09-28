@@ -39,9 +39,30 @@ class DawarichSettings
       @store_geodata ||= STORE_GEODATA
     end
 
+    def family_feature_enabled?
+      @family_feature_enabled ||= self_hosted? || family_subscription_active?
+    end
+
+    def family_subscription_active?
+      # Will be implemented when cloud subscriptions are added
+      # For now, return false for cloud instances to keep family feature
+      # available only for self-hosted instances
+      false
+    end
+
+    def family_feature_available_for?(user)
+      return true if self_hosted?
+      return false unless user
+
+      # For cloud instances, check if user has family subscription
+      # This will be implemented when subscription system is added
+      false
+    end
+
     def features
       @features ||= {
-        reverse_geocoding: reverse_geocoding_enabled?
+        reverse_geocoding: reverse_geocoding_enabled?,
+        family: family_feature_enabled?
       }
     end
   end

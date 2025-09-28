@@ -2,46 +2,71 @@
 
 module Families
   class Create
-    attr_reader :user, :name, :family, :errors
+    include ActiveModel::Validations
+
+    attr_reader :user, :name, :family, :error_message
+
+    validates :name, presence: { message: 'Family name is required' }
+    validates :name, length: {
+      maximum: 50,
+      message: 'Family name must be 50 characters or less'
+    }
 
     def initialize(user:, name:)
       @user = user
-      @name = name
-      @errors = {}
+      @name = name&.strip
+      @error_message = nil
     end
 
     def call
-      if user.in_family?
-        @errors[:user] = 'User is already in a family'
-        return false
-      end
-
-      if user.created_family.present?
-        @errors[:user] = 'User has already created a family'
-        return false
-      end
-
-      unless can_create_family?
-        @errors[:base] = 'Cannot create family'
-        return false
-      end
+      return false unless valid?
+      return false unless validate_user_eligibility
+      return false unless validate_feature_access
 
       ActiveRecord::Base.transaction do
         create_family
         create_owner_membership
+        send_notification
       end
 
       true
     rescue ActiveRecord::RecordInvalid => e
-      if @family&.errors&.any?
-        @family.errors.each { |attribute, message| @errors[attribute] = message }
-      else
-        @errors[:base] = e.message
-      end
+      handle_record_invalid_error(e)
+      false
+    rescue ActiveRecord::RecordNotUnique => e
+      handle_uniqueness_error(e)
+      false
+    rescue StandardError => e
+      handle_generic_error(e)
       false
     end
 
     private
+
+    def validate_user_eligibility
+      if user.in_family?
+        @error_message = 'You must leave your current family before creating a new one'
+        return false
+      end
+
+      if user.created_family.present?
+        @error_message = 'You have already created a family. Each user can only create one family'
+        return false
+      end
+
+      true
+    end
+
+    def validate_feature_access
+      return true if can_create_family?
+
+      @error_message = if DawarichSettings.self_hosted?
+                         'Family feature is not available on this instance'
+                       else
+                         'Family feature requires an active subscription'
+                       end
+      false
+    end
 
     def can_create_family?
       return true if DawarichSettings.self_hosted?
@@ -52,7 +77,7 @@ module Families
     end
 
     def create_family
-      @family = Family.create!(name:, creator: user)
+      @family = Family.create!(name: name, creator: user)
     end
 
     def create_owner_membership
@@ -61,6 +86,38 @@ module Families
         user: user,
         role: :owner
       )
+    end
+
+    def send_notification
+      return unless defined?(Notification)
+
+      Notification.create!(
+        user: user,
+        kind: :info,
+        title: 'Family Created',
+        content: "You've successfully created the family '#{family.name}'"
+      )
+    rescue StandardError => e
+      # Don't fail the entire operation if notification fails
+      Rails.logger.warn "Failed to send family creation notification: #{e.message}"
+    end
+
+    def handle_record_invalid_error(error)
+      if family&.errors&.any?
+        @error_message = family.errors.full_messages.first
+      else
+        @error_message = "Failed to create family: #{error.message}"
+      end
+    end
+
+    def handle_uniqueness_error(_error)
+      @error_message = 'A family with this name already exists for your account'
+    end
+
+    def handle_generic_error(error)
+      Rails.logger.error "Unexpected error in Families::Create: #{error.message}"
+      Rails.logger.error error.backtrace.join("\n")
+      @error_message = 'An unexpected error occurred while creating the family. Please try again'
     end
   end
 end

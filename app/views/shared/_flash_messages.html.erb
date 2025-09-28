@@ -1,0 +1,28 @@
+<% if flash.any? %>
+  <div class="flash-messages fixed top-4 right-4 z-50 space-y-2">
+    <% flash.each do |type, message| %>
+      <% next if message.blank? %>
+      <div class="alert <%= flash_alert_class(type) %> shadow-lg max-w-md"
+           data-controller="flash-message"
+           data-flash-message-type-value="<%= type %>"
+           data-flash-message-auto-dismiss-value="<%= %w[notice success].include?(type) %>">
+        <div class="flex items-center">
+          <%= flash_icon(type) %>
+          <div class="flex-1">
+            <div class="text-sm font-medium">
+              <%= message %>
+            </div>
+          </div>
+          <button type="button"
+                  class="btn btn-ghost btn-sm btn-circle"
+                  data-action="click->flash-message#dismiss"
+                  aria-label="Dismiss">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

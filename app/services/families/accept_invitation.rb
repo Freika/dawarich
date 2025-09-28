@@ -25,8 +25,11 @@ module Families
       end
 
       true
-    rescue ActiveRecord::RecordInvalid
-      @error_message = 'Failed to join family due to validation errors.'
+    rescue ActiveRecord::RecordInvalid => e
+      handle_record_invalid_error(e)
+      false
+    rescue StandardError => e
+      handle_generic_error(e)
       false
     end
 
@@ -55,7 +58,7 @@ module Families
     end
 
     def validate_family_capacity
-      return true if invitation.family.members.count < Family::MAX_MEMBERS
+      return true unless invitation.family.full?
 
       @error_message = 'This family has reached the maximum number of members.'
       false
@@ -88,12 +91,31 @@ module Families
     end
 
     def send_owner_notification
+      return unless defined?(Notification)
+
       Notification.create!(
         user: invitation.family.creator,
         kind: :info,
         title: 'New Family Member',
         content: "#{user.email} has joined your family"
       )
+    rescue StandardError => e
+      # Don't fail the entire operation if notification fails
+      Rails.logger.warn "Failed to send family join notification: #{e.message}"
+    end
+
+    def handle_record_invalid_error(error)
+      @error_message = if error.record&.errors&.any?
+                         error.record.errors.full_messages.first
+                       else
+                         "Failed to join family: #{error.message}"
+                       end
+    end
+
+    def handle_generic_error(error)
+      Rails.logger.error "Unexpected error in Families::AcceptInvitation: #{error.message}"
+      Rails.logger.error error.backtrace.join("\n")
+      @error_message = 'An unexpected error occurred while joining the family. Please try again'
     end
   end
 end

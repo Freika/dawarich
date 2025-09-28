@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_26_220345) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_28_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -116,7 +116,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_220345) do
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_family_invitations_on_email"
     t.index ["expires_at"], name: "index_family_invitations_on_expires_at"
+    t.index ["family_id", "status", "expires_at"], name: "index_family_invitations_on_family_status_expires"
     t.index ["family_id"], name: "index_family_invitations_on_family_id"
+    t.index ["status", "expires_at"], name: "index_family_invitations_on_status_and_expires_at"
     t.index ["status"], name: "index_family_invitations_on_status"
     t.index ["token"], name: "index_family_invitations_on_token", unique: true
   end
@@ -127,6 +129,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_220345) do
     t.integer "role", default: 1, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["family_id", "role"], name: "index_family_memberships_on_family_and_role"
     t.index ["family_id", "role"], name: "index_family_memberships_on_family_id_and_role"
     t.index ["family_id"], name: "index_family_memberships_on_family_id"
     t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true

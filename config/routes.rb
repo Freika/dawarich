@@ -57,7 +57,8 @@ Rails.application.routes.draw do
   resources :exports, only: %i[index create destroy]
   resources :trips
 
-  # Family management routes
+  # Family management routes (only if feature is enabled)
+  # if DawarichSettings.family_feature_enabled?
   resources :families do
     member do
       delete :leave
@@ -72,6 +73,7 @@ Rails.application.routes.draw do
 
   # Public family invitation acceptance (no auth required)
   get 'invitations/:id', to: 'family_invitations#show', as: :public_invitation
+  # end
   resources :points, only: %i[index] do
     collection do
       delete :bulk_destroy

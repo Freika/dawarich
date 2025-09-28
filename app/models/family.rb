@@ -10,7 +10,47 @@ class Family < ApplicationRecord
 
   MAX_MEMBERS = 5
 
+  # Optimized scopes for better performance
+  scope :with_members, -> { includes(:members, :family_memberships) }
+  scope :with_pending_invitations, -> { includes(family_invitations: :invited_by) }
+
   def can_add_members?
-    members.count < MAX_MEMBERS
+    # Use counter cache if available, otherwise count
+    member_count < MAX_MEMBERS
+  end
+
+  def member_count
+    # Cache the count to avoid repeated queries
+    @member_count ||= members.count
+  end
+
+  def pending_invitations_count
+    @pending_invitations_count ||= family_invitations.active.count
+  end
+
+  def owners
+    # Get family owners efficiently
+    members.joins(:family_membership)
+           .where(family_memberships: { role: :owner })
+  end
+
+  def owner
+    # Get the primary owner (creator) efficiently
+    @owner ||= creator
+  end
+
+  def full?
+    member_count >= MAX_MEMBERS
+  end
+
+  def active_invitations
+    family_invitations.active.includes(:invited_by)
+  end
+
+  # Clear cached counters when members change
+  def clear_member_cache!
+    @member_count = nil
+    @pending_invitations_count = nil
+    @owner = nil
   end
 end

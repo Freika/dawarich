@@ -2,6 +2,7 @@
 
 class FamiliesController < ApplicationController
   before_action :authenticate_user!
+  before_action :ensure_family_feature_enabled!
   before_action :set_family, only: %i[show edit update destroy leave]
 
   def index
@@ -11,8 +12,13 @@ class FamiliesController < ApplicationController
   def show
     authorize @family
 
-    @members = @family.members.includes(:family_membership)
-    @pending_invitations = @family.family_invitations.active
+    # Use optimized family methods for better performance
+    @members = @family.members.includes(:family_membership).order(:email)
+    @pending_invitations = @family.active_invitations.order(:created_at)
+
+    # Use cached counts to avoid extra queries
+    @member_count = @family.member_count
+    @can_invite = @family.can_add_members?
   end
 
   def new
@@ -32,9 +38,19 @@ class FamiliesController < ApplicationController
     else
       @family = Family.new(family_params)
 
-      service.errors.each do |attribute, message|
-        @family.errors.add(attribute, message)
+      # Handle validation errors
+      if service.errors.any?
+        service.errors.each do |attribute, message|
+          @family.errors.add(attribute, message)
+        end
       end
+
+      # Handle service-level errors
+      if service.error_message.present?
+        @family.errors.add(:base, service.error_message)
+      end
+
+      flash.now[:alert] = service.error_message || 'Failed to create family'
       render :new, status: :unprocessable_content
     end
   end
@@ -81,6 +97,12 @@ class FamiliesController < ApplicationController
   end
 
   private
+
+  def ensure_family_feature_enabled!
+    unless DawarichSettings.family_feature_enabled?
+      redirect_to root_path, alert: 'Family feature is not available'
+    end
+  end
 
   def set_family
     @family = current_user.family

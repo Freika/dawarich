@@ -43,7 +43,7 @@ RSpec.describe Families::Create do
 
       it 'sets appropriate error message' do
         service.call
-        expect(service.errors[:user]).to eq('User is already in a family')
+        expect(service.error_message).to eq('You must leave your current family before creating a new one')
       end
     end
 
@@ -70,7 +70,7 @@ RSpec.describe Families::Create do
 
       it 'sets appropriate error message' do
         service.call
-        expect(service.errors[:user]).to eq('User has already created a family')
+        expect(service.error_message).to eq('You have already created a family. Each user can only create one family')
       end
     end
   end
