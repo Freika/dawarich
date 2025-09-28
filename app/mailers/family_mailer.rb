@@ -6,7 +6,7 @@ class FamilyMailer < ApplicationMailer
     @family = invitation.family
     @invited_by = invitation.invited_by
     @accept_url = family_invitation_url(@invitation.token)
-
+    pp @accept_url
     mail(
       to: @invitation.email,
       subject: "You've been invited to join #{@family.name} on Dawarich"

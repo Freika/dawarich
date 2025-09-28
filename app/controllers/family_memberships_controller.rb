@@ -19,9 +19,9 @@ class FamilyMembershipsController < ApplicationController
   def destroy
     authorize @membership
 
-    if @membership.owner? && @family.members.count > 1
+    if @membership.owner?
       redirect_to family_path(@family),
-                  alert: 'Cannot remove family owner while other members exist. Transfer ownership first.'
+                  alert: 'Family owners cannot remove their own membership. To leave the family, delete it instead.'
     else
       member_email = @membership.user.email
       @membership.destroy!

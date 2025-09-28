@@ -101,35 +101,30 @@ RSpec.describe 'Family Memberships', type: :request do
       end
     end
 
-    context 'when trying to remove the owner while other members exist' do
+    context 'when trying to remove the owner' do
       it 'does not remove the owner' do
         expect do
           delete "/families/#{family.id}/members/#{owner_membership.id}"
         end.not_to change(FamilyMembership, :count)
       end
 
-      it 'redirects with error message' do
+      it 'redirects with error message explaining owners must delete family' do
         delete "/families/#{family.id}/members/#{owner_membership.id}"
         expect(response).to redirect_to(family_path(family))
         follow_redirect!
-        expect(response.body).to include('Cannot remove family owner while other members exist')
+        expect(response.body).to include('Family owners cannot remove their own membership. To leave the family, delete it instead.')
       end
-    end
 
-    context 'when owner is the only member' do
-      before { member_membership.destroy! }
+      it 'prevents owner removal even when they are the only member' do
+        member_membership.destroy!
 
-      it 'allows removing the owner' do
         expect do
           delete "/families/#{family.id}/members/#{owner_membership.id}"
-        end.to change(FamilyMembership, :count).by(-1)
-      end
+        end.not_to change(FamilyMembership, :count)
 
-      it 'redirects with success message' do
-        user_email = user.email
-        delete "/families/#{family.id}/members/#{owner_membership.id}"
         expect(response).to redirect_to(family_path(family))
-        expect(flash[:notice]).to include("#{user_email} has been removed from the family")
+        follow_redirect!
+        expect(response.body).to include('Family owners cannot remove their own membership')
       end
     end
 
@@ -210,7 +205,7 @@ RSpec.describe 'Family Memberships', type: :request do
       expect(member_user.reload.family).to be_nil
     end
 
-    it 'prevents removing owner when family has members' do
+    it 'prevents removing owner regardless of member count' do
       # Verify initial state
       expect(family.members.count).to eq(2)
       expect(user.family_owner?).to be true
@@ -224,7 +219,7 @@ RSpec.describe 'Family Memberships', type: :request do
       expect(user.reload.family).to eq(family)
     end
 
-    it 'allows removing owner when they are the only member' do
+    it 'prevents removing owner even when they are the only member' do
       # Remove other member first
       member_membership.destroy!
 
@@ -232,12 +227,31 @@ RSpec.describe 'Family Memberships', type: :request do
       expect(family.reload.members.count).to eq(1)
       expect(family.members).to include(user)
 
-      # Remove owner
+      # Try to remove owner - should be prevented
       expect do
         delete "/families/#{family.id}/members/#{owner_membership.id}"
-      end.to change(FamilyMembership, :count).by(-1)
+      end.not_to change(FamilyMembership, :count)
 
       expect(response).to redirect_to(family_path(family))
+      expect(user.reload.family).to eq(family)
+      expect(family.reload).to be_present
+    end
+
+    it 'requires owners to use family deletion to leave the family' do
+      # This test documents that owners must delete the family to leave
+      # rather than removing their membership
+
+      # Remove other member first
+      member_membership.destroy!
+
+      # Try to remove owner membership - should fail
+      delete "/families/#{family.id}/members/#{owner_membership.id}"
+      expect(response).to redirect_to(family_path(family))
+      expect(flash[:alert]).to include('Family owners cannot remove their own membership')
+
+      # Owner must delete the family instead
+      delete "/families/#{family.id}"
+      expect(response).to redirect_to(families_path)
       expect(user.reload.family).to be_nil
     end
   end
