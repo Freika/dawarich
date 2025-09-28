@@ -240,14 +240,13 @@ RSpec.describe 'Family Invitations', type: :request do
     before { sign_in user }
 
     it 'cancels the invitation' do
-      delete "/families/#{family.id}/invitations/#{invitation.token}"
+      delete "/families/#{family.id}/invitations/#{invitation.id}"
       invitation.reload
       expect(invitation.status).to eq('cancelled')
-      expect(response).to redirect_to(family_path(family))
     end
 
     it 'redirects with success message' do
-      delete "/families/#{family.id}/invitations/#{invitation.token}"
+      delete "/families/#{family.id}/invitations/#{invitation.id}"
       expect(response).to redirect_to(family_path(family))
       follow_redirect!
       expect(response.body).to include('Invitation cancelled')
@@ -257,7 +256,7 @@ RSpec.describe 'Family Invitations', type: :request do
       before { membership.update!(role: :member) }
 
       it 'redirects due to authorization failure' do
-        delete "/families/#{family.id}/invitations/#{invitation.token}"
+        delete "/families/#{family.id}/invitations/#{invitation.id}"
         expect(response).to have_http_status(:see_other)
         expect(flash[:alert]).to include('not authorized')
       end

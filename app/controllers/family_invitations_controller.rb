@@ -4,7 +4,8 @@ class FamilyInvitationsController < ApplicationController
   before_action :authenticate_user!, except: %i[show accept]
   before_action :ensure_family_feature_enabled!, except: %i[show accept]
   before_action :set_family, except: %i[show accept]
-  before_action :set_invitation, only: %i[show accept destroy]
+  before_action :set_invitation_by_token, only: %i[show accept]
+  before_action :set_invitation_by_id, only: %i[destroy]
 
   def index
     authorize @family, :show?
@@ -106,8 +107,12 @@ class FamilyInvitationsController < ApplicationController
     redirect_to families_path, alert: 'Family not found' and return unless @family
   end
 
-  def set_invitation
+  def set_invitation_by_token
     @invitation = FamilyInvitation.find_by!(token: params[:id])
+  end
+
+  def set_invitation_by_id
+    @invitation = @family.family_invitations.find(params[:id])
   end
 
   def invitation_params
