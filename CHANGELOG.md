@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Based on preferred theme (light or dark), the map controls will now load with the corresponding styles.
 - [Dawarich Cloud] Added foundation for upcoming authentication from iOS app.
 - [Dawarich Cloud] Trial users can now create up to 5 imports. After that, they will be prompted to subscribe to a paid plan.
+- [Dawarich Cloud] Added Posthog analytics. Disabled by default, can be enabled with POSTHOG_ENABLED environment variable.
 
 
 # [0.32.0] - 2025-09-13
