@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [UNRELEASED]
+# [0.33.0] - 2025-09-29
 
 ## Fixed
 
@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Added
 
-- [Dawarich Cloud] Based on preferred theme (light or dark), the map page will now load with the corresponding map layer (light or dark).
+- Based on preferred theme (light or dark), the map controls will now load with the corresponding styles.
 - [Dawarich Cloud] Added foundation for upcoming authentication from iOS app.
 - [Dawarich Cloud] Trial users can now create up to 5 imports. After that, they will be prompted to subscribe to a paid plan.
 
