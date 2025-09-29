@@ -44,7 +44,6 @@ import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
 import { createAllMapLayers } from "../maps/layers";
 import { applyThemeToControl, applyThemeToButton, applyThemeToPanel } from "../maps/theme_utils";
-import { injectThemeStyles } from "../maps/theme_styles";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -64,9 +63,6 @@ export default class extends BaseController {
     this.apiKey = this.element.dataset.api_key;
     this.selfHosted = this.element.dataset.self_hosted;
     this.userTheme = this.element.dataset.user_theme || 'dark';
-
-    // Inject theme styles for Leaflet controls
-    injectThemeStyles(this.userTheme);
 
     try {
       this.markers = this.element.dataset.coordinates ? JSON.parse(this.element.dataset.coordinates) : [];
@@ -1005,7 +1001,6 @@ export default class extends BaseController {
         if (newSettings.theme && newSettings.theme !== this.userTheme) {
           this.userTheme = newSettings.theme;
           mapElement.setAttribute('data-user_theme', this.userTheme);
-          injectThemeStyles(this.userTheme);
 
           // Dispatch theme change event for other controllers
           document.dispatchEvent(new CustomEvent('theme:changed', {

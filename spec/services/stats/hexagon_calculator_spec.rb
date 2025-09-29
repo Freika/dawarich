@@ -81,43 +81,4 @@ RSpec.describe Stats::HexagonCalculator do
       end
     end
   end
-
-  describe '#calculate_h3_hex_ids' do
-    subject(:calculate_hex_ids) { described_class.new(user.id, year, month).calculate_h3_hex_ids }
-
-    let(:user) { create(:user) }
-    let(:year) { 2024 }
-    let(:month) { 1 }
-
-    context 'when there are no points' do
-      it 'returns empty hash' do
-        expect(calculate_hex_ids).to eq({})
-      end
-    end
-
-    context 'when there are points' do
-      let(:timestamp1) { DateTime.new(year, month, 1, 12).to_i }
-      let!(:import) { create(:import, user:) }
-      let!(:point1) do
-        create(:point,
-               user:,
-               import:,
-               timestamp: timestamp1,
-               lonlat: 'POINT(14.452712811406352 52.107902115161316)')
-      end
-
-      it 'returns hash with H3 hex IDs' do
-        result = calculate_hex_ids
-
-        expect(result).to be_a(Hash)
-        expect(result).not_to be_empty
-
-        result.each do |h3_index, data|
-          expect(h3_index).to be_a(String)
-          expect(data).to be_an(Array)
-          expect(data.size).to eq(3) # [count, earliest, latest]
-        end
-      end
-    end
-  end
 end

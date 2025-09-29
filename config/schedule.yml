@@ -43,4 +43,4 @@ daily_track_generation_job:
 nightly_reverse_geocoding_job:
   cron: "15 1 * * *" # every day at 01:15
   class: "Points::NightlyReverseGeocodingJob"
-  queue: tracks
+  queue: reverse_geocoding

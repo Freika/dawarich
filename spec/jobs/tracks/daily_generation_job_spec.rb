@@ -26,10 +26,8 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       active_user.update!(points_count: active_user.points.count)
       trial_user.update!(points_count: trial_user.points.count)
 
-      # Mock User.active_or_trial to only return test users
-      active_or_trial_mock = double('ActiveRecord::Relation')
-      allow(User).to receive(:active_or_trial).and_return(active_or_trial_mock)
-      allow(active_or_trial_mock).to receive(:find_each).and_yield(active_user).and_yield(trial_user)
+      allow(User).to receive(:active_or_trial)
+        .and_return(User.where(id: [active_user.id, trial_user.id]))
 
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
     end

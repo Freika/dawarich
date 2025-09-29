@@ -1159,7 +1159,6 @@ class LocationSearch {
     return new Date(dateString).toLocaleDateString() + ' ' +
            new Date(dateString).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
   }
-
 }
 
 export { LocationSearch };

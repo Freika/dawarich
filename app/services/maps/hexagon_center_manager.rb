@@ -32,8 +32,7 @@ module Maps
     end
 
     def recalculate_h3_hex_ids
-      service = Stats::CalculateMonth.new(user.id, stat.year, stat.month)
-      service.send(:calculate_h3_hex_ids)
+      Stats::HexagonCalculator.new(user.id, stat.year, stat.month).call
     end
 
     def update_stat_with_new_hex_ids(new_hex_ids)

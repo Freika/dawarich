@@ -19,16 +19,12 @@ export default class extends Controller {
     this.currentPopup = null;
     this.mapsController = null;
 
-    // Listen for theme changes
-    document.addEventListener('theme:changed', this.handleThemeChange.bind(this));
-
     // Wait for the map to be initialized
     this.waitForMap();
   }
 
   disconnect() {
     this.cleanup();
-    document.removeEventListener('theme:changed', this.handleThemeChange.bind(this));
     console.log("Add visit controller disconnected");
   }
 
@@ -433,16 +429,6 @@ export default class extends Controller {
         input.dispatchEvent(new Event('change', { bubbles: true }));
       }
     });
-  }
-
-  handleThemeChange(event) {
-    console.log('Add visit controller: Theme changed to', event.detail.theme);
-    this.userThemeValue = event.detail.theme;
-
-    // Update button theme if it exists
-    if (this.addVisitButton && !this.isAddingVisit) {
-      applyThemeToButton(this.addVisitButton, this.userThemeValue);
-    }
   }
 
   cleanup() {

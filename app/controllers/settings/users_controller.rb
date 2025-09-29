@@ -59,23 +59,8 @@ class Settings::UsersController < ApplicationController
       return
     end
 
-    archive_param = params[:archive]
-
-    # Handle both direct upload (signed_id) and traditional upload (file)
-    if archive_param.is_a?(String)
-      # Direct upload: archive_param is a signed blob ID
-      import = create_import_from_signed_archive_id(archive_param)
-    else
-      # Traditional upload: archive_param is an uploaded file
-      validate_archive_file(archive_param)
-
-      import = current_user.imports.build(
-        name: archive_param.original_filename,
-        source: :user_data_archive
-      )
-
-      import.file.attach(archive_param)
-    end
+    import =
+      create_import_from_signed_archive_id(params[:archive])
 
     if import.save
       redirect_to edit_user_registration_path,

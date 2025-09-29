@@ -15,8 +15,8 @@ class Api::PointSerializer
       lat = point.lat
       lon = point.lon
 
-      attributes['latitude'] = lat.nil? ? nil : lat.to_s
-      attributes['longitude'] = lon.nil? ? nil : lon.to_s
+      attributes['latitude']  = lat&.to_s
+      attributes['longitude'] = lon&.to_s
     end
   end
 
