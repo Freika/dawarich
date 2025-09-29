@@ -4,7 +4,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable
 
-  has_many :points, dependent: :destroy, counter_cache: true
+  has_many :points, dependent: :destroy
   has_many :imports,        dependent: :destroy
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
@@ -217,13 +217,89 @@ inverse_of: :invited_by, dependent: :destroy
   end
 
   def family_sharing_enabled?
-    in_family?
+    # User must be in a family and have explicitly enabled location sharing
+    return false unless in_family?
+
+    sharing_settings = settings.dig('family', 'location_sharing')
+    return false if sharing_settings.blank?
+
+    # If it's a boolean (legacy support), return it
+    return sharing_settings if [true, false].include?(sharing_settings)
+
+    # If it's time-limited sharing, check if it's still active
+    if sharing_settings.is_a?(Hash)
+      return false unless sharing_settings['enabled'] == true
+
+      # Check if sharing has an expiration
+      expires_at = sharing_settings['expires_at']
+      return expires_at.blank? || Time.parse(expires_at) > Time.current
+    end
+
+    false
+  end
+
+  def update_family_location_sharing!(enabled, duration: nil)
+    return false unless in_family?
+
+    current_settings = settings || {}
+    current_settings['family'] ||= {}
+
+    if enabled
+      sharing_config = { 'enabled' => true }
+
+      # Add expiration if duration is specified
+      if duration.present?
+        expiration_time = case duration
+        when '1h'
+          1.hour.from_now
+        when '6h'
+          6.hours.from_now
+        when '12h'
+          12.hours.from_now
+        when '24h'
+          24.hours.from_now
+        when 'permanent'
+          nil # No expiration
+        else
+          # Custom duration in hours
+          duration.to_i.hours.from_now if duration.to_i > 0
+        end
+
+        sharing_config['expires_at'] = expiration_time.iso8601 if expiration_time
+        sharing_config['duration'] = duration
+      end
+
+      current_settings['family']['location_sharing'] = sharing_config
+    else
+      current_settings['family']['location_sharing'] = { 'enabled' => false }
+    end
+
+    update!(settings: current_settings)
+  end
+
+  def family_sharing_expires_at
+    sharing_settings = settings.dig('family', 'location_sharing')
+    return nil unless sharing_settings.is_a?(Hash)
+
+    expires_at = sharing_settings['expires_at']
+    Time.parse(expires_at) if expires_at.present?
+  rescue ArgumentError
+    nil
+  end
+
+  def family_sharing_duration
+    settings.dig('family', 'location_sharing', 'duration') || 'permanent'
   end
 
   def latest_location_for_family
     return nil unless family_sharing_enabled?
 
-    latest_point = points.order(timestamp: :desc).first
+    # Use select to only fetch needed columns and limit to 1 for efficiency
+    latest_point = points.select(:latitude, :longitude, :timestamp)
+                         .order(timestamp: :desc)
+                         .limit(1)
+                         .first
+
     return nil unless latest_point
 
     {

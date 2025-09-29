@@ -62,6 +62,7 @@ Rails.application.routes.draw do
   resources :families do
     member do
       delete :leave
+      patch :update_location_sharing
     end
     resources :invitations, except: %i[edit update], controller: 'family_invitations' do
       member do
@@ -167,6 +168,12 @@ Rails.application.routes.draw do
           collection do
             get :bounds
           end
+        end
+      end
+
+      resources :families, only: [] do
+        collection do
+          get :locations
         end
       end
 

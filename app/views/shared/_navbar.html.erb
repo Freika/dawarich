@@ -11,7 +11,15 @@
         <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
           <li>
             <% if current_user.in_family? %>
-              <%= link_to 'Family', family_path(current_user.family), class: "#{active_class?(families_path)}" %>
+              <div data-controller="family-navbar-indicator"
+                   data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
+                <%= link_to family_path(current_user.family), class: "#{active_class?(families_path)} flex items-center space-x-2" do %>
+                  <span>Family</span>
+                  <div data-family-navbar-indicator-target="indicator"
+                       class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
+                       title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
+                <% end %>
+              </div>
             <% else %>
               <%= link_to 'Family', families_path, class: "#{active_class?(families_path)}" %>
             <% end %>
@@ -68,7 +76,15 @@
       <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
         <li>
           <% if current_user.in_family? %>
-            <%= link_to 'Family', family_path(current_user.family), class: "mx-1 #{active_class?(families_path)}" %>
+            <div data-controller="family-navbar-indicator"
+                 data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
+              <%= link_to family_path(current_user.family), class: "mx-1 #{active_class?(families_path)} flex items-center space-x-2" do %>
+                <span>Family</span>
+                <div data-family-navbar-indicator-target="indicator"
+                     class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
+                     title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
+              <% end %>
+            </div>
           <% else %>
             <%= link_to 'Family', families_path, class: "mx-1 #{active_class?(families_path)}" %>
           <% end %>

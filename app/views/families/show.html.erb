@@ -42,9 +42,8 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Family Members -->
-      <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700 rounded-lg p-6">
+    <!-- Family Members -->
+    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700 rounded-lg p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
             <%= t('families.show.members_title', default: 'Family Members') %>
@@ -58,29 +57,116 @@
 
         <div class="space-y-3">
           <% @members.each do |member| %>
-            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div>
-                <div class="font-medium text-gray-900 dark:text-gray-100"><%= member.email %></div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">
-                  <%= member.family_membership.role.humanize %>
-                  <% if member.family_membership.role == 'owner' %>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 ml-2">
-                      <%= t('families.show.owner_badge', default: 'Owner') %>
-                    </span>
-                  <% end %>
+            <!-- DaisyUI Card for each member -->
+            <div class="card bg-base-200 shadow-sm">
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex-grow">
+                    <!-- Member Info -->
+                    <div class="flex items-center gap-3">
+                      <div class="avatar placeholder">
+                        <div class="bg-primary text-primary-content rounded-full w-12">
+                          <span class="text-lg font-semibold">
+                            <%= member.email&.first&.upcase || '?' %>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 class="card-title text-base"><%= member.email %></h3>
+                        <div class="flex items-center gap-2 mt-1">
+                          <% if member.family_membership.role == 'owner' %>
+                            <div class="badge badge-warning badge-sm">
+                              <%= t('families.show.owner_badge', default: 'Owner') %>
+                            </div>
+                          <% else %>
+                            <span class="text-sm opacity-60">
+                              <%= member.family_membership.role.humanize %>
+                            </span>
+                          <% end %>
+                        </div>
+                        <div class="text-xs opacity-50 mt-1">
+                          <%= t('families.show.joined_on', default: 'Joined') %>
+                          <%= member.family_membership.created_at.strftime('%b %d, %Y') %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Location Sharing Controls - More Compact -->
+                  <div class="ml-auto flex items-center gap-4">
+                    <% if member == current_user %>
+                      <!-- Own toggle - interactive (consolidated controller) -->
+                      <div data-controller="location-sharing-toggle"
+                           data-location-sharing-toggle-member-id-value="<%= member.id %>"
+                           data-location-sharing-toggle-enabled-value="<%= member.family_sharing_enabled? %>"
+                           data-location-sharing-toggle-family-id-value="<%= @family.id %>"
+                           data-location-sharing-toggle-duration-value="<%= member.family_sharing_duration %>"
+                           data-location-sharing-toggle-expires-at-value="<%= member.family_sharing_expires_at&.iso8601 %>"
+                           class="flex items-center gap-3">
+
+                        <span class="text-sm opacity-60">Location:</span>
+
+                        <!-- Toggle Switch -->
+                        <input type="checkbox"
+                               class="toggle toggle-primary toggle-sm"
+                               <%= 'checked' if member.family_sharing_enabled? %>
+                               data-location-sharing-toggle-target="checkbox"
+                               data-action="change->location-sharing-toggle#toggle">
+
+                        <!-- Duration Dropdown (only visible when enabled) -->
+                        <div class="<%= 'hidden' unless member.family_sharing_enabled? %>"
+                             data-location-sharing-toggle-target="durationContainer">
+                          <select class="select select-bordered select-xs w-28 h-full"
+                                  data-location-sharing-toggle-target="durationSelect"
+                                  data-action="change->location-sharing-toggle#changeDuration">
+                            <option value="permanent" <%= 'selected' if member.family_sharing_duration == 'permanent' %>>Always</option>
+                            <option value="1h" <%= 'selected' if member.family_sharing_duration == '1h' %>>1 hour</option>
+                            <option value="6h" <%= 'selected' if member.family_sharing_duration == '6h' %>>6 hours</option>
+                            <option value="12h" <%= 'selected' if member.family_sharing_duration == '12h' %>>12 hours</option>
+                            <option value="24h" <%= 'selected' if member.family_sharing_duration == '24h' %>>24 hours</option>
+                          </select>
+                        </div>
+
+                        <!-- Expiration Info (inline) -->
+                        <% if member.family_sharing_enabled? && member.family_sharing_expires_at.present? %>
+                          <div class="text-xs opacity-50"
+                               data-location-sharing-toggle-target="expirationInfo">
+                            • Expires <%= time_ago_in_words(member.family_sharing_expires_at) %> from now
+                          </div>
+                        <% end %>
+                      </div>
+
+                    <% else %>
+                      <!-- Other member's status - read-only indicator -->
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm opacity-60">Location:</span>
+                        <% if member.family_sharing_enabled? %>
+                          <div class="w-3 h-3 bg-success rounded-full animate-pulse"></div>
+                          <span class="text-xs text-success font-medium">
+                            <%= member.family_sharing_duration == 'permanent' ? 'Always' : member.family_sharing_duration&.upcase %>
+                          </span>
+                          <% if member.family_sharing_expires_at.present? %>
+                            <span class="text-xs opacity-50">
+                              • Expires <%= time_ago_in_words(member.family_sharing_expires_at) %> from now
+                            </span>
+                          <% end %>
+                        <% else %>
+                          <div class="w-3 h-3 bg-base-300 rounded-full"></div>
+                          <span class="text-xs opacity-50">Disabled</span>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
                 </div>
-              </div>
-              <div class="text-sm text-gray-500 dark:text-gray-400">
-                <%= t('families.show.joined_on', default: 'Joined') %>
-                <%= member.family_membership.created_at.strftime('%b %d, %Y') %>
               </div>
             </div>
           <% end %>
         </div>
-      </div>
+    </div>
 
-      <!-- Pending Invitations -->
-      <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700 rounded-lg p-6">
+    <!-- Pending Invitations -->
+    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700 rounded-lg p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
             <%= t('families.show.invitations_title', default: 'Pending Invitations') %>
@@ -166,7 +252,6 @@
             </div>
           </div>
         <% end %>
-      </div>
     </div>
   </div>
 </div>
