@@ -149,7 +149,8 @@
         <li>
           <details>
             <summary>
-              <%= "#{current_user.email}" %>
+              <span class="hidden xl:inline"><%= current_user.email %></span>
+              <span class="inline xl:hidden"><%= icon 'user' %></span>
               <% if onboarding_modal_showable?(current_user) %>
                 <span class="indicator-item badge badge-secondary badge-xs"></span>
               <% end %>
