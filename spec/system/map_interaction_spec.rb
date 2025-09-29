@@ -15,21 +15,19 @@ RSpec.describe 'Map Interaction', type: :system do
     # Create a series of points that form a route
     [
       create(:point, user: user,
-             lonlat: "POINT(13.404954 52.520008)",
+             lonlat: 'POINT(13.404954 52.520008)',
              timestamp: 1.hour.ago.to_i, velocity: 10, battery: 80),
       create(:point, user: user,
-             lonlat: "POINT(13.405954 52.521008)",
+             lonlat: 'POINT(13.405954 52.521008)',
              timestamp: 50.minutes.ago.to_i, velocity: 15, battery: 78),
       create(:point, user: user,
-             lonlat: "POINT(13.406954 52.522008)",
+             lonlat: 'POINT(13.406954 52.522008)',
              timestamp: 40.minutes.ago.to_i, velocity: 12, battery: 76),
       create(:point, user: user,
-             lonlat: "POINT(13.407954 52.523008)",
+             lonlat: 'POINT(13.407954 52.523008)',
              timestamp: 30.minutes.ago.to_i, velocity: 8, battery: 74)
     ]
   end
-
-
 
   describe 'Map page interaction' do
     context 'when user is signed in' do
@@ -127,7 +125,7 @@ RSpec.describe 'Map Interaction', type: :system do
 
         # The calendar panel JavaScript interaction is complex and may not work
         # reliably in headless test environment, but the button should be functional
-        puts "Note: Calendar button is functional. Panel interaction may require manual testing."
+        puts 'Note: Calendar button is functional. Panel interaction may require manual testing.'
       end
     end
 
@@ -207,28 +205,30 @@ RSpec.describe 'Map Interaction', type: :system do
           else
             # If we can't trigger the popup, at least verify the setup is correct
             expect(user_settings.dig('maps', 'distance_unit')).to eq('km')
-            puts "Note: Polyline popup interaction could not be triggered in test environment"
+            puts 'Note: Polyline popup interaction could not be triggered in test environment'
           end
         end
       end
 
-            context 'with miles distance unit' do
-        let(:user_with_miles) { create(:user, settings: { 'maps' => { 'distance_unit' => 'mi' } }, password: 'password123') }
+      context 'with miles distance unit' do
+        let(:user_with_miles) do
+          create(:user, settings: { 'maps' => { 'distance_unit' => 'mi' } }, password: 'password123')
+        end
 
         let!(:points_for_miles_user) do
           # Create a series of points that form a route for the miles user
           [
             create(:point, user: user_with_miles,
-                   lonlat: "POINT(13.404954 52.520008)",
+                   lonlat: 'POINT(13.404954 52.520008)',
                    timestamp: 1.hour.ago.to_i, velocity: 10, battery: 80),
             create(:point, user: user_with_miles,
-                   lonlat: "POINT(13.405954 52.521008)",
+                   lonlat: 'POINT(13.405954 52.521008)',
                    timestamp: 50.minutes.ago.to_i, velocity: 15, battery: 78),
             create(:point, user: user_with_miles,
-                   lonlat: "POINT(13.406954 52.522008)",
+                   lonlat: 'POINT(13.406954 52.522008)',
                    timestamp: 40.minutes.ago.to_i, velocity: 12, battery: 76),
             create(:point, user: user_with_miles,
-                   lonlat: "POINT(13.407954 52.523008)",
+                   lonlat: 'POINT(13.407954 52.523008)',
                    timestamp: 30.minutes.ago.to_i, velocity: 8, battery: 74)
           ]
         end
@@ -280,7 +280,7 @@ RSpec.describe 'Map Interaction', type: :system do
           else
             # If we can't trigger the popup, at least verify the setup is correct
             expect(user_settings.dig('maps', 'distance_unit')).to eq('mi')
-            puts "Note: Polyline popup interaction could not be triggered in test environment"
+            puts 'Note: Polyline popup interaction could not be triggered in test environment'
           end
         end
       end
@@ -288,22 +288,24 @@ RSpec.describe 'Map Interaction', type: :system do
 
     context 'polyline popup content' do
       context 'with km distance unit' do
-        let(:user_with_km) { create(:user, settings: { 'maps' => { 'distance_unit' => 'km' } }, password: 'password123') }
+        let(:user_with_km) do
+          create(:user, settings: { 'maps' => { 'distance_unit' => 'km' } }, password: 'password123')
+        end
 
         let!(:points_for_km_user) do
           # Create a series of points that form a route for the km user
           [
             create(:point, user: user_with_km,
-                   lonlat: "POINT(13.404954 52.520008)",
+                   lonlat: 'POINT(13.404954 52.520008)',
                    timestamp: 1.hour.ago.to_i, velocity: 10, battery: 80),
             create(:point, user: user_with_km,
-                   lonlat: "POINT(13.405954 52.521008)",
+                   lonlat: 'POINT(13.405954 52.521008)',
                    timestamp: 50.minutes.ago.to_i, velocity: 15, battery: 78),
             create(:point, user: user_with_km,
-                   lonlat: "POINT(13.406954 52.522008)",
+                   lonlat: 'POINT(13.406954 52.522008)',
                    timestamp: 40.minutes.ago.to_i, velocity: 12, battery: 76),
             create(:point, user: user_with_km,
-                   lonlat: "POINT(13.407954 52.523008)",
+                   lonlat: 'POINT(13.407954 52.523008)',
                    timestamp: 30.minutes.ago.to_i, velocity: 8, battery: 74)
           ]
         end
@@ -356,28 +358,30 @@ RSpec.describe 'Map Interaction', type: :system do
           else
             # If we can't trigger the popup, at least verify the setup is correct
             expect(user_settings.dig('maps', 'distance_unit')).to eq('km')
-            puts "Note: Polyline popup interaction could not be triggered in test environment"
+            puts 'Note: Polyline popup interaction could not be triggered in test environment'
           end
         end
       end
 
       context 'with miles distance unit' do
-        let(:user_with_miles) { create(:user, settings: { 'maps' => { 'distance_unit' => 'mi' } }, password: 'password123') }
+        let(:user_with_miles) do
+          create(:user, settings: { 'maps' => { 'distance_unit' => 'mi' } }, password: 'password123')
+        end
 
         let!(:points_for_miles_user) do
           # Create a series of points that form a route for the miles user
           [
             create(:point, user: user_with_miles,
-                   lonlat: "POINT(13.404954 52.520008)",
+                   lonlat: 'POINT(13.404954 52.520008)',
                    timestamp: 1.hour.ago.to_i, velocity: 10, battery: 80),
             create(:point, user: user_with_miles,
-                   lonlat: "POINT(13.405954 52.521008)",
+                   lonlat: 'POINT(13.405954 52.521008)',
                    timestamp: 50.minutes.ago.to_i, velocity: 15, battery: 78),
             create(:point, user: user_with_miles,
-                   lonlat: "POINT(13.406954 52.522008)",
+                   lonlat: 'POINT(13.406954 52.522008)',
                    timestamp: 40.minutes.ago.to_i, velocity: 12, battery: 76),
             create(:point, user: user_with_miles,
-                   lonlat: "POINT(13.407954 52.523008)",
+                   lonlat: 'POINT(13.407954 52.523008)',
                    timestamp: 30.minutes.ago.to_i, velocity: 8, battery: 74)
           ]
         end
@@ -429,7 +433,7 @@ RSpec.describe 'Map Interaction', type: :system do
           else
             # If we can't trigger the popup, at least verify the setup is correct
             expect(user_settings.dig('maps', 'distance_unit')).to eq('mi')
-            puts "Note: Polyline popup interaction could not be triggered in test environment"
+            puts 'Note: Polyline popup interaction could not be triggered in test environment'
           end
         end
       end
@@ -456,7 +460,7 @@ RSpec.describe 'Map Interaction', type: :system do
           click_button 'Update'
         end
 
-                # Wait for success flash message
+        # Wait for success flash message
         expect(page).to have_css('#flash-messages', text: 'Settings updated', wait: 10)
       end
 
@@ -710,13 +714,13 @@ RSpec.describe 'Map Interaction', type: :system do
       it 'allows year selection and month navigation' do
         # This test is skipped due to calendar panel JavaScript interaction issues
         # The calendar button exists but the panel doesn't open reliably in test environment
-        skip "Calendar panel JavaScript interaction needs debugging"
+        skip 'Calendar panel JavaScript interaction needs debugging'
       end
 
       it 'displays visited cities information' do
         # This test is skipped due to calendar panel JavaScript interaction issues
         # The calendar button exists but the panel doesn't open reliably in test environment
-        skip "Calendar panel JavaScript interaction needs debugging"
+        skip 'Calendar panel JavaScript interaction needs debugging'
       end
 
       xit 'persists panel state in localStorage' do

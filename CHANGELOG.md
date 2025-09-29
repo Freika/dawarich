@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.33.0] - 2025-09-29
+
+## Fixed
+
+- Fix a bug where some points from Owntracks were not being processed correctly which prevented import from being created. #1745
+- Hexagons for the stats page are now being calculated a lot faster.
+- Prometheus exporter is now not being started when console is being run.
+- Stats will now properly reflect countries and cities visited after importing new points.
+- `GET /api/v1/points` will now return correct latitude and longitude values. #1502
+- Deleting an import will now trigger stats recalculation for affected months. #1789
+- Importing process should now schedule visits suggestions job a lot faster.
+- Importing GPX files that start with `<gpx` tag will now be detected correctly. #1775
+- Buttons on the map now have correct contrast in both light and dark modes.
+
+## Changed
+
+- Onboarding modal window now features a link to the App Store and a QR code to configure the Dawarich iOS app.
+- A permanent option was removed from stats sharing options. Now, stats can be shared for 1, 12 or 24 hours only.
+- User data archive importing now uploads the file directly to the storage service instead of uploading it to the app first.
+- Importing progress bars are now looking nice.
+- Ruby version was updated to 3.4.6.
+
+## Added
+
+- Based on preferred theme (light or dark), the map controls will now load with the corresponding styles.
+- [Dawarich Cloud] Added foundation for upcoming authentication from iOS app.
+- [Dawarich Cloud] Trial users can now create up to 5 imports. After that, they will be prompted to subscribe to a paid plan.
+
+
 # [0.32.0] - 2025-09-13
 
 ## Fixed

@@ -31,7 +31,7 @@ RSpec.describe Import, type: :model do
 
     describe 'file size validation' do
       context 'when user is a trial user' do
-        let(:user) do 
+        let(:user) do
           user = create(:user)
           user.update!(status: :trial)
           user
@@ -63,6 +63,42 @@ RSpec.describe Import, type: :model do
           allow(import).to receive(:file).and_return(double(attached?: true, blob: double(byte_size: 12.megabytes)))
 
           expect(import).to be_valid
+        end
+      end
+    end
+
+    describe 'import count validation' do
+      context 'when user is a trial user' do
+        let(:user) do
+          user = create(:user)
+          user.update!(status: :trial)
+          user
+        end
+
+        it 'allows imports when under the limit' do
+          3.times { |i| create(:import, user: user, name: "import_#{i}") }
+          new_import = build(:import, user: user, name: 'new_import')
+
+          expect(new_import).to be_valid
+        end
+
+        it 'prevents creating more than 5 imports' do
+          5.times { |i| create(:import, user: user, name: "import_#{i}") }
+          new_import = build(:import, user: user, name: 'import_6')
+
+          expect(new_import).not_to be_valid
+          expect(new_import.errors[:base]).to include('Trial users can only create up to 5 imports. Please subscribe to import more files.')
+        end
+      end
+
+      context 'when user is an active user' do
+        let(:user) { create(:user, status: :active) }
+
+        it 'does not validate import count limit' do
+          7.times { |i| create(:import, user: user, name: "import_#{i}") }
+          new_import = build(:import, user: user, name: 'import_8')
+
+          expect(new_import).to be_valid
         end
       end
     end
@@ -113,6 +149,30 @@ RSpec.describe Import, type: :model do
         import.migrate_to_new_storage
 
         expect { import.process! }.to change(Point, :count).by(10)
+      end
+    end
+  end
+
+  describe '#recalculate_stats' do
+    let(:import) { create(:import, user:) }
+    let!(:point1) { create(:point, import:, user:, timestamp: Time.zone.local(2024, 11, 15).to_i) }
+    let!(:point2) { create(:point, import:, user:, timestamp: Time.zone.local(2024, 12, 5).to_i) }
+
+    it 'enqueues stats calculation jobs for each tracked month' do
+      expect do
+        import.send(:recalculate_stats)
+      end.to have_enqueued_job(Stats::CalculatingJob)
+        .with(user.id, 2024, 11)
+        .and have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 12)
+    end
+
+    context 'when import has no points' do
+      let(:empty_import) { create(:import, user:) }
+
+      it 'does not enqueue any jobs' do
+        expect do
+          empty_import.send(:recalculate_stats)
+        end.not_to have_enqueued_job(Stats::CalculatingJob)
       end
     end
   end

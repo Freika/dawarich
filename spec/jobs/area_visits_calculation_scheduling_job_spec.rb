@@ -8,6 +8,7 @@ RSpec.describe AreaVisitsCalculationSchedulingJob, type: :job do
     let(:area) { create(:area, user: user) }
 
     it 'calls the AreaVisitsCalculationService' do
+      allow(User).to receive(:find_each).and_yield(user)
       expect(AreaVisitsCalculatingJob).to receive(:perform_later).with(user.id).and_call_original
 
       described_class.new.perform

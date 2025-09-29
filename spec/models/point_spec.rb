@@ -53,11 +53,17 @@ RSpec.describe Point, type: :model do
     end
 
     describe '.not_reverse_geocoded' do
-      let(:point) { create(:point, country: 'Country', city: 'City') }
-      let(:point_without_address) { create(:point, city: nil, country: nil) }
+      let!(:point) { create(:point, country: 'Country', city: 'City', reverse_geocoded_at: Time.current) }
+      let!(:point_without_address) { create(:point, city: nil, country: nil, reverse_geocoded_at: nil) }
 
       it 'returns points without reverse geocoded address' do
-        expect(described_class.not_reverse_geocoded).to eq([point_without_address])
+        # Trigger creation of both points
+        point
+        point_without_address
+
+        result = described_class.not_reverse_geocoded
+        expect(result).to include(point_without_address)
+        expect(result).not_to include(point)
       end
     end
   end

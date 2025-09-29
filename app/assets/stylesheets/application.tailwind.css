@@ -13,6 +13,7 @@
 
 */
 @import 'actiontext.css';
+@import 'leaflet_theme.css';
 
 @layer components {
   .fade-out {
@@ -71,14 +72,6 @@
   right: 310px;
 }
 
-.leaflet-control-button {
-  background-color: white !important;
-  color: #374151 !important;
-}
-
-.leaflet-control-button:hover {
-  background-color: #f3f4f6 !important;
-}
 
 /* Drawer Panel Styles */
 .leaflet-drawer {

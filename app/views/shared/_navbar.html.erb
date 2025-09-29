@@ -76,7 +76,17 @@
           <div class="join">
             <%= link_to "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" do %>
               <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
-                <span class="tooltip tooltip-bottom" data-tip="Your trial will end in <%= distance_of_time_in_words(current_user.active_until, Time.current) %>"><%= (current_user.active_until.to_date - Time.current.to_date).to_i %> days remaining</span>
+                <% expiry = current_user.active_until %>
+                <% if expiry.blank? || expiry.past? %>
+                  <span class="tooltip tooltip-bottom" data-tip="Trial expired" title="Trial expired">Trial expired 🥺</span>
+                <% else %>
+                  <% days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max %>
+                  <span class="tooltip tooltip-bottom"
+                        data-tip="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>"
+                        title="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>">
+                    <%= pluralize(days_left, 'day') %> remaining
+                  </span>
+                <% end %>
               </span><span class="join-item btn btn-sm btn-success">
                 Subscribe
               </span>

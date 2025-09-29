@@ -311,18 +311,10 @@ class Users::ExportData
 
   private
 
-  attr_reader :user
-
-  def export_directory
-    @export_directory
-  end
-
-  def files_directory
-    @files_directory
-  end
+  attr_reader :user, :export_directory, :files_directory
 
   def calculate_entity_counts
-    Rails.logger.info "Calculating entity counts for export"
+    Rails.logger.info 'Calculating entity counts for export'
 
     counts = {
       areas: user.areas.count,
@@ -340,15 +332,15 @@ class Users::ExportData
     counts
   end
 
-    def create_zip_archive(export_directory, zip_file_path)
+  def create_zip_archive(export_directory, zip_file_path)
     original_compression = Zip.default_compression
     Zip.default_compression = Zip::Entry::DEFLATED
 
-    Zip::File.open(zip_file_path, Zip::File::CREATE) do |zipfile|
+    Zip::File.open(zip_file_path, create: true) do |zipfile|
       Dir.glob(export_directory.join('**', '*')).each do |file|
         next if File.directory?(file) || file == zip_file_path.to_s
 
-        relative_path = file.sub(export_directory.to_s + '/', '')
+        relative_path = file.sub(%r{#{export_directory}/}, '')
 
         zipfile.add(relative_path, file)
       end

@@ -1,0 +1,141 @@
+/* Leaflet Theme Styles - Light and Dark mode support */
+
+/* CSS Custom Properties for Light Theme */
+[data-theme="light"] {
+  --leaflet-bg-color: #ffffff;
+  --leaflet-text-color: #000000;
+  --leaflet-border-color: #e5e7eb;
+  --leaflet-shadow-color: rgba(0, 0, 0, 0.1);
+  --leaflet-hover-color: #f3f4f6;
+  --leaflet-link-color: #0066cc;
+  --leaflet-scale-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* CSS Custom Properties for Dark Theme */
+[data-theme="dark"] {
+  --leaflet-bg-color: #374151;
+  --leaflet-text-color: #ffffff;
+  --leaflet-border-color: #4b5563;
+  --leaflet-shadow-color: rgba(0, 0, 0, 0.3);
+  --leaflet-hover-color: #4b5563;
+  --leaflet-link-color: #66b3ff;
+  --leaflet-scale-bg: rgba(55, 65, 81, 0.9);
+}
+
+/* Leaflet default controls theme override */
+.leaflet-control-layers,
+.leaflet-control-zoom,
+.leaflet-control-attribution,
+.leaflet-bar a,
+.leaflet-control-layers-toggle,
+.leaflet-control-layers-list,
+.leaflet-control-draw {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border-color: var(--leaflet-border-color) !important;
+  box-shadow: 0 1px 4px var(--leaflet-shadow-color) !important;
+}
+
+/* Leaflet zoom buttons */
+.leaflet-control-zoom a {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border-bottom: 1px solid var(--leaflet-border-color) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+/* Leaflet layer control */
+.leaflet-control-layers-toggle {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+}
+
+.leaflet-control-layers-expanded {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+}
+
+.leaflet-control-layers label {
+  color: var(--leaflet-text-color) !important;
+}
+
+/* Leaflet Draw controls */
+.leaflet-draw-toolbar a {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border-bottom: 1px solid var(--leaflet-border-color) !important;
+}
+
+.leaflet-draw-toolbar a:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+.leaflet-draw-actions a {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+}
+
+/* Leaflet popups */
+.leaflet-popup-content-wrapper {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+}
+
+.leaflet-popup-tip {
+  background-color: var(--leaflet-bg-color) !important;
+}
+
+/* Attribution control */
+.leaflet-control-attribution a {
+  color: var(--leaflet-link-color) !important;
+}
+
+/* Custom control buttons */
+.leaflet-control-button,
+.add-visit-button,
+.leaflet-bar button {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border: 1px solid var(--leaflet-border-color) !important;
+  box-shadow: 0 1px 4px var(--leaflet-shadow-color) !important;
+}
+
+.leaflet-control-button:hover,
+.add-visit-button:hover,
+.leaflet-bar button:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+/* Any other custom controls */
+.leaflet-top .leaflet-control button,
+.leaflet-bottom .leaflet-control button,
+.leaflet-left .leaflet-control button,
+.leaflet-right .leaflet-control button {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border: 1px solid var(--leaflet-border-color) !important;
+}
+
+/* Location search button */
+.location-search-toggle,
+#location-search-toggle {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border: 1px solid var(--leaflet-border-color) !important;
+  box-shadow: 0 1px 4px var(--leaflet-shadow-color) !important;
+}
+
+.location-search-toggle:hover,
+#location-search-toggle:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+/* Distance scale control */
+.leaflet-control-scale {
+  background: var(--leaflet-scale-bg) !important;
+  border-radius: 3px !important;
+  padding: 2px !important;
+}

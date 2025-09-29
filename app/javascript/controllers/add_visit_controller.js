@@ -1,11 +1,13 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import { showFlashMessage } from "../maps/helpers";
+import { applyThemeToButton } from "../maps/theme_utils";
 
 export default class extends Controller {
   static targets = [""];
   static values = {
-    apiKey: String
+    apiKey: String,
+    userTheme: String
   }
 
   connect() {
@@ -76,13 +78,10 @@ export default class extends Controller {
         button.innerHTML = '➕';
         button.title = 'Add a visit';
 
-        // Style the button to match other map controls
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, this.userThemeValue || 'dark');
         button.style.width = '48px';
         button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
         button.style.lineHeight = '48px';
@@ -92,19 +91,6 @@ export default class extends Controller {
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
-
-        // Add hover effects
-        button.addEventListener('mouseenter', () => {
-          if (!this.isAddingVisit) {
-            button.style.backgroundColor = '#f0f0f0';
-          }
-        });
-
-        button.addEventListener('mouseleave', () => {
-          if (!this.isAddingVisit) {
-            button.style.backgroundColor = 'white';
-          }
-        });
 
         // Toggle add visit mode on button click
         L.DomEvent.on(button, 'click', () => {
@@ -150,9 +136,8 @@ export default class extends Controller {
   exitAddVisitMode(button) {
     this.isAddingVisit = false;
 
-    // Reset button style
-    button.style.backgroundColor = 'white';
-    button.style.color = 'black';
+    // Reset button style with theme-aware styling
+    applyThemeToButton(button, this.userThemeValue || 'dark');
     button.innerHTML = '➕';
 
     // Reset cursor
