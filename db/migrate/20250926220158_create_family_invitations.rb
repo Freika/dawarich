@@ -2,8 +2,8 @@
 
 class CreateFamilyInvitations < ActiveRecord::Migration[8.0]
   def change
-    create_table :family_invitations, id: :uuid do |t|
-      t.uuid :family_id, null: false
+    create_table :family_invitations do |t|
+      t.bigint :family_id, null: false
       t.string :email, null: false
       t.string :token, null: false
       t.datetime :expires_at, null: false

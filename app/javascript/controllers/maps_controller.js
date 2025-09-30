@@ -1094,7 +1094,15 @@ export default class extends BaseController {
     const TogglePanelControl = L.Control.extend({
       onAdd: function(map) {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
-        button.innerHTML = '📅';
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v4" />
+            <path d="M16 2v4" />
+            <path d="M21 14V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" />
+            <path d="M3 10h18" />
+            <path d="m16 20 2 2 4-4" />
+          </svg>
+        `;
 
         // Style the button with theme-aware styling
         applyThemeToButton(button, controller.userTheme);
@@ -1102,9 +1110,9 @@ export default class extends BaseController {
         button.style.height = '48px';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
-        button.style.lineHeight = '48px';
-        button.style.fontSize = '18px';
-        button.style.textAlign = 'center';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);

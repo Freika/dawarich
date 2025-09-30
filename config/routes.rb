@@ -108,7 +108,8 @@ Rails.application.routes.draw do
   get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
 
   devise_for :users, controllers: {
-    registrations: 'users/registrations'
+    registrations: 'users/registrations',
+    sessions: 'users/sessions'
   }
 
   resources :metrics, only: [:index]

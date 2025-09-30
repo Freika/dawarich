@@ -80,6 +80,8 @@ export default class extends Controller {
       return;
     }
 
+    const bounds = [];
+
     this.familyMemberLocationsValue.forEach((location) => {
       if (!location || !location.latitude || !location.longitude) {
         return;
@@ -101,12 +103,39 @@ export default class extends Controller {
       // Format timestamp for display
       const lastSeen = new Date(location.updated_at).toLocaleString();
 
-      // Create popup content with theme-aware styling
-      const popupContent = this.createPopupContent(location, lastSeen);
+      // Create small tooltip that shows automatically
+      const tooltipContent = this.createTooltipContent(lastSeen);
+      familyMarker.bindTooltip(tooltipContent, {
+        permanent: true,
+        direction: 'top',
+        offset: [0, -12],
+        className: 'family-member-tooltip'
+      });
 
+      // Create detailed popup that shows on click
+      const popupContent = this.createPopupContent(location, lastSeen);
       familyMarker.bindPopup(popupContent);
+
       this.familyMarkersLayer.addLayer(familyMarker);
+
+      // Add to bounds array for auto-zoom
+      bounds.push([location.latitude, location.longitude]);
     });
+
+    // Store bounds for later use
+    this.familyMemberBounds = bounds;
+  }
+
+  createTooltipContent(lastSeen) {
+    const isDark = this.userThemeValue === 'dark';
+    const bgColor = isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+    const textColor = isDark ? '#f9fafb' : '#111827';
+
+    return `
+      <div style="background-color: ${bgColor}; color: ${textColor}; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        Last updated: ${lastSeen}
+      </div>
+    `;
   }
 
   createPopupContent(location, lastSeen) {
@@ -118,19 +147,20 @@ export default class extends Controller {
     const emailInitial = location.email_initial || location.email?.charAt(0)?.toUpperCase() || '?';
 
     return `
-      <div class="family-member-popup" style="background-color: ${bgColor}; color: ${textColor}; padding: 8px; border-radius: 6px; min-width: 200px;">
-        <h3 style="margin: 0 0 8px 0; color: #10B981; font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
-          <span style="background-color: #10B981; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">${emailInitial}</span>
+      <div class="family-member-popup" style="background-color: ${bgColor}; color: ${textColor}; padding: 12px; border-radius: 8px; min-width: 220px;">
+        <h3 style="margin: 0 0 12px 0; color: #10B981; font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+          <span style="background-color: #10B981; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">${emailInitial}</span>
           Family Member
         </h3>
-        <p style="margin: 0 0 4px 0; font-size: 12px;">
+        <p style="margin: 0 0 8px 0; font-size: 13px;">
           <strong>Email:</strong> ${location.email || 'Unknown'}
         </p>
-        <p style="margin: 0 0 4px 0; font-size: 12px;">
-          <strong>Location:</strong> ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
+        <p style="margin: 0 0 8px 0; font-size: 13px;">
+          <strong>Coordinates:</strong><br/>
+          ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
         </p>
-        <p style="margin: 0; font-size: 12px; color: ${mutedColor};">
-          <strong>Last seen:</strong> ${lastSeen}
+        <p style="margin: 0; font-size: 12px; color: ${mutedColor}; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+          <strong>Last updated:</strong> ${lastSeen}
         </p>
       </div>
     `;
@@ -178,8 +208,11 @@ export default class extends Controller {
     // Listen for when the Family Members layer is added
     this.map.on('overlayadd', (event) => {
       if (event.name === 'Family Members' && event.layer === this.familyMarkersLayer) {
-        console.log('Family Members layer enabled - refreshing locations');
+        console.log('Family Members layer enabled - refreshing locations and zooming to fit');
         this.refreshFamilyLocations();
+
+        // Zoom to show all family members
+        this.zoomToFitAllMembers();
 
         // Set up periodic refresh while layer is active
         this.startPeriodicRefresh();
@@ -192,6 +225,25 @@ export default class extends Controller {
         // Stop periodic refresh when layer is disabled
         this.stopPeriodicRefresh();
       }
+    });
+  }
+
+  zoomToFitAllMembers() {
+    if (!this.familyMemberBounds || this.familyMemberBounds.length === 0) {
+      return;
+    }
+
+    // If there's only one member, center on them with a reasonable zoom
+    if (this.familyMemberBounds.length === 1) {
+      this.map.setView(this.familyMemberBounds[0], 13);
+      return;
+    }
+
+    // For multiple members, fit bounds to show all of them
+    const bounds = L.latLngBounds(this.familyMemberBounds);
+    this.map.fitBounds(bounds, {
+      padding: [50, 50], // Add padding around the edges
+      maxZoom: 15 // Don't zoom in too close
     });
   }
 

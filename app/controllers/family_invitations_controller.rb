@@ -23,12 +23,8 @@ class FamilyInvitationsController < ApplicationController
       redirect_to root_path, alert: 'This invitation is no longer valid.' and return
     end
 
-    # If user is not authenticated, redirect to registration with invitation token
-    unless user_signed_in?
-      redirect_to new_user_registration_path(invitation_token: @invitation.token) and return
-    end
-
-    # User is authenticated and invitation is valid - proceed with normal flow
+    # Show the invitation landing page regardless of authentication status
+    # The view will handle showing appropriate actions based on whether user is logged in
   end
 
   def create
@@ -56,7 +52,7 @@ class FamilyInvitationsController < ApplicationController
     end
 
     if @invitation.expired?
-      redirect_to root_path, alert: 'This invitation has expired' and return
+      redirect_to root_path, alert: 'This invitation is no longer valid or has expired' and return
     end
 
     if @invitation.email != current_user.email
@@ -70,7 +66,7 @@ class FamilyInvitationsController < ApplicationController
 
     if service.call
       redirect_to family_path(current_user.reload.family),
-                  notice: "Welcome to #{@invitation.family.name}! You're now part of the family."
+                  notice: 'Welcome to the family!'
     else
       redirect_to root_path, alert: service.error_message || 'Unable to accept invitation'
     end
@@ -84,7 +80,7 @@ class FamilyInvitationsController < ApplicationController
 
     if @invitation.update(status: :cancelled)
       redirect_to family_path(@family),
-                  notice: "Invitation to #{@invitation.email} has been cancelled"
+                  notice: 'Invitation cancelled'
     else
       redirect_to family_path(@family),
                   alert: 'Failed to cancel invitation. Please try again'

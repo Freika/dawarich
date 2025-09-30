@@ -2,8 +2,8 @@
 
 class CreateFamilyMemberships < ActiveRecord::Migration[8.0]
   def change
-    create_table :family_memberships, id: :uuid do |t|
-      t.uuid :family_id, null: false
+    create_table :family_memberships do |t|
+      t.bigint :family_id, null: false
       t.bigint :user_id, null: false
       t.integer :role, null: false, default: 1 # member
       t.timestamps

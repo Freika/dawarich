@@ -40,8 +40,8 @@ class FamiliesController < ApplicationController
 
       # Handle validation errors
       if service.errors.any?
-        service.errors.each do |attribute, message|
-          @family.errors.add(attribute, message)
+        service.errors.each do |error|
+          @family.errors.add(error.attribute, error.message)
         end
       end
 
