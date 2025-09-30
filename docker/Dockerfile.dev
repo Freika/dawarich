@@ -29,14 +29,13 @@ RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no
     libjemalloc2 libjemalloc-dev \
     cmake \
     ca-certificates \
-    gnupg \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_lts.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
+    && mkdir -p $APP_PATH \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js using official NodeSource script
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && npm install -g yarn \
-    && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc with check for architecture
