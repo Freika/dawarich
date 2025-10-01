@@ -28,11 +28,23 @@ RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no
     less \
     libjemalloc2 libjemalloc-dev \
     cmake \
-    && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g yarn \
+    ca-certificates \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js using official NodeSource script
+# NodeSource supports: amd64, arm64, armhf (arm/v7)
+# For unsupported architectures, fall back to Debian's nodejs package
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "arm64" ] || [ "$ARCH" = "armhf" ]; then \
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+        apt-get install -y nodejs; \
+    else \
+        apt-get update && \
+        apt-get install -y nodejs npm; \
+    fi && \
+    npm install -g yarn && \
+    rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc with check for architecture
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
