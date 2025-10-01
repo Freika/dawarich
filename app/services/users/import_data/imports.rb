@@ -135,10 +135,6 @@ class Users::ImportData::Imports
     end
 
     begin
-      # Prosopite detects N+1 queries in ActiveStorage's internal operations
-      # These are unavoidable and part of ActiveStorage's design
-      Prosopite.pause if defined?(Prosopite)
-
       import_record.file.attach(
         io: File.open(file_path),
         filename: import_data['original_filename'] || import_data['file_name'],
@@ -152,8 +148,6 @@ class Users::ImportData::Imports
       ExceptionReporter.call(e, 'Import file restoration failed')
 
       false
-    ensure
-      Prosopite.resume if defined?(Prosopite)
     end
   end
 end

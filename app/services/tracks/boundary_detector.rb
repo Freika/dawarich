@@ -92,25 +92,13 @@ class Tracks::BoundaryDetector
 
   # Check if two tracks are spatially connected (endpoints are close)
   def tracks_spatially_connected?(track1, track2)
-    # Use preloaded points to avoid N+1 queries when available
-    if track1.points.loaded? && track2.points.loaded?
-      track1_points = track1.points.sort_by(&:timestamp)
-      track2_points = track2.points.sort_by(&:timestamp)
-    else
-      # Prosopite pause for direct method calls without preloading (e.g., tests)
-      Prosopite.pause if defined?(Prosopite)
-      track1_points = track1.points.order(:timestamp).to_a
-      track2_points = track2.points.order(:timestamp).to_a
-      Prosopite.resume if defined?(Prosopite)
-    end
+    return false unless track1.points.exists? && track2.points.exists?
 
-    return false if track1_points.empty? || track2_points.empty?
-
-    # Get endpoints of both tracks from preloaded/sorted arrays
-    track1_start = track1_points.first
-    track1_end = track1_points.last
-    track2_start = track2_points.first
-    track2_end = track2_points.last
+    # Get endpoints of both tracks
+    track1_start = track1.points.order(:timestamp).first
+    track1_end = track1.points.order(:timestamp).last
+    track2_start = track2.points.order(:timestamp).first
+    track2_end = track2.points.order(:timestamp).last
 
     # Check various connection scenarios
     connection_threshold = distance_threshold_meters
@@ -161,21 +149,12 @@ class Tracks::BoundaryDetector
     # Sort tracks by start time
     sorted_tracks = track_group.sort_by(&:start_at)
 
-    # Collect all points from all tracks using preloaded data
+    # Collect all points from all tracks
     all_points = []
-
-    # Check if any track doesn't have preloaded points
-    needs_query = sorted_tracks.any? { |track| !track.points.loaded? }
-
-    Prosopite.pause if defined?(Prosopite) && needs_query
-
     sorted_tracks.each do |track|
-      # Use preloaded points if available, otherwise query
-      track_points = track.points.loaded? ? track.points.sort_by(&:timestamp) : track.points.order(:timestamp).to_a
+      track_points = track.points.order(:timestamp).to_a
       all_points.concat(track_points)
     end
-
-    Prosopite.resume if defined?(Prosopite) && needs_query
 
     # Remove duplicates and sort by timestamp
     unique_points = all_points.uniq(&:id).sort_by(&:timestamp)
