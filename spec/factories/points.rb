@@ -1,5 +1,31 @@
 # frozen_string_literal: true
 
+# Module to cache countries during factory creation to avoid N+1 queries
+module CountriesCache
+  def self.get_or_create(country_name)
+    @cache ||= {}
+    @cache[country_name] ||= begin
+      # Pause Prosopite as this is test data setup, not application code
+      Prosopite.pause if defined?(Prosopite)
+
+      country = Country.find_or_create_by(name: country_name) do |c|
+        iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(country_name)
+        c.iso_a2 = iso_a2
+        c.iso_a3 = iso_a3
+        c.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
+      end
+
+      country
+    ensure
+      Prosopite.resume if defined?(Prosopite)
+    end
+  end
+
+  def self.clear
+    @cache = {}
+  end
+end
+
 FactoryBot.define do
   factory :point do
     battery_status  { 1 }
@@ -97,12 +123,10 @@ FactoryBot.define do
         # Only set country if not already set by transient attribute
         unless point.read_attribute(:country)
           country_name = FFaker::Address.country
-          country_obj = Country.find_or_create_by(name: country_name) do |country|
-            iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(country_name)
-            country.iso_a2 = iso_a2
-            country.iso_a3 = iso_a3
-            country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
-          end
+
+          # Use module-level cache to avoid N+1 queries during factory creation
+          country_obj = CountriesCache.get_or_create(country_name)
+
           point.write_attribute(:country, country_name)        # Set the legacy string attribute
           point.write_attribute(:country_name, country_name)  # Set the new string attribute
           point.country_id = country_obj.id   # Set the association

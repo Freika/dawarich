@@ -13,6 +13,9 @@ class Users::ImportData::Places
 
     places_created = 0
 
+    # Preload all existing places to avoid N+1 queries
+    @existing_places_cache = load_existing_places
+
     places_data.each do |place_data|
       next unless place_data.is_a?(Hash)
 
@@ -28,6 +31,38 @@ class Users::ImportData::Places
 
   attr_reader :user, :places_data
 
+  def load_existing_places
+    # Extract all coordinates from places_data to preload relevant places
+    coordinates = places_data.select do |pd|
+      pd.is_a?(Hash) && pd['name'].present? && pd['latitude'].present? && pd['longitude'].present?
+    end.map { |pd| { name: pd['name'], lat: pd['latitude'].to_f, lon: pd['longitude'].to_f } }
+
+    return {} if coordinates.empty?
+
+    # Build a hash for quick lookup: "name_lat_lon" => place
+    cache = {}
+
+    # Build OR conditions using Arel to fetch all matching places in a single query
+    arel_table = Place.arel_table
+    conditions = coordinates.map do |coord|
+      arel_table[:name].eq(coord[:name])
+                       .and(arel_table[:latitude].eq(coord[:lat]))
+                       .and(arel_table[:longitude].eq(coord[:lon]))
+    end.reduce { |result, condition| result.or(condition) }
+
+    # Fetch all matching places in a single query
+    Place.where(conditions).find_each do |place|
+      cache_key = place_cache_key(place.name, place.latitude, place.longitude)
+      cache[cache_key] = place
+    end
+
+    cache
+  end
+
+  def place_cache_key(name, latitude, longitude)
+    "#{name}_#{latitude}_#{longitude}"
+  end
+
   def find_or_create_place_for_import(place_data)
     name = place_data['name']
     latitude = place_data['latitude']&.to_f
@@ -41,12 +76,9 @@ class Users::ImportData::Places
     Rails.logger.debug "Processing place for import: #{name} at (#{latitude}, #{longitude})"
 
     # During import, we prioritize data integrity for the importing user
-    # First try exact match (name + coordinates)
-    existing_place = Place.where(
-      name: name,
-      latitude: latitude,
-      longitude: longitude
-    ).first
+    # First try exact match (name + coordinates) from cache
+    cache_key = place_cache_key(name, latitude, longitude)
+    existing_place = @existing_places_cache[cache_key]
 
     if existing_place
       Rails.logger.debug "Found exact place match: #{name} at (#{latitude}, #{longitude}) -> existing place ID #{existing_place.id}"
@@ -70,6 +102,9 @@ class Users::ImportData::Places
       place = Place.create!(place_attributes)
       place.define_singleton_method(:previously_new_record?) { true }
       Rails.logger.debug "Created place during import: #{place.name} (ID: #{place.id})"
+
+      # Add to cache for subsequent lookups
+      @existing_places_cache[cache_key] = place
 
       place
     rescue ActiveRecord::RecordInvalid => e

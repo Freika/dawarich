@@ -81,3 +81,8 @@ group :development do
   gem 'foreman'
   gem 'rubocop-rails', require: false
 end
+
+group :development, :test do
+  gem 'pg_query'
+  gem 'prosopite'
+end

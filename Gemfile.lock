@@ -185,6 +185,24 @@ GEM
       raabro (~> 1.4)
     globalid (1.2.1)
       activesupport (>= 6.1)
+    google-protobuf (4.32.1)
+      bigdecimal
+      rake (>= 13)
+    google-protobuf (4.32.1-aarch64-linux-gnu)
+      bigdecimal
+      rake (>= 13)
+    google-protobuf (4.32.1-arm64-darwin)
+      bigdecimal
+      rake (>= 13)
+    google-protobuf (4.32.1-x86-linux-gnu)
+      bigdecimal
+      rake (>= 13)
+    google-protobuf (4.32.1-x86_64-darwin)
+      bigdecimal
+      rake (>= 13)
+    google-protobuf (4.32.1-x86_64-linux-gnu)
+      bigdecimal
+      rake (>= 13)
     gpx (1.2.1)
       csv
       nokogiri (~> 1.7)
@@ -295,12 +313,15 @@ GEM
     pg (1.6.2-arm64-darwin)
     pg (1.6.2-x86_64-darwin)
     pg (1.6.2-x86_64-linux)
+    pg_query (6.1.0)
+      google-protobuf (>= 3.25.3)
     pp (0.6.2)
       prettyprint
     prettyprint (0.2.0)
     prism (1.5.1)
     prometheus_exporter (2.2.0)
       webrick
+    prosopite (2.1.2)
     pry (0.15.2)
       coderay (~> 1.1)
       method_source (~> 1.0)
@@ -566,7 +587,9 @@ DEPENDENCIES
   oj
   parallel
   pg
+  pg_query
   prometheus_exporter
+  prosopite
   pry-byebug
   pry-rails
   puma

@@ -6,9 +6,20 @@ RSpec.describe Points::GpxSerializer do
   describe '#call' do
     subject(:serializer) { described_class.new(points, 'some_name').call }
 
+    let(:country) do
+      Country.create!(
+        name: 'Test Country',
+        iso_a2: 'TC',
+        iso_a3: 'TST',
+        geom: 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
+      )
+    end
+
     let(:points) do
+      # Create points with country_id set to skip the set_country callback
+      # which would trigger N+1 queries for country lookups
       (1..3).map do |i|
-        create(:point, timestamp: 1.day.ago + i.minutes)
+        create(:point, timestamp: 1.day.ago + i.minutes, country_id: country.id)
       end
     end
 
