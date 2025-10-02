@@ -3,6 +3,7 @@
 # Pin npm packages by running ./bin/importmap
 
 pin_all_from 'app/javascript/channels', under: 'channels'
+pin_all_from 'app/javascript/maps', under: 'maps'
 
 pin 'application', preload: true
 pin '@rails/actioncable', to: 'actioncable.esm.js'
