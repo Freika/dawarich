@@ -79,12 +79,9 @@ RSpec.describe 'Family Workflows', type: :request do
       expect(user3.reload.family).to eq(family)
       expect(family.reload.members.count).to eq(3)
 
-      # Step 6: Family owner views and manages members
+      # Step 6: Family owner views members on family show page
       sign_in user1
-      get "/families/#{family.id}/members"
-      expect(response).to have_http_status(:ok)
-
-      get "/families/#{family.id}/members/#{user2.family_membership.id}"
+      get "/families/#{family.id}"
       expect(response).to have_http_status(:ok)
 
       # Step 7: Owner removes a member
@@ -256,9 +253,6 @@ RSpec.describe 'Family Workflows', type: :request do
       # Outsider cannot access family
       sign_in user3
       get "/families/#{family.id}"
-      expect(response).to redirect_to(families_path)
-
-      get "/families/#{family.id}/members"
       expect(response).to redirect_to(families_path)
     end
   end

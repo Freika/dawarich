@@ -69,7 +69,7 @@ Rails.application.routes.draw do
         post :accept
       end
     end
-    resources :members, only: %i[index show destroy], controller: 'family_memberships'
+    resources :members, only: %i[destroy], controller: 'family_memberships'
   end
 
   # Public family invitation acceptance (no auth required)

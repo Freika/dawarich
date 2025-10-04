@@ -4,17 +4,7 @@ class FamilyMembershipsController < ApplicationController
   before_action :authenticate_user!
   before_action :ensure_family_feature_enabled!
   before_action :set_family
-  before_action :set_membership, only: %i[show destroy]
-
-  def index
-    authorize @family, :show?
-
-    @members = @family.members.includes(:family_membership)
-  end
-
-  def show
-    authorize @membership, :show?
-  end
+  before_action :set_membership, only: %i[destroy]
 
   def destroy
     authorize @membership

@@ -51,10 +51,6 @@
             <%= t('families.show.members_title', default: 'Family Members') %>
             <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(<%= @members.count %>)</span>
           </h2>
-          <%= link_to family_members_path(@family),
-                class: "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium" do %>
-            <%= t('families.show.manage_members', default: 'Manage') %>
-          <% end %>
         </div>
 
         <div class="space-y-3">

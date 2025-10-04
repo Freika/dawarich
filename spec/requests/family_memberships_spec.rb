@@ -15,70 +15,6 @@ RSpec.describe 'Family Memberships', type: :request do
     sign_in user
   end
 
-  describe 'GET /families/:family_id/members' do
-    it 'shows all family members' do
-      get "/families/#{family.id}/members"
-      expect(response).to have_http_status(:ok)
-    end
-
-    context 'when user is not in the family' do
-      let(:outsider) { create(:user) }
-
-      before { sign_in outsider }
-
-      it 'redirects to families index' do
-        get "/families/#{family.id}/members"
-        expect(response).to redirect_to(families_path)
-      end
-    end
-
-    context 'when not authenticated' do
-      before { sign_out user }
-
-      it 'redirects to login' do
-        get "/families/#{family.id}/members"
-        expect(response).to redirect_to(new_user_session_path)
-      end
-    end
-  end
-
-  describe 'GET /families/:family_id/members/:id' do
-    it 'shows a specific membership' do
-      get "/families/#{family.id}/members/#{member_membership.id}"
-      expect(response).to have_http_status(:ok)
-    end
-
-    context 'when membership does not belong to the family' do
-      let(:other_family) { create(:family) }
-      let(:other_membership) { create(:family_membership, family: other_family) }
-
-      it 'returns not found' do
-        get "/families/#{family.id}/members/#{other_membership.id}"
-        expect(response).to have_http_status(:not_found)
-      end
-    end
-
-    context 'when user is not in the family' do
-      let(:outsider) { create(:user) }
-
-      before { sign_in outsider }
-
-      it 'redirects to families index' do
-        get "/families/#{family.id}/members/#{member_membership.id}"
-        expect(response).to redirect_to(families_path)
-      end
-    end
-
-    context 'when not authenticated' do
-      before { sign_out user }
-
-      it 'redirects to login' do
-        get "/families/#{family.id}/members/#{member_membership.id}"
-        expect(response).to redirect_to(new_user_session_path)
-      end
-    end
-  end
-
   describe 'DELETE /families/:family_id/members/:id' do
     context 'when removing a regular member' do
       it 'removes the member from the family' do
@@ -170,23 +106,6 @@ RSpec.describe 'Family Memberships', type: :request do
       end
     end
 
-    context 'when member views another member' do
-      before { sign_in member_user }
-
-      it 'allows viewing membership' do
-        get "/families/#{family.id}/members/#{owner_membership.id}"
-        expect(response).to have_http_status(:ok)
-      end
-    end
-
-    context 'when member views members list' do
-      before { sign_in member_user }
-
-      it 'allows viewing members list' do
-        get "/families/#{family.id}/members"
-        expect(response).to have_http_status(:ok)
-      end
-    end
   end
 
   describe 'member removal workflow' do
