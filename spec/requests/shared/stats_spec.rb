@@ -12,7 +12,7 @@ RSpec.describe 'Shared::Stats', type: :request do
     let(:user) { create(:user) }
     let(:stat) { create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6) }
 
-    describe 'GET /shared/stats/:uuid' do
+    describe 'GET /shared/month/:uuid' do
       context 'with valid sharing UUID' do
         before do
           # Create some test points for data bounds calculation

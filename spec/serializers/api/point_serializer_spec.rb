@@ -10,7 +10,6 @@ RSpec.describe Api::PointSerializer do
     let(:all_excluded) { Api::PointSerializer::EXCLUDED_ATTRIBUTES }
     let(:expected_json) do
       point.attributes.except(*all_excluded).tap do |attributes|
-        # API serializer extracts coordinates from PostGIS geometry
         attributes['latitude'] = point.lat.to_s
         attributes['longitude'] = point.lon.to_s
       end

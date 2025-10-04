@@ -10,7 +10,7 @@ class StatsSerializer
   def call
     {
       totalDistanceKm: total_distance_km,
-      totalPointsTracked: user.points_count,
+      totalPointsTracked: user.points_count.to_i,
       totalReverseGeocodedPoints: reverse_geocoded_points,
       totalCountriesVisited: user.countries_visited.count,
       totalCitiesVisited: user.cities_visited.count,

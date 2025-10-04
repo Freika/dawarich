@@ -40,7 +40,8 @@ class Stats::CalculateMonth
         toponyms: toponyms,
         h3_hex_ids: calculate_h3_hex_ids
       )
-      stat.save
+
+      stat.save!
     end
   end
 

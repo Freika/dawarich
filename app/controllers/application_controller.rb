@@ -40,7 +40,6 @@ class ApplicationController < ActionController::Base
   end
 
   def after_sign_in_path_for(resource)
-    # Check both current request header and stored session value
     client_type = request.headers['X-Dawarich-Client'] || session[:dawarich_client]
 
     case client_type

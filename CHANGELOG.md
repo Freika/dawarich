@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
+- `GET /api/v1/stats` endpoint now returns correct 0 instead of null if no points were tracked in the requested period.
+
+# [0.33.0] - 2025-09-29
+
+## Fixed
+
 - Fix a bug where some points from Owntracks were not being processed correctly which prevented import from being created. #1745
 - Hexagons for the stats page are now being calculated a lot faster.
 - Prometheus exporter is now not being started when console is being run.
@@ -41,9 +47,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Added
 
-- [Dawarich Cloud] Based on preferred theme (light or dark), the map page will now load with the corresponding map layer (light or dark).
+- Based on preferred theme (light or dark), the map controls will now load with the corresponding styles.
 - [Dawarich Cloud] Added foundation for upcoming authentication from iOS app.
 - [Dawarich Cloud] Trial users can now create up to 5 imports. After that, they will be prompted to subscribe to a paid plan.
+- [Dawarich Cloud] Added Posthog analytics. Disabled by default, can be enabled with POSTHOG_ENABLED environment variable.
 
 
 # [0.32.0] - 2025-09-13

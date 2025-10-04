@@ -141,7 +141,7 @@ Dawarich includes a comprehensive public sharing system that allows users to sha
 
 ### Technical Implementation
 - **Database**: `sharing_settings` (JSONB) and `sharing_uuid` (UUID) columns on `stats` table
-- **Routes**: `/shared/stats/:uuid` for public viewing, `/stats/:year/:month/sharing` for management
+- **Routes**: `/shared/month/:uuid` for public viewing, `/stats/:year/:month/sharing` for management
 - **API**: `/api/v1/maps/hexagons` supports public access via `uuid` parameter
 - **Controllers**: `Shared::StatsController` handles public views, sharing management integrated into existing stats flow
 

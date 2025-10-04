@@ -72,7 +72,7 @@ jobs:
           TAGS="freikin/dawarich:${VERSION}"
 
           # Set platforms based on version type and release type
-          PLATFORMS="linux/amd64,linux/arm64,linux/arm/v8,linux/arm/v7,linux/arm/v6"
+          PLATFORMS="linux/amd64,linux/arm64,linux/arm/v8,linux/arm/v7"
 
           # Check if this is a patch version (x.y.z where z > 0)
           if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[1-9][0-9]*$ ]]; then
@@ -80,7 +80,7 @@ jobs:
             PLATFORMS="linux/amd64"
           elif [[ $VERSION =~ ^[0-9]+\.[0-9]+\.0$ ]]; then
             echo "Detected minor version ($VERSION) - building for all platforms"
-            PLATFORMS="linux/amd64,linux/arm64,linux/arm/v8,linux/arm/v7,linux/arm/v6"
+            PLATFORMS="linux/amd64,linux/arm64,linux/arm/v8,linux/arm/v7"
           else
             echo "Version format not recognized or non-semver - using AMD64 only for safety"
             PLATFORMS="linux/amd64"

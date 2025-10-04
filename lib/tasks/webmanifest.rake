@@ -38,6 +38,6 @@ namespace :webmanifest do
 end
 
 # Hook to automatically generate webmanifest after assets:precompile
-Rake::Task['assets:precompile'].enhance do
-  Rake::Task['webmanifest:generate'].invoke
-end
+# Rake::Task['assets:precompile'].enhance do
+#   Rake::Task['webmanifest:generate'].invoke
+# end

@@ -94,7 +94,7 @@ Rails.application.routes.draw do
       to: 'stats#update',
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
-  get 'shared/stats/:uuid', to: 'shared/stats#show', as: :shared_stat
+  get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
 
   # Sharing management endpoint (requires auth)
   patch 'stats/:year/:month/sharing',
@@ -104,7 +104,6 @@ Rails.application.routes.draw do
 
   root to: 'home#index'
 
-  # iOS mobile auth success endpoint
   get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
 
   devise_for :users, controllers: {

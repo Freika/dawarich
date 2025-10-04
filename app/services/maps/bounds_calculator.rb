@@ -39,8 +39,10 @@ module Maps
 
     def execute_bounds_query(start_timestamp, end_timestamp)
       ActiveRecord::Base.connection.exec_query(
-        "SELECT MIN(latitude) as min_lat, MAX(latitude) as max_lat,
-                MIN(longitude) as min_lng, MAX(longitude) as max_lng
+        "SELECT ST_YMin(ST_Extent(lonlat::geometry)) as min_lat,
+                ST_YMax(ST_Extent(lonlat::geometry)) as max_lat,
+                ST_XMin(ST_Extent(lonlat::geometry)) as min_lng,
+                ST_XMax(ST_Extent(lonlat::geometry)) as max_lng
          FROM points
          WHERE user_id = $1
          AND timestamp BETWEEN $2 AND $3",

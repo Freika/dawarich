@@ -17,13 +17,6 @@ class Stats::HexagonCalculator
     calculate_h3_hexagon_centers(h3_resolution)
   end
 
-  def calculate_h3_hex_ids
-    result = calculate_hexagons(DEFAULT_H3_RESOLUTION)
-    return {} if result.nil?
-
-    result
-  end
-
   private
 
   attr_reader :user, :year, :month

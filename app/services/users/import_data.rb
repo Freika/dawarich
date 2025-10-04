@@ -73,15 +73,47 @@ class Users::ImportData
       zip_file.each do |entry|
         next if entry.directory?
 
-        extraction_path = File.join(@import_directory, entry.name)
+        # Sanitize entry name to prevent path traversal attacks
+        sanitized_name = sanitize_zip_entry_name(entry.name)
+        next if sanitized_name.nil?
+
+        # Compute absolute destination path
+        extraction_path = File.expand_path(File.join(@import_directory, sanitized_name))
+
+        # Verify the extraction path is within the import directory
+        safe_import_dir = File.expand_path(@import_directory) + File::SEPARATOR
+        unless extraction_path.start_with?(safe_import_dir) || extraction_path == File.expand_path(@import_directory)
+          Rails.logger.warn "Skipping potentially malicious ZIP entry: #{entry.name} (would extract to #{extraction_path})"
+          next
+        end
+
         Rails.logger.debug "Extracting #{entry.name} to #{extraction_path}"
 
         FileUtils.mkdir_p(File.dirname(extraction_path))
 
         # Use destination_directory parameter for rubyzip 3.x compatibility
-        entry.extract(entry.name, destination_directory: @import_directory)
+        entry.extract(sanitized_name, destination_directory: @import_directory)
       end
     end
+  end
+
+  def sanitize_zip_entry_name(entry_name)
+    # Remove leading slashes, backslashes, and dots
+    sanitized = entry_name.gsub(%r{^[/\\]+}, '')
+
+    # Reject entries with path traversal attempts
+    if sanitized.include?('..') || sanitized.start_with?('/') || sanitized.start_with?('\\')
+      Rails.logger.warn "Rejecting potentially malicious ZIP entry name: #{entry_name}"
+      return nil
+    end
+
+    # Reject absolute paths
+    if Pathname.new(sanitized).absolute?
+      Rails.logger.warn "Rejecting absolute path in ZIP entry: #{entry_name}"
+      return nil
+    end
+
+    sanitized
   end
 
   def load_json_data
