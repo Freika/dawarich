@@ -26,7 +26,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def after_sign_up_path_for(resource)
     if @invitation&.family
-      family_path(@invitation.family)
+      family_path
     else
       super(resource)
     end
@@ -34,7 +34,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def after_inactive_sign_up_path_for(resource)
     if @invitation&.family
-      family_path(@invitation.family)
+      family_path
     else
       super(resource)
     end
@@ -43,7 +43,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   private
 
   def check_registration_allowed
-    return unless DawarichSettings.self_hosted?
+    return unless self_hosted_mode?
     return if valid_invitation_token?
 
     redirect_to root_path,
@@ -54,6 +54,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
     return unless invitation_token.present?
 
     @invitation = FamilyInvitation.find_by(token: invitation_token)
+  end
+
+  def self_hosted_mode?
+    env_value = ENV['SELF_HOSTED']
+    return ActiveModel::Type::Boolean.new.cast(env_value) unless env_value.nil?
+
+    false
   end
 
   def valid_invitation_token?
