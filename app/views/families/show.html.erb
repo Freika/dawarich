@@ -21,7 +21,7 @@
             <% end %>
           <% end %>
 
-          <% if policy(@family).leave? %>
+          <% if policy(@family).leave? && !current_user.family_owner? %>
             <%= link_to leave_family_path(@family),
                   method: :delete,
                   data: { confirm: 'Are you sure you want to leave this family?', turbo_confirm: 'Are you sure you want to leave this family?' },
