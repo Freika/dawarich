@@ -1,11 +1,11 @@
 <div class="container mx-auto px-4 py-8">
   <div class="max-w-4xl mx-auto">
     <!-- Family Header -->
-    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700 rounded-lg p-6 mb-6">
+    <div class="bg-base-200 rounded-lg p-6 mb-6">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100"><%= @family.name %></h1>
-          <p class="text-gray-600 dark:text-gray-400 mt-1">
+          <h1 class="text-2xl font-bold text-base-content"><%= @family.name %></h1>
+          <p class="text-base-content opacity-60 mt-1">
             <%= t('families.show.created_by', default: 'Created by') %>
             <%= @family.creator.email %>
             <%= t('families.show.on_date', default: 'on') %>
@@ -16,7 +16,7 @@
         <div class="flex space-x-3">
           <% if policy(@family).update? %>
             <%= link_to edit_family_path(@family),
-                  class: "bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200" do %>
+                  class: "btn btn-outline btn-info" do %>
               <%= icon 'square-pen', class: "inline-block w-4 h-4 mr-2 -mt-1" %>
               <%= t('families.show.edit', default: 'Edit') %>
             <% end %>
@@ -26,7 +26,7 @@
             <%= link_to leave_family_path(@family),
                   method: :delete,
                   data: { confirm: 'Are you sure you want to leave this family?', turbo_confirm: 'Are you sure you want to leave this family?' },
-                  class: "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200" do %>
+                  class: "btn btn-outline btn-warning" do %>
               Leave Family
             <% end %>
           <% end %>
@@ -35,7 +35,7 @@
             <%= link_to family_path(@family),
                   method: :delete,
                   data: { confirm: 'Are you sure you want to delete this family? This action cannot be undone.', turbo_confirm: 'Are you sure you want to delete this family? This action cannot be undone.' },
-                  class: "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200" do %>
+                  class: "btn btn-outline btn-error" do %>
               <%= icon 'trash-2', class: "inline-block w-4 h-4 mr-2 -mt-1" %>
               Delete
             <% end %>
@@ -45,11 +45,11 @@
     </div>
 
     <!-- Family Members -->
-    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700 rounded-lg p-6 mb-6">
+    <div class="bg-base-200 rounded-lg p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          <h2 class="text-xl font-semibold text-base-content">
             <%= t('families.show.members_title', default: 'Family Members') %>
-            <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(<%= @members.count %>)</span>
+            <span class="text-sm font-normal opacity-50">(<%= @members.count %>)</span>
           </h2>
         </div>
 
@@ -164,25 +164,25 @@
     </div>
 
     <!-- Pending Invitations -->
-    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700 rounded-lg p-6">
+    <div class="bg-base-200 rounded-lg p-6">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          <h2 class="text-xl font-semibold text-base-content">
             <%= t('families.show.invitations_title', default: 'Pending Invitations') %>
-            <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(<%= @pending_invitations.count %>)</span>
+            <span class="text-sm font-normal opacity-50">(<%= @pending_invitations.count %>)</span>
           </h2>
         </div>
 
         <% if @pending_invitations.any? %>
           <div class="space-y-3 mb-4">
             <% @pending_invitations.each do |invitation| %>
-              <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div class="flex items-center justify-between p-3 bg-base-100 rounded-lg">
                 <div>
-                  <div class="font-medium text-gray-900 dark:text-gray-100"><%= invitation.email %></div>
-                  <div class="text-sm text-gray-500 dark:text-gray-400">
+                  <div class="font-medium text-base-content"><%= invitation.email %></div>
+                  <div class="text-sm text-base-content opacity-60">
                     <%= t('families.show.invited_on', default: 'Invited') %>
                     <%= invitation.created_at.strftime('%b %d, %Y') %>
                   </div>
-                  <div class="text-xs text-gray-400 dark:text-gray-500">
+                  <div class="text-xs text-base-content opacity-50">
                     <%= t('families.show.expires_on', default: 'Expires') %>
                     <%= invitation.expires_at.strftime('%b %d, %Y at %I:%M %p') %>
                   </div>
@@ -191,7 +191,7 @@
                   <%= link_to family_invitation_path(@family, invitation),
                         method: :delete,
                         data: { confirm: 'Are you sure you want to cancel this invitation?', turbo_confirm: 'Are you sure you want to cancel this invitation?' },
-                        class: "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium" do %>
+                        class: "text-error hover:brightness-90 text-sm font-medium" do %>
                     Cancel
                   <% end %>
                 <% end %>
@@ -199,7 +199,7 @@
             <% end %>
           </div>
         <% else %>
-          <p class="text-gray-500 dark:text-gray-400 text-center py-4">
+          <p class="text-base-content opacity-50 text-center py-4">
             <%= t('families.show.no_pending_invitations', default: 'No pending invitations') %>
           </p>
         <% end %>
@@ -207,44 +207,40 @@
         <!-- Invite New Member -->
         <% if policy(@family).invite? && @family.can_add_members? %>
           <div class="border-t pt-4">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">
+            <h3 class="text-lg font-medium text-base-content mb-3">
               <%= t('families.show.invite_member', default: 'Invite New Member') %>
             </h3>
 
             <%= form_with model: [@family, FamilyInvitation.new], url: family_invitations_path(@family), local: true, class: "space-y-3" do |form| %>
               <div>
-                <%= form.label :email, t('families.show.email_label', default: 'Email Address'), class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" %>
+                <%= form.label :email, t('families.show.email_label', default: 'Email Address'), class: "label label-text font-medium mb-1" %>
                 <%= form.email_field :email,
                       placeholder: t('families.show.email_placeholder', default: 'Enter email address'),
-                      class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
+                      class: "input input-bordered w-full" %>
               </div>
 
               <div class="flex justify-end">
                 <%= form.submit t('families.show.send_invitation', default: 'Send Invitation'),
-                      class: "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200" %>
+                      class: "btn btn-primary" %>
               </div>
             <% end %>
           </div>
         <% elsif policy(@family).invite? %>
           <!-- Family at capacity message -->
           <div class="border-t pt-4">
-            <div class="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-md p-4">
-              <div class="flex">
-                <div class="flex-shrink-0">
-                  <svg class="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-                <div class="ml-3">
-                  <h3 class="text-sm font-medium text-amber-800 dark:text-amber-200">
-                    Family at Capacity
-                  </h3>
-                  <div class="mt-2 text-sm text-amber-700 dark:text-amber-300">
-                    <p>
-                      Your family has reached the maximum of <%= @family.class::MAX_MEMBERS %> members (including pending invitations).
-                      Cancel existing invitations or wait for them to expire to invite new members.
-                    </p>
-                  </div>
+            <div class="alert alert-warning">
+              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              <div>
+                <h3 class="text-sm font-medium">
+                  Family at Capacity
+                </h3>
+                <div class="mt-2 text-sm">
+                  <p>
+                    Your family has reached the maximum of <%= @family.class::MAX_MEMBERS %> members (including pending invitations).
+                    Cancel existing invitations or wait for them to expire to invite new members.
+                  </p>
                 </div>
               </div>
             </div>
