@@ -14,10 +14,8 @@ class Family::MembershipsController < ApplicationController
 
     if service.call
       if member_user == current_user
-        # User removed themselves
         redirect_to new_family_path, notice: 'You have left the family'
       else
-        # Owner removed another member
         redirect_to family_path, notice: "#{member_user.email} has been removed from the family"
       end
     else
@@ -26,12 +24,6 @@ class Family::MembershipsController < ApplicationController
   end
 
   private
-
-  def ensure_family_feature_enabled!
-    unless DawarichSettings.family_feature_enabled?
-      redirect_to root_path, alert: 'Family feature is not available'
-    end
-  end
 
   def set_family
     @family = current_user.family

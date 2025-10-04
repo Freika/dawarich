@@ -36,14 +36,12 @@ class FamiliesController < ApplicationController
     else
       @family = Family.new(family_params)
 
-      # Handle validation errors
       if service.errors.any?
         service.errors.each do |error|
           @family.errors.add(error.attribute, error.message)
         end
       end
 
-      # Handle service-level errors
       if service.error_message.present?
         @family.errors.add(:base, service.error_message)
       end
@@ -127,12 +125,6 @@ class FamiliesController < ApplicationController
       'Location sharing enabled'
     else
       duration.to_i > 0 ? "Location sharing enabled for #{duration.to_i} hours" : 'Location sharing enabled'
-    end
-  end
-
-  def ensure_family_feature_enabled!
-    unless DawarichSettings.family_feature_enabled?
-      redirect_to root_path, alert: 'Family feature is not available'
     end
   end
 

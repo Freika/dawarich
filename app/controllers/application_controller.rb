@@ -56,6 +56,12 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def ensure_family_feature_enabled!
+    return if DawarichSettings.family_feature_enabled?
+
+    render json: { error: 'Family feature is not enabled' }, status: :forbidden
+  end
+
   private
 
   def set_self_hosted_status

@@ -92,12 +92,6 @@ class Family::InvitationsController < ApplicationController
 
   private
 
-  def ensure_family_feature_enabled!
-    unless DawarichSettings.family_feature_enabled?
-      redirect_to root_path, alert: 'Family feature is not available'
-    end
-  end
-
   def set_family
     @family = current_user.family
 

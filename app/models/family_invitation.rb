@@ -8,8 +8,7 @@ class FamilyInvitation < ApplicationRecord
 
   validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :token, presence: true, uniqueness: true
-  validates :expires_at, presence: true
-  validates :status, presence: true
+  validates :expires_at, :status, presence: true
 
   enum :status, { pending: 0, accepted: 1, expired: 2, cancelled: 3 }
 
@@ -17,7 +16,6 @@ class FamilyInvitation < ApplicationRecord
 
   before_validation :generate_token, :set_expiry, on: :create
 
-  # Clear family cache when invitation status changes or is created/destroyed
   after_create :clear_family_cache
   after_update :clear_family_cache, if: :saved_change_to_status?
   after_destroy :clear_family_cache
