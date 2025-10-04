@@ -14,25 +14,8 @@ RSpec.describe 'Families', type: :request do
     sign_in user
   end
 
-  describe 'GET /families' do
-    context 'when user is not in a family' do
-      let(:user_without_family) { create(:user) }
-
-      before { sign_in user_without_family }
-
-      it 'renders the index page' do
-        get '/families'
-        expect(response).to have_http_status(:ok)
-      end
-    end
-
-    context 'when user is in a family' do
-      it 'redirects to family show page' do
-        get '/families'
-        expect(response).to redirect_to(family_path(family))
-      end
-    end
-  end
+  # GET /families route no longer exists - we use singular resource /family
+  # Users without a family should go to /family/new instead
 
   describe 'GET /family' do
     it 'shows the family page' do
@@ -45,34 +28,34 @@ RSpec.describe 'Families', type: :request do
 
       before { sign_in outsider }
 
-      it 'redirects to families index' do
+      it 'redirects to new family path' do
         get "/family"
-        expect(response).to redirect_to(family_path)
+        expect(response).to redirect_to(new_family_path)
       end
     end
   end
 
-  describe 'GET /families/new' do
+  describe 'GET /family/new' do
     context 'when user is not in a family' do
       let(:user_without_family) { create(:user) }
 
       before { sign_in user_without_family }
 
       it 'renders the new family form' do
-        get '/families/new'
+        get '/family/new'
         expect(response).to have_http_status(:ok)
       end
     end
 
     context 'when user is already in a family' do
       it 'redirects to family show page' do
-        get '/families/new'
-        expect(response).to redirect_to(family_path(family))
+        get '/family/new'
+        expect(response).to redirect_to(family_path)
       end
     end
   end
 
-  describe 'POST /families' do
+  describe 'POST /family' do
     let(:user_without_family) { create(:user) }
 
     before { sign_in user_without_family }
@@ -82,13 +65,13 @@ RSpec.describe 'Families', type: :request do
 
       it 'creates a new family' do
         expect do
-          post '/families', params: valid_attributes
+          post '/family', params: valid_attributes
         end.to change(Family, :count).by(1)
       end
 
       it 'creates a family membership for the user' do
         expect do
-          post '/families', params: valid_attributes
+          post '/family', params: valid_attributes
         end.to change(FamilyMembership, :count).by(1)
       end
 
@@ -106,7 +89,7 @@ RSpec.describe 'Families', type: :request do
 
       it 'does not create a family' do
         expect do
-          post '/families', params: invalid_attributes
+          post '/family', params: invalid_attributes
         end.not_to change(Family, :count)
       end
 
@@ -117,7 +100,7 @@ RSpec.describe 'Families', type: :request do
     end
   end
 
-  describe 'GET /families/:id/edit' do
+  describe 'GET /family/edit' do
     it 'shows the edit form' do
       get "/family/edit"
       expect(response).to have_http_status(:ok)
@@ -134,7 +117,7 @@ RSpec.describe 'Families', type: :request do
     end
   end
 
-  describe 'PATCH /families/:id' do
+  describe 'PATCH /family' do
     let(:new_attributes) { { family: { name: 'Updated Family Name' } } }
 
     context 'with valid attributes' do
@@ -142,7 +125,7 @@ RSpec.describe 'Families', type: :request do
         patch "/family", params: new_attributes
         family.reload
         expect(family.name).to eq('Updated Family Name')
-        expect(response).to redirect_to(family_path(family))
+        expect(response).to redirect_to(family_path)
       end
     end
 
@@ -169,7 +152,7 @@ RSpec.describe 'Families', type: :request do
     end
   end
 
-  describe 'DELETE /families/:id' do
+  describe 'DELETE /family' do
     context 'when family has only one member' do
       it 'deletes the family' do
         expect do
@@ -188,7 +171,7 @@ RSpec.describe 'Families', type: :request do
         expect do
           delete "/family"
         end.not_to change(Family, :count)
-        expect(response).to redirect_to(family_path(family))
+        expect(response).to redirect_to(family_path)
         follow_redirect!
         expect(response.body).to include('Cannot delete family with members')
       end
