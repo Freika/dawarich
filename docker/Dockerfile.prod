@@ -10,6 +10,7 @@ ENV RAILS_ENV=production
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    curl \
     wget \
     build-essential \
     git \
