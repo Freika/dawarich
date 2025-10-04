@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Family Invitations', type: :request do
+RSpec.describe 'Family::Invitations', type: :request do
   let(:user) { create(:user) }
   let(:family) { create(:family, creator: user) }
   let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }

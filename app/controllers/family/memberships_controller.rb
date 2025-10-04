@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class FamilyMembershipsController < ApplicationController
+class Family::MembershipsController < ApplicationController
   before_action :authenticate_user!
   before_action :ensure_family_feature_enabled!
   before_action :set_family

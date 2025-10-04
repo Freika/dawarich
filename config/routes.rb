@@ -64,16 +64,16 @@ Rails.application.routes.draw do
       delete :leave
       patch :update_location_sharing
     end
-    resources :invitations, except: %i[edit update], controller: 'family_invitations' do
+    resources :invitations, except: %i[edit update], controller: 'family/invitations' do
       member do
         post :accept
       end
     end
-    resources :members, only: %i[destroy], controller: 'family_memberships'
+    resources :members, only: %i[destroy], controller: 'family/memberships'
   end
 
   # Public family invitation acceptance (no auth required)
-  get 'invitations/:id', to: 'family_invitations#show', as: :public_invitation
+  get 'invitations/:id', to: 'family/invitations#show', as: :public_invitation
   # end
   resources :points, only: %i[index] do
     collection do

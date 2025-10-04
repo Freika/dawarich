@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class FamilyInvitationsController < ApplicationController
+class Family::InvitationsController < ApplicationController
   before_action :authenticate_user!, except: %i[show accept]
   before_action :ensure_family_feature_enabled!, except: %i[show accept]
   before_action :set_family, except: %i[show accept]
