@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Families', type: :request do
+RSpec.describe 'Family', type: :request do
   let(:user) { create(:user) }
   let(:other_user) { create(:user) }
   let(:family) { create(:family, creator: user) }
@@ -13,9 +13,6 @@ RSpec.describe 'Families', type: :request do
       .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
     sign_in user
   end
-
-  # GET /families route no longer exists - we use singular resource /family
-  # Users without a family should go to /family/new instead
 
   describe 'GET /family' do
     it 'shows the family page' do
@@ -76,9 +73,10 @@ RSpec.describe 'Families', type: :request do
       end
 
       it 'redirects to the new family with success message' do
-        post '/families', params: valid_attributes
+        post '/family', params: valid_attributes
+
         expect(response).to have_http_status(:found)
-        expect(response.location).to match(%r{/families/})
+        expect(response.location).to eq family_url
         follow_redirect!
         expect(response.body).to include('Family created successfully!')
       end
@@ -94,7 +92,7 @@ RSpec.describe 'Families', type: :request do
       end
 
       it 'renders the new template with errors' do
-        post '/families', params: invalid_attributes
+        post '/family', params: invalid_attributes
         expect(response).to have_http_status(:unprocessable_content)
       end
     end
@@ -155,10 +153,8 @@ RSpec.describe 'Families', type: :request do
   describe 'DELETE /family' do
     context 'when family has only one member' do
       it 'deletes the family' do
-        expect do
-          delete "/family"
-        end.to change(Family, :count).by(-1)
-        expect(response).to redirect_to(family_path)
+        expect { delete '/family' }.to change(Family, :count).by(-1)
+        expect(response).to redirect_to(new_family_path)
       end
     end
 
@@ -168,9 +164,7 @@ RSpec.describe 'Families', type: :request do
       end
 
       it 'does not delete the family' do
-        expect do
-          delete "/family"
-        end.not_to change(Family, :count)
+        expect { delete "/family" }.not_to change(Family, :count)
         expect(response).to redirect_to(family_path)
         follow_redirect!
         expect(response.body).to include('Cannot delete family with members')
@@ -196,22 +190,22 @@ RSpec.describe 'Families', type: :request do
 
     it 'denies access to show when user is not in family' do
       get "/family"
-      expect(response).to redirect_to(family_path)
+      expect(response).to redirect_to(new_family_path)
     end
 
-    it 'redirects to families index when user is not in family for edit' do
+    it 'redirects to family page when user is not in family for edit' do
       get "/family/edit"
-      expect(response).to redirect_to(family_path)
+      expect(response).to redirect_to(new_family_path)
     end
 
-    it 'redirects to families index when user is not in family for update' do
+    it 'redirects to family page when user is not in family for update' do
       patch "/family", params: { family: { name: 'Hacked' } }
-      expect(response).to redirect_to(family_path)
+      expect(response).to redirect_to(new_family_path)
     end
 
-    it 'redirects to families index when user is not in family for destroy' do
+    it 'redirects to family page when user is not in family for destroy' do
       delete "/family"
-      expect(response).to redirect_to(family_path)
+      expect(response).to redirect_to(new_family_path)
     end
 
   end
@@ -220,7 +214,7 @@ RSpec.describe 'Families', type: :request do
     before { sign_out user }
 
     it 'redirects to login for index' do
-      get '/families'
+      get '/family'
       expect(response).to redirect_to(new_user_session_path)
     end
 
@@ -230,12 +224,13 @@ RSpec.describe 'Families', type: :request do
     end
 
     it 'redirects to login for new' do
-      get '/families/new'
+      get '/family/new'
+
       expect(response).to redirect_to(new_user_session_path)
     end
 
     it 'redirects to login for create' do
-      post '/families', params: { family: { name: 'Test' } }
+      post '/family', params: { family: { name: 'Test' } }
       expect(response).to redirect_to(new_user_session_path)
     end
 

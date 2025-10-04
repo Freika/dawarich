@@ -10,7 +10,7 @@
     </div>
 
     <div class="bg-base-200 rounded-lg p-6">
-      <%= form_with model: @family, local: true, class: "space-y-6" do |form| %>
+      <%= form_with url: family_path, model: @family, local: true, class: "space-y-6" do |form| %>
         <% if @family.errors.any? %>
           <div class="alert alert-error">
             <div>
