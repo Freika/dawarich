@@ -10,20 +10,32 @@ RSpec.describe Families::Leave do
   describe '#call' do
     context 'when user is a member (not owner)' do
       let(:member) { create(:user) }
-      let!(:membership) { create(:family_membership, user: member, family: family, role: :member) }
+      let!(:owner_membership) { create(:family_membership, user: user, family: family, role: :owner) }
+      let!(:member_membership) { create(:family_membership, user: member, family: family, role: :member) }
       let(:service) { described_class.new(user: member) }
 
       it 'removes the membership' do
-        expect { service.call }.to change(FamilyMembership, :count).by(-1)
+        result = service.call
+        expect(result).to be_truthy, "Expected service to succeed but got error: #{service.error_message}"
+        expect(FamilyMembership.count).to eq(1) # Only owner should remain
         expect(member.reload.family_membership).to be_nil
       end
 
-      it 'sends notification' do
-        expect { service.call }.to change(Notification, :count).by(1)
+      it 'sends notification to member who left' do
+        expect { service.call }.to change(Notification, :count).by(2)
 
-        notification = member.notifications.last
+        member_notification = member.notifications.last
+        expect(member_notification.title).to eq('Left Family')
+        expect(member_notification.content).to include(family.name)
+      end
 
-        expect(notification.title).to eq('Left Family')
+      it 'sends notification to family owner' do
+        service.call
+
+        owner_notification = user.notifications.last
+        expect(owner_notification.title).to eq('Family Member Left')
+        expect(owner_notification.content).to include(member.email)
+        expect(owner_notification.content).to include(family.name)
       end
 
       it 'returns true' do

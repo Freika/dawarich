@@ -9,7 +9,7 @@
             <div class="flex flex-col space-y-2">
               <span class="tooltip" data-tip="<%= human_date(@start_at - 1.day) %>">
                 <%= link_to map_path(start_at: @start_at - 1.day, end_at: @end_at - 1.day, import_id: params[:import_id]), class: "btn border border-base-300 hover:btn-ghost w-full" do %>
-                  ◀️
+                  <%= icon 'chevron-left' %>
                 <% end %>
               </span>
             </div>
@@ -30,7 +30,7 @@
             <div class="flex flex-col space-y-2">
               <span class="tooltip" data-tip="<%= human_date(@start_at + 1.day) %>">
                 <%= link_to map_path(start_at: @start_at + 1.day, end_at: @end_at + 1.day, import_id: params[:import_id]), class: "btn border border-base-300 hover:btn-ghost w-full" do %>
-                  ▶️
+                  <%= icon 'chevron-right' %>
                 <% end %>
               </span>
             </div>

@@ -78,17 +78,19 @@ class FamilyInvitationsController < ApplicationController
   def destroy
     authorize @family, :manage_invitations?
 
-    if @invitation.update(status: :cancelled)
+    begin
+      if @invitation.update(status: :cancelled)
+        redirect_to family_path(@family),
+                    notice: 'Invitation cancelled'
+      else
+        redirect_to family_path(@family),
+                    alert: 'Failed to cancel invitation. Please try again'
+      end
+    rescue StandardError => e
+      Rails.logger.error "Error cancelling family invitation: #{e.message}"
       redirect_to family_path(@family),
-                  notice: 'Invitation cancelled'
-    else
-      redirect_to family_path(@family),
-                  alert: 'Failed to cancel invitation. Please try again'
+                  alert: 'An unexpected error occurred while cancelling the invitation'
     end
-  rescue StandardError => e
-    Rails.logger.error "Error cancelling family invitation: #{e.message}"
-    redirect_to family_path(@family),
-                alert: 'An unexpected error occurred while cancelling the invitation'
   end
 
   private

@@ -12,10 +12,14 @@ module Families
     def call
       return false unless validate_can_leave
 
+      # Store family info before removing membership
+      @family_name = user.family.name
+      @family_owner = user.family.owner
+
       ActiveRecord::Base.transaction do
         handle_ownership_transfer if user.family_owner?
         remove_membership
-        send_notification
+        send_notifications
       end
 
       true
@@ -68,18 +72,26 @@ module Families
       user.family_membership.destroy!
     end
 
-    def send_notification
+    def send_notifications
       return unless defined?(Notification)
 
+      # Notify the user who left
       Notification.create!(
         user: user,
         kind: :info,
         title: 'Left Family',
-        content: "You've left the family"
+        content: "You've left the family \"#{@family_name}\""
       )
-    rescue StandardError => e
-      # Don't fail the entire operation if notification fails
-      Rails.logger.warn "Failed to send family leave notification: #{e.message}"
+
+      # Notify the family owner
+      return unless @family_owner&.persisted?
+
+      Notification.create!(
+        user: @family_owner,
+        kind: :info,
+        title: 'Family Member Left',
+        content: "#{user.email} has left the family \"#{@family_name}\""
+      )
     end
 
     def handle_record_invalid_error(error)
