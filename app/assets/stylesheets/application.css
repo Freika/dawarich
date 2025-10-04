@@ -101,3 +101,63 @@
   content: '✅';
   animation: none;
 }
+
+/* Flash message animations */
+@keyframes slideInFromRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Family feature specific styles */
+.family-member-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.family-member-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.invitation-card {
+  border-left: 4px solid #f59e0b;
+}
+
+.family-invitation-form {
+  max-width: 500px;
+}
+
+/* Loading states */
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}

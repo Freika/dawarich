@@ -5,6 +5,7 @@
   - points
   - default
   - mailers
+  - family
   - imports
   - exports
   - stats
