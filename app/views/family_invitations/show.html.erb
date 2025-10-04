@@ -14,7 +14,7 @@
         You've been invited by <strong class="text-base-content"><%= @invitation.invited_by.email %></strong> to join their family. Create your account to accept the invitation and start sharing location data.
       </p>
 
-      <div class="alert alert-info inline-flex rounded-full px-4 py-2 mt-4">
+      <div class="alert alert-info inline-flex rounded-lg px-4 py-2 mt-4">
         <%= icon 'info', class: "h-5 w-5 mr-2" %>
         <span class="text-sm font-medium">
           Your email (<%= @invitation.email %>) will be used for this account
@@ -142,7 +142,7 @@
           <% end %>
 
           <div class="text-center">
-            <p class="text-sm text-base-content opacity-60 mb-2">
+            <p class="text-sm text-gray-300 mb-2">
               Already have an account?
             </p>
             <%= link_to new_user_session_path(invitation_token: @invitation.token),

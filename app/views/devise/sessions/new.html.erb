@@ -1,29 +1,29 @@
-<div class="hero min-h-content bg-base-200 dark:bg-gray-900">
+<div class="hero min-h-content bg-base-200">
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
       <% if @invitation %>
-        <h1 class="text-5xl font-bold text-gray-900 dark:text-gray-100">Sign in to join <%= @invitation.family.name %>!</h1>
-        <p class="py-6 text-gray-700 dark:text-gray-300">
+        <h1 class="text-5xl font-bold text-base-content">Sign in to join <%= @invitation.family.name %>!</h1>
+        <p class="py-6 text-base-content opacity-70">
           You've been invited by <strong><%= @invitation.invited_by.email %></strong> to join their family.
           Sign in to your account to accept the invitation.
         </p>
-        <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
-          <p class="text-sm text-blue-800 dark:text-blue-200">
+        <div class="alert alert-info">
+          <p class="text-sm">
             Don't have an account yet?
             <%= link_to "Create one here", new_user_registration_path(invitation_token: @invitation.token), class: "font-semibold underline" %>
           </p>
         </div>
       <% else %>
-        <h1 class="text-5xl font-bold text-gray-900 dark:text-gray-100">Login now</h1>
-        <p class="py-6 text-gray-700 dark:text-gray-300">and take control over your location data.</p>
+        <h1 class="text-5xl font-bold text-base-content">Login now</h1>
+        <p class="py-6 text-base-content opacity-70">and take control over your location data.</p>
         <% if ENV['DEMO_ENV'] == 'true' %>
-          <p class="py-6 text-gray-700 dark:text-gray-300">
+          <p class="py-6 text-base-content opacity-70">
             Demo account: <strong class="text-success">demo@dawarich.app</strong> / password: <strong class="text-success">password</strong>
           </p>
         <% end %>
       <% end %>
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 dark:bg-gray-800 px-5 py-5">
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
       <%= form_for(resource, as: resource_name, url: session_path(resource_name), class: 'form-body', html: { data: { turbo: session[:dawarich_client] == 'ios' ? false : true } }) do |f| %>
         <% if @invitation %>
           <%= hidden_field_tag :invitation_token, params[:invitation_token] %>
@@ -31,26 +31,26 @@
 
         <div class="form-control">
           <%= f.label :email, class: 'label' do %>
-            <span class="label-text text-gray-900 dark:text-gray-100">Email</span>
+            <span class="label-text">Email</span>
           <% end %>
-          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600' %>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered' %>
         </div>
         <div class="form-control">
           <%= f.label :password, class: 'label' do %>
-            <span class="label-text text-gray-900 dark:text-gray-100">Password</span>
+            <span class="label-text">Password</span>
           <% end %>
-          <%= f.password_field :password, autocomplete: "current-password", class: 'input input-bordered bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600' %>
+          <%= f.password_field :password, autocomplete: "current-password", class: 'input input-bordered' %>
           <% if devise_mapping.rememberable? %>
             <div class="form-control">
               <label class="label cursor-pointer">
-                <span class="label-text text-gray-900 dark:text-gray-100">Remember me</span>
+                <span class="label-text">Remember me</span>
                 <%= f.check_box :remember_me, class: 'checkbox checkbox-sm' %>
               </label>
             </div>
           <% end %>
         </div>
         <div class="form-control mt-6">
-          <%= f.submit (@invitation ? "Sign in & Accept Invitation" : "Log in"), class: 'btn btn-primary bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white border-none' %>
+          <%= f.submit (@invitation ? "Sign in & Accept Invitation" : "Log in"), class: 'btn btn-primary' %>
         </div>
 
         <% unless @invitation %>

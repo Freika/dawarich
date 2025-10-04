@@ -191,7 +191,7 @@
                   <%= link_to family_invitation_path(@family, invitation),
                         method: :delete,
                         data: { confirm: 'Are you sure you want to cancel this invitation?', turbo_confirm: 'Are you sure you want to cancel this invitation?' },
-                        class: "text-error hover:brightness-90 text-sm font-medium" do %>
+                        class: "btn btn-outline btn-warning btn-sm opacity-70" do %>
                     Cancel
                   <% end %>
                 <% end %>
