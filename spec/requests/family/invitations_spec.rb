@@ -13,7 +13,7 @@ RSpec.describe 'Family::Invitations', type: :request do
       .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
   end
 
-  describe 'GET /families/:family_id/invitations' do
+  describe 'GET /family/invitations' do
     before { sign_in user }
 
     it 'shows pending invitations' do
@@ -81,7 +81,7 @@ RSpec.describe 'Family::Invitations', type: :request do
     end
   end
 
-  describe 'POST /families/:family_id/invitations' do
+  describe 'POST /family/invitations' do
     before { sign_in user }
 
     context 'with valid email' do
@@ -161,7 +161,7 @@ RSpec.describe 'Family::Invitations', type: :request do
     end
   end
 
-  describe 'POST /families/:family_id/invitations/:id/accept' do
+  describe 'POST /family/invitations/:id/accept' do
     let(:invitee) { create(:user) }
     let(:invitee_invitation) { create(:family_invitation, family: family, invited_by: user, email: invitee.email) }
 
@@ -236,7 +236,7 @@ RSpec.describe 'Family::Invitations', type: :request do
     end
   end
 
-  describe 'DELETE /families/:family_id/invitations/:id' do
+  describe 'DELETE /family/invitations/:id' do
     before { sign_in user }
 
     it 'cancels the invitation' do

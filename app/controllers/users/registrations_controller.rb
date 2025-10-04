@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class Users::RegistrationsController < Devise::RegistrationsController
-  before_action :check_registration_allowed, only: [:new, :create]
-  before_action :set_invitation, only: [:new, :create]
+  before_action :set_invitation, only: %i[new create]
+  before_action :check_registration_allowed, only: %i[new create]
 
   def new
     build_resource({})
@@ -43,10 +43,11 @@ class Users::RegistrationsController < Devise::RegistrationsController
   private
 
   def check_registration_allowed
-    return true if DawarichSettings.self_hosted?
-    return true if valid_invitation_token?
+    return unless DawarichSettings.self_hosted?
+    return if valid_invitation_token?
 
-    redirect_to root_path, alert: 'Registration is not available. Please contact your administrator for access.'
+    redirect_to root_path,
+                alert: 'Registration is not available. Please contact your administrator for access.'
   end
 
   def set_invitation
@@ -56,10 +57,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def valid_invitation_token?
-    return false unless invitation_token.present?
-
-    invitation = FamilyInvitation.find_by(token: invitation_token)
-    invitation&.can_be_accepted?
+    @invitation&.can_be_accepted?
   end
 
   def invitation_token

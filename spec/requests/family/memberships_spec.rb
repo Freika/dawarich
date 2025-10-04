@@ -15,7 +15,7 @@ RSpec.describe 'Family::Memberships', type: :request do
     sign_in user
   end
 
-  describe 'DELETE /families/:family_id/members/:id' do
+  describe 'DELETE /family/members/:id' do
     context 'when removing a regular member' do
       it 'removes the member from the family' do
         expect do
@@ -69,7 +69,7 @@ RSpec.describe 'Family::Memberships', type: :request do
       let(:other_membership) { create(:family_membership, family: other_family) }
 
       it 'returns not found' do
-        delete "/families/#{family.id}/members/#{other_membership.id}"
+        delete "/family/members/#{other_membership.id}"
         expect(response).to have_http_status(:not_found)
       end
     end
@@ -118,7 +118,7 @@ RSpec.describe 'Family::Memberships', type: :request do
       delete "/family/members/#{member_membership.id}"
 
       # Verify removal
-      expect(response).to redirect_to(family_path(family))
+      expect(response).to redirect_to(family_path)
       expect(family.reload.members).to include(user)
       expect(family.members).not_to include(member_user)
       expect(member_user.reload.family).to be_nil
@@ -130,10 +130,10 @@ RSpec.describe 'Family::Memberships', type: :request do
       expect(user.family_owner?).to be true
 
       # Try to remove owner
-      delete "/families/#{family.id}/members/#{owner_membership.id}"
+      delete "/family/members/#{owner_membership.id}"
 
       # Verify prevention
-      expect(response).to redirect_to(family_path(family))
+      expect(response).to redirect_to(family_path)
       expect(family.reload.members).to include(user, member_user)
       expect(user.reload.family).to eq(family)
     end
@@ -151,7 +151,7 @@ RSpec.describe 'Family::Memberships', type: :request do
         delete "/family/members/#{owner_membership.id}"
       end.not_to change(FamilyMembership, :count)
 
-      expect(response).to redirect_to(family_path(family))
+      expect(response).to redirect_to(family_path)
       expect(user.reload.family).to eq(family)
       expect(family.reload).to be_present
     end

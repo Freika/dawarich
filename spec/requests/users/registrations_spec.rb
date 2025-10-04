@@ -87,7 +87,7 @@ RSpec.describe 'Users::Registrations', type: :request do
       it 'redirects to family page after successful registration' do
         post user_registration_path, params: request_params
 
-        expect(response).to redirect_to(family_path(family))
+        expect(response).to redirect_to(family_path)
       end
 
       it 'displays success message with family name' do
@@ -187,7 +187,7 @@ RSpec.describe 'Users::Registrations', type: :request do
           }
         end.to change(User, :count).by(1)
 
-        expect(response).to redirect_to(family_path(family))
+        expect(response).to redirect_to(family_path)
       end
     end
 

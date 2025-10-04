@@ -128,7 +128,7 @@ RSpec.describe 'Family Workflows', type: :request do
       # User3 accepts invitation to Family 1
       sign_in user3
       post "/family/invitations/#{invitation1.token}/accept"
-      expect(response).to redirect_to(family_path(user3.reload.family))
+      expect(response).to redirect_to(family_path)
       expect(user3.family).to eq(family1)
 
       # User3 tries to accept invitation to Family 2
@@ -245,7 +245,7 @@ RSpec.describe 'Family Workflows', type: :request do
       expect(flash[:alert]).to include('not authorized')
 
       # Member cannot delete family
-      delete "/families/#{family.id}"
+      delete "/family"
       expect(response).to have_http_status(:see_other)
       expect(flash[:alert]).to include('not authorized')
 
