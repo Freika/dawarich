@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Families::Leave do
+RSpec.describe Families::Memberships::Destroy do
   let(:user) { create(:user) }
   let(:family) { create(:family, creator: user) }
   let(:service) { described_class.new(user: user) }
@@ -46,17 +46,22 @@ RSpec.describe Families::Leave do
     context 'when user is family owner with no other members' do
       let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
 
-      it 'removes the membership' do
-        expect { service.call }.to change(FamilyMembership, :count).by(-1)
-        expect(user.reload.family_membership).to be_nil
+      it 'prevents owner from leaving' do
+        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect(user.reload.family_membership).to be_present
       end
 
-      it 'deletes the family' do
-        expect { service.call }.to change(Family, :count).by(-1)
+      it 'does not delete the family' do
+        expect { service.call }.not_to change(Family, :count)
       end
 
-      it 'returns true' do
-        expect(service.call).to be true
+      it 'returns false' do
+        expect(service.call).to be false
+      end
+
+      it 'sets error message' do
+        service.call
+        expect(service.error_message).to include('cannot remove their own membership')
       end
     end
 

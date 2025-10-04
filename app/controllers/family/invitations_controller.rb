@@ -3,9 +3,10 @@
 class Family::InvitationsController < ApplicationController
   before_action :authenticate_user!, except: %i[show accept]
   before_action :ensure_family_feature_enabled!, except: %i[show accept]
+  before_action :set_invitation_by_token, only: %i[show]
+  before_action :set_invitation_by_id, only: %i[accept]
   before_action :set_family, except: %i[show accept]
-  before_action :set_invitation_by_token, only: %i[show accept]
-  before_action :set_invitation_by_id, only: %i[destroy]
+  before_action :set_invitation_by_id_and_family, only: %i[destroy]
 
   def index
     authorize @family, :show?
@@ -37,9 +38,9 @@ class Family::InvitationsController < ApplicationController
     )
 
     if service.call
-      redirect_to family_path(@family), notice: 'Invitation sent successfully!'
+      redirect_to family_path, notice: 'Invitation sent successfully!'
     else
-      redirect_to family_path(@family), alert: service.error_message || 'Failed to send invitation'
+      redirect_to family_path, alert: service.error_message || 'Failed to send invitation'
     end
   end
 
@@ -65,8 +66,7 @@ class Family::InvitationsController < ApplicationController
     )
 
     if service.call
-      redirect_to family_path(current_user.reload.family),
-                  notice: 'Welcome to the family!'
+      redirect_to family_path, notice: 'Welcome to the family!'
     else
       redirect_to root_path, alert: service.error_message || 'Unable to accept invitation'
     end
@@ -80,16 +80,13 @@ class Family::InvitationsController < ApplicationController
 
     begin
       if @invitation.update(status: :cancelled)
-        redirect_to family_path(@family),
-                    notice: 'Invitation cancelled'
+        redirect_to family_path, notice: 'Invitation cancelled'
       else
-        redirect_to family_path(@family),
-                    alert: 'Failed to cancel invitation. Please try again'
+        redirect_to family_path, alert: 'Failed to cancel invitation. Please try again'
       end
     rescue StandardError => e
       Rails.logger.error "Error cancelling family invitation: #{e.message}"
-      redirect_to family_path(@family),
-                  alert: 'An unexpected error occurred while cancelling the invitation'
+      redirect_to family_path, alert: 'An unexpected error occurred while cancelling the invitation'
     end
   end
 
@@ -104,15 +101,25 @@ class Family::InvitationsController < ApplicationController
   def set_family
     @family = current_user.family
 
-    redirect_to families_path, alert: 'Family not found' and return unless @family
+    redirect_to new_family_path, alert: 'You are not in a family' and return unless @family
   end
 
   def set_invitation_by_token
-    @invitation = FamilyInvitation.find_by!(token: params[:id])
+    # For public unauthenticated route: /invitations/:token
+    @invitation = FamilyInvitation.find_by!(token: params[:token])
   end
 
   def set_invitation_by_id
-    @invitation = @family.family_invitations.find(params[:id])
+    # For authenticated nested routes without family validation: /families/:family_id/invitations/:id/accept
+    # The :id param contains the token value
+    @invitation = FamilyInvitation.find_by!(token: params[:id])
+  end
+
+  def set_invitation_by_id_and_family
+    # For authenticated nested routes: /families/:family_id/invitations/:id
+    # The :id param contains the token value
+    @family = current_user.family
+    @invitation = @family.family_invitations.find_by!(token: params[:id])
   end
 
   def invitation_params

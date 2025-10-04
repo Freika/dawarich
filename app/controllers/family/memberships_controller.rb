@@ -9,13 +9,19 @@ class Family::MembershipsController < ApplicationController
   def destroy
     authorize @membership
 
-    if @membership.owner?
-      redirect_to family_path(@family),
-                  alert: 'Family owners cannot remove their own membership. To leave the family, delete it instead.'
+    member_user = @membership.user
+    service = Families::Memberships::Destroy.new(user: current_user, member_to_remove: member_user)
+
+    if service.call
+      if member_user == current_user
+        # User removed themselves
+        redirect_to new_family_path, notice: 'You have left the family'
+      else
+        # Owner removed another member
+        redirect_to family_path, notice: "#{member_user.email} has been removed from the family"
+      end
     else
-      member_email = @membership.user.email
-      @membership.destroy!
-      redirect_to family_path(@family), notice: "#{member_email} has been removed from the family"
+      redirect_to family_path, alert: service.error_message || 'Failed to remove member'
     end
   end
 
@@ -30,7 +36,7 @@ class Family::MembershipsController < ApplicationController
   def set_family
     @family = current_user.family
 
-    redirect_to families_path, alert: 'Family not found' and return unless @family
+    redirect_to new_family_path, alert: 'You are not in a family' and return unless @family
   end
 
   def set_membership

@@ -19,20 +19,20 @@ RSpec.describe 'Family::Memberships', type: :request do
     context 'when removing a regular member' do
       it 'removes the member from the family' do
         expect do
-          delete "/families/#{family.id}/members/#{member_membership.id}"
+          delete "/family/members/#{member_membership.id}"
         end.to change(FamilyMembership, :count).by(-1)
       end
 
       it 'redirects with success message' do
         member_email = member_user.email
-        delete "/families/#{family.id}/members/#{member_membership.id}"
-        expect(response).to redirect_to(family_path(family))
+        delete "/family/members/#{member_membership.id}"
+        expect(response).to redirect_to(family_path)
         follow_redirect!
         expect(response.body).to include("#{member_email} has been removed from the family")
       end
 
       it 'removes the user from the family' do
-        delete "/families/#{family.id}/members/#{member_membership.id}"
+        delete "/family/members/#{member_membership.id}"
         expect(member_user.reload.family).to be_nil
       end
     end
@@ -40,13 +40,13 @@ RSpec.describe 'Family::Memberships', type: :request do
     context 'when trying to remove the owner' do
       it 'does not remove the owner' do
         expect do
-          delete "/families/#{family.id}/members/#{owner_membership.id}"
+          delete "/family/members/#{owner_membership.id}"
         end.not_to change(FamilyMembership, :count)
       end
 
       it 'redirects with error message explaining owners must delete family' do
-        delete "/families/#{family.id}/members/#{owner_membership.id}"
-        expect(response).to redirect_to(family_path(family))
+        delete "/family/members/#{owner_membership.id}"
+        expect(response).to redirect_to(family_path)
         follow_redirect!
         expect(response.body).to include('Family owners cannot remove their own membership. To leave the family, delete it instead.')
       end
@@ -55,10 +55,10 @@ RSpec.describe 'Family::Memberships', type: :request do
         member_membership.destroy!
 
         expect do
-          delete "/families/#{family.id}/members/#{owner_membership.id}"
+          delete "/family/members/#{owner_membership.id}"
         end.not_to change(FamilyMembership, :count)
 
-        expect(response).to redirect_to(family_path(family))
+        expect(response).to redirect_to(family_path)
         follow_redirect!
         expect(response.body).to include('Family owners cannot remove their own membership')
       end
@@ -80,8 +80,8 @@ RSpec.describe 'Family::Memberships', type: :request do
       before { sign_in outsider }
 
       it 'redirects to families index' do
-        delete "/families/#{family.id}/members/#{member_membership.id}"
-        expect(response).to redirect_to(families_path)
+        delete "/family/members/#{member_membership.id}"
+        expect(response).to redirect_to(new_family_path)
       end
     end
 
@@ -89,7 +89,7 @@ RSpec.describe 'Family::Memberships', type: :request do
       before { sign_out user }
 
       it 'redirects to login' do
-        delete "/families/#{family.id}/members/#{member_membership.id}"
+        delete "/family/members/#{member_membership.id}"
         expect(response).to redirect_to(new_user_session_path)
       end
     end
@@ -100,7 +100,7 @@ RSpec.describe 'Family::Memberships', type: :request do
       before { sign_in member_user }
 
       it 'returns forbidden' do
-        delete "/families/#{family.id}/members/#{owner_membership.id}"
+        delete "/family/members/#{owner_membership.id}"
         expect(response).to have_http_status(:see_other)
         expect(flash[:alert]).to include('not authorized')
       end
@@ -115,7 +115,7 @@ RSpec.describe 'Family::Memberships', type: :request do
       expect(member_user.family).to eq(family)
 
       # Remove member
-      delete "/families/#{family.id}/members/#{member_membership.id}"
+      delete "/family/members/#{member_membership.id}"
 
       # Verify removal
       expect(response).to redirect_to(family_path(family))
@@ -148,7 +148,7 @@ RSpec.describe 'Family::Memberships', type: :request do
 
       # Try to remove owner - should be prevented
       expect do
-        delete "/families/#{family.id}/members/#{owner_membership.id}"
+        delete "/family/members/#{owner_membership.id}"
       end.not_to change(FamilyMembership, :count)
 
       expect(response).to redirect_to(family_path(family))
@@ -157,20 +157,14 @@ RSpec.describe 'Family::Memberships', type: :request do
     end
 
     it 'requires owners to use family deletion to leave the family' do
-      # This test documents that owners must delete the family to leave
-      # rather than removing their membership
-
-      # Remove other member first
       member_membership.destroy!
 
-      # Try to remove owner membership - should fail
-      delete "/families/#{family.id}/members/#{owner_membership.id}"
-      expect(response).to redirect_to(family_path(family))
+      delete "/family/members/#{owner_membership.id}"
+      expect(response).to redirect_to(family_path)
       expect(flash[:alert]).to include('Family owners cannot remove their own membership')
 
-      # Owner must delete the family instead
-      delete "/families/#{family.id}"
-      expect(response).to redirect_to(families_path)
+      delete "/family"
+      expect(response).to redirect_to(new_family_path)
       expect(user.reload.family).to be_nil
     end
   end

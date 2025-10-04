@@ -3,38 +3,36 @@
 class FamiliesController < ApplicationController
   before_action :authenticate_user!
   before_action :ensure_family_feature_enabled!
-  before_action :set_family, only: %i[show edit update destroy leave update_location_sharing]
-
-  def index
-    redirect_to family_path(current_user.family) if current_user.in_family?
-  end
+  before_action :set_family, only: %i[show edit update destroy update_location_sharing]
 
   def show
     authorize @family
 
-    # Use optimized family methods for better performance
     @members = @family.members.includes(:family_membership).order(:email)
     @pending_invitations = @family.active_invitations.order(:created_at)
 
-    # Use cached counts to avoid extra queries
     @member_count = @family.member_count
     @can_invite = @family.can_add_members?
   end
 
   def new
-    redirect_to family_path(current_user.family) if current_user.in_family?
+    redirect_to family_path and return if current_user.in_family?
 
     @family = Family.new
+    authorize @family
   end
 
   def create
+    @family = Family.new(family_params)
+    authorize @family
+
     service = Families::Create.new(
       user: current_user,
       name: family_params[:name]
     )
 
     if service.call
-      redirect_to family_path(service.family), notice: 'Family created successfully!'
+      redirect_to family_path, notice: 'Family created successfully!'
     else
       @family = Family.new(family_params)
 
@@ -63,7 +61,7 @@ class FamiliesController < ApplicationController
     authorize @family
 
     if @family.update(family_params)
-      redirect_to family_path(@family), notice: 'Family updated successfully!'
+      redirect_to family_path, notice: 'Family updated successfully!'
     else
       render :edit, status: :unprocessable_content
     end
@@ -73,31 +71,14 @@ class FamiliesController < ApplicationController
     authorize @family
 
     if @family.members.count > 1
-      redirect_to family_path(@family), alert: 'Cannot delete family with members. Remove all members first.'
+      redirect_to family_path, alert: 'Cannot delete family with members. Remove all members first.'
     else
       @family.destroy
-      redirect_to families_path, notice: 'Family deleted successfully!'
+      redirect_to new_family_path, notice: 'Family deleted successfully!'
     end
-  end
-
-  def leave
-    authorize @family, :leave?
-
-    service = Families::Leave.new(user: current_user)
-
-    if service.call
-      redirect_to families_path, notice: 'You have left the family'
-    else
-      redirect_to family_path(@family), alert: service.error_message || 'Cannot leave family.'
-    end
-  rescue Pundit::NotAuthorizedError
-    # Handle case where owner with members tries to leave
-    redirect_to family_path(@family),
-                alert: 'You cannot leave the family while you are the owner and there are other members. Remove all members first or transfer ownership.'
   end
 
   def update_location_sharing
-    # No authorization needed - users can control their own location sharing
     enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
     duration = params[:duration]
 
@@ -109,7 +90,6 @@ class FamiliesController < ApplicationController
         message: build_sharing_message(enabled, duration)
       }
 
-      # Add expiration info if sharing is time-limited
       if enabled && current_user.family_sharing_expires_at.present?
         response_data[:expires_at] = current_user.family_sharing_expires_at.iso8601
         response_data[:expires_at_formatted] = current_user.family_sharing_expires_at.strftime('%b %d at %I:%M %p')
@@ -158,7 +138,7 @@ class FamiliesController < ApplicationController
 
   def set_family
     @family = current_user.family
-    redirect_to families_path unless @family
+    redirect_to new_family_path, alert: 'You are not in a family' unless @family
   end
 
   def family_params

@@ -2,17 +2,15 @@
 
 class Users::RegistrationsController < Devise::RegistrationsController
   before_action :check_registration_allowed, only: [:new, :create]
-  before_action :load_invitation_context, only: [:new, :create]
+  before_action :set_invitation, only: [:new, :create]
 
   def new
     build_resource({})
 
-    # Pre-fill email if invitation exists
-    if @invitation
-      resource.email = @invitation.email
-    end
+    resource.email = @invitation.email if @invitation
 
     yield resource if block_given?
+
     respond_with resource
   end
 
@@ -45,20 +43,16 @@ class Users::RegistrationsController < Devise::RegistrationsController
   private
 
   def check_registration_allowed
-    return true unless self_hosted_mode?
+    return true if DawarichSettings.self_hosted?
     return true if valid_invitation_token?
 
     redirect_to root_path, alert: 'Registration is not available. Please contact your administrator for access.'
   end
 
-  def load_invitation_context
+  def set_invitation
     return unless invitation_token.present?
 
     @invitation = FamilyInvitation.find_by(token: invitation_token)
-  end
-
-  def self_hosted_mode?
-    ENV['SELF_HOSTED'] == 'true'
   end
 
   def valid_invitation_token?
@@ -77,7 +71,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def accept_invitation_for_user(user)
     return unless @invitation&.can_be_accepted?
 
-    # Use the existing invitation acceptance service
     service = Families::AcceptInvitation.new(
       invitation: @invitation,
       user: user

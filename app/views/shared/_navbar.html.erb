@@ -13,7 +13,7 @@
             <% if current_user.in_family? %>
               <div data-controller="family-navbar-indicator"
                    data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
-                <%= link_to family_path(current_user.family), class: "#{active_class?(families_path)} flex items-center space-x-2" do %>
+                <%= link_to family_path, class: "#{active_class?(family_path)} flex items-center space-x-2" do %>
                   <span>Family</span>
                   <div data-family-navbar-indicator-target="indicator"
                        class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
@@ -21,7 +21,7 @@
                 <% end %>
               </div>
             <% else %>
-              <%= link_to 'Family', families_path, class: "#{active_class?(families_path)}" %>
+              <%= link_to 'Family', new_family_path, class: "#{active_class?(new_family_path)}" %>
             <% end %>
           </li>
         <% end %>
@@ -78,7 +78,7 @@
           <% if current_user.in_family? %>
             <div data-controller="family-navbar-indicator"
                  data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
-              <%= link_to family_path(current_user.family), class: "mx-1 #{active_class?(families_path)} flex items-center space-x-2" do %>
+              <%= link_to family_path, class: "mx-1 #{active_class?(family_path)} flex items-center space-x-2" do %>
                 <span>Family</span>
                 <div data-family-navbar-indicator-target="indicator"
                      class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
@@ -86,7 +86,7 @@
               <% end %>
             </div>
           <% else %>
-            <%= link_to 'Family', families_path, class: "mx-1 #{active_class?(families_path)}" %>
+            <%= link_to 'Family', new_family_path, class: "mx-1 #{active_class?(new_family_path)}" %>
           <% end %>
         </li>
       <% end %>

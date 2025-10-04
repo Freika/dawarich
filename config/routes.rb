@@ -58,23 +58,21 @@ Rails.application.routes.draw do
   resources :trips
 
   # Family management routes (only if feature is enabled)
-  # if DawarichSettings.family_feature_enabled?
-  resources :families do
-    member do
-      delete :leave
-      patch :update_location_sharing
-    end
-    resources :invitations, except: %i[edit update], controller: 'family/invitations' do
-      member do
-        post :accept
+  if DawarichSettings.family_feature_enabled?
+    resource :family, only: %i[show new create edit update destroy] do
+      patch :update_location_sharing, on: :member
+
+      resources :invitations, except: %i[edit update], controller: 'family/invitations' do
+        member do
+          post :accept
+        end
       end
+      resources :members, only: %i[destroy], controller: 'family/memberships'
     end
-    resources :members, only: %i[destroy], controller: 'family/memberships'
+
+    get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
   end
 
-  # Public family invitation acceptance (no auth required)
-  get 'invitations/:id', to: 'family/invitations#show', as: :public_invitation
-  # end
   resources :points, only: %i[index] do
     collection do
       delete :bulk_destroy

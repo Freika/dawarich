@@ -5,7 +5,7 @@
         <h1 class="text-2xl font-bold text-base-content">
           <%= t('family_invitations.index.title', default: 'Family Invitations') %>
         </h1>
-        <%= link_to family_path(@family),
+        <%= link_to family_path,
               class: "btn btn-neutral" do %>
           <%= t('family_invitations.index.back_to_family', default: 'Back to Family') %>
         <% end %>
@@ -34,7 +34,7 @@
                 <% end %>
 
                 <% if policy(@family).manage_invitations? %>
-                  <%= link_to family_invitation_path(@family, invitation),
+                  <%= link_to family_invitation_path(invitation.token),
                         method: :delete,
                         confirm: t('family_invitations.index.cancel_confirm', default: 'Are you sure you want to cancel this invitation?'),
                         class: "btn btn-ghost btn-sm text-error" do %>

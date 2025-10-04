@@ -34,9 +34,9 @@ RSpec.describe 'Families', type: :request do
     end
   end
 
-  describe 'GET /families/:id' do
+  describe 'GET /family' do
     it 'shows the family page' do
-      get "/families/#{family.id}"
+      get "/family"
       expect(response).to have_http_status(:ok)
     end
 
@@ -46,8 +46,8 @@ RSpec.describe 'Families', type: :request do
       before { sign_in outsider }
 
       it 'redirects to families index' do
-        get "/families/#{family.id}"
-        expect(response).to redirect_to(families_path)
+        get "/family"
+        expect(response).to redirect_to(family_path)
       end
     end
   end
@@ -119,7 +119,7 @@ RSpec.describe 'Families', type: :request do
 
   describe 'GET /families/:id/edit' do
     it 'shows the edit form' do
-      get "/families/#{family.id}/edit"
+      get "/family/edit"
       expect(response).to have_http_status(:ok)
     end
 
@@ -127,7 +127,7 @@ RSpec.describe 'Families', type: :request do
       before { membership.update!(role: :member) }
 
       it 'redirects due to authorization failure' do
-        get "/families/#{family.id}/edit"
+        get "/family/edit"
         expect(response).to have_http_status(:see_other)
         expect(flash[:alert]).to include('not authorized')
       end
@@ -139,7 +139,7 @@ RSpec.describe 'Families', type: :request do
 
     context 'with valid attributes' do
       it 'updates the family' do
-        patch "/families/#{family.id}", params: new_attributes
+        patch "/family", params: new_attributes
         family.reload
         expect(family.name).to eq('Updated Family Name')
         expect(response).to redirect_to(family_path(family))
@@ -151,7 +151,7 @@ RSpec.describe 'Families', type: :request do
 
       it 'does not update the family' do
         original_name = family.name
-        patch "/families/#{family.id}", params: invalid_attributes
+        patch "/family", params: invalid_attributes
         family.reload
         expect(family.name).to eq(original_name)
         expect(response).to have_http_status(:unprocessable_content)
@@ -162,7 +162,7 @@ RSpec.describe 'Families', type: :request do
       before { membership.update!(role: :member) }
 
       it 'redirects due to authorization failure' do
-        patch "/families/#{family.id}", params: new_attributes
+        patch "/family", params: new_attributes
         expect(response).to have_http_status(:see_other)
         expect(flash[:alert]).to include('not authorized')
       end
@@ -173,9 +173,9 @@ RSpec.describe 'Families', type: :request do
     context 'when family has only one member' do
       it 'deletes the family' do
         expect do
-          delete "/families/#{family.id}"
+          delete "/family"
         end.to change(Family, :count).by(-1)
-        expect(response).to redirect_to(families_path)
+        expect(response).to redirect_to(family_path)
       end
     end
 
@@ -186,7 +186,7 @@ RSpec.describe 'Families', type: :request do
 
       it 'does not delete the family' do
         expect do
-          delete "/families/#{family.id}"
+          delete "/family"
         end.not_to change(Family, :count)
         expect(response).to redirect_to(family_path(family))
         follow_redirect!
@@ -198,49 +198,13 @@ RSpec.describe 'Families', type: :request do
       before { membership.update!(role: :member) }
 
       it 'redirects due to authorization failure' do
-        delete "/families/#{family.id}"
+        delete "/family"
         expect(response).to have_http_status(:see_other)
         expect(flash[:alert]).to include('not authorized')
       end
     end
   end
 
-  describe 'DELETE /families/:id/leave' do
-    context 'when user is not the owner' do
-      before { membership.update!(role: :member) }
-
-      it 'allows user to leave the family' do
-        expect do
-          delete "/families/#{family.id}/leave"
-        end.to change { user.reload.family }.from(family).to(nil)
-        expect(response).to redirect_to(families_path)
-      end
-    end
-
-    context 'when user is the owner with other members' do
-      before do
-        create(:family_membership, user: other_user, family: family, role: :member)
-      end
-
-      it 'prevents leaving and shows error message' do
-        expect do
-          delete "/families/#{family.id}/leave"
-        end.not_to(change { user.reload.family })
-        expect(response).to redirect_to(family_path(family))
-        follow_redirect!
-        expect(response.body).to include('cannot leave')
-      end
-    end
-
-    context 'when user is the only owner' do
-      it 'allows leaving and deletes the family' do
-        expect do
-          delete "/families/#{family.id}/leave"
-        end.to change(Family, :count).by(-1)
-        expect(response).to redirect_to(families_path)
-      end
-    end
-  end
 
   describe 'authorization for outsiders' do
     let(:outsider) { create(:user) }
@@ -248,29 +212,25 @@ RSpec.describe 'Families', type: :request do
     before { sign_in outsider }
 
     it 'denies access to show when user is not in family' do
-      get "/families/#{family.id}"
-      expect(response).to redirect_to(families_path)
+      get "/family"
+      expect(response).to redirect_to(family_path)
     end
 
     it 'redirects to families index when user is not in family for edit' do
-      get "/families/#{family.id}/edit"
-      expect(response).to redirect_to(families_path)
+      get "/family/edit"
+      expect(response).to redirect_to(family_path)
     end
 
     it 'redirects to families index when user is not in family for update' do
-      patch "/families/#{family.id}", params: { family: { name: 'Hacked' } }
-      expect(response).to redirect_to(families_path)
+      patch "/family", params: { family: { name: 'Hacked' } }
+      expect(response).to redirect_to(family_path)
     end
 
     it 'redirects to families index when user is not in family for destroy' do
-      delete "/families/#{family.id}"
-      expect(response).to redirect_to(families_path)
+      delete "/family"
+      expect(response).to redirect_to(family_path)
     end
 
-    it 'redirects to families index when user is not in family for leave' do
-      delete "/families/#{family.id}/leave"
-      expect(response).to redirect_to(families_path)
-    end
   end
 
   describe 'authentication required' do
@@ -282,7 +242,7 @@ RSpec.describe 'Families', type: :request do
     end
 
     it 'redirects to login for show' do
-      get "/families/#{family.id}"
+      get "/family"
       expect(response).to redirect_to(new_user_session_path)
     end
 
@@ -297,22 +257,17 @@ RSpec.describe 'Families', type: :request do
     end
 
     it 'redirects to login for edit' do
-      get "/families/#{family.id}/edit"
+      get "/family/edit"
       expect(response).to redirect_to(new_user_session_path)
     end
 
     it 'redirects to login for update' do
-      patch "/families/#{family.id}", params: { family: { name: 'Test' } }
+      patch "/family", params: { family: { name: 'Test' } }
       expect(response).to redirect_to(new_user_session_path)
     end
 
     it 'redirects to login for destroy' do
-      delete "/families/#{family.id}"
-      expect(response).to redirect_to(new_user_session_path)
-    end
-
-    it 'redirects to login for leave' do
-      delete "/families/#{family.id}/leave"
+      delete "/family"
       expect(response).to redirect_to(new_user_session_path)
     end
   end

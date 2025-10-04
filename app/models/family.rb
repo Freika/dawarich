@@ -20,7 +20,6 @@ class Family < ApplicationRecord
   end
 
   def member_count
-    # Cache the count to avoid repeated queries
     @member_count ||= members.count
   end
 

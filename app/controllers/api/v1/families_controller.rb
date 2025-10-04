@@ -17,14 +17,14 @@ class Api::V1::FamiliesController < ApiController
   private
 
   def ensure_family_feature_enabled!
-    unless DawarichSettings.family_feature_enabled?
-      render json: { error: 'Family feature is not enabled' }, status: :forbidden
-    end
+    return if DawarichSettings.family_feature_enabled?
+
+    render json: { error: 'Family feature is not enabled' }, status: :forbidden
   end
 
   def ensure_user_in_family!
-    unless current_api_user.in_family?
-      render json: { error: 'User is not part of a family' }, status: :forbidden
-    end
+    return if current_api_user.in_family?
+
+    render json: { error: 'User is not part of a family' }, status: :forbidden
   end
 end

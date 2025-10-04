@@ -5,7 +5,7 @@
         <h1 class="text-2xl font-bold text-base-content">
           <%= t('families.edit.title', default: 'Edit Family') %>
         </h1>
-        <%= link_to family_path(@family),
+        <%= link_to family_path,
               class: "btn btn-ghost" do %>
           <%= t('families.edit.back', default: '← Back to Family') %>
         <% end %>
@@ -77,14 +77,14 @@
           <div class="flex space-x-3">
             <%= form.submit t('families.edit.save_changes', default: 'Save Changes'),
                   class: "btn btn-primary" %>
-            <%= link_to family_path(@family),
+            <%= link_to family_path,
                   class: "btn btn-neutral" do %>
               <%= t('families.edit.cancel', default: 'Cancel') %>
             <% end %>
           </div>
 
           <% if policy(@family).destroy? %>
-            <%= link_to family_path(@family),
+            <%= link_to family_path,
                   method: :delete,
                   data: { confirm: 'Are you sure you want to delete this family? This action cannot be undone.', turbo_confirm: 'Are you sure you want to delete this family? This action cannot be undone.' },
                   class: "btn btn-outline btn-error" do %>

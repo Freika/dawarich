@@ -13,7 +13,6 @@ class MapController < ApplicationController
     @years = years_range
     @points_number = points_count
     @features = DawarichSettings.features
-    @family_member_locations = family_member_locations
   end
 
   private
@@ -93,9 +92,5 @@ class MapController < ApplicationController
 
   def points_from_user
     current_user.points.without_raw_data.order(timestamp: :asc)
-  end
-
-  def family_member_locations
-    Families::Locations.new(current_user).call
   end
 end
