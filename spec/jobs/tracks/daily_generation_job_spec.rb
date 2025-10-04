@@ -26,6 +26,9 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       active_user.update!(points_count: active_user.points.count)
       trial_user.update!(points_count: trial_user.points.count)
 
+      allow(User).to receive(:active_or_trial)
+        .and_return(User.where(id: [active_user.id, trial_user.id]))
+
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
     end
 

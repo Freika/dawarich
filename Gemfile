@@ -17,6 +17,7 @@ gem 'devise'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
 gem 'gpx'
 gem 'groupdate'
+gem 'h3', '~> 3.7'
 gem 'httparty'
 gem 'importmap-rails'
 gem 'jwt', '~> 2.8'
@@ -38,7 +39,7 @@ gem 'rgeo-geojson'
 gem 'rqrcode', '~> 3.0'
 gem 'rswag-api'
 gem 'rswag-ui'
-gem 'rubyzip', '~> 2.4'
+gem 'rubyzip', '~> 3.1'
 gem 'sentry-rails'
 gem 'sentry-ruby'
 gem 'sidekiq'
@@ -52,7 +53,7 @@ gem 'tailwindcss-rails'
 gem 'turbo-rails'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 
-group :development, :test do
+group :development, :test, :staging do
   gem 'brakeman', require: false
   gem 'bundler-audit', require: false
   gem 'debug', platforms: %i[mri mingw x64_mingw]

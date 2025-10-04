@@ -1,4 +1,4 @@
-FROM ruby:3.4.1-slim
+FROM ruby:3.4.6-slim
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
@@ -22,10 +22,12 @@ RUN apt-get update -qq \
     libgeos-dev libgeos++-dev \
     imagemagick \
     tzdata \
-    nodejs \
-    yarn \
     less \
     libjemalloc2 libjemalloc-dev \
+    cmake \
+    && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g yarn \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
@@ -40,7 +42,7 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
 ENV RUBY_YJIT_ENABLE=1
 
 # Update gem system and install bundler
-RUN gem update --system 3.6.2 \
+RUN gem update --system 3.6.9 \
     && gem install bundler --version "$BUNDLE_VERSION" \
     && rm -rf $GEM_HOME/cache/*
 
@@ -52,7 +54,7 @@ COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle config set --local without 'development test' \
     && bundle install --jobs 4 --retry 3 \
-    && rm -rf vendor/bundle/ruby/3.4.1/cache/*.gem
+    && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
 
 COPY ../. ./
 

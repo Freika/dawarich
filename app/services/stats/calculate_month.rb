@@ -37,9 +37,11 @@ class Stats::CalculateMonth
       stat.assign_attributes(
         daily_distance: distance_by_day,
         distance: distance(distance_by_day),
-        toponyms: toponyms
+        toponyms: toponyms,
+        h3_hex_ids: calculate_h3_hex_ids
       )
-      stat.save
+
+      stat.save!
     end
   end
 
@@ -81,5 +83,9 @@ class Stats::CalculateMonth
 
   def destroy_month_stats(year, month)
     Stat.where(year:, month:, user:).destroy_all
+  end
+
+  def calculate_h3_hex_ids
+    Stats::HexagonCalculator.new(user.id, year, month).call
   end
 end
