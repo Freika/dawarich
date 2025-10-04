@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Import < ApplicationRecord
-  belongs_to :user
+  belongs_to :user, counter_cache: true
   has_many :points, dependent: :destroy
 
   has_one_attached :file

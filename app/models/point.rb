@@ -32,7 +32,7 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
-  after_create :set_country
+  before_create :set_country, unless: -> { country_id.present? }
   after_create_commit :broadcast_coordinates
   # after_commit :recalculate_track, on: :update, if: -> { track.present? }
 
@@ -95,7 +95,6 @@ class Point < ApplicationRecord
 
   def set_country
     self.country_id = found_in_country&.id
-    save! if changed?
   end
 
   def recalculate_track
