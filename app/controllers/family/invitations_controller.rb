@@ -3,10 +3,9 @@
 class Family::InvitationsController < ApplicationController
   before_action :authenticate_user!, except: %i[show accept]
   before_action :ensure_family_feature_enabled!, except: %i[show accept]
-  before_action :set_invitation_by_token, only: %i[show]
-  before_action :set_invitation_by_id, only: %i[accept]
   before_action :set_family, except: %i[show accept]
   before_action :set_invitation_by_id_and_family, only: %i[destroy]
+  before_action :set_invitation_by_id, only: %i[accept]
 
   def index
     authorize @family, :show?
@@ -15,7 +14,8 @@ class Family::InvitationsController < ApplicationController
   end
 
   def show
-    # Public endpoint for invitation acceptance
+    @invitation = FamilyInvitation.find_by!(token: params[:token])
+
     if @invitation.expired?
       redirect_to root_path, alert: 'This invitation has expired.' and return
     end
@@ -23,9 +23,6 @@ class Family::InvitationsController < ApplicationController
     unless @invitation.pending?
       redirect_to root_path, alert: 'This invitation is no longer valid.' and return
     end
-
-    # Show the invitation landing page regardless of authentication status
-    # The view will handle showing appropriate actions based on whether user is logged in
   end
 
   def create
@@ -45,9 +42,6 @@ class Family::InvitationsController < ApplicationController
   end
 
   def accept
-    authenticate_user!
-
-    # Additional validations before attempting to accept
     unless @invitation.pending?
       redirect_to root_path, alert: 'This invitation has already been processed' and return
     end
@@ -98,14 +92,7 @@ class Family::InvitationsController < ApplicationController
     redirect_to new_family_path, alert: 'You are not in a family' and return unless @family
   end
 
-  def set_invitation_by_token
-    # For public unauthenticated route: /invitations/:token
-    @invitation = FamilyInvitation.find_by!(token: params[:token])
-  end
-
   def set_invitation_by_id
-    # For authenticated nested routes without family validation: /families/:family_id/invitations/:id/accept
-    # The :id param contains the token value
     @invitation = FamilyInvitation.find_by!(token: params[:id])
   end
 

@@ -25,19 +25,15 @@ class Users::RegistrationsController < Devise::RegistrationsController
   protected
 
   def after_sign_up_path_for(resource)
-    if @invitation&.family
-      family_path
-    else
-      super(resource)
-    end
+    return family_path if @invitation&.family
+
+    super(resource)
   end
 
   def after_inactive_sign_up_path_for(resource)
-    if @invitation&.family
-      family_path
-    else
-      super(resource)
-    end
+    return family_path if @invitation&.family
+
+    super(resource)
   end
 
   private
