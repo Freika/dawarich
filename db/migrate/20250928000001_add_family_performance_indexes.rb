@@ -19,18 +19,19 @@ class AddFamilyPerformanceIndexes < ActiveRecord::Migration[8.0]
                 algorithm: :concurrently
     end
 
-    # Index for user email lookups in invitations (skip if exists)
-    unless index_exists?(:family_invitations, :email)
-      add_index :family_invitations, :email,
-                name: 'index_family_invitations_on_email',
-                algorithm: :concurrently
-    end
-
     # Composite index for active invitations
     unless index_exists?(:family_invitations, %i[status expires_at],
                          name: 'index_family_invitations_on_status_and_expires_at')
       add_index :family_invitations, %i[status expires_at],
                 name: 'index_family_invitations_on_status_and_expires_at',
+                algorithm: :concurrently
+    end
+
+    # Cleanup job support for status and updated_at
+    unless index_exists?(:family_invitations, %i[status updated_at],
+                         name: 'index_family_invitations_on_status_and_updated_at')
+      add_index :family_invitations, %i[status updated_at],
+                name: 'index_family_invitations_on_status_and_updated_at',
                 algorithm: :concurrently
     end
   end

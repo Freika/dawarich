@@ -14,10 +14,13 @@ class CreateFamilyInvitations < ActiveRecord::Migration[8.0]
 
     add_foreign_key :family_invitations, :families, validate: false
     add_foreign_key :family_invitations, :users, column: :invited_by_id, validate: false
-    add_index :family_invitations, :family_id
-    add_index :family_invitations, :email
     add_index :family_invitations, :token, unique: true
-    add_index :family_invitations, :status
-    add_index :family_invitations, :expires_at
+    add_index :family_invitations, %i[family_id email], name: 'index_family_invitations_on_family_id_and_email'
+    add_index :family_invitations, %i[family_id status expires_at],
+              name: 'index_family_invitations_on_family_status_expires'
+    add_index :family_invitations, %i[status expires_at],
+              name: 'index_family_invitations_on_status_and_expires_at'
+    add_index :family_invitations, %i[status updated_at],
+              name: 'index_family_invitations_on_status_and_updated_at'
   end
 end

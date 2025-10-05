@@ -11,8 +11,7 @@ class CreateFamilyMemberships < ActiveRecord::Migration[8.0]
 
     add_foreign_key :family_memberships, :families, validate: false
     add_foreign_key :family_memberships, :users, validate: false
-    add_index :family_memberships, :family_id
     add_index :family_memberships, :user_id, unique: true # One family per user
-    add_index :family_memberships, %i[family_id role]
+    add_index :family_memberships, %i[family_id role], name: 'index_family_memberships_on_family_and_role'
   end
 end
