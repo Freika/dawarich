@@ -3,7 +3,7 @@
 require 'time'
 
 class Users::ImportData::Points
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 5000
 
   def initialize(user, points_data = nil, batch_size: BATCH_SIZE, logger: Rails.logger)
     @user = user
@@ -68,11 +68,7 @@ class Users::ImportData::Points
   attr_reader :user, :points_data, :batch_size, :logger, :imports_lookup, :countries_lookup, :visits_lookup
 
   def enumerate(collection, &block)
-    if collection.is_a?(Array)
-      collection.each(&block)
-    else
-      collection.each(&block)
-    end
+    collection.each(&block)
   end
 
   def collection_description(collection)

@@ -23,7 +23,7 @@ require 'oj'
 # Files are restored to their original locations and properly attached to records.
 
 class Users::ImportData
-  STREAM_BATCH_SIZE = 1000
+  STREAM_BATCH_SIZE = 5000
   STREAMED_SECTIONS = %w[places visits points].freeze
 
   def initialize(user, archive_path)
@@ -117,6 +117,7 @@ class Users::ImportData
     end
 
     initialize_stream_state
+
     handler = ::JsonStreamHandler.new(self)
     parser = Oj::Parser.new(:saj, handler: handler)
 
@@ -203,6 +204,7 @@ class Users::ImportData
     return unless place_data.is_a?(Hash)
 
     @places_batch << place_data
+
     if @places_batch.size >= STREAM_BATCH_SIZE
       import_places_batch(@places_batch)
       @places_batch.clear

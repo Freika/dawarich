@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Places
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 5000
 
   def initialize(user, places_data = nil, batch_size: BATCH_SIZE, logger: Rails.logger)
     @user = user
@@ -42,11 +42,7 @@ class Users::ImportData::Places
   attr_reader :user, :places_data, :batch_size, :logger
 
   def enumerate(collection, &block)
-    if collection.is_a?(Array)
-      collection.each(&block)
-    else
-      collection.each(&block)
-    end
+    collection.each(&block)
   end
 
   def collection_description(collection)
