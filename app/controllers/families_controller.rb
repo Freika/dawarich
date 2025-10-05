@@ -77,56 +77,16 @@ class FamiliesController < ApplicationController
   end
 
   def update_location_sharing
-    enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
-    duration = params[:duration]
+    result = Families::UpdateLocationSharing.new(
+      user: current_user,
+      enabled: params[:enabled],
+      duration: params[:duration]
+    ).call
 
-    if current_user.update_family_location_sharing!(enabled, duration: duration)
-      response_data = {
-        success: true,
-        enabled: enabled,
-        duration: current_user.family_sharing_duration,
-        message: build_sharing_message(enabled, duration)
-      }
-
-      if enabled && current_user.family_sharing_expires_at.present?
-        response_data[:expires_at] = current_user.family_sharing_expires_at.iso8601
-        response_data[:expires_at_formatted] = current_user.family_sharing_expires_at.strftime('%b %d at %I:%M %p')
-      end
-
-      render json: response_data
-    else
-      render json: {
-        success: false,
-        message: 'Failed to update location sharing setting'
-      }, status: :unprocessable_content
-    end
-  rescue => e
-    render json: {
-      success: false,
-      message: 'An error occurred while updating location sharing'
-    }, status: :internal_server_error
+    render json: result.payload, status: result.status
   end
 
   private
-
-  def build_sharing_message(enabled, duration)
-    return 'Location sharing disabled' unless enabled
-
-    case duration
-    when '1h'
-      'Location sharing enabled for 1 hour'
-    when '6h'
-      'Location sharing enabled for 6 hours'
-    when '12h'
-      'Location sharing enabled for 12 hours'
-    when '24h'
-      'Location sharing enabled for 24 hours'
-    when 'permanent', nil
-      'Location sharing enabled'
-    else
-      duration.to_i > 0 ? "Location sharing enabled for #{duration.to_i} hours" : 'Location sharing enabled'
-    end
-  end
 
   def set_family
     @family = current_user.family
