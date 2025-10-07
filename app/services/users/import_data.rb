@@ -168,7 +168,7 @@ class Users::ImportData
     when 'trips'
       import_trips(value)
     when 'stats'
-      import_stats(value)
+      import_stats_section(value)
     when 'notifications'
       import_notifications(value)
     else
@@ -324,7 +324,7 @@ class Users::ImportData
     @import_stats[:trips_created] += trips_created
   end
 
-  def import_stats(stats_data)
+  def import_stats_section(stats_data)
     Rails.logger.debug "Importing #{stats_data&.size || 0} stats"
     stats_created = Users::ImportData::Stats.new(user, stats_data).call.to_i
     @import_stats[:stats_created] += stats_created
