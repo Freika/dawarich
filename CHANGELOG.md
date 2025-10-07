@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - `GET /api/v1/stats` endpoint now returns correct 0 instead of null if no points were tracked in the requested period.
 - User import data now being streamed instead of loaded into memory all at once. This should prevent large imports from exhausting memory or hitting IO limits while reading export archives.
+- Popup for manual visit creation now looks better in both light and dark modes. #1835
 
 # [0.33.0] - 2025-09-29
 
