@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fixed a bug with stats sharing settings being not filled. #1826
 - Fixed a bug where user could not be deleted due to counter cache on points. #1818
 - Introduce apt-get upgrade before installing new packages in the docker image to prevent vulnerabilities. #1793
+- Fixed time shift when creating visits manually. #1679
 
 # [0.33.0] - 2025-09-29
 

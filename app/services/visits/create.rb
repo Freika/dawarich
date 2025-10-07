@@ -71,16 +71,16 @@ module Visits
     end
 
     def create_visit(place)
-      started_at = DateTime.parse(params[:started_at])
-      ended_at = DateTime.parse(params[:ended_at])
-      duration_minutes = (ended_at - started_at) * 24 * 60
+      started_at = Time.zone.parse(params[:started_at])
+      ended_at = Time.zone.parse(params[:ended_at])
+      duration_minutes = ((ended_at - started_at) / 60).to_i
 
       @visit = user.visits.create!(
         name: params[:name],
         place: place,
         started_at: started_at,
         ended_at: ended_at,
-        duration: duration_minutes.to_i,
+        duration: duration_minutes,
         status: :confirmed
       )
 
