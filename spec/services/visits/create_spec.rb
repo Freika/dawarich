@@ -166,6 +166,31 @@ RSpec.describe Visits::Create do
           expect(service.visit.duration).to eq(36 * 60) # 36 hours in minutes
         end
       end
+
+      context 'when datetime-local input is provided without timezone' do
+        let(:params) do
+          valid_params.merge(
+            started_at: '2023-12-01T19:54',
+            ended_at: '2023-12-01T20:54'
+          )
+        end
+        subject(:service) { described_class.new(user, params) }
+
+        it 'parses the datetime in the application timezone' do
+          service.call
+          visit = service.visit
+
+          expect(visit.started_at.hour).to eq(19)
+          expect(visit.started_at.min).to eq(54)
+          expect(visit.ended_at.hour).to eq(20)
+          expect(visit.ended_at.min).to eq(54)
+        end
+
+        it 'calculates correct duration' do
+          service.call
+          expect(service.visit.duration).to eq(60) # 1 hour in minutes
+        end
+      end
     end
   end
 end
