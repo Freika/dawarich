@@ -17,7 +17,7 @@ RSpec.describe Families::Memberships::Destroy do
       it 'removes the membership' do
         result = service.call
         expect(result).to be_truthy, "Expected service to succeed but got error: #{service.error_message}"
-        expect(FamilyMembership.count).to eq(1) # Only owner should remain
+        expect(Family::Membership.count).to eq(1) # Only owner should remain
         expect(member.reload.family_membership).to be_nil
       end
 
@@ -47,7 +47,7 @@ RSpec.describe Families::Memberships::Destroy do
       let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
 
       it 'prevents owner from leaving' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
         expect(user.reload.family_membership).to be_present
       end
 
@@ -75,7 +75,7 @@ RSpec.describe Families::Memberships::Destroy do
       end
 
       it 'does not remove membership' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
         expect(user.reload.family_membership).to be_present
       end
     end

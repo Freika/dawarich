@@ -16,7 +16,7 @@ RSpec.describe Families::Create do
 
       it 'creates owner membership' do
         service.call
-        membership = user.family_membership
+        membership = user.reload.family_membership
         expect(membership.role).to eq('owner')
         expect(membership.family).to eq(service.family)
       end
@@ -38,7 +38,7 @@ RSpec.describe Families::Create do
       end
 
       it 'does not create a membership' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
       end
 
       it 'sets appropriate error message' do
@@ -65,7 +65,7 @@ RSpec.describe Families::Create do
       end
 
       it 'does not create a membership' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
       end
 
       it 'sets appropriate error message' do

@@ -62,15 +62,12 @@ Rails.application.routes.draw do
     resource :family, only: %i[show new create edit update destroy] do
       patch :update_location_sharing, on: :member
 
-      resources :invitations, except: %i[edit update], controller: 'family/invitations' do
-        member do
-          post :accept
-        end
-      end
+      resources :invitations, except: %i[edit update], controller: 'family/invitations'
       resources :members, only: %i[destroy], controller: 'family/memberships'
     end
 
     get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
+    post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
   end
 
   resources :points, only: %i[index] do

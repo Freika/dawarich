@@ -69,7 +69,7 @@ RSpec.describe 'Family', type: :request do
       it 'creates a family membership for the user' do
         expect do
           post '/family', params: valid_attributes
-        end.to change(FamilyMembership, :count).by(1)
+        end.to change(Family::Membership, :count).by(1)
       end
 
       it 'redirects to the new family with success message' do

@@ -107,8 +107,8 @@ RSpec.describe Family, type: :model do
     it 'destroys associated invitations when family is destroyed' do
       invitation = create(:family_invitation, family: family, invited_by: user)
 
-      expect { family.destroy }.to change(FamilyInvitation, :count).by(-1)
-      expect(FamilyInvitation.find_by(id: invitation.id)).to be_nil
+      expect { family.destroy }.to change(Family::Invitation, :count).by(-1)
+      expect(Family::Invitation.find_by(id: invitation.id)).to be_nil
     end
   end
 
@@ -118,8 +118,8 @@ RSpec.describe Family, type: :model do
     it 'destroys associated memberships when family is destroyed' do
       membership = create(:family_membership, family: family, user: user, role: :owner)
 
-      expect { family.destroy }.to change(FamilyMembership, :count).by(-1)
-      expect(FamilyMembership.find_by(id: membership.id)).to be_nil
+      expect { family.destroy }.to change(Family::Membership, :count).by(-1)
+      expect(Family::Membership.find_by(id: membership.id)).to be_nil
     end
   end
 end

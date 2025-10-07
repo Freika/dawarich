@@ -21,7 +21,7 @@
                 <% end %>
               </div>
             <% else %>
-              <%= link_to 'Family', new_family_path, class: "#{active_class?(new_family_path)}" %>
+              <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "#{active_class?(new_family_path)}" %>
             <% end %>
           </li>
         <% end %>
@@ -79,14 +79,14 @@
             <div data-controller="family-navbar-indicator"
                  data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
               <%= link_to family_path, class: "mx-1 #{active_class?(family_path)} flex items-center space-x-2" do %>
-                <span>Family</span>
+                <span>Family<sup>α</sup></span>
                 <div data-family-navbar-indicator-target="indicator"
                      class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
                      title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
               <% end %>
             </div>
           <% else %>
-            <%= link_to 'Family', new_family_path, class: "mx-1 #{active_class?(new_family_path)}" %>
+            <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "mx-1 #{active_class?(new_family_path)}" %>
           <% end %>
         </li>
       <% end %>

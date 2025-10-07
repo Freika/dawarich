@@ -52,7 +52,7 @@ RSpec.describe 'Family Workflows', type: :request do
 
       # User2 accepts invitation
       sign_in user2
-      post "/family/invitations/#{invitation.token}/accept"
+      post accept_family_invitation_path(token: invitation.token)
       expect(response).to redirect_to(family_path)
 
       expect(user2.reload.family).to eq(family)
@@ -71,7 +71,7 @@ RSpec.describe 'Family Workflows', type: :request do
 
       # Step 5: User3 accepts invitation
       sign_in user3
-      post "/family/invitations/#{invitation2.token}/accept"
+      post accept_family_invitation_path(token: invitation2.token)
 
       expect(user3.reload.family).to eq(family)
       expect(family.reload.members.count).to eq(3)
@@ -108,7 +108,7 @@ RSpec.describe 'Family Workflows', type: :request do
 
       # User2 tries to accept expired invitation
       sign_in user2
-      post "/family/invitations/#{invitation.token}/accept"
+      post accept_family_invitation_path(token: invitation.token)
       expect(response).to redirect_to(root_path)
 
       expect(user2.reload.family).to be_nil
@@ -127,12 +127,12 @@ RSpec.describe 'Family Workflows', type: :request do
     it 'prevents users from joining multiple families' do
       # User3 accepts invitation to Family 1
       sign_in user3
-      post "/family/invitations/#{invitation1.token}/accept"
+      post accept_family_invitation_path(token: invitation1.token)
       expect(response).to redirect_to(family_path)
       expect(user3.family).to eq(family1)
 
       # User3 tries to accept invitation to Family 2
-      post "/family/invitations/#{invitation2.token}/accept"
+      post accept_family_invitation_path(token: invitation2.token)
       expect(response).to redirect_to(root_path)
       expect(flash[:alert]).to include('You must leave your current family')
 
@@ -268,7 +268,7 @@ RSpec.describe 'Family Workflows', type: :request do
         post "/family/invitations", params: {
           family_invitation: { email: 'newuser@example.com' }
         }
-      end.to change(FamilyInvitation, :count).by(1)
+      end.to change(Family::Invitation, :count).by(1)
 
       invitation = family.family_invitations.find_by(email: 'newuser@example.com')
       expect(invitation.email).to eq('newuser@example.com')

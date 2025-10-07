@@ -12,7 +12,7 @@ RSpec.describe Families::Invite do
   describe '#call' do
     context 'when invitation is valid' do
       it 'creates an invitation' do
-        expect { service.call }.to change(FamilyInvitation, :count).by(1)
+        expect { service.call }.to change(Family::Invitation, :count).by(1)
 
         invitation = owner.sent_family_invitations.last
 
@@ -51,7 +51,7 @@ RSpec.describe Families::Invite do
       end
 
       it 'does not create invitation' do
-        expect { service.call }.not_to change(FamilyInvitation, :count)
+        expect { service.call }.not_to change(Family::Invitation, :count)
       end
     end
 
@@ -66,7 +66,7 @@ RSpec.describe Families::Invite do
       end
 
       it 'does not create invitation' do
-        expect { service.call }.not_to change(FamilyInvitation, :count)
+        expect { service.call }.not_to change(Family::Invitation, :count)
       end
     end
 
@@ -83,7 +83,7 @@ RSpec.describe Families::Invite do
       end
 
       it 'does not create invitation' do
-        expect { service.call }.not_to change(FamilyInvitation, :count)
+        expect { service.call }.not_to change(Family::Invitation, :count)
       end
     end
 
@@ -97,7 +97,7 @@ RSpec.describe Families::Invite do
       end
 
       it 'does not create another invitation' do
-        expect { service.call }.not_to change(FamilyInvitation, :count)
+        expect { service.call }.not_to change(Family::Invitation, :count)
       end
     end
 

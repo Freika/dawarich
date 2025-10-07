@@ -81,7 +81,7 @@ module Families
     end
 
     def create_owner_membership
-      FamilyMembership.create!(
+      Family::Membership.create!(
         family: family,
         user: user,
         role: :owner

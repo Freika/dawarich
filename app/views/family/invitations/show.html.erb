@@ -121,7 +121,7 @@
       <div class="space-y-4">
         <% if user_signed_in? %>
           <!-- User is logged in, show accept button -->
-          <%= link_to accept_family_invitation_path(@invitation.family, @invitation),
+          <%= link_to accept_family_invitation_path(token: @invitation.token),
                 method: :post,
                 class: "btn btn-success btn-lg w-full text-lg shadow-lg" do %>
             ✓ Accept Invitation & Join Family

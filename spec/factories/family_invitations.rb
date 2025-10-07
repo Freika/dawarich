@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 FactoryBot.define do
-  factory :family_invitation do
+  factory :family_invitation, class: 'Family::Invitation' do
     association :family
     association :invited_by, factory: :user
     sequence(:email) { |n| "invite#{n}@example.com" }

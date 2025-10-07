@@ -11,8 +11,8 @@ RSpec.describe Families::AcceptInvitation do
   describe '#call' do
     context 'when invitation can be accepted' do
       it 'creates membership for user' do
-        expect { service.call }.to change(FamilyMembership, :count).by(1)
-        membership = invitee.family_membership
+        expect { service.call }.to change(Family::Membership, :count).by(1)
+        membership = invitee.reload.family_membership
         expect(membership.family).to eq(family)
         expect(membership.role).to eq('member')
       end
@@ -47,7 +47,7 @@ RSpec.describe Families::AcceptInvitation do
       end
 
       it 'does not create membership' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
       end
 
       it 'sets appropriate error message' do
@@ -68,7 +68,7 @@ RSpec.describe Families::AcceptInvitation do
       end
 
       it 'does not create membership' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
       end
     end
 
@@ -80,7 +80,7 @@ RSpec.describe Families::AcceptInvitation do
       end
 
       it 'does not create membership' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
       end
     end
 
@@ -93,7 +93,7 @@ RSpec.describe Families::AcceptInvitation do
       end
 
       it 'does not create membership' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
       end
     end
 
@@ -108,7 +108,7 @@ RSpec.describe Families::AcceptInvitation do
       end
 
       it 'does not create membership' do
-        expect { service.call }.not_to change(FamilyMembership, :count)
+        expect { service.call }.not_to change(Family::Membership, :count)
       end
     end
   end

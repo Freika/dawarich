@@ -4,11 +4,10 @@ module UserFamily
   extend ActiveSupport::Concern
 
   included do
-    # Family associations
-    has_one :family_membership, dependent: :destroy
+    has_one :family_membership, dependent: :destroy, class_name: 'Family::Membership'
     has_one :family, through: :family_membership
     has_one :created_family, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
-    has_many :sent_family_invitations, class_name: 'FamilyInvitation', foreign_key: 'invited_by_id',
+    has_many :sent_family_invitations, class_name: 'Family::Invitation', foreign_key: 'invited_by_id',
              inverse_of: :invited_by, dependent: :destroy
 
     before_destroy :check_family_ownership
@@ -30,25 +29,14 @@ module UserFamily
   end
 
   def family_sharing_enabled?
-    # User must be in a family and have explicitly enabled location sharing
     return false unless in_family?
 
     sharing_settings = settings.dig('family', 'location_sharing')
-    return false if sharing_settings.blank?
+    return false unless sharing_settings.is_a?(Hash)
+    return false unless sharing_settings['enabled'] == true
 
-    # If it's a boolean (legacy support), return it
-    return sharing_settings if [true, false].include?(sharing_settings)
-
-    # If it's time-limited sharing, check if it's still active
-    if sharing_settings.is_a?(Hash)
-      return false unless sharing_settings['enabled'] == true
-
-      # Check if sharing has an expiration
-      expires_at = sharing_settings['expires_at']
-      return expires_at.blank? || Time.parse(expires_at) > Time.current
-    end
-
-    false
+    expires_at = sharing_settings['expires_at']
+    expires_at.blank? || Time.parse(expires_at).future?
   end
 
   def update_family_location_sharing!(enabled, duration: nil)
@@ -60,21 +48,14 @@ module UserFamily
     if enabled
       sharing_config = { 'enabled' => true }
 
-      # Add expiration if duration is specified
       if duration.present?
         expiration_time = case duration
-        when '1h'
-          1.hour.from_now
-        when '6h'
-          6.hours.from_now
-        when '12h'
-          12.hours.from_now
-        when '24h'
-          24.hours.from_now
-        when 'permanent'
-          nil # No expiration
-        else
-          duration.to_i.hours.from_now if duration.to_i > 0
+        when '1h' then 1.hour.from_now
+        when '6h' then 6.hours.from_now
+        when '12h' then 12.hours.from_now
+        when '24h' then 24.hours.from_now
+        when 'permanent' then nil
+        else duration.to_i.hours.from_now if duration.to_i > 0
         end
 
         sharing_config['expires_at'] = expiration_time.iso8601 if expiration_time
@@ -106,21 +87,21 @@ module UserFamily
   def latest_location_for_family
     return nil unless family_sharing_enabled?
 
-    # Use select to only fetch needed columns and limit to 1 for efficiency
-    latest_point = points.select(:latitude, :longitude, :timestamp)
-                         .order(timestamp: :desc)
-                         .limit(1)
-                         .first
+    latest_point =
+      points.select(:lonlat, :timestamp)
+            .order(timestamp: :desc)
+            .limit(1)
+            .first
 
     return nil unless latest_point
 
     {
       user_id: id,
       email: email,
-      latitude: latest_point.latitude,
-      longitude: latest_point.longitude,
+      latitude: latest_point.lat,
+      longitude: latest_point.lon,
       timestamp: latest_point.timestamp,
-      updated_at: Time.at(latest_point.timestamp)
+      updated_at: Time.zone.at(latest_point.timestamp)
     }
   end
 

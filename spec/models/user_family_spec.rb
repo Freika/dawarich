@@ -12,7 +12,7 @@ RSpec.describe User, 'family methods', type: :model do
       is_expected.to have_one(:created_family).class_name('Family').with_foreign_key('creator_id').dependent(:destroy)
     }
     it {
-      is_expected.to have_many(:sent_family_invitations).class_name('FamilyInvitation').with_foreign_key('invited_by_id').dependent(:destroy)
+      is_expected.to have_many(:sent_family_invitations).class_name('Family::Invitation').with_foreign_key('invited_by_id').dependent(:destroy)
     }
   end
 
@@ -119,7 +119,7 @@ RSpec.describe User, 'family methods', type: :model do
       end
 
       it 'destroys associated invitations when user is destroyed' do
-        expect { user.destroy }.to change(FamilyInvitation, :count).by(-1)
+        expect { user.destroy }.to change(Family::Invitation, :count).by(-1)
       end
     end
 
@@ -129,7 +129,7 @@ RSpec.describe User, 'family methods', type: :model do
       end
 
       it 'destroys associated membership when user is destroyed' do
-        expect { user.destroy }.to change(FamilyMembership, :count).by(-1)
+        expect { user.destroy }.to change(Family::Membership, :count).by(-1)
       end
     end
   end

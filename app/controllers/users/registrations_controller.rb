@@ -49,7 +49,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def set_invitation
     return unless invitation_token.present?
 
-    @invitation = FamilyInvitation.find_by(token: invitation_token)
+    @invitation = Family::Invitation.find_by(token: invitation_token)
   end
 
   def self_hosted_mode?

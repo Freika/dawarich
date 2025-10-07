@@ -73,7 +73,7 @@ module Families
     end
 
     def create_invitation
-      @invitation = FamilyInvitation.create!(
+      @invitation = Family::Invitation.create!(
         family: family,
         email: email,
         invited_by: invited_by

@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe FamilyMembership, type: :model do
+RSpec.describe Family::Membership, type: :model do
   describe 'associations' do
     it { is_expected.to belong_to(:family) }
     it { is_expected.to belong_to(:user) }

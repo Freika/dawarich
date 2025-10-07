@@ -15,12 +15,89 @@ RSpec.describe 'Family::Memberships', type: :request do
     sign_in user
   end
 
+  describe 'POST /family/memberships' do
+    let(:invitee) { create(:user) }
+    let(:invitee_invitation) { create(:family_invitation, family: family, invited_by: user, email: invitee.email) }
+
+    context 'with valid invitation and user' do
+      before { sign_in invitee }
+
+      it 'accepts the invitation' do
+        expect do
+          post accept_family_invitation_path(token: invitee_invitation.token)
+        end.to change { invitee.reload.family }.from(nil).to(family)
+      end
+
+      it 'redirects with success message' do
+        post accept_family_invitation_path(token: invitee_invitation.token)
+        expect(response).to redirect_to(family_path)
+        follow_redirect!
+        expect(response.body).to include('Welcome to the family!')
+      end
+
+      it 'marks invitation as accepted' do
+        post accept_family_invitation_path(token: invitee_invitation.token)
+        invitee_invitation.reload
+        expect(invitee_invitation.status).to eq('accepted')
+      end
+    end
+
+    context 'when user is already in a family' do
+      let(:other_family) { create(:family) }
+
+      before do
+        create(:family_membership, user: invitee, family: other_family, role: :member)
+        sign_in invitee
+      end
+
+      it 'does not accept the invitation' do
+        expect do
+          post accept_family_invitation_path(token: invitee_invitation.token)
+        end.not_to(change { invitee.reload.family })
+      end
+
+      it 'redirects with error message' do
+        post accept_family_invitation_path(token: invitee_invitation.token)
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to include('You must leave your current family before joining a new one')
+      end
+    end
+
+    context 'when invitation is expired' do
+      before do
+        invitee_invitation.update!(expires_at: 1.day.ago)
+        sign_in invitee
+      end
+
+      it 'does not accept the invitation' do
+        expect do
+          post accept_family_invitation_path(token: invitee_invitation.token)
+        end.not_to(change { invitee.reload.family })
+      end
+
+      it 'redirects with error message' do
+        post accept_family_invitation_path(token: invitee_invitation.token)
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to include('This invitation is no longer valid or has expired')
+      end
+    end
+
+    context 'when not authenticated' do
+      before { sign_out user }
+
+      it 'redirects to login' do
+        post accept_family_invitation_path(token: invitee_invitation.token)
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+  end
+
   describe 'DELETE /family/members/:id' do
     context 'when removing a regular member' do
       it 'removes the member from the family' do
         expect do
           delete "/family/members/#{member_membership.id}"
-        end.to change(FamilyMembership, :count).by(-1)
+        end.to change(Family::Membership, :count).by(-1)
       end
 
       it 'redirects with success message' do
@@ -41,7 +118,7 @@ RSpec.describe 'Family::Memberships', type: :request do
       it 'does not remove the owner' do
         expect do
           delete "/family/members/#{owner_membership.id}"
-        end.not_to change(FamilyMembership, :count)
+        end.not_to change(Family::Membership, :count)
       end
 
       it 'redirects with error message explaining owners must delete family' do
@@ -56,7 +133,7 @@ RSpec.describe 'Family::Memberships', type: :request do
 
         expect do
           delete "/family/members/#{owner_membership.id}"
-        end.not_to change(FamilyMembership, :count)
+        end.not_to change(Family::Membership, :count)
 
         expect(response).to redirect_to(family_path)
         follow_redirect!
@@ -149,7 +226,7 @@ RSpec.describe 'Family::Memberships', type: :request do
       # Try to remove owner - should be prevented
       expect do
         delete "/family/members/#{owner_membership.id}"
-      end.not_to change(FamilyMembership, :count)
+      end.not_to change(Family::Membership, :count)
 
       expect(response).to redirect_to(family_path)
       expect(user.reload.family).to eq(family)

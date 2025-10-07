@@ -65,7 +65,7 @@ module Families
     end
 
     def create_membership
-      FamilyMembership.create!(
+      Family::Membership.create!(
         family: invitation.family,
         user: user,
         role: :member

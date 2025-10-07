@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe FamilyInvitation, type: :model do
+RSpec.describe Family::Invitation, type: :model do
   describe 'associations' do
     it { is_expected.to belong_to(:family) }
     it { is_expected.to belong_to(:invited_by).class_name('User') }
@@ -44,9 +44,9 @@ RSpec.describe FamilyInvitation, type: :model do
 
     describe '.active' do
       it 'returns only pending and non-expired invitations' do
-        expect(FamilyInvitation.active).to include(pending_invitation)
-        expect(FamilyInvitation.active).not_to include(expired_invitation)
-        expect(FamilyInvitation.active).not_to include(accepted_invitation)
+        expect(Family::Invitation.active).to include(pending_invitation)
+        expect(Family::Invitation.active).not_to include(expired_invitation)
+        expect(Family::Invitation.active).not_to include(accepted_invitation)
       end
     end
   end
@@ -63,7 +63,7 @@ RSpec.describe FamilyInvitation, type: :model do
 
       it 'sets expiry date' do
         invitation.save
-        expect(invitation.expires_at).to be_within(1.minute).of(FamilyInvitation::EXPIRY_DAYS.days.from_now)
+        expect(invitation.expires_at).to be_within(1.minute).of(Family::Invitation::EXPIRY_DAYS.days.from_now)
       end
 
       it 'does not override existing token' do
@@ -136,7 +136,7 @@ RSpec.describe FamilyInvitation, type: :model do
 
   describe 'constants' do
     it 'defines EXPIRY_DAYS' do
-      expect(FamilyInvitation::EXPIRY_DAYS).to eq(7)
+      expect(Family::Invitation::EXPIRY_DAYS).to eq(7)
     end
   end
 
