@@ -197,39 +197,45 @@ export default class extends Controller {
     const startTime = formatDateTime(now);
     const endTime = formatDateTime(oneHourLater);
 
-    // Create form HTML
+    // Create form HTML using DaisyUI classes for automatic theme support
     const formHTML = `
       <div class="visit-form" style="min-width: 280px;">
-        <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #333;">Add New Visit</h3>
+        <h3 class="text-base font-semibold mb-4">Add New Visit</h3>
 
-        <form id="add-visit-form" style="display: flex; flex-direction: column; gap: 10px;">
-          <div>
-            <label for="visit-name" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Name:</label>
+        <form id="add-visit-form" class="space-y-3">
+          <div class="form-control">
+            <label for="visit-name" class="label">
+              <span class="label-text font-medium">Name:</span>
+            </label>
             <input type="text" id="visit-name" name="name" required
-                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;"
+                   class="input input-bordered w-full"
                    placeholder="Enter visit name">
           </div>
 
-          <div>
-            <label for="visit-start" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Start Time:</label>
+          <div class="form-control">
+            <label for="visit-start" class="label">
+              <span class="label-text font-medium">Start Time:</span>
+            </label>
             <input type="datetime-local" id="visit-start" name="started_at" required value="${startTime}"
-                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                   class="input input-bordered w-full">
           </div>
 
-          <div>
-            <label for="visit-end" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">End Time:</label>
+          <div class="form-control">
+            <label for="visit-end" class="label">
+              <span class="label-text font-medium">End Time:</span>
+            </label>
             <input type="datetime-local" id="visit-end" name="ended_at" required value="${endTime}"
-                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                   class="input input-bordered w-full">
           </div>
 
           <input type="hidden" name="latitude" value="${lat}">
           <input type="hidden" name="longitude" value="${lng}">
 
-          <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button type="submit" style="flex: 1; background: #28a745; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+          <div class="flex gap-2 mt-4">
+            <button type="submit" class="btn btn-success flex-1">
               Create Visit
             </button>
-            <button type="button" id="cancel-visit" style="flex: 1; background: #dc3545; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            <button type="button" id="cancel-visit" class="btn btn-error flex-1">
               Cancel
             </button>
           </div>

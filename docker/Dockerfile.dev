@@ -12,7 +12,9 @@ ENV SIDEKIQ_PASSWORD=password
 # Resolving sqlite3 error
 ENV PGSSENCMODE=disable
 
-RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl \
     wget \
     build-essential \

@@ -167,25 +167,28 @@ export default class extends BaseController {
     // Create a proper Leaflet layer for fog
     this.fogOverlay = new (createFogOverlay())();
 
-    // Create custom pane for areas
+    // Create custom panes with proper z-index ordering
+    // Leaflet default panes: tilePane=200, overlayPane=400, shadowPane=500, markerPane=600, tooltipPane=650, popupPane=700
+
+    // Areas pane - below visits so they don't block interaction
     this.map.createPane('areasPane');
-    this.map.getPane('areasPane').style.zIndex = 650;
-    this.map.getPane('areasPane').style.pointerEvents = 'all';
+    this.map.getPane('areasPane').style.zIndex = 605; // Above markerPane but below visits
+    this.map.getPane('areasPane').style.pointerEvents = 'none'; // Don't block clicks, let them pass through
 
-    // Create custom panes for visits
-    // Note: We'll still create visitsPane for backward compatibility
+    // Legacy visits pane for backward compatibility
     this.map.createPane('visitsPane');
-    this.map.getPane('visitsPane').style.zIndex = 600;
-    this.map.getPane('visitsPane').style.pointerEvents = 'all';
+    this.map.getPane('visitsPane').style.zIndex = 615;
+    this.map.getPane('visitsPane').style.pointerEvents = 'auto';
 
-    // Create separate panes for confirmed and suggested visits
-    this.map.createPane('confirmedVisitsPane');
-    this.map.getPane('confirmedVisitsPane').style.zIndex = 450;
-    this.map.getPane('confirmedVisitsPane').style.pointerEvents = 'all';
-
+    // Suggested visits pane - interactive layer
     this.map.createPane('suggestedVisitsPane');
-    this.map.getPane('suggestedVisitsPane').style.zIndex = 460;
-    this.map.getPane('suggestedVisitsPane').style.pointerEvents = 'all';
+    this.map.getPane('suggestedVisitsPane').style.zIndex = 610;
+    this.map.getPane('suggestedVisitsPane').style.pointerEvents = 'auto';
+
+    // Confirmed visits pane - on top of suggested, interactive
+    this.map.createPane('confirmedVisitsPane');
+    this.map.getPane('confirmedVisitsPane').style.zIndex = 620;
+    this.map.getPane('confirmedVisitsPane').style.pointerEvents = 'auto';
 
     // Initialize areasLayer as a feature group and add it to the map immediately
     this.areasLayer = new L.FeatureGroup();
