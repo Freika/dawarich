@@ -1,0 +1,48 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+  <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h2 style="color: #1f2937; margin-bottom: 20px; text-align: center;">You've been invited to join a family!</h2>
+
+    <p style="color: #374151; line-height: 1.6;">Hi there!</p>
+
+    <p style="color: #374151; line-height: 1.6;">
+      <strong><%= @invited_by.email %></strong> has invited you to join their family
+      "<strong><%= @family.name %></strong>" on Dawarich.
+    </p>
+
+    <div style="background-color: #f3f4f6; padding: 20px; border-radius: 6px; margin: 20px 0;">
+      <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 18px;">By joining this family, you'll be able to:</h3>
+      <ul style="color: #374151; line-height: 1.6; margin: 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Share your current location with family members</li>
+        <li style="margin-bottom: 8px;">See the current location of other family members</li>
+        <li style="margin-bottom: 8px;">Stay connected with your loved ones</li>
+        <li>Control your privacy with full sharing controls</li>
+      </ul>
+    </div>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <%= link_to "Accept Invitation", @accept_url,
+          style: "background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;" %>
+    </div>
+
+    <div style="background-color: #fef3cd; border: 1px solid #f59e0b; border-radius: 6px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; color: #92400e; font-size: 14px;">
+        <strong>⏰ Important:</strong> This invitation will expire in 7 days.
+      </p>
+    </div>
+
+    <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+      If you don't have a Dawarich account yet, you'll be able to create one when you accept the invitation.
+    </p>
+
+    <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+      If you didn't expect this invitation, you can safely ignore this email.
+    </p>
+
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+    <p style="color: #6b7280; font-size: 14px; line-height: 1.6; text-align: center;">
+      Best regards,<br>
+      Evgenii from Dawarich
+    </p>
+  </div>
+</div>

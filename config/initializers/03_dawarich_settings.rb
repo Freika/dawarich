@@ -39,9 +39,14 @@ class DawarichSettings
       @store_geodata ||= STORE_GEODATA
     end
 
+    def family_feature_enabled?
+      @family_feature_enabled ||= self_hosted?
+    end
+
     def features
       @features ||= {
-        reverse_geocoding: reverse_geocoding_enabled?
+        reverse_geocoding: reverse_geocoding_enabled?,
+        family: family_feature_enabled?
       }
     end
   end
