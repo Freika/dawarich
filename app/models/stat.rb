@@ -33,14 +33,14 @@ class Stat < ApplicationRecord
   end
 
   def sharing_enabled?
-    sharing_settings['enabled'] == true
+    sharing_settings.try(:[], 'enabled') == true
   end
 
   def sharing_expired?
-    expiration = sharing_settings['expiration']
+    expiration = sharing_settings.try(:[], 'expiration')
     return false if expiration.blank?
 
-    expires_at_value = sharing_settings['expires_at']
+    expires_at_value = sharing_settings.try(:[], 'expires_at')
     return true if expires_at_value.blank?
 
     expires_at = begin
