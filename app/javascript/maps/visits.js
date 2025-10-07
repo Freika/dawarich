@@ -12,14 +12,17 @@ export class VisitsManager {
     this.userTheme = userTheme;
 
     // Create custom panes for different visit types
-    if (!map.getPane('confirmedVisitsPane')) {
-      map.createPane('confirmedVisitsPane');
-      map.getPane('confirmedVisitsPane').style.zIndex = 450; // Above default overlay pane (400)
-    }
-
+    // Leaflet default panes: tilePane=200, overlayPane=400, shadowPane=500, markerPane=600, tooltipPane=650, popupPane=700
     if (!map.getPane('suggestedVisitsPane')) {
       map.createPane('suggestedVisitsPane');
-      map.getPane('suggestedVisitsPane').style.zIndex = 460; // Below confirmed visits but above base layers
+      map.getPane('suggestedVisitsPane').style.zIndex = 610; // Above markerPane (600), below tooltipPane (650)
+      map.getPane('suggestedVisitsPane').style.pointerEvents = 'auto'; // Ensure interactions work
+    }
+
+    if (!map.getPane('confirmedVisitsPane')) {
+      map.createPane('confirmedVisitsPane');
+      map.getPane('confirmedVisitsPane').style.zIndex = 620; // Above suggested visits
+      map.getPane('confirmedVisitsPane').style.pointerEvents = 'auto'; // Ensure interactions work
     }
 
     this.visitCircles = L.layerGroup();
@@ -1324,38 +1327,31 @@ export class VisitsManager {
       // Create popup content with form and dropdown
       const defaultName = visit.name;
       const popupContent = `
-        <div class="p-4 bg-base-100 text-base-content rounded-lg shadow-lg">
-          <div class="mb-4">
-            <div class="text-sm mb-2 text-base-content/80 font-medium">
-              ${dateTimeDisplay.trim()}
-            </div>
-            <div class="space-y-1">
-              <div class="text-sm text-base-content/60">
-                Duration: ${durationText}
-              </div>
-              <div class="text-sm ${statusColorClass} font-semibold">
-                Status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}
-              </div>
-              <div class="text-xs text-base-content/50 font-mono">
-                ${visit.place.latitude}, ${visit.place.longitude}
-              </div>
-            </div>
+        <div style="min-width: 280px;">
+          <h3 class="text-base font-semibold mb-3">${dateTimeDisplay.trim()}</h3>
+
+          <div class="space-y-1 mb-4 text-sm">
+            <div>Duration: ${durationText}</div>
+            <div class="${statusColorClass} font-semibold">Status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}</div>
+            <div class="text-xs opacity-60 font-mono">${visit.place.latitude}, ${visit.place.longitude}</div>
           </div>
+
           <form class="visit-name-form space-y-3" data-visit-id="${visit.id}">
             <div class="form-control">
               <label class="label">
-                <span class="label-text text-sm font-medium">Visit Name</span>
+                <span class="label-text font-medium">Visit Name:</span>
               </label>
               <input type="text"
-                     class="input input-bordered input-sm w-full bg-base-200 text-base-content placeholder:text-base-content/50"
+                     class="input input-bordered w-full"
                      value="${defaultName}"
                      placeholder="Enter visit name">
             </div>
+
             <div class="form-control">
               <label class="label">
-                <span class="label-text text-sm font-medium">Location</span>
+                <span class="label-text font-medium">Location:</span>
               </label>
-              <select class="select select-bordered select-sm text-xs w-full bg-base-200 text-base-content" name="place">
+              <select class="select select-bordered w-full" name="place">
                 ${possiblePlaces.length > 0 ? possiblePlaces.map(place => `
                   <option value="${place.id}" ${place.id === visit.place.id ? 'selected' : ''}>
                     ${place.name}
@@ -1367,36 +1363,24 @@ export class VisitsManager {
                 `}
               </select>
             </div>
-            <div class="flex gap-2 mt-4 pt-2 border-t border-base-300">
-              <button type="submit" class="btn btn-sm btn-primary flex-1">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button type="submit" class="btn btn-primary btn-sm">
                 Save
               </button>
               ${visit.status !== 'confirmed' ? `
-                <button type="button" class="btn btn-sm btn-success confirm-visit" data-id="${visit.id}">
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path>
-                  </svg>
+                <button type="button" class="btn btn-success btn-sm confirm-visit" data-id="${visit.id}">
                   Confirm
                 </button>
-                <button type="button" class="btn btn-sm btn-error decline-visit" data-id="${visit.id}">
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
+                <button type="button" class="btn btn-error btn-sm decline-visit" data-id="${visit.id}">
                   Decline
                 </button>
-              ` : ''}
+              ` : '<div class="col-span-2"></div>'}
             </div>
-            <div class="mt-2">
-              <button type="button" class="btn btn-sm btn-outline btn-error w-full delete-visit" data-id="${visit.id}">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                </svg>
-                Delete Visit
-              </button>
-            </div>
+
+            <button type="button" class="btn btn-outline btn-error btn-sm w-full delete-visit" data-id="${visit.id}">
+              Delete Visit
+            </button>
           </form>
         </div>
       `;
