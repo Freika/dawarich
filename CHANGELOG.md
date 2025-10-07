@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fixed a bug where user could not be deleted due to counter cache on points. #1818
 - Introduce apt-get upgrade before installing new packages in the docker image to prevent vulnerabilities. #1793
 - Fixed time shift when creating visits manually. #1679
+- Provide default map layer if user settings are not set.
 
 # [0.33.0] - 2025-09-29
 
