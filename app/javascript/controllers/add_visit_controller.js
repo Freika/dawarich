@@ -189,9 +189,11 @@ export default class extends Controller {
     const now = new Date();
     const oneHourLater = new Date(now.getTime() + (60 * 60 * 1000));
 
-    // Format dates for datetime-local input
+    const pad = (n) => n.toString().padStart(2, "0");
     const formatDateTime = (date) => {
-      return date.toISOString().slice(0, 16);
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+        date.getDate()
+      )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
     const startTime = formatDateTime(now);
@@ -283,15 +285,20 @@ export default class extends Controller {
     const form = event.target;
     const formData = new FormData(form);
 
+    function localToUTCISOString(localDateTimeString) {
+      const local = new Date(localDateTimeString);
+      return local.toISOString();
+    };
+
     // Get form values
     const visitData = {
       visit: {
-        name: formData.get('name'),
-        started_at: formData.get('started_at'),
-        ended_at: formData.get('ended_at'),
-        latitude: formData.get('latitude'),
-        longitude: formData.get('longitude')
-      }
+        name: formData.get("name"),
+        started_at: localToUTCISOString(formData.get("started_at")),
+        ended_at: localToUTCISOString(formData.get("ended_at")),
+        latitude: formData.get("latitude"),
+        longitude: formData.get("longitude"),
+      },
     };
 
     // Validate that end time is after start time
