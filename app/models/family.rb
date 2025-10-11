@@ -10,9 +10,6 @@ class Family < ApplicationRecord
 
   MAX_MEMBERS = 5
 
-  scope :with_members, -> { includes(:members, :family_memberships) }
-  scope :with_pending_invitations, -> { includes(family_invitations: :invited_by) }
-
   def can_add_members?
     (member_count + pending_invitations_count) < MAX_MEMBERS
   end

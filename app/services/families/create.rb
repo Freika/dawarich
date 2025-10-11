@@ -32,12 +32,15 @@ module Families
       true
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
+
       false
     rescue ActiveRecord::RecordNotUnique => e
       handle_uniqueness_error(e)
+
       false
     rescue StandardError => e
       handle_generic_error(e)
+
       false
     end
 
@@ -60,11 +63,13 @@ module Families
     def validate_feature_access
       return true if can_create_family?
 
-      @error_message = if DawarichSettings.self_hosted?
-                         'Family feature is not available on this instance'
-                       else
-                         'Family feature requires an active subscription'
-                       end
+      @error_message =
+        if DawarichSettings.self_hosted?
+          'Family feature is not available on this instance'
+        else
+          'Family feature requires an active subscription'
+        end
+
       false
     end
 
@@ -99,15 +104,16 @@ module Families
       )
     rescue StandardError => e
       # Don't fail the entire operation if notification fails
-      Rails.logger.warn "Failed to send family creation notification: #{e.message}"
+      ExceptionReporter.call(e, "Unexpected error in Families::Create: #{e.message}")
     end
 
     def handle_record_invalid_error(error)
-      if family&.errors&.any?
-        @error_message = family.errors.full_messages.first
-      else
-        @error_message = "Failed to create family: #{error.message}"
-      end
+      @error_message =
+        if family&.errors&.any?
+          family.errors.full_messages.first
+        else
+          "Failed to create family: #{error.message}"
+        end
     end
 
     def handle_uniqueness_error(_error)
@@ -115,8 +121,7 @@ module Families
     end
 
     def handle_generic_error(error)
-      Rails.logger.error "Unexpected error in Families::Create: #{error.message}"
-      Rails.logger.error error.backtrace.join("\n")
+      ExceptionReporter.call(error, "Unexpected error in Families::Create: #{error.message}")
       @error_message = 'An unexpected error occurred while creating the family. Please try again'
     end
   end

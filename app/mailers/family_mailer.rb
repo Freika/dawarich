@@ -12,4 +12,14 @@ class FamilyMailer < ApplicationMailer
       subject: "🎉 You've been invited to join #{@family.name} on Dawarich!"
     )
   end
+
+  def member_joined(family, user)
+    @family = family
+    @user = user
+
+    mail(
+      to: @family.owner.email,
+      subject: "👪 #{@user.name} has joined your family #{@family.name} on Dawarich!"
+    )
+  end
 end

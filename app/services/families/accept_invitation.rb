@@ -15,6 +15,7 @@ module Families
 
       if user.in_family?
         @error_message = 'You must leave your current family before joining a new one.'
+
         return false
       end
 
@@ -47,6 +48,7 @@ module Families
       return true if invitation.can_be_accepted?
 
       @error_message = 'This invitation is no longer valid or has expired.'
+
       false
     end
 
@@ -54,6 +56,7 @@ module Families
       return true if invitation.email == user.email
 
       @error_message = 'This invitation is not for your email address.'
+
       false
     end
 
@@ -61,6 +64,7 @@ module Families
       return true unless invitation.family.full?
 
       @error_message = 'This family has reached the maximum number of members.'
+
       false
     end
 
@@ -100,21 +104,21 @@ module Families
         content: "#{user.email} has joined your family"
       )
     rescue StandardError => e
-      # Don't fail the entire operation if notification fails
-      Rails.logger.warn "Failed to send family join notification: #{e.message}"
+      ExceptionReporter.call(e, "Unexpected error in Families::AcceptInvitation: #{e.message}")
     end
 
     def handle_record_invalid_error(error)
-      @error_message = if error.record&.errors&.any?
-                         error.record.errors.full_messages.first
-                       else
-                         "Failed to join family: #{error.message}"
-                       end
+      @error_message =
+        if error.record&.errors&.any?
+          error.record.errors.full_messages.first
+        else
+          "Failed to join family: #{error.message}"
+        end
     end
 
     def handle_generic_error(error)
-      Rails.logger.error "Unexpected error in Families::AcceptInvitation: #{error.message}"
-      Rails.logger.error error.backtrace.join("\n")
+      ExceptionReporter.call(error, "Unexpected error in Families::AcceptInvitation: #{error.message}")
+
       @error_message = 'An unexpected error occurred while joining the family. Please try again'
     end
   end

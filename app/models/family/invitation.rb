@@ -41,6 +41,6 @@ class Family::Invitation < ApplicationRecord
   end
 
   def clear_family_cache
-    family&.clear_member_cache!
+    family.clear_member_cache!
   end
 end

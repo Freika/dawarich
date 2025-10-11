@@ -18,6 +18,6 @@ class Family::Membership < ApplicationRecord
   private
 
   def clear_family_cache
-    family&.clear_member_cache!
+    family.clear_member_cache!
   end
 end

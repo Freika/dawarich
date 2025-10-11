@@ -30,7 +30,8 @@ class Families::Locations
   end
 
   def build_family_locations(sharing_members)
-    latest_points = sharing_members.map { |member| member.points.last }.compact
+    latest_points =
+      sharing_members.map { _1.points.last }.compact
 
     latest_points.map do |point|
       next unless point
@@ -42,7 +43,7 @@ class Families::Locations
         latitude: point.lat.to_f,
         longitude: point.lon.to_f,
         timestamp: point.timestamp.to_i,
-        updated_at: Time.at(point.timestamp.to_i)
+        updated_at: Time.zone.at(point.timestamp.to_i)
       }
     end.compact
   end

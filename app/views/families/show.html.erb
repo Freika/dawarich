@@ -209,7 +209,7 @@
               <%= t('families.show.invite_member', default: 'Invite New Member') %>
             </h3>
 
-            <%= form_with model: [@family, FamilyInvitation.new], url: family_invitations_path(@family), local: true, class: "space-y-3" do |form| %>
+            <%= form_with model: [@family, Family::Invitation.new], url: family_invitations_path(@family), local: true, class: "space-y-3" do |form| %>
               <div>
                 <%= form.label :email, t('families.show.email_label', default: 'Email Address'), class: "label label-text font-medium mb-1" %>
                 <%= form.email_field :email,

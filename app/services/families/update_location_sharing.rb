@@ -11,13 +11,12 @@ class Families::UpdateLocationSharing
   end
 
   def call
-    if update_location_sharing
-      success_result
-    else
-      failure_result('Failed to update location sharing setting', :unprocessable_content)
-    end
+    return success_result if update_location_sharing
+
+    failure_result('Failed to update location sharing setting', :unprocessable_content)
   rescue => error
-    Rails.logger.error("Failed to update family location sharing: #{error.message}") if defined?(Rails)
+    ExceptionReporter.call(error, "Error in Families::UpdateLocationSharing: #{error.message}")
+
     failure_result('An error occurred while updating location sharing', :internal_server_error)
   end
 

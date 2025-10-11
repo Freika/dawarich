@@ -100,7 +100,7 @@ module Families
       )
     rescue StandardError => e
       # Don't fail the entire operation if notification fails
-      Rails.logger.warn "Failed to send invitation notification: #{e.message}"
+      ExceptionReporter.call(e, "Unexpected error in Families::Invite: #{e.message}")
     end
 
     def handle_record_invalid_error(error)
@@ -120,8 +120,7 @@ module Families
     end
 
     def handle_generic_error(error)
-      Rails.logger.error "Unexpected error in Families::Invite: #{error.message}"
-      Rails.logger.error error.backtrace.join("\n")
+      ExceptionReporter.call(error, "Unexpected error in Families::Invite: #{error.message}")
       @custom_error_message = 'An unexpected error occurred while sending the invitation. Please try again'
     end
   end
