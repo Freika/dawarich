@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 class Family::InvitationPolicy < ApplicationPolicy
-  def show?
-    # Public endpoint for invitation acceptance - no authentication required
-    true
-  end
-
   def create?
     return false unless user
 

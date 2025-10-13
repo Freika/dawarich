@@ -13,126 +13,49 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
   let(:member_membership) { create(:family_membership, family: family, user: member) }
   let(:another_member_membership) { create(:family_membership, family: family, user: another_member) }
 
-  describe '#show?' do
-    context 'when user is in the same family' do
-      before do
-        allow(owner).to receive(:family).and_return(family)
-      end
+  describe '#create?' do
+    let(:valid_invitation) { create(:family_invitation, family: family, email: member.email) }
+    let(:expired_invitation) { create(:family_invitation, family: family, email: member.email, expires_at: 1.day.ago) }
+    let(:accepted_invitation) { create(:family_invitation, :accepted, family: family, email: member.email) }
+    let(:wrong_email_invitation) { create(:family_invitation, family: family, email: 'wrong@example.com') }
 
-      it 'allows family owner to view member details' do
-        policy = Family::MembershipPolicy.new(owner, member_membership)
+    context 'when user has valid invitation' do
+      it 'allows user to create membership with valid pending invitation for their email' do
+        policy = described_class.new(member, valid_invitation)
 
-        expect(policy).to permit(:show)
-      end
-
-      it 'allows family owner to view their own membership' do
-        policy = Family::MembershipPolicy.new(owner, owner_membership)
-
-        expect(policy).to permit(:show)
-      end
-
-      it 'allows regular member to view other members' do
-        allow(member).to receive(:family).and_return(family)
-        policy = Family::MembershipPolicy.new(member, another_member_membership)
-
-        expect(policy).to permit(:show)
-      end
-
-      it 'allows member to view their own membership' do
-        allow(member).to receive(:family).and_return(family)
-        policy = Family::MembershipPolicy.new(member, member_membership)
-
-        expect(policy).to permit(:show)
+        expect(policy).to permit(:create)
       end
     end
 
-    context 'when user is not in the same family' do
-      it 'denies user from different family from viewing membership' do
-        policy = Family::MembershipPolicy.new(other_user, member_membership)
+    context 'when invitation is expired' do
+      it 'denies user from creating membership with expired invitation' do
+        policy = described_class.new(member, expired_invitation)
 
-        expect(policy).not_to permit(:show)
+        expect(policy).not_to permit(:create)
+      end
+    end
+
+    context 'when invitation is already accepted' do
+      it 'denies user from creating membership with already accepted invitation' do
+        policy = described_class.new(member, accepted_invitation)
+
+        expect(policy).not_to permit(:create)
+      end
+    end
+
+    context 'when invitation is for different email' do
+      it 'denies user from creating membership with invitation for different email' do
+        policy = described_class.new(member, wrong_email_invitation)
+
+        expect(policy).not_to permit(:create)
       end
     end
 
     context 'with unauthenticated user' do
-      it 'denies unauthenticated user from viewing membership' do
-        policy = Family::MembershipPolicy.new(nil, member_membership)
+      it 'denies unauthenticated user from creating membership' do
+        policy = described_class.new(nil, valid_invitation)
 
-        expect(policy).not_to permit(:show)
-      end
-    end
-  end
-
-  describe '#update?' do
-    context 'when user is updating their own membership' do
-      it 'allows user to update their own membership settings' do
-        allow(member).to receive(:family).and_return(family)
-        policy = Family::MembershipPolicy.new(member, member_membership)
-
-        expect(policy).to permit(:update)
-      end
-
-      it 'allows owner to update their own membership' do
-        allow(owner).to receive(:family).and_return(family)
-        policy = Family::MembershipPolicy.new(owner, owner_membership)
-
-        expect(policy).to permit(:update)
-      end
-    end
-
-    context 'when user is family owner' do
-      before do
-        allow(owner).to receive(:family).and_return(family)
-        allow(owner).to receive(:family_owner?).and_return(true)
-      end
-
-      it 'allows family owner to update other members settings' do
-        policy = Family::MembershipPolicy.new(owner, member_membership)
-
-        expect(policy).to permit(:update)
-      end
-
-      it 'allows family owner to update multiple members' do
-        policy1 = Family::MembershipPolicy.new(owner, member_membership)
-        policy2 = Family::MembershipPolicy.new(owner, another_member_membership)
-
-        expect(policy1).to permit(:update)
-        expect(policy2).to permit(:update)
-      end
-    end
-
-    context 'when user is regular family member' do
-      before do
-        allow(member).to receive(:family).and_return(family)
-        allow(member).to receive(:family_owner?).and_return(false)
-      end
-
-      it 'denies regular member from updating other members settings' do
-        policy = Family::MembershipPolicy.new(member, another_member_membership)
-
-        expect(policy).not_to permit(:update)
-      end
-
-      it 'denies regular member from updating owner settings' do
-        policy = Family::MembershipPolicy.new(member, owner_membership)
-
-        expect(policy).not_to permit(:update)
-      end
-    end
-
-    context 'when user is not in the family' do
-      it 'denies user from updating membership of different family' do
-        policy = Family::MembershipPolicy.new(other_user, member_membership)
-
-        expect(policy).not_to permit(:update)
-      end
-    end
-
-    context 'with unauthenticated user' do
-      it 'denies unauthenticated user from updating membership' do
-        policy = Family::MembershipPolicy.new(nil, member_membership)
-
-        expect(policy).not_to permit(:update)
+        expect(policy).not_to permit(:create)
       end
     end
   end
@@ -141,14 +64,14 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
     context 'when user is removing themselves' do
       it 'allows user to remove their own membership (leave family)' do
         allow(member).to receive(:family).and_return(family)
-        policy = Family::MembershipPolicy.new(member, member_membership)
+        policy = described_class.new(member, member_membership)
 
         expect(policy).to permit(:destroy)
       end
 
       it 'allows owner to remove their own membership' do
         allow(owner).to receive(:family).and_return(family)
-        policy = Family::MembershipPolicy.new(owner, owner_membership)
+        policy = described_class.new(owner, owner_membership)
 
         expect(policy).to permit(:destroy)
       end
@@ -161,14 +84,14 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
       end
 
       it 'allows family owner to remove other members' do
-        policy = Family::MembershipPolicy.new(owner, member_membership)
+        policy = described_class.new(owner, member_membership)
 
         expect(policy).to permit(:destroy)
       end
 
       it 'allows family owner to remove multiple members' do
-        policy1 = Family::MembershipPolicy.new(owner, member_membership)
-        policy2 = Family::MembershipPolicy.new(owner, another_member_membership)
+        policy1 = described_class.new(owner, member_membership)
+        policy2 = described_class.new(owner, another_member_membership)
 
         expect(policy1).to permit(:destroy)
         expect(policy2).to permit(:destroy)
@@ -182,13 +105,13 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
       end
 
       it 'denies regular member from removing other members' do
-        policy = Family::MembershipPolicy.new(member, another_member_membership)
+        policy = described_class.new(member, another_member_membership)
 
         expect(policy).not_to permit(:destroy)
       end
 
       it 'denies regular member from removing owner' do
-        policy = Family::MembershipPolicy.new(member, owner_membership)
+        policy = described_class.new(member, owner_membership)
 
         expect(policy).not_to permit(:destroy)
       end
@@ -196,7 +119,7 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
 
     context 'when user is not in the family' do
       it 'denies user from removing membership of different family' do
-        policy = Family::MembershipPolicy.new(other_user, member_membership)
+        policy = described_class.new(other_user, member_membership)
 
         expect(policy).not_to permit(:destroy)
       end
@@ -204,7 +127,7 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
 
     context 'with unauthenticated user' do
       it 'denies unauthenticated user from removing membership' do
-        policy = Family::MembershipPolicy.new(nil, member_membership)
+        policy = described_class.new(nil, member_membership)
 
         expect(policy).not_to permit(:destroy)
       end
@@ -224,20 +147,8 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
         allow(owner).to receive(:family_owner?).and_return(true)
       end
 
-      it 'denies owner from viewing membership of different family' do
-        policy = Family::MembershipPolicy.new(owner, other_family_membership)
-
-        expect(policy).not_to permit(:show)
-      end
-
-      it 'denies owner from updating membership of different family' do
-        policy = Family::MembershipPolicy.new(owner, other_family_membership)
-
-        expect(policy).not_to permit(:update)
-      end
-
       it 'denies owner from destroying membership of different family' do
-        policy = Family::MembershipPolicy.new(owner, other_family_membership)
+        policy = described_class.new(owner, other_family_membership)
 
         expect(policy).not_to permit(:destroy)
       end
@@ -252,20 +163,8 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
         allow(owner).to receive(:family_owner?).and_return(true)
       end
 
-      it 'allows owner to view another owner' do
-        policy = Family::MembershipPolicy.new(owner, co_owner_membership)
-
-        expect(policy).to permit(:show)
-      end
-
-      it 'allows owner to update another owner (family owner has full control)' do
-        policy = Family::MembershipPolicy.new(owner, co_owner_membership)
-
-        expect(policy).to permit(:update)
-      end
-
       it 'allows owner to remove another owner (family owner has full control)' do
-        policy = Family::MembershipPolicy.new(owner, co_owner_membership)
+        policy = described_class.new(owner, co_owner_membership)
 
         expect(policy).to permit(:destroy)
       end
@@ -273,38 +172,32 @@ RSpec.describe Family::MembershipPolicy, type: :policy do
   end
 
   describe 'authorization consistency' do
-    it 'ensures owner can view, update, and destroy all memberships in their family' do
+    it 'ensures owner can destroy all memberships in their family' do
       allow(owner).to receive(:family).and_return(family)
       allow(owner).to receive(:family_owner?).and_return(true)
 
-      policy = Family::MembershipPolicy.new(owner, member_membership)
+      policy = described_class.new(owner, member_membership)
 
-      expect(policy).to permit(:show)
-      expect(policy).to permit(:update)
       expect(policy).to permit(:destroy)
     end
 
-    it 'ensures regular members can only manage their own membership' do
+    it 'ensures regular members can only remove their own membership' do
       allow(member).to receive(:family).and_return(family)
       allow(member).to receive(:family_owner?).and_return(false)
 
-      own_policy = Family::MembershipPolicy.new(member, member_membership)
-      other_policy = Family::MembershipPolicy.new(member, another_member_membership)
+      own_policy = described_class.new(member, member_membership)
+      other_policy = described_class.new(member, another_member_membership)
 
-      # Can manage own membership
-      expect(own_policy).to permit(:show)
-      expect(own_policy).to permit(:update)
+      # Can remove own membership
       expect(own_policy).to permit(:destroy)
 
-      # Can view but not manage others
-      expect(other_policy).to permit(:show)
-      expect(other_policy).not_to permit(:update)
+      # Cannot remove others
       expect(other_policy).not_to permit(:destroy)
     end
 
     it 'ensures users can always leave the family (remove own membership)' do
       allow(member).to receive(:family).and_return(family)
-      policy = Family::MembershipPolicy.new(member, member_membership)
+      policy = described_class.new(member, member_membership)
 
       expect(policy).to permit(:destroy)
     end

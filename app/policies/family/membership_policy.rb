@@ -1,29 +1,22 @@
 # frozen_string_literal: true
 
 class Family::MembershipPolicy < ApplicationPolicy
-  def show?
+  def create?
     return false unless user
+    return false unless record.is_a?(Family::Invitation)
 
-    user.family == record.family
-  end
-
-  def update?
-    return false unless user
-
-    # Users can update their own settings
-    return true if user == record.user
-
-    # Family owners can update any member's settings
-    show? && user.family_owner?
+    # User can only accept invitations that:
+    # 1. Are for their email address
+    # 2. Are still pending
+    # 3. Haven't expired
+    record.email == user.email && record.pending? && !record.expired?
   end
 
   def destroy?
     return false unless user
-
-    # Users can remove themselves (handled by family leave logic)
     return true if user == record.user
 
     # Family owners can remove other members
-    update?
+    user.family == record.family && user.family_owner?
   end
 end

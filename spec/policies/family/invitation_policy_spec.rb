@@ -10,34 +10,8 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
   let(:invitation) { create(:family_invitation, family: family, invited_by: owner) }
 
   before do
-    # Set up family membership for owner
     create(:family_membership, family: family, user: owner, role: :owner)
-    # Set up family membership for regular member
     create(:family_membership, family: family, user: member, role: :member)
-  end
-
-  describe '#show?' do
-    context 'with authenticated user' do
-      it 'allows any authenticated user to view invitation' do
-        policy = Family::InvitationPolicy.new(owner, invitation)
-
-        expect(policy).to permit(:show)
-      end
-
-      it 'allows other users to view invitation' do
-        policy = Family::InvitationPolicy.new(other_user, invitation)
-
-        expect(policy).to permit(:show)
-      end
-    end
-
-    context 'with unauthenticated user' do
-      it 'allows unauthenticated access (public endpoint)' do
-        policy = Family::InvitationPolicy.new(nil, invitation)
-
-        expect(policy).to permit(:show)
-      end
-    end
   end
 
   describe '#create?' do
@@ -48,7 +22,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       end
 
       it 'allows family owner to create invitations' do
-        policy = Family::InvitationPolicy.new(owner, invitation)
+        policy = described_class.new(owner, invitation)
 
         expect(policy).to permit(:create)
       end
@@ -61,7 +35,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       end
 
       it 'denies regular family member from creating invitations' do
-        policy = Family::InvitationPolicy.new(member, invitation)
+        policy = described_class.new(member, invitation)
 
         expect(policy).not_to permit(:create)
       end
@@ -69,7 +43,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
 
     context 'when user is not in the family' do
       it 'denies user not in the family from creating invitations' do
-        policy = Family::InvitationPolicy.new(other_user, invitation)
+        policy = described_class.new(other_user, invitation)
 
         expect(policy).not_to permit(:create)
       end
@@ -77,7 +51,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
 
     context 'with unauthenticated user' do
       it 'denies unauthenticated user from creating invitations' do
-        policy = Family::InvitationPolicy.new(nil, invitation)
+        policy = described_class.new(nil, invitation)
 
         expect(policy).not_to permit(:create)
       end
@@ -89,7 +63,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       let(:invited_user) { create(:user, email: invitation.email) }
 
       it 'allows user to accept invitation sent to their email' do
-        policy = Family::InvitationPolicy.new(invited_user, invitation)
+        policy = described_class.new(invited_user, invitation)
 
         expect(policy).to permit(:accept)
       end
@@ -97,7 +71,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
 
     context 'when user email does not match invitation email' do
       it 'denies user with different email from accepting invitation' do
-        policy = Family::InvitationPolicy.new(other_user, invitation)
+        policy = described_class.new(other_user, invitation)
 
         expect(policy).not_to permit(:accept)
       end
@@ -105,7 +79,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
 
     context 'when family owner tries to accept invitation' do
       it 'denies family owner from accepting invitation sent to different email' do
-        policy = Family::InvitationPolicy.new(owner, invitation)
+        policy = described_class.new(owner, invitation)
 
         expect(policy).not_to permit(:accept)
       end
@@ -113,7 +87,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
 
     context 'with unauthenticated user' do
       it 'denies unauthenticated user from accepting invitation' do
-        policy = Family::InvitationPolicy.new(nil, invitation)
+        policy = described_class.new(nil, invitation)
 
         expect(policy).not_to permit(:accept)
       end
@@ -128,7 +102,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       end
 
       it 'allows family owner to cancel invitations' do
-        policy = Family::InvitationPolicy.new(owner, invitation)
+        policy = described_class.new(owner, invitation)
 
         expect(policy).to permit(:destroy)
       end
@@ -141,7 +115,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       end
 
       it 'denies regular family member from cancelling invitations' do
-        policy = Family::InvitationPolicy.new(member, invitation)
+        policy = described_class.new(member, invitation)
 
         expect(policy).not_to permit(:destroy)
       end
@@ -149,7 +123,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
 
     context 'when user is not in the family' do
       it 'denies user not in the family from cancelling invitations' do
-        policy = Family::InvitationPolicy.new(other_user, invitation)
+        policy = described_class.new(other_user, invitation)
 
         expect(policy).not_to permit(:destroy)
       end
@@ -157,7 +131,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
 
     context 'with unauthenticated user' do
       it 'denies unauthenticated user from cancelling invitations' do
-        policy = Family::InvitationPolicy.new(nil, invitation)
+        policy = described_class.new(nil, invitation)
 
         expect(policy).not_to permit(:destroy)
       end
@@ -177,13 +151,13 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       end
 
       it 'denies owner from creating invitations for different family' do
-        policy = Family::InvitationPolicy.new(owner, other_invitation)
+        policy = described_class.new(owner, other_invitation)
 
         expect(policy).not_to permit(:create)
       end
 
       it 'denies owner from destroying invitations for different family' do
-        policy = Family::InvitationPolicy.new(owner, other_invitation)
+        policy = described_class.new(owner, other_invitation)
 
         expect(policy).not_to permit(:destroy)
       end
@@ -194,7 +168,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       let(:invited_user) { create(:user, email: expired_invitation.email) }
 
       it 'still allows user to attempt to accept expired invitation (business logic handles expiry)' do
-        policy = Family::InvitationPolicy.new(invited_user, expired_invitation)
+        policy = described_class.new(invited_user, expired_invitation)
 
         expect(policy).to permit(:accept)
       end
@@ -202,7 +176,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       it 'allows owner to destroy expired invitation' do
         allow(owner).to receive(:family).and_return(family)
         allow(owner).to receive(:family_owner?).and_return(true)
-        policy = Family::InvitationPolicy.new(owner, expired_invitation)
+        policy = described_class.new(owner, expired_invitation)
 
         expect(policy).to permit(:destroy)
       end
@@ -214,7 +188,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       it 'allows owner to destroy accepted invitation' do
         allow(owner).to receive(:family).and_return(family)
         allow(owner).to receive(:family_owner?).and_return(true)
-        policy = Family::InvitationPolicy.new(owner, accepted_invitation)
+        policy = described_class.new(owner, accepted_invitation)
 
         expect(policy).to permit(:destroy)
       end
@@ -226,7 +200,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
       it 'allows owner to destroy cancelled invitation' do
         allow(owner).to receive(:family).and_return(family)
         allow(owner).to receive(:family_owner?).and_return(true)
-        policy = Family::InvitationPolicy.new(owner, cancelled_invitation)
+        policy = described_class.new(owner, cancelled_invitation)
 
         expect(policy).to permit(:destroy)
       end
@@ -237,7 +211,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
     it 'ensures owner can both create and destroy invitations' do
       allow(owner).to receive(:family).and_return(family)
       allow(owner).to receive(:family_owner?).and_return(true)
-      policy = Family::InvitationPolicy.new(owner, invitation)
+      policy = described_class.new(owner, invitation)
 
       expect(policy).to permit(:create)
       expect(policy).to permit(:destroy)
@@ -246,7 +220,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
     it 'ensures regular members cannot create or destroy invitations' do
       allow(member).to receive(:family).and_return(family)
       allow(member).to receive(:family_owner?).and_return(false)
-      policy = Family::InvitationPolicy.new(member, invitation)
+      policy = described_class.new(member, invitation)
 
       expect(policy).not_to permit(:create)
       expect(policy).not_to permit(:destroy)
@@ -254,7 +228,7 @@ RSpec.describe Family::InvitationPolicy, type: :policy do
 
     it 'ensures invited users can only accept their own invitations' do
       invited_user = create(:user, email: invitation.email)
-      policy = Family::InvitationPolicy.new(invited_user, invitation)
+      policy = described_class.new(invited_user, invitation)
 
       expect(policy).to permit(:accept)
       expect(policy).not_to permit(:create)

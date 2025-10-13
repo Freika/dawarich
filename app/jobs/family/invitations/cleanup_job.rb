@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Family::Invitations::CleanupJob < ApplicationJob
-  queue_as :family
+  queue_as :families
 
   def perform
     Rails.logger.info 'Starting family invitations cleanup'

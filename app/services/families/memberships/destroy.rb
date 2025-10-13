@@ -6,20 +6,18 @@ module Families
       attr_reader :user, :member_to_remove, :error_message
 
       def initialize(user:, member_to_remove: nil)
-        @user = user # The user performing the action (current_user)
-        @member_to_remove = member_to_remove || user # The user being removed (defaults to self)
+        @user = user
+        @member_to_remove = member_to_remove || user
         @error_message = nil
       end
 
       def call
         return false unless validate_can_leave
 
-        # Store family info before removing membership
         @family_name = member_to_remove.family.name
         @family_owner = member_to_remove.family.owner
 
         ActiveRecord::Base.transaction do
-          handle_ownership_transfer if member_to_remove.family_owner?
           remove_membership
           send_notifications
         end
@@ -52,10 +50,8 @@ module Families
       end
 
       def validate_removal_allowed
-        # If removing self (user == member_to_remove)
         return validate_owner_can_leave if removing_self?
 
-        # If removing another member, user must be owner and member must be in same family
         return false unless validate_remover_is_owner
         return false unless validate_same_family
         return false unless validate_not_removing_owner
@@ -95,19 +91,6 @@ module Families
         false
       end
 
-      def family_has_other_members?
-        member_to_remove.family.members.count > 1
-      end
-
-      def handle_ownership_transfer
-        # If this is the last member (owner), delete the family
-        return unless member_to_remove.family.members.count == 1
-
-        member_to_remove.family.destroy!
-
-        # If owner tries to leave with other members, it should be prevented in validation
-      end
-
       def remove_membership
         member_to_remove.family_membership.destroy!
       end
@@ -123,7 +106,6 @@ module Families
       end
 
       def send_self_removal_notifications
-        # Notify the user who left
         Notification.create!(
           user: member_to_remove,
           kind: :info,
@@ -131,7 +113,6 @@ module Families
           content: "You've left the family \"#{@family_name}\""
         )
 
-        # Notify the family owner
         return unless @family_owner&.persisted?
 
         Notification.create!(
@@ -143,7 +124,6 @@ module Families
       end
 
       def send_member_removed_notifications
-        # Notify the member who was removed
         Notification.create!(
           user: member_to_remove,
           kind: :info,
@@ -151,7 +131,6 @@ module Families
           content: "You have been removed from the family \"#{@family_name}\" by #{user.email}"
         )
 
-        # Notify the owner who removed the member (if different from the member)
         return unless user != member_to_remove
 
         Notification.create!(

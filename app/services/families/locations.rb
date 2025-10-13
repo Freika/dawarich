@@ -34,17 +34,15 @@ class Families::Locations
       sharing_members.map { _1.points.last }.compact
 
     latest_points.map do |point|
-      next unless point
-
       {
         user_id: point.user_id,
         email: point.user.email,
         email_initial: point.user.email.first.upcase,
-        latitude: point.lat.to_f,
-        longitude: point.lon.to_f,
+        latitude: point.lat,
+        longitude: point.lon,
         timestamp: point.timestamp.to_i,
         updated_at: Time.zone.at(point.timestamp.to_i)
       }
-    end.compact
+    end
   end
 end

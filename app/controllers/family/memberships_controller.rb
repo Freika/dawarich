@@ -8,17 +8,7 @@ class Family::MembershipsController < ApplicationController
   before_action :set_invitation, only: %i[create]
 
   def create
-    unless @invitation.pending?
-      redirect_to root_path, alert: 'This invitation has already been processed' and return
-    end
-
-    if @invitation.expired?
-      redirect_to root_path, alert: 'This invitation is no longer valid or has expired' and return
-    end
-
-    if @invitation.email != current_user.email
-      redirect_to root_path, alert: 'This invitation is not for your email address' and return
-    end
+    authorize @invitation, policy_class: Family::MembershipPolicy
 
     service = Families::AcceptInvitation.new(
       invitation: @invitation,
@@ -29,6 +19,16 @@ class Family::MembershipsController < ApplicationController
       redirect_to family_path, notice: 'Welcome to the family!'
     else
       redirect_to root_path, alert: service.error_message || 'Unable to accept invitation'
+    end
+  rescue Pundit::NotAuthorizedError
+    if @invitation.expired?
+      redirect_to root_path, alert: 'This invitation is no longer valid or has expired'
+    elsif !@invitation.pending?
+      redirect_to root_path, alert: 'This invitation has already been processed'
+    elsif @invitation.email != current_user.email
+      redirect_to root_path, alert: 'This invitation is not for your email address'
+    else
+      redirect_to root_path, alert: 'You are not authorized to accept this invitation'
     end
   rescue StandardError => e
     Rails.logger.error "Error accepting family invitation: #{e.message}"
