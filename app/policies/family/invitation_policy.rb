@@ -8,14 +8,12 @@ class Family::InvitationPolicy < ApplicationPolicy
   end
 
   def accept?
-    # Users can accept invitations sent to their email
     return false unless user
 
     user.email == record.email
   end
 
   def destroy?
-    # Only family owners can cancel invitations
     create?
   end
 end
