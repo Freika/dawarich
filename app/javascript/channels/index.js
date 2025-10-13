@@ -2,3 +2,4 @@
 import "notifications_channel"
 import "points_channel"
 import "imports_channel"
+import "family_locations_channel"

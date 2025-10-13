@@ -206,6 +206,9 @@ export default class extends BaseController {
     // Expose visits manager globally for location search integration
     window.visitsManager = this.visitsManager;
 
+    // Expose maps controller globally for family integration
+    window.mapsController = this;
+
     // Initialize layers for the layer control
     const controlsLayer = {
       Points: this.markersLayer,
@@ -1089,7 +1092,15 @@ export default class extends BaseController {
     const TogglePanelControl = L.Control.extend({
       onAdd: function(map) {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
-        button.innerHTML = '📅';
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v4" />
+            <path d="M16 2v4" />
+            <path d="M21 14V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" />
+            <path d="M3 10h18" />
+            <path d="m16 20 2 2 4-4" />
+          </svg>
+        `;
 
         // Style the button with theme-aware styling
         applyThemeToButton(button, controller.userTheme);
@@ -1097,9 +1108,9 @@ export default class extends BaseController {
         button.style.height = '48px';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
-        button.style.lineHeight = '48px';
-        button.style.fontSize = '18px';
-        button.style.textAlign = 'center';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
@@ -1839,4 +1850,77 @@ export default class extends BaseController {
       this.locationSearch = new LocationSearch(this.map, this.apiKey, this.userTheme);
     }
   }
+
+  // Helper method for family controller to update layer control
+  updateLayerControl(additionalLayers = {}) {
+    if (!this.layerControl) return;
+
+    // Store which base and overlay layers are currently visible
+    const overlayStates = {};
+    let activeBaseLayer = null;
+    let activeBaseLayerName = null;
+
+    if (this.layerControl._layers) {
+      Object.values(this.layerControl._layers).forEach(layerObj => {
+        if (layerObj.overlay && layerObj.layer) {
+          // Store overlay layer states
+          overlayStates[layerObj.name] = this.map.hasLayer(layerObj.layer);
+        } else if (!layerObj.overlay && this.map.hasLayer(layerObj.layer)) {
+          // Store the currently active base layer
+          activeBaseLayer = layerObj.layer;
+          activeBaseLayerName = layerObj.name;
+        }
+      });
+    }
+
+    // Remove existing layer control
+    this.map.removeControl(this.layerControl);
+
+    // Create base controls layer object
+    const baseControlsLayer = {
+      Points: this.markersLayer || L.layerGroup(),
+      Routes: this.polylinesLayer || L.layerGroup(),
+      Tracks: this.tracksLayer || L.layerGroup(),
+      Heatmap: this.heatmapLayer || L.heatLayer([]),
+      "Fog of War": this.fogOverlay,
+      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
+      Areas: this.areasLayer || L.layerGroup(),
+      Photos: this.photoMarkers || L.layerGroup(),
+      "Suggested Visits": this.visitsManager?.getVisitCirclesLayer() || L.layerGroup(),
+      "Confirmed Visits": this.visitsManager?.getConfirmedVisitCirclesLayer() || L.layerGroup()
+    };
+
+    // Merge with additional layers (like family members)
+    const controlsLayer = { ...baseControlsLayer, ...additionalLayers };
+
+    // Get base maps and re-add the layer control
+    const baseMaps = this.baseMaps();
+    this.layerControl = L.control.layers(baseMaps, controlsLayer).addTo(this.map);
+
+    // Restore the active base layer if we had one
+    if (activeBaseLayer && activeBaseLayerName) {
+      console.log(`Restoring base layer: ${activeBaseLayerName}`);
+      // Make sure the base layer is added to the map
+      if (!this.map.hasLayer(activeBaseLayer)) {
+        activeBaseLayer.addTo(this.map);
+      }
+    } else {
+      // If no active base layer was found, ensure we have a default one
+      console.log('No active base layer found, adding default');
+      const defaultBaseLayer = Object.values(baseMaps)[0];
+      if (defaultBaseLayer && !this.map.hasLayer(defaultBaseLayer)) {
+        defaultBaseLayer.addTo(this.map);
+      }
+    }
+
+    // Restore overlay layer visibility states
+    Object.entries(overlayStates).forEach(([name, wasVisible]) => {
+      const layer = controlsLayer[name];
+      if (layer && wasVisible && !this.map.hasLayer(layer)) {
+        layer.addTo(this.map);
+      }
+    });
+  }
+
+
 }

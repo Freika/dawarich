@@ -23,5 +23,6 @@ pin 'leaflet-draw' # @1.0.4
 pin 'notifications_channel', to: 'channels/notifications_channel.js'
 pin 'points_channel', to: 'channels/points_channel.js'
 pin 'imports_channel', to: 'channels/imports_channel.js'
+pin 'family_locations_channel', to: 'channels/family_locations_channel.js'
 pin 'trix'
 pin '@rails/actiontext', to: 'actiontext.esm.js'

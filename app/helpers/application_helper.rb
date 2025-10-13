@@ -1,12 +1,23 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
-  def classes_for_flash(flash_type)
-    case flash_type.to_sym
-    when :error
-      'bg-red-100 text-red-700 border-red-300'
+  def flash_alert_class(type)
+    case type.to_sym
+    when :notice, :success then 'alert-success'
+    when :alert, :error then 'alert-error'
+    when :warning then 'alert-warning'
+    when :info then 'alert-info'
+    else 'alert-info'
+    end
+  end
+
+  def flash_icon(type)
+    case type.to_sym
+    when :notice, :success then icon 'circle-check'
+    when :alert, :error then icon 'circle-x'
+    when :warning then icon 'circle-alert'
     else
-      'bg-blue-100 text-blue-700 border-blue-300'
+      icon 'info'
     end
   end
 

@@ -56,6 +56,12 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def ensure_family_feature_enabled!
+    return if DawarichSettings.family_feature_enabled?
+
+    render json: { error: 'Family feature is not enabled' }, status: :forbidden
+  end
+
   private
 
   def set_self_hosted_status
@@ -69,8 +75,8 @@ class ApplicationController < ActionController::Base
   end
 
   def user_not_authorized
-    redirect_back fallback_location: root_path,
-                  alert: 'You are not authorized to perform this action.',
-                  status: :see_other
+    redirect_to (request.referer || root_path),
+                alert: 'You are not authorized to perform this action.',
+                status: :see_other
   end
 end

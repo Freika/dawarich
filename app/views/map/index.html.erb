@@ -9,7 +9,7 @@
             <div class="flex flex-col space-y-2">
               <span class="tooltip" data-tip="<%= human_date(@start_at - 1.day) %>">
                 <%= link_to map_path(start_at: @start_at - 1.day, end_at: @end_at - 1.day, import_id: params[:import_id]), class: "btn border border-base-300 hover:btn-ghost w-full" do %>
-                  ◀️
+                  <%= icon 'chevron-left' %>
                 <% end %>
               </span>
             </div>
@@ -30,7 +30,7 @@
             <div class="flex flex-col space-y-2">
               <span class="tooltip" data-tip="<%= human_date(@start_at + 1.day) %>">
                 <%= link_to map_path(start_at: @start_at + 1.day, end_at: @end_at + 1.day, import_id: params[:import_id]), class: "btn border border-base-300 hover:btn-ghost w-full" do %>
-                  ▶️
+                  <%= icon 'chevron-right' %>
                 <% end %>
               </span>
             </div>
@@ -63,7 +63,7 @@
       <div
         id='map'
         class="w-full z-0"
-        data-controller="maps points add-visit"
+        data-controller="maps points add-visit family-members"
         data-points-target="map"
         data-api_key="<%= current_user.api_key %>"
         data-self_hosted="<%= @self_hosted %>"
@@ -74,7 +74,9 @@
         data-distance="<%= @distance %>"
         data-points_number="<%= @points_number %>"
         data-timezone="<%= Rails.configuration.time_zone %>"
-        data-features='<%= @features.to_json.html_safe %>'>
+        data-features='<%= @features.to_json.html_safe %>'
+        data-family-members-features-value='<%= @features.to_json.html_safe %>'
+        data-family-members-user-theme-value="<%= current_user&.theme || 'dark' %>">
         <div data-maps-target="container" class="h-[25rem] rounded-lg w-full min-h-screen z-0">
           <div id="fog" class="fog"></div>
         </div>

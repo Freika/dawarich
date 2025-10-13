@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_18_215512) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_30_150256) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -94,6 +94,41 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_18_215512) do
     t.index ["file_type"], name: "index_exports_on_file_type"
     t.index ["status"], name: "index_exports_on_status"
     t.index ["user_id"], name: "index_exports_on_user_id"
+  end
+
+  create_table "families", force: :cascade do |t|
+    t.string "name", limit: 50, null: false
+    t.bigint "creator_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["creator_id"], name: "index_families_on_creator_id"
+  end
+
+  create_table "family_invitations", force: :cascade do |t|
+    t.bigint "family_id", null: false
+    t.string "email", null: false
+    t.string "token", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "invited_by_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_family_invitations_on_email"
+    t.index ["expires_at"], name: "index_family_invitations_on_expires_at"
+    t.index ["family_id"], name: "index_family_invitations_on_family_id"
+    t.index ["status"], name: "index_family_invitations_on_status"
+    t.index ["token"], name: "index_family_invitations_on_token", unique: true
+  end
+
+  create_table "family_memberships", force: :cascade do |t|
+    t.bigint "family_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "role", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "role"], name: "index_family_memberships_on_family_id_and_role"
+    t.index ["family_id"], name: "index_family_memberships_on_family_id"
+    t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
   end
 
   create_table "imports", force: :cascade do |t|
@@ -307,6 +342,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_18_215512) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
+  add_foreign_key "families", "users", column: "creator_id", validate: false
+  add_foreign_key "family_invitations", "families", validate: false
+  add_foreign_key "family_invitations", "users", column: "invited_by_id", validate: false
+  add_foreign_key "family_memberships", "families", validate: false
+  add_foreign_key "family_memberships", "users", validate: false
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
