@@ -6,7 +6,6 @@ export default class extends Controller {
   static targets = [];
 
   static values = {
-    familyMemberLocations: Array,
     features: Object,
     userTheme: String
   }
@@ -53,15 +52,10 @@ export default class extends Controller {
 
     // Initialize family member markers layer
     this.familyMarkersLayer = L.layerGroup();
-    this.createFamilyMarkers();
+    this.familyMemberLocations = []; // Initialize as empty, will be fetched via API
 
-    // Add to layer control if available
+    // Add to layer control immediately (layer will be empty until data is fetched)
     this.addToLayerControl();
-
-    // Add markers to map if layer control integration doesn't work initially
-    if (this.familyMarkersLayer.getLayers().length > 0) {
-      this.familyMarkersLayer.addTo(this.map);
-    }
 
     // Listen for family data updates
     this.setupEventListeners();
@@ -75,14 +69,14 @@ export default class extends Controller {
 
     // Only proceed if family feature is enabled and we have family member locations
     if (!this.featuresValue.family ||
-        !this.familyMemberLocationsValue ||
-        this.familyMemberLocationsValue.length === 0) {
+        !this.familyMemberLocations ||
+        this.familyMemberLocations.length === 0) {
       return;
     }
 
     const bounds = [];
 
-    this.familyMemberLocationsValue.forEach((location) => {
+    this.familyMemberLocations.forEach((location) => {
       if (!location || !location.latitude || !location.longitude) {
         return;
       }
@@ -105,7 +99,7 @@ export default class extends Controller {
 
       // Create small tooltip that shows automatically
       const tooltipContent = this.createTooltipContent(lastSeen);
-      familyMarker.bindTooltip(tooltipContent, {
+      const tooltip = familyMarker.bindTooltip(tooltipContent, {
         permanent: true,
         direction: 'top',
         offset: [0, -12],
@@ -115,6 +109,14 @@ export default class extends Controller {
       // Create detailed popup that shows on click
       const popupContent = this.createPopupContent(location, lastSeen);
       familyMarker.bindPopup(popupContent);
+
+      // Hide tooltip when popup opens, show when popup closes
+      familyMarker.on('popupopen', () => {
+        familyMarker.closeTooltip();
+      });
+      familyMarker.on('popupclose', () => {
+        familyMarker.openTooltip();
+      });
 
       this.familyMarkersLayer.addLayer(familyMarker);
 
@@ -127,15 +129,7 @@ export default class extends Controller {
   }
 
   createTooltipContent(lastSeen) {
-    const isDark = this.userThemeValue === 'dark';
-    const bgColor = isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)';
-    const textColor = isDark ? '#f9fafb' : '#111827';
-
-    return `
-      <div style="background-color: ${bgColor}; color: ${textColor}; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-        Last updated: ${lastSeen}
-      </div>
-    `;
+    return `Last updated: ${lastSeen}`;
   }
 
   createPopupContent(location, lastSeen) {
@@ -187,7 +181,7 @@ export default class extends Controller {
   setupEventListeners() {
     // Listen for family data updates (for real-time updates in the future)
     document.addEventListener('family:locations:updated', (event) => {
-      this.familyMemberLocationsValue = event.detail.locations;
+      this.familyMemberLocations = event.detail.locations;
       this.createFamilyMarkers();
     });
 
@@ -271,7 +265,7 @@ export default class extends Controller {
 
   // Method to manually update family member locations (for API calls)
   updateFamilyLocations(locations) {
-    this.familyMemberLocationsValue = locations;
+    this.familyMemberLocations = locations;
     this.createFamilyMarkers();
 
     // Dispatch event for other controllers that might be interested
@@ -367,6 +361,6 @@ export default class extends Controller {
 
   // Get family marker count
   getFamilyMemberCount() {
-    return this.familyMemberLocationsValue ? this.familyMemberLocationsValue.length : 0;
+    return this.familyMemberLocations ? this.familyMemberLocations.length : 0;
   }
 }

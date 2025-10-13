@@ -139,3 +139,28 @@
   border-radius: 3px !important;
   padding: 2px !important;
 }
+
+/* Family member tooltip - dark styled like the visit popup */
+.leaflet-tooltip.family-member-tooltip {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+  border: 1px solid #4b5563 !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  font-size: 11px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-tooltip.family-member-tooltip::before {
+  border-top-color: #374151 !important;
+}
+
+/* Family member popup - just override colors, keep default layout */
+.leaflet-popup-content-wrapper:has(.family-member-popup) {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+}
+
+.leaflet-popup-content-wrapper:has(.family-member-popup) + .leaflet-popup-tip {
+  background-color: #1f2937 !important;
+}

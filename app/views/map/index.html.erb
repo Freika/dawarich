@@ -75,7 +75,6 @@
         data-points_number="<%= @points_number %>"
         data-timezone="<%= Rails.configuration.time_zone %>"
         data-features='<%= @features.to_json.html_safe %>'
-        data-family-members-family-member-locations-value='<%= @family_member_locations.to_json.html_safe %>'
         data-family-members-features-value='<%= @features.to_json.html_safe %>'
         data-family-members-user-theme-value="<%= current_user&.theme || 'dark' %>">
         <div data-maps-target="container" class="h-[25rem] rounded-lg w-full min-h-screen z-0">
