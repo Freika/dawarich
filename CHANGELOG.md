@@ -14,6 +14,14 @@ In this release we're introducing family features that allow users to create fam
 
 - Users can now create family groups and invite members to join.
 
+## Fixed
+
+- Sign out button works again. #1844
+
+## Changed
+
+- Minor versions of Dawarich are being built for ARM64 architecture as well again. #1840
+
 
 # [0.33.1] - 2025-10-07
 
