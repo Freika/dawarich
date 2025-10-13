@@ -94,8 +94,6 @@ module Families
     end
 
     def send_notification
-      return unless defined?(Notification)
-
       Notification.create!(
         user: user,
         kind: :info,

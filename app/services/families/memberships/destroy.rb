@@ -96,8 +96,6 @@ module Families
       end
 
       def send_notifications
-        return unless defined?(Notification)
-
         if removing_self?
           send_self_removal_notifications
         else

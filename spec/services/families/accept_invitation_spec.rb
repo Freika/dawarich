@@ -26,10 +26,10 @@ RSpec.describe Families::AcceptInvitation do
       it 'sends notifications to both parties' do
         expect { service.call }.to change(Notification, :count).by(2)
 
-        user_notification = Notification.find_by(user: invitee, title: 'Welcome to Family')
+        user_notification = Notification.find_by(user: invitee, title: 'Welcome to Family!')
         expect(user_notification).to be_present
 
-        owner_notification = Notification.find_by(user: family.creator, title: 'New Family Member')
+        owner_notification = Notification.find_by(user: family.creator, title: 'New Family Member!')
         expect(owner_notification).to be_present
       end
 

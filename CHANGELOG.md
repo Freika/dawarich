@@ -4,24 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.33.1]
+# [0.34.0] - 2025-10-10
+
+## The Family release
+
+In this release we're introducing family features that allow users to create family groups, invite members, and share location data. Family owners can manage members, control sharing settings, and ensure secure access to shared information. Location sharing is optional and can be enabled or disabled by each member individually. Users can join only one family at a time. Location sharing settings can be set to share location for 1, 6, 12, 24 hours or permanently. Family features are now available only for self-hosted instances and will be available in the cloud in the future. When "Family members" layer is enabled on the map, family member markers will be updated in real-time.
+
+## Added
+
+- Users can now create family groups and invite members to join.
+
+
+# [0.33.1] - 2025-10-07
 
 ## Changed
 
 - On the Trip page, instead of list of visited countries, a number of them is being shown. Clicking on it opens a modal with a list of countries visited during the trip. #1731
-
-- **Family Features**: Complete family management system allowing users to create family groups, invite members, and share location data. Features include:
-  - Family creation and management with role-based permissions (owner/member)
-  - Email-based invitation system with expiration and security controls
-  - Comprehensive authorization and access control via Pundit policies
-  - Performance-optimized database schema with concurrent indexes
-  - Feature gating for cloud vs self-hosted deployments
-  - Background job processing for email delivery and cleanup
-  - Interactive UI with real-time form validation and animated feedback
-  - Complete test coverage including unit, integration, and system tests
-  - Comprehensive error handling with user-friendly messages
-  - Full API documentation and deployment guides
-
 
 ## Fixed
 

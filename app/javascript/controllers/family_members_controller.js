@@ -52,7 +52,11 @@ export default class extends Controller {
 
     // Initialize family member markers layer
     this.familyMarkersLayer = L.layerGroup();
-    this.familyMemberLocations = []; // Initialize as empty, will be fetched via API
+    this.familyMemberLocations = {}; // Object keyed by user_id for efficient updates
+    this.familyMarkers = {}; // Store marker references by user_id
+
+    // Expose controller globally for ActionCable channel
+    window.familyMembersController = this;
 
     // Add to layer control immediately (layer will be empty until data is fetched)
     this.addToLayerControl();
@@ -67,16 +71,19 @@ export default class extends Controller {
       this.familyMarkersLayer.clearLayers();
     }
 
+    // Clear marker references
+    this.familyMarkers = {};
+
     // Only proceed if family feature is enabled and we have family member locations
     if (!this.featuresValue.family ||
         !this.familyMemberLocations ||
-        this.familyMemberLocations.length === 0) {
+        Object.keys(this.familyMemberLocations).length === 0) {
       return;
     }
 
     const bounds = [];
 
-    this.familyMemberLocations.forEach((location) => {
+    Object.values(this.familyMemberLocations).forEach((location) => {
       if (!location || !location.latitude || !location.longitude) {
         return;
       }
@@ -84,13 +91,17 @@ export default class extends Controller {
       // Get the first letter of the email or use '?' as fallback
       const emailInitial = location.email_initial || location.email?.charAt(0)?.toUpperCase() || '?';
 
+      // Check if this is a recent update (within last 5 minutes)
+      const isRecent = this.isRecentUpdate(location.updated_at);
+      const markerClass = isRecent ? 'family-member-marker family-member-marker-recent' : 'family-member-marker';
+
       // Create a distinct marker for family members with email initial
       const familyMarker = L.marker([location.latitude, location.longitude], {
         icon: L.divIcon({
           html: `<div style="background-color: #10B981; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-size: 14px; font-weight: bold; font-family: system-ui, -apple-system, sans-serif;">${emailInitial}</div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12],
-          className: 'family-member-marker'
+          className: markerClass
         })
       });
 
@@ -120,12 +131,111 @@ export default class extends Controller {
 
       this.familyMarkersLayer.addLayer(familyMarker);
 
+      // Store marker reference by user_id for efficient updates
+      this.familyMarkers[location.user_id] = familyMarker;
+
       // Add to bounds array for auto-zoom
       bounds.push([location.latitude, location.longitude]);
     });
 
     // Store bounds for later use
     this.familyMemberBounds = bounds;
+  }
+
+  // Update a single family member's location in real-time
+  updateSingleMemberLocation(locationData) {
+    if (!this.featuresValue.family) return;
+    if (!locationData || !locationData.user_id) return;
+
+    // Update stored location data
+    this.familyMemberLocations[locationData.user_id] = locationData;
+
+    // If the Family Members layer is not currently visible, just store the data
+    if (!this.map.hasLayer(this.familyMarkersLayer)) {
+      return;
+    }
+
+    // Get existing marker for this user
+    const existingMarker = this.familyMarkers[locationData.user_id];
+
+    if (existingMarker) {
+      // Update existing marker position and content
+      existingMarker.setLatLng([locationData.latitude, locationData.longitude]);
+
+      // Update marker icon with pulse animation for recent updates
+      const emailInitial = locationData.email_initial || locationData.email?.charAt(0)?.toUpperCase() || '?';
+      const isRecent = this.isRecentUpdate(locationData.updated_at);
+      const markerClass = isRecent ? 'family-member-marker family-member-marker-recent' : 'family-member-marker';
+
+      const newIcon = L.divIcon({
+        html: `<div style="background-color: #10B981; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-size: 14px; font-weight: bold; font-family: system-ui, -apple-system, sans-serif;">${emailInitial}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        className: markerClass
+      });
+      existingMarker.setIcon(newIcon);
+
+      // Update tooltip content
+      const lastSeen = new Date(locationData.updated_at).toLocaleString();
+      const tooltipContent = this.createTooltipContent(lastSeen);
+      existingMarker.setTooltipContent(tooltipContent);
+
+      // Update popup content
+      const popupContent = this.createPopupContent(locationData, lastSeen);
+      existingMarker.setPopupContent(popupContent);
+    } else {
+      // Create new marker for this user
+      this.createSingleFamilyMarker(locationData);
+    }
+  }
+
+  // Check if location was updated within the last 5 minutes
+  isRecentUpdate(updatedAt) {
+    const updateTime = new Date(updatedAt);
+    const now = new Date();
+    const diffMinutes = (now - updateTime) / 1000 / 60;
+    return diffMinutes < 5;
+  }
+
+  // Create a marker for a single family member
+  createSingleFamilyMarker(location) {
+    if (!location || !location.latitude || !location.longitude) return;
+
+    const emailInitial = location.email_initial || location.email?.charAt(0)?.toUpperCase() || '?';
+    const isRecent = this.isRecentUpdate(location.updated_at);
+    const markerClass = isRecent ? 'family-member-marker family-member-marker-recent' : 'family-member-marker';
+
+    const familyMarker = L.marker([location.latitude, location.longitude], {
+      icon: L.divIcon({
+        html: `<div style="background-color: #10B981; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-size: 14px; font-weight: bold; font-family: system-ui, -apple-system, sans-serif;">${emailInitial}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        className: markerClass
+      })
+    });
+
+    const lastSeen = new Date(location.updated_at).toLocaleString();
+
+    const tooltipContent = this.createTooltipContent(lastSeen);
+    familyMarker.bindTooltip(tooltipContent, {
+      permanent: true,
+      direction: 'top',
+      offset: [0, -12],
+      className: 'family-member-tooltip'
+    });
+
+    const popupContent = this.createPopupContent(location, lastSeen);
+    familyMarker.bindPopup(popupContent);
+
+    familyMarker.on('popupopen', () => {
+      familyMarker.closeTooltip();
+    });
+    familyMarker.on('popupclose', () => {
+      familyMarker.openTooltip();
+    });
+
+    this.familyMarkersLayer.addLayer(familyMarker);
+    this.familyMarkers[location.user_id] = familyMarker;
   }
 
   createTooltipContent(lastSeen) {
@@ -202,11 +312,10 @@ export default class extends Controller {
     // Listen for when the Family Members layer is added
     this.map.on('overlayadd', (event) => {
       if (event.name === 'Family Members' && event.layer === this.familyMarkersLayer) {
-        console.log('Family Members layer enabled - refreshing locations and zooming to fit');
-        this.refreshFamilyLocations();
-
-        // Zoom to show all family members
-        this.zoomToFitAllMembers();
+        // Refresh locations and zoom after data is loaded
+        this.refreshFamilyLocations().then(() => {
+          this.zoomToFitAllMembers();
+        });
 
         // Set up periodic refresh while layer is active
         this.startPeriodicRefresh();
@@ -245,7 +354,7 @@ export default class extends Controller {
     // Clear any existing refresh interval
     this.stopPeriodicRefresh();
 
-    // Refresh family locations every 30 seconds while layer is active
+    // Refresh family locations every 60 seconds while layer is active (as fallback to real-time)
     this.refreshInterval = setInterval(() => {
       if (this.map && this.map.hasLayer(this.familyMarkersLayer)) {
         this.refreshFamilyLocations();
@@ -253,7 +362,7 @@ export default class extends Controller {
         // Layer is no longer active, stop refreshing
         this.stopPeriodicRefresh();
       }
-    }, 30000); // 30 seconds
+    }, 60000); // 60 seconds (real-time updates via ActionCable are primary)
   }
 
   stopPeriodicRefresh() {
@@ -265,12 +374,23 @@ export default class extends Controller {
 
   // Method to manually update family member locations (for API calls)
   updateFamilyLocations(locations) {
-    this.familyMemberLocations = locations;
+    // Convert array to object keyed by user_id
+    if (Array.isArray(locations)) {
+      this.familyMemberLocations = {};
+      locations.forEach(location => {
+        if (location.user_id) {
+          this.familyMemberLocations[location.user_id] = location;
+        }
+      });
+    } else {
+      this.familyMemberLocations = locations;
+    }
+
     this.createFamilyMarkers();
 
     // Dispatch event for other controllers that might be interested
     document.dispatchEvent(new CustomEvent('family:locations:updated', {
-      detail: { locations: locations }
+      detail: { locations: this.familyMemberLocations }
     }));
   }
 
@@ -361,6 +481,6 @@ export default class extends Controller {
 
   // Get family marker count
   getFamilyMemberCount() {
-    return this.familyMemberLocations ? this.familyMemberLocations.length : 0;
+    return this.familyMemberLocations ? Object.keys(this.familyMemberLocations).length : 0;
   }
 }

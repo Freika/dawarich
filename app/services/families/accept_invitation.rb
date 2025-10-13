@@ -89,18 +89,16 @@ module Families
       Notification.create!(
         user: user,
         kind: :info,
-        title: 'Welcome to Family',
+        title: 'Welcome to Family!',
         content: "You've joined the family '#{invitation.family.name}'"
       )
     end
 
     def send_owner_notification
-      return unless defined?(Notification)
-
       Notification.create!(
         user: invitation.family.creator,
         kind: :info,
-        title: 'New Family Member',
+        title: 'New Family Member!',
         content: "#{user.email} has joined your family"
       )
     rescue StandardError => e
