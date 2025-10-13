@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'zip'
+require 'oj'
 
 # Users::ImportData - Imports complete user data from exported archive
 #
@@ -22,6 +23,9 @@ require 'zip'
 # Files are restored to their original locations and properly attached to records.
 
 class Users::ImportData
+  STREAM_BATCH_SIZE = 5000
+  STREAMED_SECTIONS = %w[places visits points].freeze
+
   def initialize(user, archive_path)
     @user = user
     @archive_path = archive_path
@@ -46,10 +50,7 @@ class Users::ImportData
 
     ActiveRecord::Base.transaction do
       extract_archive
-      data = load_json_data
-
-      import_in_correct_order(data)
-
+      process_archive_data
       create_success_notification
 
       @import_stats
@@ -73,14 +74,10 @@ class Users::ImportData
       zip_file.each do |entry|
         next if entry.directory?
 
-        # Sanitize entry name to prevent path traversal attacks
         sanitized_name = sanitize_zip_entry_name(entry.name)
         next if sanitized_name.nil?
 
-        # Compute absolute destination path
         extraction_path = File.expand_path(File.join(@import_directory, sanitized_name))
-
-        # Verify the extraction path is within the import directory
         safe_import_dir = File.expand_path(@import_directory) + File::SEPARATOR
         unless extraction_path.start_with?(safe_import_dir) || extraction_path == File.expand_path(@import_directory)
           Rails.logger.warn "Skipping potentially malicious ZIP entry: #{entry.name} (would extract to #{extraction_path})"
@@ -90,24 +87,19 @@ class Users::ImportData
         Rails.logger.debug "Extracting #{entry.name} to #{extraction_path}"
 
         FileUtils.mkdir_p(File.dirname(extraction_path))
-
-        # Use destination_directory parameter for rubyzip 3.x compatibility
         entry.extract(sanitized_name, destination_directory: @import_directory)
       end
     end
   end
 
   def sanitize_zip_entry_name(entry_name)
-    # Remove leading slashes, backslashes, and dots
     sanitized = entry_name.gsub(%r{^[/\\]+}, '')
 
-    # Reject entries with path traversal attempts
     if sanitized.include?('..') || sanitized.start_with?('/') || sanitized.start_with?('\\')
       Rails.logger.warn "Rejecting potentially malicious ZIP entry name: #{entry_name}"
       return nil
     end
 
-    # Reject absolute paths
     if Pathname.new(sanitized).absolute?
       Rails.logger.warn "Rejecting absolute path in ZIP entry: #{entry_name}"
       return nil
@@ -116,52 +108,188 @@ class Users::ImportData
     sanitized
   end
 
-  def load_json_data
-    json_path = @import_directory.join('data.json')
-
-    unless File.exist?(json_path)
-      raise StandardError, "Data file not found in archive: data.json"
-    end
-
-    JSON.parse(File.read(json_path))
-  rescue JSON::ParserError => e
-    raise StandardError, "Invalid JSON format in data file: #{e.message}"
-  end
-
-  def import_in_correct_order(data)
+  def process_archive_data
     Rails.logger.info "Starting data import for user: #{user.email}"
 
-    if data['counts']
-      Rails.logger.info "Expected entity counts from export: #{data['counts']}"
+    json_path = @import_directory.join('data.json')
+    unless File.exist?(json_path)
+      raise StandardError, 'Data file not found in archive: data.json'
     end
 
-    Rails.logger.debug "Available data keys: #{data.keys.inspect}"
+    initialize_stream_state
 
-    import_settings(data['settings']) if data['settings']
-    import_areas(data['areas']) if data['areas']
+    handler = ::JsonStreamHandler.new(self)
+    parser = Oj::Parser.new(:saj, handler: handler)
 
-    # Import places first to ensure they're available for visits
-    places_imported = import_places(data['places']) if data['places']
-    Rails.logger.info "Places import phase completed: #{places_imported} places imported"
-
-    import_imports(data['imports']) if data['imports']
-    import_exports(data['exports']) if data['exports']
-    import_trips(data['trips']) if data['trips']
-    import_stats(data['stats']) if data['stats']
-    import_notifications(data['notifications']) if data['notifications']
-
-    # Import visits after places to ensure proper place resolution
-    visits_imported = import_visits(data['visits']) if data['visits']
-    Rails.logger.info "Visits import phase completed: #{visits_imported} visits imported"
-
-    import_points(data['points']) if data['points']
-
-    # Final validation check
-    if data['counts']
-      validate_import_completeness(data['counts'])
+    File.open(json_path, 'rb') do |io|
+      parser.load(io)
     end
+
+    finalize_stream_processing
+  rescue Oj::ParseError => e
+    raise StandardError, "Invalid JSON format in data file: #{e.message}"
+  rescue IOError => e
+    raise StandardError, "Failed to read JSON data: #{e.message}"
+  end
+
+  def initialize_stream_state
+    @expected_counts = nil
+    @places_batch = []
+    @stream_writers = {}
+    @stream_temp_paths = {}
+  end
+
+  def finalize_stream_processing
+    flush_places_batch
+    close_stream_writer(:visits)
+    close_stream_writer(:points)
+
+    process_visits_stream
+    process_points_stream
 
     Rails.logger.info "Data import completed. Stats: #{@import_stats}"
+
+    validate_import_completeness(@expected_counts) if @expected_counts.present?
+  end
+
+  def handle_section(key, value)
+    case key
+    when 'counts'
+      @expected_counts = value if value.is_a?(Hash)
+      Rails.logger.info "Expected entity counts from export: #{@expected_counts}" if @expected_counts
+    when 'settings'
+      import_settings(value) if value.present?
+    when 'areas'
+      import_areas(value)
+    when 'imports'
+      import_imports(value)
+    when 'exports'
+      import_exports(value)
+    when 'trips'
+      import_trips(value)
+    when 'stats'
+      import_stats_section(value)
+    when 'notifications'
+      import_notifications(value)
+    else
+      Rails.logger.debug "Unhandled non-stream section #{key}" unless STREAMED_SECTIONS.include?(key)
+    end
+  end
+
+  def handle_stream_value(section, value)
+    case section
+    when 'places'
+      queue_place_for_import(value)
+    when 'visits'
+      append_to_stream(:visits, value)
+    when 'points'
+      append_to_stream(:points, value)
+    else
+      Rails.logger.debug "Received stream value for unknown section #{section}"
+    end
+  end
+
+  def finish_stream(section)
+    case section
+    when 'places'
+      flush_places_batch
+    when 'visits'
+      close_stream_writer(:visits)
+    when 'points'
+      close_stream_writer(:points)
+    end
+  end
+
+  def queue_place_for_import(place_data)
+    return unless place_data.is_a?(Hash)
+
+    @places_batch << place_data
+
+    if @places_batch.size >= STREAM_BATCH_SIZE
+      import_places_batch(@places_batch)
+      @places_batch.clear
+    end
+  end
+
+  def flush_places_batch
+    return if @places_batch.blank?
+
+    import_places_batch(@places_batch)
+    @places_batch.clear
+  end
+
+  def import_places_batch(batch)
+    Rails.logger.debug "Importing places batch of size #{batch.size}"
+    places_created = Users::ImportData::Places.new(user, batch.dup).call.to_i
+    @import_stats[:places_created] += places_created
+  end
+
+  def append_to_stream(section, value)
+    return unless value
+
+    writer = stream_writer(section)
+    writer.puts(Oj.dump(value, mode: :compat))
+  end
+
+  def stream_writer(section)
+    @stream_writers[section] ||= begin
+      path = stream_temp_path(section)
+      Rails.logger.debug "Creating stream buffer for #{section} at #{path}"
+      File.open(path, 'w')
+    end
+  end
+
+  def stream_temp_path(section)
+    @stream_temp_paths[section] ||= @import_directory.join("stream_#{section}.ndjson")
+  end
+
+  def close_stream_writer(section)
+    @stream_writers[section]&.close
+  ensure
+    @stream_writers.delete(section)
+  end
+
+  def process_visits_stream
+    path = @stream_temp_paths[:visits]
+    return unless path&.exist?
+
+    Rails.logger.info 'Importing visits from streamed buffer'
+
+    batch = []
+    File.foreach(path) do |line|
+      line = line.strip
+      next if line.blank?
+
+      batch << Oj.load(line)
+      if batch.size >= STREAM_BATCH_SIZE
+        import_visits_batch(batch)
+        batch = []
+      end
+    end
+
+    import_visits_batch(batch) if batch.any?
+  end
+
+  def import_visits_batch(batch)
+    visits_created = Users::ImportData::Visits.new(user, batch).call.to_i
+    @import_stats[:visits_created] += visits_created
+  end
+
+  def process_points_stream
+    path = @stream_temp_paths[:points]
+    return unless path&.exist?
+
+    Rails.logger.info 'Importing points from streamed buffer'
+
+    importer = Users::ImportData::Points.new(user, nil, batch_size: STREAM_BATCH_SIZE)
+    File.foreach(path) do |line|
+      line = line.strip
+      next if line.blank?
+
+      importer.add(Oj.load(line))
+    end
+
+    @import_stats[:points_created] = importer.finalize.to_i
   end
 
   def import_settings(settings_data)
@@ -172,67 +300,40 @@ class Users::ImportData
 
   def import_areas(areas_data)
     Rails.logger.debug "Importing #{areas_data&.size || 0} areas"
-    areas_created = Users::ImportData::Areas.new(user, areas_data).call
-    @import_stats[:areas_created] = areas_created
-  end
-
-  def import_places(places_data)
-    Rails.logger.debug "Importing #{places_data&.size || 0} places"
-    places_created = Users::ImportData::Places.new(user, places_data).call
-    @import_stats[:places_created] = places_created
-    places_created
+    areas_created = Users::ImportData::Areas.new(user, areas_data).call.to_i
+    @import_stats[:areas_created] += areas_created
   end
 
   def import_imports(imports_data)
     Rails.logger.debug "Importing #{imports_data&.size || 0} imports"
     imports_created, files_restored = Users::ImportData::Imports.new(user, imports_data, @import_directory.join('files')).call
-    @import_stats[:imports_created] = imports_created
-    @import_stats[:files_restored] += files_restored
+    @import_stats[:imports_created] += imports_created.to_i
+    @import_stats[:files_restored] += files_restored.to_i
   end
 
   def import_exports(exports_data)
     Rails.logger.debug "Importing #{exports_data&.size || 0} exports"
     exports_created, files_restored = Users::ImportData::Exports.new(user, exports_data, @import_directory.join('files')).call
-    @import_stats[:exports_created] = exports_created
-    @import_stats[:files_restored] += files_restored
+    @import_stats[:exports_created] += exports_created.to_i
+    @import_stats[:files_restored] += files_restored.to_i
   end
 
   def import_trips(trips_data)
     Rails.logger.debug "Importing #{trips_data&.size || 0} trips"
-    trips_created = Users::ImportData::Trips.new(user, trips_data).call
-    @import_stats[:trips_created] = trips_created
+    trips_created = Users::ImportData::Trips.new(user, trips_data).call.to_i
+    @import_stats[:trips_created] += trips_created
   end
 
-  def import_stats(stats_data)
+  def import_stats_section(stats_data)
     Rails.logger.debug "Importing #{stats_data&.size || 0} stats"
-    stats_created = Users::ImportData::Stats.new(user, stats_data).call
-    @import_stats[:stats_created] = stats_created
+    stats_created = Users::ImportData::Stats.new(user, stats_data).call.to_i
+    @import_stats[:stats_created] += stats_created
   end
 
   def import_notifications(notifications_data)
     Rails.logger.debug "Importing #{notifications_data&.size || 0} notifications"
-    notifications_created = Users::ImportData::Notifications.new(user, notifications_data).call
-    @import_stats[:notifications_created] = notifications_created
-  end
-
-  def import_visits(visits_data)
-    Rails.logger.debug "Importing #{visits_data&.size || 0} visits"
-    visits_created = Users::ImportData::Visits.new(user, visits_data).call
-    @import_stats[:visits_created] = visits_created
-    visits_created
-  end
-
-  def import_points(points_data)
-    Rails.logger.info "About to import #{points_data&.size || 0} points"
-
-    begin
-      points_created = Users::ImportData::Points.new(user, points_data).call
-
-      @import_stats[:points_created] = points_created
-    rescue StandardError => e
-      ExceptionReporter.call(e, 'Points import failed')
-      @import_stats[:points_created] = 0
-    end
+    notifications_created = Users::ImportData::Notifications.new(user, notifications_data).call.to_i
+    @import_stats[:notifications_created] += notifications_created
   end
 
   def cleanup_temporary_files(import_directory)
@@ -246,15 +347,15 @@ class Users::ImportData
 
   def create_success_notification
     summary = "#{@import_stats[:points_created]} points, " \
-    "#{@import_stats[:visits_created]} visits, " \
-    "#{@import_stats[:places_created]} places, " \
-    "#{@import_stats[:trips_created]} trips, " \
-    "#{@import_stats[:areas_created]} areas, " \
-    "#{@import_stats[:imports_created]} imports, " \
-    "#{@import_stats[:exports_created]} exports, " \
-    "#{@import_stats[:stats_created]} stats, " \
-    "#{@import_stats[:files_restored]} files restored, " \
-    "#{@import_stats[:notifications_created]} notifications"
+      "#{@import_stats[:visits_created]} visits, " \
+      "#{@import_stats[:places_created]} places, " \
+      "#{@import_stats[:trips_created]} trips, " \
+      "#{@import_stats[:areas_created]} areas, " \
+      "#{@import_stats[:imports_created]} imports, " \
+      "#{@import_stats[:exports_created]} exports, " \
+      "#{@import_stats[:stats_created]} stats, " \
+      "#{@import_stats[:files_restored]} files restored, " \
+      "#{@import_stats[:notifications_created]} notifications"
 
     ::Notifications::Create.new(
       user: user,
@@ -274,7 +375,7 @@ class Users::ImportData
   end
 
   def validate_import_completeness(expected_counts)
-    Rails.logger.info "Validating import completeness..."
+    Rails.logger.info 'Validating import completeness...'
 
     discrepancies = []
 
@@ -291,7 +392,7 @@ class Users::ImportData
     if discrepancies.any?
       Rails.logger.warn "Import completed with discrepancies: #{discrepancies.join(', ')}"
     else
-      Rails.logger.info "Import validation successful - all entities imported correctly"
+      Rails.logger.info 'Import validation successful - all entities imported correctly'
     end
   end
 end

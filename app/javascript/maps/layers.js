@@ -50,9 +50,17 @@ export function createAllMapLayers(map, selectedLayerName, selfHosted) {
   const layers = {};
   const mapsConfig = selfHosted === "true" ? rasterMapsConfig : vectorMapsConfig;
 
+  // Determine the default layer based on self-hosted mode
+  const defaultLayerName = selfHosted === "true" ? "OpenStreetMap" : "Light";
+
+  // If selectedLayerName is null/undefined or doesn't exist in config, use default
+  const layerToSelect = selectedLayerName && mapsConfig[selectedLayerName]
+    ? selectedLayerName
+    : defaultLayerName;
+
   Object.keys(mapsConfig).forEach(layerKey => {
-    // Create the layer and add it to the map if it's the user's selected layer
-    const layer = createMapLayer(map, selectedLayerName, layerKey, selfHosted);
+    // Create the layer and add it to the map if it's the selected/default layer
+    const layer = createMapLayer(map, layerToSelect, layerKey, selfHosted);
     layers[layerKey] = layer;
   });
 

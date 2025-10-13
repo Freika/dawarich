@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [UNRELEASED]
+# [0.33.1]
+
+## Changed
+
+- On the Trip page, instead of list of visited countries, a number of them is being shown. Clicking on it opens a modal with a list of countries visited during the trip. #1731
 
 - **Family Features**: Complete family management system allowing users to create family groups, invite members, and share location data. Features include:
   - Family creation and management with role-based permissions (owner/member)
@@ -22,6 +26,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - `GET /api/v1/stats` endpoint now returns correct 0 instead of null if no points were tracked in the requested period.
+- User import data now being streamed instead of loaded into memory all at once. This should prevent large imports from exhausting memory or hitting IO limits while reading export archives.
+- Popup for manual visit creation now looks better in both light and dark modes. #1835
+- Fixed a bug where visit circles were not interactive on the map page. #1833
+- Fixed a bug with stats sharing settings being not filled. #1826
+- Fixed a bug where user could not be deleted due to counter cache on points. #1818
+- Introduce apt-get upgrade before installing new packages in the docker image to prevent vulnerabilities. #1793
+- Fixed time shift when creating visits manually. #1679
+- Provide default map layer if user settings are not set.
 
 # [0.33.0] - 2025-09-29
 
