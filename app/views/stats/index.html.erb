@@ -16,10 +16,9 @@
       <div class="stat-title">Geopoints tracked</div>
     </div>
 
-    <% if DawarichSettings.reverse_geocoding_enabled? %>
-      <%= render 'stats/reverse_geocoding_stats' %>
-    <% end %>
-  </div>
+  <% if DawarichSettings.reverse_geocoding_enabled? %>
+    <%= render 'stats/reverse_geocoding_stats' %>
+  <% end %>
 
   <div class='text-xs text-gray-500 text-center mt-5'>
     All stats data above except for total distance and number of geopoints tracked is being updated daily

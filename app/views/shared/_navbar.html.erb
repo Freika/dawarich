@@ -77,8 +77,9 @@
         <li>
           <% if current_user.in_family? %>
             <div data-controller="family-navbar-indicator"
-                 data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
-              <%= link_to family_path, class: "mx-1 #{active_class?(family_path)} flex items-center space-x-2" do %>
+                 data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>"
+                 class="<%= active_class?(family_path) %>">
+              <%= link_to family_path, class: "mx-1 flex items-center space-x-2" do %>
                 <span>Family<sup>α</sup></span>
                 <div data-family-navbar-indicator-target="indicator"
                      class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
