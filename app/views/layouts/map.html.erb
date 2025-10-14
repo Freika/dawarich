@@ -31,16 +31,14 @@
     </div>
 
     <!-- Flash Messages - Fixed below navbar -->
-    <div class='fixed top-16 w-full z-40 h-8'>
+    <div class='fixed top-16 w-full z-40'>
       <div class='container mx-auto px-5'>
         <%= render 'shared/flash' %>
       </div>
     </div>
 
-    <!-- Date Navigation - Fixed below flash messages -->
-
     <!-- Full Screen Map Container -->
-    <div class='absolute top-40 left-0 right-0 bottom-0 w-full z-10 overflow-auto'>
+    <div class='absolute top-16 left-0 right-0 bottom-0 w-full z-10'>
       <%= yield %>
     </div>
 

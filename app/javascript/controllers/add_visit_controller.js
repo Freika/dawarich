@@ -84,9 +84,10 @@ export default class extends Controller {
         button.style.height = '48px';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
-        button.style.lineHeight = '48px';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
         button.style.fontSize = '18px';
-        button.style.textAlign = 'center';
         button.style.transition = 'all 0.2s ease';
 
         // Disable map interactions when clicking the button
