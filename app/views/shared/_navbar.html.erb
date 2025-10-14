@@ -8,6 +8,23 @@
         <li><%= link_to 'Map', map_url, class: "#{active_class?(map_url)}" %></li>
         <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
         <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
+        <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
+          <li>
+            <% if current_user.in_family? %>
+              <div data-controller="family-navbar-indicator"
+                   data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
+                <%= link_to family_path, class: "#{active_class?(family_path)} flex items-center space-x-2" do %>
+                  <span>Family</span>
+                  <div data-family-navbar-indicator-target="indicator"
+                       class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
+                       title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
+                <% end %>
+              </div>
+            <% else %>
+              <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "#{active_class?(new_family_path)}" %>
+            <% end %>
+          </li>
+        <% end %>
         <li>
           <details>
             <summary>My data</summary>
@@ -56,6 +73,24 @@
       <li><%= link_to 'Map', map_url, class: "mx-1 #{active_class?(map_url)}" %></li>
       <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
       <li><%= link_to 'Stats', stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
+      <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
+        <li>
+          <% if current_user.in_family? %>
+            <div data-controller="family-navbar-indicator"
+                 data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>"
+                 class="<%= active_class?(family_path) %>">
+              <%= link_to family_path, class: "mx-1 flex items-center space-x-2" do %>
+                <span>Family<sup>α</sup></span>
+                <div data-family-navbar-indicator-target="indicator"
+                     class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
+                     title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
+              <% end %>
+            </div>
+          <% else %>
+            <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "mx-1 #{active_class?(new_family_path)}" %>
+          <% end %>
+        </li>
+      <% end %>
       <li>
         <details>
           <summary>My data</summary>
@@ -76,7 +111,17 @@
           <div class="join">
             <%= link_to "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" do %>
               <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
-                <span class="tooltip tooltip-bottom" data-tip="Your trial will end in <%= distance_of_time_in_words(current_user.active_until, Time.current) %>"><%= (current_user.active_until.to_date - Time.current.to_date).to_i %> days remaining</span>
+                <% expiry = current_user.active_until %>
+                <% if expiry.blank? || expiry.past? %>
+                  <span class="tooltip tooltip-bottom" data-tip="Trial expired" title="Trial expired">Trial expired 🥺</span>
+                <% else %>
+                  <% days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max %>
+                  <span class="tooltip tooltip-bottom"
+                        data-tip="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>"
+                        title="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>">
+                    <%= pluralize(days_left, 'day') %> remaining
+                  </span>
+                <% end %>
               </span><span class="join-item btn btn-sm btn-success">
                 Subscribe
               </span>
@@ -87,19 +132,8 @@
         <div class="dropdown dropdown-end dropdown-bottom dropdown-hover"
           data-controller="notifications"
           data-notifications-user-id-value="<%= current_user.id %>">
-          <div tabindex="0" role="button" class='btn btn-sm btn-ghost hover:btn-ghost'>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
+          <div tabindex="0" role="button" class='btn btn-sm btn-ghost hover:btn-ghost p-2'>
+            <%= icon 'bell' %>
             <% if @unread_notifications.present? %>
               <span class="badge badge-xs badge-primary absolute top-0 right-0" data-notifications-target="badge">
                 <%= @unread_notifications.size %>
@@ -122,12 +156,15 @@
         <li>
           <details>
             <summary>
-              <%= "#{current_user.email}" %>
+              <span class="hidden xl:inline"><%= current_user.email %></span>
+              <span class="inline xl:hidden"><%= icon 'user' %></span>
               <% if onboarding_modal_showable?(current_user) %>
                 <span class="indicator-item badge badge-secondary badge-xs"></span>
               <% end %>
               <% if current_user.admin? %>
-                <span class='tooltip tooltip-bottom' data-tip="You're an admin, Harry!">⭐️</span>
+                <span class='tooltip tooltip-bottom' data-tip="You're an admin, Harry!">
+                  <%= icon 'star' %>
+                </span>
               <% end %>
             </summary>
             <ul class="p-2 bg-base-100 rounded-t-none z-10">

@@ -1,5 +1,7 @@
 ## How to contribute to Dawarich
 
+Refer to [Repository Guidelines](AGENTS.md) for structure, tooling, and workflow expectations before submitting changes.
+
 #### **Did you find a bug?**
 
 * **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/Freika/dawarich/issues).

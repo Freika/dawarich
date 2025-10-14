@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_30_150256) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -96,10 +96,45 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.index ["user_id"], name: "index_exports_on_user_id"
   end
 
+  create_table "families", force: :cascade do |t|
+    t.string "name", limit: 50, null: false
+    t.bigint "creator_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["creator_id"], name: "index_families_on_creator_id"
+  end
+
+  create_table "family_invitations", force: :cascade do |t|
+    t.bigint "family_id", null: false
+    t.string "email", null: false
+    t.string "token", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "invited_by_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_family_invitations_on_email"
+    t.index ["expires_at"], name: "index_family_invitations_on_expires_at"
+    t.index ["family_id"], name: "index_family_invitations_on_family_id"
+    t.index ["status"], name: "index_family_invitations_on_status"
+    t.index ["token"], name: "index_family_invitations_on_token", unique: true
+  end
+
+  create_table "family_memberships", force: :cascade do |t|
+    t.bigint "family_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "role", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "role"], name: "index_family_memberships_on_family_id_and_role"
+    t.index ["family_id"], name: "index_family_memberships_on_family_id"
+    t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
+  end
+
   create_table "imports", force: :cascade do |t|
     t.string "name", null: false
     t.bigint "user_id", null: false
-    t.integer "source", default: 0
+    t.integer "source"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "raw_points", default: 0
@@ -205,6 +240,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["trigger"], name: "index_points_on_trigger"
+    t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
@@ -219,8 +255,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.jsonb "daily_distance", default: {}
+    t.jsonb "sharing_settings", default: {}
+    t.uuid "sharing_uuid"
+    t.jsonb "h3_hex_ids", default: {}
     t.index ["distance"], name: "index_stats_on_distance"
+    t.index ["h3_hex_ids"], name: "index_stats_on_h3_hex_ids", where: "((h3_hex_ids IS NOT NULL) AND (h3_hex_ids <> '{}'::jsonb))", using: :gin
     t.index ["month"], name: "index_stats_on_month"
+    t.index ["sharing_uuid"], name: "index_stats_on_sharing_uuid", unique: true
     t.index ["user_id"], name: "index_stats_on_user_id"
     t.index ["year"], name: "index_stats_on_year"
   end
@@ -230,7 +271,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.datetime "end_at", null: false
     t.bigint "user_id", null: false
     t.geometry "original_path", limit: {srid: 0, type: "line_string"}, null: false
-    t.integer "distance"
+    t.decimal "distance", precision: 8, scale: 2
     t.float "avg_speed"
     t.integer "duration"
     t.integer "elevation_gain"
@@ -274,6 +315,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
     t.string "last_sign_in_ip"
     t.integer "status", default: 0
     t.datetime "active_until"
+    t.integer "points_count", default: 0, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
@@ -300,6 +342,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_28_191359) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
+  add_foreign_key "families", "users", column: "creator_id", validate: false
+  add_foreign_key "family_invitations", "families", validate: false
+  add_foreign_key "family_invitations", "users", column: "invited_by_id", validate: false
+  add_foreign_key "family_memberships", "families", validate: false
+  add_foreign_key "family_memberships", "users", validate: false
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"

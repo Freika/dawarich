@@ -1,0 +1,249 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Family Header -->
+    <div class="bg-base-200 rounded-lg p-6 mb-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-base-content"><%= @family.name %></h1>
+          <p class="text-base-content opacity-60 mt-1">
+            <%= t('families.show.created_by', default: 'Created by') %>
+            <%= @family.creator.email %>
+            <%= t('families.show.on_date', default: 'on') %>
+            <%= @family.created_at.strftime('%B %d, %Y') %>
+          </p>
+        </div>
+
+        <div class="flex space-x-3">
+          <% if policy(@family).update? %>
+            <%= link_to edit_family_path,
+                  class: "btn btn-outline btn-info" do %>
+              <%= icon 'square-pen', class: "inline-block w-4" %><%= t('families.show.edit', default: 'Edit') %>
+            <% end %>
+          <% end %>
+
+          <% if !current_user.family_owner? && current_user.family_membership %>
+            <%= link_to family_member_path(current_user.family_membership),
+                  method: :delete,
+                  data: { confirm: 'Are you sure you want to leave this family?', turbo_confirm: 'Are you sure you want to leave this family?' },
+                  class: "btn btn-outline btm-sm btn-warning" do %>
+              Leave Family
+            <% end %>
+          <% end %>
+
+          <% if policy(@family).destroy? %>
+            <%= link_to family_path,
+                  method: :delete,
+                  data: { confirm: 'Are you sure you want to delete this family? This action cannot be undone.', turbo_confirm: 'Are you sure you want to delete this family? This action cannot be undone.' },
+                  class: "btn btn-outline btm-sm btn-error" do %>
+              <%= icon 'trash-2', class: "inline-block w-4" %>
+              Delete
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Family Members -->
+    <div class="bg-base-200 rounded-lg p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold text-base-content">
+            <%= t('families.show.members_title', default: 'Family Members') %>
+            <span class="text-sm font-normal opacity-50">(<%= @members.count %>)</span>
+          </h2>
+        </div>
+
+        <div class="space-y-3">
+          <% @members.each do |member| %>
+            <div class="card bg-base-200 shadow-sm">
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex-grow">
+                    <!-- Member Info -->
+                    <div class="flex items-center gap-3">
+                      <div class="avatar placeholder">
+                        <div class="bg-primary text-primary-content rounded-full w-12">
+                          <span class="text-lg font-semibold">
+                            <%= member.email&.first&.upcase || '?' %>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 class="card-title text-base"><%= member.email %></h3>
+                        <div class="flex items-center gap-2 mt-1">
+                          <% if member.family_membership.role == 'owner' %>
+                            <div class="badge badge-warning badge-sm">
+                              <%= t('families.show.owner_badge', default: 'Owner') %>
+                            </div>
+                          <% else %>
+                            <span class="text-sm opacity-60">
+                              <%= member.family_membership.role.humanize %>
+                            </span>
+                          <% end %>
+                        </div>
+                        <div class="text-xs opacity-50 mt-1">
+                          <%= t('families.show.joined_on', default: 'Joined') %>
+                          <%= member.family_membership.created_at.strftime('%b %d, %Y') %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Location Sharing Controls - More Compact -->
+                  <div class="ml-auto flex items-center gap-4">
+                    <% if member == current_user %>
+                      <!-- Own toggle - interactive (consolidated controller) -->
+                      <div data-controller="location-sharing-toggle"
+                           data-location-sharing-toggle-member-id-value="<%= member.id %>"
+                           data-location-sharing-toggle-enabled-value="<%= member.family_sharing_enabled? %>"
+                           data-location-sharing-toggle-family-id-value="<%= @family.id %>"
+                           data-location-sharing-toggle-duration-value="<%= member.family_sharing_duration %>"
+                           data-location-sharing-toggle-expires-at-value="<%= member.family_sharing_expires_at&.iso8601 %>"
+                           class="flex items-center gap-3">
+
+                        <span class="text-sm opacity-60">Location:</span>
+
+                        <!-- Toggle Switch -->
+                        <input type="checkbox"
+                               class="toggle toggle-primary toggle-sm"
+                               <%= 'checked' if member.family_sharing_enabled? %>
+                               data-location-sharing-toggle-target="checkbox"
+                               data-action="change->location-sharing-toggle#toggle">
+
+                        <!-- Duration Dropdown (only visible when enabled) -->
+                        <div class="<%= 'hidden' unless member.family_sharing_enabled? %>"
+                             data-location-sharing-toggle-target="durationContainer">
+                          <select class="select select-bordered select-xs w-28 h-full"
+                                  data-location-sharing-toggle-target="durationSelect"
+                                  data-action="change->location-sharing-toggle#changeDuration">
+                            <option value="permanent" <%= 'selected' if member.family_sharing_duration == 'permanent' %>>Always</option>
+                            <option value="1h" <%= 'selected' if member.family_sharing_duration == '1h' %>>1 hour</option>
+                            <option value="6h" <%= 'selected' if member.family_sharing_duration == '6h' %>>6 hours</option>
+                            <option value="12h" <%= 'selected' if member.family_sharing_duration == '12h' %>>12 hours</option>
+                            <option value="24h" <%= 'selected' if member.family_sharing_duration == '24h' %>>24 hours</option>
+                          </select>
+                        </div>
+
+                        <!-- Expiration Info (inline) -->
+                        <% if member.family_sharing_enabled? && member.family_sharing_expires_at.present? %>
+                          <div class="text-xs opacity-50"
+                               data-location-sharing-toggle-target="expirationInfo">
+                            • Expires <%= time_ago_in_words(member.family_sharing_expires_at) %> from now
+                          </div>
+                        <% end %>
+                      </div>
+
+                    <% else %>
+                      <!-- Other member's status - read-only indicator -->
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm opacity-60">Location:</span>
+                        <% if member.family_sharing_enabled? %>
+                          <div class="w-3 h-3 bg-success rounded-full animate-pulse"></div>
+                          <span class="text-xs text-success font-medium">
+                            <%= member.family_sharing_duration == 'permanent' ? 'Always' : member.family_sharing_duration&.upcase %>
+                          </span>
+                          <% if member.family_sharing_expires_at.present? %>
+                            <span class="text-xs opacity-50">
+                              • Expires <%= time_ago_in_words(member.family_sharing_expires_at) %> from now
+                            </span>
+                          <% end %>
+                        <% else %>
+                          <div class="w-3 h-3 bg-base-300 rounded-full"></div>
+                          <span class="text-xs opacity-50">Disabled</span>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+    </div>
+
+    <!-- Pending Invitations -->
+    <div class="bg-base-200 rounded-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold text-base-content">
+            <%= t('families.show.invitations_title', default: 'Pending Invitations') %>
+            <span class="text-sm font-normal opacity-50">(<%= @pending_invitations.count %>)</span>
+          </h2>
+        </div>
+
+        <% if @pending_invitations.any? %>
+          <div class="space-y-3 mb-4">
+            <% @pending_invitations.each do |invitation| %>
+              <div class="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+                <div>
+                  <div class="font-medium text-base-content"><%= invitation.email %></div>
+                  <div class="text-sm text-base-content opacity-60">
+                    <%= t('families.show.invited_on', default: 'Invited') %>
+                    <%= invitation.created_at.strftime('%b %d, %Y') %>
+                  </div>
+                  <div class="text-xs text-base-content opacity-50">
+                    <%= t('families.show.expires_on', default: 'Expires') %>
+                    <%= invitation.expires_at.strftime('%b %d, %Y at %I:%M %p') %>
+                  </div>
+                </div>
+                <% if policy(@family).manage_invitations? %>
+                  <%= link_to family_invitation_path(invitation.token),
+                        method: :delete,
+                        data: { confirm: 'Are you sure you want to cancel this invitation?', turbo_confirm: 'Are you sure you want to cancel this invitation?' },
+                        class: "btn btn-outline btn-warning btn-sm opacity-70" do %>
+                    Cancel
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-base-content opacity-50 text-center py-4">
+            <%= t('families.show.no_pending_invitations', default: 'No pending invitations') %>
+          </p>
+        <% end %>
+
+        <!-- Invite New Member -->
+        <% if policy(@family).invite? && @family.can_add_members? %>
+          <div class="border-t pt-4">
+            <h3 class="text-lg font-medium text-base-content mb-3">
+              <%= t('families.show.invite_member', default: 'Invite New Member') %>
+            </h3>
+
+            <%= form_with model: [@family, Family::Invitation.new], url: family_invitations_path(@family), local: true, class: "space-y-3" do |form| %>
+              <div>
+                <%= form.label :email, t('families.show.email_label', default: 'Email Address'), class: "label label-text font-medium mb-1" %>
+                <%= form.email_field :email,
+                      placeholder: t('families.show.email_placeholder', default: 'Enter email address'),
+                      class: "input input-bordered w-full" %>
+              </div>
+
+              <div class="flex justify-end">
+                <%= form.submit t('families.show.send_invitation', default: 'Send Invitation'),
+                      class: "btn btn-primary" %>
+              </div>
+            <% end %>
+          </div>
+        <% elsif policy(@family).invite? %>
+          <!-- Family at capacity message -->
+          <div class="border-t pt-4">
+            <div class="alert alert-warning">
+              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              <div>
+                <h3 class="text-sm font-medium">
+                  Family at Capacity
+                </h3>
+                <div class="mt-2 text-sm">
+                  <p>
+                    Your family has reached the maximum of <%= @family.class::MAX_MEMBERS %> members (including pending invitations).
+                    Cancel existing invitations or wait for them to expire to invite new members.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+    </div>
+  </div>
+</div>

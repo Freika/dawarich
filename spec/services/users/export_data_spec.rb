@@ -45,7 +45,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:tracked_points).and_return(double(count: 15000))
+        allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
 
@@ -57,7 +57,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(export_record).to receive_message_chain(:file, :attach)
 
         # Mock Zip file creation
-        allow(Zip::File).to receive(:open).with(zip_file_path, Zip::File::CREATE).and_yield(zip_file_double)
+        allow(Zip::File).to receive(:open).with(zip_file_path, create: true).and_yield(zip_file_double)
         allow(zip_file_double).to receive(:default_compression=)
         allow(zip_file_double).to receive(:default_compression_level=)
         allow(zip_file_double).to receive(:add)
@@ -108,7 +108,7 @@ RSpec.describe Users::ExportData, type: :service do
       end
 
       it 'creates a zip file with proper compression settings' do
-        expect(Zip::File).to receive(:open).with(zip_file_path, Zip::File::CREATE)
+        expect(Zip::File).to receive(:open).with(zip_file_path, create: true)
         expect(Zip).to receive(:default_compression).and_return(-1)  # Mock original compression
         expect(Zip).to receive(:default_compression=).with(Zip::Entry::DEFLATED)
         expect(Zip).to receive(:default_compression=).with(-1)  # Restoration
@@ -187,7 +187,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:tracked_points).and_return(double(count: 15000))
+        allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
 
@@ -267,7 +267,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:tracked_points).and_return(double(count: 15000))
+        allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
 
@@ -374,7 +374,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:tracked_points).and_return(double(count: 15000))
+        allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
         allow(Rails.logger).to receive(:info)

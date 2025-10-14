@@ -1,30 +1,32 @@
-<div class="border border-gray-500 rounded-md border-opacity-30 bg-gray-100 dark:bg-gray-800 p-3">
-  <div class="flex justify-between">
-    <h4 class="stat-title text-left"><%= Date::MONTHNAMES[stat.month] %> <%= stat.year %></h4>
+<%= link_to "#{stat.year}/#{stat.month}",
+    class: "group block p-6 bg-base-100 hover:bg-base-200/50 rounded-xl border border-base-300 hover:border-primary/40 hover:shadow-lg transition-all duration-200 hover:scale-[1.02]" do %>
 
-    <div class="flex items-center space-x-2">
-      <%= link_to "Details", points_path(year: stat.year, month: stat.month),
-          class: "link link-primary" %>
+  <!-- Month and Year -->
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-medium text-base-content group-hover:text-primary transition-colors flex items-center gap-2" style="color: <%= month_color(stat) %>;">
+      <%= "#{icon month_icon(stat)} #{Date::MONTHNAMES[stat.month]} #{stat.year}".html_safe %>
+    </h3>
+    <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+      <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
     </div>
   </div>
 
-  <div class="flex">
-    <div class="stat-value">
-      <p><%= number_with_delimiter stat.distance_in_unit(current_user.safe_settings.distance_unit).round %><%= current_user.safe_settings.distance_unit %></p>
+  <!-- Main Stats -->
+  <div class="space-y-3">
+    <!-- Distance -->
+    <div>
+      <div class="text-2xl font-semibold text-base-content" style="color: <%= month_color(stat) %>;">
+        <%= number_with_delimiter stat.distance_in_unit(current_user.safe_settings.distance_unit).round %>
+        <span class="text-sm font-normal text-base-content/60 ml-1"><%= current_user.safe_settings.distance_unit %></span>
+      </div>
+      <div class="text-sm text-base-content/60">Total distance</div>
+    </div>
+
+    <!-- Location Summary -->
+    <div class="text-sm text-gray-600">
+      <%= countries_and_cities_stat_for_month(stat) %>
     </div>
   </div>
-
-  <div class="stat-desc">
-    <%= countries_and_cities_stat_for_month(stat) %>
-  </div>
-
-  <%= area_chart(
-    stat.daily_distance.map { |day, distance_meters|
-      [day, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
-    },
-    height: '200px',
-    suffix: " #{current_user.safe_settings.distance_unit}",
-    xtitle: 'Day',
-    ytitle: 'Distance'
-  ) %>
-</div>
+<% end %>

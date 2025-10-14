@@ -1,12 +1,23 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
-  def classes_for_flash(flash_type)
-    case flash_type.to_sym
-    when :error
-      'bg-red-100 text-red-700 border-red-300'
+  def flash_alert_class(type)
+    case type.to_sym
+    when :notice, :success then 'alert-success'
+    when :alert, :error then 'alert-error'
+    when :warning then 'alert-warning'
+    when :info then 'alert-info'
+    else 'alert-info'
+    end
+  end
+
+  def flash_icon(type)
+    case type.to_sym
+    when :notice, :success then icon 'circle-check'
+    when :alert, :error then icon 'circle-x'
+    when :warning then icon 'circle-alert'
     else
-      'bg-blue-100 text-blue-700 border-blue-300'
+      icon 'info'
     end
   end
 
@@ -17,78 +28,8 @@ module ApplicationHelper
     { start_at:, end_at: }
   end
 
-  def timespan(month, year)
-    month = DateTime.new(year, month)
-    start_at = month.beginning_of_month.to_time.strftime('%Y-%m-%dT%H:%M')
-    end_at = month.end_of_month.to_time.strftime('%Y-%m-%dT%H:%M')
-
-    { start_at:, end_at: }
-  end
-
   def header_colors
     %w[info success warning error accent secondary primary]
-  end
-
-  def countries_and_cities_stat_for_year(year, stats)
-    data = { countries: [], cities: [] }
-
-    stats.select { _1.year == year }.each do
-      data[:countries] << _1.toponyms.flatten.map { |t| t['country'] }.uniq.compact
-      data[:cities] << _1.toponyms.flatten.flat_map { |t| t['cities'].map { |c| c['city'] } }.compact.uniq
-    end
-
-    data[:cities].flatten!.uniq!
-    data[:countries].flatten!.uniq!
-
-    grouped_by_country = {}
-    stats.select { _1.year == year }.each do |stat|
-      stat.toponyms.flatten.each do |toponym|
-        country = toponym['country']
-        next unless country.present?
-
-        grouped_by_country[country] ||= []
-
-        next unless toponym['cities'].present?
-
-        toponym['cities'].each do |city_data|
-          city = city_data['city']
-          grouped_by_country[country] << city if city.present?
-        end
-      end
-    end
-
-    grouped_by_country.transform_values!(&:uniq)
-
-    {
-      countries_count: data[:countries].count,
-      cities_count: data[:cities].count,
-      grouped_by_country: grouped_by_country.transform_values(&:sort).sort.to_h,
-      year: year,
-      modal_id: "countries_cities_modal_#{year}"
-    }
-  end
-
-  def countries_and_cities_stat_for_month(stat)
-    countries = stat.toponyms.count { _1['country'] }
-    cities = stat.toponyms.sum { _1['cities'].count }
-
-    "#{countries} countries, #{cities} cities"
-  end
-
-  def year_distance_stat(year, user)
-    # Distance is now stored in meters, convert to user's preferred unit for display
-    total_distance_meters = Stat.year_distance(year, user).sum { _1[1] }
-    Stat.convert_distance(total_distance_meters, user.safe_settings.distance_unit)
-  end
-
-  def past?(year, month)
-    DateTime.new(year, month).past?
-  end
-
-  def points_exist?(year, month, user)
-    user.tracked_points.where(
-      timestamp: DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
-    ).exists?
   end
 
   def new_version_available?

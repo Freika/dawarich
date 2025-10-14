@@ -4,7 +4,7 @@ FactoryBot.define do
   factory :import do
     user
     sequence(:name) { |n| "owntracks_export_#{n}.json" }
-    source { Import.sources[:owntracks] }
+    # source { Import.sources[:owntracks] }
 
     trait :with_points do
       after(:create) do |import|

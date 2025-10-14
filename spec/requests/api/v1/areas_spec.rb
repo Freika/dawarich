@@ -49,7 +49,7 @@ RSpec.describe '/api/v1/areas', type: :request do
         post api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" },
                                params: { area: invalid_attributes }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end
@@ -85,7 +85,7 @@ RSpec.describe '/api/v1/areas', type: :request do
         patch api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" },
                                      params: { area: invalid_attributes }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end

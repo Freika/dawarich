@@ -37,9 +37,11 @@ class Stats::CalculateMonth
       stat.assign_attributes(
         daily_distance: distance_by_day,
         distance: distance(distance_by_day),
-        toponyms: toponyms
+        toponyms: toponyms,
+        h3_hex_ids: calculate_h3_hex_ids
       )
-      stat.save
+
+      stat.save!
     end
   end
 
@@ -47,7 +49,7 @@ class Stats::CalculateMonth
     return @points if defined?(@points)
 
     @points = user
-              .tracked_points
+              .points
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
               .select(:lonlat, :timestamp)
@@ -59,12 +61,13 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    toponym_points = user
-                      .tracked_points
-                      .without_raw_data
-                      .where(timestamp: start_timestamp..end_timestamp)
-                      .select(:city, :country_name)
-                      .distinct
+    toponym_points =
+      user
+      .points
+      .without_raw_data
+      .where(timestamp: start_timestamp..end_timestamp)
+      .select(:city, :country_name)
+      .distinct
 
     CountriesAndCities.new(toponym_points).call
   end
@@ -80,5 +83,9 @@ class Stats::CalculateMonth
 
   def destroy_month_stats(year, month)
     Stat.where(year:, month:, user:).destroy_all
+  end
+
+  def calculate_h3_hex_ids
+    Stats::HexagonCalculator.new(user.id, year, month).call
   end
 end

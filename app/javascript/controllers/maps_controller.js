@@ -36,12 +36,14 @@ import { fetchAndDisplayPhotos } from "../maps/photos";
 import { countryCodesMap } from "../maps/country_codes";
 import { VisitsManager } from "../maps/visits";
 import { ScratchLayer } from "../maps/scratch_layer";
+import { LocationSearch } from "../maps/location_search";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
 import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
 import { createAllMapLayers } from "../maps/layers";
+import { applyThemeToControl, applyThemeToButton, applyThemeToPanel } from "../maps/theme_utils";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -60,6 +62,7 @@ export default class extends BaseController {
 
     this.apiKey = this.element.dataset.api_key;
     this.selfHosted = this.element.dataset.self_hosted;
+    this.userTheme = this.element.dataset.user_theme || 'dark';
 
     try {
       this.markers = this.element.dataset.coordinates ? JSON.parse(this.element.dataset.coordinates) : [];
@@ -79,6 +82,12 @@ export default class extends BaseController {
     } catch (error) {
       console.error('Error parsing user_settings data:', error);
       this.userSettings = {};
+    }
+    try {
+      this.features = this.element.dataset.features ? JSON.parse(this.element.dataset.features) : {};
+    } catch (error) {
+      console.error('Error parsing features data:', error);
+      this.features = {};
     }
     this.clearFogRadius = parseInt(this.userSettings.fog_of_war_meters) || 50;
     this.fogLineThreshold = parseInt(this.userSettings.fog_of_war_threshold) || 90;
@@ -127,10 +136,11 @@ export default class extends BaseController {
 
         const unit = this.distanceUnit === 'km' ? 'km' : 'mi';
         div.innerHTML = `${distance} ${unit} | ${pointsNumber} points`;
-        div.style.backgroundColor = 'white';
-        div.style.padding = '0 5px';
-        div.style.marginRight = '5px';
-        div.style.display = 'inline-block';
+        applyThemeToControl(div, this.userTheme, {
+          padding: '0 5px',
+          marginRight: '5px',
+          display: 'inline-block'
+        });
         return div;
       }
     });
@@ -157,25 +167,28 @@ export default class extends BaseController {
     // Create a proper Leaflet layer for fog
     this.fogOverlay = new (createFogOverlay())();
 
-    // Create custom pane for areas
+    // Create custom panes with proper z-index ordering
+    // Leaflet default panes: tilePane=200, overlayPane=400, shadowPane=500, markerPane=600, tooltipPane=650, popupPane=700
+
+    // Areas pane - below visits so they don't block interaction
     this.map.createPane('areasPane');
-    this.map.getPane('areasPane').style.zIndex = 650;
-    this.map.getPane('areasPane').style.pointerEvents = 'all';
+    this.map.getPane('areasPane').style.zIndex = 605; // Above markerPane but below visits
+    this.map.getPane('areasPane').style.pointerEvents = 'none'; // Don't block clicks, let them pass through
 
-    // Create custom panes for visits
-    // Note: We'll still create visitsPane for backward compatibility
+    // Legacy visits pane for backward compatibility
     this.map.createPane('visitsPane');
-    this.map.getPane('visitsPane').style.zIndex = 600;
-    this.map.getPane('visitsPane').style.pointerEvents = 'all';
+    this.map.getPane('visitsPane').style.zIndex = 615;
+    this.map.getPane('visitsPane').style.pointerEvents = 'auto';
 
-    // Create separate panes for confirmed and suggested visits
-    this.map.createPane('confirmedVisitsPane');
-    this.map.getPane('confirmedVisitsPane').style.zIndex = 450;
-    this.map.getPane('confirmedVisitsPane').style.pointerEvents = 'all';
-
+    // Suggested visits pane - interactive layer
     this.map.createPane('suggestedVisitsPane');
-    this.map.getPane('suggestedVisitsPane').style.zIndex = 460;
-    this.map.getPane('suggestedVisitsPane').style.pointerEvents = 'all';
+    this.map.getPane('suggestedVisitsPane').style.zIndex = 610;
+    this.map.getPane('suggestedVisitsPane').style.pointerEvents = 'auto';
+
+    // Confirmed visits pane - on top of suggested, interactive
+    this.map.createPane('confirmedVisitsPane');
+    this.map.getPane('confirmedVisitsPane').style.zIndex = 620;
+    this.map.getPane('confirmedVisitsPane').style.pointerEvents = 'auto';
 
     // Initialize areasLayer as a feature group and add it to the map immediately
     this.areasLayer = new L.FeatureGroup();
@@ -188,7 +201,13 @@ export default class extends BaseController {
     }
 
     // Initialize the visits manager
-    this.visitsManager = new VisitsManager(this.map, this.apiKey);
+    this.visitsManager = new VisitsManager(this.map, this.apiKey, this.userTheme);
+
+    // Expose visits manager globally for location search integration
+    window.visitsManager = this.visitsManager;
+
+    // Expose maps controller globally for family integration
+    window.mapsController = this;
 
     // Initialize layers for the layer control
     const controlsLayer = {
@@ -214,7 +233,9 @@ export default class extends BaseController {
     this.setupTracksSubscription();
 
     // Handle routes/tracks mode selection
-    // this.addRoutesTracksSelector(); # Temporarily disabled
+    if (this.shouldShowTracksSelector()) {
+      this.addRoutesTracksSelector();
+    }
     this.switchRouteMode('routes', true);
 
     // Initialize layers based on settings
@@ -237,11 +258,15 @@ export default class extends BaseController {
 
     // Initialize Live Map Handler
     this.initializeLiveMapHandler();
+
+    // Initialize Location Search
+    this.initializeLocationSearch();
   }
 
   disconnect() {
     super.disconnect();
     this.removeEventListeners();
+
     if (this.tracksSubscription) {
       this.tracksSubscription.unsubscribe();
     }
@@ -381,40 +406,28 @@ export default class extends BaseController {
 
       // If this is the preferred layer, add it to the map immediately
       if (selectedLayerName === this.userSettings.maps.name) {
-        customLayer.addTo(this.map);
-        // Remove any other base layers that might be active
+        // Remove any existing base layers first
         Object.values(maps).forEach(layer => {
           if (this.map.hasLayer(layer)) {
             this.map.removeLayer(layer);
           }
         });
+        customLayer.addTo(this.map);
       }
 
       maps[this.userSettings.maps.name] = customLayer;
     } else {
-      // If no custom map is set, ensure a default layer is added
-      // First check if maps object has any entries
+      // If no maps were created (fallback case), add OSM
       if (Object.keys(maps).length === 0) {
-        // Fallback to OSM if no maps are configured
-        maps["OpenStreetMap"] = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        console.warn('No map layers available, adding OSM fallback');
+        const osmLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
           attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>"
         });
+        osmLayer.addTo(this.map);
+        maps["OpenStreetMap"] = osmLayer;
       }
-
-      // Now try to get the selected layer or fall back to alternatives
-      const defaultLayer = maps[selectedLayerName] || Object.values(maps)[0];
-
-      if (defaultLayer) {
-        defaultLayer.addTo(this.map);
-      } else {
-        console.error("Could not find any default map layer");
-        // Ultimate fallback - create and add OSM layer directly
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>"
-        }).addTo(this.map);
-      }
+      // Note: createAllMapLayers already added the user's preferred layer to the map
     }
 
     return maps;
@@ -645,7 +658,7 @@ export default class extends BaseController {
         const markerId = parseInt(marker[6]);
         return markerId !== numericId;
       });
-      
+
       // Update scratch layer manager with updated markers
       if (this.scratchLayerManager) {
         this.scratchLayerManager.updateMarkers(this.markers);
@@ -716,13 +729,10 @@ export default class extends BaseController {
         const button = L.DomUtil.create('button', 'map-settings-button');
         button.innerHTML = '⚙️'; // Gear icon
 
-        // Style the button
-        button.style.backgroundColor = 'white';
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, this.userTheme);
         button.style.width = '32px';
         button.style.height = '32px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
@@ -848,11 +858,9 @@ export default class extends BaseController {
         </form>
       `;
 
-      // Style the panel
-      div.style.backgroundColor = 'white';
+      // Style the panel with theme-aware styling
+      applyThemeToPanel(div, this.userTheme);
       div.style.padding = '10px';
-      div.style.border = '1px solid #ccc';
-      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
 
       // Prevent map interactions when interacting with the form
       L.DomEvent.disableClickPropagation(div);
@@ -995,6 +1003,16 @@ export default class extends BaseController {
       const mapElement = document.getElementById('map');
       if (mapElement) {
         mapElement.setAttribute('data-user_settings', JSON.stringify(this.userSettings));
+        // Update theme if it changed
+        if (newSettings.theme && newSettings.theme !== this.userTheme) {
+          this.userTheme = newSettings.theme;
+          mapElement.setAttribute('data-user_theme', this.userTheme);
+
+          // Dispatch theme change event for other controllers
+          document.dispatchEvent(new CustomEvent('theme:changed', {
+            detail: { theme: this.userTheme }
+          }));
+        }
       }
 
       // Store current layer states
@@ -1074,19 +1092,25 @@ export default class extends BaseController {
     const TogglePanelControl = L.Control.extend({
       onAdd: function(map) {
         const button = L.DomUtil.create('button', 'toggle-panel-button');
-        button.innerHTML = '📅';
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v4" />
+            <path d="M16 2v4" />
+            <path d="M21 14V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" />
+            <path d="M3 10h18" />
+            <path d="m16 20 2 2 4-4" />
+          </svg>
+        `;
 
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, controller.userTheme);
         button.style.width = '48px';
         button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
-        button.style.lineHeight = '48px';
-        button.style.fontSize = '18px';
-        button.style.textAlign = 'center';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
@@ -1104,6 +1128,11 @@ export default class extends BaseController {
     this.map.addControl(new TogglePanelControl({ position: 'topright' }));
   }
 
+  shouldShowTracksSelector() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('tracks_debug') === 'true';
+  }
+
   addRoutesTracksSelector() {
     // Store reference to the controller instance for use in the control
     const controller = this;
@@ -1111,12 +1140,12 @@ export default class extends BaseController {
     const RouteTracksControl = L.Control.extend({
       onAdd: function(map) {
         const container = L.DomUtil.create('div', 'routes-tracks-selector leaflet-bar');
-        container.style.backgroundColor = 'white';
-        container.style.padding = '8px';
-        container.style.borderRadius = '4px';
-        container.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        container.style.fontSize = '12px';
-        container.style.lineHeight = '1.2';
+        applyThemeToControl(container, controller.userTheme, {
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          lineHeight: '1.2'
+        });
 
         // Get saved preference or default to 'routes'
         const savedPreference = localStorage.getItem('mapRouteMode') || 'routes';
@@ -1375,10 +1404,8 @@ export default class extends BaseController {
 
       this.fetchAndDisplayTrackedMonths(div, currentYear, currentMonth, allMonths);
 
-      div.style.backgroundColor = 'white';
+      applyThemeToPanel(div, this.userTheme);
       div.style.padding = '10px';
-      div.style.border = '1px solid #ccc';
-      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
       div.style.marginRight = '10px';
       div.style.marginTop = '10px';
       div.style.width = '300px';
@@ -1817,4 +1844,83 @@ export default class extends BaseController {
       toggleTracksVisibility(this.tracksLayer, this.map, this.tracksVisible);
     }
   }
+
+  initializeLocationSearch() {
+    if (this.map && this.apiKey && this.features.reverse_geocoding) {
+      this.locationSearch = new LocationSearch(this.map, this.apiKey, this.userTheme);
+    }
+  }
+
+  // Helper method for family controller to update layer control
+  updateLayerControl(additionalLayers = {}) {
+    if (!this.layerControl) return;
+
+    // Store which base and overlay layers are currently visible
+    const overlayStates = {};
+    let activeBaseLayer = null;
+    let activeBaseLayerName = null;
+
+    if (this.layerControl._layers) {
+      Object.values(this.layerControl._layers).forEach(layerObj => {
+        if (layerObj.overlay && layerObj.layer) {
+          // Store overlay layer states
+          overlayStates[layerObj.name] = this.map.hasLayer(layerObj.layer);
+        } else if (!layerObj.overlay && this.map.hasLayer(layerObj.layer)) {
+          // Store the currently active base layer
+          activeBaseLayer = layerObj.layer;
+          activeBaseLayerName = layerObj.name;
+        }
+      });
+    }
+
+    // Remove existing layer control
+    this.map.removeControl(this.layerControl);
+
+    // Create base controls layer object
+    const baseControlsLayer = {
+      Points: this.markersLayer || L.layerGroup(),
+      Routes: this.polylinesLayer || L.layerGroup(),
+      Tracks: this.tracksLayer || L.layerGroup(),
+      Heatmap: this.heatmapLayer || L.heatLayer([]),
+      "Fog of War": this.fogOverlay,
+      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
+      Areas: this.areasLayer || L.layerGroup(),
+      Photos: this.photoMarkers || L.layerGroup(),
+      "Suggested Visits": this.visitsManager?.getVisitCirclesLayer() || L.layerGroup(),
+      "Confirmed Visits": this.visitsManager?.getConfirmedVisitCirclesLayer() || L.layerGroup()
+    };
+
+    // Merge with additional layers (like family members)
+    const controlsLayer = { ...baseControlsLayer, ...additionalLayers };
+
+    // Get base maps and re-add the layer control
+    const baseMaps = this.baseMaps();
+    this.layerControl = L.control.layers(baseMaps, controlsLayer).addTo(this.map);
+
+    // Restore the active base layer if we had one
+    if (activeBaseLayer && activeBaseLayerName) {
+      console.log(`Restoring base layer: ${activeBaseLayerName}`);
+      // Make sure the base layer is added to the map
+      if (!this.map.hasLayer(activeBaseLayer)) {
+        activeBaseLayer.addTo(this.map);
+      }
+    } else {
+      // If no active base layer was found, ensure we have a default one
+      console.log('No active base layer found, adding default');
+      const defaultBaseLayer = Object.values(baseMaps)[0];
+      if (defaultBaseLayer && !this.map.hasLayer(defaultBaseLayer)) {
+        defaultBaseLayer.addTo(this.map);
+      }
+    }
+
+    // Restore overlay layer visibility states
+    Object.entries(overlayStates).forEach(([name, wasVisible]) => {
+      const layer = controlsLayer[name];
+      if (layer && wasVisible && !this.map.hasLayer(layer)) {
+        layer.addTo(this.map);
+      }
+    });
+  }
+
+
 }

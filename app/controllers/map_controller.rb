@@ -13,6 +13,7 @@ class MapController < ApplicationController
     @end_at = parsed_end_at
     @years = years_range
     @points_number = points_count
+    @features = DawarichSettings.features
   end
 
   private
@@ -37,6 +38,8 @@ class MapController < ApplicationController
   end
 
   def calculate_distance
+    return 0 if @coordinates.size < 2
+
     total_distance = 0
 
     @coordinates.each_cons(2) do
@@ -89,6 +92,6 @@ class MapController < ApplicationController
   end
 
   def points_from_user
-    current_user.tracked_points.without_raw_data.order(timestamp: :asc)
+    current_user.points.without_raw_data.order(timestamp: :asc)
   end
 end

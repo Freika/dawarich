@@ -2,13 +2,15 @@
 
 class GoogleMaps::SemanticHistoryImporter
   include Imports::Broadcaster
+  include Imports::FileLoader
 
   BATCH_SIZE = 1000
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user_id = user_id
+    @file_path = file_path
     @current_index = 0
   end
 
@@ -61,8 +63,7 @@ class GoogleMaps::SemanticHistoryImporter
   end
 
   def points_data
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-    json = Oj.load(file_content)
+    json = load_json_data
 
     json['timelineObjects'].flat_map do |timeline_object|
       parse_timeline_object(timeline_object)

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 class Settings::UsersController < ApplicationController
-  before_action :authenticate_self_hosted!, except: [:export, :import]
-  before_action :authenticate_admin!, except: [:export, :import]
+  before_action :authenticate_self_hosted!, except: %i[export import]
   before_action :authenticate_user!
+  before_action :authenticate_admin!, except: %i[export import]
 
   def index
     @users = User.order(created_at: :desc)
@@ -19,7 +19,7 @@ class Settings::UsersController < ApplicationController
     if @user.update(user_params)
       redirect_to settings_users_url, notice: 'User was successfully updated.'
     else
-      redirect_to settings_users_url, notice: 'User could not be updated.', status: :unprocessable_entity
+      redirect_to settings_users_url, notice: 'User could not be updated.', status: :unprocessable_content
     end
   end
 
@@ -33,7 +33,7 @@ class Settings::UsersController < ApplicationController
     if @user.save
       redirect_to settings_users_url, notice: 'User was successfully created'
     else
-      redirect_to settings_users_url, notice: 'User could not be created.', status: :unprocessable_entity
+      redirect_to settings_users_url, notice: 'User could not be created.', status: :unprocessable_content
     end
   end
 
@@ -43,7 +43,7 @@ class Settings::UsersController < ApplicationController
     if @user.destroy
       redirect_to settings_url, notice: 'User was successfully deleted.'
     else
-      redirect_to settings_url, notice: 'User could not be deleted.', status: :unprocessable_entity
+      redirect_to settings_url, notice: 'User could not be deleted.', status: :unprocessable_content
     end
   end
 
@@ -54,21 +54,13 @@ class Settings::UsersController < ApplicationController
   end
 
   def import
-    unless params[:archive].present?
+    if params[:archive].blank?
       redirect_to edit_user_registration_path, alert: 'Please select a ZIP archive to import.'
       return
     end
 
-    archive_file = params[:archive]
-
-    validate_archive_file(archive_file)
-
-    import = current_user.imports.build(
-      name: archive_file.original_filename,
-      source: :user_data_archive
-    )
-
-    import.file.attach(archive_file)
+    import =
+      create_import_from_signed_archive_id(params[:archive])
 
     if import.save
       redirect_to edit_user_registration_path,
@@ -89,12 +81,49 @@ class Settings::UsersController < ApplicationController
     params.require(:user).permit(:email, :password)
   end
 
+  def create_import_from_signed_archive_id(signed_id)
+    Rails.logger.debug "Creating archive import from signed ID: #{signed_id[0..20]}..."
+
+    blob = ActiveStorage::Blob.find_signed(signed_id)
+
+    # Validate that it's a ZIP file
+    validate_blob_file_type(blob)
+
+    import_name = generate_unique_import_name(blob.filename.to_s)
+    import = current_user.imports.build(
+      name: import_name,
+      source: :user_data_archive
+    )
+    import.file.attach(blob)
+
+    import
+  end
+
+  def generate_unique_import_name(original_name)
+    return original_name unless current_user.imports.exists?(name: original_name)
+
+    # Extract filename and extension
+    basename = File.basename(original_name, File.extname(original_name))
+    extension = File.extname(original_name)
+
+    # Add current datetime
+    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
+    "#{basename}_#{timestamp}#{extension}"
+  end
+
   def validate_archive_file(archive_file)
-    unless archive_file.content_type == 'application/zip' ||
-           archive_file.content_type == 'application/x-zip-compressed' ||
+    unless ['application/zip', 'application/x-zip-compressed'].include?(archive_file.content_type) ||
            File.extname(archive_file.original_filename).downcase == '.zip'
 
       redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.' and return
+    end
+  end
+
+  def validate_blob_file_type(blob)
+    unless ['application/zip', 'application/x-zip-compressed'].include?(blob.content_type) ||
+           File.extname(blob.filename.to_s).downcase == '.zip'
+
+      raise StandardError, 'Please upload a valid ZIP file.'
     end
   end
 end

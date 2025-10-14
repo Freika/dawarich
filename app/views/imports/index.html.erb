@@ -36,7 +36,7 @@
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="table overflow-x-auto">
+        <table class="table table-zebra overflow-x-auto">
           <thead>
             <tr>
               <th>Name</th>
@@ -55,7 +55,8 @@
             <% @imports.each do |import| %>
               <tr data-import-id="<%= import.id %>"
                   id="import-<%= import.id %>"
-                  data-points-total="<%= import.processed %>">
+                  data-points-total="<%= import.processed %>"
+                  class="hover">
                 <td>
                   <%= link_to import.name, import, class: 'underline hover:no-underline' %>
                   (<%= import.source %>)
@@ -72,9 +73,9 @@
                 <td><%= human_datetime(import.created_at) %></td>
                 <td class="whitespace-nowrap">
                   <% if import.file.present? %>
-                    <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: import.name %>
+                    <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-outline btn-sm btn-info", download: import.name %>
                   <% end %>
-                  <%= link_to 'Delete', import, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
+                  <%= link_to 'Delete', import, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-outline btn-sm btn-error" %>
                 </td>
               </tr>
             <% end %>

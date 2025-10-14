@@ -30,15 +30,18 @@ RSpec.describe Photos::Importer do
       it 'creates points with correct attributes' do
         service
 
-        expect(Point.first.lat.to_f).to eq(59.0000)
-        expect(Point.first.lon.to_f).to eq(30.0000)
-        expect(Point.first.timestamp).to eq(978_296_400)
-        expect(Point.first.import_id).to eq(import.id)
+        first_point = user.points.first
+        second_point = user.points.second
 
-        expect(Point.second.lat.to_f).to eq(55.0001)
-        expect(Point.second.lon.to_f).to eq(37.0001)
-        expect(Point.second.timestamp).to eq(978_296_400)
-        expect(Point.second.import_id).to eq(import.id)
+        expect(first_point.lat.to_f).to eq(59.0000)
+        expect(first_point.lon.to_f).to eq(30.0000)
+        expect(first_point.timestamp).to eq(978_296_400)
+        expect(first_point.import_id).to eq(import.id)
+
+        expect(second_point.lat.to_f).to eq(55.0001)
+        expect(second_point.lon.to_f).to eq(37.0001)
+        expect(second_point.timestamp).to eq(978_296_400)
+        expect(second_point.import_id).to eq(import.id)
       end
     end
 

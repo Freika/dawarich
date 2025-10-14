@@ -4,11 +4,11 @@
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-5">
     <div class="text-center lg:text-left">
       <h1 class="text-5xl font-bold mb-5">Edit your account!</h1>
-      <% if current_user.active? %>
-        <%= render 'devise/registrations/api_key' %>
-      <% else %>
+      <%= render 'devise/registrations/api_key' %>
+      <% if current_user.trial? %>
+        <p>Your trial period ends at <%= human_datetime current_user.active_until %>.</p>
         <p>
-          <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success glass' %> to access your API key and start tracking your location.
+          <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success glass' %> to continue using Dawarich after your trial ends.
         </p>
       <% end %>
       <% if !DawarichSettings.self_hosted? %>
@@ -82,16 +82,35 @@
           <h3 class="font-bold text-lg mb-4">Import your data</h3>
           <p class="mb-4 text-sm text-gray-600">Upload a ZIP file containing your exported Dawarich data to restore your points, trips, and settings.</p>
 
-          <%= form_with url: import_settings_users_path, method: :post, multipart: true, class: 'space-y-4', data: { turbo: false } do |f| %>
+          <%= form_with url: import_settings_users_path, method: :post, multipart: true, class: 'space-y-4', data: {
+            turbo: false,
+            controller: "user-data-archive-direct-upload",
+            user_data_archive_direct_upload_url_value: rails_direct_uploads_url,
+            user_data_archive_direct_upload_user_trial_value: current_user.trial?,
+            user_data_archive_direct_upload_target: "form"
+          } do |f| %>
             <div class="form-control">
               <%= f.label :archive, class: 'label' do %>
                 <span class="label-text">Select ZIP archive</span>
               <% end %>
-              <%= f.file_field :archive, accept: '.zip', required: true, class: 'file-input file-input-bordered w-full' %>
+              <%= f.file_field :archive,
+                  accept: '.zip',
+                  required: true,
+                  direct_upload: true,
+                  class: 'file-input file-input-bordered w-full',
+                  data: { user_data_archive_direct_upload_target: "input" } %>
+              <div class="text-sm text-gray-500 mt-2">
+                File will be uploaded directly to storage. Please be patient during upload.
+              </div>
             </div>
 
             <div class="modal-action">
-              <%= f.submit "Import Data", class: 'btn btn-primary', data: { disable_with: 'Importing...' } %>
+              <%= f.submit "Import Data",
+                  class: 'btn btn-primary',
+                  data: {
+                    disable_with: 'Importing...',
+                    user_data_archive_direct_upload_target: "submit"
+                  } %>
               <button type="button" class="btn" onclick="import_modal.close()">Cancel</button>
             </div>
           <% end %>

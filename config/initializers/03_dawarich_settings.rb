@@ -4,7 +4,6 @@ class DawarichSettings
   BASIC_PAID_PLAN_LIMIT = 10_000_000 # 10 million points
 
   class << self
-
     def reverse_geocoding_enabled?
       @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled? || nominatim_enabled?
     end
@@ -38,6 +37,17 @@ class DawarichSettings
 
     def store_geodata?
       @store_geodata ||= STORE_GEODATA
+    end
+
+    def family_feature_enabled?
+      @family_feature_enabled ||= self_hosted?
+    end
+
+    def features
+      @features ||= {
+        reverse_geocoding: reverse_geocoding_enabled?,
+        family: family_feature_enabled?
+      }
     end
   end
 end

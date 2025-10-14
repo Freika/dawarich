@@ -56,6 +56,20 @@ Rails.application.routes.draw do
   resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
   resources :trips
+
+  # Family management routes (only if feature is enabled)
+  if DawarichSettings.family_feature_enabled?
+    resource :family, only: %i[show new create edit update destroy] do
+      patch :update_location_sharing, on: :member
+
+      resources :invitations, except: %i[edit update], controller: 'family/invitations'
+      resources :members, only: %i[destroy], controller: 'family/memberships'
+    end
+
+    get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
+    post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
+  end
+
   resources :points, only: %i[index] do
     collection do
       delete :bulk_destroy
@@ -70,22 +84,27 @@ Rails.application.routes.draw do
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
+  get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
+  get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
+
+  # Sharing management endpoint (requires auth)
+  patch 'stats/:year/:month/sharing',
+        to: 'shared/stats#update',
+        as: :sharing_stats,
+        constraints: { year: /\d{4}/, month: /\d{1,2}/ }
 
   root to: 'home#index'
 
-  if SELF_HOSTED
-    devise_for :users, skip: [:registrations]
-    as :user do
-      get 'users/edit' => 'devise/registrations#edit', :as => 'edit_user_registration'
-      put 'users' => 'devise/registrations#update', :as => 'user_registration'
-    end
-  else
-    devise_for :users
-  end
+  get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
+
+  devise_for :users, controllers: {
+    registrations: 'users/registrations',
+    sessions: 'users/sessions'
+  }
 
   resources :metrics, only: [:index]
 
@@ -100,8 +119,13 @@ Rails.application.routes.draw do
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index create update destroy]
+      resources :locations, only: %i[index] do
+        collection do
+          get 'suggestions'
+        end
+      end
       resources :points,    only: %i[index create update destroy]
-      resources :visits,    only: %i[index update] do
+      resources :visits,    only: %i[index create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
         collection do
           post 'merge', to: 'visits#merge'
@@ -135,6 +159,17 @@ Rails.application.routes.draw do
 
       namespace :maps do
         resources :tile_usage, only: [:create]
+        resources :hexagons, only: [:index] do
+          collection do
+            get :bounds
+          end
+        end
+      end
+
+      resources :families, only: [] do
+        collection do
+          get :locations
+        end
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'

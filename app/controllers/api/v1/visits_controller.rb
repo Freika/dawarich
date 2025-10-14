@@ -10,6 +10,19 @@ class Api::V1::VisitsController < ApiController
     render json: serialized_visits
   end
 
+  def create
+    service = Visits::Create.new(current_api_user, visit_params)
+
+    result = service.call
+
+    if result
+      render json: Api::VisitSerializer.new(service.visit).call
+    else
+      error_message = service.errors || 'Failed to create visit'
+      render json: { error: error_message }, status: :unprocessable_content
+    end
+  end
+
   def update
     visit = current_api_user.visits.find(params[:id])
     visit = update_visit(visit)
@@ -21,7 +34,7 @@ class Api::V1::VisitsController < ApiController
     # Validate that we have at least 2 visit IDs
     visit_ids = params[:visit_ids]
     if visit_ids.blank? || visit_ids.length < 2
-      return render json: { error: 'At least 2 visits must be selected for merging' }, status: :unprocessable_entity
+      return render json: { error: 'At least 2 visits must be selected for merging' }, status: :unprocessable_content
     end
 
     # Find all visits that belong to the current user
@@ -39,7 +52,7 @@ class Api::V1::VisitsController < ApiController
     if merged_visit&.persisted?
       render json: Api::VisitSerializer.new(merged_visit).call, status: :ok
     else
-      render json: { error: service.errors.join(', ') }, status: :unprocessable_entity
+      render json: { error: service.errors.join(', ') }, status: :unprocessable_content
     end
   end
 
@@ -58,14 +71,29 @@ class Api::V1::VisitsController < ApiController
         updated_count: result[:count]
       }, status: :ok
     else
-      render json: { error: service.errors.join(', ') }, status: :unprocessable_entity
+      render json: { error: service.errors.join(', ') }, status: :unprocessable_content
     end
+  end
+
+  def destroy
+    visit = current_api_user.visits.find(params[:id])
+
+    if visit.destroy
+      head :no_content
+    else
+      render json: {
+        error: 'Failed to delete visit',
+        errors: visit.errors.full_messages
+      }, status: :unprocessable_content
+    end
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: 'Visit not found' }, status: :not_found
   end
 
   private
 
   def visit_params
-    params.require(:visit).permit(:name, :place_id, :status)
+    params.require(:visit).permit(:name, :place_id, :status, :latitude, :longitude, :started_at, :ended_at)
   end
 
   def merge_params
@@ -78,6 +106,8 @@ class Api::V1::VisitsController < ApiController
 
   def update_visit(visit)
     visit_params.each do |key, value|
+      next if %w[latitude longitude].include?(key.to_s)
+
       visit[key] = value
       visit.name = visit.place.name if visit_params[:place_id].present?
     end

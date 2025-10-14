@@ -28,7 +28,7 @@ FactoryBot.define do
     course          { nil }
     course_accuracy { nil }
     external_track_id { nil }
-    lonlat { "POINT(#{FFaker::Geolocation.lng} #{FFaker::Geolocation.lat})" }
+    lonlat { "POINT(#{longitude} #{latitude})" }
     user
     country_id { nil }
 

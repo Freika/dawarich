@@ -23,7 +23,7 @@ RSpec.describe OwnTracks::Importer do
       it 'correctly writes attributes' do
         parser
 
-        point = Point.first
+        point = user.points.first
         expect(point.lonlat.x).to be_within(0.001).of(13.332)
         expect(point.lonlat.y).to be_within(0.001).of(52.225)
         expect(point.attributes.except('lonlat')).to include(
@@ -75,7 +75,7 @@ RSpec.describe OwnTracks::Importer do
       it 'correctly converts speed' do
         parser
 
-        expect(Point.first.velocity).to eq('1.4')
+        expect(user.points.first.velocity).to eq('1.4')
       end
     end
 
@@ -84,12 +84,6 @@ RSpec.describe OwnTracks::Importer do
 
       it 'creates points' do
         expect { parser }.to change { Point.count }.by(9)
-      end
-
-      it 'correctly writes attributes' do
-        parser
-
-        point = Point.first
       end
     end
   end

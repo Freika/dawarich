@@ -13,9 +13,9 @@ class ImportsController < ApplicationController
 
   def index
     @imports = policy_scope(Import)
-      .select(:id, :name, :source, :created_at, :processed, :status)
-      .order(created_at: :desc)
-      .page(params[:page])
+               .select(:id, :name, :source, :created_at, :processed, :status)
+               .order(created_at: :desc)
+               .page(params[:page])
   end
 
   def show; end
@@ -43,8 +43,7 @@ class ImportsController < ApplicationController
     raw_files = Array(files_params).reject(&:blank?)
 
     if raw_files.empty?
-      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_entity
-      return
+      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_content and return
     end
 
     created_imports = []
@@ -59,11 +58,11 @@ class ImportsController < ApplicationController
     if created_imports.any?
       redirect_to imports_url,
                   notice: "#{created_imports.size} files are queued to be imported in background",
-                  status: :see_other
+                  status: :see_other and return
     else
       redirect_to new_import_path,
                   alert: 'No valid file references were found. Please upload files using the file selector.',
-                  status: :unprocessable_entity
+                  status: :unprocessable_content and return
     end
   rescue StandardError => e
     if created_imports.present?
@@ -75,7 +74,7 @@ class ImportsController < ApplicationController
     Rails.logger.error e.backtrace.join("\n")
     ExceptionReporter.call(e)
 
-    redirect_to new_import_path, alert: e.message, status: :unprocessable_entity
+    redirect_to new_import_path, alert: e.message, status: :unprocessable_content
   end
 
   def destroy
@@ -95,7 +94,7 @@ class ImportsController < ApplicationController
   end
 
   def import_params
-    params.require(:import).permit(:name, :source, files: [])
+    params.require(:import).permit(:name, files: [])
   end
 
   def create_import_from_signed_id(signed_id)
@@ -103,11 +102,8 @@ class ImportsController < ApplicationController
 
     blob = ActiveStorage::Blob.find_signed(signed_id)
 
-    import = current_user.imports.build(
-      name: blob.filename.to_s,
-      source: params[:import][:source]
-    )
-
+    import_name = generate_unique_import_name(blob.filename.to_s)
+    import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
 
     import.save!
@@ -115,9 +111,21 @@ class ImportsController < ApplicationController
     import
   end
 
+  def generate_unique_import_name(original_name)
+    return original_name unless current_user.imports.exists?(name: original_name)
+
+    # Extract filename and extension
+    basename = File.basename(original_name, File.extname(original_name))
+    extension = File.extname(original_name)
+
+    # Add current datetime
+    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
+    "#{basename}_#{timestamp}#{extension}"
+  end
+
   def validate_points_limit
     limit_exceeded = PointsLimitExceeded.new(current_user).call
 
-    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_entity if limit_exceeded
+    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_content if limit_exceeded
   end
 end

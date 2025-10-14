@@ -4,6 +4,147 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.34.0] - 2025-10-10
+
+## The Family release
+
+In this release we're introducing family features that allow users to create family groups, invite members, and share location data. Family owners can manage members, control sharing settings, and ensure secure access to shared information. Location sharing is optional and can be enabled or disabled by each member individually. Users can join only one family at a time. Location sharing settings can be set to share location for 1, 6, 12, 24 hours or permanently. Family features are now available only for self-hosted instances and will be available in the cloud in the future. When "Family members" layer is enabled on the map, family member markers will be updated in real-time.
+
+## Added
+
+- Users can now create family groups and invite members to join.
+
+## Fixed
+
+- Sign out button works again. #1844
+
+## Changed
+
+- Minor versions of Dawarich are being built for ARM64 architecture as well again. #1840
+
+
+# [0.33.1] - 2025-10-07
+
+## Changed
+
+- On the Trip page, instead of list of visited countries, a number of them is being shown. Clicking on it opens a modal with a list of countries visited during the trip. #1731
+
+## Fixed
+
+- `GET /api/v1/stats` endpoint now returns correct 0 instead of null if no points were tracked in the requested period.
+- User import data now being streamed instead of loaded into memory all at once. This should prevent large imports from exhausting memory or hitting IO limits while reading export archives.
+- Popup for manual visit creation now looks better in both light and dark modes. #1835
+- Fixed a bug where visit circles were not interactive on the map page. #1833
+- Fixed a bug with stats sharing settings being not filled. #1826
+- Fixed a bug where user could not be deleted due to counter cache on points. #1818
+- Introduce apt-get upgrade before installing new packages in the docker image to prevent vulnerabilities. #1793
+- Fixed time shift when creating visits manually. #1679
+- Provide default map layer if user settings are not set.
+
+# [0.33.0] - 2025-09-29
+
+## Fixed
+
+- Fix a bug where some points from Owntracks were not being processed correctly which prevented import from being created. #1745
+- Hexagons for the stats page are now being calculated a lot faster.
+- Prometheus exporter is now not being started when console is being run.
+- Stats will now properly reflect countries and cities visited after importing new points.
+- `GET /api/v1/points` will now return correct latitude and longitude values. #1502
+- Deleting an import will now trigger stats recalculation for affected months. #1789
+- Importing process should now schedule visits suggestions job a lot faster.
+- Importing GPX files that start with `<gpx` tag will now be detected correctly. #1775
+- Buttons on the map now have correct contrast in both light and dark modes.
+
+## Changed
+
+- Onboarding modal window now features a link to the App Store and a QR code to configure the Dawarich iOS app.
+- A permanent option was removed from stats sharing options. Now, stats can be shared for 1, 12 or 24 hours only.
+- User data archive importing now uploads the file directly to the storage service instead of uploading it to the app first.
+- Importing progress bars are now looking nice.
+- Ruby version was updated to 3.4.6.
+
+## Added
+
+- Based on preferred theme (light or dark), the map controls will now load with the corresponding styles.
+- [Dawarich Cloud] Added foundation for upcoming authentication from iOS app.
+- [Dawarich Cloud] Trial users can now create up to 5 imports. After that, they will be prompted to subscribe to a paid plan.
+- [Dawarich Cloud] Added Posthog analytics. Disabled by default, can be enabled with POSTHOG_ENABLED environment variable.
+
+
+# [0.32.0] - 2025-09-13
+
+## Fixed
+
+- Tracked distance on year card on the Stats page will always be equal to the sum of distances on the monthly chart below it. #466
+- Stats are now being calculated for trial users as well as active ones.
+
+## Added
+
+- A cron job to generate daily tracks for users with new points since their last track generation. Being run every 4 hours.
+- A new month stat page, featuring insights on how user's month went: distance traveled, active days, countries visited and more.
+- Month stat page can now be shared via public link. User can limit access to the page by sharing period: 1/12/24 hours or permanent.
+
+## Changed
+
+- Stats page now loads significantly faster due to caching.
+- Data on the Stats page is being updated daily, except for total distance and number of geopoints tracked, which are being updated on the fly. Also, charts with yearly and monthly stats are being updated every hour.
+- Minor versions are now being built only for amd64 architecture to speed up the build process.
+- If user is not authorized to see a page, they will be redirected to the home page with appropriate message instead of seeing an error.
+
+# [0.31.0] - 2025-09-04
+
+The Search release
+
+In this release we're introducing a new search feature that allows users to search for places and see when they visited them. On the map page, click on Search icon, enter a place name (e.g. "Alexanderplatz"), wait for suggestions to load, and click on the suggestion you want to search for. You then will see a list of years you visited that place. Click on the year to unfold list of visits for that year. Then click on the visit you want to see on the map and you will be moved to that visit on the map. From the opened visit popup you can create a new visit to save it in the database.
+
+Important: This feature relies on reverse geocoding. Without reverse geocoding, the search feature will not work.
+
+## Added
+
+- User can now search for places and see when they visited them.
+
+## Fixed
+
+- Default value for `points_count` attribute is now set to 0 in the User model.
+
+## Changed
+
+- Tracks are not being calculated by server instead of the database. This feature is still in progress.
+
+
+# [0.30.12] - 2025-08-26
+
+## Fixed
+
+- Number of user points is not being cached resulting in performance boost on certain pages and operations.
+- Logout bug
+- Api key is now shown even in trial period
+
+
+# [0.30.11] - 2025-08-23
+
+## Changed
+
+- If user already have import with the same name, it will be appended with timestamp during the import process.
+
+## Fixed
+
+- Some types of imports were not being detected correctly and were failing to import. #1678
+
+
+# [0.30.10] - 2025-08-22
+
+## Added
+
+- `POST /api/v1/visits` endpoint.
+- User now can create visits manually on the map.
+- User can now delete a visit by clicking on the delete button in the visit popup.
+- Import failure now throws an internal server error.
+
+## Changed
+
+- Source of imports is now being detected automatically.
+
 
 # [0.30.9] - 2025-08-19
 
@@ -18,7 +159,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trial version for cloud users is now available.
 
 
-
 # [0.30.8] - 2025-08-01
 
 ## Fixed
@@ -26,7 +166,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fog of war is now working correctly on zoom and map movement. #1603
 - Possibly fixed a bug where visits were no suggested correctly. #984
 - Scratch map is now working correctly.
-
 
 
 # [0.30.7] - 2025-08-01
@@ -76,7 +215,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - Prometheus metrics are now available at `/metrics`. Configure `METRICS_USERNAME` and `METRICS_PASSWORD` environment variables for basic authentication, default values are `prometheus` for both. All other prometheus-related environment variables are also necessary.
-
 
 ## Fixed
 

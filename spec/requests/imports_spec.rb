@@ -62,9 +62,10 @@ RSpec.describe 'Imports', type: :request do
       end
 
       it 'prevents viewing other users import' do
-        expect {
-          get import_path(other_import)
-        }.to raise_error(Pundit::NotAuthorizedError)
+        get import_path(other_import)
+        
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
 
@@ -98,9 +99,10 @@ RSpec.describe 'Imports', type: :request do
       end
 
       it 'prevents access to new import form' do
-        expect {
-          get new_import_path
-        }.to raise_error(Pundit::NotAuthorizedError)
+        get new_import_path
+        
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
 

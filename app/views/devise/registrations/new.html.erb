@@ -1,16 +1,38 @@
 <div class="hero min-h-content bg-base-200">
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
-      <h1 class="text-5xl font-bold">Register now!</h1>
-      <p class="py-6">and take control over your location data.</p>
+      <% if @invitation %>
+        <h1 class="text-5xl font-bold text-base-content">Join <%= @invitation.family.name %>!</h1>
+        <p class="py-6 text-base-content opacity-70">
+          You've been invited by <strong><%= @invitation.invited_by.email %></strong> to join their family.
+          Create your account to accept the invitation and start sharing location data.
+        </p>
+        <div class="alert alert-info mb-4">
+          <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+          <span class="text-sm">
+            Your email (<%= @invitation.email %>) will be used for this account
+          </span>
+        </div>
+      <% else %>
+        <h1 class="text-5xl font-bold text-base-content">Register now!</h1>
+        <p class="py-6 text-base-content opacity-70">and take control over your location data.</p>
+      <% end %>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
-      <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body ') do |f| %>
+      <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', html: { data: { turbo: session[:dawarich_client] == 'ios' ? false : true } }) do |f| %>
+        <% if @invitation %>
+          <%= f.hidden_field :invitation_token, value: params[:invitation_token] %>
+        <% end %>
+
         <div class="form-control">
           <%= f.label :email, class: 'label' do %>
             <span class="label-text">Email</span>
           <% end %>
-          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered' %>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email",
+                readonly: @invitation.present?,
+                class: "input input-bordered #{@invitation ? 'input-disabled' : ''}" %>
         </div>
 
         <div class="form-control">
@@ -18,17 +40,17 @@
             <span class="label-text">Password</span>
           <% end %>
           <% if @minimum_password_length %>
-            <em>(<%= @minimum_password_length %> characters minimum)</em>
+            <em class="text-base-content opacity-60 text-sm">(<%= @minimum_password_length %> characters minimum)</em>
           <% end %><br />
           <%= f.password_field :password, autocomplete: "new-password", class: 'input input-bordered' %>
         </div>
 
         <div class="form-control">
           <%= f.label :password_confirmation, class: 'label' do %>
-            <span class="label-text">Password</span>
+            <span class="label-text">Password Confirmation</span>
           <% end %>
           <% if @minimum_password_length %>
-            <em>(<%= @minimum_password_length %> characters minimum)</em>
+            <em class="text-base-content opacity-60 text-sm">(<%= @minimum_password_length %> characters minimum)</em>
           <% end %><br />
           <%= f.password_field :password_confirmation, autocomplete: "new-password", class: 'input input-bordered' %>
         </div>
@@ -38,10 +60,13 @@
         <% end %>
 
         <div class="form-control mt-6">
-          <%= f.submit "Sign up", class: 'btn btn-primary' %>
+          <%= f.submit (@invitation ? "Create Account & Join Family" : "Sign up"),
+                class: 'btn btn-primary' %>
         </div>
 
-        <%= render "devise/shared/links" %>
+        <% unless @invitation %>
+          <%= render "devise/shared/links" %>
+        <% end %>
       <% end %>
     </div>
   </div>

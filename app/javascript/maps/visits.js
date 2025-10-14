@@ -1,23 +1,28 @@
 import L from "leaflet";
 import { showFlashMessage } from "./helpers";
+import { applyThemeToButton } from "./theme_utils";
 
 /**
  * Manages visits functionality including displaying, fetching, and interacting with visits
  */
 export class VisitsManager {
-  constructor(map, apiKey) {
+  constructor(map, apiKey, userTheme = 'dark') {
     this.map = map;
     this.apiKey = apiKey;
+    this.userTheme = userTheme;
 
     // Create custom panes for different visit types
-    if (!map.getPane('confirmedVisitsPane')) {
-      map.createPane('confirmedVisitsPane');
-      map.getPane('confirmedVisitsPane').style.zIndex = 450; // Above default overlay pane (400)
-    }
-
+    // Leaflet default panes: tilePane=200, overlayPane=400, shadowPane=500, markerPane=600, tooltipPane=650, popupPane=700
     if (!map.getPane('suggestedVisitsPane')) {
       map.createPane('suggestedVisitsPane');
-      map.getPane('suggestedVisitsPane').style.zIndex = 460; // Below confirmed visits but above base layers
+      map.getPane('suggestedVisitsPane').style.zIndex = 610; // Above markerPane (600), below tooltipPane (650)
+      map.getPane('suggestedVisitsPane').style.pointerEvents = 'auto'; // Ensure interactions work
+    }
+
+    if (!map.getPane('confirmedVisitsPane')) {
+      map.createPane('confirmedVisitsPane');
+      map.getPane('confirmedVisitsPane').style.zIndex = 620; // Above suggested visits
+      map.getPane('confirmedVisitsPane').style.pointerEvents = 'auto'; // Ensure interactions work
     }
 
     this.visitCircles = L.layerGroup();
@@ -67,12 +72,10 @@ export class VisitsManager {
       onAdd: (map) => {
         const button = L.DomUtil.create('button', 'leaflet-control-button drawer-button');
         button.innerHTML = '⬅️'; // Left arrow icon
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, this.userTheme);
         button.style.width = '48px';
         button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
         button.style.lineHeight = '48px';
@@ -104,12 +107,10 @@ export class VisitsManager {
         button.innerHTML = '⚓️';
         button.title = 'Select Area';
         button.id = 'selection-tool-button';
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, this.userTheme);
         button.style.width = '48px';
         button.style.height = '48px';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-        button.style.backgroundColor = 'white';
         button.style.borderRadius = '4px';
         button.style.padding = '0';
         button.style.lineHeight = '48px';
@@ -1326,44 +1327,60 @@ export class VisitsManager {
       // Create popup content with form and dropdown
       const defaultName = visit.name;
       const popupContent = `
-        <div class="p-3">
-          <div class="mb-3">
-            <div class="text-sm mb-1">
-              ${dateTimeDisplay.trim()}
-            </div>
-            <div>
-              <span class="text-sm text-gray-500">
-                Duration: ${durationText},
-              </span>
-              <span class="text-sm mb-1 ${statusColorClass} font-semibold">
-                status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}
-              </span>
-              <span>${visit.place.latitude}, ${visit.place.longitude}</span>
-            </div>
+        <div style="min-width: 280px;">
+          <h3 class="text-base font-semibold mb-3">${dateTimeDisplay.trim()}</h3>
+
+          <div class="space-y-1 mb-4 text-sm">
+            <div>Duration: ${durationText}</div>
+            <div class="${statusColorClass} font-semibold">Status: ${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}</div>
+            <div class="text-xs opacity-60 font-mono">${visit.place.latitude}, ${visit.place.longitude}</div>
           </div>
-          <form class="visit-name-form" data-visit-id="${visit.id}">
+
+          <form class="visit-name-form space-y-3" data-visit-id="${visit.id}">
             <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Visit Name:</span>
+              </label>
               <input type="text"
-                     class="input input-bordered input-sm w-full text-neutral-content"
+                     class="input input-bordered w-full"
                      value="${defaultName}"
                      placeholder="Enter visit name">
             </div>
-            <div class="form-control mt-2">
-              <select class="select text-neutral-content select-bordered select-sm w-full h-fit" name="place">
-                ${possiblePlaces.map(place => `
+
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Location:</span>
+              </label>
+              <select class="select select-bordered w-full" name="place">
+                ${possiblePlaces.length > 0 ? possiblePlaces.map(place => `
                   <option value="${place.id}" ${place.id === visit.place.id ? 'selected' : ''}>
                     ${place.name}
                   </option>
-                `).join('')}
+                `).join('') : `
+                  <option value="${visit.place.id}" selected>
+                    ${visit.place.name || 'Current Location'}
+                  </option>
+                `}
               </select>
             </div>
-            <div class="flex gap-2 mt-2">
-              <button type="submit" class="btn btn-xs btn-primary">Save</button>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button type="submit" class="btn btn-primary btn-sm">
+                Save
+              </button>
               ${visit.status !== 'confirmed' ? `
-                <button type="button" class="btn btn-xs btn-success confirm-visit" data-id="${visit.id}">Confirm</button>
-                <button type="button" class="btn btn-xs btn-error decline-visit" data-id="${visit.id}">Decline</button>
-              ` : ''}
+                <button type="button" class="btn btn-success btn-sm confirm-visit" data-id="${visit.id}">
+                  Confirm
+                </button>
+                <button type="button" class="btn btn-error btn-sm decline-visit" data-id="${visit.id}">
+                  Decline
+                </button>
+              ` : '<div class="col-span-2"></div>'}
             </div>
+
+            <button type="button" class="btn btn-outline btn-error btn-sm w-full delete-visit" data-id="${visit.id}">
+              Delete Visit
+            </button>
           </form>
         </div>
       `;
@@ -1374,8 +1391,9 @@ export class VisitsManager {
         closeOnClick: true,
         autoClose: true,
         closeOnEscapeKey: true,
-        maxWidth: 450, // Set maximum width
-        minWidth: 300  // Set minimum width
+        maxWidth: 420, // Set maximum width
+        minWidth: 320, // Set minimum width
+        className: 'visit-popup' // Add custom class for additional styling
       })
         .setLatLng([visit.place.latitude, visit.place.longitude])
         .setContent(popupContent);
@@ -1406,6 +1424,12 @@ export class VisitsManager {
         event.stopPropagation(); // Stop event bubbling
         const newName = event.target.querySelector('input').value;
         const selectedPlaceId = event.target.querySelector('select[name="place"]').value;
+
+        // Validate that we have a valid place_id
+        if (!selectedPlaceId || selectedPlaceId === '') {
+          showFlashMessage('error', 'Please select a valid location');
+          return;
+        }
 
         // Get the selected place name from the dropdown
         const selectedOption = event.target.querySelector(`select[name="place"] option[value="${selectedPlaceId}"]`);
@@ -1473,9 +1497,11 @@ export class VisitsManager {
       // Add event listeners for confirm and decline buttons
       const confirmBtn = form.querySelector('.confirm-visit');
       const declineBtn = form.querySelector('.decline-visit');
+      const deleteBtn = form.querySelector('.delete-visit');
 
       confirmBtn?.addEventListener('click', (event) => this.handleStatusChange(event, visit.id, 'confirmed'));
       declineBtn?.addEventListener('click', (event) => this.handleStatusChange(event, visit.id, 'declined'));
+      deleteBtn?.addEventListener('click', (event) => this.handleDeleteVisit(event, visit.id));
     }
   }
 
@@ -1514,6 +1540,51 @@ export class VisitsManager {
     } catch (error) {
       console.error(`Error ${status}ing visit:`, error);
       showFlashMessage('error', `Failed to ${status} visit`);
+    }
+  }
+
+  /**
+   * Handles deletion of a visit with confirmation
+   * @param {Event} event - The click event
+   * @param {string} visitId - The visit ID to delete
+   */
+  async handleDeleteVisit(event, visitId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Show confirmation dialog
+    const confirmDelete = confirm('Are you sure you want to delete this visit? This action cannot be undone.');
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/visits/${visitId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+        }
+      });
+
+      if (response.ok) {
+        // Close the popup
+        if (this.currentPopup) {
+          this.map.closePopup(this.currentPopup);
+          this.currentPopup = null;
+        }
+
+        // Refresh the visits list
+        this.fetchAndDisplayVisits();
+        showFlashMessage('notice', 'Visit deleted successfully');
+      } else {
+        const errorData = await response.json();
+        const errorMessage = errorData.error || 'Failed to delete visit';
+        showFlashMessage('error', errorMessage);
+      }
+    } catch (error) {
+      console.error('Error deleting visit:', error);
+      showFlashMessage('error', 'Failed to delete visit');
     }
   }
 
