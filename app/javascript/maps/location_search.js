@@ -174,8 +174,6 @@ class LocationSearch {
         container.addEventListener('DOMMouseScroll', (e) => {
           e.stopPropagation();
         }, { passive: false });
-
-        console.log('LocationSearch: Added scroll prevention to container', container.id || 'search-bar');
       }
     });
   }

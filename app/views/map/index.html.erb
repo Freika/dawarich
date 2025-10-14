@@ -1,13 +1,14 @@
 <% content_for :title, 'Map' %>
 
 <!-- Floating Date Navigation Controls -->
-<div class="top-20 left-4 right-4 z-30" data-controller="map-controls">
+<div class="fixed top-20 left-0 right-0 flex justify-center" style="z-index: 9999; padding-left: 80px; padding-right: 80px;">
+  <div style="width: 1500px; max-width: 100%;" data-controller="map-controls">
   <!-- Mobile: Compact Toggle Button -->
-  <div class="lg:hidden">
+  <div class="lg:hidden justify-center flex">
     <button
       type="button"
       data-action="click->map-controls#toggle"
-      class="btn btn-primary w-full shadow-lg">
+      class="btn btn-primary w-96 shadow-lg">
       <span data-map-controls-target="toggleIcon">
         <%= icon 'chevron-down' %>
       </span>
@@ -76,12 +77,13 @@
       </div>
     <% end %>
   </div>
+  </div>
 </div>
 
 <!-- Full Screen Map -->
 <div
   id='map'
-  class="w-full h-full"
+  class="absolute inset-0 w-full h-full z-0"
   data-controller="maps points add-visit family-members"
   data-points-target="map"
   data-api_key="<%= current_user.api_key %>"

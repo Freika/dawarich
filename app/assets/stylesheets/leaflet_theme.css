@@ -214,3 +214,16 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(16, 185, 129, 0.7);
   border-radius: 50%;
 }
+
+/* Fix bottom controls being cut off */
+.leaflet-bottom {
+  padding-bottom: 10px !important;
+}
+
+.leaflet-bottom.leaflet-left {
+  padding-left: 10px !important;
+}
+
+.leaflet-bottom.leaflet-right {
+  padding-right: 10px !important;
+}

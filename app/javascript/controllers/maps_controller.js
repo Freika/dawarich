@@ -145,7 +145,7 @@ export default class extends BaseController {
       }
     });
 
-    new StatsControl().addTo(this.map);
+    this.statsControl = new StatsControl().addTo(this.map);
 
     // Set the maximum bounds to prevent infinite scroll
     var southWest = L.latLng(-120, -210);
@@ -199,6 +199,9 @@ export default class extends BaseController {
     if (!this.settingsButtonAdded) {
       this.addSettingsButton();
     }
+
+    // Add info toggle button
+    this.addInfoToggleButton();
 
     // Initialize the visits manager
     this.visitsManager = new VisitsManager(this.map, this.apiKey, this.userTheme);
@@ -749,6 +752,63 @@ export default class extends BaseController {
     // Add the control to the map
     this.map.addControl(new SettingsControl({ position: 'topleft' }));
     this.settingsButtonAdded = true;
+  }
+
+  addInfoToggleButton() {
+    // Store reference to the controller instance for use in the control
+    const controller = this;
+
+    const InfoToggleControl = L.Control.extend({
+      options: {
+        position: 'bottomleft'
+      },
+      onAdd: function(map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const button = L.DomUtil.create('button', 'map-info-toggle-button', container);
+        button.innerHTML = 'ℹ️'; // Info emoji
+        button.title = 'Toggle stats visibility';
+
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, controller.userTheme);
+        button.style.width = '34px';
+        button.style.height = '34px';
+        button.style.fontSize = '20px';
+        button.style.display = 'block';
+        button.style.lineHeight = '34px';
+        button.style.textAlign = 'center';
+        button.style.cursor = 'pointer';
+        button.style.border = 'none';
+        button.style.borderRadius = '4px';
+
+        // Disable map interactions when clicking the button
+        L.DomEvent.disableClickPropagation(container);
+
+        // Toggle stats visibility on button click
+        L.DomEvent.on(button, 'click', () => {
+          controller.toggleStatsVisibility();
+        });
+
+        return container;
+      }
+    });
+
+    // Add the control to the map
+    this.map.addControl(new InfoToggleControl());
+  }
+
+  toggleStatsVisibility() {
+    if (!this.statsControl) return;
+
+    // Get the stats control element
+    const statsElement = this.map.getContainer().querySelector('.leaflet-control-stats');
+    if (!statsElement) return;
+
+    // Toggle visibility
+    if (statsElement.style.display === 'none') {
+      statsElement.style.display = 'inline-block';
+    } else {
+      statsElement.style.display = 'none';
+    }
   }
 
   toggleSettingsMenu() {
