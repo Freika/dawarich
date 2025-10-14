@@ -42,6 +42,11 @@
       <%= yield %>
     </div>
 
+    <!-- Fixed Footer (hidden by default) -->
+    <div id='map-footer' class='fixed bottom-0 left-0 right-0 z-30 hidden'>
+      <%= render 'shared/legal_footer' %>
+    </div>
+
     <%= render 'map/onboarding_modal' %>
   </body>
 </html>

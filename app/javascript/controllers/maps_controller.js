@@ -112,7 +112,7 @@ export default class extends BaseController {
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
     // Add scale control
-    L.control.scale({
+    this.scaleControl = L.control.scale({
       position: 'bottomright',
       imperial: this.distanceUnit === 'mi',
       metric: this.distanceUnit === 'km',
@@ -765,17 +765,23 @@ export default class extends BaseController {
       onAdd: function(map) {
         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
         const button = L.DomUtil.create('button', 'map-info-toggle-button', container);
-        button.innerHTML = 'ℹ️'; // Info emoji
-        button.title = 'Toggle stats visibility';
+        // Lucide info icon
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 16v-4"></path>
+            <path d="M12 8h.01"></path>
+          </svg>
+        `;
+        button.title = 'Toggle footer visibility';
 
         // Style the button with theme-aware styling
         applyThemeToButton(button, controller.userTheme);
         button.style.width = '34px';
         button.style.height = '34px';
-        button.style.fontSize = '20px';
-        button.style.display = 'block';
-        button.style.lineHeight = '34px';
-        button.style.textAlign = 'center';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
         button.style.cursor = 'pointer';
         button.style.border = 'none';
         button.style.borderRadius = '4px';
@@ -783,9 +789,9 @@ export default class extends BaseController {
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(container);
 
-        // Toggle stats visibility on button click
+        // Toggle footer visibility on button click
         L.DomEvent.on(button, 'click', () => {
-          controller.toggleStatsVisibility();
+          controller.toggleFooterVisibility();
         });
 
         return container;
@@ -796,18 +802,52 @@ export default class extends BaseController {
     this.map.addControl(new InfoToggleControl());
   }
 
-  toggleStatsVisibility() {
-    if (!this.statsControl) return;
+  toggleFooterVisibility() {
+    // Toggle the page footer
+    const footer = document.getElementById('map-footer');
+    if (!footer) return;
 
-    // Get the stats control element
-    const statsElement = this.map.getContainer().querySelector('.leaflet-control-stats');
-    if (!statsElement) return;
+    const isCurrentlyHidden = footer.classList.contains('hidden');
 
-    // Toggle visibility
-    if (statsElement.style.display === 'none') {
-      statsElement.style.display = 'inline-block';
+    // Toggle Tailwind's hidden class
+    footer.classList.toggle('hidden');
+
+    // Adjust bottom controls position based on footer visibility
+    if (isCurrentlyHidden) {
+      // Footer is being shown - move controls up
+      setTimeout(() => {
+        const footerHeight = footer.offsetHeight;
+        // Add extra 20px margin above footer
+        this.adjustBottomControls(footerHeight + 20);
+      }, 10); // Small delay to ensure footer is rendered
     } else {
-      statsElement.style.display = 'none';
+      // Footer is being hidden - reset controls position
+      this.adjustBottomControls(10); // Back to default padding
+    }
+
+    // Add click event to close footer when clicking on it (only add once)
+    if (!footer.dataset.clickHandlerAdded) {
+      footer.addEventListener('click', (e) => {
+        // Only close if clicking the footer itself, not its contents
+        if (e.target === footer) {
+          footer.classList.add('hidden');
+          this.adjustBottomControls(10); // Reset controls position
+        }
+      });
+      footer.dataset.clickHandlerAdded = 'true';
+    }
+  }
+
+  adjustBottomControls(paddingBottom) {
+    // Adjust all bottom Leaflet controls
+    const bottomLeftControls = this.map.getContainer().querySelector('.leaflet-bottom.leaflet-left');
+    const bottomRightControls = this.map.getContainer().querySelector('.leaflet-bottom.leaflet-right');
+
+    if (bottomLeftControls) {
+      bottomLeftControls.style.setProperty('padding-bottom', `${paddingBottom}px`, 'important');
+    }
+    if (bottomRightControls) {
+      bottomRightControls.style.setProperty('padding-bottom', `${paddingBottom}px`, 'important');
     }
   }
 

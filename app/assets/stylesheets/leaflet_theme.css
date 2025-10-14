@@ -218,6 +218,7 @@
 /* Fix bottom controls being cut off */
 .leaflet-bottom {
   padding-bottom: 10px !important;
+  transition: padding-bottom 0.3s ease;
 }
 
 .leaflet-bottom.leaflet-left {
