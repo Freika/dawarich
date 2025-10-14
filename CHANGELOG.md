@@ -17,6 +17,7 @@ In this release we're introducing family features that allow users to create fam
 ## Fixed
 
 - Sign out button works again. #1844
+- Fixed user deletion bug where user could not be deleted due to counter cache on points.
 
 ## Changed
 
