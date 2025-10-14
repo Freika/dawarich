@@ -31,17 +31,11 @@
             </span>
           </div>
         </div>
-        <div class="w-full lg:w-2/12">
-          <div class="flex flex-col space-y-2">
-            <%= f.label :start_at, class: "text-sm font-semibold" %>
-            <%= f.datetime_local_field :start_at, include_seconds: false, class: "input input-bordered hover:cursor-pointer hover:input-primary", value: @start_at %>
-          </div>
+        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="Start date and time">
+          <%= f.datetime_local_field :start_at, include_seconds: false, class: "input input-bordered hover:cursor-pointer hover:input-primary w-full", value: @start_at %>
         </div>
-        <div class="w-full lg:w-2/12">
-          <div class="flex flex-col space-y-2">
-            <%= f.label :end_at, class: "text-sm font-semibold" %>
-            <%= f.datetime_local_field :end_at, include_seconds: false, class: "input input-bordered hover:cursor-pointer hover:input-primary", value: @end_at %>
-          </div>
+        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="End date and time">
+          <%= f.datetime_local_field :end_at, include_seconds: false, class: "input input-bordered hover:cursor-pointer hover:input-primary w-full", value: @end_at %>
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
