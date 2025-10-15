@@ -44,6 +44,7 @@ import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
 import { createAllMapLayers } from "../maps/layers";
 import { applyThemeToControl, applyThemeToButton, applyThemeToPanel } from "../maps/theme_utils";
+import { addTopRightButtons } from "../maps/map_controls";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -212,22 +213,6 @@ export default class extends BaseController {
     // Expose maps controller globally for family integration
     window.mapsController = this;
 
-    // Initialize layers for the layer control
-    const controlsLayer = {
-      Points: this.markersLayer,
-      Routes: this.polylinesLayer,
-      Tracks: this.tracksLayer,
-      Heatmap: this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
-      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
-      Areas: this.areasLayer,
-      Photos: this.photoMarkers,
-      "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
-      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
-    };
-
-    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
-
     // Initialize tile monitor
     this.tileMonitor = new TileMonitor(this.map, this.apiKey);
 
@@ -253,11 +238,25 @@ export default class extends BaseController {
     // Preload areas
     fetchAndDrawAreas(this.areasLayer, this.apiKey);
 
-    // Add right panel toggle
-    this.addTogglePanelButton();
+    // Add all top-right buttons in the correct order
+    this.initializeTopRightButtons();
 
-    // Add visits buttons after calendar button to position them below
-    this.visitsManager.addDrawerButton();
+    // Initialize layers for the layer control
+    const controlsLayer = {
+      Points: this.markersLayer,
+      Routes: this.polylinesLayer,
+      Tracks: this.tracksLayer,
+      Heatmap: this.heatmapLayer,
+      "Fog of War": this.fogOverlay,
+      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
+      Areas: this.areasLayer,
+      Photos: this.photoMarkers,
+      "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
+      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
+    };
+
+    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+
 
     // Initialize Live Map Handler
     this.initializeLiveMapHandler();
@@ -1184,48 +1183,35 @@ export default class extends BaseController {
     }
   }
 
+  initializeTopRightButtons() {
+    // Add all top-right buttons in the correct order:
+    // 1. Select Area, 2. Add Visit, 3. Open Calendar, 4. Open Drawer
+    // Note: Layer control is added separately and appears at the top
 
-  addTogglePanelButton() {
-    // Store reference to the controller instance for use in the control
-    const controller = this;
+    this.topRightControls = addTopRightButtons(
+      this.map,
+      {
+        onSelectArea: () => this.visitsManager.toggleSelectionMode(),
+        // onAddVisit is intentionally null - the add_visit_controller will attach its handler
+        onAddVisit: null,
+        onToggleCalendar: () => this.toggleRightPanel(),
+        onToggleDrawer: () => this.visitsManager.toggleDrawer()
+      },
+      this.userTheme
+    );
 
-    const TogglePanelControl = L.Control.extend({
-      onAdd: function(map) {
-        const button = L.DomUtil.create('button', 'toggle-panel-button');
-        button.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M8 2v4" />
-            <path d="M16 2v4" />
-            <path d="M21 14V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" />
-            <path d="M3 10h18" />
-            <path d="m16 20 2 2 4-4" />
-          </svg>
-        `;
-
-        // Style the button with theme-aware styling
-        applyThemeToButton(button, controller.userTheme);
-        button.style.width = '48px';
-        button.style.height = '48px';
-        button.style.borderRadius = '4px';
-        button.style.padding = '0';
-        button.style.display = 'flex';
-        button.style.alignItems = 'center';
-        button.style.justifyContent = 'center';
-
-        // Disable map interactions when clicking the button
-        L.DomEvent.disableClickPropagation(button);
-
-        // Toggle panel on button click
-        L.DomEvent.on(button, 'click', () => {
-          controller.toggleRightPanel();
-        });
-
-        return button;
-      }
-    });
-
-    // Add the control to the map
-    this.map.addControl(new TogglePanelControl({ position: 'topright' }));
+    // Add CSS for selection button active state (needed by visits manager)
+    if (!document.getElementById('selection-tool-active-style')) {
+      const style = document.createElement('style');
+      style.id = 'selection-tool-active-style';
+      style.textContent = `
+        #selection-tool-button.active {
+          border: 2px dashed #3388ff !important;
+          box-shadow: 0 0 8px rgba(51, 136, 255, 0.5) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
 
   shouldShowTracksSelector() {
