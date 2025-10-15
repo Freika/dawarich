@@ -228,3 +228,9 @@
 .leaflet-bottom.leaflet-right {
   padding-right: 10px !important;
 }
+
+/* DaisyUI tooltips on map buttons - ensure they appear above date navigation (z-index: 9999) */
+.tooltip:before,
+.tooltip:after {
+  z-index: 10000 !important;
+}

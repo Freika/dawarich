@@ -728,8 +728,9 @@ export default class extends BaseController {
     // Define the custom control
     const SettingsControl = L.Control.extend({
       onAdd: (map) => {
-        const button = L.DomUtil.create('button', 'map-settings-button');
+        const button = L.DomUtil.create('button', 'map-settings-button tooltip tooltip-right');
         button.innerHTML = '⚙️'; // Gear icon
+        button.setAttribute('data-tip', 'Settings');
 
         // Style the button with theme-aware styling
         applyThemeToButton(button, this.userTheme);
@@ -763,7 +764,9 @@ export default class extends BaseController {
       },
       onAdd: function(map) {
         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-        const button = L.DomUtil.create('button', 'map-info-toggle-button', container);
+        const button = L.DomUtil.create('button', 'map-info-toggle-button tooltip tooltip-right', container);
+        button.setAttribute('data-tip', 'Toggle footer visibility');
+
         // Lucide info icon
         button.innerHTML = `
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info">
@@ -772,7 +775,6 @@ export default class extends BaseController {
             <path d="M12 8h.01"></path>
           </svg>
         `;
-        button.title = 'Toggle footer visibility';
 
         // Style the button with theme-aware styling
         applyThemeToButton(button, controller.userTheme);

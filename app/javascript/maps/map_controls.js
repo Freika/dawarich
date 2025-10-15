@@ -10,12 +10,12 @@ import { applyThemeToButton } from "./theme_utils";
  * @param {String} title - Button title/tooltip
  * @param {String} userTheme - User's theme preference ('dark' or 'light')
  * @param {Function} onClickCallback - Callback function to execute when button is clicked
- * @returns {HTMLElement} Button element
+ * @returns {HTMLElement} Button element with tooltip
  */
 function createStandardButton(className, svgIcon, title, userTheme, onClickCallback) {
-  const button = L.DomUtil.create('button', className);
+  const button = L.DomUtil.create('button', `${className} tooltip tooltip-left`);
   button.innerHTML = svgIcon;
-  button.title = title;
+  button.setAttribute('data-tip', title);
 
   // Apply standard button styling
   applyThemeToButton(button, userTheme);
