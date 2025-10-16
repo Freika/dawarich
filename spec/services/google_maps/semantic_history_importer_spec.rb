@@ -149,5 +149,6 @@ RSpec.describe GoogleMaps::SemanticHistoryImporter do
         end
       end
     end
+
   end
 end
