@@ -12,30 +12,23 @@ class GoogleMaps::PhoneTakeoutImporter
     @file_path = file_path
   end
 
+  BATCH_SIZE = 1000
+
   def call
-    points_data = parse_json
-
-    points_data.compact.each.with_index(1) do |point_data, index|
-      next if Point.exists?(
-        timestamp:  point_data[:timestamp],
-        lonlat:     point_data[:lonlat],
-        user_id:
-      )
-
-      Point.create(
-        lonlat:     point_data[:lonlat],
-        timestamp:  point_data[:timestamp],
-        raw_data:   point_data[:raw_data],
-        accuracy:   point_data[:accuracy],
-        altitude:   point_data[:altitude],
-        velocity:   point_data[:velocity],
-        import_id:  import.id,
-        topic:      'Google Maps Phone Timeline Export',
+    points_data = parse_json.compact.map do |point_data|
+      point_data.merge(
+        import_id: import.id,
+        topic: 'Google Maps Phone Timeline Export',
         tracker_id: 'google-maps-phone-timeline-export',
-        user_id:
+        user_id: user_id,
+        created_at: Time.current,
+        updated_at: Time.current
       )
+    end
 
-      broadcast_import_progress(import, index)
+    points_data.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
+      bulk_insert_points(batch)
+      broadcast_import_progress(import, (batch_index + 1) * BATCH_SIZE)
     end
   end
 
@@ -176,5 +169,29 @@ class GoogleMaps::PhoneTakeoutImporter
 
       point_hash(lat, lon, timestamp, segment)
     end
+  end
+
+  def bulk_insert_points(batch)
+    unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+
+    # rubocop:disable Rails/SkipsModelValidations
+    Point.upsert_all(
+      unique_batch,
+      unique_by: %i[lonlat timestamp user_id],
+      returning: false,
+      on_duplicate: :skip
+    )
+    # rubocop:enable Rails/SkipsModelValidations
+  rescue StandardError => e
+    create_notification("Failed to process phone takeout batch: #{e.message}")
+  end
+
+  def create_notification(message)
+    Notification.create!(
+      user_id: user_id,
+      title: 'Google Maps Phone Takeout Import Error',
+      content: message,
+      kind: :error
+    )
   end
 end

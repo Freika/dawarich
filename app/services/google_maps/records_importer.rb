@@ -32,6 +32,10 @@ class GoogleMaps::RecordsImporter
       timestamp: parse_timestamp(location),
       altitude: location['altitude'],
       velocity: location['velocity'],
+      accuracy: location['accuracy'],
+      vertical_accuracy: location['verticalAccuracy'],
+      course: location['heading'],
+      battery: parse_battery_charging(location['batteryCharging']),
       raw_data: location,
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
@@ -72,6 +76,12 @@ class GoogleMaps::RecordsImporter
     Timestamps.parse_timestamp(
       location['timestamp'] || location['timestampMs']
     )
+  end
+
+  def parse_battery_charging(battery_charging)
+    return nil if battery_charging.nil?
+
+    battery_charging ? 1 : 0
   end
 
   def create_notification(message)

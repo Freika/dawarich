@@ -17,6 +17,12 @@ RSpec.describe GoogleMaps::RecordsImporter do
           'accuracy' => 10,
           'altitude' => 100,
           'verticalAccuracy' => 5,
+          'heading' => 270,
+          'velocity' => 15,
+          'batteryCharging' => true,
+          'source' => 'GPS',
+          'deviceTag' => 1234567890,
+          'platformType' => 'ANDROID',
           'activity' => [
             {
               'timestampMs' => (time.to_f * 1000).to_i.to_s,
@@ -109,6 +115,88 @@ RSpec.describe GoogleMaps::RecordsImporter do
         expect { parser }.to change(Point, :count).by(1)
         created_point = Point.last
         expect(created_point.timestamp).to eq(time.to_i)
+      end
+    end
+
+    context 'with additional Records.json schema fields' do
+      let(:locations) do
+        [
+          {
+            'timestamp' => time.iso8601,
+            'latitudeE7' => 123_456_789,
+            'longitudeE7' => 123_456_789,
+            'accuracy' => 20,
+            'altitude' => 150,
+            'verticalAccuracy' => 10,
+            'heading' => 270,
+            'velocity' => 10,
+            'batteryCharging' => true,
+            'source' => 'WIFI',
+            'deviceTag' => 1234567890,
+            'platformType' => 'ANDROID'
+          }
+        ]
+      end
+
+      it 'extracts all supported fields' do
+        expect { parser }.to change(Point, :count).by(1)
+
+        created_point = Point.last
+        expect(created_point.accuracy).to eq(20)
+        expect(created_point.altitude).to eq(150)
+        expect(created_point.vertical_accuracy).to eq(10)
+        expect(created_point.course).to eq(270)
+        expect(created_point.velocity).to eq('10')
+        expect(created_point.battery).to eq(1) # true -> 1
+      end
+
+      it 'stores all fields in raw_data' do
+        parser
+        created_point = Point.last
+
+        expect(created_point.raw_data['source']).to eq('WIFI')
+        expect(created_point.raw_data['deviceTag']).to eq(1234567890)
+        expect(created_point.raw_data['platformType']).to eq('ANDROID')
+      end
+    end
+
+    context 'with batteryCharging false' do
+      let(:locations) do
+        [
+          {
+            'timestamp' => time.iso8601,
+            'latitudeE7' => 123_456_789,
+            'longitudeE7' => 123_456_789,
+            'batteryCharging' => false
+          }
+        ]
+      end
+
+      it 'stores battery as 0' do
+        expect { parser }.to change(Point, :count).by(1)
+        expect(Point.last.battery).to eq(0)
+      end
+    end
+
+    context 'with missing optional fields' do
+      let(:locations) do
+        [
+          {
+            'timestamp' => time.iso8601,
+            'latitudeE7' => 123_456_789,
+            'longitudeE7' => 123_456_789
+          }
+        ]
+      end
+
+      it 'handles missing fields gracefully' do
+        expect { parser }.to change(Point, :count).by(1)
+
+        created_point = Point.last
+        expect(created_point.accuracy).to be_nil
+        expect(created_point.vertical_accuracy).to be_nil
+        expect(created_point.course).to be_nil
+        expect(created_point.battery).to be_nil
       end
     end
   end
