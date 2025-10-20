@@ -632,12 +632,15 @@ export default class extends BaseController {
     .then((data) => {
       if (data.status === 'success') {
         console.log('Enabled layers saved:', enabledLayers);
+        showFlashMessage('notice', 'Map layer preferences saved');
       } else {
         console.error('Failed to save enabled layers:', data.message);
+        showFlashMessage('error', `Failed to save layer preferences: ${data.message}`);
       }
     })
     .catch(error => {
       console.error('Error saving enabled layers:', error);
+      showFlashMessage('error', 'Error saving layer preferences');
     });
   }
 
