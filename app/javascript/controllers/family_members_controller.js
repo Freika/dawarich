@@ -239,7 +239,7 @@ export default class extends Controller {
   }
 
   createTooltipContent(lastSeen) {
-    return `Last updated: ${lastSeen}`;
+    return `Last seen: ${lastSeen}`;
   }
 
   createPopupContent(location, lastSeen) {
@@ -264,7 +264,7 @@ export default class extends Controller {
           ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
         </p>
         <p style="margin: 0; font-size: 12px; color: ${mutedColor}; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
-          <strong>Last updated:</strong> ${lastSeen}
+          <strong>Last seen:</strong> ${lastSeen}
         </p>
       </div>
     `;
