@@ -29,7 +29,8 @@ RSpec.describe Users::SafeSettings do
             distance_unit: 'km',
             visits_suggestions_enabled: true,
             speed_color_scale: nil,
-            fog_of_war_threshold: nil
+            fog_of_war_threshold: nil,
+            enabled_map_layers: ['Routes', 'Heatmap']
           }
         )
       end
@@ -53,7 +54,8 @@ RSpec.describe Users::SafeSettings do
           'photoprism_url' => 'https://photoprism.example.com',
           'photoprism_api_key' => 'photoprism-key',
           'maps' => { 'name' => 'custom', 'url' => 'https://custom.example.com' },
-          'visits_suggestions_enabled' => false
+          'visits_suggestions_enabled' => false,
+          'enabled_map_layers' => ['Points', 'Routes', 'Areas', 'Photos']
         }
       end
       let(:safe_settings) { described_class.new(settings) }
@@ -76,7 +78,8 @@ RSpec.describe Users::SafeSettings do
             "photoprism_url" => "https://photoprism.example.com",
             "photoprism_api_key" => "photoprism-key",
             "maps" => { "name" => "custom", "url" => "https://custom.example.com" },
-            "visits_suggestions_enabled" => false
+            "visits_suggestions_enabled" => false,
+            "enabled_map_layers" => ['Points', 'Routes', 'Areas', 'Photos']
           }
         )
       end
@@ -102,7 +105,8 @@ RSpec.describe Users::SafeSettings do
             distance_unit: nil,
             visits_suggestions_enabled: false,
             speed_color_scale: nil,
-            fog_of_war_threshold: nil
+            fog_of_war_threshold: nil,
+            enabled_map_layers: ['Points', 'Routes', 'Areas', 'Photos']
           }
         )
       end
@@ -132,6 +136,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.photoprism_api_key).to be_nil
         expect(safe_settings.maps).to eq({ "distance_unit" => "km" })
         expect(safe_settings.visits_suggestions_enabled?).to be true
+        expect(safe_settings.enabled_map_layers).to eq(['Routes', 'Heatmap'])
       end
     end
 
@@ -153,7 +158,8 @@ RSpec.describe Users::SafeSettings do
           'photoprism_url' => 'https://photoprism.example.com',
           'photoprism_api_key' => 'photoprism-key',
           'maps' => { 'name' => 'custom', 'url' => 'https://custom.example.com' },
-          'visits_suggestions_enabled' => false
+          'visits_suggestions_enabled' => false,
+          'enabled_map_layers' => ['Points', 'Tracks', 'Fog of War', 'Suggested Visits']
         }
       end
 
@@ -174,6 +180,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.photoprism_api_key).to eq('photoprism-key')
         expect(safe_settings.maps).to eq({ 'name' => 'custom', 'url' => 'https://custom.example.com' })
         expect(safe_settings.visits_suggestions_enabled?).to be false
+        expect(safe_settings.enabled_map_layers).to eq(['Points', 'Tracks', 'Fog of War', 'Suggested Visits'])
       end
     end
   end
