@@ -41,7 +41,9 @@ class Families::Locations
         latitude: point.lat,
         longitude: point.lon,
         timestamp: point.timestamp.to_i,
-        updated_at: Time.zone.at(point.timestamp.to_i)
+        updated_at: Time.zone.at(point.timestamp.to_i),
+        battery: point.battery,
+        battery_status: point.battery_status
       }
     end
   end
