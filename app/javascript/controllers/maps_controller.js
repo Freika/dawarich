@@ -465,6 +465,9 @@ export default class extends BaseController {
 
     // Add event listeners for overlay layer changes to keep routes/tracks selector in sync
     this.map.on('overlayadd', (event) => {
+      // Save enabled layers whenever a layer is added
+      this.saveEnabledLayers();
+
       if (event.name === 'Routes') {
         this.handleRouteLayerToggle('routes');
         // Re-establish event handlers when routes are manually added
@@ -520,6 +523,9 @@ export default class extends BaseController {
     });
 
     this.map.on('overlayremove', (event) => {
+      // Save enabled layers whenever a layer is removed
+      this.saveEnabledLayers();
+
       if (event.name === 'Routes' || event.name === 'Tracks') {
         // Don't auto-switch when layers are manually turned off
         // Just update the radio button state to reflect current visibility
@@ -553,9 +559,12 @@ export default class extends BaseController {
   }
 
   updatePreferredBaseLayer(selectedLayerName) {
-    fetch(`/api/v1/settings?api_key=${this.apiKey}`, {
+    fetch('/api/v1/settings', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      },
       body: JSON.stringify({
         settings: {
           preferred_map_layer: selectedLayerName
@@ -569,6 +578,71 @@ export default class extends BaseController {
       } else {
         showFlashMessage('error', data.message);
       }
+    });
+  }
+
+  saveEnabledLayers() {
+    const enabledLayers = [];
+    const layerNames = [
+      'Points', 'Routes', 'Tracks', 'Heatmap', 'Fog of War',
+      'Scratch map', 'Areas', 'Photos', 'Suggested Visits', 'Confirmed Visits'
+    ];
+
+    const controlsLayer = {
+      'Points': this.markersLayer,
+      'Routes': this.polylinesLayer,
+      'Tracks': this.tracksLayer,
+      'Heatmap': this.heatmapLayer,
+      'Fog of War': this.fogOverlay,
+      'Scratch map': this.scratchLayerManager?.getLayer(),
+      'Areas': this.areasLayer,
+      'Photos': this.photoMarkers,
+      'Suggested Visits': this.visitsManager?.getVisitCirclesLayer(),
+      'Confirmed Visits': this.visitsManager?.getConfirmedVisitCirclesLayer()
+    };
+
+    layerNames.forEach(name => {
+      const layer = controlsLayer[name];
+      if (layer && this.map.hasLayer(layer)) {
+        enabledLayers.push(name);
+      }
+    });
+
+    // Add family member layers
+    if (window.familyController && window.familyController.familyLayers) {
+      Object.keys(window.familyController.familyLayers).forEach(memberName => {
+        const layer = window.familyController.familyLayers[memberName];
+        if (layer && this.map.hasLayer(layer)) {
+          enabledLayers.push(memberName);
+        }
+      });
+    }
+
+    fetch('/api/v1/settings', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      },
+      body: JSON.stringify({
+        settings: {
+          enabled_map_layers: enabledLayers
+        },
+      }),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.status === 'success') {
+        console.log('Enabled layers saved:', enabledLayers);
+        showFlashMessage('notice', 'Map layer preferences saved');
+      } else {
+        console.error('Failed to save enabled layers:', data.message);
+        showFlashMessage('error', `Failed to save layer preferences: ${data.message}`);
+      }
+    })
+    .catch(error => {
+      console.error('Error saving enabled layers:', error);
+      showFlashMessage('error', 'Error saving layer preferences');
     });
   }
 
@@ -1011,9 +1085,12 @@ export default class extends BaseController {
     const opacityValue = event.target.route_opacity.value.replace('%', '');
     const decimalOpacity = parseFloat(opacityValue) / 100;
 
-    fetch(`/api/v1/settings?api_key=${this.apiKey}`, {
+    fetch('/api/v1/settings', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      },
       body: JSON.stringify({
         settings: {
           route_opacity: decimalOpacity.toString(),
@@ -1385,45 +1462,80 @@ export default class extends BaseController {
     // Initialize layer visibility based on user settings or defaults
     // This method sets up the initial state of overlay layers
 
-    // Note: Don't automatically add layers to map here - let the layer control and user preferences handle it
-    // The layer control will manage which layers are visible based on user interaction
+    // Get enabled layers from user settings
+    const enabledLayers = this.userSettings.enabled_map_layers || ['Points', 'Routes', 'Heatmap'];
+    console.log('Initializing layers from settings:', enabledLayers);
 
-    // Initialize photos layer if user wants it visible
-    if (this.userSettings.photos_enabled) {
-      console.log('Photos layer enabled via user settings');
-      const urlParams = new URLSearchParams(window.location.search);
-      const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const endDate = urlParams.get('end_at') || new Date().toISOString();
+    const controlsLayer = {
+      'Points': this.markersLayer,
+      'Routes': this.polylinesLayer,
+      'Tracks': this.tracksLayer,
+      'Heatmap': this.heatmapLayer,
+      'Fog of War': this.fogOverlay,
+      'Scratch map': this.scratchLayerManager?.getLayer(),
+      'Areas': this.areasLayer,
+      'Photos': this.photoMarkers,
+      'Suggested Visits': this.visitsManager?.getVisitCirclesLayer(),
+      'Confirmed Visits': this.visitsManager?.getConfirmedVisitCirclesLayer()
+    };
 
-      console.log('Auto-fetching photos for date range:', { startDate, endDate });
-      fetchAndDisplayPhotos({
-        map: this.map,
-        photoMarkers: this.photoMarkers,
-        apiKey: this.apiKey,
-        startDate: startDate,
-        endDate: endDate,
-        userSettings: this.userSettings
+    // Add family member layers if available
+    if (window.familyController && window.familyController.familyLayers) {
+      Object.entries(window.familyController.familyLayers).forEach(([memberName, layer]) => {
+        controlsLayer[memberName] = layer;
       });
     }
 
-    // Initialize fog of war if enabled in settings
-    if (this.userSettings.fog_of_war_enabled) {
-      this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
-    }
+    // Apply saved layer preferences
+    Object.entries(controlsLayer).forEach(([name, layer]) => {
+      if (!layer) return;
 
-    // Initialize visits manager functionality
-    // Check if any visits layers are enabled by default and load data
-    if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
-      // Check if confirmed visits layer is enabled by default (it's added to map in constructor)
-      const confirmedVisitsEnabled = this.map.hasLayer(this.visitsManager.getConfirmedVisitCirclesLayer());
+      const shouldBeEnabled = enabledLayers.includes(name);
+      const isCurrentlyEnabled = this.map.hasLayer(layer);
 
-      console.log('Visits initialization - confirmedVisitsEnabled:', confirmedVisitsEnabled);
+      if (shouldBeEnabled && !isCurrentlyEnabled) {
+        // Add layer to map
+        layer.addTo(this.map);
+        console.log(`Enabled layer: ${name}`);
 
-      if (confirmedVisitsEnabled) {
-        console.log('Confirmed visits layer enabled by default - fetching visits data');
-        this.visitsManager.fetchAndDisplayVisits();
+        // Trigger special initialization for certain layers
+        if (name === 'Photos') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          const endDate = urlParams.get('end_at') || new Date().toISOString();
+          fetchAndDisplayPhotos({
+            map: this.map,
+            photoMarkers: this.photoMarkers,
+            apiKey: this.apiKey,
+            startDate: startDate,
+            endDate: endDate,
+            userSettings: this.userSettings
+          });
+        } else if (name === 'Fog of War') {
+          this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
+        } else if (name === 'Suggested Visits' || name === 'Confirmed Visits') {
+          if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
+            this.visitsManager.fetchAndDisplayVisits();
+          }
+        } else if (name === 'Scratch map') {
+          if (this.scratchLayerManager) {
+            this.scratchLayerManager.addToMap();
+          }
+        } else if (name === 'Routes') {
+          // Re-establish event handlers for routes layer
+          reestablishPolylineEventHandlers(this.polylinesLayer, this.map, this.userSettings, this.distanceUnit);
+        } else if (name === 'Areas') {
+          // Show draw control when Areas layer is enabled
+          if (this.drawControl && !this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
+            this.map.addControl(this.drawControl);
+          }
+        }
+      } else if (!shouldBeEnabled && isCurrentlyEnabled) {
+        // Remove layer from map
+        this.map.removeLayer(layer);
+        console.log(`Disabled layer: ${name}`);
       }
-    }
+    });
   }
 
   toggleRightPanel() {

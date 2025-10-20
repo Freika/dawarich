@@ -18,7 +18,7 @@
         class="w-full h-full rounded-lg"
         data-trips-target="container"
         data-api_key="<%= current_user.api_key %>"
-        data-user_settings="<%= current_user.settings.to_json %>"
+        data-user_settings="<%= current_user.safe_settings.settings.to_json %>"
         data-path="<%= trip.path.to_json %>"
         data-started_at="<%= trip.started_at %>"
         data-ended_at="<%= trip.ended_at %>"

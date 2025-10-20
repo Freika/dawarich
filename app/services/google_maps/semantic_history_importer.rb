@@ -43,6 +43,7 @@ class GoogleMaps::SemanticHistoryImporter
     {
       lonlat: point_data[:lonlat],
       timestamp: point_data[:timestamp],
+      accuracy: point_data[:accuracy],
       raw_data: point_data[:raw_data],
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
@@ -86,6 +87,7 @@ class GoogleMaps::SemanticHistoryImporter
         longitude: activity['startLocation']['longitudeE7'],
         latitude: activity['startLocation']['latitudeE7'],
         timestamp: activity['duration']['startTimestamp'] || activity['duration']['startTimestampMs'],
+        accuracy: activity.dig('startLocation', 'accuracyMetres'),
         raw_data: activity
       )
     end
@@ -111,6 +113,7 @@ class GoogleMaps::SemanticHistoryImporter
         longitude: place_visit['location']['longitudeE7'],
         latitude: place_visit['location']['latitudeE7'],
         timestamp: place_visit['duration']['startTimestamp'] || place_visit['duration']['startTimestampMs'],
+        accuracy: place_visit.dig('location', 'accuracyMetres'),
         raw_data: place_visit
       )
     elsif (candidate = place_visit.dig('otherCandidateLocations', 0))
@@ -125,14 +128,16 @@ class GoogleMaps::SemanticHistoryImporter
       longitude: candidate['longitudeE7'],
       latitude: candidate['latitudeE7'],
       timestamp: place_visit['duration']['startTimestamp'] || place_visit['duration']['startTimestampMs'],
+      accuracy: candidate['accuracyMetres'],
       raw_data: place_visit
     )
   end
 
-  def build_point_from_location(longitude:, latitude:, timestamp:, raw_data:)
+  def build_point_from_location(longitude:, latitude:, timestamp:, raw_data:, accuracy: nil)
     {
       lonlat: "POINT(#{longitude.to_f / 10**7} #{latitude.to_f / 10**7})",
       timestamp: Timestamps.parse_timestamp(timestamp),
+      accuracy: accuracy,
       raw_data: raw_data
     }
   end

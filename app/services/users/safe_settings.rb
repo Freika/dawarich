@@ -19,7 +19,8 @@ class Users::SafeSettings
     'photoprism_url' => nil,
     'photoprism_api_key' => nil,
     'maps' => { 'distance_unit' => 'km' },
-    'visits_suggestions_enabled' => 'true'
+    'visits_suggestions_enabled' => 'true',
+    'enabled_map_layers' => ['Routes', 'Heatmap']
   }.freeze
 
   def initialize(settings = {})
@@ -47,7 +48,8 @@ class Users::SafeSettings
       distance_unit: distance_unit,
       visits_suggestions_enabled: visits_suggestions_enabled?,
       speed_color_scale: speed_color_scale,
-      fog_of_war_threshold: fog_of_war_threshold
+      fog_of_war_threshold: fog_of_war_threshold,
+      enabled_map_layers: enabled_map_layers
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -126,5 +128,9 @@ class Users::SafeSettings
 
   def fog_of_war_threshold
     settings['fog_of_war_threshold']
+  end
+
+  def enabled_map_layers
+    settings['enabled_map_layers']
   end
 end
