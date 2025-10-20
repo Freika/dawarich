@@ -44,6 +44,7 @@ import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
 import { createAllMapLayers } from "../maps/layers";
 import { applyThemeToControl, applyThemeToButton, applyThemeToPanel } from "../maps/theme_utils";
+import { addTopRightButtons } from "../maps/map_controls";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -112,7 +113,7 @@ export default class extends BaseController {
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
     // Add scale control
-    L.control.scale({
+    this.scaleControl = L.control.scale({
       position: 'bottomright',
       imperial: this.distanceUnit === 'mi',
       metric: this.distanceUnit === 'km',
@@ -145,7 +146,7 @@ export default class extends BaseController {
       }
     });
 
-    new StatsControl().addTo(this.map);
+    this.statsControl = new StatsControl().addTo(this.map);
 
     // Set the maximum bounds to prevent infinite scroll
     var southWest = L.latLng(-120, -210);
@@ -200,6 +201,9 @@ export default class extends BaseController {
       this.addSettingsButton();
     }
 
+    // Add info toggle button
+    this.addInfoToggleButton();
+
     // Initialize the visits manager
     this.visitsManager = new VisitsManager(this.map, this.apiKey, this.userTheme);
 
@@ -208,22 +212,6 @@ export default class extends BaseController {
 
     // Expose maps controller globally for family integration
     window.mapsController = this;
-
-    // Initialize layers for the layer control
-    const controlsLayer = {
-      Points: this.markersLayer,
-      Routes: this.polylinesLayer,
-      Tracks: this.tracksLayer,
-      Heatmap: this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
-      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
-      Areas: this.areasLayer,
-      Photos: this.photoMarkers,
-      "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
-      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
-    };
-
-    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
 
     // Initialize tile monitor
     this.tileMonitor = new TileMonitor(this.map, this.apiKey);
@@ -250,11 +238,25 @@ export default class extends BaseController {
     // Preload areas
     fetchAndDrawAreas(this.areasLayer, this.apiKey);
 
-    // Add right panel toggle
-    this.addTogglePanelButton();
+    // Add all top-right buttons in the correct order
+    this.initializeTopRightButtons();
 
-    // Add visits buttons after calendar button to position them below
-    this.visitsManager.addDrawerButton();
+    // Initialize layers for the layer control
+    const controlsLayer = {
+      Points: this.markersLayer,
+      Routes: this.polylinesLayer,
+      Tracks: this.tracksLayer,
+      Heatmap: this.heatmapLayer,
+      "Fog of War": this.fogOverlay,
+      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
+      Areas: this.areasLayer,
+      Photos: this.photoMarkers,
+      "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
+      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
+    };
+
+    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+
 
     // Initialize Live Map Handler
     this.initializeLiveMapHandler();
@@ -800,13 +802,19 @@ export default class extends BaseController {
     // Define the custom control
     const SettingsControl = L.Control.extend({
       onAdd: (map) => {
-        const button = L.DomUtil.create('button', 'map-settings-button');
-        button.innerHTML = '⚙️'; // Gear icon
+        const button = L.DomUtil.create('button', 'map-settings-button tooltip tooltip-right');
+        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cog-icon lucide-cog"><path d="M11 10.27 7 3.34"/><path d="m11 13.73-4 6.93"/><path d="M12 22v-2"/><path d="M12 2v2"/><path d="M14 12h8"/><path d="m17 20.66-1-1.73"/><path d="m17 3.34-1 1.73"/><path d="M2 12h2"/><path d="m20.66 17-1.73-1"/><path d="m20.66 7-1.73 1"/><path d="m3.34 17 1.73-1"/><path d="m3.34 7 1.73 1"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="8"/></svg>'; // Gear icon
+        button.setAttribute('data-tip', 'Settings');
 
         // Style the button with theme-aware styling
         applyThemeToButton(button, this.userTheme);
-        button.style.width = '32px';
-        button.style.height = '32px';
+        button.style.width = '30px';
+        button.style.height = '30px';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+        button.style.padding = '0';
+        button.style.borderRadius = '4px';
 
         // Disable map interactions when clicking the button
         L.DomEvent.disableClickPropagation(button);
@@ -823,6 +831,104 @@ export default class extends BaseController {
     // Add the control to the map
     this.map.addControl(new SettingsControl({ position: 'topleft' }));
     this.settingsButtonAdded = true;
+  }
+
+  addInfoToggleButton() {
+    // Store reference to the controller instance for use in the control
+    const controller = this;
+
+    const InfoToggleControl = L.Control.extend({
+      options: {
+        position: 'bottomleft'
+      },
+      onAdd: function(map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const button = L.DomUtil.create('button', 'map-info-toggle-button tooltip tooltip-right', container);
+        button.setAttribute('data-tip', 'Toggle footer visibility');
+
+        // Lucide info icon
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 16v-4"></path>
+            <path d="M12 8h.01"></path>
+          </svg>
+        `;
+
+        // Style the button with theme-aware styling
+        applyThemeToButton(button, controller.userTheme);
+        button.style.width = '34px';
+        button.style.height = '34px';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+        button.style.cursor = 'pointer';
+        button.style.border = 'none';
+        button.style.borderRadius = '4px';
+
+        // Disable map interactions when clicking the button
+        L.DomEvent.disableClickPropagation(container);
+
+        // Toggle footer visibility on button click
+        L.DomEvent.on(button, 'click', () => {
+          controller.toggleFooterVisibility();
+        });
+
+        return container;
+      }
+    });
+
+    // Add the control to the map
+    this.map.addControl(new InfoToggleControl());
+  }
+
+  toggleFooterVisibility() {
+    // Toggle the page footer
+    const footer = document.getElementById('map-footer');
+    if (!footer) return;
+
+    const isCurrentlyHidden = footer.classList.contains('hidden');
+
+    // Toggle Tailwind's hidden class
+    footer.classList.toggle('hidden');
+
+    // Adjust bottom controls position based on footer visibility
+    if (isCurrentlyHidden) {
+      // Footer is being shown - move controls up
+      setTimeout(() => {
+        const footerHeight = footer.offsetHeight;
+        // Add extra 20px margin above footer
+        this.adjustBottomControls(footerHeight + 20);
+      }, 10); // Small delay to ensure footer is rendered
+    } else {
+      // Footer is being hidden - reset controls position
+      this.adjustBottomControls(10); // Back to default padding
+    }
+
+    // Add click event to close footer when clicking on it (only add once)
+    if (!footer.dataset.clickHandlerAdded) {
+      footer.addEventListener('click', (e) => {
+        // Only close if clicking the footer itself, not its contents
+        if (e.target === footer) {
+          footer.classList.add('hidden');
+          this.adjustBottomControls(10); // Reset controls position
+        }
+      });
+      footer.dataset.clickHandlerAdded = 'true';
+    }
+  }
+
+  adjustBottomControls(paddingBottom) {
+    // Adjust all bottom Leaflet controls
+    const bottomLeftControls = this.map.getContainer().querySelector('.leaflet-bottom.leaflet-left');
+    const bottomRightControls = this.map.getContainer().querySelector('.leaflet-bottom.leaflet-right');
+
+    if (bottomLeftControls) {
+      bottomLeftControls.style.setProperty('padding-bottom', `${paddingBottom}px`, 'important');
+    }
+    if (bottomRightControls) {
+      bottomRightControls.style.setProperty('padding-bottom', `${paddingBottom}px`, 'important');
+    }
   }
 
   toggleSettingsMenu() {
@@ -1161,48 +1267,35 @@ export default class extends BaseController {
     }
   }
 
+  initializeTopRightButtons() {
+    // Add all top-right buttons in the correct order:
+    // 1. Select Area, 2. Add Visit, 3. Open Calendar, 4. Open Drawer
+    // Note: Layer control is added separately and appears at the top
 
-  addTogglePanelButton() {
-    // Store reference to the controller instance for use in the control
-    const controller = this;
+    this.topRightControls = addTopRightButtons(
+      this.map,
+      {
+        onSelectArea: () => this.visitsManager.toggleSelectionMode(),
+        // onAddVisit is intentionally null - the add_visit_controller will attach its handler
+        onAddVisit: null,
+        onToggleCalendar: () => this.toggleRightPanel(),
+        onToggleDrawer: () => this.visitsManager.toggleDrawer()
+      },
+      this.userTheme
+    );
 
-    const TogglePanelControl = L.Control.extend({
-      onAdd: function(map) {
-        const button = L.DomUtil.create('button', 'toggle-panel-button');
-        button.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M8 2v4" />
-            <path d="M16 2v4" />
-            <path d="M21 14V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" />
-            <path d="M3 10h18" />
-            <path d="m16 20 2 2 4-4" />
-          </svg>
-        `;
-
-        // Style the button with theme-aware styling
-        applyThemeToButton(button, controller.userTheme);
-        button.style.width = '48px';
-        button.style.height = '48px';
-        button.style.borderRadius = '4px';
-        button.style.padding = '0';
-        button.style.display = 'flex';
-        button.style.alignItems = 'center';
-        button.style.justifyContent = 'center';
-
-        // Disable map interactions when clicking the button
-        L.DomEvent.disableClickPropagation(button);
-
-        // Toggle panel on button click
-        L.DomEvent.on(button, 'click', () => {
-          controller.toggleRightPanel();
-        });
-
-        return button;
-      }
-    });
-
-    // Add the control to the map
-    this.map.addControl(new TogglePanelControl({ position: 'topright' }));
+    // Add CSS for selection button active state (needed by visits manager)
+    if (!document.getElementById('selection-tool-active-style')) {
+      const style = document.createElement('style');
+      style.id = 'selection-tool-active-style';
+      style.textContent = `
+        #selection-tool-button.active {
+          border: 2px dashed #3388ff !important;
+          box-shadow: 0 0 8px rgba(51, 136, 255, 0.5) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
 
   shouldShowTracksSelector() {

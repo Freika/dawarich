@@ -1,6 +1,5 @@
 import L from "leaflet";
 import { showFlashMessage } from "./helpers";
-import { applyThemeToButton } from "./theme_utils";
 
 /**
  * Manages visits functionality including displaying, fetching, and interacting with visits
@@ -65,74 +64,14 @@ export class VisitsManager {
   }
 
   /**
-   * Adds a button to toggle the visits drawer
+   * Note: Drawer and selection buttons are now added centrally via addTopRightButtons()
+   * in maps_controller.js to ensure correct button ordering.
+   *
+   * The methods below are kept for backwards compatibility but are no longer called
+   * during initialization. Button callbacks are wired directly in maps_controller.js:
+   * - onSelectArea -> this.toggleSelectionMode()
+   * - onToggleDrawer -> this.toggleDrawer()
    */
-  addDrawerButton() {
-    const DrawerControl = L.Control.extend({
-      onAdd: (map) => {
-        const button = L.DomUtil.create('button', 'leaflet-control-button drawer-button');
-        button.innerHTML = '⬅️'; // Left arrow icon
-        // Style the button with theme-aware styling
-        applyThemeToButton(button, this.userTheme);
-        button.style.width = '48px';
-        button.style.height = '48px';
-        button.style.borderRadius = '4px';
-        button.style.padding = '0';
-        button.style.lineHeight = '48px';
-        button.style.fontSize = '18px';
-        button.style.textAlign = 'center';
-
-        L.DomEvent.disableClickPropagation(button);
-        L.DomEvent.on(button, 'click', () => {
-          this.toggleDrawer();
-        });
-
-        return button;
-      }
-    });
-
-    this.map.addControl(new DrawerControl({ position: 'topright' }));
-
-    // Add the selection tool button
-    this.addSelectionButton();
-  }
-
-  /**
-   * Adds a button to enable/disable the area selection tool
-   */
-  addSelectionButton() {
-    const SelectionControl = L.Control.extend({
-      onAdd: (map) => {
-        const button = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
-        button.innerHTML = '⚓️';
-        button.title = 'Select Area';
-        button.id = 'selection-tool-button';
-        // Style the button with theme-aware styling
-        applyThemeToButton(button, this.userTheme);
-        button.style.width = '48px';
-        button.style.height = '48px';
-        button.style.borderRadius = '4px';
-        button.style.padding = '0';
-        button.style.lineHeight = '48px';
-        button.style.fontSize = '18px';
-        button.style.textAlign = 'center';
-        button.onclick = () => this.toggleSelectionMode();
-        return button;
-      }
-    });
-
-    new SelectionControl({ position: 'topright' }).addTo(this.map);
-
-    // Add CSS for selection button active state
-    const style = document.createElement('style');
-    style.textContent = `
-      #selection-tool-button.active {
-        border: 2px dashed #3388ff !important;
-        box-shadow: 0 0 8px rgba(51, 136, 255, 0.5) !important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
 
   /**
    * Toggles the area selection mode
@@ -482,7 +421,7 @@ export class VisitsManager {
 
     const drawerButton = document.querySelector('.drawer-button');
     if (drawerButton) {
-      drawerButton.innerHTML = this.drawerOpen ? '➡️' : '⬅️';
+      drawerButton.innerHTML = this.drawerOpen ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-panel-right-close-icon lucide-panel-right-close"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m8 9 3 3-3 3"/></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-panel-right-open-icon lucide-panel-right-open"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>';
     }
 
     const controls = document.querySelectorAll('.leaflet-control-layers, .toggle-panel-button, .leaflet-right-panel, .drawer-button, #selection-tool-button');

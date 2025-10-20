@@ -109,7 +109,7 @@ export default class extends Controller {
       const lastSeen = new Date(location.updated_at).toLocaleString();
 
       // Create small tooltip that shows automatically
-      const tooltipContent = this.createTooltipContent(lastSeen);
+      const tooltipContent = this.createTooltipContent(lastSeen, location.battery);
       const tooltip = familyMarker.bindTooltip(tooltipContent, {
         permanent: true,
         direction: 'top',
@@ -177,7 +177,7 @@ export default class extends Controller {
 
       // Update tooltip content
       const lastSeen = new Date(locationData.updated_at).toLocaleString();
-      const tooltipContent = this.createTooltipContent(lastSeen);
+      const tooltipContent = this.createTooltipContent(lastSeen, locationData.battery);
       existingMarker.setTooltipContent(tooltipContent);
 
       // Update popup content
@@ -216,7 +216,7 @@ export default class extends Controller {
 
     const lastSeen = new Date(location.updated_at).toLocaleString();
 
-    const tooltipContent = this.createTooltipContent(lastSeen);
+    const tooltipContent = this.createTooltipContent(lastSeen, location.battery);
     familyMarker.bindTooltip(tooltipContent, {
       permanent: true,
       direction: 'top',
@@ -238,8 +238,9 @@ export default class extends Controller {
     this.familyMarkers[location.user_id] = familyMarker;
   }
 
-  createTooltipContent(lastSeen) {
-    return `Last seen: ${lastSeen}`;
+  createTooltipContent(lastSeen, battery) {
+    const batteryInfo = battery !== null && battery !== undefined ? ` | Battery: ${battery}%` : '';
+    return `Last seen: ${lastSeen}${batteryInfo}`;
   }
 
   createPopupContent(location, lastSeen) {
@@ -249,6 +250,59 @@ export default class extends Controller {
     const mutedColor = isDark ? '#9ca3af' : '#6b7280';
 
     const emailInitial = location.email_initial || location.email?.charAt(0)?.toUpperCase() || '?';
+
+    // Battery display with icon
+    const battery = location.battery;
+    const batteryStatus = location.battery_status;
+    let batteryDisplay = '';
+
+    if (battery !== null && battery !== undefined) {
+      // Determine battery color based on level and status
+      let batteryColor = '#10B981'; // green
+      if (batteryStatus === 'charging') {
+        batteryColor = battery <= 50 ? '#F59E0B' : '#10B981'; // orange if low, green if high
+      } else if (battery <= 20) {
+        batteryColor = '#EF4444'; // red
+      } else if (battery <= 50) {
+        batteryColor = '#F59E0B'; // orange
+      }
+
+      // Helper function to get appropriate Lucide battery icon
+      const getBatteryIcon = (battery, batteryStatus, batteryColor) => {
+        const baseAttrs = `width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${batteryColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"`;
+
+        // Charging icon
+        if (batteryStatus === 'charging') {
+          return `<svg xmlns="http://www.w3.org/2000/svg" ${baseAttrs}><path d="m11 7-3 5h4l-3 5"/><path d="M14.856 6H16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.935"/><path d="M22 14v-4"/><path d="M5.14 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2.936"/></svg>`;
+        }
+
+        // Full battery
+        if (battery === 100 || batteryStatus === 'full') {
+          return `<svg xmlns="http://www.w3.org/2000/svg" ${baseAttrs}><path d="M10 10v4"/><path d="M14 10v4"/><path d="M22 14v-4"/><path d="M6 10v4"/><rect x="2" y="6" width="16" height="12" rx="2"/></svg>`;
+        }
+
+        // Low battery (≤20%)
+        if (battery <= 20) {
+          return `<svg xmlns="http://www.w3.org/2000/svg" ${baseAttrs}><path d="M22 14v-4"/><path d="M6 14v-4"/><rect x="2" y="6" width="16" height="12" rx="2"/></svg>`;
+        }
+
+        // Medium battery (21-50%)
+        if (battery <= 50) {
+          return `<svg xmlns="http://www.w3.org/2000/svg" ${baseAttrs}><path d="M10 14v-4"/><path d="M22 14v-4"/><path d="M6 14v-4"/><rect x="2" y="6" width="16" height="12" rx="2"/></svg>`;
+        }
+
+        // High battery (>50%, default to full)
+        return `<svg xmlns="http://www.w3.org/2000/svg" ${baseAttrs}><path d="M10 10v4"/><path d="M14 10v4"/><path d="M22 14v-4"/><path d="M6 10v4"/><rect x="2" y="6" width="16" height="12" rx="2"/></svg>`;
+      };
+
+      const batteryIcon = getBatteryIcon(battery, batteryStatus, batteryColor);
+
+      batteryDisplay = `
+        <p style="margin: 0 0 8px 0; font-size: 13px;">
+          ${batteryIcon}<strong>Battery:</strong> ${battery}%${batteryStatus ? ` (${batteryStatus})` : ''}
+        </p>
+      `;
+    }
 
     return `
       <div class="family-member-popup" style="background-color: ${bgColor}; color: ${textColor}; padding: 12px; border-radius: 8px; min-width: 220px;">
@@ -263,6 +317,7 @@ export default class extends Controller {
           <strong>Coordinates:</strong><br/>
           ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
         </p>
+        ${batteryDisplay}
         <p style="margin: 0; font-size: 12px; color: ${mutedColor}; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
           <strong>Last seen:</strong> ${lastSeen}
         </p>

@@ -24,24 +24,27 @@
 
   <body class='h-screen overflow-hidden relative'>
     <!-- Fixed Navbar -->
-    <div class='fixed w-full z-50 bg-base-100 shadow-md h-16'>
+    <div class='fixed w-full z-40 bg-base-100 shadow-md h-16'>
       <div class='container mx-auto h-full w-full flex items-center'>
         <%= render 'shared/navbar' %>
       </div>
     </div>
 
     <!-- Flash Messages - Fixed below navbar -->
-    <div class='fixed top-16 w-full z-40 h-8'>
+    <div class='fixed top-16 w-full z-50'>
       <div class='container mx-auto px-5'>
         <%= render 'shared/flash' %>
       </div>
     </div>
 
-    <!-- Date Navigation - Fixed below flash messages -->
-
     <!-- Full Screen Map Container -->
-    <div class='absolute top-40 left-0 right-0 bottom-0 w-full z-10 overflow-auto'>
+    <div class='absolute top-16 left-0 right-0 w-full z-20' style='height: calc(100vh - 4rem);'>
       <%= yield %>
+    </div>
+
+    <!-- Fixed Footer (hidden by default) -->
+    <div id='map-footer' class='fixed bottom-0 left-0 right-0 z-30 hidden'>
+      <%= render 'shared/legal_footer' %>
     </div>
 
     <%= render 'map/onboarding_modal' %>

@@ -99,13 +99,6 @@ export default class extends BaseController {
         console.log('📊 After fitBounds overlay display:', afterFitBoundsElement?.style.display || 'default');
       }
 
-      console.log('🎯 Public sharing: using manual hexagon loading');
-      console.log('🔍 Debug values:');
-      console.log('  dataBounds:', dataBounds);
-      console.log('  point_count:', dataBounds?.point_count);
-      console.log('  hexagonsAvailableValue:', this.hexagonsAvailableValue);
-      console.log('  hexagonsAvailableValue type:', typeof this.hexagonsAvailableValue);
-
       // Load hexagons only if they are pre-calculated and data exists
       if (dataBounds && dataBounds.point_count > 0 && this.hexagonsAvailableValue) {
         await this.loadStaticHexagons();
@@ -140,7 +133,7 @@ export default class extends BaseController {
 
     // Ensure loading overlay is visible and disable map interaction
     const loadingElement = document.getElementById('map-loading');
-    console.log('🔍 Loading element found:', !!loadingElement);
+
     if (loadingElement) {
       loadingElement.style.display = 'flex';
       loadingElement.style.visibility = 'visible';

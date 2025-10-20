@@ -101,7 +101,7 @@
                            data-location-sharing-toggle-expires-at-value="<%= member.family_sharing_expires_at&.iso8601 %>"
                            class="flex items-center gap-3">
 
-                        <span class="text-sm opacity-60">Location:</span>
+                        <span class="text-sm opacity-60">Location sharing:</span>
 
                         <!-- Toggle Switch -->
                         <input type="checkbox"
@@ -136,7 +136,7 @@
                     <% else %>
                       <!-- Other member's status - read-only indicator -->
                       <div class="flex items-center gap-2">
-                        <span class="text-sm opacity-60">Location:</span>
+                        <span class="text-sm opacity-60">Location sharing:</span>
                         <% if member.family_sharing_enabled? %>
                           <div class="w-3 h-3 bg-success rounded-full animate-pulse"></div>
                           <span class="text-xs text-success font-medium">
@@ -174,7 +174,7 @@
           <div class="space-y-3 mb-4">
             <% @pending_invitations.each do |invitation| %>
               <div class="flex items-center justify-between p-3 bg-base-100 rounded-lg">
-                <div>
+                <div class="flex-grow">
                   <div class="font-medium text-base-content"><%= invitation.email %></div>
                   <div class="text-sm text-base-content opacity-60">
                     <%= t('families.show.invited_on', default: 'Invited') %>
@@ -184,14 +184,26 @@
                     <%= t('families.show.expires_on', default: 'Expires') %>
                     <%= invitation.expires_at.strftime('%b %d, %Y at %I:%M %p') %>
                   </div>
+                  <div class="mt-2">
+                    <button data-controller="clipboard"
+                            data-clipboard-text-value="<%= public_invitation_url(invitation.token) %>"
+                            data-action="click->clipboard#copy"
+                            class="btn btn-outline btn-info btn-xs"
+                            title="Copy invitation link">
+                      <%= icon 'copy', class: "inline-block w-3" %>
+                      Copy Invitation Link
+                    </button>
+                  </div>
                 </div>
                 <% if policy(@family).manage_invitations? %>
-                  <%= link_to family_invitation_path(invitation.token),
-                        method: :delete,
-                        data: { confirm: 'Are you sure you want to cancel this invitation?', turbo_confirm: 'Are you sure you want to cancel this invitation?' },
-                        class: "btn btn-outline btn-warning btn-sm opacity-70" do %>
-                    Cancel
-                  <% end %>
+                  <div class="ml-3">
+                    <%= link_to family_invitation_path(invitation.token),
+                          method: :delete,
+                          data: { confirm: 'Are you sure you want to cancel this invitation?', turbo_confirm: 'Are you sure you want to cancel this invitation?' },
+                          class: "btn btn-outline btn-warning btn-sm" do %>
+                      Cancel
+                    <% end %>
+                  </div>
                 <% end %>
               </div>
             <% end %>
@@ -227,9 +239,7 @@
           <!-- Family at capacity message -->
           <div class="border-t pt-4">
             <div class="alert alert-warning">
-              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-              </svg>
+              <%= icon 'triangle-alert', class: "inline-block w-6 mr-2 flex-shrink-0" %>
               <div>
                 <h3 class="text-sm font-medium">
                   Family at Capacity

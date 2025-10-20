@@ -34,6 +34,7 @@
   color: var(--leaflet-text-color) !important;
   border-color: var(--leaflet-border-color) !important;
   box-shadow: 0 1px 4px var(--leaflet-shadow-color) !important;
+
 }
 
 /* Leaflet zoom buttons */
@@ -51,6 +52,32 @@
 .leaflet-control-layers-toggle {
   background-color: var(--leaflet-bg-color) !important;
   color: var(--leaflet-text-color) !important;
+  /* Replace default icon with custom SVG */
+  background-image: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.leaflet-control-layers-toggle::before {
+  content: '' !important;
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>') !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+/* Dark theme - use white stroke for the icon */
+[data-theme="dark"] .leaflet-control-layers-toggle::before {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>') !important;
+}
+
+/* Light theme - use black stroke for the icon */
+[data-theme="light"] .leaflet-control-layers-toggle::before {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>') !important;
 }
 
 .leaflet-control-layers-expanded {
@@ -186,4 +213,24 @@
 .family-member-marker-recent .leaflet-marker-icon > div {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(16, 185, 129, 0.7);
   border-radius: 50%;
+}
+
+/* Fix bottom controls being cut off */
+.leaflet-bottom {
+  padding-bottom: 10px !important;
+  transition: padding-bottom 0.3s ease;
+}
+
+.leaflet-bottom.leaflet-left {
+  padding-left: 10px !important;
+}
+
+.leaflet-bottom.leaflet-right {
+  padding-right: 10px !important;
+}
+
+/* DaisyUI tooltips on map buttons - ensure they appear above date navigation (z-index: 9999) */
+.tooltip:before,
+.tooltip:after {
+  z-index: 10000 !important;
 }
