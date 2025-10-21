@@ -7,6 +7,8 @@ services:
     command: redis-server
     networks:
       - dawarich
+    ports:
+      - 6379:6379
     volumes:
       - dawarich_shared:/data
     restart: always
@@ -26,6 +28,8 @@ services:
       # - ./postgresql.conf:/etc/postgresql/postgresql.conf # Optional, uncomment if you want to use a custom config
     networks:
       - dawarich
+    ports:
+      - 5432:5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
