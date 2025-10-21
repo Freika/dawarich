@@ -19,6 +19,7 @@ In this release we're introducing family features that allow users to create fam
 - Sign out button works again. #1844
 - Fixed user deletion bug where user could not be deleted due to counter cache on points.
 - Users always have default distance unit set to kilometers. #1832
+- All confirmation dialogs are now showing only once.
 
 ## Changed
 

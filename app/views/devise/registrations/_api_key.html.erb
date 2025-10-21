@@ -28,6 +28,6 @@
     <p><code><%= api_v1_overland_batches_url(api_key: current_user.api_key) %></code></p>
   </p>
   <p class='py-2'>
-    <%= link_to "Generate new API key", generate_api_key_path, data: { confirm: "Are you sure? This will invalidate the current API key.", turbo_confirm: "Are you sure?", turbo_method: :post }, class: 'btn btn-primary' %>
+    <%= link_to "Generate new API key", generate_api_key_path, data: { turbo_confirm: "Are you sure? This will invalidate the current API key.", turbo_method: :post }, class: 'btn btn-primary' %>
   </p>
 </p>
