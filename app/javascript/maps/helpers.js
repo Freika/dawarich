@@ -125,32 +125,41 @@ export function showFlashMessage(type, message) {
   if (!flashContainer) {
     flashContainer = document.createElement('div');
     flashContainer.id = 'flash-messages';
-    // Use z-[9999] to ensure flash messages appear above navbar (z-50)
-    flashContainer.className = 'fixed top-20 right-5 flex flex-col-reverse gap-2';
-    flashContainer.style.zIndex = '9999';
+    flashContainer.className = 'fixed top-5 right-5 flex flex-col gap-2 z-50';
     document.body.appendChild(flashContainer);
   }
 
-  // Create the flash message div
+  // Create the flash message div with DaisyUI alert classes
   const flashDiv = document.createElement('div');
   flashDiv.setAttribute('data-controller', 'removals');
-  flashDiv.className = `flex items-center justify-between ${classesForFlash(type)} py-3 px-5 rounded-lg shadow-lg`;
+  flashDiv.setAttribute('data-removals-timeout-value', type === 'notice' || type === 'success' ? '5000' : '0');
+  flashDiv.setAttribute('role', 'alert');
+  flashDiv.className = `alert ${getAlertClass(type)} shadow-lg z-[6000]`;
 
-  // Create the message div
-  const messageDiv = document.createElement('div');
-  messageDiv.className = 'mr-4';
-  messageDiv.innerText = message;
+  // Create the content wrapper
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'flex items-center gap-2';
+
+  // Add the icon
+  const icon = getFlashIcon(type);
+  contentDiv.appendChild(icon);
+
+  // Create the message span
+  const messageSpan = document.createElement('span');
+  messageSpan.innerText = message;
+  contentDiv.appendChild(messageSpan);
 
   // Create the close button
   const closeButton = document.createElement('button');
   closeButton.setAttribute('type', 'button');
   closeButton.setAttribute('data-action', 'click->removals#remove');
-  closeButton.className = 'ml-auto'; // Ensures button stays on the right
+  closeButton.setAttribute('aria-label', 'Close');
+  closeButton.className = 'btn btn-sm btn-circle btn-ghost';
 
   // Create the SVG icon for the close button
   const closeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   closeIcon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  closeIcon.setAttribute('class', 'h-6 w-6');
+  closeIcon.setAttribute('class', 'h-5 w-5');
   closeIcon.setAttribute('fill', 'none');
   closeIcon.setAttribute('viewBox', '0 0 24 24');
   closeIcon.setAttribute('stroke', 'currentColor');
@@ -164,31 +173,73 @@ export function showFlashMessage(type, message) {
   // Append all elements
   closeIcon.appendChild(closeIconPath);
   closeButton.appendChild(closeIcon);
-  flashDiv.appendChild(messageDiv);
+  flashDiv.appendChild(contentDiv);
   flashDiv.appendChild(closeButton);
   flashContainer.appendChild(flashDiv);
 
-  // Automatically remove after 5 seconds
-  setTimeout(() => {
-    if (flashDiv && flashDiv.parentNode) {
-      flashDiv.remove();
-      // Remove container if empty
-      if (flashContainer && !flashContainer.hasChildNodes()) {
-        flashContainer.remove();
+  // Automatically remove after 5 seconds for notice/success
+  if (type === 'notice' || type === 'success') {
+    setTimeout(() => {
+      if (flashDiv && flashDiv.parentNode) {
+        flashDiv.remove();
+        // Remove container if empty
+        if (flashContainer && !flashContainer.hasChildNodes()) {
+          flashContainer.remove();
+        }
       }
-    }
-  }, 5000);
+    }, 5000);
+  }
 }
 
-function classesForFlash(type) {
+function getAlertClass(type) {
   switch (type) {
     case 'error':
-      return 'bg-red-100 text-red-700 border-red-300';
+    case 'alert':
+      return 'alert-error';
     case 'notice':
-      return 'bg-blue-100 text-blue-700 border-blue-300';
+    case 'info':
+      return 'alert-info';
+    case 'success':
+      return 'alert-success';
+    case 'warning':
+      return 'alert-warning';
     default:
-      return 'bg-blue-100 text-blue-700 border-blue-300';
+      return 'alert-info';
   }
+}
+
+function getFlashIcon(type) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  svg.setAttribute('class', 'h-6 w-6 shrink-0 stroke-current');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('viewBox', '0 0 24 24');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  path.setAttribute('stroke-width', '2');
+
+  switch (type) {
+    case 'error':
+    case 'alert':
+      path.setAttribute('d', 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z');
+      break;
+    case 'success':
+      path.setAttribute('d', 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z');
+      break;
+    case 'warning':
+      path.setAttribute('d', 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z');
+      break;
+    case 'notice':
+    case 'info':
+    default:
+      path.setAttribute('d', 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z');
+      break;
+  }
+
+  svg.appendChild(path);
+  return svg;
 }
 
 export function debounce(func, wait) {

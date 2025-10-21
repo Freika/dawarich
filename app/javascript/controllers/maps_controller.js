@@ -101,6 +101,9 @@ export default class extends BaseController {
     this.speedColoredPolylines = this.userSettings.speed_colored_routes || false;
     this.speedColorScale = this.userSettings.speed_color_scale || colorFormatEncode(colorStopsFallback);
 
+    // Flag to prevent saving layers during initialization/restoration
+    this.isRestoringLayers = false;
+
     // Ensure we have valid markers array
     if (!Array.isArray(this.markers)) {
       console.warn('Markers is not an array, setting to empty array');
@@ -228,6 +231,9 @@ export default class extends BaseController {
 
     // Initialize layers based on settings
     this.initializeLayersFromSettings();
+
+    // Listen for Family Members layer becoming ready
+    this.setupFamilyLayerListener();
 
     // Initialize tracks layer
     this.initializeTracksLayer();
@@ -465,8 +471,10 @@ export default class extends BaseController {
 
     // Add event listeners for overlay layer changes to keep routes/tracks selector in sync
     this.map.on('overlayadd', (event) => {
-      // Save enabled layers whenever a layer is added
-      this.saveEnabledLayers();
+      // Save enabled layers whenever a layer is added (unless we're restoring from settings)
+      if (!this.isRestoringLayers) {
+        this.saveEnabledLayers();
+      }
 
       if (event.name === 'Routes') {
         this.handleRouteLayerToggle('routes');
@@ -523,8 +531,10 @@ export default class extends BaseController {
     });
 
     this.map.on('overlayremove', (event) => {
-      // Save enabled layers whenever a layer is removed
-      this.saveEnabledLayers();
+      // Save enabled layers whenever a layer is removed (unless we're restoring from settings)
+      if (!this.isRestoringLayers) {
+        this.saveEnabledLayers();
+      }
 
       if (event.name === 'Routes' || event.name === 'Tracks') {
         // Don't auto-switch when layers are manually turned off
@@ -585,7 +595,8 @@ export default class extends BaseController {
     const enabledLayers = [];
     const layerNames = [
       'Points', 'Routes', 'Tracks', 'Heatmap', 'Fog of War',
-      'Scratch map', 'Areas', 'Photos', 'Suggested Visits', 'Confirmed Visits'
+      'Scratch map', 'Areas', 'Photos', 'Suggested Visits', 'Confirmed Visits',
+      'Family Members'
     ];
 
     const controlsLayer = {
@@ -598,7 +609,8 @@ export default class extends BaseController {
       'Areas': this.areasLayer,
       'Photos': this.photoMarkers,
       'Suggested Visits': this.visitsManager?.getVisitCirclesLayer(),
-      'Confirmed Visits': this.visitsManager?.getConfirmedVisitCirclesLayer()
+      'Confirmed Visits': this.visitsManager?.getConfirmedVisitCirclesLayer(),
+      'Family Members': window.familyMembersController?.familyMarkersLayer
     };
 
     layerNames.forEach(name => {
@@ -607,16 +619,6 @@ export default class extends BaseController {
         enabledLayers.push(name);
       }
     });
-
-    // Add family member layers
-    if (window.familyController && window.familyController.familyLayers) {
-      Object.keys(window.familyController.familyLayers).forEach(memberName => {
-        const layer = window.familyController.familyLayers[memberName];
-        if (layer && this.map.hasLayer(layer)) {
-          enabledLayers.push(memberName);
-        }
-      });
-    }
 
     fetch('/api/v1/settings', {
       method: 'PATCH',
@@ -1481,22 +1483,30 @@ export default class extends BaseController {
       'Areas': this.areasLayer,
       'Photos': this.photoMarkers,
       'Suggested Visits': this.visitsManager?.getVisitCirclesLayer(),
-      'Confirmed Visits': this.visitsManager?.getConfirmedVisitCirclesLayer()
+      'Confirmed Visits': this.visitsManager?.getConfirmedVisitCirclesLayer(),
+      'Family Members': window.familyMembersController?.familyMarkersLayer
     };
-
-    // Add family member layers if available
-    if (window.familyController && window.familyController.familyLayers) {
-      Object.entries(window.familyController.familyLayers).forEach(([memberName, layer]) => {
-        controlsLayer[memberName] = layer;
-      });
-    }
 
     // Apply saved layer preferences
     Object.entries(controlsLayer).forEach(([name, layer]) => {
-      if (!layer) return;
+      if (!layer) {
+        if (enabledLayers.includes(name)) {
+          console.log(`Layer ${name} is in enabled layers but layer object is null/undefined`);
+        }
+        return;
+      }
 
       const shouldBeEnabled = enabledLayers.includes(name);
       const isCurrentlyEnabled = this.map.hasLayer(layer);
+
+      if (name === 'Family Members') {
+        console.log('Family Members layer check:', {
+          shouldBeEnabled,
+          isCurrentlyEnabled,
+          layerExists: !!layer,
+          controllerExists: !!window.familyMembersController
+        });
+      }
 
       if (shouldBeEnabled && !isCurrentlyEnabled) {
         // Add layer to map
@@ -1534,6 +1544,11 @@ export default class extends BaseController {
           if (this.drawControl && !this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
             this.map.addControl(this.drawControl);
           }
+        } else if (name === 'Family Members') {
+          // Refresh family locations when layer is restored
+          if (window.familyMembersController && typeof window.familyMembersController.refreshFamilyLocations === 'function') {
+            window.familyMembersController.refreshFamilyLocations();
+          }
         }
       } else if (!shouldBeEnabled && isCurrentlyEnabled) {
         // Remove layer from map
@@ -1541,6 +1556,36 @@ export default class extends BaseController {
         console.log(`Disabled layer: ${name}`);
       }
     });
+  }
+
+  setupFamilyLayerListener() {
+    // Listen for when the Family Members layer becomes available
+    document.addEventListener('family:layer:ready', (event) => {
+      console.log('Family layer ready event received');
+      const enabledLayers = this.userSettings.enabled_map_layers || [];
+
+      // Check if Family Members should be enabled based on saved settings
+      if (enabledLayers.includes('Family Members')) {
+        const layer = event.detail.layer;
+        if (layer && !this.map.hasLayer(layer)) {
+          // Set flag to prevent saving during restoration
+          this.isRestoringLayers = true;
+
+          layer.addTo(this.map);
+          console.log('Enabled layer: Family Members (from ready event)');
+
+          // Refresh family locations
+          if (window.familyMembersController && typeof window.familyMembersController.refreshFamilyLocations === 'function') {
+            window.familyMembersController.refreshFamilyLocations();
+          }
+
+          // Reset flag after a short delay to allow all events to complete
+          setTimeout(() => {
+            this.isRestoringLayers = false;
+          }, 100);
+        }
+      }
+    }, { once: true }); // Only listen once
   }
 
   toggleRightPanel() {

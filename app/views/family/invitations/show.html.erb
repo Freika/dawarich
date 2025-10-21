@@ -14,8 +14,8 @@
         You've been invited by <strong class="text-base-content"><%= @invitation.invited_by.email %></strong> to join their family. Create your account to accept the invitation and start sharing location data.
       </p>
 
-      <div class="alert alert-info inline-flex rounded-lg px-4 py-2 mt-4">
-        <%= icon 'info', class: "h-5 w-5 mr-2" %>
+      <div class="alert alert-info inline-flex items-center rounded-lg px-4 py-3 mt-4 gap-3">
+        <%= icon 'info', class: "h-5 w-5 shrink-0" %>
         <span class="text-sm font-medium">
           Your email (<%= @invitation.email %>) will be used for this account
         </span>
@@ -96,23 +96,23 @@
 
       <!-- Invitation Details -->
       <div class="bg-base-300 rounded-lg p-6 mb-6">
-        <h3 class="text-sm font-medium text-base-content opacity-70 mb-3">Invitation Details</h3>
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span class="text-base-content opacity-60">Family:</span>
-            <span class="ml-2 font-semibold text-base-content"><%= @invitation.family.name %></span>
+        <h3 class="text-lg font-semibold text-base-content mb-6">Invitation Details</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <div class="text-sm text-base-content opacity-60">Family:</div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.family.name %></div>
           </div>
-          <div>
-            <span class="text-base-content opacity-60">Invited by:</span>
-            <span class="ml-2 font-semibold text-base-content"><%= @invitation.invited_by.email %></span>
+          <div class="space-y-2">
+            <div class="text-sm text-base-content opacity-60">Invited by:</div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.invited_by.email %></div>
           </div>
-          <div>
-            <span class="text-base-content opacity-60">Your email:</span>
-            <span class="ml-2 font-semibold text-base-content"><%= @invitation.email %></span>
+          <div class="space-y-2">
+            <div class="text-sm text-base-content opacity-60">Your email:</div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.email %></div>
           </div>
-          <div>
-            <span class="text-base-content opacity-60">Expires:</span>
-            <span class="ml-2 font-semibold text-base-content"><%= @invitation.expires_at.strftime('%b %d, %Y') %></span>
+          <div class="space-y-2">
+            <div class="text-sm text-base-content opacity-60">Expires:</div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.expires_at.strftime('%b %d, %Y') %></div>
           </div>
         </div>
       </div>

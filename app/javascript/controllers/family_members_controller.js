@@ -341,6 +341,11 @@ export default class extends Controller {
     mapsController.updateLayerControl({
       "Family Members": this.familyMarkersLayer
     });
+
+    // Dispatch event to notify that Family Members layer is now available
+    document.dispatchEvent(new CustomEvent('family:layer:ready', {
+      detail: { layer: this.familyMarkersLayer }
+    }));
   }
 
   setupEventListeners() {
