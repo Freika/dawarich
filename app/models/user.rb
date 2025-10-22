@@ -145,6 +145,32 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     points.where.not(city: [nil, '']).distinct.pluck(:city).compact
   end
 
+  # Digest preferences methods
+  def digest_enabled?(period = :monthly)
+    settings.dig('digest_preferences', period.to_s, 'enabled') || false
+  end
+
+  def enable_digest!(period = :monthly)
+    prefs = settings['digest_preferences'] || {}
+    prefs[period.to_s] ||= {}
+    prefs[period.to_s]['enabled'] = true
+    update!(settings: settings.merge('digest_preferences' => prefs))
+  end
+
+  def disable_digest!(period = :monthly)
+    prefs = settings['digest_preferences'] || {}
+    prefs[period.to_s] ||= {}
+    prefs[period.to_s]['enabled'] = false
+    update!(settings: settings.merge('digest_preferences' => prefs))
+  end
+
+  def digest_last_sent_at(period = :monthly)
+    timestamp = settings.dig('digest_preferences', period.to_s, 'last_sent_at')
+    Time.zone.parse(timestamp) if timestamp.present?
+  rescue ArgumentError
+    nil
+  end
+
   private
 
   def create_api_key

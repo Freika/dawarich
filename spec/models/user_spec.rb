@@ -335,5 +335,116 @@ RSpec.describe User, type: :model do
         expect(user.timezone).to eq(Time.zone.name)
       end
     end
+
+    describe 'digest preferences' do
+      let(:user) { create(:user, settings: {}) }
+
+      describe '#digest_enabled?' do
+        context 'when digest preferences not set' do
+          it 'returns false' do
+            expect(user.digest_enabled?).to be false
+          end
+        end
+
+        context 'when monthly digest is enabled' do
+          before do
+            user.update!(settings: {
+              'digest_preferences' => {
+                'monthly' => { 'enabled' => true }
+              }
+            })
+          end
+
+          it 'returns true' do
+            expect(user.digest_enabled?(:monthly)).to be true
+          end
+        end
+
+        context 'when monthly digest is disabled' do
+          before do
+            user.update!(settings: {
+              'digest_preferences' => {
+                'monthly' => { 'enabled' => false }
+              }
+            })
+          end
+
+          it 'returns false' do
+            expect(user.digest_enabled?(:monthly)).to be false
+          end
+        end
+      end
+
+      describe '#enable_digest!' do
+        it 'enables the digest for given period' do
+          expect { user.enable_digest!(:monthly) }
+            .to change { user.reload.digest_enabled?(:monthly) }
+            .from(false).to(true)
+        end
+
+        it 'preserves other settings' do
+          user.update!(settings: { 'other_setting' => 'value' })
+          user.enable_digest!(:monthly)
+
+          expect(user.settings['other_setting']).to eq('value')
+        end
+      end
+
+      describe '#disable_digest!' do
+        before do
+          user.enable_digest!(:monthly)
+        end
+
+        it 'disables the digest for given period' do
+          expect { user.disable_digest!(:monthly) }
+            .to change { user.reload.digest_enabled?(:monthly) }
+            .from(true).to(false)
+        end
+      end
+
+      describe '#digest_last_sent_at' do
+        context 'when never sent' do
+          it 'returns nil' do
+            expect(user.digest_last_sent_at(:monthly)).to be_nil
+          end
+        end
+
+        context 'when previously sent' do
+          let(:sent_time) { Time.zone.parse('2024-01-01 09:00:00') }
+
+          before do
+            user.update!(settings: {
+              'digest_preferences' => {
+                'monthly' => {
+                  'enabled' => true,
+                  'last_sent_at' => sent_time.iso8601
+                }
+              }
+            })
+          end
+
+          it 'returns the last sent time' do
+            expect(user.digest_last_sent_at(:monthly)).to be_within(1.second).of(sent_time)
+          end
+        end
+
+        context 'when timestamp is invalid' do
+          before do
+            user.update!(settings: {
+              'digest_preferences' => {
+                'monthly' => {
+                  'enabled' => true,
+                  'last_sent_at' => 'invalid'
+                }
+              }
+            })
+          end
+
+          it 'returns nil' do
+            expect(user.digest_last_sent_at(:monthly)).to be_nil
+          end
+        end
+      end
+    end
   end
 end

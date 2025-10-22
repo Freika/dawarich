@@ -175,4 +175,10 @@ Rails.application.routes.draw do
       post 'subscriptions/callback', to: 'subscriptions#callback'
     end
   end
+
+  # Digest routes
+  namespace :digests do
+    get 'preview/:period/:year(/:month)', to: 'digests#preview', as: :preview
+    post 'send_test/:period', to: 'digests#send_test', as: :send_test
+  end
 end
