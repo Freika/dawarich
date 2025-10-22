@@ -25,6 +25,7 @@ In this release we're introducing family features that allow users to create fam
 
 - Minor versions of Dawarich are being built for ARM64 architecture as well again. #1840
 - Importing process for Google Maps Timeline exports, GeoJSON and geodata from photos is now significantly faster.
+- The Map page now features a full-screen map.
 
 
 # [0.33.1] - 2025-10-07
