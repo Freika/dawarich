@@ -7,26 +7,14 @@ class Users::SessionsController < Devise::SessionsController
     super
   end
 
-  protected
-
-  def after_sign_in_path_for(resource)
-    if invitation_token.present?
-      invitation = Family::Invitation.find_by(token: invitation_token)
-
-      if invitation&.can_be_accepted?
-        return family_invitation_path(invitation.token)
-      end
-    end
-
-    super(resource)
-  end
-
   private
 
   def load_invitation_context
     return unless invitation_token.present?
 
     @invitation = Family::Invitation.find_by(token: invitation_token)
+    # Store token in session so it persists through the sign-in process
+    session[:invitation_token] = invitation_token if invitation_token.present?
   end
 
   def invitation_token

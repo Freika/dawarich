@@ -40,6 +40,14 @@ class ApplicationController < ActionController::Base
   end
 
   def after_sign_in_path_for(resource)
+    # Check for family invitation first
+    invitation_token = params[:invitation_token] || session[:invitation_token]
+    if invitation_token.present?
+      invitation = Family::Invitation.find_by(token: invitation_token)
+      return family_invitation_path(invitation.token) if invitation&.can_be_accepted?
+    end
+
+    # Handle iOS client flow
     client_type = request.headers['X-Dawarich-Client'] || session[:dawarich_client]
 
     case client_type
