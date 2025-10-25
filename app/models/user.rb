@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
+  include UserFamily
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable
 
-  has_many :points, dependent: :destroy, counter_cache: true
+  has_many :points, dependent: :destroy
   has_many :imports,        dependent: :destroy
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy

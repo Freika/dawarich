@@ -5,7 +5,7 @@
     <div class='my-5'>
       <%= link_to "Back to notifications", notifications_path, class: "btn btn-small" %>
       <div class="inline-block ml-2">
-        <%= button_to "Destroy this notification", @notification, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-small btn-warning" %>
+        <%= button_to "Destroy this notification", @notification, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-small btn-warning" %>
       </div>
     </div>
   </div>

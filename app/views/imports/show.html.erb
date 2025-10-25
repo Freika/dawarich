@@ -10,7 +10,7 @@
 
     <%= link_to "Edit this import", edit_import_path(@import), class: "mt-2 rounded-lg py-3 px-5 bg-secondary-content inline-block font-medium" %>
     <div class="inline-block ml-2">
-      <%= link_to "Destroy this import", import_path(@import), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This action will delete all points imported with this file", turbo_method: :delete }, method: :delete, class: "mt-2 rounded-lg py-3 px-5 bg-secondary-content font-medium" %>
+      <%= link_to "Destroy this import", import_path(@import), data: { turbo_confirm: "Are you sure? This action will delete all points imported with this file", turbo_method: :delete }, method: :delete, class: "mt-2 rounded-lg py-3 px-5 bg-secondary-content font-medium" %>
     </div>
     <%= link_to "Back to imports", imports_path, class: "ml-2 rounded-lg py-3 px-5 bg-secondary-content inline-block font-medium" %>
   </div>

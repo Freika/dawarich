@@ -166,4 +166,79 @@ RSpec.describe 'Authentication', type: :request do
       expect(response.location).not_to include('auth/ios/success')
     end
   end
+
+  describe 'Family Invitation with Authentication' do
+    let(:family) { create(:family, creator: user) }
+    let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
+    let(:invitee) { create(:user, email: 'invitee@example.com', password: 'password123') }
+    let(:invitation) { create(:family_invitation, family: family, invited_by: user, email: invitee.email) }
+
+    it 'redirects to invitation page when signing in with invitation token in params' do
+      post user_session_path, params: {
+        user: { email: invitee.email, password: 'password123' },
+        invitation_token: invitation.token
+      }
+
+      expect(response).to redirect_to(family_invitation_path(invitation.token))
+    end
+
+    it 'redirects to invitation page when signing in with invitation token in session' do
+      # The invitation token is stored in session by Users::SessionsController#load_invitation_context
+      # when accessing the sign-in page with invitation_token param
+      get new_user_session_path, params: { invitation_token: invitation.token }
+
+      # Then sign in without the invitation_token in params (should use session value)
+      post user_session_path, params: {
+        user: { email: invitee.email, password: 'password123' }
+      }
+
+      expect(response).to redirect_to(family_invitation_path(invitation.token))
+    end
+
+    it 'prioritizes invitation over iOS flow when both are present' do
+      # Sign in with both iOS header AND invitation token
+      post user_session_path, params: {
+        user: { email: invitee.email, password: 'password123' },
+        invitation_token: invitation.token
+      }, headers: {
+        'X-Dawarich-Client' => 'ios'
+      }
+
+      # Should redirect to invitation page, NOT iOS success
+      expect(response).to redirect_to(family_invitation_path(invitation.token))
+      expect(response.location).not_to include('auth/ios/success')
+    end
+
+    it 'redirects to iOS success when invitation is expired' do
+      # Create an expired invitation
+      expired_invitation = create(:family_invitation,
+                                   family: family,
+                                   invited_by: user,
+                                   email: invitee.email,
+                                   expires_at: 1.day.ago)
+
+      # Sign in with iOS header and expired invitation token
+      post user_session_path, params: {
+        user: { email: invitee.email, password: 'password123' },
+        invitation_token: expired_invitation.token
+      }, headers: {
+        'X-Dawarich-Client' => 'ios'
+      }
+
+      # Should redirect to iOS success since invitation can't be accepted
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+    end
+
+    it 'uses default path when invitation token is invalid' do
+      # Sign in with invalid invitation token
+      post user_session_path, params: {
+        user: { email: invitee.email, password: 'password123' },
+        invitation_token: 'invalid-token-123'
+      }
+
+      # Should use default redirect path
+      expect(response).not_to redirect_to(%r{/invitations/})
+      expect(response).to redirect_to(root_path)
+    end
+  end
 end

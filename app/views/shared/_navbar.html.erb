@@ -1,4 +1,4 @@
-<div class="navbar bg-base-100">
+<div class="navbar bg-base-100 h-16">
   <div class="navbar-start">
     <div class="dropdown">
       <label tabindex="0" class="btn btn-ghost lg:hidden">
@@ -8,6 +8,23 @@
         <li><%= link_to 'Map', map_url, class: "#{active_class?(map_url)}" %></li>
         <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
         <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
+        <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
+          <li>
+            <% if current_user.in_family? %>
+              <div data-controller="family-navbar-indicator"
+                   data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>">
+                <%= link_to family_path, class: "#{active_class?(family_path)} flex items-center space-x-2" do %>
+                  <span>Family</span>
+                  <div data-family-navbar-indicator-target="indicator"
+                       class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
+                       title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
+                <% end %>
+              </div>
+            <% else %>
+              <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "#{active_class?(new_family_path)}" %>
+            <% end %>
+          </li>
+        <% end %>
         <li>
           <details>
             <summary>My data</summary>
@@ -56,6 +73,24 @@
       <li><%= link_to 'Map', map_url, class: "mx-1 #{active_class?(map_url)}" %></li>
       <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
       <li><%= link_to 'Stats', stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
+      <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
+        <li>
+          <% if current_user.in_family? %>
+            <div data-controller="family-navbar-indicator"
+                 data-family-navbar-indicator-enabled-value="<%= current_user.family_sharing_enabled? %>"
+                 class="<%= active_class?(family_path) %>">
+              <%= link_to family_path, class: "mx-1 flex items-center space-x-2" do %>
+                <span>Family<sup>α</sup></span>
+                <div data-family-navbar-indicator-target="indicator"
+                     class="w-2 h-2 <%= current_user.family_sharing_enabled? ? 'bg-green-500 animate-pulse' : 'bg-gray-400' %> rounded-full"
+                     title="<%= current_user.family_sharing_enabled? ? 'Location sharing enabled' : 'Location sharing disabled' %>"></div>
+              <% end %>
+            </div>
+          <% else %>
+            <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "mx-1 #{active_class?(new_family_path)}" %>
+          <% end %>
+        </li>
+      <% end %>
       <li>
         <details>
           <summary>My data</summary>
@@ -121,7 +156,8 @@
         <li>
           <details>
             <summary>
-              <%= "#{current_user.email}" %>
+              <span class="hidden xl:inline"><%= current_user.email %></span>
+              <span class="inline xl:hidden"><%= icon 'user' %></span>
               <% if onboarding_modal_showable?(current_user) %>
                 <span class="indicator-item badge badge-secondary badge-xs"></span>
               <% end %>
