@@ -34,6 +34,10 @@ class FamilyPolicy < ApplicationPolicy
     user.family == record && user.family_owner?
   end
 
+  def update_location_sharing?
+    user.family == record && user.family_owner?
+  end
+
   private
 
   def family_owner_with_members?
