@@ -6,7 +6,9 @@ RSpec.describe 'Users::Registrations', type: :request do
   let(:family_owner) { create(:user) }
   let(:family) { create(:family, creator: family_owner) }
   let!(:owner_membership) { create(:family_membership, user: family_owner, family: family, role: :owner) }
-  let(:invitation) { create(:family_invitation, family: family, invited_by: family_owner, email: 'invited@example.com') }
+  let(:invitation) do
+    create(:family_invitation, family: family, invited_by: family_owner, email: 'invited@example.com')
+  end
 
   before do
     stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
@@ -76,7 +78,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect do
           post user_registration_path, params: request_params
         end.to change(User, :count).by(1)
-         .and change { invitation.reload.status }.from('pending').to('accepted')
+                                   .and change { invitation.reload.status }.from('pending').to('accepted')
 
         new_user = User.find_by(email: invitation.email)
         expect(new_user).to be_present
@@ -95,7 +97,7 @@ RSpec.describe 'Users::Registrations', type: :request do
 
         # Check that user got the default registration success message
         # (family welcome message is set but may be overridden by Devise)
-        expect(flash[:notice]).to include("signed up successfully")
+        expect(flash[:notice]).to include('signed up successfully')
       end
     end
 
@@ -216,8 +218,8 @@ RSpec.describe 'Users::Registrations', type: :request do
 
   describe 'Non-Self-Hosted Mode' do
     before do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('SELF_HOSTED').and_return('false')
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
     end
 
     context 'when accessing registration without invitation token' do
@@ -229,10 +231,12 @@ RSpec.describe 'Users::Registrations', type: :request do
       end
 
       it 'allows account creation' do
+        unique_email = "newuser-#{Time.current.to_i}@example.com"
+
         expect do
           post user_registration_path, params: {
             user: {
-              email: 'test@example.com',
+              email: unique_email,
               password: 'password123',
               password_confirmation: 'password123'
             }
@@ -240,6 +244,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         end.to change(User, :count).by(1)
 
         expect(response).to redirect_to(root_path)
+        expect(User.find_by(email: unique_email)).to be_present
       end
     end
   end
