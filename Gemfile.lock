@@ -10,29 +10,29 @@ GIT
 GEM
   remote: https://rubygems.org/
   specs:
-    actioncable (8.0.2.1)
-      actionpack (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    actioncable (8.0.3)
+      actionpack (= 8.0.3)
+      activesupport (= 8.0.3)
       nio4r (~> 2.0)
       websocket-driver (>= 0.6.1)
       zeitwerk (~> 2.6)
-    actionmailbox (8.0.2.1)
-      actionpack (= 8.0.2.1)
-      activejob (= 8.0.2.1)
-      activerecord (= 8.0.2.1)
-      activestorage (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    actionmailbox (8.0.3)
+      actionpack (= 8.0.3)
+      activejob (= 8.0.3)
+      activerecord (= 8.0.3)
+      activestorage (= 8.0.3)
+      activesupport (= 8.0.3)
       mail (>= 2.8.0)
-    actionmailer (8.0.2.1)
-      actionpack (= 8.0.2.1)
-      actionview (= 8.0.2.1)
-      activejob (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    actionmailer (8.0.3)
+      actionpack (= 8.0.3)
+      actionview (= 8.0.3)
+      activejob (= 8.0.3)
+      activesupport (= 8.0.3)
       mail (>= 2.8.0)
       rails-dom-testing (~> 2.2)
-    actionpack (8.0.2.1)
-      actionview (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    actionpack (8.0.3)
+      actionview (= 8.0.3)
+      activesupport (= 8.0.3)
       nokogiri (>= 1.8.5)
       rack (>= 2.2.4)
       rack-session (>= 1.0.1)
@@ -40,38 +40,38 @@ GEM
       rails-dom-testing (~> 2.2)
       rails-html-sanitizer (~> 1.6)
       useragent (~> 0.16)
-    actiontext (8.0.2.1)
-      actionpack (= 8.0.2.1)
-      activerecord (= 8.0.2.1)
-      activestorage (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    actiontext (8.0.3)
+      actionpack (= 8.0.3)
+      activerecord (= 8.0.3)
+      activestorage (= 8.0.3)
+      activesupport (= 8.0.3)
       globalid (>= 0.6.0)
       nokogiri (>= 1.8.5)
-    actionview (8.0.2.1)
-      activesupport (= 8.0.2.1)
+    actionview (8.0.3)
+      activesupport (= 8.0.3)
       builder (~> 3.1)
       erubi (~> 1.11)
       rails-dom-testing (~> 2.2)
       rails-html-sanitizer (~> 1.6)
-    activejob (8.0.2.1)
-      activesupport (= 8.0.2.1)
+    activejob (8.0.3)
+      activesupport (= 8.0.3)
       globalid (>= 0.3.6)
-    activemodel (8.0.2.1)
-      activesupport (= 8.0.2.1)
-    activerecord (8.0.2.1)
-      activemodel (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    activemodel (8.0.3)
+      activesupport (= 8.0.3)
+    activerecord (8.0.3)
+      activemodel (= 8.0.3)
+      activesupport (= 8.0.3)
       timeout (>= 0.4.0)
     activerecord-postgis-adapter (11.0.0)
       activerecord (~> 8.0.0)
       rgeo-activerecord (~> 8.0.0)
-    activestorage (8.0.2.1)
-      actionpack (= 8.0.2.1)
-      activejob (= 8.0.2.1)
-      activerecord (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    activestorage (8.0.3)
+      actionpack (= 8.0.3)
+      activejob (= 8.0.3)
+      activerecord (= 8.0.3)
+      activesupport (= 8.0.3)
       marcel (~> 1.0)
-    activesupport (8.0.2.1)
+    activesupport (8.0.3)
       base64
       benchmark (>= 0.3)
       bigdecimal
@@ -142,7 +142,7 @@ GEM
     data_migrate (11.3.0)
       activerecord (>= 6.1)
       railties (>= 6.1)
-    database_consistency (2.0.4)
+    database_consistency (2.0.6)
       activerecord (>= 3.2)
     date (3.4.1)
     debug (1.11.0)
@@ -163,7 +163,7 @@ GEM
     drb (2.2.3)
     erb (5.0.2)
     erubi (1.13.1)
-    et-orbi (1.2.11)
+    et-orbi (1.4.0)
       tzinfo
     factory_bot (6.5.5)
       activesupport (>= 6.1.0)
@@ -180,10 +180,10 @@ GEM
     ffi (1.17.2-x86_64-linux-gnu)
     foreman (0.90.0)
       thor (~> 1.4)
-    fugit (1.11.1)
-      et-orbi (~> 1, >= 1.2.11)
+    fugit (1.12.1)
+      et-orbi (~> 1.4)
       raabro (~> 1.4)
-    globalid (1.2.1)
+    globalid (1.3.0)
       activesupport (>= 6.1)
     gpx (1.2.1)
       csv
@@ -240,12 +240,13 @@ GEM
     loofah (2.24.1)
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
-    mail (2.8.1)
+    mail (2.9.0)
+      logger
       mini_mime (>= 0.1.1)
       net-imap
       net-pop
       net-smtp
-    marcel (1.0.4)
+    marcel (1.1.0)
     matrix (0.4.2)
     method_source (1.1.0)
     mini_mime (1.1.5)
@@ -255,7 +256,7 @@ GEM
     multi_json (1.15.0)
     multi_xml (0.7.1)
       bigdecimal (~> 3.1)
-    net-imap (0.5.9)
+    net-imap (0.5.12)
       date
       net-protocol
     net-pop (0.1.2)
@@ -315,7 +316,7 @@ GEM
     public_suffix (6.0.1)
     puma (7.1.0)
       nio4r (~> 2.0)
-    pundit (2.5.0)
+    pundit (2.5.2)
       activesupport (>= 3.0.0)
     raabro (1.4.0)
     racc (1.8.1)
@@ -327,20 +328,20 @@ GEM
       rack (>= 1.3)
     rackup (2.2.1)
       rack (>= 3)
-    rails (8.0.2.1)
-      actioncable (= 8.0.2.1)
-      actionmailbox (= 8.0.2.1)
-      actionmailer (= 8.0.2.1)
-      actionpack (= 8.0.2.1)
-      actiontext (= 8.0.2.1)
-      actionview (= 8.0.2.1)
-      activejob (= 8.0.2.1)
-      activemodel (= 8.0.2.1)
-      activerecord (= 8.0.2.1)
-      activestorage (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    rails (8.0.3)
+      actioncable (= 8.0.3)
+      actionmailbox (= 8.0.3)
+      actionmailer (= 8.0.3)
+      actionpack (= 8.0.3)
+      actiontext (= 8.0.3)
+      actionview (= 8.0.3)
+      activejob (= 8.0.3)
+      activemodel (= 8.0.3)
+      activerecord (= 8.0.3)
+      activestorage (= 8.0.3)
+      activesupport (= 8.0.3)
       bundler (>= 1.15.0)
-      railties (= 8.0.2.1)
+      railties (= 8.0.3)
     rails-dom-testing (2.3.0)
       activesupport (>= 5.0.0)
       minitest
@@ -351,13 +352,14 @@ GEM
     rails_icons (1.4.0)
       nokogiri (~> 1.16, >= 1.16.4)
       rails (> 6.1)
-    railties (8.0.2.1)
-      actionpack (= 8.0.2.1)
-      activesupport (= 8.0.2.1)
+    railties (8.0.3)
+      actionpack (= 8.0.3)
+      activesupport (= 8.0.3)
       irb (~> 1.13)
       rackup (>= 1.0.0)
       rake (>= 12.2)
       thor (~> 1.0, >= 1.2.2)
+      tsort (>= 0.2)
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.3.0)
@@ -390,13 +392,13 @@ GEM
     rqrcode_core (2.0.0)
     rspec-core (3.13.3)
       rspec-support (~> 3.13.0)
-    rspec-expectations (3.13.4)
+    rspec-expectations (3.13.5)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
-    rspec-mocks (3.13.4)
+    rspec-mocks (3.13.6)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
-    rspec-rails (8.0.0)
+    rspec-rails (8.0.2)
       actionpack (>= 7.2)
       activesupport (>= 7.2)
       railties (>= 7.2)
@@ -453,13 +455,13 @@ GEM
       concurrent-ruby (~> 1.0, >= 1.0.2)
     shoulda-matchers (6.5.0)
       activesupport (>= 5.2.0)
-    sidekiq (8.0.4)
+    sidekiq (8.0.8)
       connection_pool (>= 2.5.0)
       json (>= 2.9.0)
       logger (>= 1.6.2)
       rack (>= 3.1.0)
       redis-client (>= 0.23.2)
-    sidekiq-cron (2.3.0)
+    sidekiq-cron (2.3.1)
       cronex (>= 0.13.0)
       fugit (~> 1.8, >= 1.11.1)
       globalid (>= 1.0.1)
@@ -483,23 +485,23 @@ GEM
     stimulus-rails (1.3.4)
       railties (>= 6.0.0)
     stringio (3.1.7)
-    strong_migrations (2.3.0)
-      activerecord (>= 7)
+    strong_migrations (2.5.1)
+      activerecord (>= 7.1)
     super_diff (0.16.0)
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
-    tailwindcss-rails (3.3.1)
+    tailwindcss-rails (4.3.0)
       railties (>= 7.0.0)
-      tailwindcss-ruby (~> 3.0)
-    tailwindcss-ruby (3.4.17)
-    tailwindcss-ruby (3.4.17-aarch64-linux)
-    tailwindcss-ruby (3.4.17-arm-linux)
-    tailwindcss-ruby (3.4.17-arm64-darwin)
-    tailwindcss-ruby (3.4.17-x86_64-darwin)
-    tailwindcss-ruby (3.4.17-x86_64-linux)
+      tailwindcss-ruby (~> 4.0)
+    tailwindcss-ruby (4.1.13)
+    tailwindcss-ruby (4.1.13-aarch64-linux-gnu)
+    tailwindcss-ruby (4.1.13-arm64-darwin)
+    tailwindcss-ruby (4.1.13-x86_64-darwin)
+    tailwindcss-ruby (4.1.13-x86_64-linux-gnu)
     thor (1.4.0)
     timeout (0.4.3)
+    tsort (0.2.0)
     turbo-rails (2.0.17)
       actionpack (>= 7.1.0)
       railties (>= 7.1.0)
@@ -546,7 +548,7 @@ DEPENDENCIES
   capybara
   chartkick
   data_migrate
-  database_consistency
+  database_consistency (>= 2.0.5)
   debug
   devise
   dotenv-rails
@@ -570,8 +572,8 @@ DEPENDENCIES
   pry-byebug
   pry-rails
   puma
-  pundit
-  rails (~> 8.0)
+  pundit (>= 2.5.1)
+  rails (~> 8.0, >= 8.0.3)
   rails_icons
   redis
   rexml
@@ -579,27 +581,27 @@ DEPENDENCIES
   rgeo-activerecord
   rgeo-geojson
   rqrcode (~> 3.0)
-  rspec-rails
+  rspec-rails (>= 8.0.1)
   rswag-api
   rswag-specs
   rswag-ui
-  rubocop-rails
+  rubocop-rails (>= 2.33.4)
   rubyzip (~> 3.2)
   selenium-webdriver
-  sentry-rails
+  sentry-rails (>= 5.27.0)
   sentry-ruby
   shoulda-matchers
-  sidekiq
-  sidekiq-cron
+  sidekiq (>= 8.0.5)
+  sidekiq-cron (>= 2.3.1)
   sidekiq-limit_fetch
   simplecov
   sprockets-rails
   stackprof
   stimulus-rails
-  strong_migrations
+  strong_migrations (>= 2.4.0)
   super_diff
-  tailwindcss-rails
-  turbo-rails
+  tailwindcss-rails (>= 3.3.2)
+  turbo-rails (>= 2.0.17)
   tzinfo-data
   webmock
 
