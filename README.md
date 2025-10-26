@@ -126,6 +126,14 @@ Feel free to change them in the account settings.
 - Provide credentials for Immich or Photoprism (or both!) and Dawarich will automatically import geodata from your photos.
 - You'll also be able to visualize your photos on the map!
 
+### 🔐 Authentication
+- Multiple authentication options:
+  - Email/Password (built-in)
+  - GitHub OAuth
+  - Google OAuth2
+  - OpenID Connect (OIDC) - works with Authelia, Authentik, Keycloak, and other OIDC providers
+- See [OIDC Setup Guide](OIDC_SETUP.md) for detailed configuration instructions
+
 ### 📥 Import Your Data
 - Import from various sources:
   - Google Maps Timeline

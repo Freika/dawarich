@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED]
+
+- Implemented authentication via GitHub and Google for Dawarich Cloud.
+- Implemented OpenID Connect authentication for self-hosted Dawarich instances. #66
+
 # [0.34.0] - 2025-10-10
 
 ## The Family release

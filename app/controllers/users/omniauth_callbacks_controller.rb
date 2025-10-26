@@ -9,6 +9,36 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     handle_auth('Google')
   end
 
+  def openid_connect
+    handle_auth('OpenID Connect')
+  end
+
+  def failure
+    error_type = request.env['omniauth.error.type']
+    error = request.env['omniauth.error']
+
+    # Provide user-friendly error messages
+    error_message =
+      case error_type
+      when :invalid_credentials
+        'Invalid credentials. Please check your username and password.'
+      when :timeout
+        'Connection timeout. Please try again.'
+      when :csrf_detected
+        'Security error detected. Please try again.'
+      else
+        if error&.message&.include?('Discovery')
+          'Unable to connect to authentication provider. Please contact your administrator.'
+        elsif error&.message&.include?('Issuer mismatch')
+          'Authentication provider configuration error. Please contact your administrator.'
+        else
+          "Authentication failed: #{params[:message] || error&.message || 'Unknown error'}"
+        end
+      end
+
+    redirect_to root_path, alert: error_message
+  end
+
   private
 
   def handle_auth(provider)
@@ -20,9 +50,5 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     else
       redirect_to new_user_registration_url, alert: @user.errors.full_messages.join("\n")
     end
-  end
-
-  def failure
-    redirect_to root_path, alert: "Authentication failed: #{params[:message]}"
   end
 end
