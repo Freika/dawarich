@@ -171,6 +171,12 @@ GEM
       factory_bot (~> 6.5)
       railties (>= 6.1.0)
     fakeredis (0.1.4)
+    faraday (2.14.0)
+      faraday-net_http (>= 2.0, < 3.5)
+      json
+      logger
+    faraday-net_http (3.4.1)
+      net-http (>= 0.5.0)
     ffaker (2.25.0)
     ffi (1.17.2-aarch64-linux-gnu)
     ffi (1.17.2-arm-linux-gnu)
@@ -196,6 +202,7 @@ GEM
       rgeo-geojson (~> 2.1)
       zeitwerk (~> 2.5)
     hashdiff (1.1.2)
+    hashie (5.0.0)
     httparty (0.23.1)
       csv
       mini_mime (>= 1.0.0)
@@ -256,6 +263,8 @@ GEM
     multi_json (1.15.0)
     multi_xml (0.7.1)
       bigdecimal (~> 3.1)
+    net-http (0.6.0)
+      uri
     net-imap (0.5.12)
       date
       net-protocol
@@ -279,9 +288,36 @@ GEM
       racc (~> 1.4)
     nokogiri (1.18.10-x86_64-linux-gnu)
       racc (~> 1.4)
+    oauth2 (2.0.17)
+      faraday (>= 0.17.3, < 4.0)
+      jwt (>= 1.0, < 4.0)
+      logger (~> 1.2)
+      multi_xml (~> 0.5)
+      rack (>= 1.2, < 4)
+      snaky_hash (~> 2.0, >= 2.0.3)
+      version_gem (~> 1.1, >= 1.1.9)
     oj (3.16.11)
       bigdecimal (>= 3.0)
       ostruct (>= 0.2)
+    omniauth (2.1.4)
+      hashie (>= 3.4.6)
+      logger
+      rack (>= 2.2.3)
+      rack-protection
+    omniauth-github (2.0.1)
+      omniauth (~> 2.0)
+      omniauth-oauth2 (~> 1.8)
+    omniauth-google-oauth2 (1.2.1)
+      jwt (>= 2.9.2)
+      oauth2 (~> 2.0)
+      omniauth (~> 2.0)
+      omniauth-oauth2 (~> 1.8)
+    omniauth-oauth2 (1.8.0)
+      oauth2 (>= 1.4, < 3)
+      omniauth (~> 2.0)
+    omniauth-rails_csrf_protection (1.0.2)
+      actionpack (>= 4.2)
+      omniauth (~> 2.0)
     optimist (3.2.1)
     orm_adapter (0.5.0)
     ostruct (0.6.1)
@@ -321,6 +357,10 @@ GEM
     raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.2)
+    rack-protection (4.2.1)
+      base64 (>= 0.1.0)
+      logger (>= 1.6.0)
+      rack (>= 3.0.0, < 4)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -474,6 +514,9 @@ GEM
       simplecov_json_formatter (~> 0.1)
     simplecov-html (0.13.1)
     simplecov_json_formatter (0.1.4)
+    snaky_hash (2.0.3)
+      hashie (>= 0.1.0, < 6)
+      version_gem (>= 1.1.8, < 3)
     sprockets (4.2.1)
       concurrent-ruby (~> 1.0)
       rack (>= 2.2.4, < 4)
@@ -491,14 +534,15 @@ GEM
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
-    tailwindcss-rails (4.3.0)
+    tailwindcss-rails (3.3.2)
       railties (>= 7.0.0)
-      tailwindcss-ruby (~> 4.0)
-    tailwindcss-ruby (4.1.13)
-    tailwindcss-ruby (4.1.13-aarch64-linux-gnu)
-    tailwindcss-ruby (4.1.13-arm64-darwin)
-    tailwindcss-ruby (4.1.13-x86_64-darwin)
-    tailwindcss-ruby (4.1.13-x86_64-linux-gnu)
+      tailwindcss-ruby (~> 3.0)
+    tailwindcss-ruby (3.4.17)
+    tailwindcss-ruby (3.4.17-aarch64-linux)
+    tailwindcss-ruby (3.4.17-arm-linux)
+    tailwindcss-ruby (3.4.17-arm64-darwin)
+    tailwindcss-ruby (3.4.17-x86_64-darwin)
+    tailwindcss-ruby (3.4.17-x86_64-linux)
     thor (1.4.0)
     timeout (0.4.3)
     tsort (0.2.0)
@@ -513,6 +557,7 @@ GEM
     unicode-emoji (4.1.0)
     uri (1.0.3)
     useragent (0.16.11)
+    version_gem (1.1.9)
     warden (1.2.9)
       rack (>= 2.0.9)
     webmock (3.25.1)
@@ -566,6 +611,9 @@ DEPENDENCIES
   kaminari
   lograge
   oj
+  omniauth-github (~> 2.0.0)
+  omniauth-google-oauth2
+  omniauth-rails_csrf_protection
   parallel
   pg
   prometheus_exporter
@@ -600,7 +648,7 @@ DEPENDENCIES
   stimulus-rails
   strong_migrations (>= 2.4.0)
   super_diff
-  tailwindcss-rails (>= 3.3.2)
+  tailwindcss-rails (= 3.3.2)
   turbo-rails (>= 2.0.17)
   tzinfo-data
   webmock

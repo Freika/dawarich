@@ -3,7 +3,8 @@
 class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   include UserFamily
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable, :trackable
+         :recoverable, :rememberable, :validatable, :trackable,
+         :omniauthable, omniauth_providers: %i[github]
 
   has_many :points, dependent: :destroy
   has_many :imports,        dependent: :destroy
@@ -143,6 +144,19 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
 
   def cities_visited_uncached
     points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+  end
+
+  def self.from_omniauth(access_token)
+    data = access_token.info
+    user = User.where(email: data['email']).first
+
+    return user if user
+
+    binding.pry
+    User.create(
+      email: data['email'],
+      password: Devise.friendly_token[0, 20]
+    )
   end
 
   private
