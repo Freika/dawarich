@@ -152,7 +152,6 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
 
     return user if user
 
-    binding.pry
     User.create(
       email: data['email'],
       password: Devise.friendly_token[0, 20]
