@@ -4,7 +4,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   include UserFamily
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
-         :omniauthable, omniauth_providers: %i[github]
+         :omniauthable, omniauth_providers: %i[github google_oauth2]
 
   has_many :points, dependent: :destroy
   has_many :imports,        dependent: :destroy
