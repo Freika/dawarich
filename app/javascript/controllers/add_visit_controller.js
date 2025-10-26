@@ -1,7 +1,10 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import { showFlashMessage } from "../maps/helpers";
-import { applyThemeToButton } from "../maps/theme_utils";
+import {
+  setAddVisitButtonActive,
+  setAddVisitButtonInactive
+} from "../maps/map_controls";
 
 export default class extends Controller {
   static targets = [""];
@@ -71,39 +74,26 @@ export default class extends Controller {
   setupAddVisitButton() {
     if (!this.map || this.addVisitButton) return;
 
-    // Create the Add Visit control
-    const AddVisitControl = L.Control.extend({
-      onAdd: (map) => {
-        const button = L.DomUtil.create('button', 'leaflet-control-button add-visit-button');
-        button.innerHTML = '➕';
-        button.title = 'Add a visit';
+    // The Add Visit button is now created centrally by maps_controller.js
+    // via addTopRightButtons(). We just need to find it and attach our handler.
+    setTimeout(() => {
+      this.addVisitButton = document.querySelector('.add-visit-button');
 
-        // Style the button with theme-aware styling
-        applyThemeToButton(button, this.userThemeValue || 'dark');
-        button.style.width = '48px';
-        button.style.height = '48px';
-        button.style.borderRadius = '4px';
-        button.style.padding = '0';
-        button.style.lineHeight = '48px';
-        button.style.fontSize = '18px';
-        button.style.textAlign = 'center';
-        button.style.transition = 'all 0.2s ease';
-
-        // Disable map interactions when clicking the button
-        L.DomEvent.disableClickPropagation(button);
-
-        // Toggle add visit mode on button click
-        L.DomEvent.on(button, 'click', () => {
-          this.toggleAddVisitMode(button);
-        });
-
-        this.addVisitButton = button;
-        return button;
+      if (this.addVisitButton) {
+        // Attach our click handler to the existing button
+        // Use event capturing and stopPropagation to prevent map click
+        this.addVisitButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleAddVisitMode(this.addVisitButton);
+        }, true); // Use capture phase
+      } else {
+        console.warn('Add visit button not found, retrying...');
+        // Retry if button hasn't been created yet
+        this.addVisitButton = null;
+        setTimeout(() => this.setupAddVisitButton(), 200);
       }
-    });
-
-    // Add the control to the map (top right, below existing buttons)
-    this.map.addControl(new AddVisitControl({ position: 'topright' }));
+    }, 100);
   }
 
   toggleAddVisitMode(button) {
@@ -120,15 +110,18 @@ export default class extends Controller {
     this.isAddingVisit = true;
 
     // Update button style to show active state
-    button.style.backgroundColor = '#dc3545';
-    button.style.color = 'white';
-    button.innerHTML = '✕';
+    setAddVisitButtonActive(button);
 
     // Change cursor to crosshair
     this.map.getContainer().style.cursor = 'crosshair';
 
-    // Add map click listener
-    this.map.on('click', this.onMapClick, this);
+    // Add map click listener with a small delay to prevent immediate trigger
+    // This ensures the button click doesn't propagate to the map
+    setTimeout(() => {
+      if (this.isAddingVisit) {
+        this.map.on('click', this.onMapClick, this);
+      }
+    }, 100);
 
     showFlashMessage('notice', 'Click on the map to place a visit');
   }
@@ -136,9 +129,8 @@ export default class extends Controller {
   exitAddVisitMode(button) {
     this.isAddingVisit = false;
 
-    // Reset button style with theme-aware styling
-    applyThemeToButton(button, this.userThemeValue || 'dark');
-    button.innerHTML = '➕';
+    // Reset button style to inactive state
+    setAddVisitButtonInactive(button, this.userThemeValue || 'dark');
 
     // Reset cursor
     this.map.getContainer().style.cursor = '';
@@ -185,6 +177,12 @@ export default class extends Controller {
   }
 
   showVisitForm(lat, lng) {
+    // Close any existing popup first to ensure only one popup is open
+    if (this.currentPopup) {
+      this.map.closePopup(this.currentPopup);
+      this.currentPopup = null;
+    }
+
     // Get current date/time for default values
     const now = new Date();
     const oneHourLater = new Date(now.getTime() + (60 * 60 * 1000));
@@ -290,7 +288,8 @@ export default class extends Controller {
         started_at: formData.get('started_at'),
         ended_at: formData.get('ended_at'),
         latitude: formData.get('latitude'),
-        longitude: formData.get('longitude')
+        longitude: formData.get('longitude'),
+        status: 'confirmed' // Manually created visits should be confirmed
       }
     };
 
@@ -324,15 +323,14 @@ export default class extends Controller {
 
       if (response.ok) {
         showFlashMessage('notice', `Visit "${visitData.visit.name}" created successfully!`);
+
+        // Store the created visit data
+        const createdVisit = data;
+
         this.exitAddVisitMode(this.addVisitButton);
 
-        // Refresh visits layer - this will clear and refetch data
-        this.refreshVisitsLayer();
-
-        // Ensure confirmed visits layer is enabled (with a small delay for the API call to complete)
-        setTimeout(() => {
-          this.ensureVisitsLayersEnabled();
-        }, 300);
+        // Add the newly created visit marker immediately to the map
+        this.addCreatedVisitToMap(createdVisit, visitData.visit.latitude, visitData.visit.longitude);
       } else {
         const errorMessage = data.error || data.message || 'Failed to create visit';
         showFlashMessage('error', errorMessage);
@@ -347,95 +345,91 @@ export default class extends Controller {
     }
   }
 
-  refreshVisitsLayer() {
-    console.log('Attempting to refresh visits layer...');
+  addCreatedVisitToMap(visitData, latitude, longitude) {
+    console.log('Adding newly created visit to map immediately', { latitude, longitude, visitData });
 
-    // Try multiple approaches to refresh the visits layer
     const mapsController = document.querySelector('[data-controller*="maps"]');
-    if (mapsController) {
-      // Try to get the Stimulus controller instance
-      const stimulusController = this.application.getControllerForElementAndIdentifier(mapsController, 'maps');
-
-      if (stimulusController && stimulusController.visitsManager) {
-        console.log('Found maps controller with visits manager');
-
-        // Clear existing visits and fetch fresh data
-        if (stimulusController.visitsManager.visitCircles) {
-          stimulusController.visitsManager.visitCircles.clearLayers();
-        }
-        if (stimulusController.visitsManager.confirmedVisitCircles) {
-          stimulusController.visitsManager.confirmedVisitCircles.clearLayers();
-        }
-
-        // Refresh the visits data
-        if (typeof stimulusController.visitsManager.fetchAndDisplayVisits === 'function') {
-          console.log('Refreshing visits data...');
-          stimulusController.visitsManager.fetchAndDisplayVisits();
-        }
-      } else {
-        console.log('Could not find maps controller or visits manager');
-
-        // Fallback: Try to dispatch a custom event
-        const refreshEvent = new CustomEvent('visits:refresh', { bubbles: true });
-        mapsController.dispatchEvent(refreshEvent);
-      }
-    } else {
+    if (!mapsController) {
       console.log('Could not find maps controller element');
+      return;
     }
+
+    const stimulusController = this.application.getControllerForElementAndIdentifier(mapsController, 'maps');
+    if (!stimulusController || !stimulusController.visitsManager) {
+      console.log('Could not find maps controller or visits manager');
+      return;
+    }
+
+    const visitsManager = stimulusController.visitsManager;
+
+    // Create a circle for the newly created visit (always confirmed)
+    const circle = L.circle([latitude, longitude], {
+      color: '#4A90E2', // Border color for confirmed visits
+      fillColor: '#4A90E2', // Fill color for confirmed visits
+      fillOpacity: 0.5,
+      radius: 110, // Confirmed visit size
+      weight: 2,
+      interactive: true,
+      bubblingMouseEvents: false,
+      pane: 'confirmedVisitsPane'
+    });
+
+    // Add the circle to the confirmed visits layer
+    visitsManager.confirmedVisitCircles.addLayer(circle);
+    console.log('✅ Added newly created confirmed visit circle to layer');
+    console.log('Confirmed visits layer info:', {
+      layerCount: visitsManager.confirmedVisitCircles.getLayers().length,
+      isOnMap: this.map.hasLayer(visitsManager.confirmedVisitCircles)
+    });
+
+    // Make sure the layer is visible on the map
+    if (!this.map.hasLayer(visitsManager.confirmedVisitCircles)) {
+      this.map.addLayer(visitsManager.confirmedVisitCircles);
+      console.log('✅ Added confirmed visits layer to map');
+    }
+
+    // Check if the layer control has the confirmed visits layer enabled
+    this.ensureConfirmedVisitsLayerEnabled();
   }
 
-  ensureVisitsLayersEnabled() {
-    console.log('Ensuring visits layers are enabled...');
-
-    const mapsController = document.querySelector('[data-controller*="maps"]');
-    if (mapsController) {
-      const stimulusController = this.application.getControllerForElementAndIdentifier(mapsController, 'maps');
-
-      if (stimulusController && stimulusController.map && stimulusController.visitsManager) {
-        const map = stimulusController.map;
-        const visitsManager = stimulusController.visitsManager;
-
-        // Get the confirmed visits layer (newly created visits are always confirmed)
-        const confirmedVisitsLayer = visitsManager.getConfirmedVisitCirclesLayer();
-
-        // Ensure confirmed visits layer is added to map since we create confirmed visits
-        if (confirmedVisitsLayer && !map.hasLayer(confirmedVisitsLayer)) {
-          console.log('Adding confirmed visits layer to map');
-          map.addLayer(confirmedVisitsLayer);
-
-          // Update the layer control checkbox to reflect the layer is now active
-          this.updateLayerControlCheckbox('Confirmed Visits', true);
-        }
-
-        // Refresh visits data to include the new visit
-        if (typeof visitsManager.fetchAndDisplayVisits === 'function') {
-          console.log('Final refresh of visits to show new visit...');
-          visitsManager.fetchAndDisplayVisits();
-        }
-      }
-    }
-  }
-
-  updateLayerControlCheckbox(layerName, isEnabled) {
-    // Find the layer control input for the specified layer
+  ensureConfirmedVisitsLayerEnabled() {
+    // Find the layer control and check/enable the "Confirmed Visits" checkbox
     const layerControlContainer = document.querySelector('.leaflet-control-layers');
     if (!layerControlContainer) {
       console.log('Layer control container not found');
       return;
     }
 
-    const inputs = layerControlContainer.querySelectorAll('input[type="checkbox"]');
-    inputs.forEach(input => {
-      const label = input.nextElementSibling;
-      if (label && label.textContent.trim() === layerName) {
-        console.log(`Updating ${layerName} checkbox to ${isEnabled}`);
-        input.checked = isEnabled;
+    // Expand the layer control if it's collapsed
+    const layerControlExpand = layerControlContainer.querySelector('.leaflet-control-layers-toggle');
+    if (layerControlExpand) {
+      layerControlExpand.click();
+    }
 
-        // Trigger change event to ensure proper state management
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    });
+    setTimeout(() => {
+      const inputs = layerControlContainer.querySelectorAll('input[type="checkbox"]');
+      inputs.forEach(input => {
+        const label = input.nextElementSibling;
+        if (label && label.textContent.trim().includes('Confirmed Visits')) {
+          console.log('Found Confirmed Visits checkbox, current state:', input.checked);
+          if (!input.checked) {
+            console.log('Enabling Confirmed Visits layer via checkbox');
+            input.checked = true;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      });
+    }, 100);
   }
+
+  refreshVisitsLayer() {
+    // Don't auto-refresh after creating a visit
+    // The visit is already visible on the map from addCreatedVisitToMap()
+    // Auto-refresh would clear it because fetchAndDisplayVisits uses URL date params
+    // which might not include the newly created visit
+    console.log('Skipping auto-refresh - visit already added to map');
+  }
+
 
   cleanup() {
     if (this.map) {

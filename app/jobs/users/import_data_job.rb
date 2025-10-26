@@ -17,6 +17,8 @@ class Users::ImportDataJob < ApplicationJob
 
     import_stats = Users::ImportData.new(user, archive_path).import
 
+    User.reset_counters(user.id, :points)
+
     Rails.logger.info "Import completed successfully for user #{user.email}: #{import_stats}"
   rescue ActiveRecord::RecordNotFound => e
     ExceptionReporter.call(e, "Import job failed for import_id #{import_id} - import not found")

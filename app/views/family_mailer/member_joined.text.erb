@@ -1,0 +1,18 @@
+Great news! Someone joined your family!
+
+Hi <%= @family.owner.email %>!
+
+We're excited to let you know that <%= @user.email %> has just joined your family "<%= @family.name %>" on Dawarich!
+
+Now you can:
+• See <%= @user.email %>'s current location (if they've enabled sharing)
+• Stay connected with your growing family
+• Share your location with <%= @user.email %>
+• Manage family members and settings from your family page
+
+TIP: You can manage your family members and privacy settings at any time from your family dashboard.
+
+Your family now has <%= @family.member_count %> member<%= @family.member_count == 1 ? '' : 's' %>.
+
+Best regards,
+Evgenii from Dawarich

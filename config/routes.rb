@@ -56,6 +56,20 @@ Rails.application.routes.draw do
   resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
   resources :trips
+
+  # Family management routes (only if feature is enabled)
+  if DawarichSettings.family_feature_enabled?
+    resource :family, only: %i[show new create edit update destroy] do
+      patch :update_location_sharing, on: :member
+
+      resources :invitations, except: %i[edit update], controller: 'family/invitations'
+      resources :members, only: %i[destroy], controller: 'family/memberships'
+    end
+
+    get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
+    post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
+  end
+
   resources :points, only: %i[index] do
     collection do
       delete :bulk_destroy
@@ -87,15 +101,10 @@ Rails.application.routes.draw do
 
   get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
 
-  if SELF_HOSTED
-    devise_for :users, skip: [:registrations]
-    as :user do
-      get 'users/edit' => 'devise/registrations#edit', :as => 'edit_user_registration'
-      put 'users' => 'devise/registrations#update', :as => 'user_registration'
-    end
-  else
-    devise_for :users
-  end
+  devise_for :users, controllers: {
+    registrations: 'users/registrations',
+    sessions: 'users/sessions'
+  }
 
   resources :metrics, only: [:index]
 
@@ -154,6 +163,12 @@ Rails.application.routes.draw do
           collection do
             get :bounds
           end
+        end
+      end
+
+      resources :families, only: [] do
+        collection do
+          get :locations
         end
       end
 

@@ -4,7 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.33.1]
+# [0.34.0] - 2025-10-10
+
+## The Family release
+
+In this release we're introducing family features that allow users to create family groups, invite members, and share location data. Family owners can manage members, control sharing settings, and ensure secure access to shared information. Location sharing is optional and can be enabled or disabled by each member individually. Users can join only one family at a time. Location sharing settings can be set to share location for 1, 6, 12, 24 hours or permanently. Family features are now available only for self-hosted instances and will be available in the cloud in the future. When "Family members" layer is enabled on the map, family member markers will be updated in real-time.
+
+## Added
+
+- Users can now create family groups and invite members to join.
+
+## Fixed
+
+- Sign out button works again. #1844
+- Fixed user deletion bug where user could not be deleted due to counter cache on points.
+- Users always have default distance unit set to kilometers. #1832
+- All confirmation dialogs are now showing only once.
+
+## Changed
+
+- Minor versions of Dawarich are being built for ARM64 architecture as well again. #1840
+- Importing process for Google Maps Timeline exports, GeoJSON and geodata from photos is now significantly faster.
+- The Map page now features a full-screen map.
+
+
+# [0.33.1] - 2025-10-07
 
 ## Changed
 

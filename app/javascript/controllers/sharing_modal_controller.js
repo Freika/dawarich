@@ -94,8 +94,8 @@ export default class extends Controller {
       // Show temporary success feedback
       const button = this.sharingLinkTarget.nextElementSibling
       const originalText = button.innerHTML
-      button.innerHTML = "✅ Copied!"
-      button.classList.add("btn-success")
+      button.innerHTML = "✅ Link Copied!"
+      button.classList.add("btn-outline btn-success")
 
       setTimeout(() => {
         button.innerHTML = originalText

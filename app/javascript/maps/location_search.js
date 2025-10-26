@@ -24,7 +24,7 @@ class LocationSearch {
     const SearchToggleControl = L.Control.extend({
       onAdd: function(map) {
         const button = L.DomUtil.create('button', 'location-search-toggle');
-        button.innerHTML = '🔍';
+        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search-icon lucide-search"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>';
         // Style the button with theme-aware styling
         applyThemeToButton(button, this.userTheme);
         button.style.width = '48px';
@@ -33,6 +33,9 @@ class LocationSearch {
         button.style.padding = '0';
         button.style.fontSize = '18px';
         button.style.marginTop = '10px'; // Space below settings button
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
         button.title = 'Search locations';
         button.id = 'location-search-toggle';
         return button;
@@ -174,8 +177,6 @@ class LocationSearch {
         container.addEventListener('DOMMouseScroll', (e) => {
           e.stopPropagation();
         }, { passive: false });
-
-        console.log('LocationSearch: Added scroll prevention to container', container.id || 'search-bar');
       }
     });
   }

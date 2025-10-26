@@ -28,12 +28,12 @@
       </div>
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2 text-center">
-          <%= link_to 'Export as GeoJSON', exports_path(start_at: @start_at, end_at: @end_at, file_format: :json), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "btn border border-base-300 hover:btn-ghost" %>
+          <%= link_to 'Export as GeoJSON', exports_path(start_at: @start_at, end_at: @end_at, file_format: :json), data: {  turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "btn border border-base-300 hover:btn-ghost" %>
         </div>
       </div>
       <div class="w-full md:w-2/12">
         <div class="flex flex-col space-y-2 text-center">
-          <%= link_to 'Export as GPX', exports_path(start_at: @start_at, end_at: @end_at, file_format: :gpx), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "btn border border-base-300 hover:btn-ghost" %>
+          <%= link_to 'Export as GPX', exports_path(start_at: @start_at, end_at: @end_at, file_format: :gpx), data: { turbo_confirm: "Are you sure? This will start background process of exporting points within timeframe, selected between #{@start_at} and #{@end_at}", turbo_method: :post }, class: "btn border border-base-300 hover:btn-ghost" %>
         </div>
       </div>
     </div>
@@ -47,7 +47,7 @@
     <div data-controller='checkbox-select-all'>
       <%= form_with url: bulk_destroy_points_path(params.permit!), method: :delete, id: :bulk_destroy_form do |f| %>
         <div class="flex justify-between my-5">
-          <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
+          <%= f.submit "Delete Selected", class: "px-4 py-2 bg-red-500 text-white rounded-md", data: { turbo_confirm: "Are you sure?", checkbox_select_all_target: "deleteButton" }, style: "display: none;" %>
           <div>
             <%= page_entries_info @points, entry_name: 'point' %>
           </div>

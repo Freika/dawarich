@@ -5,11 +5,6 @@
     { "url": "https://github.com/heroku/heroku-buildpack-nodejs.git" },
     { "url": "https://github.com/heroku/heroku-buildpack-ruby.git" }
   ],
-  "scripts": {
-    "dokku": {
-      "predeploy": "bundle exec rails db:migrate"
-    }
-  },
   "healthchecks": {
     "web": [
       {
