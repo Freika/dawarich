@@ -56,22 +56,7 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
     end
   end
 
-  describe 'GET /users/auth/github/callback' do
-    before do
-      mock_github_auth(email: email)
-    end
-
-    include_examples 'successful OAuth authentication', :github, 'GitHub'
-  end
-
-  describe 'GET /users/auth/google_oauth2/callback' do
-    before do
-      mock_google_auth(email: email)
-    end
-
-    include_examples 'successful OAuth authentication', :google_oauth2, 'Google'
-  end
-
+  # Self-hosted configuration (SELF_HOSTED=true) uses OpenID Connect
   describe 'GET /users/auth/openid_connect/callback' do
     before do
       mock_openid_connect_auth(email: email)
@@ -80,54 +65,16 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
     include_examples 'successful OAuth authentication', :openid_connect, 'OpenID Connect'
   end
 
-  describe 'OAuth flow integration' do
-    context 'with GitHub' do
-      before { mock_github_auth(email: 'github@example.com') }
-
-      it 'completes the full OAuth flow' do
-        # Simulate OAuth callback
-        expect do
-          Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:github]
-          get '/users/auth/github/callback'
-        end.to change(User, :count).by(1)
-
-        # Verify user is created
-        user = User.find_by(email: 'github@example.com')
-        expect(user).to be_present
-        expect(user.email).to eq('github@example.com')
-        expect(response).to redirect_to(root_path)
-      end
-    end
-
-    context 'with Google' do
-      before { mock_google_auth(email: 'google@example.com') }
-
-      it 'completes the full OAuth flow' do
-        # Simulate OAuth callback
-        expect do
-          Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:google_oauth2]
-          get '/users/auth/google_oauth2/callback'
-        end.to change(User, :count).by(1)
-
-        # Verify user is created
-        user = User.find_by(email: 'google@example.com')
-        expect(user).to be_present
-        expect(user.email).to eq('google@example.com')
-        expect(response).to redirect_to(root_path)
-      end
-    end
-
-    context 'with OpenID Connect (Authelia/Authentik)' do
+  describe 'OAuth flow integration with OpenID Connect' do
+    context 'with OpenID Connect (Authelia/Authentik/Keycloak)' do
       before { mock_openid_connect_auth(email: 'oidc@example.com') }
 
       it 'completes the full OAuth flow' do
-        # Simulate OAuth callback
         expect do
           Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
           get '/users/auth/openid_connect/callback'
         end.to change(User, :count).by(1)
 
-        # Verify user is created
         user = User.find_by(email: 'oidc@example.com')
         expect(user).to be_present
         expect(user.email).to eq('oidc@example.com')
@@ -137,24 +84,6 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
   end
 
   describe 'CSRF protection' do
-    it 'does not raise CSRF error for GitHub callback' do
-      mock_github_auth(email: email)
-
-      expect do
-        Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:github]
-        get '/users/auth/github/callback'
-      end.not_to raise_error
-    end
-
-    it 'does not raise CSRF error for Google callback' do
-      mock_google_auth(email: email)
-
-      expect do
-        Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:google_oauth2]
-        get '/users/auth/google_oauth2/callback'
-      end.not_to raise_error
-    end
-
     it 'does not raise CSRF error for OpenID Connect callback' do
       mock_openid_connect_auth(email: email)
 

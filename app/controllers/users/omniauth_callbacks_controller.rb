@@ -13,6 +13,10 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     handle_auth('OpenID Connect')
   end
 
+  def patreon
+    handle_auth('Patreon')
+  end
+
   def failure
     error_type = request.env['omniauth.error.type']
     error = request.env['omniauth.error']

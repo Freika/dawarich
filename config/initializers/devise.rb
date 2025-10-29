@@ -265,13 +265,31 @@ Devise.setup do |config|
   # ==> OmniAuth
   # Add a new OmniAuth provider. Check the wiki for more information on setting
   # up on your models and hooks.
-  config.omniauth :github, ENV['GITHUB_OAUTH_CLIENT_ID'], ENV['GITHUB_OAUTH_CLIENT_SECRET'], scope: 'user:email'
-  config.omniauth :google_oauth2, ENV['GOOGLE_OAUTH_CLIENT_ID'], ENV['GOOGLE_OAUTH_CLIENT_SECRET'],
-                  scope: 'userinfo.email,userinfo.profile'
 
+  # Cloud version: only GitHub, Google, and Patreon OAuth (when env vars present)
+  unless SELF_HOSTED
+    if ENV['GITHUB_OAUTH_CLIENT_ID'].present? && ENV['GITHUB_OAUTH_CLIENT_SECRET'].present?
+      config.omniauth :github, ENV['GITHUB_OAUTH_CLIENT_ID'], ENV['GITHUB_OAUTH_CLIENT_SECRET'], scope: 'user:email'
+      Rails.logger.info 'OAuth: GitHub configured'
+    end
+
+    if ENV['GOOGLE_OAUTH_CLIENT_ID'].present? && ENV['GOOGLE_OAUTH_CLIENT_SECRET'].present?
+      config.omniauth :google_oauth2, ENV['GOOGLE_OAUTH_CLIENT_ID'], ENV['GOOGLE_OAUTH_CLIENT_SECRET'],
+                      scope: 'userinfo.email,userinfo.profile'
+      Rails.logger.info 'OAuth: Google configured'
+    end
+
+    if ENV['PATREON_CLIENT_ID'].present? && ENV['PATREON_CLIENT_SECRET'].present?
+      config.omniauth :patreon, ENV['PATREON_CLIENT_ID'], ENV['PATREON_CLIENT_SECRET'],
+                      scope: 'identity identity[email]'
+      Rails.logger.info 'OAuth: Patreon configured'
+    end
+  end
+
+  # Self-hosted version: only OpenID Connect (when env vars present)
   # Generic OpenID Connect provider (Authelia, Authentik, Keycloak, etc.)
   # Supports both discovery mode (preferred) and manual endpoint configuration
-  if ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present?
+  if SELF_HOSTED && ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present?
     oidc_config = {
       name: :openid_connect,
       scope: %i[openid email profile],

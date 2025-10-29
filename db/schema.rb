@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_30_150256) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_28_160950) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -113,10 +113,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_150256) do
     t.integer "status", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["email"], name: "index_family_invitations_on_email"
-    t.index ["expires_at"], name: "index_family_invitations_on_expires_at"
-    t.index ["family_id"], name: "index_family_invitations_on_family_id"
-    t.index ["status"], name: "index_family_invitations_on_status"
+    t.index ["family_id", "email"], name: "index_family_invitations_on_family_id_and_email"
+    t.index ["family_id", "status", "expires_at"], name: "index_family_invitations_on_family_status_expires"
+    t.index ["status", "expires_at"], name: "index_family_invitations_on_status_and_expires_at"
+    t.index ["status", "updated_at"], name: "index_family_invitations_on_status_and_updated_at"
     t.index ["token"], name: "index_family_invitations_on_token", unique: true
   end
 
@@ -126,8 +126,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_150256) do
     t.integer "role", default: 1, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["family_id", "role"], name: "index_family_memberships_on_family_id_and_role"
-    t.index ["family_id"], name: "index_family_memberships_on_family_id"
+    t.index ["family_id", "role"], name: "index_family_memberships_on_family_and_role"
     t.index ["user_id"], name: "index_family_memberships_on_user_id", unique: true
   end
 
@@ -316,6 +315,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_150256) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
+    t.string "provider"
+    t.string "uid"
+    t.text "patreon_access_token"
+    t.text "patreon_refresh_token"
+    t.datetime "patreon_token_expires_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
@@ -342,11 +346,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_150256) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
-  add_foreign_key "families", "users", column: "creator_id", validate: false
-  add_foreign_key "family_invitations", "families", validate: false
-  add_foreign_key "family_invitations", "users", column: "invited_by_id", validate: false
-  add_foreign_key "family_memberships", "families", validate: false
-  add_foreign_key "family_memberships", "users", validate: false
+  add_foreign_key "families", "users", column: "creator_id"
+  add_foreign_key "family_invitations", "families"
+  add_foreign_key "family_invitations", "users", column: "invited_by_id"
+  add_foreign_key "family_memberships", "families"
+  add_foreign_key "family_memberships", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
