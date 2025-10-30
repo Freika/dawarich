@@ -3,6 +3,7 @@
 class Users::RegistrationsController < Devise::RegistrationsController
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
+  before_action :store_utm_params, only: %i[new]
 
   def new
     build_resource({})
@@ -16,8 +17,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def create
     super do |resource|
-      if resource.persisted? && @invitation
-        accept_invitation_for_user(resource)
+      if resource.persisted?
+        assign_utm_params(resource)
+        accept_invitation_for_user(resource) if @invitation
       end
     end
   end
@@ -89,5 +91,24 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def sign_up_params
     super
+  end
+
+  def store_utm_params
+    utm_params = %w[utm_source utm_medium utm_campaign utm_term utm_content]
+    utm_params.each do |param|
+      session[param] = params[param] if params[param].present?
+    end
+  end
+
+  def assign_utm_params(user)
+    utm_params = %w[utm_source utm_medium utm_campaign utm_term utm_content]
+    utm_data = {}
+
+    utm_params.each do |param|
+      utm_data[param] = session[param] if session[param].present?
+      session.delete(param) # Clean up session after assignment
+    end
+
+    user.update_columns(utm_data) if utm_data.any?
   end
 end

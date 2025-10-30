@@ -49,7 +49,7 @@ gem 'sprockets-rails'
 gem 'stackprof'
 gem 'stimulus-rails'
 gem 'strong_migrations', '>= 2.4.0'
-gem 'tailwindcss-rails', '>= 3.3.2'
+gem 'tailwindcss-rails', '= 3.3.2'
 gem 'turbo-rails', '>= 2.0.17'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 

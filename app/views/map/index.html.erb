@@ -1,10 +1,9 @@
 <% content_for :title, 'Map' %>
 
-<!-- Floating Date Navigation Controls -->
-<div class="fixed top-20 left-0 right-0 flex justify-center" style="z-index: 9999; margin-left: 80px; margin-right: 80px;">
-  <div style="width: 1500px; max-width: 100%;" data-controller="map-controls">
+<!-- Date Navigation Controls - Native Page Element -->
+<div class="w-full px-4 py-3 bg-base-100" data-controller="map-controls">
   <!-- Mobile: Compact Toggle Button -->
-  <div class="lg:hidden justify-center flex">
+  <div class="lg:hidden flex justify-center">
     <button
       type="button"
       data-action="click->map-controls#toggle"
@@ -19,7 +18,7 @@
   <!-- Expandable Panel (hidden on mobile by default, always visible on desktop) -->
   <div
     data-map-controls-target="panel"
-    class="hidden lg:!block bg-base-100 bg-opacity-95 rounded-lg shadow-lg p-4 mt-2 lg:mt-0 scale-80">
+    class="hidden lg:!block bg-base-100 rounded-lg shadow-lg p-4 mt-2 lg:mt-0">
     <%= form_with url: map_path(import_id: params[:import_id]), method: :get do |f| %>
       <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-end">
         <div class="w-full lg:w-1/12">
@@ -71,29 +70,30 @@
       </div>
     <% end %>
   </div>
-  </div>
 </div>
 
-<!-- Full Screen Map -->
-<div
-  id='map'
-  class="absolute inset-0 w-full h-full z-0"
-  data-controller="maps points add-visit family-members"
-  data-points-target="map"
-  data-api_key="<%= current_user.api_key %>"
-  data-self_hosted="<%= @self_hosted %>"
-  data-user_settings='<%= current_user.safe_settings.settings.to_json %>'
-  data-user_theme="<%= current_user&.theme || 'dark' %>"
-  data-coordinates='<%= @coordinates.to_json.html_safe %>'
-  data-tracks='<%= @tracks.to_json.html_safe %>'
-  data-distance="<%= @distance %>"
-  data-points_number="<%= @points_number %>"
-  data-timezone="<%= Rails.configuration.time_zone %>"
-  data-features='<%= @features.to_json.html_safe %>'
-  data-family-members-features-value='<%= @features.to_json.html_safe %>'
-  data-family-members-user-theme-value="<%= current_user&.theme || 'dark' %>">
-  <div data-maps-target="container" class="w-full h-full">
-    <div id="fog" class="fog"></div>
+<!-- Map Container - Fills remaining space -->
+<div class="w-full h-full">
+  <div
+    id='map'
+    class="w-full h-full"
+    data-controller="maps points add-visit family-members"
+    data-points-target="map"
+    data-api_key="<%= current_user.api_key %>"
+    data-self_hosted="<%= @self_hosted %>"
+    data-user_settings='<%= current_user.safe_settings.settings.to_json %>'
+    data-user_theme="<%= current_user&.theme || 'dark' %>"
+    data-coordinates='<%= @coordinates.to_json.html_safe %>'
+    data-tracks='<%= @tracks.to_json.html_safe %>'
+    data-distance="<%= @distance %>"
+    data-points_number="<%= @points_number %>"
+    data-timezone="<%= Rails.configuration.time_zone %>"
+    data-features='<%= @features.to_json.html_safe %>'
+    data-family-members-features-value='<%= @features.to_json.html_safe %>'
+    data-family-members-user-theme-value="<%= current_user&.theme || 'dark' %>">
+    <div data-maps-target="container" class="w-full h-full">
+      <div id="fog" class="fog"></div>
+    </div>
   </div>
 </div>
 
