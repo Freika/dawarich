@@ -1,4 +1,5 @@
 <% content_for :title, 'Map' %>
+<% use_maplibre = params[:maplibre] == 'true' || session[:use_maplibre] == true %>
 
 <!-- Floating Date Navigation Controls -->
 <div class="fixed top-20 left-0 right-0 flex justify-center" style="z-index: 9999; margin-left: 80px; margin-right: 80px;">
@@ -74,11 +75,24 @@
   </div>
 </div>
 
+<!-- Map Engine Toggle Button -->
+<div class="fixed top-24 right-4 z-50">
+  <% if use_maplibre %>
+    <%= link_to map_path(maplibre: 'false'), class: "btn btn-sm btn-primary shadow-lg" do %>
+      <span class="text-xs">Switch to Leaflet</span>
+    <% end %>
+  <% else %>
+    <%= link_to map_path(maplibre: 'true'), class: "btn btn-sm btn-primary shadow-lg" do %>
+      <span class="text-xs">Switch to MapLibre</span>
+    <% end %>
+  <% end %>
+</div>
+
 <!-- Full Screen Map -->
 <div
   id='map'
   class="absolute inset-0 w-full h-full z-0"
-  data-controller="maps points add-visit family-members"
+  data-controller="<%= use_maplibre ? 'maplibre' : 'maps' %> points add-visit family-members"
   data-points-target="map"
   data-api_key="<%= current_user.api_key %>"
   data-self_hosted="<%= @self_hosted %>"
@@ -92,8 +106,10 @@
   data-features='<%= @features.to_json.html_safe %>'
   data-family-members-features-value='<%= @features.to_json.html_safe %>'
   data-family-members-user-theme-value="<%= current_user&.theme || 'dark' %>">
-  <div data-maps-target="container" class="w-full h-full">
-    <div id="fog" class="fog"></div>
+  <div data-<%= use_maplibre ? 'maplibre' : 'maps' %>-target="container" class="w-full h-full">
+    <% unless use_maplibre %>
+      <div id="fog" class="fog"></div>
+    <% end %>
   </div>
 </div>
 

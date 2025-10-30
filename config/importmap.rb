@@ -4,6 +4,7 @@
 
 pin_all_from 'app/javascript/channels', under: 'channels'
 pin_all_from 'app/javascript/maps', under: 'maps'
+pin_all_from 'app/javascript/maplibre', under: 'maplibre'
 
 pin 'application', preload: true
 pin '@rails/actioncable', to: 'actioncable.esm.js'
@@ -16,6 +17,7 @@ pin_all_from 'app/javascript/controllers', under: 'controllers'
 
 pin 'leaflet' # @1.9.4
 pin 'leaflet-providers' # @2.0.0
+pin "maplibre-gl" # @5.10.0
 pin 'chartkick', to: 'chartkick.js'
 pin 'Chart.bundle', to: 'Chart.bundle.js'
 pin 'leaflet.heat' # @0.2.0

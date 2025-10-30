@@ -491,14 +491,15 @@ GEM
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
-    tailwindcss-rails (4.3.0)
+    tailwindcss-rails (3.3.2)
       railties (>= 7.0.0)
-      tailwindcss-ruby (~> 4.0)
-    tailwindcss-ruby (4.1.13)
-    tailwindcss-ruby (4.1.13-aarch64-linux-gnu)
-    tailwindcss-ruby (4.1.13-arm64-darwin)
-    tailwindcss-ruby (4.1.13-x86_64-darwin)
-    tailwindcss-ruby (4.1.13-x86_64-linux-gnu)
+      tailwindcss-ruby (~> 3.0)
+    tailwindcss-ruby (3.4.17)
+    tailwindcss-ruby (3.4.17-aarch64-linux)
+    tailwindcss-ruby (3.4.17-arm-linux)
+    tailwindcss-ruby (3.4.17-arm64-darwin)
+    tailwindcss-ruby (3.4.17-x86_64-darwin)
+    tailwindcss-ruby (3.4.17-x86_64-linux)
     thor (1.4.0)
     timeout (0.4.3)
     tsort (0.2.0)
@@ -600,7 +601,7 @@ DEPENDENCIES
   stimulus-rails
   strong_migrations (>= 2.4.0)
   super_diff
-  tailwindcss-rails (>= 3.3.2)
+  tailwindcss-rails (= 3.3.2)
   turbo-rails (>= 2.0.17)
   tzinfo-data
   webmock
