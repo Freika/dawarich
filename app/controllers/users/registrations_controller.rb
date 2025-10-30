@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 class Users::RegistrationsController < Devise::RegistrationsController
+  include UtmTrackable
+
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
-  before_action :store_utm_params, only: %i[new]
+  before_action :store_utm_params, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
 
   def new
     build_resource({})
@@ -67,8 +69,8 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def invitation_token
     @invitation_token ||= params[:invitation_token] ||
-                         params.dig(:user, :invitation_token) ||
-                         session[:invitation_token]
+                          params.dig(:user, :invitation_token) ||
+                          session[:invitation_token]
   end
 
   def accept_invitation_for_user(user)
@@ -82,33 +84,16 @@ class Users::RegistrationsController < Devise::RegistrationsController
     if service.call
       flash[:notice] = "Welcome to #{@invitation.family.name}! You're now part of the family."
     else
-      flash[:alert] = "Account created successfully, but there was an issue accepting the invitation: #{service.error_message}"
+      flash[:alert] =
+        "Account created successfully, but there was an issue accepting the invitation: #{service.error_message}"
     end
   rescue StandardError => e
     Rails.logger.error "Error accepting invitation during registration: #{e.message}"
-    flash[:alert] = "Account created successfully, but there was an issue accepting the invitation. Please try accepting it again."
+    flash[:alert] =
+      'Account created successfully, but there was an issue accepting the invitation. Please try accepting it again.'
   end
 
   def sign_up_params
     super
-  end
-
-  def store_utm_params
-    utm_params = %w[utm_source utm_medium utm_campaign utm_term utm_content]
-    utm_params.each do |param|
-      session[param] = params[param] if params[param].present?
-    end
-  end
-
-  def assign_utm_params(user)
-    utm_params = %w[utm_source utm_medium utm_campaign utm_term utm_content]
-    utm_data = {}
-
-    utm_params.each do |param|
-      utm_data[param] = session[param] if session[param].present?
-      session.delete(param) # Clean up session after assignment
-    end
-
-    user.update_columns(utm_data) if utm_data.any?
   end
 end
