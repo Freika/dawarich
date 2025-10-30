@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.34.1] - 2025-10-30
+
+## Fixed
+
+- Broken Stats page for users with no reverse geocoding enabled. #1877
+
+## Changed
+
+- Date navigation on the map page is no longer shown as floating panel. It is now part of the top navigation bar to prevent overlapping with other map controls. #1894 #1881
+
+## Added
+
+- [Dawarich Cloud] Added support for UTM parameters during user registration. UTM parameters will be stored with the user record for marketing analytics purposes.
+
 # [0.34.0] - 2025-10-10
 
 ## The Family release

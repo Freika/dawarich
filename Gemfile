@@ -28,8 +28,8 @@ gem 'parallel'
 gem 'pg'
 gem 'prometheus_exporter'
 gem 'puma'
-gem 'pundit'
-gem 'rails', '~> 8.0'
+gem 'pundit', '>= 2.5.1'
+gem 'rails', '~> 8.0', '>= 8.0.3'
 gem 'rails_icons'
 gem 'redis'
 gem 'rexml'
@@ -39,18 +39,18 @@ gem 'rgeo-geojson'
 gem 'rqrcode', '~> 3.0'
 gem 'rswag-api'
 gem 'rswag-ui'
-gem 'rubyzip', '~> 3.1'
-gem 'sentry-rails'
+gem 'rubyzip', '~> 3.2'
+gem 'sentry-rails', '>= 5.27.0'
 gem 'sentry-ruby'
-gem 'sidekiq'
-gem 'sidekiq-cron'
+gem 'sidekiq', '>= 8.0.5'
+gem 'sidekiq-cron', '>= 2.3.1'
 gem 'sidekiq-limit_fetch'
 gem 'sprockets-rails'
 gem 'stackprof'
 gem 'stimulus-rails'
-gem 'strong_migrations'
-gem 'tailwindcss-rails'
-gem 'turbo-rails'
+gem 'strong_migrations', '>= 2.4.0'
+gem 'tailwindcss-rails', '= 3.3.2'
+gem 'turbo-rails', '>= 2.0.17'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 
 group :development, :test, :staging do
@@ -62,7 +62,7 @@ group :development, :test, :staging do
   gem 'ffaker'
   gem 'pry-byebug'
   gem 'pry-rails'
-  gem 'rspec-rails'
+  gem 'rspec-rails', '>= 8.0.1'
   gem 'rswag-specs'
 end
 
@@ -77,7 +77,7 @@ group :test do
 end
 
 group :development do
-  gem 'database_consistency', require: false
+  gem 'database_consistency', '>= 2.0.5', require: false
   gem 'foreman'
-  gem 'rubocop-rails', require: false
+  gem 'rubocop-rails', '>= 2.33.4', require: false
 end

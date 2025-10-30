@@ -8,14 +8,17 @@
 
 ## 📸 Screenshots
 
-![Map](screenshots/map.jpeg)
+![Map](screenshots/map.png)
 *Map View*
 
-![Stats](screenshots/stats.jpeg)
+![Family](screenshots/family.png)
+*Family Page*
+
+![Stats](screenshots/stats.png)
 *Statistics Overview*
 
-![Import](screenshots/imports.jpeg)
-*Imports page*
+![Trips](screenshots/trips.png)
+*Trips page*
 
 ---
 
@@ -28,6 +31,9 @@ It enables you to:
 
 - Track your location history.
 - Visualize your data on an interactive map.
+- Create trips and analyze your travel history.
+- Share your location with family members.
+- Integrate with photo management apps like Immich and Photoprism to visualize geotagged photos.
 - Import your location history from Google Maps Timeline, OwnTracks, GPX, GeoJSON and some other sources
 - Explore statistics like the number of countries and cities visited, total distance traveled, and more!
 
@@ -99,6 +105,11 @@ Feel free to change them in the account settings.
   - Lines between points
   - Fog of War
 
+### 👪 Family Sharing
+- Share your location with family members.
+- View locations of family members on the map (with their consent).
+- Each family member can enable or disable location sharing individually.
+
 ### 🔵 Areas
 - Draw areas on the map so Dawarich could suggest your visits there.
 
@@ -109,7 +120,6 @@ Feel free to change them in the account settings.
 - Analyze your travel history: number of countries/cities visited, distance traveled, and time spent, broken down by year and month.
 
 ### ✈️ Trips
-
 - Create a trip to visualize your travels between two points in time. You'll be able to see the route, distance, and time spent, and also add notes to your trip. If you have Immich or Photoprism integration, you'll also be able to see photos from your trips!
 
 ### 📸 Integrations
