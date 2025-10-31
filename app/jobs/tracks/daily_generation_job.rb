@@ -38,8 +38,8 @@ class Tracks::DailyGenerationJob < ApplicationJob
 
     Tracks::ParallelGeneratorJob.perform_later(
       user.id,
-      start_at: start_timestamp,
-      end_at: Time.current.to_i,
+      start_at: Time.zone.at(start_timestamp),
+      end_at: Time.current,
       mode: 'daily'
     )
   end
