@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+module UtmTrackable
   extend ActiveSupport::Concern
 
   UTM_PARAMS = %w[utm_source utm_medium utm_campaign utm_term utm_content].freeze
