@@ -99,5 +99,7 @@ Rails.application.configure do
   config.lograge.enabled = true
   config.lograge.formatter = Lograge::Formatters::Json.new
 
-  config.active_storage.service = ENV['SELF_HOSTED'] == 'true' ? :local : :s3
+  # Store uploaded files either on the local file system or in S3-compatible object storage
+  # (see config/storage.yml for options).
+  config.active_storage.service = ENV.fetch('STORAGE_BACKEND', local)
 end
