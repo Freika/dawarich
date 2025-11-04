@@ -23,27 +23,42 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
 
+    /* Use European locale and timezone */
+    locale: 'en-GB',
+    timezoneId: 'Europe/Berlin',
+
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    
+
     /* Take screenshot on failure */
     screenshot: 'only-on-failure',
-    
+
     /* Record video on failure */
     video: 'retain-on-failure',
   },
 
   /* Configure projects for major browsers */
   projects: [
+    // Setup project - runs authentication before all tests
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.js/
+    },
+
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Use saved authentication state
+        storageState: 'e2e/temp/.auth/user.json'
+      },
+      dependencies: ['setup'],
     },
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'RAILS_ENV=test rails server -p 3000',
+    command: 'OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES RAILS_ENV=test rails server -p 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

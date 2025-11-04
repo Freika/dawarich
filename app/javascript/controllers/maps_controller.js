@@ -208,7 +208,7 @@ export default class extends BaseController {
     this.addInfoToggleButton();
 
     // Initialize the visits manager
-    this.visitsManager = new VisitsManager(this.map, this.apiKey, this.userTheme);
+    this.visitsManager = new VisitsManager(this.map, this.apiKey, this.userTheme, this);
 
     // Expose visits manager globally for location search integration
     window.visitsManager = this.visitsManager;
@@ -712,6 +712,9 @@ export default class extends BaseController {
       if (this.map.hasLayer(this.fogOverlay)) {
         this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
       }
+
+      // Show success message
+      showFlashMessage('notice', 'Point deleted successfully');
     })
     .catch(error => {
       console.error('There was a problem with the delete request:', error);

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [UNRELEASED]
+
+## Added
+
+- Selection tool on the map now can select points that user can delete in bulk. #433
+
+## Fixed
+
+- Taiwan flag is now shown on its own instead of in combination with China flag.
+
+## Changed
+
+- Removed useless system tests and cover map functionality with Playwright e2e tests instead.
+
 # [0.34.2] - 2025-10-31
 
 ## Fixed

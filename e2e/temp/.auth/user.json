@@ -1,0 +1,29 @@
+{
+  "cookies": [
+    {
+      "name": "_dawarich_session",
+      "value": "EpVyt%2F73ZRFf3PGkUELvrrnllSZ7fNY8oLGYvmO0STevmBL9bT9XZb9JK4NE6KSDMYqDLPFSRrZTNAlmyOuYi7kett2QE3TjNcAVVtE8%2BRhUweTPTcFs9wwAbf%2FlKYqQkMLF4NYz%2FA0Mr39M2fLxx0qAiqAo0Cg4y1jHQlWS1Slrp%2FkXkHt3obK5z6biG8gqXk9ldBqa6Uh3ymuBJOe%2BQE0rvhnsGRfD%2FIFbsgUzCuU3BEHw%2BUaO%2FYR%2BrlASj4sNiBr6%2FBRLlI0pecI4G8avHHSasFigpw2JEslgP12ifFtoLd5yw7uqO0K7eUF9oGAWV3KWvj7xScfDi4mYagFDpu8q5msipd6Wo6e5D7i8GjnxhoGDLuBRHqIxS76EhxTHl%2FE%2FkV146ZFH--YqOqiWcq7Oafo4bF--F2LpPqfUyhiln%2B9dabKFxQ%3D%3D",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "dawarich_onboarding_shown",
+          "value": "true"
+        },
+        {
+          "name": "mapRouteMode",
+          "value": "routes"
+        }
+      ]
+    }
+  ]
+}

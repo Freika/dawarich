@@ -3,12 +3,13 @@
 module CountryFlagHelper
   def country_flag(country_name)
     country_code = country_to_code(country_name)
-    return "" unless country_code
+    return '' unless country_code
+
+    country_code = 'TW' if country_code == 'CN-TW'
 
     # Convert country code to regional indicator symbols (flag emoji)
-    country_code.upcase.each_char.map { |c| (c.ord + 127397).chr(Encoding::UTF_8) }.join
+    country_code.upcase.each_char.map { |c| (c.ord + 127_397).chr(Encoding::UTF_8) }.join
   end
-
 
   private
 
