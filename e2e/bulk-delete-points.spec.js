@@ -1,5 +1,38 @@
 const { test, expect } = require('@playwright/test');
 
+// Helper function to draw selection rectangle and wait for delete button
+async function drawSelectionRectangle(page) {
+  // Click area selection tool
+  const selectionButton = page.locator('#selection-tool-button');
+  await selectionButton.click();
+  await page.waitForTimeout(500);
+
+  // Draw a rectangle on the map to select points
+  const mapContainer = page.locator('#map [data-maps-target="container"]');
+  const bbox = await mapContainer.boundingBox();
+
+  // Draw rectangle covering most of the map to ensure we select points
+  const startX = bbox.x + bbox.width * 0.2;
+  const startY = bbox.y + bbox.height * 0.2;
+  const endX = bbox.x + bbox.width * 0.8;
+  const endY = bbox.y + bbox.height * 0.8;
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(endX, endY, { steps: 10 }); // Add steps for smoother drag
+  await page.mouse.up();
+
+  // Wait longer for API calls and drawer animations
+  await page.waitForTimeout(2000);
+
+  // Wait for drawer to open (it should open automatically after selection)
+  await page.waitForSelector('#visits-drawer.open', { timeout: 15000 });
+
+  // Wait for delete button to appear in the drawer (indicates selection is complete)
+  await page.waitForSelector('#delete-selection-button', { timeout: 15000 });
+  await page.waitForTimeout(500); // Brief wait for UI to stabilize
+}
+
 test.describe('Bulk Delete Points', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to map page
@@ -72,54 +105,18 @@ test.describe('Bulk Delete Points', () => {
   });
 
   test('should select points in drawn area and show delete button', async ({ page }) => {
-    // Click area selection tool
-    const selectionButton = page.locator('#selection-tool-button');
-    await selectionButton.click();
-    await page.waitForTimeout(500);
-
-    // Draw a rectangle on the map to select points
-    const mapContainer = page.locator('#map [data-maps-target="container"]');
-    const bbox = await mapContainer.boundingBox();
-
-    // Draw rectangle from top-left to bottom-right
-    const startX = bbox.x + bbox.width * 0.3;
-    const startY = bbox.y + bbox.height * 0.3;
-    const endX = bbox.x + bbox.width * 0.7;
-    const endY = bbox.y + bbox.height * 0.7;
-
-    await page.mouse.move(startX, startY);
-    await page.mouse.down();
-    await page.mouse.move(endX, endY);
-    await page.mouse.up();
-    await page.waitForTimeout(1000);
+    await drawSelectionRectangle(page);
 
     // Check that delete button appears
     const deleteButton = page.locator('#delete-selection-button');
-    await expect(deleteButton).toBeVisible();
+    await expect(deleteButton).toBeVisible({ timeout: 10000 });
 
     // Check button has text "Delete Points"
     await expect(deleteButton).toContainText('Delete Points');
   });
 
   test('should show point count badge on delete button', async ({ page }) => {
-    // Click area selection tool
-    const selectionButton = page.locator('#selection-tool-button');
-    await selectionButton.click();
-    await page.waitForTimeout(500);
-
-    // Draw rectangle
-    const mapContainer = page.locator('#map [data-maps-target="container"]');
-    const bbox = await mapContainer.boundingBox();
-
-    const startX = bbox.x + bbox.width * 0.3;
-    const startY = bbox.y + bbox.height * 0.3;
-    const endX = bbox.x + bbox.width * 0.7;
-    const endY = bbox.y + bbox.height * 0.7;
-
-    await page.mouse.move(startX, startY);
-    await page.mouse.down();
-    await page.mouse.move(endX, endY);
-    await page.mouse.up();
+    await drawSelectionRectangle(page);
     await page.waitForTimeout(1000);
 
     // Check for badge with count
@@ -132,24 +129,7 @@ test.describe('Bulk Delete Points', () => {
   });
 
   test('should show cancel button alongside delete button', async ({ page }) => {
-    // Click area selection tool
-    const selectionButton = page.locator('#selection-tool-button');
-    await selectionButton.click();
-    await page.waitForTimeout(500);
-
-    // Draw rectangle
-    const mapContainer = page.locator('#map [data-maps-target="container"]');
-    const bbox = await mapContainer.boundingBox();
-
-    const startX = bbox.x + bbox.width * 0.3;
-    const startY = bbox.y + bbox.height * 0.3;
-    const endX = bbox.x + bbox.width * 0.7;
-    const endY = bbox.y + bbox.height * 0.7;
-
-    await page.mouse.move(startX, startY);
-    await page.mouse.down();
-    await page.mouse.move(endX, endY);
-    await page.mouse.up();
+    await drawSelectionRectangle(page);
     await page.waitForTimeout(1000);
 
     // Check both buttons exist
@@ -162,23 +142,7 @@ test.describe('Bulk Delete Points', () => {
   });
 
   test('should cancel selection when cancel button is clicked', async ({ page }) => {
-    // Click area selection tool and draw rectangle
-    const selectionButton = page.locator('#selection-tool-button');
-    await selectionButton.click();
-    await page.waitForTimeout(500);
-
-    const mapContainer = page.locator('#map [data-maps-target="container"]');
-    const bbox = await mapContainer.boundingBox();
-
-    const startX = bbox.x + bbox.width * 0.3;
-    const startY = bbox.y + bbox.height * 0.3;
-    const endX = bbox.x + bbox.width * 0.7;
-    const endY = bbox.y + bbox.height * 0.7;
-
-    await page.mouse.move(startX, startY);
-    await page.mouse.down();
-    await page.mouse.move(endX, endY);
-    await page.mouse.up();
+    await drawSelectionRectangle(page);
     await page.waitForTimeout(1000);
 
     // Click cancel button
@@ -207,23 +171,7 @@ test.describe('Bulk Delete Points', () => {
       await dialog.dismiss(); // Dismiss to prevent actual deletion
     });
 
-    // Click area selection tool and draw rectangle
-    const selectionButton = page.locator('#selection-tool-button');
-    await selectionButton.click();
-    await page.waitForTimeout(500);
-
-    const mapContainer = page.locator('#map [data-maps-target="container"]');
-    const bbox = await mapContainer.boundingBox();
-
-    const startX = bbox.x + bbox.width * 0.3;
-    const startY = bbox.y + bbox.height * 0.3;
-    const endX = bbox.x + bbox.width * 0.7;
-    const endY = bbox.y + bbox.height * 0.7;
-
-    await page.mouse.move(startX, startY);
-    await page.mouse.down();
-    await page.mouse.move(endX, endY);
-    await page.mouse.up();
+    await drawSelectionRectangle(page);
     await page.waitForTimeout(1000);
 
     // Click delete button
@@ -249,23 +197,7 @@ test.describe('Bulk Delete Points', () => {
       return controller?.markers?.length || 0;
     });
 
-    // Click area selection tool and draw rectangle
-    const selectionButton = page.locator('#selection-tool-button');
-    await selectionButton.click();
-    await page.waitForTimeout(500);
-
-    const mapContainer = page.locator('#map [data-maps-target="container"]');
-    const bbox = await mapContainer.boundingBox();
-
-    const startX = bbox.x + bbox.width * 0.3;
-    const startY = bbox.y + bbox.height * 0.3;
-    const endX = bbox.x + bbox.width * 0.7;
-    const endY = bbox.y + bbox.height * 0.7;
-
-    await page.mouse.move(startX, startY);
-    await page.mouse.down();
-    await page.mouse.move(endX, endY);
-    await page.mouse.up();
+    await drawSelectionRectangle(page);
     await page.waitForTimeout(1000);
 
     // Click delete button
@@ -273,8 +205,8 @@ test.describe('Bulk Delete Points', () => {
     await deleteButton.click();
     await page.waitForTimeout(2000); // Wait for deletion to complete
 
-    // Check for success flash message
-    const flashMessage = page.locator('#flash-messages [role="alert"]');
+    // Check for success flash message with specific text
+    const flashMessage = page.locator('#flash-messages [role="alert"]:has-text("Successfully deleted")');
     await expect(flashMessage).toBeVisible({ timeout: 5000 });
 
     const messageText = await flashMessage.textContent();
@@ -306,7 +238,7 @@ test.describe('Bulk Delete Points', () => {
       await dialog.accept();
     });
 
-    // Perform deletion
+    // Perform deletion using same selection logic as helper
     const selectionButton = page.locator('#selection-tool-button');
     await selectionButton.click();
     await page.waitForTimeout(500);
@@ -314,16 +246,21 @@ test.describe('Bulk Delete Points', () => {
     const mapContainer = page.locator('#map [data-maps-target="container"]');
     const bbox = await mapContainer.boundingBox();
 
-    const startX = bbox.x + bbox.width * 0.4;
-    const startY = bbox.y + bbox.height * 0.4;
-    const endX = bbox.x + bbox.width * 0.6;
-    const endY = bbox.y + bbox.height * 0.6;
+    // Use larger selection area to ensure we select points
+    const startX = bbox.x + bbox.width * 0.2;
+    const startY = bbox.y + bbox.height * 0.2;
+    const endX = bbox.x + bbox.width * 0.8;
+    const endY = bbox.y + bbox.height * 0.8;
 
     await page.mouse.move(startX, startY);
     await page.mouse.down();
-    await page.mouse.move(endX, endY);
+    await page.mouse.move(endX, endY, { steps: 10 });
     await page.mouse.up();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
+
+    // Wait for drawer and button to appear
+    await page.waitForSelector('#visits-drawer.open', { timeout: 15000 });
+    await page.waitForSelector('#delete-selection-button', { timeout: 15000 });
 
     const deleteButton = page.locator('#delete-selection-button');
     await deleteButton.click();
@@ -355,7 +292,7 @@ test.describe('Bulk Delete Points', () => {
       await dialog.accept();
     });
 
-    // Perform deletion
+    // Perform deletion using same selection logic as helper
     const selectionButton = page.locator('#selection-tool-button');
     await selectionButton.click();
     await page.waitForTimeout(500);
@@ -363,16 +300,21 @@ test.describe('Bulk Delete Points', () => {
     const mapContainer = page.locator('#map [data-maps-target="container"]');
     const bbox = await mapContainer.boundingBox();
 
-    const startX = bbox.x + bbox.width * 0.4;
-    const startY = bbox.y + bbox.height * 0.4;
-    const endX = bbox.x + bbox.width * 0.6;
-    const endY = bbox.y + bbox.height * 0.6;
+    // Use larger selection area to ensure we select points
+    const startX = bbox.x + bbox.width * 0.2;
+    const startY = bbox.y + bbox.height * 0.2;
+    const endX = bbox.x + bbox.width * 0.8;
+    const endY = bbox.y + bbox.height * 0.8;
 
     await page.mouse.move(startX, startY);
     await page.mouse.down();
-    await page.mouse.move(endX, endY);
+    await page.mouse.move(endX, endY, { steps: 10 });
     await page.mouse.up();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
+
+    // Wait for drawer and button to appear
+    await page.waitForSelector('#visits-drawer.open', { timeout: 15000 });
+    await page.waitForSelector('#delete-selection-button', { timeout: 15000 });
 
     const deleteButton = page.locator('#delete-selection-button');
     await deleteButton.click();
@@ -410,7 +352,7 @@ test.describe('Bulk Delete Points', () => {
       await dialog.accept();
     });
 
-    // Perform deletion
+    // Perform deletion using same selection logic as helper
     const selectionButton = page.locator('#selection-tool-button');
     await selectionButton.click();
     await page.waitForTimeout(500);
@@ -418,16 +360,21 @@ test.describe('Bulk Delete Points', () => {
     const mapContainer = page.locator('#map [data-maps-target="container"]');
     const bbox = await mapContainer.boundingBox();
 
-    const startX = bbox.x + bbox.width * 0.3;
-    const startY = bbox.y + bbox.height * 0.3;
-    const endX = bbox.x + bbox.width * 0.7;
-    const endY = bbox.y + bbox.height * 0.7;
+    // Use larger selection area to ensure we select points
+    const startX = bbox.x + bbox.width * 0.2;
+    const startY = bbox.y + bbox.height * 0.2;
+    const endX = bbox.x + bbox.width * 0.8;
+    const endY = bbox.y + bbox.height * 0.8;
 
     await page.mouse.move(startX, startY);
     await page.mouse.down();
-    await page.mouse.move(endX, endY);
+    await page.mouse.move(endX, endY, { steps: 10 });
     await page.mouse.up();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
+
+    // Wait for drawer and button to appear
+    await page.waitForSelector('#visits-drawer.open', { timeout: 15000 });
+    await page.waitForSelector('#delete-selection-button', { timeout: 15000 });
 
     const deleteButton = page.locator('#delete-selection-button');
     await deleteButton.click();
@@ -448,7 +395,7 @@ test.describe('Bulk Delete Points', () => {
       await dialog.accept();
     });
 
-    // Perform deletion
+    // Perform deletion using same selection logic as helper
     const selectionButton = page.locator('#selection-tool-button');
     await selectionButton.click();
     await page.waitForTimeout(500);
@@ -456,16 +403,21 @@ test.describe('Bulk Delete Points', () => {
     const mapContainer = page.locator('#map [data-maps-target="container"]');
     const bbox = await mapContainer.boundingBox();
 
-    const startX = bbox.x + bbox.width * 0.3;
-    const startY = bbox.y + bbox.height * 0.3;
-    const endX = bbox.x + bbox.width * 0.7;
-    const endY = bbox.y + bbox.height * 0.7;
+    // Use larger selection area to ensure we select points
+    const startX = bbox.x + bbox.width * 0.2;
+    const startY = bbox.y + bbox.height * 0.2;
+    const endX = bbox.x + bbox.width * 0.8;
+    const endY = bbox.y + bbox.height * 0.8;
 
     await page.mouse.move(startX, startY);
     await page.mouse.down();
-    await page.mouse.move(endX, endY);
+    await page.mouse.move(endX, endY, { steps: 10 });
     await page.mouse.up();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
+
+    // Wait for drawer and button to appear
+    await page.waitForSelector('#visits-drawer.open', { timeout: 15000 });
+    await page.waitForSelector('#delete-selection-button', { timeout: 15000 });
 
     const deleteButton = page.locator('#delete-selection-button');
     await deleteButton.click();

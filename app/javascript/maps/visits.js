@@ -227,7 +227,8 @@ export class VisitsManager {
         this.toggleDrawer();
       }
 
-      // Add cancel selection button to the drawer
+      // Add cancel selection button to the drawer AFTER displayVisits
+      // This needs to be after because displayVisits sets innerHTML which would wipe out the buttons
       this.addSelectionCancelButton();
 
     } catch (error) {
@@ -390,42 +391,53 @@ export class VisitsManager {
    */
   addSelectionCancelButton() {
     const container = document.getElementById('visits-list');
-    if (!container) return;
-
-    // Add buttons at the top of the drawer if they don't exist
-    if (!document.getElementById('cancel-selection-button')) {
-      // Create a button container
-      const buttonContainer = document.createElement('div');
-      buttonContainer.className = 'flex gap-2 mb-4';
-
-      // Cancel button
-      const cancelButton = document.createElement('button');
-      cancelButton.id = 'cancel-selection-button';
-      cancelButton.className = 'btn btn-sm btn-warning flex-1';
-      cancelButton.textContent = 'Cancel Selection';
-      cancelButton.onclick = () => this.clearSelection();
-
-      // Delete all selected points button
-      const deleteButton = document.createElement('button');
-      deleteButton.id = 'delete-selection-button';
-      deleteButton.className = 'btn btn-sm btn-error flex-1';
-      deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-1"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>Delete Points';
-      deleteButton.onclick = () => this.deleteSelectedPoints();
-
-      // Add count badge if we have selected points
-      if (this.selectedPoints && this.selectedPoints.length > 0) {
-        const badge = document.createElement('span');
-        badge.className = 'badge badge-sm ml-1';
-        badge.textContent = this.selectedPoints.length;
-        deleteButton.appendChild(badge);
-      }
-
-      buttonContainer.appendChild(cancelButton);
-      buttonContainer.appendChild(deleteButton);
-
-      // Insert at the beginning of the container
-      container.insertBefore(buttonContainer, container.firstChild);
+    if (!container) {
+      console.warn('addSelectionCancelButton: visits-list container not found');
+      return;
     }
+
+    // Remove any existing button container first to avoid duplicates
+    const existingButtonContainer = container.querySelector('.flex.gap-2.mb-4');
+    if (existingButtonContainer) {
+      existingButtonContainer.remove();
+    }
+
+    // Create a button container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'flex gap-2 mb-4';
+    buttonContainer.id = 'selection-button-container';
+
+    // Cancel button
+    const cancelButton = document.createElement('button');
+    cancelButton.id = 'cancel-selection-button';
+    cancelButton.className = 'btn btn-sm btn-warning flex-1';
+    cancelButton.textContent = 'Cancel Selection';
+    cancelButton.onclick = () => this.clearSelection();
+
+    // Delete all selected points button
+    const deleteButton = document.createElement('button');
+    deleteButton.id = 'delete-selection-button';
+    deleteButton.className = 'btn btn-sm btn-error flex-1';
+    deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-1"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>Delete Points';
+    deleteButton.onclick = () => this.deleteSelectedPoints();
+
+    // Add count badge if we have selected points
+    if (this.selectedPoints && this.selectedPoints.length > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'badge badge-sm ml-1';
+      badge.textContent = this.selectedPoints.length;
+      deleteButton.appendChild(badge);
+      console.log(`addSelectionCancelButton: Added button with badge showing ${this.selectedPoints.length} points`);
+    } else {
+      console.warn('addSelectionCancelButton: No selected points found');
+    }
+
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(deleteButton);
+
+    // Insert at the beginning of the container
+    container.insertBefore(buttonContainer, container.firstChild);
+    console.log('addSelectionCancelButton: Buttons added successfully');
   }
 
   /**
