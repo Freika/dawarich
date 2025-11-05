@@ -39,6 +39,12 @@ class TripsController < ApplicationController
   end
 
   def update
+    # Handle sharing settings update (JSON response)
+    if params[:sharing]
+      return update_sharing
+    end
+
+    # Handle regular trip update
     if @trip.update(trip_params)
       redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
     else
@@ -62,6 +68,40 @@ class TripsController < ApplicationController
       :latitude, :longitude, :battery, :altitude, :timestamp, :velocity, :id,
       :country
     ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
+  end
+
+  def update_sharing
+    if params[:sharing][:enabled] == '1'
+      sharing_options = {
+        expiration: params[:sharing][:expiration] || '24h'
+      }
+
+      # Add optional sharing settings
+      sharing_options[:share_notes] = params[:sharing][:share_notes] == '1'
+      sharing_options[:share_photos] = params[:sharing][:share_photos] == '1'
+
+      @trip.enable_sharing!(**sharing_options)
+      sharing_url = shared_trip_url(@trip.sharing_uuid)
+
+      render json: {
+        success: true,
+        sharing_url: sharing_url,
+        message: 'Sharing enabled successfully'
+      }
+    else
+      @trip.disable_sharing!
+
+      render json: {
+        success: true,
+        message: 'Sharing disabled successfully'
+      }
+    end
+  rescue StandardError => e
+    render json: {
+      success: false,
+      message: 'Failed to update sharing settings',
+      error: e.message
+    }, status: :unprocessable_content
   end
 
   def trip_params
