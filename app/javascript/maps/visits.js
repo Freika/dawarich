@@ -229,7 +229,10 @@ export class VisitsManager {
 
       // Add cancel selection button to the drawer AFTER displayVisits
       // This needs to be after because displayVisits sets innerHTML which would wipe out the buttons
-      this.addSelectionCancelButton();
+      // Use setTimeout to ensure DOM has fully updated
+      setTimeout(() => {
+        this.addSelectionCancelButton();
+      }, 0);
 
     } catch (error) {
       console.error('Error fetching visits in selection:', error);
@@ -390,15 +393,18 @@ export class VisitsManager {
    * Adds a cancel button to the drawer to clear the selection
    */
   addSelectionCancelButton() {
+    console.log('addSelectionCancelButton: Called');
     const container = document.getElementById('visits-list');
     if (!container) {
-      console.warn('addSelectionCancelButton: visits-list container not found');
+      console.error('addSelectionCancelButton: visits-list container not found');
       return;
     }
+    console.log('addSelectionCancelButton: Container found');
 
     // Remove any existing button container first to avoid duplicates
-    const existingButtonContainer = container.querySelector('.flex.gap-2.mb-4');
+    const existingButtonContainer = document.getElementById('selection-button-container');
     if (existingButtonContainer) {
+      console.log('addSelectionCancelButton: Removing existing button container');
       existingButtonContainer.remove();
     }
 
@@ -427,9 +433,9 @@ export class VisitsManager {
       badge.className = 'badge badge-sm ml-1';
       badge.textContent = this.selectedPoints.length;
       deleteButton.appendChild(badge);
-      console.log(`addSelectionCancelButton: Added button with badge showing ${this.selectedPoints.length} points`);
+      console.log(`addSelectionCancelButton: Added badge with ${this.selectedPoints.length} points`);
     } else {
-      console.warn('addSelectionCancelButton: No selected points found');
+      console.warn('addSelectionCancelButton: No selected points, selectedPoints =', this.selectedPoints);
     }
 
     buttonContainer.appendChild(cancelButton);
@@ -437,7 +443,15 @@ export class VisitsManager {
 
     // Insert at the beginning of the container
     container.insertBefore(buttonContainer, container.firstChild);
-    console.log('addSelectionCancelButton: Buttons added successfully');
+    console.log('addSelectionCancelButton: Buttons inserted into DOM');
+
+    // Verify buttons are in DOM
+    setTimeout(() => {
+      const verifyDelete = document.getElementById('delete-selection-button');
+      const verifyCancel = document.getElementById('cancel-selection-button');
+      console.log('addSelectionCancelButton: Verification - Delete button exists:', !!verifyDelete);
+      console.log('addSelectionCancelButton: Verification - Cancel button exists:', !!verifyCancel);
+    }, 100);
   }
 
   /**
@@ -617,7 +631,8 @@ export class VisitsManager {
     });
 
     // Update the drawer content if it's being opened - but don't fetch visits automatically
-    if (this.drawerOpen) {
+    // Only show the "no data" message if there's no selection active
+    if (this.drawerOpen && !this.isSelectionActive) {
       const container = document.getElementById('visits-list');
       if (container) {
         container.innerHTML = `

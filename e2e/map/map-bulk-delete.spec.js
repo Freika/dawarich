@@ -1,37 +1,7 @@
-const { test, expect } = require('@playwright/test');
-
-// Helper function to draw selection rectangle and wait for delete button
-async function drawSelectionRectangle(page) {
-  // Click area selection tool
-  const selectionButton = page.locator('#selection-tool-button');
-  await selectionButton.click();
-  await page.waitForTimeout(500);
-
-  // Draw a rectangle on the map to select points
-  const mapContainer = page.locator('#map [data-maps-target="container"]');
-  const bbox = await mapContainer.boundingBox();
-
-  // Draw rectangle covering most of the map to ensure we select points
-  const startX = bbox.x + bbox.width * 0.2;
-  const startY = bbox.y + bbox.height * 0.2;
-  const endX = bbox.x + bbox.width * 0.8;
-  const endY = bbox.y + bbox.height * 0.8;
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(endX, endY, { steps: 10 }); // Add steps for smoother drag
-  await page.mouse.up();
-
-  // Wait longer for API calls and drawer animations
-  await page.waitForTimeout(2000);
-
-  // Wait for drawer to open (it should open automatically after selection)
-  await page.waitForSelector('#visits-drawer.open', { timeout: 15000 });
-
-  // Wait for delete button to appear in the drawer (indicates selection is complete)
-  await page.waitForSelector('#delete-selection-button', { timeout: 15000 });
-  await page.waitForTimeout(500); // Brief wait for UI to stabilize
-}
+import { test, expect } from '@playwright/test';
+import { drawSelectionRectangle } from '../helpers/selection.js';
+import { navigateToDate, closeOnboardingModal } from '../helpers/navigation.js';
+import { waitForMap, enableLayer } from '../helpers/map.js';
 
 test.describe('Bulk Delete Points', () => {
   test.beforeEach(async ({ page }) => {
@@ -42,45 +12,16 @@ test.describe('Bulk Delete Points', () => {
     });
 
     // Wait for map to be initialized
-    await page.waitForFunction(() => {
-      const container = document.querySelector('#map [data-maps-target="container"]');
-      return container && container._leaflet_id !== undefined;
-    }, { timeout: 10000 });
+    await waitForMap(page);
 
     // Close onboarding modal if present
-    const onboardingModal = page.locator('#getting_started');
-    const isModalOpen = await onboardingModal.evaluate((dialog) => dialog.open).catch(() => false);
-    if (isModalOpen) {
-      await page.locator('#getting_started button.btn-primary').click();
-      await page.waitForTimeout(500);
-    }
+    await closeOnboardingModal(page);
 
     // Navigate to a date with points (October 13, 2024)
-    const startInput = page.locator('input[type="datetime-local"][name="start_at"]');
-    await startInput.clear();
-    await startInput.fill('2024-10-13T00:00');
-
-    const endInput = page.locator('input[type="datetime-local"][name="end_at"]');
-    await endInput.clear();
-    await endInput.fill('2024-10-13T23:59');
-
-    // Click the Search button to submit
-    await page.click('input[type="submit"][value="Search"]');
-
-    // Wait for page navigation and map reload
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await navigateToDate(page, '2024-10-13T00:00', '2024-10-13T23:59');
 
     // Enable Points layer
-    await page.locator('.leaflet-control-layers').hover();
-    await page.waitForTimeout(300);
-
-    const pointsCheckbox = page.locator('.leaflet-control-layers-overlays label:has-text("Points") input[type="checkbox"]');
-    const isChecked = await pointsCheckbox.isChecked();
-    if (!isChecked) {
-      await pointsCheckbox.check();
-      await page.waitForTimeout(1000);
-    }
+    await enableLayer(page, 'Points');
   });
 
   test('should show area selection tool button', async ({ page }) => {

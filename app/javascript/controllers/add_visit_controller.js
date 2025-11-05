@@ -127,6 +127,7 @@ export default class extends Controller {
   }
 
   exitAddVisitMode(button) {
+    console.log('exitAddVisitMode called');
     this.isAddingVisit = false;
 
     // Reset button style to inactive state
@@ -140,14 +141,20 @@ export default class extends Controller {
 
     // Remove any existing marker
     if (this.addVisitMarker) {
+      console.log('Removing add visit marker');
       this.map.removeLayer(this.addVisitMarker);
       this.addVisitMarker = null;
     }
 
     // Close any open popup
     if (this.currentPopup) {
+      console.log('Closing current popup');
       this.map.closePopup(this.currentPopup);
       this.currentPopup = null;
+    } else {
+      console.warn('No currentPopup reference found');
+      // Fallback: try to close any open popup
+      this.map.closePopup();
     }
   }
 
@@ -263,7 +270,10 @@ export default class extends Controller {
       }
 
       if (cancelButton) {
-        cancelButton.addEventListener('click', () => {
+        cancelButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Cancel button clicked - exiting add visit mode');
           this.exitAddVisitMode(this.addVisitButton);
         });
       }

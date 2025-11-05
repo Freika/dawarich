@@ -42,7 +42,7 @@ export default defineConfig({
     // Setup project - runs authentication before all tests
     {
       name: 'setup',
-      testMatch: /auth\.setup\.js/
+      testMatch: /.*\/setup\/auth\.setup\.js/
     },
 
     {
