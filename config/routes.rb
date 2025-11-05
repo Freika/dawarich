@@ -90,12 +90,16 @@ Rails.application.routes.draw do
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
   get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
+  get 'shared/trips/:trip_uuid', to: 'shared/trips#show', as: :shared_trip
 
-  # Sharing management endpoint (requires auth)
+  # Sharing management endpoints (require auth)
   patch 'stats/:year/:month/sharing',
         to: 'shared/stats#update',
         as: :sharing_stats,
         constraints: { year: /\d{4}/, month: /\d{1,2}/ }
+  patch 'trips/:id/sharing',
+        to: 'shared/trips#update',
+        as: :sharing_trip
 
   root to: 'home#index'
 

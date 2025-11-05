@@ -1,0 +1,205 @@
+<div class="card bg-base-100 shadow-lg mt-6">
+  <div class="card-body">
+    <h3 class="card-title">Share This Trip</h3>
+    <p class="text-sm text-base-content/70 mb-4">
+      Generate a public link to share this trip with others.
+    </p>
+
+    <div id="sharing-controls-<%= trip.id %>" data-trip-id="<%= trip.id %>">
+      <% if trip.sharing_enabled? %>
+        <!-- Sharing is enabled -->
+        <div class="space-y-4">
+          <!-- Sharing Status -->
+          <div class="alert <%= trip.sharing_expired? ? 'alert-warning' : 'alert-success' %>">
+            <div>
+              <% if trip.sharing_expired? %>
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <span>This share link has expired</span>
+              <% else %>
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Sharing is enabled</span>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Sharing URL -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Share URL</span>
+            </label>
+            <div class="input-group">
+              <input
+                type="text"
+                value="<%= shared_trip_url(trip.sharing_uuid) %>"
+                readonly
+                class="input input-bordered flex-1"
+                id="sharing-url-<%= trip.id %>">
+              <button
+                class="btn btn-square"
+                onclick="navigator.clipboard.writeText(document.getElementById('sharing-url-<%= trip.id %>').value).then(() => {
+                  const btn = this;
+                  const original = btn.innerHTML;
+                  btn.innerHTML = '✓';
+                  setTimeout(() => btn.innerHTML = original, 2000);
+                })">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sharing Options -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Share notes</span>
+                <input
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                  <%= trip.share_notes? ? 'checked' : '' %>
+                  disabled>
+              </label>
+            </div>
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Share photos</span>
+                <input
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                  <%= trip.share_photos? ? 'checked' : '' %>
+                  disabled>
+              </label>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-2">
+            <button
+              class="btn btn-warning flex-1"
+              onclick="regenerateTripSharingLink(<%= trip.id %>)">
+              Regenerate Link
+            </button>
+            <button
+              class="btn btn-error flex-1"
+              onclick="disableTripSharing(<%= trip.id %>)">
+              Disable Sharing
+            </button>
+          </div>
+        </div>
+      <% else %>
+        <!-- Sharing is disabled -->
+        <div class="space-y-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Expiration</span>
+            </label>
+            <select class="select select-bordered" id="expiration-<%= trip.id %>">
+              <option value="1h">1 hour</option>
+              <option value="12h">12 hours</option>
+              <option value="24h" selected>24 hours</option>
+              <option value="permanent">Never (permanent)</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Share notes</span>
+                <input
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                  id="share-notes-<%= trip.id %>"
+                  checked>
+              </label>
+            </div>
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                <span class="label-text">Share photos</span>
+                <input
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                  id="share-photos-<%= trip.id %>"
+                  checked>
+              </label>
+            </div>
+          </div>
+
+          <button
+            class="btn btn-primary w-full"
+            onclick="enableTripSharing(<%= trip.id %>)">
+            Enable Sharing
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+function enableTripSharing(tripId) {
+  const expiration = document.getElementById(`expiration-${tripId}`).value;
+  const shareNotes = document.getElementById(`share-notes-${tripId}`).checked ? '1' : '0';
+  const sharePhotos = document.getElementById(`share-photos-${tripId}`).checked ? '1' : '0';
+
+  fetch(`/trips/${tripId}/sharing`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({
+      enabled: '1',
+      expiration: expiration,
+      share_notes: shareNotes,
+      share_photos: sharePhotos
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Failed to enable sharing: ' + (data.message || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    alert('Error enabling sharing: ' + error);
+  });
+}
+
+function disableTripSharing(tripId) {
+  if (!confirm('Are you sure you want to disable sharing for this trip?')) {
+    return;
+  }
+
+  fetch(`/trips/${tripId}/sharing`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({
+      enabled: '0'
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Failed to disable sharing: ' + (data.message || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    alert('Error disabling sharing: ' + error);
+  });
+}
+
+function regenerateTripSharingLink(tripId) {
+  if (!confirm('Regenerating will invalidate the old link. Continue?')) {
+    return;
+  }
+
+  // This would require a new endpoint or modify the existing one
+  alert('Regenerate link functionality to be implemented');
+}
+</script>

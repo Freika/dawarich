@@ -1,0 +1,133 @@
+<% content_for :title, @trip.name %>
+
+<div class="container mx-auto px-4 my-5">
+  <!-- Hero Header -->
+  <div class="hero bg-base-200 rounded-lg shadow-lg mb-8">
+    <div class="hero-content text-center py-8">
+      <div class="max-w-2xl">
+        <h1 class="text-4xl font-bold mb-2"><%= @trip.name %></h1>
+        <p class="text-md text-base-content/60 mb-4">
+          <%= human_date(@trip.started_at) %> - <%= human_date(@trip.ended_at) %>
+        </p>
+        <p class="text-sm text-base-content/50">
+          <%= trip_duration(@trip) %>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats stats-vertical lg:stats-horizontal shadow w-full mb-8">
+    <div class="stat place-items-center">
+      <div class="stat-title">Distance</div>
+      <div class="stat-value text-primary">
+        <%= @trip.distance_in_unit('km').round %>
+      </div>
+      <div class="stat-desc">kilometers traveled</div>
+    </div>
+
+    <div class="stat place-items-center">
+      <div class="stat-title">Duration</div>
+      <div class="stat-value text-secondary">
+        <%= (((@trip.ended_at - @trip.started_at) / 86400).round) %>
+      </div>
+      <div class="stat-desc">days</div>
+    </div>
+
+    <div class="stat place-items-center">
+      <div class="stat-title">Countries</div>
+      <div class="stat-value">
+        <%= @trip.visited_countries.count %>
+      </div>
+      <div class="stat-desc">countries visited</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Map Section -->
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body p-0">
+        <div class="p-4 border-b border-base-300">
+          <h3 class="font-semibold text-lg">Trip Route</h3>
+        </div>
+        <div class="w-full h-96">
+          <% if @coordinates.present? %>
+            <div id="public-trip-map"
+                 class="w-full h-full"
+                 data-controller="public-trip-map"
+                 data-public-trip-map-coordinates-value="<%= @coordinates.to_json %>"
+                 data-public-trip-map-name-value="<%= @trip.name %>"></div>
+          <% else %>
+            <div class="flex items-center justify-center h-full">
+              <div class="text-center">
+                <p class="text-base-content/60">Route data not yet calculated</p>
+                <div class="loading loading-spinner loading-lg mt-4"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Details Section -->
+    <div class="space-y-6">
+      <!-- Countries Visited -->
+      <% if @trip.visited_countries.any? %>
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h3 class="card-title">Countries Visited</h3>
+            <div class="flex flex-wrap gap-2">
+              <% @trip.visited_countries.sort.each do |country| %>
+                <div class="badge badge-lg badge-outline"><%= country %></div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Notes Section -->
+      <% if @trip.share_notes? && @trip.notes.present? %>
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h3 class="card-title">About This Trip</h3>
+            <div class="prose max-w-none">
+              <%= @trip.notes.body %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Photo Previews -->
+      <% if @trip.share_photos? && @photo_previews.any? %>
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h3 class="card-title">Photos</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <% @photo_previews.first(8).each do |photo| %>
+                <div class="aspect-square overflow-hidden rounded-lg">
+                  <img
+                    src="<%= photo[:url] %>"
+                    loading="lazy"
+                    class="h-full w-full object-cover transition-transform duration-300 hover:scale-110"
+                    alt="Trip photo">
+                </div>
+              <% end %>
+            </div>
+            <% if @photo_previews.count > 8 %>
+              <p class="text-sm text-base-content/60 text-center mt-2">
+                +<%= @photo_previews.count - 8 %> more photos
+              </p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="text-center py-8 mt-8">
+    <div class="text-sm text-base-content/50">
+      Powered by <%= link_to "Dawarich", "https://dawarich.app", class: "link link-primary", target: "_blank" %>, your personal memories mapper.
+    </div>
+  </div>
+</div>
