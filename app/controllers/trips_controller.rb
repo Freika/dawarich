@@ -74,11 +74,11 @@ class TripsController < ApplicationController
   def handle_sharing_update
     sharing_params = params[:trip][:sharing]
 
-    if ActiveModel::Type::Boolean.new.cast(sharing_params[:enabled])
+    if to_boolean(sharing_params[:enabled])
       sharing_options = {
         expiration: sharing_params[:expiration] || '24h',
-        share_notes: ActiveModel::Type::Boolean.new.cast(sharing_params[:share_notes]),
-        share_photos: ActiveModel::Type::Boolean.new.cast(sharing_params[:share_photos])
+        share_notes: to_boolean(sharing_params[:share_notes]),
+        share_photos: to_boolean(sharing_params[:share_photos])
       }
 
       @trip.enable_sharing!(**sharing_options)
@@ -89,5 +89,9 @@ class TripsController < ApplicationController
 
   def trip_params
     params.require(:trip).permit(:name, :started_at, :ended_at, :notes)
+  end
+
+  def to_boolean(value)
+    ActiveModel::Type::Boolean.new.cast(value)
   end
 end
