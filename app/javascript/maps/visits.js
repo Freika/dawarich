@@ -1,14 +1,16 @@
 import L from "leaflet";
 import { showFlashMessage } from "./helpers";
+import { createPolylinesLayer } from "./polylines";
 
 /**
  * Manages visits functionality including displaying, fetching, and interacting with visits
  */
 export class VisitsManager {
-  constructor(map, apiKey, userTheme = 'dark') {
+  constructor(map, apiKey, userTheme = 'dark', mapsController = null) {
     this.map = map;
     this.apiKey = apiKey;
     this.userTheme = userTheme;
+    this.mapsController = mapsController;
 
     // Create custom panes for different visit types
     // Leaflet default panes: tilePane=200, overlayPane=400, shadowPane=500, markerPane=600, tooltipPane=650, popupPane=700
@@ -218,15 +220,20 @@ export class VisitsManager {
       // Set selection as active to ensure date summary is displayed
       this.isSelectionActive = true;
 
-      this.displayVisits(visits);
-
-      // Make sure the drawer is open
+      // Make sure the drawer is open FIRST, before displaying visits
       if (!this.drawerOpen) {
         this.toggleDrawer();
       }
 
-      // Add cancel selection button to the drawer
-      this.addSelectionCancelButton();
+      // Now display visits in the drawer
+      this.displayVisits(visits);
+
+      // Add cancel selection button to the drawer AFTER displayVisits
+      // This needs to be after because displayVisits sets innerHTML which would wipe out the buttons
+      // Use setTimeout to ensure DOM has fully updated
+      setTimeout(() => {
+        this.addSelectionCancelButton();
+      }, 0);
 
     } catch (error) {
       console.error('Error fetching visits in selection:', error);
@@ -387,19 +394,214 @@ export class VisitsManager {
    * Adds a cancel button to the drawer to clear the selection
    */
   addSelectionCancelButton() {
+    console.log('addSelectionCancelButton: Called');
     const container = document.getElementById('visits-list');
-    if (!container) return;
+    if (!container) {
+      console.error('addSelectionCancelButton: visits-list container not found');
+      return;
+    }
+    console.log('addSelectionCancelButton: Container found');
 
-    // Add cancel button at the top of the drawer if it doesn't exist
-    if (!document.getElementById('cancel-selection-button')) {
-      const cancelButton = document.createElement('button');
-      cancelButton.id = 'cancel-selection-button';
-      cancelButton.className = 'btn btn-sm btn-warning mb-4 w-full';
-      cancelButton.textContent = 'Cancel Area Selection';
-      cancelButton.onclick = () => this.clearSelection();
+    // Remove any existing button container first to avoid duplicates
+    const existingButtonContainer = document.getElementById('selection-button-container');
+    if (existingButtonContainer) {
+      console.log('addSelectionCancelButton: Removing existing button container');
+      existingButtonContainer.remove();
+    }
 
-      // Insert at the beginning of the container
-      container.insertBefore(cancelButton, container.firstChild);
+    // Create a button container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'flex gap-2 mb-4';
+    buttonContainer.id = 'selection-button-container';
+
+    // Cancel button
+    const cancelButton = document.createElement('button');
+    cancelButton.id = 'cancel-selection-button';
+    cancelButton.className = 'btn btn-sm btn-warning flex-1';
+    cancelButton.textContent = 'Cancel Selection';
+    cancelButton.onclick = () => this.clearSelection();
+
+    // Delete all selected points button
+    const deleteButton = document.createElement('button');
+    deleteButton.id = 'delete-selection-button';
+    deleteButton.className = 'btn btn-sm btn-error flex-1';
+    deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-1"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>Delete Points';
+    deleteButton.onclick = () => this.deleteSelectedPoints();
+
+    // Add count badge if we have selected points
+    if (this.selectedPoints && this.selectedPoints.length > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'badge badge-sm ml-1';
+      badge.textContent = this.selectedPoints.length;
+      deleteButton.appendChild(badge);
+      console.log(`addSelectionCancelButton: Added badge with ${this.selectedPoints.length} points`);
+    } else {
+      console.warn('addSelectionCancelButton: No selected points, selectedPoints =', this.selectedPoints);
+    }
+
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(deleteButton);
+
+    // Insert at the beginning of the container
+    container.insertBefore(buttonContainer, container.firstChild);
+    console.log('addSelectionCancelButton: Buttons inserted into DOM');
+
+    // Verify buttons are in DOM
+    setTimeout(() => {
+      const verifyDelete = document.getElementById('delete-selection-button');
+      const verifyCancel = document.getElementById('cancel-selection-button');
+      console.log('addSelectionCancelButton: Verification - Delete button exists:', !!verifyDelete);
+      console.log('addSelectionCancelButton: Verification - Cancel button exists:', !!verifyCancel);
+    }, 100);
+  }
+
+  /**
+   * Deletes all points in the current selection
+   */
+  async deleteSelectedPoints() {
+    if (!this.selectedPoints || this.selectedPoints.length === 0) {
+      showFlashMessage('warning', 'No points selected');
+      return;
+    }
+
+    const pointCount = this.selectedPoints.length;
+    const confirmed = confirm(
+      `⚠️ WARNING: This will permanently delete ${pointCount} point${pointCount > 1 ? 's' : ''} from your location history.\n\n` +
+      `This action cannot be undone!\n\n` +
+      `Are you sure you want to continue?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // Get point IDs from the selected points
+      // Debug: log the structure of selected points
+      console.log('Selected points sample:', this.selectedPoints[0]);
+
+      // Points format: [lat, lng, ?, ?, timestamp, ?, id, country, ?]
+      // ID is at index 6 based on the marker array structure
+      const pointIds = this.selectedPoints
+        .map(point => point[6]) // ID is at index 6
+        .filter(id => id != null && id !== '');
+
+      console.log('Point IDs to delete:', pointIds);
+
+      if (pointIds.length === 0) {
+        showFlashMessage('error', 'No valid point IDs found');
+        return;
+      }
+
+      // Call the bulk delete API
+      const response = await fetch('/api/v1/points/bulk_destroy', {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        body: JSON.stringify({ point_ids: pointIds })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Response error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Delete result:', result);
+
+      // Check if any points were actually deleted
+      if (result.count === 0) {
+        showFlashMessage('warning', 'No points were deleted. They may have already been removed.');
+        this.clearSelection();
+        return;
+      }
+
+      // Show success message
+      showFlashMessage('notice', `Successfully deleted ${result.count} point${result.count > 1 ? 's' : ''}`);
+
+      // Remove deleted points from the map
+      pointIds.forEach(id => {
+        this.mapsController.removeMarker(id);
+      });
+
+      // Update the polylines layer
+      this.updatePolylinesAfterDeletion();
+
+      // Update heatmap with remaining markers
+      if (this.mapsController.heatmapLayer) {
+        this.mapsController.heatmapLayer.setLatLngs(
+          this.mapsController.markers.map(marker => [marker[0], marker[1], 0.2])
+        );
+      }
+
+      // Update fog if enabled
+      if (this.mapsController.fogOverlay && this.mapsController.map.hasLayer(this.mapsController.fogOverlay)) {
+        this.mapsController.updateFog(
+          this.mapsController.markers,
+          this.mapsController.clearFogRadius,
+          this.mapsController.fogLineThreshold
+        );
+      }
+
+      // Clear selection
+      this.clearSelection();
+
+    } catch (error) {
+      console.error('Error deleting points:', error);
+      showFlashMessage('error', 'Failed to delete points. Please try again.');
+    }
+  }
+
+  /**
+   * Updates polylines layer after deletion (similar to single point deletion)
+   */
+  updatePolylinesAfterDeletion() {
+    let wasPolyLayerVisible = false;
+
+    // Check if polylines layer was visible
+    if (this.mapsController.polylinesLayer) {
+      if (this.mapsController.map.hasLayer(this.mapsController.polylinesLayer)) {
+        wasPolyLayerVisible = true;
+      }
+      this.mapsController.map.removeLayer(this.mapsController.polylinesLayer);
+    }
+
+    // Create new polylines layer with updated markers
+    this.mapsController.polylinesLayer = createPolylinesLayer(
+      this.mapsController.markers,
+      this.mapsController.map,
+      this.mapsController.timezone,
+      this.mapsController.routeOpacity,
+      this.mapsController.userSettings,
+      this.mapsController.distanceUnit
+    );
+
+    // Re-add to map if it was visible, otherwise ensure it's removed
+    if (wasPolyLayerVisible) {
+      this.mapsController.polylinesLayer.addTo(this.mapsController.map);
+    } else {
+      this.mapsController.map.removeLayer(this.mapsController.polylinesLayer);
+    }
+
+    // Update layer control
+    if (this.mapsController.layerControl) {
+      this.mapsController.map.removeControl(this.mapsController.layerControl);
+      const controlsLayer = {
+        Points: this.mapsController.markersLayer || L.layerGroup(),
+        Routes: this.mapsController.polylinesLayer || L.layerGroup(),
+        Heatmap: this.mapsController.heatmapLayer || L.layerGroup(),
+        "Fog of War": this.mapsController.fogOverlay,
+        "Scratch map": this.mapsController.scratchLayerManager?.getLayer() || L.layerGroup(),
+        Areas: this.mapsController.areasLayer || L.layerGroup(),
+        Photos: this.mapsController.photoMarkers || L.layerGroup()
+      };
+      this.mapsController.layerControl = L.control.layers(
+        this.mapsController.baseMaps(),
+        controlsLayer
+      ).addTo(this.mapsController.map);
     }
   }
 
@@ -430,7 +632,8 @@ export class VisitsManager {
     });
 
     // Update the drawer content if it's being opened - but don't fetch visits automatically
-    if (this.drawerOpen) {
+    // Only show the "no data" message if there's no selection active
+    if (this.drawerOpen && !this.isSelectionActive) {
       const container = document.getElementById('visits-list');
       if (container) {
         container.innerHTML = `
