@@ -48,10 +48,7 @@ class Api::V1::PointsController < ApiController
   def bulk_destroy
     point_ids = bulk_destroy_params[:point_ids]
 
-    if point_ids.blank?
-      render json: { error: 'No points selected' }, status: :unprocessable_entity
-      return
-    end
+    render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
 
     deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
 
