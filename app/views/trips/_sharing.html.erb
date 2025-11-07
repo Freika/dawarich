@@ -116,7 +116,7 @@
           <!-- Action Buttons -->
           <div class="modal-action">
             <%= submit_tag "Disable Sharing",
-                           name: 'sharing[enabled]',
+                           name: 'trip[sharing][enabled]',
                            value: '0',
                            class: "btn btn-error",
                            data: { turbo_confirm: "Are you sure you want to disable sharing for this trip?" } %>
@@ -141,7 +141,7 @@
                 <label class="label">
                   <span class="label-text font-medium">Link expiration</span>
                 </label>
-                <%= select_tag 'sharing[expiration]',
+                <%= select_tag 'trip[sharing][expiration]',
                                options_for_select([
                                  ['1 hour', '1h'],
                                  ['12 hours', '12h'],
@@ -159,7 +159,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="form-control">
                   <label class="label cursor-pointer justify-start gap-3">
-                    <%= check_box_tag 'sharing[share_notes]', '1', true, class: 'toggle toggle-primary' %>
+                    <%= check_box_tag 'trip[sharing][share_notes]', '1', true, class: 'toggle toggle-primary' %>
                     <div>
                       <span class="label-text font-medium block">Share trip notes</span>
                       <span class="label-text-alt text-xs">Include your description and notes</span>
@@ -168,7 +168,7 @@
                 </div>
                 <div class="form-control">
                   <label class="label cursor-pointer justify-start gap-3">
-                    <%= check_box_tag 'sharing[share_photos]', '1', true, class: 'toggle toggle-primary' %>
+                    <%= check_box_tag 'trip[sharing][share_photos]', '1', true, class: 'toggle toggle-primary' %>
                     <div>
                       <span class="label-text font-medium block">Share photos</span>
                       <span class="label-text-alt text-xs">Include photos from this trip</span>
@@ -197,7 +197,7 @@
           </div>
 
           <!-- Action Buttons -->
-          <%= hidden_field_tag 'sharing[enabled]', '1' %>
+          <%= hidden_field_tag 'trip[sharing][enabled]', '1' %>
           <div class="modal-action">
             <button type="button" class="btn btn-ghost" onclick="sharing_modal_<%= trip.id %>.close()">
               Cancel

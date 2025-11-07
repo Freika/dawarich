@@ -119,7 +119,7 @@ RSpec.describe 'Shared::Trips', type: :request do
         context 'enabling sharing' do
           it 'enables sharing and redirects to trip' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: '24h' } }
+                  params: { trip: { sharing: { enabled: '1', expiration: '24h' } } }
 
             expect(response).to redirect_to(trip_path(trip))
             expect(flash[:notice]).to eq('Trip was successfully updated.')
@@ -131,7 +131,7 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'enables sharing with notes option' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: '24h', share_notes: '1' } }
+                  params: { trip: { sharing: { enabled: '1', expiration: '24h', share_notes: '1' } } }
 
             expect(response).to redirect_to(trip_path(trip))
 
@@ -142,7 +142,7 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'enables sharing with photos option' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: '24h', share_photos: '1' } }
+                  params: { trip: { sharing: { enabled: '1', expiration: '24h', share_photos: '1' } } }
 
             expect(response).to redirect_to(trip_path(trip))
 
@@ -153,7 +153,7 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'sets custom expiration when provided' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: '1h' } }
+                  params: { trip: { sharing: { enabled: '1', expiration: '1h' } } }
 
             expect(response).to redirect_to(trip_path(trip))
             trip.reload
@@ -163,7 +163,7 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'enables permanent sharing' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: 'permanent' } }
+                  params: { trip: { sharing: { enabled: '1', expiration: 'permanent' } } }
 
             expect(response).to redirect_to(trip_path(trip))
             trip.reload
@@ -179,7 +179,7 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'disables sharing and redirects to trip' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '0' } }
+                  params: { trip: { sharing: { enabled: '0' } } }
 
             expect(response).to redirect_to(trip_path(trip))
             expect(flash[:notice]).to eq('Trip was successfully updated.')
@@ -192,7 +192,7 @@ RSpec.describe 'Shared::Trips', type: :request do
         context 'when trip does not exist' do
           it 'returns not found' do
             patch trip_path(id: 999999),
-                  params: { sharing: { enabled: '1' } }
+                  params: { trip: { sharing: { enabled: '1' } } }
 
             expect(response).to have_http_status(:not_found)
           end
@@ -204,7 +204,7 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'returns not found' do
             patch trip_path(other_trip),
-                  params: { sharing: { enabled: '1' } }
+                  params: { trip: { sharing: { enabled: '1' } } }
 
             expect(response).to have_http_status(:not_found)
           end
@@ -214,7 +214,7 @@ RSpec.describe 'Shared::Trips', type: :request do
       context 'when user is not signed in' do
         it 'returns unauthorized' do
           patch trip_path(trip),
-                params: { sharing: { enabled: '1' } }
+                params: { trip: { sharing: { enabled: '1' } } }
 
           expect(response).to have_http_status(:unauthorized)
         end

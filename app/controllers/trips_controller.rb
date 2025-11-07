@@ -40,7 +40,7 @@ class TripsController < ApplicationController
 
   def update
     # Handle sharing settings update
-    if params[:sharing]
+    if params[:trip] && params[:trip][:sharing]
       handle_sharing_update
       redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other and return
     end
@@ -72,11 +72,13 @@ class TripsController < ApplicationController
   end
 
   def handle_sharing_update
-    if params[:sharing][:enabled] == '1'
+    sharing_params = params[:trip][:sharing]
+
+    if sharing_params[:enabled] == '1'
       sharing_options = {
-        expiration: params[:sharing][:expiration] || '24h',
-        share_notes: params[:sharing][:share_notes] == '1',
-        share_photos: params[:sharing][:share_photos] == '1'
+        expiration: sharing_params[:expiration] || '24h',
+        share_notes: sharing_params[:share_notes] == '1',
+        share_photos: sharing_params[:share_photos] == '1'
       }
 
       @trip.enable_sharing!(**sharing_options)
