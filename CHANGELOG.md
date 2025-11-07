@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Removed useless system tests and cover map functionality with Playwright e2e tests instead.
 - Number of family members on self-hosted instances is no longer limited.
+- Export to GPX now adds adds speed and course to each point if they are available.
+
 
 # [0.34.2] - 2025-10-31
 
@@ -169,7 +171,6 @@ Important: This feature relies on reverse geocoding. Without reverse geocoding, 
 ## Changed
 
 - If user already have import with the same name, it will be appended with timestamp during the import process.
-- Export to GPX now adds adds speed and course to each point if they are available.
 
 ## Fixed
 
