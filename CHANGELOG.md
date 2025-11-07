@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Removed useless system tests and cover map functionality with Playwright e2e tests instead.
 - Number of family members on self-hosted instances is no longer limited.
 - Export to GPX now adds adds speed and course to each point if they are available.
+- Single Dockerfile introduced so Dawarich could be run in self-hosted mode in production environment.
+  - [ ] Check if with no changes to docker-compose.yml everything still works as before.
+  - [ ] Deploy to Staging and test again.
 
 
 # [0.34.2] - 2025-10-31
