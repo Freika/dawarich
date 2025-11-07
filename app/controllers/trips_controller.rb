@@ -39,10 +39,8 @@ class TripsController < ApplicationController
   end
 
   def update
-    # Handle sharing settings update
     handle_sharing_update if params[:sharing]
 
-    # Handle regular trip update
     if @trip.update(trip_params)
       redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
     else
