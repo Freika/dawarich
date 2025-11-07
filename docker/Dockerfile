@@ -7,7 +7,6 @@ ENV BUNDLE_VERSION=2.5.21
 ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
-ENV RAILS_ENV=${RAILS_ENV}
 
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
@@ -31,18 +30,11 @@ RUN apt-get update -qq \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js with architecture-specific logic for development
-# For production/staging, use LTS version
-RUN ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "arm64" ] || [ "$ARCH" = "armhf" ]; then \
-        curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-        apt-get install -y nodejs; \
-    else \
-        apt-get update && \
-        apt-get install -y nodejs npm; \
-    fi && \
-    npm install -g yarn && \
-    rm -rf /var/lib/apt/lists/*
+# Install Node.js LTS for production/staging
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g yarn \
+    && rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc with check for architecture
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
@@ -63,18 +55,19 @@ WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
-# Install gems based on environment
-RUN bundle config set --local path 'vendor/bundle' && \
-    bundle config set --local without 'development test' && \
-    bundle install --jobs 4 --retry 3 && \
-    rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
+# Install production gems only
+RUN bundle config set --local path 'vendor/bundle' \
+    && bundle config set --local without 'development test' \
+    && bundle install --jobs 4 --retry 3 \
+    && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
 
 COPY ../. ./
 
-# Precompile assets for production/staging
-RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile && \
-                            rm -rf node_modules tmp/cache
+# Precompile assets
+RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
+    && rm -rf node_modules tmp/cache
 
+# Copy entrypoint scripts and grant execution permissions
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
 
@@ -83,4 +76,4 @@ RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
 
 EXPOSE $RAILS_PORT
 
-ENTRYPOINT ["bundle", "exec"]
+ENTRYPOINT [ "bundle", "exec" ]
