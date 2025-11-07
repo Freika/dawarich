@@ -42,7 +42,12 @@ class TripsController < ApplicationController
     # Handle sharing settings update
     if params[:trip] && params[:trip][:sharing]
       handle_sharing_update
-      redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other and return
+
+      respond_to do |format|
+        format.turbo_stream { render turbo_stream: turbo_stream.replace("sharing_form_#{@trip.id}", partial: 'trips/sharing', locals: { trip: @trip }) }
+        format.html { redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other }
+      end
+      return
     end
 
     # Handle regular trip update
