@@ -26,9 +26,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `docker-compose.yml` file updated to provide sensible defaults for self-hosted production environment.
 - .env.example file added with default environment variables.
 - Single Dockerfile introduced so Dawarich could be run in self-hosted mode in production environment.
-  - [x] Check if with no changes to docker-compose.yml everything still works as before.
-  - [x] Deploy to Staging and test again.
-  - [ ] Run self-hosted instance with production env
 
 
 # [0.34.2] - 2025-10-31
