@@ -51,7 +51,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def set_invitation
-    return unless invitation_token.present?
+    return if invitation_token.blank?
 
     @invitation = Family::Invitation.find_by(token: invitation_token)
   end

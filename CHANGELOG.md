@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Taiwan flag is now shown on its own instead of in combination with China flag.
+- On the registration page and other user forms, if something goes wrong, error messages are now shown to the user.
 
 ## Changed
 
