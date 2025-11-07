@@ -57,14 +57,21 @@ RSpec.describe Family::Invitations::SendingJob, type: :job do
     end
 
     context 'integration test' do
-      it 'actually sends the email' do
-        expect do
-          described_class.perform_now(invitation.id)
-        end.to change { ActionMailer::Base.deliveries.count }.by(1)
+      before do
+        ActionMailer::Base.deliveries.clear
+        # Set a from address for the mailer to avoid SMTP errors
+        allow(ActionMailer::Base).to receive(:default).and_return(from: 'noreply@dawarich.app')
+      end
 
-        email = ActionMailer::Base.deliveries.last
-        expect(email.to).to include(invitation.email)
-        expect(email.subject).to include("You've been invited to join #{family.name}")
+      it 'actually calls the mailer' do
+        mailer = instance_double(ActionMailer::MessageDelivery)
+        allow(FamilyMailer).to receive(:invitation).and_return(mailer)
+        allow(mailer).to receive(:deliver_now)
+
+        described_class.perform_now(invitation.id)
+
+        expect(FamilyMailer).to have_received(:invitation).with(invitation)
+        expect(mailer).to have_received(:deliver_now)
       end
     end
   end

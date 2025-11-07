@@ -81,7 +81,7 @@ module Families
     end
 
     def send_invitation_email(invitation)
-      Families::Invitations::SendingJob.perform_later(invitation.id)
+      Family::Invitations::SendingJob.perform_later(invitation.id)
     end
 
     def send_notification

@@ -5,14 +5,14 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby File.read('.ruby-version').strip
 
-gem 'activerecord-postgis-adapter'
+gem 'activerecord-postgis-adapter', '~> 11.0'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
 gem 'aws-sdk-core', '~> 3.215.1', require: false
 gem 'aws-sdk-kms', '~> 1.96.0', require: false
 gem 'aws-sdk-s3', '~> 1.177.0', require: false
 gem 'bootsnap', require: false
 gem 'chartkick'
-gem 'data_migrate', '>= 11.3.1'
+gem 'data_migrate'
 gem 'devise'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
 gem 'gpx'
@@ -34,7 +34,7 @@ gem 'rails_icons'
 gem 'redis'
 gem 'rexml'
 gem 'rgeo'
-gem 'rgeo-activerecord', '>= 8.1.0'
+gem 'rgeo-activerecord', '~> 8.0.0'
 gem 'rgeo-geojson'
 gem 'rqrcode', '~> 3.0'
 gem 'rswag-api'
