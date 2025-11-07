@@ -487,7 +487,7 @@ GEM
     stringio (3.1.7)
     strong_migrations (2.5.1)
       activerecord (>= 7.1)
-    super_diff (0.16.0)
+    super_diff (0.17.0)
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
