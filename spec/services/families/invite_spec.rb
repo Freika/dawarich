@@ -57,6 +57,7 @@ RSpec.describe Families::Invite do
 
     context 'when family is at max capacity' do
       before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
         # Create max members (5 total including owner)
         create_list(:family_membership, Family::MAX_MEMBERS - 1, family: family, role: :member)
       end

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Removed useless system tests and cover map functionality with Playwright e2e tests instead.
+- Number of family members on self-hosted instances is no longer limited.
 
 # [0.34.2] - 2025-10-31
 
