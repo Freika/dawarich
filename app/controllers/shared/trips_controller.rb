@@ -4,10 +4,7 @@ class Shared::TripsController < ApplicationController
   def show
     @trip = Trip.find_by(sharing_uuid: params[:trip_uuid])
 
-    unless @trip&.public_accessible?
-      return redirect_to root_path,
-                         alert: 'Shared trip not found or no longer available'
-    end
+    redirect_to root_path, alert: 'Shared trip not found or no longer available' and return unless @trip&.public_accessible?
 
     @user = @trip.user
     @is_public_view = true

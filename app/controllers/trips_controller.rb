@@ -40,9 +40,7 @@ class TripsController < ApplicationController
 
   def update
     # Handle sharing settings update (JSON response)
-    if params[:sharing]
-      return update_sharing
-    end
+    update_sharing and return if params[:sharing]
 
     # Handle regular trip update
     if @trip.update(trip_params)
