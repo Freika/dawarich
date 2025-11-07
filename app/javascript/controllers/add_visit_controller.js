@@ -127,7 +127,6 @@ export default class extends Controller {
   }
 
   exitAddVisitMode(button) {
-    console.log('exitAddVisitMode called');
     this.isAddingVisit = false;
 
     // Reset button style to inactive state
@@ -141,14 +140,12 @@ export default class extends Controller {
 
     // Remove any existing marker
     if (this.addVisitMarker) {
-      console.log('Removing add visit marker');
       this.map.removeLayer(this.addVisitMarker);
       this.addVisitMarker = null;
     }
 
     // Close any open popup
     if (this.currentPopup) {
-      console.log('Closing current popup');
       this.map.closePopup(this.currentPopup);
       this.currentPopup = null;
     } else {
@@ -273,7 +270,7 @@ export default class extends Controller {
         cancelButton.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Cancel button clicked - exiting add visit mode');
+
           this.exitAddVisitMode(this.addVisitButton);
         });
       }
@@ -356,8 +353,6 @@ export default class extends Controller {
   }
 
   addCreatedVisitToMap(visitData, latitude, longitude) {
-    console.log('Adding newly created visit to map immediately', { latitude, longitude, visitData });
-
     const mapsController = document.querySelector('[data-controller*="maps"]');
     if (!mapsController) {
       console.log('Could not find maps controller element');
@@ -367,6 +362,7 @@ export default class extends Controller {
     const stimulusController = this.application.getControllerForElementAndIdentifier(mapsController, 'maps');
     if (!stimulusController || !stimulusController.visitsManager) {
       console.log('Could not find maps controller or visits manager');
+
       return;
     }
 
@@ -386,16 +382,10 @@ export default class extends Controller {
 
     // Add the circle to the confirmed visits layer
     visitsManager.confirmedVisitCircles.addLayer(circle);
-    console.log('✅ Added newly created confirmed visit circle to layer');
-    console.log('Confirmed visits layer info:', {
-      layerCount: visitsManager.confirmedVisitCircles.getLayers().length,
-      isOnMap: this.map.hasLayer(visitsManager.confirmedVisitCircles)
-    });
 
     // Make sure the layer is visible on the map
     if (!this.map.hasLayer(visitsManager.confirmedVisitCircles)) {
       this.map.addLayer(visitsManager.confirmedVisitCircles);
-      console.log('✅ Added confirmed visits layer to map');
     }
 
     // Check if the layer control has the confirmed visits layer enabled
@@ -421,9 +411,7 @@ export default class extends Controller {
       inputs.forEach(input => {
         const label = input.nextElementSibling;
         if (label && label.textContent.trim().includes('Confirmed Visits')) {
-          console.log('Found Confirmed Visits checkbox, current state:', input.checked);
           if (!input.checked) {
-            console.log('Enabling Confirmed Visits layer via checkbox');
             input.checked = true;
             input.dispatchEvent(new Event('change', { bubbles: true }));
           }
