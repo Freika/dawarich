@@ -12,7 +12,7 @@ gem 'aws-sdk-kms', '~> 1.96.0', require: false
 gem 'aws-sdk-s3', '~> 1.177.0', require: false
 gem 'bootsnap', require: false
 gem 'chartkick'
-gem 'data_migrate'
+gem 'data_migrate', '>= 11.3.1'
 gem 'devise'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
 gem 'gpx'
@@ -34,7 +34,7 @@ gem 'rails_icons'
 gem 'redis'
 gem 'rexml'
 gem 'rgeo'
-gem 'rgeo-activerecord'
+gem 'rgeo-activerecord', '>= 8.1.0'
 gem 'rgeo-geojson'
 gem 'rqrcode', '~> 3.0'
 gem 'rswag-api'
