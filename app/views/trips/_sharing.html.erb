@@ -1,6 +1,10 @@
-<div class="card bg-base-100 shadow-lg mt-6">
-  <div class="card-body">
-    <h3 class="card-title">Share This Trip</h3>
+<dialog id="sharing_modal_<%= trip.id %>" class="modal">
+  <div class="modal-box max-w-2xl">
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+    </form>
+
+    <h3 class="font-bold text-lg mb-4">Share This Trip</h3>
     <p class="text-sm text-base-content/70 mb-4">
       Generate a public link to share this trip with others.
     </p>
@@ -35,6 +39,7 @@
                 class="input input-bordered flex-1"
                 id="sharing-url-<%= trip.id %>">
               <button
+                type="button"
                 class="btn btn-square"
                 onclick="navigator.clipboard.writeText(document.getElementById('sharing-url-<%= trip.id %>').value).then(() => {
                   const btn = this;
@@ -95,7 +100,7 @@
                            ['Never (permanent)', 'permanent']
                          ], '24h'),
                          {},
-                         class: 'select select-bordered' %>
+                         class: 'select select-bordered w-full' %>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,4 +128,7 @@
       <% end %>
     <% end %>
   </div>
-</div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
