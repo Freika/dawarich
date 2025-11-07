@@ -4,10 +4,12 @@
       <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
     </form>
 
-    <h3 class="font-bold text-lg mb-4">Share This Trip</h3>
-    <p class="text-sm text-base-content/70 mb-4">
-      Generate a public link to share this trip with others.
-    </p>
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+      </svg>
+      Trip Sharing Settings
+    </h3>
 
     <%= form_with model: trip, url: trip_path(trip), method: :patch, data: { turbo: false } do |f| %>
       <% if trip.sharing_enabled? %>
@@ -15,115 +17,188 @@
         <div class="space-y-4">
           <!-- Sharing Status -->
           <div class="alert <%= trip.sharing_expired? ? 'alert-warning' : 'alert-success' %>">
-            <div>
-              <% if trip.sharing_expired? %>
-                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <span>This share link has expired</span>
-              <% else %>
-                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Sharing is enabled</span>
-              <% end %>
-            </div>
+            <% if trip.sharing_expired? %>
+              <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              <div>
+                <h3 class="font-bold">Link Expired</h3>
+                <p class="text-sm">This share link has expired and is no longer accessible</p>
+              </div>
+            <% else %>
+              <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div>
+                <h3 class="font-bold">Sharing Active</h3>
+                <p class="text-sm">This trip is publicly accessible via the link below</p>
+              </div>
+            <% end %>
           </div>
 
           <!-- Sharing URL -->
           <div class="form-control">
             <label class="label">
-              <span class="label-text">Share URL</span>
+              <span class="label-text font-medium">Sharing link</span>
             </label>
-            <div class="input-group">
+            <div class="join w-full">
               <input
                 type="text"
                 value="<%= shared_trip_url(trip.sharing_uuid) %>"
                 readonly
-                class="input input-bordered flex-1"
+                class="input input-bordered join-item flex-1"
                 id="sharing-url-<%= trip.id %>">
               <button
                 type="button"
-                class="btn btn-square"
+                class="btn btn-outline join-item"
                 onclick="navigator.clipboard.writeText(document.getElementById('sharing-url-<%= trip.id %>').value).then(() => {
                   const btn = this;
                   const original = btn.innerHTML;
-                  btn.innerHTML = '✓';
+                  btn.innerHTML = '<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z\" clip-rule=\"evenodd\" /></svg> Copied';
                   setTimeout(() => btn.innerHTML = original, 2000);
                 })">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                Copy
               </button>
+            </div>
+            <div class="label">
+              <span class="label-text-alt">Share this link with others to give them access to your trip</span>
             </div>
           </div>
 
-          <!-- Sharing Options -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="form-control">
-              <label class="label cursor-pointer">
-                <span class="label-text">Share notes</span>
-                <input
-                  type="checkbox"
-                  class="toggle toggle-primary"
-                  <%= trip.share_notes? ? 'checked' : '' %>
-                  disabled>
-              </label>
+          <!-- Current Sharing Options Display -->
+          <div class="card bg-base-200">
+            <div class="card-body p-4">
+              <h4 class="font-semibold mb-2">What's being shared:</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="flex items-center gap-2">
+                  <% if trip.share_notes? %>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                  <% else %>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/30" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                  <% end %>
+                  <span class="<%= trip.share_notes? ? 'text-base-content' : 'text-base-content/50' %>">Trip notes</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <% if trip.share_photos? %>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                  <% else %>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/30" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                  <% end %>
+                  <span class="<%= trip.share_photos? ? 'text-base-content' : 'text-base-content/50' %>">Photos</span>
+                </div>
+              </div>
+              <div class="text-xs text-base-content/60 mt-2">
+                Always included: Trip name, dates, route map, distance, and countries visited
+              </div>
             </div>
-            <div class="form-control">
-              <label class="label cursor-pointer">
-                <span class="label-text">Share photos</span>
-                <input
-                  type="checkbox"
-                  class="toggle toggle-primary"
-                  <%= trip.share_photos? ? 'checked' : '' %>
-                  disabled>
-              </label>
+          </div>
+
+          <!-- Privacy Notice -->
+          <div class="alert alert-info">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div>
+              <h3 class="font-bold">Privacy Protection</h3>
+              <div class="text-sm">
+                • Only selected information is shared<br>
+                • Personal information and account details are never included<br>
+                • You can disable sharing at any time
+              </div>
             </div>
           </div>
 
           <!-- Action Buttons -->
-          <div class="flex gap-2">
+          <div class="modal-action">
             <%= f.submit "Disable Sharing",
                          name: 'sharing[enabled]',
                          value: '0',
-                         class: "btn btn-error flex-1",
+                         class: "btn btn-error",
                          data: { turbo_confirm: "Are you sure you want to disable sharing for this trip?" } %>
+            <button type="button" class="btn btn-primary" onclick="sharing_modal_<%= trip.id %>.close()">
+              Done
+            </button>
           </div>
         </div>
       <% else %>
-        <!-- Sharing is disabled -->
+        <!-- Sharing is disabled - Enable form -->
         <div class="space-y-4">
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Expiration</span>
-            </label>
-            <%= f.select 'sharing[expiration]',
-                         options_for_select([
-                           ['1 hour', '1h'],
-                           ['12 hours', '12h'],
-                           ['24 hours', '24h'],
-                           ['Never (permanent)', 'permanent']
-                         ], '24h'),
-                         {},
-                         class: 'select select-bordered w-full' %>
+          <p class="text-base-content/70">
+            Generate a public link to share this trip with friends, family, or on social media.
+          </p>
+
+          <!-- Sharing Options -->
+          <div class="card bg-base-200">
+            <div class="card-body p-4">
+              <h4 class="font-semibold mb-3">Choose what to share:</h4>
+
+              <div class="form-control mb-3">
+                <label class="label">
+                  <span class="label-text font-medium">Link expiration</span>
+                </label>
+                <%= f.select 'sharing[expiration]',
+                             options_for_select([
+                               ['1 hour', '1h'],
+                               ['12 hours', '12h'],
+                               ['24 hours', '24h'],
+                               ['Never (permanent)', 'permanent']
+                             ], '24h'),
+                             {},
+                             class: 'select select-bordered w-full' %>
+                <div class="label">
+                  <span class="label-text-alt">Choose how long the sharing link will remain active</span>
+                </div>
+              </div>
+
+              <div class="divider my-2"></div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-3">
+                    <%= f.check_box 'sharing[share_notes]',
+                                    { checked: true, class: 'toggle toggle-primary' },
+                                    '1', '0' %>
+                    <div>
+                      <span class="label-text font-medium block">Share trip notes</span>
+                      <span class="label-text-alt text-xs">Include your description and notes</span>
+                    </div>
+                  </label>
+                </div>
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-3">
+                    <%= f.check_box 'sharing[share_photos]',
+                                    { checked: true, class: 'toggle toggle-primary' },
+                                    '1', '0' %>
+                    <div>
+                      <span class="label-text font-medium block">Share photos</span>
+                      <span class="label-text-alt text-xs">Include photos from this trip</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div class="text-xs text-base-content/60 mt-3 p-2 bg-base-100 rounded">
+                <strong>Always included:</strong> Trip name, dates, route map, distance, and countries visited
+              </div>
+            </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="form-control">
-              <label class="label cursor-pointer">
-                <span class="label-text">Share notes</span>
-                <%= f.check_box 'sharing[share_notes]',
-                                { checked: true, class: 'toggle toggle-primary' },
-                                '1', '0' %>
-              </label>
-            </div>
-            <div class="form-control">
-              <label class="label cursor-pointer">
-                <span class="label-text">Share photos</span>
-                <%= f.check_box 'sharing[share_photos]',
-                                { checked: true, class: 'toggle toggle-primary' },
-                                '1', '0' %>
-              </label>
+          <!-- Privacy Notice -->
+          <div class="alert alert-info">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div>
+              <h3 class="font-bold">Privacy Protection</h3>
+              <div class="text-sm">
+                • Only selected information will be shared<br>
+                • Personal information and account details are never included<br>
+                • You can disable sharing at any time
+              </div>
             </div>
           </div>
 
+          <!-- Action Buttons -->
           <%= f.hidden_field 'sharing[enabled]', value: '1' %>
-          <%= f.submit "Enable Sharing", class: "btn btn-primary w-full" %>
+          <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onclick="sharing_modal_<%= trip.id %>.close()">
+              Cancel
+            </button>
+            <%= f.submit "Enable Sharing", class: "btn btn-primary" %>
+          </div>
         </div>
       <% end %>
     <% end %>
