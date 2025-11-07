@@ -79,6 +79,8 @@ Simply install one of the supported apps on your device and configure it to send
 
 ⏹️ **To stop the app**, press `Ctrl+C`.
 
+You can use default values or create a `.env` file based on `.env.example` to customize your setup.
+
 ---
 
 ## 🔧 How to Install Dawarich

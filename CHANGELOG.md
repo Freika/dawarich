@@ -20,8 +20,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Removed useless system tests and cover map functionality with Playwright e2e tests instead.
+- S3 storage now can be used in self-hosted instances as well. Set STORAGE_BACKEND environment variable to "s3" and provide AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_BUCKET and AWS_ENDPOINT_URL environment variables to configure it.
 - Number of family members on self-hosted instances is no longer limited.
 - Export to GPX now adds adds speed and course to each point if they are available.
+- `docker-compose.yml` file updated to provide sensible defaults for self-hosted production environment.
+- .env.example file added with default environment variables.
+- Single Dockerfile introduced so Dawarich could be run in self-hosted mode in production environment.
 
 
 # [0.34.2] - 2025-10-31

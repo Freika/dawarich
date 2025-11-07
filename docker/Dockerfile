@@ -1,11 +1,12 @@
 FROM ruby:3.4.6-slim
 
+ARG RAILS_ENV=production
+
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
 ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
-ENV RAILS_ENV=production
 
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
@@ -25,10 +26,14 @@ RUN apt-get update -qq \
     less \
     libjemalloc2 libjemalloc-dev \
     cmake \
-    && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    ca-certificates \
+    && mkdir -p $APP_PATH \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js LTS for production/staging
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs \
     && npm install -g yarn \
-    && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc with check for architecture
@@ -41,7 +46,7 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
 # Enable YJIT
 ENV RUBY_YJIT_ENABLE=1
 
-# Update gem system and install bundler
+# Update RubyGems and install Bundler
 RUN gem update --system 3.6.9 \
     && gem install bundler --version "$BUNDLE_VERSION" \
     && rm -rf $GEM_HOME/cache/*
@@ -58,7 +63,7 @@ RUN bundle config set --local path 'vendor/bundle' \
 
 COPY ../. ./
 
-# Precompile assets for production
+# Precompile assets
 RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
     && rm -rf node_modules tmp/cache
 

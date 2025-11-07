@@ -86,7 +86,7 @@ Rails.application.configure do
   # Raise error when a before_action's only/except options reference missing actions
   config.action_controller.raise_on_missing_callback_actions = true
 
-  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
+  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip)
 
   config.action_mailer.default_url_options = { host: ENV['DOMAIN'] || hosts.first, port: ENV.fetch('PORT', 3000) }
 
@@ -99,5 +99,5 @@ Rails.application.configure do
   config.lograge.enabled = true
   config.lograge.formatter = Lograge::Formatters::Json.new
 
-  config.active_storage.service = ENV['SELF_HOSTED'] == 'true' ? :local : :s3
+  config.active_storage.service = ENV.fetch('STORAGE_BACKEND', :local)
 end

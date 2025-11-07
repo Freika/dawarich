@@ -101,7 +101,7 @@ Rails.application.configure do
   # ]
   # Skip DNS rebinding protection for the health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == '/api/v1/health' } }
-  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
+  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip)
 
   config.action_mailer.default_url_options = { host: ENV['DOMAIN'] }
   config.hosts.concat(hosts) if hosts.present?

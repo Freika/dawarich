@@ -8,7 +8,7 @@ class CreateFamilies < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_foreign_key :families, :users, column: :creator_id, validate: false
+    add_foreign_key :families, :users, column: :creator_id
     add_index :families, :creator_id
   end
 end
