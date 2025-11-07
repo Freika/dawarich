@@ -35,7 +35,7 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           expect(response.body).to include('Test Trip')
           expect(response.body).to include('Trip Route')
-          expect(response.body).to include('data-controller="public-trip-map"')
+          expect(response.body).to include('data-controller="shared--trip-map"')
           expect(response.body).to include(trip.sharing_uuid)
         end
 
@@ -117,17 +117,12 @@ RSpec.describe 'Shared::Trips', type: :request do
         before { sign_in user }
 
         context 'enabling sharing' do
-          it 'enables sharing and returns success' do
+          it 'enables sharing and redirects to trip' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: '24h' } },
-                  as: :json
+                  params: { sharing: { enabled: '1', expiration: '24h' } }
 
-            expect(response).to have_http_status(:success)
-
-            json_response = JSON.parse(response.body)
-            expect(json_response['success']).to be(true)
-            expect(json_response['sharing_url']).to be_present
-            expect(json_response['message']).to eq('Sharing enabled successfully')
+            expect(response).to redirect_to(trip_path(trip))
+            expect(flash[:notice]).to eq('Trip was successfully updated.')
 
             trip.reload
             expect(trip.sharing_enabled?).to be(true)
@@ -136,10 +131,9 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'enables sharing with notes option' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: '24h', share_notes: '1' } },
-                  as: :json
+                  params: { sharing: { enabled: '1', expiration: '24h', share_notes: '1' } }
 
-            expect(response).to have_http_status(:success)
+            expect(response).to redirect_to(trip_path(trip))
 
             trip.reload
             expect(trip.sharing_enabled?).to be(true)
@@ -148,10 +142,9 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'enables sharing with photos option' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: '24h', share_photos: '1' } },
-                  as: :json
+                  params: { sharing: { enabled: '1', expiration: '24h', share_photos: '1' } }
 
-            expect(response).to have_http_status(:success)
+            expect(response).to redirect_to(trip_path(trip))
 
             trip.reload
             expect(trip.sharing_enabled?).to be(true)
@@ -160,10 +153,9 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'sets custom expiration when provided' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: '1h' } },
-                  as: :json
+                  params: { sharing: { enabled: '1', expiration: '1h' } }
 
-            expect(response).to have_http_status(:success)
+            expect(response).to redirect_to(trip_path(trip))
             trip.reload
             expect(trip.sharing_enabled?).to be(true)
             expect(trip.sharing_settings['expiration']).to eq('1h')
@@ -171,10 +163,9 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'enables permanent sharing' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '1', expiration: 'permanent' } },
-                  as: :json
+                  params: { sharing: { enabled: '1', expiration: 'permanent' } }
 
-            expect(response).to have_http_status(:success)
+            expect(response).to redirect_to(trip_path(trip))
             trip.reload
             expect(trip.sharing_settings['expiration']).to eq('permanent')
             expect(trip.sharing_settings['expires_at']).to be_nil
@@ -186,16 +177,12 @@ RSpec.describe 'Shared::Trips', type: :request do
             trip.enable_sharing!(expiration: '24h')
           end
 
-          it 'disables sharing and returns success' do
+          it 'disables sharing and redirects to trip' do
             patch trip_path(trip),
-                  params: { sharing: { enabled: '0' } },
-                  as: :json
+                  params: { sharing: { enabled: '0' } }
 
-            expect(response).to have_http_status(:success)
-
-            json_response = JSON.parse(response.body)
-            expect(json_response['success']).to be(true)
-            expect(json_response['message']).to eq('Sharing disabled successfully')
+            expect(response).to redirect_to(trip_path(trip))
+            expect(flash[:notice]).to eq('Trip was successfully updated.')
 
             trip.reload
             expect(trip.sharing_enabled?).to be(false)
@@ -205,8 +192,7 @@ RSpec.describe 'Shared::Trips', type: :request do
         context 'when trip does not exist' do
           it 'returns not found' do
             patch trip_path(id: 999999),
-                  params: { sharing: { enabled: '1' } },
-                  as: :json
+                  params: { sharing: { enabled: '1' } }
 
             expect(response).to have_http_status(:not_found)
           end
@@ -218,8 +204,7 @@ RSpec.describe 'Shared::Trips', type: :request do
 
           it 'returns not found' do
             patch trip_path(other_trip),
-                  params: { sharing: { enabled: '1' } },
-                  as: :json
+                  params: { sharing: { enabled: '1' } }
 
             expect(response).to have_http_status(:not_found)
           end
@@ -229,8 +214,7 @@ RSpec.describe 'Shared::Trips', type: :request do
       context 'when user is not signed in' do
         it 'returns unauthorized' do
           patch trip_path(trip),
-                params: { sharing: { enabled: '1' } },
-                as: :json
+                params: { sharing: { enabled: '1' } }
 
           expect(response).to have_http_status(:unauthorized)
         end

@@ -54,9 +54,9 @@
           <% if @coordinates.present? %>
             <div id="public-trip-map"
                  class="w-full h-full"
-                 data-controller="public-trip-map"
-                 data-public-trip-map-coordinates-value="<%= @coordinates.to_json %>"
-                 data-public-trip-map-name-value="<%= @trip.name %>"></div>
+                 data-controller="shared--trip-map"
+                 data-shared--trip-map-coordinates-value="<%= @coordinates.to_json %>"
+                 data-shared--trip-map-name-value="<%= @trip.name %>"></div>
           <% else %>
             <div class="flex items-center justify-center h-full">
               <div class="text-center">

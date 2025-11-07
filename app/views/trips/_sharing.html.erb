@@ -5,7 +5,7 @@
       Generate a public link to share this trip with others.
     </p>
 
-    <div id="sharing-controls-<%= trip.id %>" data-trip-id="<%= trip.id %>">
+    <%= form_with model: trip, url: trip_path(trip), method: :patch, data: { turbo: false } do |f| %>
       <% if trip.sharing_enabled? %>
         <!-- Sharing is enabled -->
         <div class="space-y-4">
@@ -73,16 +73,11 @@
 
           <!-- Action Buttons -->
           <div class="flex gap-2">
-            <button
-              class="btn btn-warning flex-1"
-              onclick="regenerateTripSharingLink(<%= trip.id %>)">
-              Regenerate Link
-            </button>
-            <button
-              class="btn btn-error flex-1"
-              onclick="disableTripSharing(<%= trip.id %>)">
-              Disable Sharing
-            </button>
+            <%= f.submit "Disable Sharing",
+                         name: 'sharing[enabled]',
+                         value: '0',
+                         class: "btn btn-error flex-1",
+                         data: { turbo_confirm: "Are you sure you want to disable sharing for this trip?" } %>
           </div>
         </div>
       <% else %>
@@ -92,118 +87,40 @@
             <label class="label">
               <span class="label-text">Expiration</span>
             </label>
-            <select class="select select-bordered" id="expiration-<%= trip.id %>">
-              <option value="1h">1 hour</option>
-              <option value="12h">12 hours</option>
-              <option value="24h" selected>24 hours</option>
-              <option value="permanent">Never (permanent)</option>
-            </select>
+            <%= f.select 'sharing[expiration]',
+                         options_for_select([
+                           ['1 hour', '1h'],
+                           ['12 hours', '12h'],
+                           ['24 hours', '24h'],
+                           ['Never (permanent)', 'permanent']
+                         ], '24h'),
+                         {},
+                         class: 'select select-bordered' %>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Share notes</span>
-                <input
-                  type="checkbox"
-                  class="toggle toggle-primary"
-                  id="share-notes-<%= trip.id %>"
-                  checked>
+                <%= f.check_box 'sharing[share_notes]',
+                                { checked: true, class: 'toggle toggle-primary' },
+                                '1', '0' %>
               </label>
             </div>
             <div class="form-control">
               <label class="label cursor-pointer">
                 <span class="label-text">Share photos</span>
-                <input
-                  type="checkbox"
-                  class="toggle toggle-primary"
-                  id="share-photos-<%= trip.id %>"
-                  checked>
+                <%= f.check_box 'sharing[share_photos]',
+                                { checked: true, class: 'toggle toggle-primary' },
+                                '1', '0' %>
               </label>
             </div>
           </div>
 
-          <button
-            class="btn btn-primary w-full"
-            onclick="enableTripSharing(<%= trip.id %>)">
-            Enable Sharing
-          </button>
+          <%= f.hidden_field 'sharing[enabled]', value: '1' %>
+          <%= f.submit "Enable Sharing", class: "btn btn-primary w-full" %>
         </div>
       <% end %>
-    </div>
+    <% end %>
   </div>
 </div>
-
-<script>
-function enableTripSharing(tripId) {
-  const expiration = document.getElementById(`expiration-${tripId}`).value;
-  const shareNotes = document.getElementById(`share-notes-${tripId}`).checked ? '1' : '0';
-  const sharePhotos = document.getElementById(`share-photos-${tripId}`).checked ? '1' : '0';
-
-  fetch(`/trips/${tripId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-    },
-    body: JSON.stringify({
-      sharing: {
-        enabled: '1',
-        expiration: expiration,
-        share_notes: shareNotes,
-        share_photos: sharePhotos
-      }
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      location.reload();
-    } else {
-      alert('Failed to enable sharing: ' + (data.message || 'Unknown error'));
-    }
-  })
-  .catch(error => {
-    alert('Error enabling sharing: ' + error);
-  });
-}
-
-function disableTripSharing(tripId) {
-  if (!confirm('Are you sure you want to disable sharing for this trip?')) {
-    return;
-  }
-
-  fetch(`/trips/${tripId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-    },
-    body: JSON.stringify({
-      sharing: {
-        enabled: '0'
-      }
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      location.reload();
-    } else {
-      alert('Failed to disable sharing: ' + (data.message || 'Unknown error'));
-    }
-  })
-  .catch(error => {
-    alert('Error disabling sharing: ' + error);
-  });
-}
-
-function regenerateTripSharingLink(tripId) {
-  if (!confirm('Regenerating will invalidate the old link. Continue?')) {
-    return;
-  }
-
-  // This would require a new endpoint or modify the existing one
-  alert('Regenerate link functionality to be implemented');
-}
-</script>

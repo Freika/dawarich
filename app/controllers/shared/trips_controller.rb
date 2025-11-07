@@ -7,11 +7,8 @@ class Shared::TripsController < ApplicationController
     redirect_to root_path, alert: 'Shared trip not found or no longer available' and return unless @trip&.public_accessible?
 
     @user = @trip.user
-    @is_public_view = true
-    @coordinates = @trip.path.present? ? extract_coordinates : []
-    @photo_previews = @trip.share_photos? ? fetch_photo_previews : []
-
-    render 'trips/public_show'
+    @coordinates = extract_coordinates
+    @photo_previews = fetch_photo_previews
   end
 
   private
@@ -24,6 +21,8 @@ class Shared::TripsController < ApplicationController
   end
 
   def fetch_photo_previews
+    return [] unless @trip.share_photos?
+
     Rails.cache.fetch("trip_photos_#{@trip.id}", expires_in: 1.day) do
       @trip.photo_previews
     end

@@ -156,36 +156,12 @@ RSpec.describe Trip, type: :model do
   end
 
   describe 'Shareable concern' do
-    let(:user) { create(:user) }
-    let(:trip) { create(:trip, user: user) }
+    it_behaves_like 'shareable'
 
-    describe 'sharing_uuid generation' do
-      it 'generates a sharing_uuid on create' do
-        new_trip = build(:trip, user: user)
-        expect(new_trip.sharing_uuid).to be_nil
-        new_trip.save!
-        expect(new_trip.sharing_uuid).to be_present
-      end
-    end
+    describe 'Trip-specific sharing' do
+      let(:user) { create(:user) }
+      let(:trip) { create(:trip, user: user) }
 
-    describe '#public_accessible?' do
-      it 'returns false by default' do
-        expect(trip.public_accessible?).to be false
-      end
-
-      it 'returns true when sharing is enabled and not expired' do
-        trip.enable_sharing!(expiration: '24h')
-        expect(trip.public_accessible?).to be true
-      end
-
-      it 'returns false when sharing is disabled' do
-        trip.enable_sharing!(expiration: '24h')
-        trip.disable_sharing!
-        expect(trip.public_accessible?).to be false
-      end
-    end
-
-    describe '#enable_sharing!' do
       it 'enables sharing with notes and photos options' do
         trip.enable_sharing!(expiration: '24h', share_notes: true, share_photos: true)
         expect(trip.sharing_enabled?).to be true
