@@ -13,9 +13,10 @@ class Family::Invitations::CleanupJob < ApplicationJob
     Rails.logger.info "Updated #{expired_count} expired family invitations"
 
     cleanup_threshold = 30.days.ago
-    deleted_count = Family::Invitation.where(status: [:expired, :cancelled])
-                                      .where('updated_at < ?', cleanup_threshold)
-                                      .delete_all
+    deleted_count =
+      Family::Invitation.where(status: %i[expired cancelled])
+                        .where('updated_at < ?', cleanup_threshold)
+                        .delete_all
 
     Rails.logger.info "Deleted #{deleted_count} old family invitations"
 

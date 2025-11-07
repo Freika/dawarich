@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Taiwan flag is now shown on its own instead of in combination with China flag.
 - On the registration page and other user forms, if something goes wrong, error messages are now shown to the user.
+- Leaving family, deleting family and cancelling invitations now prompt confirmation dialog to prevent accidental actions.
+- Each pending family invitation now also contain a link to share with the invitee.
 
 ## Changed
 
