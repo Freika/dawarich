@@ -51,8 +51,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Register now!')
-        expect(response.body).to include('take control over your location data')
+        expect(response.body).to include('Almost there!')
+        expect(response.body).to include('control over your location data')
         expect(response.body).not_to include('Join')
         expect(response.body).to include('Sign up')
       end
@@ -227,7 +227,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Register now!')
+        expect(response.body).to include('Almost there!')
       end
 
       it 'allows account creation' do
