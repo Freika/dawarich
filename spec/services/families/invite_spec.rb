@@ -21,6 +21,11 @@ RSpec.describe Families::Invite do
         expect(invitation.invited_by).to eq(owner)
       end
 
+      it 'enqueues invitation sending job' do
+        expect(Family::Invitations::SendingJob).to receive(:perform_later).with(an_instance_of(Integer))
+        service.call
+      end
+
       it 'sends invitation email' do
         expect(FamilyMailer).to receive(:invitation).and_call_original
         expect_any_instance_of(ActionMailer::MessageDelivery).to receive(:deliver_later)

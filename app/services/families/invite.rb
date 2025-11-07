@@ -19,8 +19,8 @@ module Families
       return false unless invite_sendable?
 
       ActiveRecord::Base.transaction do
-        create_invitation
-        send_invitation_email
+        invitation = create_invitation
+        send_invitation_email(invitation)
         send_notification
       end
 
@@ -80,16 +80,18 @@ module Families
       )
     end
 
-    def send_invitation_email
-      # Send email in background with retry logic
-      FamilyMailer.invitation(@invitation).deliver_later(
-        queue: :mailer,
-        retry: 3,
-        wait: 30.seconds
-      )
+    def send_invitation_email(invitation)
+      Families::Invitations::SendingJob.perform_later(invitation.id)
     end
 
     def send_notification
+      message =
+        if DawarichSettings.self_hosted?
+          "Family invitation sent to #{email} if SMTP is configured properly. If you're not using SMTP, copy the invitation link from the family page and share it manually."
+        else
+          "Family invitation sent to #{email}"
+        end
+
       Notification.create!(
         user: invited_by,
         kind: :info,
