@@ -3,7 +3,8 @@ StrongMigrations.start_after = 20_250_122_150_500
 
 # Set timeouts for migrations
 # If you use PgBouncer in transaction mode, delete these lines and set timeouts on the database user
-StrongMigrations.lock_timeout = 10.seconds
+# Disable lock timeout in production/staging to avoid connection issues
+StrongMigrations.lock_timeout = Rails.env.development? || Rails.env.test? ? 10.seconds : nil
 StrongMigrations.statement_timeout = 1.hour
 
 # Analyze tables after indexes are added
