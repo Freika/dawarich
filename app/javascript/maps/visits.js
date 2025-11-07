@@ -220,12 +220,13 @@ export class VisitsManager {
       // Set selection as active to ensure date summary is displayed
       this.isSelectionActive = true;
 
-      this.displayVisits(visits);
-
-      // Make sure the drawer is open
+      // Make sure the drawer is open FIRST, before displaying visits
       if (!this.drawerOpen) {
         this.toggleDrawer();
       }
+
+      // Now display visits in the drawer
+      this.displayVisits(visits);
 
       // Add cancel selection button to the drawer AFTER displayVisits
       // This needs to be after because displayVisits sets innerHTML which would wipe out the buttons
