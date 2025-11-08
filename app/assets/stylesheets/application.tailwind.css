@@ -78,7 +78,7 @@
   position: absolute;
   top: 10px;
   right: 70px; /* Position to the left of the control buttons with margin */
-  width: 338px;
+  width: 24rem;
   max-height: calc(100% - 20px);
   background: rgba(255, 255, 255, 0.5);
   border-radius: 8px;
@@ -89,6 +89,18 @@
   z-index: 450;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   height: auto; /* Make height fit content */
+  cursor: default; /* Override map cursor */
+}
+
+.leaflet-drawer * {
+  cursor: default; /* Ensure all children have default cursor */
+}
+
+.leaflet-drawer a,
+.leaflet-drawer button,
+.leaflet-drawer .btn,
+.leaflet-drawer input[type="checkbox"] {
+  cursor: pointer; /* Interactive elements get pointer cursor */
 }
 
 .leaflet-drawer.open {
@@ -128,6 +140,5 @@
 
 /* Cancel Selection Button */
 #cancel-selection-button {
-  margin-bottom: 1rem;
   width: 100%;
 }
