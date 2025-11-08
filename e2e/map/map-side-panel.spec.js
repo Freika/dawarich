@@ -142,7 +142,6 @@ test.describe('Side Panel', () => {
     const visitCount = await visitItems.count();
 
     const noVisitsMessage = page.locator('#visits-list p.text-gray-500');
-    const hasNoVisitsMessage = await noVisitsMessage.count() > 0;
 
     // Either we have visits OR we have a "no visits" message (not "Loading...")
     if (visitCount > 0) {
