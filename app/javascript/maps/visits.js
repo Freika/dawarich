@@ -659,7 +659,10 @@ export class VisitsManager {
     drawer.style.overflowY = 'auto';
 
     drawer.innerHTML = `
-      <div class="p-3 my-2 drawer flex flex-col items-center">
+      <div class="p-3 my-2 drawer flex flex-col items-center relative">
+        <button id="close-visits-drawer" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" title="Close panel">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+        </button>
         <h2 class="text-xl font-bold mb-4 text-accent-content w-full text-center">Recent Visits</h2>
         <div id="visits-list" class="space-y-2 w-full">
           <p class="text-gray-500">Loading visits...</p>
@@ -673,6 +676,15 @@ export class VisitsManager {
     L.DomEvent.disableClickPropagation(drawer);
 
     this.map.getContainer().appendChild(drawer);
+
+    // Add close button event listener
+    const closeButton = drawer.querySelector('#close-visits-drawer');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => {
+        this.toggleDrawer();
+      });
+    }
+
     return drawer;
   }
 
