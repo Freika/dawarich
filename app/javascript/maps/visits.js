@@ -649,16 +649,15 @@ export class VisitsManager {
   createDrawer() {
     const drawer = document.createElement('div');
     drawer.id = 'visits-drawer';
-    drawer.className = 'fixed top-0 right-0 h-full w-64 bg-base-100 shadow-lg transform translate-x-full transition-transform duration-300 ease-in-out z-39 overflow-y-auto leaflet-drawer';
+    drawer.className = 'bg-base-100 shadow-lg z-39 overflow-y-auto leaflet-drawer';
 
     // Add styles to make the drawer scrollable
     drawer.style.overflowY = 'auto';
-    drawer.style.maxHeight = '100vh';
 
     drawer.innerHTML = `
-      <div class="p-3 drawer">
-        <h2 class="text-xl font-bold mb-4 text-accent-content">Recent Visits</h2>
-        <div id="visits-list" class="space-y-2">
+      <div class="p-3 drawer flex flex-col items-center">
+        <h2 class="text-xl font-bold mb-4 text-accent-content w-full">Recent Visits</h2>
+        <div id="visits-list" class="space-y-2 w-64">
           <p class="text-gray-500">Loading visits...</p>
         </div>
       </div>
