@@ -381,7 +381,7 @@ export class VisitsManager {
 
     // Create the whole panel with collapsible content
     return `
-      <details class="collapse collapse-arrow bg-base-100 rounded-lg mb-4 shadow-sm">
+      <details id="data-section-collapse" class="collapse collapse-arrow bg-base-100 rounded-lg mb-4 shadow-sm">
         <summary class="collapse-title text-lg font-bold">
           Data in Selected Area
         </summary>
@@ -659,8 +659,8 @@ export class VisitsManager {
     drawer.style.overflowY = 'auto';
 
     drawer.innerHTML = `
-      <div class="p-2 my-2 drawer flex flex-col items-center">
-        <h2 class="text-xl font-bold mb-4 text-accent-content w-full">Recent Visits</h2>
+      <div class="p-3 my-2 drawer flex flex-col items-center">
+        <h2 class="text-xl font-bold mb-4 text-accent-content w-full text-center">Recent Visits</h2>
         <div id="visits-list" class="space-y-2 w-full">
           <p class="text-gray-500">Loading visits...</p>
         </div>
@@ -831,6 +831,10 @@ export class VisitsManager {
       return;
     }
 
+    // Save the current state of collapsible sections before updating
+    const dataSectionOpen = document.querySelector('#data-section-collapse')?.open || false;
+    const visitsSectionOpen = document.querySelector('#visits-section-collapse')?.open || false;
+
     // Update the drawer title if selection is active
     if (this.isSelectionActive && this.selectionRect) {
       const visitsCount = visits ? visits.filter(visit => visit.status !== 'declined').length : 0;
@@ -924,7 +928,7 @@ export class VisitsManager {
 
     // Wrap visits in a collapsible section
     const visitsSection = visits && visits.length > 0 ? `
-      <details class="collapse collapse-arrow bg-base-100 rounded-lg mb-4 shadow-sm">
+      <details id="visits-section-collapse" class="collapse collapse-arrow bg-base-100 rounded-lg mb-4 shadow-sm">
         <summary class="collapse-title text-lg font-bold">
           Visits (${visits.filter(v => v.status !== 'declined').length})
         </summary>
@@ -936,6 +940,17 @@ export class VisitsManager {
 
     // Combine date summary and visits HTML
     container.innerHTML = dateGroupsHtml + visitsSection;
+
+    // Restore the state of collapsible sections
+    const dataSection = document.querySelector('#data-section-collapse');
+    const visitsSection2 = document.querySelector('#visits-section-collapse');
+
+    if (dataSection && dataSectionOpen) {
+      dataSection.open = true;
+    }
+    if (visitsSection2 && visitsSectionOpen) {
+      visitsSection2.open = true;
+    }
 
     // Add the circles layer to the map
     this.visitCircles.addTo(this.map);
