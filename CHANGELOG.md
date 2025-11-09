@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [UNRELEASED]
+
+# [0.35.0]
 
 ## Added
 
@@ -26,7 +27,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `docker-compose.yml` file updated to provide sensible defaults for self-hosted production environment.
 - `.env.example` file added with default environment variables.
 - Single Dockerfile introduced so Dawarich could be run in self-hosted mode in production environment.
-
 
 # [0.34.2] - 2025-10-31
 
