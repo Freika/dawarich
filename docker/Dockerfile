@@ -30,9 +30,9 @@ RUN apt-get update -qq \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js LTS for production/staging
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && apt-get install -y nodejs \
+# Install Node.js from Debian repositories (supports all architectures including armv7)
+RUN apt-get update -qq \
+    && apt-get install -y nodejs npm \
     && npm install -g yarn \
     && rm -rf /var/lib/apt/lists/*
 
