@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [0.35.0]
 
+⚠️ Important ⚠️
+
+The default `docker-compose.yml` file has been updated to provide sensible defaults for self-hosted production environments. This should not break existing setups, but it's recommended to review your `docker-compose.yml` file and update it accordingly.
+
 ## Added
 
 - Selection tool on the map now can select points that user can delete in bulk. #433
