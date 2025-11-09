@@ -43,7 +43,7 @@ Rails.application.configure do
   # config.action_dispatch.x_sendfile_header = "X-Accel-Redirect" # for NGINX
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = ENV['SELF_HOSTED'] == 'true' ? :local : :s3
+  config.active_storage.service = ENV.fetch('STORAGE_BACKEND', :local)
 
   config.silence_healthcheck_path = '/api/v1/health'
 
@@ -101,7 +101,7 @@ Rails.application.configure do
   # ]
   # Skip DNS rebinding protection for the health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == "/api/v1/health" } }
-  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',')
+  hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip)
 
   config.action_mailer.default_url_options = { host: ENV['DOMAIN'] }
   config.hosts.concat(hosts) if hosts.present?

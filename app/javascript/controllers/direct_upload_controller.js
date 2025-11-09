@@ -29,7 +29,7 @@ export default class extends Controller {
     if (this.isUploading) {
       // If still uploading, prevent submission
       event.preventDefault()
-      console.log("Form submission prevented during upload")
+
       return
     }
 
@@ -41,7 +41,7 @@ export default class extends Controller {
     const signedIds = this.element.querySelectorAll('input[name="import[files][]"][type="hidden"]')
     if (signedIds.length === 0) {
       event.preventDefault()
-      console.log("No files uploaded yet")
+
       alert("Please select and upload files first")
     } else {
       console.log(`Submitting form with ${signedIds.length} uploaded files`)
@@ -78,7 +78,6 @@ export default class extends Controller {
       }
     }
 
-    console.log(`Uploading ${files.length} files`)
     this.isUploading = true
 
     // Disable submit button during upload
@@ -124,8 +123,6 @@ export default class extends Controller {
     // Add the progress wrapper AFTER the file input field but BEFORE the submit button
     this.submitTarget.parentNode.insertBefore(progressWrapper, this.submitTarget)
 
-    console.log("Progress bar created and inserted before submit button")
-
     let uploadCount = 0
     const totalFiles = files.length
 
@@ -137,17 +134,13 @@ export default class extends Controller {
     });
 
     Array.from(files).forEach(file => {
-      console.log(`Starting upload for ${file.name}`)
       const upload = new DirectUpload(file, this.urlValue, this)
       upload.create((error, blob) => {
         uploadCount++
 
         if (error) {
-          console.error("Error uploading file:", error)
-          // Show error to user using flash
           showFlashMessage('error', `Error uploading ${file.name}: ${error.message || 'Unknown error'}`)
         } else {
-          console.log(`Successfully uploaded ${file.name} with ID: ${blob.signed_id}`)
 
           // Create a hidden field with the correct name
           const hiddenField = document.createElement("input")
@@ -155,8 +148,6 @@ export default class extends Controller {
           hiddenField.setAttribute("name", "import[files][]")
           hiddenField.setAttribute("value", blob.signed_id)
           this.element.appendChild(hiddenField)
-
-          console.log("Added hidden field with signed ID:", blob.signed_id)
         }
 
         // Enable submit button when all uploads are complete
@@ -186,8 +177,6 @@ export default class extends Controller {
             }
           }
           this.isUploading = false
-          console.log("All uploads completed")
-          console.log(`Ready to submit with ${successfulUploads} files`)
         }
       })
     })

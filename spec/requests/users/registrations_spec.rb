@@ -51,8 +51,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Register now!')
-        expect(response.body).to include('take control over your location data')
+        expect(response.body).to include('Almost there!')
+        expect(response.body).to include('control over your location data')
         expect(response.body).not_to include('Join')
         expect(response.body).to include('Sign up')
       end
@@ -227,7 +227,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Register now!')
+        expect(response.body).to include('Almost there!')
       end
 
       it 'allows account creation' do
@@ -322,6 +322,70 @@ RSpec.describe 'Users::Registrations', type: :request do
         end.to change(User, :count).by(1)
 
         expect(flash[:alert]).to include('there was an issue accepting the invitation')
+      end
+    end
+  end
+
+  describe 'Validation Error Handling' do
+    context 'when trying to register with an existing email' do
+      let!(:existing_user) { create(:user, email: 'existing@example.com') }
+
+      it 'renders the registration form with error message' do
+        post user_registration_path, params: {
+          user: {
+            email: existing_user.email,
+            password: 'password123',
+            password_confirmation: 'password123'
+          }
+        }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('Email has already been taken')
+        expect(response.body).to include('error_explanation')
+      end
+
+      it 'does not create a new user' do
+        expect do
+          post user_registration_path, params: {
+            user: {
+              email: existing_user.email,
+              password: 'password123',
+              password_confirmation: 'password123'
+            }
+          }
+        end.not_to change(User, :count)
+      end
+    end
+
+    context 'when password is too short' do
+      it 'renders the registration form with error message' do
+        post user_registration_path, params: {
+          user: {
+            email: 'newuser@example.com',
+            password: 'short',
+            password_confirmation: 'short'
+          }
+        }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('Password is too short')
+        expect(response.body).to include('error_explanation')
+      end
+    end
+
+    context 'when passwords do not match' do
+      it 'renders the registration form with error message' do
+        post user_registration_path, params: {
+          user: {
+            email: 'newuser@example.com',
+            password: 'password123',
+            password_confirmation: 'different123'
+          }
+        }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("Password confirmation doesn")
+        expect(response.body).to include('error_explanation')
       end
     end
   end
