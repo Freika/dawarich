@@ -4,8 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.35.1] - 2025-11-09
 
-# [0.35.0]
+## Fixed
+
+- StrongMigration issue #1931
+
+
+# [0.35.0] - 2025-11-09
 
 ⚠️ Important ⚠️
 
