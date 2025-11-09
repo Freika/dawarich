@@ -161,6 +161,14 @@ test.describe('Side Panel', () => {
   test('should display visit details in panel', async ({ page }) => {
     await selectAreaWithVisits(page);
 
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
+
     // Check if we have any visits
     const visitCount = await page.locator('.visit-item').count();
 
@@ -185,7 +193,7 @@ test.describe('Side Panel', () => {
     await expect(timeInfo).toBeVisible();
 
     // Check if this is a suggested visit (has confirm/decline buttons)
-    const hasSuggestedButtons = await firstVisit.locator('.confirm-visit').count() > 0;
+    const hasSuggestedButtons = (await firstVisit.locator('.confirm-visit').count()) > 0;
 
     if (hasSuggestedButtons) {
       // For suggested visits, verify action buttons are present
@@ -201,6 +209,14 @@ test.describe('Side Panel', () => {
 
   test('should confirm individual suggested visit from panel', async ({ page }) => {
     await selectAreaWithVisits(page);
+
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
 
     // Find a suggested visit (one with confirm/decline buttons)
     const suggestedVisit = page.locator('.visit-item').filter({ has: page.locator('.confirm-visit') }).first();
@@ -245,6 +261,14 @@ test.describe('Side Panel', () => {
   test('should decline individual suggested visit from panel', async ({ page }) => {
     await selectAreaWithVisits(page);
 
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
+
     // Find a suggested visit
     const suggestedVisit = page.locator('.visit-item').filter({ has: page.locator('.decline-visit') }).first();
 
@@ -280,6 +304,14 @@ test.describe('Side Panel', () => {
   test('should show checkboxes on hover for mass selection', async ({ page }) => {
     await selectAreaWithVisits(page);
 
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
+
     // Check if we have any visits
     const visitCount = await page.locator('.visit-item').count();
 
@@ -312,6 +344,14 @@ test.describe('Side Panel', () => {
 
   test('should select multiple visits and show bulk action buttons', async ({ page }) => {
     await selectAreaWithVisits(page);
+
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
 
     // Verify we have at least 2 visits
     const visitCount = await page.locator('.visit-item').count();
@@ -365,6 +405,14 @@ test.describe('Side Panel', () => {
   test('should cancel mass selection', async ({ page }) => {
     await selectAreaWithVisits(page);
 
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
+
     const visitCount = await page.locator('.visit-item').count();
     if (visitCount < 2) {
       console.log('Test skipped: Need at least 2 visits');
@@ -404,6 +452,14 @@ test.describe('Side Panel', () => {
 
   test('should mass confirm multiple visits', async ({ page }) => {
     await selectAreaWithVisits(page);
+
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
 
     // Find suggested visits (those with confirm buttons)
     const suggestedVisits = page.locator('.visit-item').filter({ has: page.locator('.confirm-visit') });
@@ -452,6 +508,14 @@ test.describe('Side Panel', () => {
   test('should mass decline multiple visits', async ({ page }) => {
     await selectAreaWithVisits(page);
 
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
+
     const suggestedVisits = page.locator('.visit-item').filter({ has: page.locator('.decline-visit') });
     const suggestedCount = await suggestedVisits.count();
 
@@ -497,6 +561,14 @@ test.describe('Side Panel', () => {
   test('should mass merge multiple visits', async ({ page }) => {
     await selectAreaWithVisits(page);
 
+    // Open the visits collapsible section
+    const visitsSection = page.locator('#visits-section-collapse');
+    await expect(visitsSection).toBeVisible();
+
+    const visitsSummary = visitsSection.locator('summary');
+    await visitsSummary.click();
+    await page.waitForTimeout(500);
+
     const visitCount = await page.locator('.visit-item').count();
     if (visitCount < 2) {
       console.log('Test skipped: Need at least 2 visits');
@@ -535,35 +607,38 @@ test.describe('Side Panel', () => {
     expect(finalVisitCount).toBeLessThan(visitCount);
   });
 
-  test('should shift controls when panel opens and shift back when closed', async ({ page }) => {
-    // Get initial position of a control element (layer control)
+  test('should open and close panel without shifting controls', async ({ page }) => {
+    // Get the layer control element
     const layerControl = page.locator('.leaflet-control-layers');
     await expect(layerControl).toBeVisible();
 
-    // Check if controls have the shifted class initially (should not)
-    const initiallyShifted = await layerControl.evaluate(el =>
-      el.classList.contains('controls-shifted')
-    );
-    expect(initiallyShifted).toBe(false);
+    // Get initial position of the control
+    const initialBox = await layerControl.boundingBox();
 
     // Open the drawer
     await clickDrawerButton(page);
     await page.waitForTimeout(500);
 
-    // Verify controls now have the shifted class
-    const shiftedAfterOpen = await layerControl.evaluate(el =>
-      el.classList.contains('controls-shifted')
-    );
-    expect(shiftedAfterOpen).toBe(true);
+    // Verify drawer is open
+    const drawerOpen = await isDrawerOpen(page);
+    expect(drawerOpen).toBe(true);
+
+    // Get position after opening - should be the same (no shifting)
+    const afterOpenBox = await layerControl.boundingBox();
+    expect(afterOpenBox.x).toBe(initialBox.x);
+    expect(afterOpenBox.y).toBe(initialBox.y);
 
     // Close the drawer
     await clickDrawerButton(page);
     await page.waitForTimeout(500);
 
-    // Verify controls no longer have the shifted class
-    const shiftedAfterClose = await layerControl.evaluate(el =>
-      el.classList.contains('controls-shifted')
-    );
-    expect(shiftedAfterClose).toBe(false);
+    // Verify drawer is closed
+    const drawerClosed = await isDrawerOpen(page);
+    expect(drawerClosed).toBe(false);
+
+    // Get final position - should still be the same
+    const afterCloseBox = await layerControl.boundingBox();
+    expect(afterCloseBox.x).toBe(initialBox.x);
+    expect(afterCloseBox.y).toBe(initialBox.y);
   });
 });

@@ -398,18 +398,15 @@ export class VisitsManager {
    * Adds a cancel button to the drawer to clear the selection
    */
   addSelectionCancelButton() {
-    console.log('addSelectionCancelButton: Called');
     const container = document.getElementById('visits-list');
     if (!container) {
       console.error('addSelectionCancelButton: visits-list container not found');
       return;
     }
-    console.log('addSelectionCancelButton: Container found');
 
     // Remove any existing button container first to avoid duplicates
     const existingButtonContainer = document.getElementById('selection-button-container');
     if (existingButtonContainer) {
-      console.log('addSelectionCancelButton: Removing existing button container');
       existingButtonContainer.remove();
     }
 
@@ -438,9 +435,6 @@ export class VisitsManager {
       badge.className = 'badge badge-sm ml-1';
       badge.textContent = this.selectedPoints.length;
       deleteButton.appendChild(badge);
-      console.log(`addSelectionCancelButton: Added badge with ${this.selectedPoints.length} points`);
-    } else {
-      console.warn('addSelectionCancelButton: No selected points, selectedPoints =', this.selectedPoints);
     }
 
     buttonContainer.appendChild(cancelButton);
@@ -448,15 +442,6 @@ export class VisitsManager {
 
     // Insert at the beginning of the container
     container.insertBefore(buttonContainer, container.firstChild);
-    console.log('addSelectionCancelButton: Buttons inserted into DOM');
-
-    // Verify buttons are in DOM
-    setTimeout(() => {
-      const verifyDelete = document.getElementById('delete-selection-button');
-      const verifyCancel = document.getElementById('cancel-selection-button');
-      console.log('addSelectionCancelButton: Verification - Delete button exists:', !!verifyDelete);
-      console.log('addSelectionCancelButton: Verification - Cancel button exists:', !!verifyCancel);
-    }, 100);
   }
 
   /**
@@ -596,12 +581,21 @@ export class VisitsManager {
       const controlsLayer = {
         Points: this.mapsController.markersLayer || L.layerGroup(),
         Routes: this.mapsController.polylinesLayer || L.layerGroup(),
+        Tracks: this.mapsController.tracksLayer || L.layerGroup(),
         Heatmap: this.mapsController.heatmapLayer || L.layerGroup(),
         "Fog of War": this.mapsController.fogOverlay,
         "Scratch map": this.mapsController.scratchLayerManager?.getLayer() || L.layerGroup(),
         Areas: this.mapsController.areasLayer || L.layerGroup(),
-        Photos: this.mapsController.photoMarkers || L.layerGroup()
+        Photos: this.mapsController.photoMarkers || L.layerGroup(),
+        "Suggested Visits": this.getVisitCirclesLayer(),
+        "Confirmed Visits": this.getConfirmedVisitCirclesLayer()
       };
+
+      // Include Family Members layer if available
+      if (window.familyMembersController?.familyMarkersLayer) {
+        controlsLayer['Family Members'] = window.familyMembersController.familyMarkersLayer;
+      }
+
       this.mapsController.layerControl = L.control.layers(
         this.mapsController.baseMaps(),
         controlsLayer

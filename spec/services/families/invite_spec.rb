@@ -27,8 +27,7 @@ RSpec.describe Families::Invite do
       end
 
       it 'sends invitation email' do
-        expect(FamilyMailer).to receive(:invitation).and_call_original
-        expect_any_instance_of(ActionMailer::MessageDelivery).to receive(:deliver_later)
+        expect(Family::Invitations::SendingJob).to receive(:perform_later).and_call_original
         service.call
       end
 

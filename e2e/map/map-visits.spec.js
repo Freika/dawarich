@@ -132,10 +132,15 @@ test.describe('Visit Interactions', () => {
       await saveButton.click();
       await page.waitForTimeout(1000);
 
-      // Verify success message or popup closes
-      const popupStillVisible = await page.locator('.leaflet-popup').isVisible().catch(() => false);
-      // Either popup closes or stays open with updated content
-      expect(popupStillVisible === false || popupStillVisible === true).toBe(true);
+      // Verify popup closes after successful save
+      const popupVisible = await page.locator('.leaflet-popup').isVisible().catch(() => false);
+      expect(popupVisible).toBe(false);
+
+      // Verify success flash message appears
+      const flashMessage = page.locator('#flash-messages [role="alert"]');
+      await expect(flashMessage).toBeVisible({ timeout: 2000 });
+      const messageText = await flashMessage.textContent();
+      expect(messageText).toContain('Visit updated successfully');
     }
   });
 
@@ -173,9 +178,15 @@ test.describe('Visit Interactions', () => {
       await saveButton.click();
       await page.waitForTimeout(1000);
 
-      // Verify flash message or popup closes
-      const flashOrClose = await page.locator('#flash-messages [role="alert"]').isVisible({ timeout: 2000 }).catch(() => false);
-      expect(flashOrClose === true || flashOrClose === false).toBe(true);
+      // Verify popup closes after successful save
+      const popupVisible = await page.locator('.leaflet-popup').isVisible().catch(() => false);
+      expect(popupVisible).toBe(false);
+
+      // Verify success flash message appears
+      const flashMessage = page.locator('#flash-messages [role="alert"]');
+      await expect(flashMessage).toBeVisible({ timeout: 2000 });
+      const messageText = await flashMessage.textContent();
+      expect(messageText).toContain('Visit updated successfully');
     }
   });
 
