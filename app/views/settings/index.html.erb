@@ -72,11 +72,12 @@
           <% unless DawarichSettings.self_hosted? %>
             <div>
               <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'link', class: "h-6 w-6 text-info-content" %>Connected Accounts
+                <%= icon 'link', class: "text-primary mr-1" %> Connected Accounts
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                 <p class="text-sm text-base-content/70">
-                  OAuth providers configured: <%= OMNIAUTH_PROVIDERS.map(&:to_s).join(', ').presence || 'None' %>
+                  You've connected your account using the following OAuth provider:
+                  <strong><%= current_user.provider.capitalize %></strong>
                 </p>
               </div>
             </div>

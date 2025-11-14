@@ -12,10 +12,7 @@ module Omniauthable
       # First, try to find user by provider and uid (for linked accounts)
       user = find_by(provider: provider, uid: uid)
 
-      if user
-        # User found by provider/uid
-        return user
-      end
+      return user if user
 
       # If not found, try to find by email
       user = find_by(email: data['email'])
