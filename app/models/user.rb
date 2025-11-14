@@ -2,8 +2,11 @@
 
 class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   include UserFamily
+  include Omniauthable
+
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable, :trackable
+         :recoverable, :rememberable, :validatable, :trackable,
+         :omniauthable, omniauth_providers: ::OMNIAUTH_PROVIDERS
 
   has_many :points, dependent: :destroy
   has_many :imports,        dependent: :destroy
