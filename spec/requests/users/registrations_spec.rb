@@ -51,8 +51,8 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Register now!')
-        expect(response.body).to include('take control over your location data')
+        expect(response.body).to include('Almost there!')
+        expect(response.body).to include('control over your location data')
         expect(response.body).not_to include('Join')
         expect(response.body).to include('Sign up')
       end
@@ -227,7 +227,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Register now!')
+        expect(response.body).to include('Almost there!')
       end
 
       it 'allows account creation' do
@@ -322,6 +322,245 @@ RSpec.describe 'Users::Registrations', type: :request do
         end.to change(User, :count).by(1)
 
         expect(flash[:alert]).to include('there was an issue accepting the invitation')
+      end
+    end
+  end
+
+  describe 'Validation Error Handling' do
+    context 'when trying to register with an existing email' do
+      let!(:existing_user) { create(:user, email: 'existing@example.com') }
+
+      it 'renders the registration form with error message' do
+        post user_registration_path, params: {
+          user: {
+            email: existing_user.email,
+            password: 'password123',
+            password_confirmation: 'password123'
+          }
+        }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('Email has already been taken')
+        expect(response.body).to include('error_explanation')
+      end
+
+      it 'does not create a new user' do
+        expect do
+          post user_registration_path, params: {
+            user: {
+              email: existing_user.email,
+              password: 'password123',
+              password_confirmation: 'password123'
+            }
+          }
+        end.not_to change(User, :count)
+      end
+    end
+
+    context 'when password is too short' do
+      it 'renders the registration form with error message' do
+        post user_registration_path, params: {
+          user: {
+            email: 'newuser@example.com',
+            password: 'short',
+            password_confirmation: 'short'
+          }
+        }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('Password is too short')
+        expect(response.body).to include('error_explanation')
+      end
+    end
+
+    context 'when passwords do not match' do
+      it 'renders the registration form with error message' do
+        post user_registration_path, params: {
+          user: {
+            email: 'newuser@example.com',
+            password: 'password123',
+            password_confirmation: 'different123'
+          }
+        }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("Password confirmation doesn")
+        expect(response.body).to include('error_explanation')
+      end
+    end
+  end
+
+  describe 'UTM Parameter Tracking' do
+    let(:utm_params) do
+      {
+        utm_source: 'google',
+        utm_medium: 'cpc',
+        utm_campaign: 'winter_2025',
+        utm_term: 'location_tracking',
+        utm_content: 'banner_ad'
+      }
+    end
+
+    context 'when self-hosted mode is disabled' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'captures UTM parameters from registration page URL' do
+        get new_user_registration_path, params: utm_params
+
+        expect(response).to have_http_status(:ok)
+        expect(session[:utm_source]).to eq('google')
+        expect(session[:utm_medium]).to eq('cpc')
+        expect(session[:utm_campaign]).to eq('winter_2025')
+        expect(session[:utm_term]).to eq('location_tracking')
+        expect(session[:utm_content]).to eq('banner_ad')
+      end
+
+      it 'stores UTM parameters in user record after registration' do
+        # Visit registration page with UTM params
+        get new_user_registration_path, params: utm_params
+
+        # Create account
+        unique_email = "utm-user-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123'
+          }
+        }
+
+        # Verify UTM params were saved to user
+        user = User.find_by(email: unique_email)
+        expect(user.utm_source).to eq('google')
+        expect(user.utm_medium).to eq('cpc')
+        expect(user.utm_campaign).to eq('winter_2025')
+        expect(user.utm_term).to eq('location_tracking')
+        expect(user.utm_content).to eq('banner_ad')
+      end
+
+      it 'clears UTM parameters from session after registration' do
+        # Visit registration page with UTM params
+        get new_user_registration_path, params: utm_params
+
+        # Create account
+        unique_email = "utm-cleanup-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123'
+          }
+        }
+
+        # Verify session was cleaned up
+        expect(session[:utm_source]).to be_nil
+        expect(session[:utm_medium]).to be_nil
+        expect(session[:utm_campaign]).to be_nil
+        expect(session[:utm_term]).to be_nil
+        expect(session[:utm_content]).to be_nil
+      end
+
+      it 'handles partial UTM parameters' do
+        partial_utm = { utm_source: 'twitter', utm_campaign: 'spring_promo' }
+
+        get new_user_registration_path, params: partial_utm
+
+        unique_email = "partial-utm-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.utm_source).to eq('twitter')
+        expect(user.utm_campaign).to eq('spring_promo')
+        expect(user.utm_medium).to be_nil
+        expect(user.utm_term).to be_nil
+        expect(user.utm_content).to be_nil
+      end
+
+      it 'does not store empty UTM parameters' do
+        empty_utm = {
+          utm_source: '',
+          utm_medium: '',
+          utm_campaign: 'campaign_only'
+        }
+
+        get new_user_registration_path, params: empty_utm
+
+        unique_email = "empty-utm-#{Time.current.to_i}@example.com"
+        post user_registration_path, params: {
+          user: {
+            email: unique_email,
+            password: 'password123',
+            password_confirmation: 'password123'
+          }
+        }
+
+        user = User.find_by(email: unique_email)
+        expect(user.utm_source).to be_nil
+        expect(user.utm_medium).to be_nil
+        expect(user.utm_campaign).to eq('campaign_only')
+      end
+
+      it 'works with family invitations' do
+        get new_user_registration_path, params: utm_params.merge(invitation_token: invitation.token)
+
+        post user_registration_path, params: {
+          user: {
+            email: invitation.email,
+            password: 'password123',
+            password_confirmation: 'password123'
+          },
+          invitation_token: invitation.token
+        }
+
+        user = User.find_by(email: invitation.email)
+        expect(user.utm_source).to eq('google')
+        expect(user.utm_campaign).to eq('winter_2025')
+        expect(user.family).to eq(family)
+      end
+    end
+
+    context 'when self-hosted mode is enabled' do
+      before do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('SELF_HOSTED').and_return('true')
+      end
+
+      it 'does not capture UTM parameters' do
+        # With valid invitation to allow registration in self-hosted mode
+        get new_user_registration_path, params: utm_params.merge(invitation_token: invitation.token)
+
+        expect(session[:utm_source]).to be_nil
+        expect(session[:utm_medium]).to be_nil
+        expect(session[:utm_campaign]).to be_nil
+      end
+
+      it 'does not store UTM parameters in user record' do
+        # With valid invitation to allow registration in self-hosted mode
+        get new_user_registration_path, params: utm_params.merge(invitation_token: invitation.token)
+
+        post user_registration_path, params: {
+          user: {
+            email: invitation.email,
+            password: 'password123',
+            password_confirmation: 'password123'
+          },
+          invitation_token: invitation.token
+        }
+
+        user = User.find_by(email: invitation.email)
+        expect(user.utm_source).to be_nil
+        expect(user.utm_medium).to be_nil
+        expect(user.utm_campaign).to be_nil
+        expect(user.utm_term).to be_nil
+        expect(user.utm_content).to be_nil
       end
     end
   end

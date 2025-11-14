@@ -122,9 +122,8 @@ export default class extends BaseController {
       });
     });
 
-    // Add markers and route
+    // Add route (no markers on trip forms)
     if (this.coordinates?.length > 0) {
-      this.addMarkers()
       this.addPolyline()
       this.fitMapToBounds()
     }
@@ -246,9 +245,8 @@ export default class extends BaseController {
     this.polylinesLayer.clearLayers()
     this.photoMarkers.clearLayers()
 
-    // Add new markers and route if coordinates exist
+    // Add only polyline (no markers) when coordinates exist
     if (this.coordinates?.length > 0) {
-      this.addMarkers()
       this.addPolyline()
       this.fitMapToBounds()
     }

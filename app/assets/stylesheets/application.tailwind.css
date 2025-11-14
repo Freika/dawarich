@@ -76,31 +76,44 @@
 /* Drawer Panel Styles */
 .leaflet-drawer {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 338px;
-  height: 100%;
+  top: 10px;
+  right: 70px; /* Position to the left of the control buttons with margin */
+  width: 24rem;
+  max-height: calc(100% - 20px);
   background: rgba(255, 255, 255, 0.5);
-  transform: translateX(100%);
-  transition: transform 0.3s ease-in-out;
+  border-radius: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.95);
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s;
   z-index: 450;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  height: auto; /* Make height fit content */
+  cursor: default; /* Override map cursor */
+}
+
+.leaflet-drawer * {
+  cursor: default; /* Ensure all children have default cursor */
+}
+
+.leaflet-drawer a,
+.leaflet-drawer button,
+.leaflet-drawer .btn,
+.leaflet-drawer input[type="checkbox"] {
+  cursor: pointer; /* Interactive elements get pointer cursor */
 }
 
 .leaflet-drawer.open {
-  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
 }
 
-/* Controls transition */
+/* Controls remain in place - no transition needed */
 .leaflet-control-layers,
 .leaflet-control-button,
 .toggle-panel-button {
-  transition: right 0.3s ease-in-out;
   z-index: 500;
-}
-
-.controls-shifted {
-  right: 338px !important;
 }
 
 /* Selection Tool Styles */
@@ -127,6 +140,5 @@
 
 /* Cancel Selection Button */
 #cancel-selection-button {
-  margin-bottom: 1rem;
   width: 100%;
 }

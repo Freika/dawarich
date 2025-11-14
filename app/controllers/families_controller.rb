@@ -77,6 +77,8 @@ class FamiliesController < ApplicationController
   end
 
   def update_location_sharing
+    authorize @family, :update_location_sharing?
+
     result = Families::UpdateLocationSharing.new(
       user: current_user,
       enabled: params[:enabled],

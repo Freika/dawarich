@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 class Users::RegistrationsController < Devise::RegistrationsController
+  include UtmTrackable
+
   before_action :set_invitation, only: %i[new create]
   before_action :check_registration_allowed, only: %i[new create]
+  before_action :store_utm_params, only: %i[new], unless: -> { DawarichSettings.self_hosted? }
 
   def new
     build_resource({})
@@ -16,8 +19,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def create
     super do |resource|
-      if resource.persisted? && @invitation
-        accept_invitation_for_user(resource)
+      if resource.persisted?
+        assign_utm_params(resource)
+        accept_invitation_for_user(resource) if @invitation
       end
     end
   end
@@ -47,7 +51,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def set_invitation
-    return unless invitation_token.present?
+    return if invitation_token.blank?
 
     @invitation = Family::Invitation.find_by(token: invitation_token)
   end
@@ -65,8 +69,8 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def invitation_token
     @invitation_token ||= params[:invitation_token] ||
-                         params.dig(:user, :invitation_token) ||
-                         session[:invitation_token]
+                          params.dig(:user, :invitation_token) ||
+                          session[:invitation_token]
   end
 
   def accept_invitation_for_user(user)
@@ -80,11 +84,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
     if service.call
       flash[:notice] = "Welcome to #{@invitation.family.name}! You're now part of the family."
     else
-      flash[:alert] = "Account created successfully, but there was an issue accepting the invitation: #{service.error_message}"
+      flash[:alert] =
+        "Account created successfully, but there was an issue accepting the invitation: #{service.error_message}"
     end
   rescue StandardError => e
     Rails.logger.error "Error accepting invitation during registration: #{e.message}"
-    flash[:alert] = "Account created successfully, but there was an issue accepting the invitation. Please try accepting it again."
+    flash[:alert] =
+      'Account created successfully, but there was an issue accepting the invitation. Please try accepting it again.'
   end
 
   def sign_up_params

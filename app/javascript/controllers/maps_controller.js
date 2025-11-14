@@ -208,7 +208,7 @@ export default class extends BaseController {
     this.addInfoToggleButton();
 
     // Initialize the visits manager
-    this.visitsManager = new VisitsManager(this.map, this.apiKey, this.userTheme);
+    this.visitsManager = new VisitsManager(this.map, this.apiKey, this.userTheme, this);
 
     // Expose visits manager globally for location search integration
     window.visitsManager = this.visitsManager;
@@ -712,6 +712,9 @@ export default class extends BaseController {
       if (this.map.hasLayer(this.fogOverlay)) {
         this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
       }
+
+      // Show success message
+      showFlashMessage('notice', 'Point deleted successfully');
     })
     .catch(error => {
       console.error('There was a problem with the delete request:', error);
@@ -952,100 +955,141 @@ export default class extends BaseController {
 
       // Form HTML
       div.innerHTML = `
-        <form id="settings-form" style="overflow-y: auto; max-height: 70vh; width: 12rem; padding-right: 5px;">
-          <label for="route-opacity">Route Opacity, %</label>
-          <div class="join">
-            <input type="number" class="input input-ghost join-item focus:input-ghost input-xs input-bordered w-full max-w-xs" id="route-opacity" name="route_opacity" min="10" max="100" step="10" value="${Math.round(this.routeOpacity * 100)}">
-            <label for="route_opacity_info" class="btn-xs join-item ">?</label>
-
+        <form id="settings-form" class="space-y-3">
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Route Opacity, %</span>
+            </label>
+            <div class="join join-horizontal w-full">
+              <input type="number" class="input input-bordered input-sm join-item flex-1" id="route-opacity" name="route_opacity" min="10" max="100" step="10" value="${Math.round(this.routeOpacity * 100)}">
+              <label for="route_opacity_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
+            </div>
           </div>
 
-          <label for="fog_of_war_meters">Fog of War radius</label>
-          <div class="join">
-            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="fog_of_war_meters" name="fog_of_war_meters" min="5" max="200" step="1" value="${this.clearFogRadius}">
-            <label for="fog_of_war_meters_info" class="btn-xs join-item">?</label>
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Fog of War radius</span>
+            </label>
+            <div class="join join-horizontal w-full">
+              <input type="number" class="input input-bordered input-sm join-item flex-1" id="fog_of_war_meters" name="fog_of_war_meters" min="5" max="200" step="1" value="${this.clearFogRadius}">
+              <label for="fog_of_war_meters_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
+            </div>
           </div>
 
-          <label for="fog_of_war_threshold">Seconds between Fog of War lines</label>
-          <div class="join">
-            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="fog_of_war_threshold" name="fog_of_war_threshold" step="1" value="${this.userSettings.fog_of_war_threshold}">
-            <label for="fog_of_war_threshold_info" class="btn-xs join-item">?</label>
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Fog of War threshold</span>
+            </label>
+            <div class="join join-horizontal w-full">
+              <input type="number" class="input input-bordered input-sm join-item flex-1" id="fog_of_war_threshold" name="fog_of_war_threshold" step="1" value="${this.userSettings.fog_of_war_threshold}">
+              <label for="fog_of_war_threshold_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
+            </div>
           </div>
 
-
-          <label for="meters_between_routes">Meters between routes</label>
-          <div class="join">
-            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="meters_between_routes" name="meters_between_routes" step="1" value="${this.userSettings.meters_between_routes}">
-            <label for="meters_between_routes_info" class="btn-xs join-item">?</label>
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Meters between routes</span>
+            </label>
+            <div class="join join-horizontal w-full">
+              <input type="number" class="input input-bordered input-sm join-item flex-1" id="meters_between_routes" name="meters_between_routes" step="1" value="${this.userSettings.meters_between_routes}">
+              <label for="meters_between_routes_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
+            </div>
           </div>
 
-
-          <label for="minutes_between_routes">Minutes between routes</label>
-          <div class="join">
-            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="minutes_between_routes" name="minutes_between_routes" step="1" value="${this.userSettings.minutes_between_routes}">
-            <label for="minutes_between_routes_info" class="btn-xs join-item">?</label>
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Minutes between routes</span>
+            </label>
+            <div class="join join-horizontal w-full">
+              <input type="number" class="input input-bordered input-sm join-item flex-1" id="minutes_between_routes" name="minutes_between_routes" step="1" value="${this.userSettings.minutes_between_routes}">
+              <label for="minutes_between_routes_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
+            </div>
           </div>
 
-
-          <label for="time_threshold_minutes">Time threshold minutes</label>
-          <div class="join">
-            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="time_threshold_minutes" name="time_threshold_minutes" step="1" value="${this.userSettings.time_threshold_minutes}">
-            <label for="time_threshold_minutes_info" class="btn-xs join-item">?</label>
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Time threshold minutes</span>
+            </label>
+            <div class="join join-horizontal w-full">
+              <input type="number" class="input input-bordered input-sm join-item flex-1" id="time_threshold_minutes" name="time_threshold_minutes" step="1" value="${this.userSettings.time_threshold_minutes}">
+              <label for="time_threshold_minutes_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
+            </div>
           </div>
 
-
-          <label for="merge_threshold_minutes">Merge threshold minutes</label>
-          <div class="join">
-            <input type="number" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="merge_threshold_minutes" name="merge_threshold_minutes" step="1" value="${this.userSettings.merge_threshold_minutes}">
-            <label for="merge_threshold_minutes_info" class="btn-xs join-item">?</label>
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Merge threshold minutes</span>
+            </label>
+            <div class="join join-horizontal w-full">
+              <input type="number" class="input input-bordered input-sm join-item flex-1" id="merge_threshold_minutes" name="merge_threshold_minutes" step="1" value="${this.userSettings.merge_threshold_minutes}">
+              <label for="merge_threshold_minutes_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
+            </div>
           </div>
 
-
-          <label for="points_rendering_mode">
-            Points rendering mode
-            <label for="points_rendering_mode_info" class="btn-xs join-item inline">?</label>
-          </label>
-          <label for="raw">
-            <input type="radio" id="raw" name="points_rendering_mode" class='w-4' style="width: 20px;" value="raw" ${this.pointsRenderingModeChecked('raw')} />
-            Raw
-          </label>
-
-          <label for="simplified">
-            <input type="radio" id="simplified" name="points_rendering_mode" class='w-4' style="width: 20px;" value="simplified" ${this.pointsRenderingModeChecked('simplified')}/>
-            Simplified
-          </label>
-
-          <label for="live_map_enabled">
-            Live Map
-            <label for="live_map_enabled_info" class="btn-xs join-item inline">?</label>
-            <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class='w-4' style="width: 20px;" value="false" ${this.liveMapEnabledChecked(true)} />
-          </label>
-
-          <label for="speed_colored_routes">
-            Speed-colored routes
-            <label for="speed_colored_routes_info" class="btn-xs join-item inline">?</label>
-            <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class='w-4' style="width: 20px;" ${this.speedColoredRoutesChecked()} />
-          </label>
-
-          <label for="speed_color_scale">Speed color scale</label>
-          <div class="join">
-            <input type="text" class="join-item input input-ghost focus:input-ghost input-xs input-bordered w-full max-w-xs" id="speed_color_scale" name="speed_color_scale" min="5" max="100" step="1" value="${this.speedColorScale}">
-            <label for="speed_color_scale_info" class="btn-xs join-item">?</label>
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Points rendering mode</span>
+              <label for="points_rendering_mode_info" class="btn btn-xs btn-ghost cursor-pointer">?</label>
+            </label>
+            <div class="flex flex-col gap-2">
+              <label class="label cursor-pointer justify-start gap-2 py-1">
+                <input type="radio" id="raw" name="points_rendering_mode" class="radio radio-sm" value="raw" ${this.pointsRenderingModeChecked('raw')} />
+                <span class="label-text text-xs">Raw</span>
+              </label>
+              <label class="label cursor-pointer justify-start gap-2 py-1">
+                <input type="radio" id="simplified" name="points_rendering_mode" class="radio radio-sm" value="simplified" ${this.pointsRenderingModeChecked('simplified')} />
+                <span class="label-text text-xs">Simplified</span>
+              </label>
+            </div>
           </div>
-          <button type="button" id="edit-gradient-btn" class="btn btn-xs mt-2">Edit Scale</button>
 
-          <hr>
+          <div class="form-control">
+            <label class="label cursor-pointer py-1">
+              <span class="label-text text-xs">Live Map</span>
+              <div class="flex items-center gap-1">
+                <label for="live_map_enabled_info" class="btn btn-xs btn-ghost cursor-pointer">?</label>
+                <input type="checkbox" id="live_map_enabled" name="live_map_enabled" class="checkbox checkbox-sm" ${this.liveMapEnabledChecked(true)} />
+              </div>
+            </label>
+          </div>
 
-          <button type="submit" class="btn btn-xs mt-2">Update</button>
+          <div class="form-control">
+            <label class="label cursor-pointer py-1">
+              <span class="label-text text-xs">Speed-colored routes</span>
+              <div class="flex items-center gap-1">
+                <label for="speed_colored_routes_info" class="btn btn-xs btn-ghost cursor-pointer">?</label>
+                <input type="checkbox" id="speed_colored_routes" name="speed_colored_routes" class="checkbox checkbox-sm" ${this.speedColoredRoutesChecked()} />
+              </div>
+            </label>
+          </div>
+
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Speed color scale</span>
+            </label>
+            <div class="join join-horizontal w-full">
+              <input type="text" class="input input-bordered input-sm join-item flex-1" id="speed_color_scale" name="speed_color_scale" value="${this.speedColorScale}">
+              <label for="speed_color_scale_info" class="btn btn-sm btn-ghost join-item cursor-pointer">?</label>
+            </div>
+            <button type="button" id="edit-gradient-btn" class="btn btn-sm mt-2 w-full">Edit Colors</button>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <button type="submit" class="btn btn-sm btn-primary w-full">Update</button>
         </form>
       `;
 
       // Style the panel with theme-aware styling
       applyThemeToPanel(div, this.userTheme);
       div.style.padding = '10px';
+      div.style.width = '220px';
+      div.style.maxHeight = 'calc(60vh - 20px)';
+      div.style.overflowY = 'auto';
 
       // Prevent map interactions when interacting with the form
       L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.disableScrollPropagation(div);
 
        // Attach event listener to the "Edit Gradient" button:
       const editBtn = div.querySelector("#edit-gradient-btn");

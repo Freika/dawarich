@@ -148,6 +148,10 @@ export default class extends Controller {
     if (this.currentPopup) {
       this.map.closePopup(this.currentPopup);
       this.currentPopup = null;
+    } else {
+      console.warn('No currentPopup reference found');
+      // Fallback: try to close any open popup
+      this.map.closePopup();
     }
   }
 
@@ -263,7 +267,10 @@ export default class extends Controller {
       }
 
       if (cancelButton) {
-        cancelButton.addEventListener('click', () => {
+        cancelButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
           this.exitAddVisitMode(this.addVisitButton);
         });
       }
@@ -346,8 +353,6 @@ export default class extends Controller {
   }
 
   addCreatedVisitToMap(visitData, latitude, longitude) {
-    console.log('Adding newly created visit to map immediately', { latitude, longitude, visitData });
-
     const mapsController = document.querySelector('[data-controller*="maps"]');
     if (!mapsController) {
       console.log('Could not find maps controller element');
@@ -357,6 +362,7 @@ export default class extends Controller {
     const stimulusController = this.application.getControllerForElementAndIdentifier(mapsController, 'maps');
     if (!stimulusController || !stimulusController.visitsManager) {
       console.log('Could not find maps controller or visits manager');
+
       return;
     }
 
@@ -376,16 +382,10 @@ export default class extends Controller {
 
     // Add the circle to the confirmed visits layer
     visitsManager.confirmedVisitCircles.addLayer(circle);
-    console.log('✅ Added newly created confirmed visit circle to layer');
-    console.log('Confirmed visits layer info:', {
-      layerCount: visitsManager.confirmedVisitCircles.getLayers().length,
-      isOnMap: this.map.hasLayer(visitsManager.confirmedVisitCircles)
-    });
 
     // Make sure the layer is visible on the map
     if (!this.map.hasLayer(visitsManager.confirmedVisitCircles)) {
       this.map.addLayer(visitsManager.confirmedVisitCircles);
-      console.log('✅ Added confirmed visits layer to map');
     }
 
     // Check if the layer control has the confirmed visits layer enabled
@@ -411,9 +411,7 @@ export default class extends Controller {
       inputs.forEach(input => {
         const label = input.nextElementSibling;
         if (label && label.textContent.trim().includes('Confirmed Visits')) {
-          console.log('Found Confirmed Visits checkbox, current state:', input.checked);
           if (!input.checked) {
-            console.log('Enabling Confirmed Visits layer via checkbox');
             input.checked = true;
             input.dispatchEvent(new Event('change', { bubbles: true }));
           }

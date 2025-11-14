@@ -27,9 +27,13 @@
 /* Style for the settings panel */
 .leaflet-settings-panel {
   background-color: white;
-  padding: 10px;
-  border: 1px solid #ccc;
+  border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  position: absolute !important;
+  top: 10px !important;
+  left: 60px !important;
+  transform: none;
+  z-index: 1000;
 }
 
 .leaflet-settings-panel label {

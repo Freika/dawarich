@@ -1,6 +1,7 @@
 default: &default
   adapter: redis
-  url: <%= "#{ENV.fetch("REDIS_URL")}/#{ENV.fetch('RAILS_WS_DB', 2)}" %>
+  url: <%= "#{ENV.fetch("REDIS_URL", "redis://localhost:6379")}" %>
+  db: <%= ENV.fetch('RAILS_WS_DB', 2) %>
 
 development:
   <<: *default

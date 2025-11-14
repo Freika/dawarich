@@ -26,31 +26,100 @@ RSpec.describe Family, type: :model do
   describe '#can_add_members?' do
     let(:family) { create(:family, creator: user) }
 
-    context 'when family has fewer than max members' do
+    context 'when not in self-hosted mode' do
       before do
-        create(:family_membership, family: family, user: user, role: :owner)
-        create_list(:family_membership, 3, family: family, role: :member)
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
 
-      it 'returns true' do
-        expect(family.can_add_members?).to be true
+      context 'when family has fewer than max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 3, family: family, role: :member)
+        end
+
+        it 'returns true' do
+          expect(family.can_add_members?).to be true
+        end
+      end
+
+      context 'when family has max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 4, family: family, role: :member)
+        end
+
+        it 'returns false' do
+          expect(family.can_add_members?).to be false
+        end
+      end
+
+      context 'when family has pending invitations that would reach max' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 3, family: family, role: :member)
+          create(:family_invitation, family: family, invited_by: user, status: :pending)
+        end
+
+        it 'returns false' do
+          expect(family.can_add_members?).to be false
+        end
+      end
+
+      context 'when family has no members' do
+        it 'returns true' do
+          expect(family.can_add_members?).to be true
+        end
       end
     end
 
-    context 'when family has max members' do
+    context 'when in self-hosted mode' do
       before do
-        create(:family_membership, family: family, user: user, role: :owner)
-        create_list(:family_membership, 4, family: family, role: :member)
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       end
 
-      it 'returns false' do
-        expect(family.can_add_members?).to be false
-      end
-    end
+      context 'when family has fewer than max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 3, family: family, role: :member)
+        end
 
-    context 'when family has no members' do
-      it 'returns true' do
-        expect(family.can_add_members?).to be true
+        it 'returns true' do
+          expect(family.can_add_members?).to be true
+        end
+      end
+
+      context 'when family has max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 4, family: family, role: :member)
+        end
+
+        it 'returns true (no limit in self-hosted mode)' do
+          expect(family.can_add_members?).to be true
+        end
+      end
+
+      context 'when family has more than max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 10, family: family, role: :member)
+        end
+
+        it 'returns true (no limit in self-hosted mode)' do
+          expect(family.can_add_members?).to be true
+        end
+      end
+
+      context 'when family has pending invitations that would exceed max' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 4, family: family, role: :member)
+          create_list(:family_invitation, 5, family: family, invited_by: user, status: :pending)
+        end
+
+        it 'returns true (no limit in self-hosted mode)' do
+          expect(family.can_add_members?).to be true
+        end
       end
     end
   end
@@ -120,6 +189,101 @@ RSpec.describe Family, type: :model do
 
       expect { family.destroy }.to change(Family::Membership, :count).by(-1)
       expect(Family::Membership.find_by(id: membership.id)).to be_nil
+    end
+  end
+
+  describe '#full?' do
+    let(:family) { create(:family, creator: user) }
+
+    context 'when not in self-hosted mode' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      context 'when family has fewer than max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 3, family: family, role: :member)
+        end
+
+        it 'returns false' do
+          expect(family.full?).to be false
+        end
+      end
+
+      context 'when family has exactly max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 4, family: family, role: :member)
+        end
+
+        it 'returns true' do
+          expect(family.full?).to be true
+        end
+      end
+
+      context 'when family has pending invitations that would reach max' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 3, family: family, role: :member)
+          create(:family_invitation, family: family, invited_by: user, status: :pending)
+        end
+
+        it 'returns true' do
+          expect(family.full?).to be true
+        end
+      end
+    end
+
+    context 'when in self-hosted mode' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      end
+
+      context 'when family has fewer than max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 3, family: family, role: :member)
+        end
+
+        it 'returns false' do
+          expect(family.full?).to be false
+        end
+      end
+
+      context 'when family has exactly max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 4, family: family, role: :member)
+        end
+
+        it 'returns false (no limit in self-hosted mode)' do
+          expect(family.full?).to be false
+        end
+      end
+
+      context 'when family has more than max members' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 10, family: family, role: :member)
+        end
+
+        it 'returns false (no limit in self-hosted mode)' do
+          expect(family.full?).to be false
+        end
+      end
+
+      context 'when family has pending invitations that would exceed max' do
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create_list(:family_membership, 4, family: family, role: :member)
+          create_list(:family_invitation, 5, family: family, invited_by: user, status: :pending)
+        end
+
+        it 'returns false (no limit in self-hosted mode)' do
+          expect(family.full?).to be false
+        end
+      end
     end
   end
 end

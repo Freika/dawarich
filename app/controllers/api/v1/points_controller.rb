@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::PointsController < ApiController
-  before_action :authenticate_active_api_user!, only: %i[create update destroy]
+  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
   before_action :validate_points_limit, only: %i[create]
 
   def index
@@ -45,6 +45,16 @@ class Api::V1::PointsController < ApiController
     render json: { message: 'Point deleted successfully' }
   end
 
+  def bulk_destroy
+    point_ids = bulk_destroy_params[:point_ids]
+
+    render json: { error: 'No points selected' }, status: :unprocessable_entity and return if point_ids.blank?
+
+    deleted_count = current_api_user.points.where(id: point_ids).destroy_all.count
+
+    render json: { message: 'Points were successfully destroyed', count: deleted_count }, status: :ok
+  end
+
   private
 
   def point_params
@@ -53,6 +63,10 @@ class Api::V1::PointsController < ApiController
 
   def batch_params
     params.permit(locations: [:type, { geometry: {}, properties: {} }], batch: {})
+  end
+
+  def bulk_destroy_params
+    params.permit(point_ids: [])
   end
 
   def point_serializer

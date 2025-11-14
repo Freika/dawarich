@@ -198,4 +198,113 @@ RSpec.describe 'Api::V1::Points', type: :request do
       end
     end
   end
+
+  describe 'DELETE /bulk_destroy' do
+    let(:point_ids) { points.first(5).map(&:id) }
+
+    it 'returns a successful response' do
+      delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+             params: { point_ids: }
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it 'deletes multiple points' do
+      expect do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+               params: { point_ids: }
+      end.to change { user.points.count }.by(-5)
+    end
+
+    it 'returns the count of deleted points' do
+      delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+             params: { point_ids: }
+
+      json_response = JSON.parse(response.body)
+
+      expect(json_response['message']).to eq('Points were successfully destroyed')
+      expect(json_response['count']).to eq(5)
+    end
+
+    it 'only deletes points belonging to the current user' do
+      other_user = create(:user)
+      other_points = create_list(:point, 3, user: other_user)
+      all_point_ids = point_ids + other_points.map(&:id)
+
+      expect do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+               params: { point_ids: all_point_ids }
+      end.to change { user.points.count }.by(-5)
+                                         .and change { other_user.points.count }.by(0)
+    end
+
+    context 'when no point_ids are provided' do
+      it 'returns success with zero count' do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+               params: { point_ids: [] }
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['count']).to eq(0)
+      end
+    end
+
+    context 'when point_ids parameter is missing' do
+      it 'returns an error' do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:unprocessable_entity)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('No points selected')
+      end
+    end
+
+    context 'when user is inactive' do
+      before do
+        user.update(status: :inactive, active_until: 1.day.ago)
+      end
+
+      it 'returns an unauthorized response' do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+               params: { point_ids: }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it 'does not delete any points' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: }
+        end.not_to(change { user.points.count })
+      end
+    end
+
+    context 'when deleting all user points' do
+      it 'successfully deletes all points' do
+        all_point_ids = points.map(&:id)
+
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: all_point_ids }
+        end.to change { user.points.count }.from(15).to(0)
+      end
+    end
+
+    context 'when some point_ids do not exist' do
+      it 'deletes only existing points' do
+        non_existent_ids = [999_999, 888_888]
+        mixed_ids = point_ids + non_existent_ids
+
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: mixed_ids }
+        end.to change { user.points.count }.by(-5)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['count']).to eq(5)
+      end
+    end
+  end
 end

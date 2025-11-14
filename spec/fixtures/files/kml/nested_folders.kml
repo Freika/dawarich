@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Nested Folders</name>
+    <Folder>
+      <name>Trip 1</name>
+      <Placemark>
+        <name>Start Point</name>
+        <TimeStamp>
+          <when>2024-01-21T08:00:00Z</when>
+        </TimeStamp>
+        <Point>
+          <coordinates>-122.0841,37.4220,10</coordinates>
+        </Point>
+      </Placemark>
+      <Folder>
+        <name>Day 1</name>
+        <Placemark>
+          <name>Checkpoint 1</name>
+          <TimeStamp>
+            <when>2024-01-21T12:00:00Z</when>
+          </TimeStamp>
+          <Point>
+            <coordinates>-122.0851,37.4230,12</coordinates>
+          </Point>
+        </Placemark>
+      </Folder>
+    </Folder>
+    <Folder>
+      <name>Trip 2</name>
+      <Placemark>
+        <name>Location A</name>
+        <TimeStamp>
+          <when>2024-01-22T10:00:00Z</when>
+        </TimeStamp>
+        <Point>
+          <coordinates>-122.0861,37.4240,14</coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>Location B</name>
+        <TimeStamp>
+          <when>2024-01-22T14:00:00Z</when>
+        </TimeStamp>
+        <Point>
+          <coordinates>-122.0871,37.4250,16</coordinates>
+        </Point>
+      </Placemark>
+    </Folder>
+  </Document>
+</kml>

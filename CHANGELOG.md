@@ -4,7 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [UNRELEASED]
+## Unreleased
+
+## Added
+
+- Support for KML file uploads. #350
+- Added a commented line in the `docker-compose.yml` file to use an alternative PostGIS image for ARM architecture.
+
+## Fixed
+
+- The map settings panel is now scrollable
+
+---
+
+## Changed
+
+- Internal redis settings updated to implement support for connecting to Redis via unix socket. #1706
 
 - Implemented authentication via GitHub and Google for Dawarich Cloud.
 - Implemented OpenID Connect authentication for self-hosted Dawarich instances. #66
@@ -15,6 +30,63 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [ ] Disable OIDC authentication for Dawarich Cloud
 - [ ] Disable GitHub and Google authentication for self-hosted Dawarich
 - [ ] In selfhosted env, no registrations are allowed, we need to account OIDC into that
+
+
+# [0.35.1] - 2025-11-09
+
+## Fixed
+
+- StrongMigration issue #1931
+
+
+# [0.35.0] - 2025-11-09
+
+⚠️ Important ⚠️
+
+The default `docker-compose.yml` file has been updated to provide sensible defaults for self-hosted production environments. This should not break existing setups, but it's recommended to review your `docker-compose.yml` file and update it accordingly.
+
+You can now set `RAILS_ENV` environment variable to `production` to run Dawarich in production mode.
+
+## Added
+
+- Selection tool on the map now can select points that user can delete in bulk. #433
+
+## Fixed
+
+- Taiwan flag is now shown on its own instead of in combination with China flag.
+- On the registration page and other user forms, if something goes wrong, error messages are now shown to the user.
+- Leaving family, deleting family and cancelling invitations now prompt confirmation dialog to prevent accidental actions.
+- Each pending family invitation now also contains a link to share with the invitee.
+
+## Changed
+
+- Removed useless system tests and cover map functionality with Playwright e2e tests instead.
+- S3 storage now can be used in self-hosted instances as well. Set STORAGE_BACKEND environment variable to `s3` and provide `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET` and `AWS_ENDPOINT_URL` environment variables to configure it.
+- Number of family members on self-hosted instances is no longer limited. #1918
+- Export to GPX now adds speed and course to each point if they are available.
+- `docker-compose.yml` file updated to provide sensible defaults for self-hosted production environment.
+- `.env.example` file added with default environment variables.
+- Single Dockerfile introduced so Dawarich could be run in self-hosted mode in production environment.
+
+# [0.34.2] - 2025-10-31
+
+## Fixed
+
+- Fixed a bug in UTM trackable concern. #1909
+
+# [0.34.1] - 2025-10-30
+
+## Fixed
+
+- Broken Stats page for users with no reverse geocoding enabled. #1877
+
+## Changed
+
+- Date navigation on the map page is no longer shown as floating panel. It is now part of the top navigation bar to prevent overlapping with other map controls. #1894 #1881
+
+## Added
+
+- [Dawarich Cloud] Added support for UTM parameters during user registration. UTM parameters will be stored with the user record for marketing analytics purposes.
 
 # [0.34.0] - 2025-10-10
 

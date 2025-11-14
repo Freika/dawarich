@@ -18,6 +18,8 @@
 
   <% if DawarichSettings.reverse_geocoding_enabled? %>
     <%= render 'stats/reverse_geocoding_stats' %>
+  <% else %>
+    </div>
   <% end %>
 
   <div class='text-xs text-gray-500 text-center mt-5'>

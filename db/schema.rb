@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_28_160950) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_30_190924) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -320,6 +320,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_160950) do
     t.text "patreon_access_token"
     t.text "patreon_refresh_token"
     t.datetime "patreon_token_expires_at"
+    t.string "utm_source"
+    t.string "utm_medium"
+    t.string "utm_campaign"
+    t.string "utm_term"
+    t.string "utm_content"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
