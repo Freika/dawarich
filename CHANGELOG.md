@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The map settings panel is now scrollable
 
+## Changed
+
+- Internal redis settings updated to implement support for connecting to Redis via unix socket. #1706
+
 # [0.35.1] - 2025-11-09
 
 ## Fixed
