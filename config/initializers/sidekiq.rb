@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 Sidekiq.configure_server do |config|
-  config.redis = { url: "#{ENV['REDIS_URL']}/#{ENV.fetch('RAILS_JOB_QUEUE_DB', 1)}" }
+  config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)
 
   if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'

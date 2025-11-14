@@ -71,6 +71,7 @@ class Imports::SourceDetector
 
   def detect_source
     return :gpx if gpx_file?
+    return :kml if kml_file?
     return :owntracks if owntracks_file?
 
     json_data = parse_json
@@ -114,6 +115,26 @@ class Imports::SourceDetector
       content_to_check.strip.start_with?('<?xml') ||
       content_to_check.strip.start_with?('<gpx')
     ) && content_to_check.include?('<gpx')
+  end
+
+  def kml_file?
+    return false unless filename
+
+    # Must have .kml or .kmz extension AND contain KML XML structure
+    return false unless filename.downcase.end_with?('.kml', '.kmz')
+
+    # Check content for KML structure
+    content_to_check =
+      if file_path && File.exist?(file_path)
+        # Read first 1KB for KML detection
+        File.open(file_path, 'rb') { |f| f.read(1024) }
+      else
+        file_content
+      end
+    (
+      content_to_check.strip.start_with?('<?xml') ||
+      content_to_check.strip.start_with?('<kml')
+    ) && content_to_check.include?('<kml')
   end
 
   def owntracks_file?
