@@ -154,4 +154,20 @@ RSpec.describe Trip, type: :model do
       end
     end
   end
+
+  describe 'Shareable concern' do
+    it_behaves_like 'shareable'
+
+    describe 'Trip-specific sharing' do
+      let(:user) { create(:user) }
+      let(:trip) { create(:trip, user: user) }
+
+      it 'enables sharing with notes and photos options' do
+        trip.enable_sharing!(expiration: '24h', share_notes: true, share_photos: true)
+        expect(trip.sharing_enabled?).to be true
+        expect(trip.share_notes?).to be true
+        expect(trip.share_photos?).to be true
+      end
+    end
+  end
 end
