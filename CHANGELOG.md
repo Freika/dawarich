@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+# OIDC and KML support release
+
+To configure your OIDC provider, set the following environment variables:
+
+```
+OIDC_CLIENT_ID=client_id_example
+OIDC_CLIENT_SECRET=client_secret_example
+OIDC_ISSUER=https://authentik.yourdomain.com/application/o/dawarich/
+OIDC_REDIRECT_URI=https://your-dawarich-url.com/users/auth/openid_connect/callback
+```
+
 ## Added
 
 - Support for KML file uploads. #350
@@ -15,20 +26,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The map settings panel is now scrollable
 
----
-
 ## Changed
 
 - Internal redis settings updated to implement support for connecting to Redis via unix socket. #1706
-
 - Implemented authentication via GitHub and Google for Dawarich Cloud.
 - Implemented OpenID Connect authentication for self-hosted Dawarich instances. #66
-
-## TODO:
-
-- [ ] Disable OIDC authentication for Dawarich Cloud
-- [ ] Disable GitHub and Google authentication for self-hosted Dawarich
-- [ ] In selfhosted env, no registrations are allowed, we need to account OIDC into that
 
 
 # [0.35.1] - 2025-11-09
