@@ -118,12 +118,8 @@ class Imports::SourceDetector
   end
 
   def kml_file?
-    return false unless filename
+    return false unless filename&.downcase&.end_with?('.kml', '.kmz')
 
-    # Must have .kml or .kmz extension AND contain KML XML structure
-    return false unless filename.downcase.end_with?('.kml', '.kmz')
-
-    # Check content for KML structure
     content_to_check =
       if file_path && File.exist?(file_path)
         # Read first 1KB for KML detection
