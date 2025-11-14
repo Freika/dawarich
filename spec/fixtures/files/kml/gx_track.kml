@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+  <Document>
+    <name>Google Earth Track</name>
+    <Placemark>
+      <name>GPS Track</name>
+      <gx:Track>
+        <when>2024-01-20T08:00:00Z</when>
+        <when>2024-01-20T08:01:00Z</when>
+        <when>2024-01-20T08:02:00Z</when>
+        <when>2024-01-20T08:03:00Z</when>
+        <gx:coord>-122.0841 37.4220 10</gx:coord>
+        <gx:coord>-122.0851 37.4230 12</gx:coord>
+        <gx:coord>-122.0861 37.4240 14</gx:coord>
+        <gx:coord>-122.0871 37.4250 16</gx:coord>
+      </gx:Track>
+    </Placemark>
+  </Document>
+</kml>

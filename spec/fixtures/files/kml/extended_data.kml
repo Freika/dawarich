@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Extended Data Example</name>
+    <Placemark>
+      <name>Location with Speed</name>
+      <description>A location with extended data including speed</description>
+      <TimeStamp>
+        <when>2024-01-19T11:30:00Z</when>
+      </TimeStamp>
+      <Point>
+        <coordinates>-122.0841,37.4220,10</coordinates>
+      </Point>
+      <ExtendedData>
+        <Data name="speed">
+          <value>5.5</value>
+        </Data>
+        <Data name="accuracy">
+          <value>10</value>
+        </Data>
+        <Data name="battery">
+          <value>85</value>
+        </Data>
+      </ExtendedData>
+    </Placemark>
+  </Document>
+</kml>

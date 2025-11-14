@@ -74,10 +74,10 @@
           <%= f.submit (@invitation ? "Create Account & Join Family" : "Sign up"),
                 class: 'btn btn-primary' %>
         </div>
+      <% end %>
 
-        <% unless @invitation %>
-          <%= render "devise/shared/links" %>
-        <% end %>
+      <% unless @invitation %>
+        <%= render "devise/shared/links" %>
       <% end %>
     </div>
   </div>

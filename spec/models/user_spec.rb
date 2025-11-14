@@ -336,4 +336,97 @@ RSpec.describe User, type: :model do
       end
     end
   end
+
+  describe '.from_omniauth' do
+    let(:auth_hash) do
+      OmniAuth::AuthHash.new({
+        provider: 'github',
+        uid: '123545',
+        info: {
+          email: email,
+          name: 'Test User'
+        }
+      })
+    end
+
+    context 'when user exists with the same email' do
+      let(:email) { 'existing@example.com' }
+      let!(:existing_user) { create(:user, email: email) }
+
+      it 'returns the existing user' do
+        user = described_class.from_omniauth(auth_hash)
+        expect(user).to eq(existing_user)
+        expect(user.persisted?).to be true
+      end
+
+      it 'does not create a new user' do
+        expect do
+          described_class.from_omniauth(auth_hash)
+        end.not_to change(User, :count)
+      end
+    end
+
+    context 'when user does not exist' do
+      let(:email) { 'new@example.com' }
+
+      it 'creates a new user with the OAuth email' do
+        expect do
+          described_class.from_omniauth(auth_hash)
+        end.to change(User, :count).by(1)
+
+        user = User.last
+        expect(user.email).to eq(email)
+      end
+
+      it 'generates a random password for the new user' do
+        user = described_class.from_omniauth(auth_hash)
+        expect(user.encrypted_password).to be_present
+      end
+
+      it 'returns a persisted user' do
+        user = described_class.from_omniauth(auth_hash)
+        expect(user.persisted?).to be true
+      end
+    end
+
+    context 'when OAuth provider is Google' do
+      let(:email) { 'google@example.com' }
+      let(:auth_hash) do
+        OmniAuth::AuthHash.new({
+          provider: 'google_oauth2',
+          uid: '123545',
+          info: {
+            email: email,
+            name: 'Google User'
+          }
+        })
+      end
+
+      it 'creates a user from Google OAuth data' do
+        user = described_class.from_omniauth(auth_hash)
+        expect(user.email).to eq(email)
+        expect(user.persisted?).to be true
+      end
+    end
+
+    context 'when email is nil' do
+      let(:email) { nil }
+
+      it 'attempts to create a user but fails validation' do
+        user = described_class.from_omniauth(auth_hash)
+        expect(user.persisted?).to be false
+        expect(user.errors[:email]).to be_present
+      end
+    end
+
+    context 'when email is blank' do
+      let(:email) { '' }
+
+      it 'attempts to create a user but fails validation' do
+        user = described_class.from_omniauth(auth_hash)
+        expect(user.persisted?).to be false
+        expect(user.errors[:email]).to be_present
+      end
+    end
+  end
 end

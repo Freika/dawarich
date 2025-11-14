@@ -74,6 +74,15 @@ RSpec.describe Imports::SourceDetector do
       end
     end
 
+    context 'with KML file' do
+      let(:file_content) { file_fixture('kml/points_with_timestamps.kml').read }
+      let(:filename) { 'test.kml' }
+
+      it 'detects kml format' do
+        expect(detector.detect_source).to eq(:kml)
+      end
+    end
+
     context 'with invalid JSON' do
       let(:file_content) { 'invalid json content' }
 
@@ -145,6 +154,15 @@ RSpec.describe Imports::SourceDetector do
         expect(detector.detect_source).to eq(:geojson)
       end
     end
+
+    context 'with KML file' do
+      let(:fixture_path) { file_fixture('kml/points_with_timestamps.kml').to_s }
+
+      it 'detects source correctly from file path' do
+        detector = described_class.new_from_file_header(fixture_path)
+        expect(detector.detect_source).to eq(:kml)
+      end
+    end
   end
 
   describe 'detection accuracy with real fixture files' do
@@ -170,5 +188,11 @@ RSpec.describe Imports::SourceDetector do
     include_examples 'detects format correctly', :gpx, 'gpx/arc_example.gpx'
     include_examples 'detects format correctly', :gpx, 'gpx/garmin_example.gpx'
     include_examples 'detects format correctly', :gpx, 'gpx/gpx_track_multiple_segments.gpx'
+
+    # Test KML files
+    include_examples 'detects format correctly', :kml, 'kml/points_with_timestamps.kml'
+    include_examples 'detects format correctly', :kml, 'kml/linestring_track.kml'
+    include_examples 'detects format correctly', :kml, 'kml/gx_track.kml'
+    include_examples 'detects format correctly', :kml, 'kml/multigeometry.kml'
   end
 end

@@ -49,10 +49,10 @@
         <div class="form-control mt-6">
           <%= f.submit (@invitation ? "Sign in & Accept Invitation" : "Log in"), class: 'btn btn-primary' %>
         </div>
+      <% end %>
 
-        <% unless @invitation %>
-          <%= render "devise/shared/links" %>
-        <% end %>
+      <% unless @invitation %>
+        <%= render "devise/shared/links" %>
       <% end %>
     </div>
   </div>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>MultiGeometry Example</name>
+    <Placemark>
+      <name>Multiple Geometries</name>
+      <TimeStamp>
+        <when>2024-01-18T15:00:00Z</when>
+      </TimeStamp>
+      <MultiGeometry>
+        <Point>
+          <coordinates>-122.0841,37.4220,10</coordinates>
+        </Point>
+        <Point>
+          <coordinates>-122.0851,37.4230,12</coordinates>
+        </Point>
+        <LineString>
+          <coordinates>
+            -122.0861,37.4240,14
+            -122.0871,37.4250,16
+            -122.0881,37.4260,18
+            -122.0891,37.4270,20
+          </coordinates>
+        </LineString>
+      </MultiGeometry>
+    </Placemark>
+  </Document>
+</kml>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Large Track for Batch Testing</name>
+    <Placemark>
+      <name>Long Track</name>
+      <TimeStamp>
+        <when>2024-01-25T00:00:00Z</when>
+      </TimeStamp>
+      <LineString>
+        <coordinates>
+          -122.0841,37.4220,10
+          -122.0842,37.4221,10
+          -122.0843,37.4222,10
+          -122.0844,37.4223,10
+          -122.0845,37.4224,10
+          -122.0846,37.4225,10
+          -122.0847,37.4226,10
+          -122.0848,37.4227,10
+          -122.0849,37.4228,10
+          -122.0850,37.4229,10
+        </coordinates>
+      </LineString>
+    </Placemark>
+    <Placemark>
+      <name>Another Long Track</name>
+      <TimeStamp>
+        <when>2024-01-25T12:00:00Z</when>
+      </TimeStamp>
+      <LineString>
+        <coordinates>
+          -122.0851,37.4230,12
+          -122.0852,37.4231,12
+          -122.0853,37.4232,12
+          -122.0854,37.4233,12
+          -122.0855,37.4234,12
+          -122.0856,37.4235,12
+          -122.0857,37.4236,12
+          -122.0858,37.4237,12
+          -122.0859,37.4238,12
+          -122.0860,37.4239,12
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

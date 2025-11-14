@@ -115,7 +115,8 @@ RSpec.describe Import, type: :model do
         immich_api: 5,
         geojson: 6,
         photoprism_api: 7,
-        user_data_archive: 8
+        user_data_archive: 8,
+        kml: 9
       )
     end
   end

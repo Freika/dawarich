@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Points with Timestamps</name>
+    <Placemark>
+      <name>Location 1</name>
+      <TimeStamp>
+        <when>2024-01-15T12:00:00Z</when>
+      </TimeStamp>
+      <Point>
+        <coordinates>-122.0841,37.4220,10</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Location 2</name>
+      <TimeStamp>
+        <when>2024-01-15T13:00:00Z</when>
+      </TimeStamp>
+      <Point>
+        <coordinates>-122.0851,37.4230,15</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Location 3</name>
+      <TimeStamp>
+        <when>2024-01-15T14:00:00Z</when>
+      </TimeStamp>
+      <Point>
+        <coordinates>-122.0861,37.4240,20</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>
