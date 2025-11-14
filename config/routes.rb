@@ -50,7 +50,6 @@ Rails.application.routes.draw do
   patch 'settings', to: 'settings#update'
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
-  delete 'settings/disconnect_patreon', to: 'settings#disconnect_patreon', as: :disconnect_patreon_settings
 
   resources :imports
   resources :visits, only: %i[index update]

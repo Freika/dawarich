@@ -38,16 +38,15 @@ METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', 'prometheus')
 # /Prometheus metrics
 
 # Configure OAuth providers based on environment
-# Self-hosted: only OpenID Connect, Cloud: only GitHub, Google, and Patreon
+# Self-hosted: only OpenID Connect, Cloud: only GitHub and Google
 OMNIAUTH_PROVIDERS =
   if SELF_HOSTED
     # Self-hosted: only OpenID Connect
     ENV['OIDC_CLIENT_ID'].present? ? %i[openid_connect] : []
   else
-    # Cloud: only GitHub, Google, and Patreon
+    # Cloud: only GitHub and Google
     providers = []
     providers << :github if ENV['GITHUB_OAUTH_CLIENT_ID'].present?
     providers << :google_oauth2 if ENV['GOOGLE_OAUTH_CLIENT_ID'].present?
-    providers << :patreon if ENV['PATREON_CLIENT_ID'].present?
     providers
   end

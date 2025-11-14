@@ -278,12 +278,6 @@ Devise.setup do |config|
                       scope: 'userinfo.email,userinfo.profile'
       Rails.logger.info 'OAuth: Google configured'
     end
-
-    if ENV['PATREON_CLIENT_ID'].present? && ENV['PATREON_CLIENT_SECRET'].present?
-      config.omniauth :patreon, ENV['PATREON_CLIENT_ID'], ENV['PATREON_CLIENT_SECRET'],
-                      scope: 'identity identity[email]'
-      Rails.logger.info 'OAuth: Patreon configured'
-    end
   end
 
   # Self-hosted version: only OpenID Connect (when env vars present)

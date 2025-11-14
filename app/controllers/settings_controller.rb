@@ -28,14 +28,6 @@ class SettingsController < ApplicationController
     redirect_back(fallback_location: root_path)
   end
 
-  def disconnect_patreon
-    if current_user.disconnect_patreon!
-      redirect_to settings_path, notice: 'Patreon account disconnected successfully'
-    else
-      redirect_to settings_path, alert: 'Unable to disconnect Patreon account'
-    end
-  end
-
   private
 
   def settings_params

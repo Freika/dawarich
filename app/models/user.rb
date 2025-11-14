@@ -156,10 +156,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     user = User.find_by(provider: provider, uid: uid)
 
     if user
-      # Update tokens for existing user
-      if provider == 'patreon'
-        user.update_patreon_tokens(access_token)
-      end
+      # User found by provider/uid
       return user
     end
 
@@ -169,9 +166,6 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     if user
       # Update provider and uid for existing user (first-time linking)
       user.update(provider: provider, uid: uid)
-      if provider == 'patreon'
-        user.update_patreon_tokens(access_token)
-      end
       return user
     end
 
@@ -183,53 +177,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
       uid: uid
     )
 
-    if provider == 'patreon'
-      user.update_patreon_tokens(access_token)
-    end
-
     user
-  end
-
-  def patreon_connected?
-    provider == 'patreon' && uid.present?
-  end
-
-  def disconnect_patreon!
-    return false unless patreon_connected?
-
-    update(
-      provider: nil,
-      uid: nil,
-      patreon_access_token: nil,
-      patreon_refresh_token: nil,
-      patreon_token_expires_at: nil
-    )
-  end
-
-  def update_patreon_tokens(auth)
-    credentials = auth.credentials
-    update(
-      patreon_access_token: credentials.token,
-      patreon_refresh_token: credentials.refresh_token,
-      patreon_token_expires_at: Time.at(credentials.expires_at)
-    )
-  end
-
-  # Check if user is a patron of a specific creator
-  # @param creator_id [String] The Patreon creator ID to check
-  # @return [Boolean] true if user is an active patron
-  def patron_of?(creator_id)
-    return false unless patreon_connected?
-
-    Patreon::PatronChecker.new(self).patron_of?(creator_id)
-  end
-
-  # Get all campaigns the user is supporting
-  # @return [Array<Hash>] Array of campaign data
-  def patreon_memberships
-    return [] unless patreon_connected?
-
-    Patreon::PatronChecker.new(self).memberships
   end
 
   private

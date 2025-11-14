@@ -78,35 +78,8 @@
                 </svg>Connected Accounts
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                <div class="flex items-center justify-between p-4 border border-base-300 rounded-lg">
-                  <div class="flex items-center space-x-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="text-[#FF424D]">
-                      <path d="M0 .48v23.04h24V.48zm22.89 21.93H1.11V1.61h21.78zm-3.2-6.15c-1.05 0-2.08-.28-2.99-.81.88 1.99 2.83 3.37 5.08 3.37 3.09 0 5.59-2.5 5.59-5.59 0-3.09-2.5-5.59-5.59-5.59-2.25 0-4.2 1.33-5.08 3.25.9-.48 1.93-.73 3-.73 3.56 0 6.44 2.88 6.44 6.44s-2.88 6.44-6.44 6.44z"/>
-                    </svg>
-                    <div>
-                      <h3 class="font-semibold">Patreon</h3>
-                      <p class="text-sm text-base-content/70">
-                        <% if current_user.patreon_connected? %>
-                          Connected
-                        <% else %>
-                          Not connected
-                        <% end %>
-                      </p>
-                    </div>
-                  </div>
-                  <% if current_user.patreon_connected? %>
-                    <%= button_to "Disconnect", disconnect_patreon_settings_path,
-                        method: :delete,
-                        class: "btn btn-sm btn-outline btn-error",
-                        form: { data: { turbo_confirm: "Are you sure you want to disconnect your Patreon account?" } } %>
-                  <% else %>
-                    <%= link_to "Connect", user_patreon_omniauth_authorize_path,
-                        class: "btn btn-sm btn-primary",
-                        method: :post %>
-                  <% end %>
-                </div>
-                <p class="text-sm text-base-content/70 mt-2">
-                  Connect your Patreon account to support the development of Dawarich and get access to exclusive features.
+                <p class="text-sm text-base-content/70">
+                  OAuth providers configured: <%= OMNIAUTH_PROVIDERS.map(&:to_s).join(', ').presence || 'None' %>
                 </p>
               </div>
             </div>
