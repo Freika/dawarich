@@ -110,6 +110,7 @@ GEM
     bcrypt (3.1.20)
     benchmark (0.4.1)
     bigdecimal (3.3.1)
+    bindata (2.5.1)
     bootsnap (1.18.6)
       msgpack (~> 1.2)
     brakeman (7.1.0)
@@ -163,6 +164,8 @@ GEM
       dotenv (= 3.1.8)
       railties (>= 6.1)
     drb (2.2.3)
+    email_validator (2.2.4)
+      activemodel
     erb (5.1.3)
     erubi (1.13.1)
     et-orbi (1.4.0)
@@ -384,6 +387,17 @@ GEM
     raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.3)
+    rack-oauth2 (2.3.0)
+      activesupport
+      attr_required
+      faraday (~> 2.0)
+      faraday-follow_redirects
+      json-jwt (>= 1.11.0)
+      rack (>= 2.1.0)
+    rack-protection (4.2.1)
+      base64 (>= 0.1.0)
+      logger (>= 1.6.0)
+      rack (>= 3.0.0, < 4)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -558,6 +572,11 @@ GEM
       attr_extras (>= 6.2.4)
       diff-lcs
       patience_diff
+    swd (2.0.3)
+      activesupport (>= 3)
+      attr_required (>= 0.0.5)
+      faraday (~> 2.0)
+      faraday-follow_redirects
     tailwindcss-rails (3.3.2)
       railties (>= 7.0.0)
       tailwindcss-ruby (~> 3.0)
@@ -614,7 +633,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  activerecord-postgis-adapter (~> 11.0)
+  activerecord-postgis-adapter (= 11.0)
   aws-sdk-core (~> 3.215.1)
   aws-sdk-kms (~> 1.96.0)
   aws-sdk-s3 (~> 1.177.0)

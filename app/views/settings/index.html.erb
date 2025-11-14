@@ -72,10 +72,7 @@
           <% unless DawarichSettings.self_hosted? %>
             <div>
               <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link mr-2 text-primary">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                </svg>Connected Accounts
+                <%= icon 'link', class: "h-6 w-6 text-info-content" %>Connected Accounts
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                 <p class="text-sm text-base-content/70">

@@ -23,7 +23,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Implemented authentication via GitHub and Google for Dawarich Cloud.
 - Implemented OpenID Connect authentication for self-hosted Dawarich instances. #66
-- Added Patreon OAuth integration for Dawarich Cloud, allowing users to connect their Patreon accounts in account settings.
 
 ## TODO:
 
