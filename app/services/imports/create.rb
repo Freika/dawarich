@@ -58,6 +58,7 @@ class Imports::Create
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
     when 'owntracks'                    then OwnTracks::Importer
     when 'gpx'                          then Gpx::TrackImporter
+    when 'kml'                          then Kml::Importer
     when 'geojson'                      then Geojson::Importer
     when 'immich_api', 'photoprism_api' then Photos::Importer
     else

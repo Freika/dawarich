@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Invalid Coordinates</name>
+    <Placemark>
+      <name>No Coordinates</name>
+      <TimeStamp>
+        <when>2024-01-23T10:00:00Z</when>
+      </TimeStamp>
+      <Point>
+        <coordinates></coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Only Longitude</name>
+      <TimeStamp>
+        <when>2024-01-23T11:00:00Z</when>
+      </TimeStamp>
+      <Point>
+        <coordinates>-122.0841</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

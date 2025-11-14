@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+## Added
+
+- Support for KML file uploads. #350
+- Added a commented line in the `docker-compose.yml` file to use an alternative PostGIS image for ARM architecture.
+
+## Fixed
+
+- The map settings panel is now scrollable
+
+## Changed
+
+- Internal redis settings updated to implement support for connecting to Redis via unix socket. #1706
+
 # [0.35.1] - 2025-11-09
 
 ## Fixed
