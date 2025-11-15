@@ -4,6 +4,7 @@
     "@rails/actiontext": "^8.0.0",
     "daisyui": "^4.7.3",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "^5.13.0",
     "postcss": "^8.4.49",
     "trix": "^2.1.15"
   },
