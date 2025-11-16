@@ -1,18 +1,10 @@
 # frozen_string_literal: true
 
+# This controller is kept for future family-level API endpoints
+# Location-specific endpoints have been moved to Api::V1::Families::LocationsController
 class Api::V1::FamiliesController < ApiController
   before_action :ensure_family_feature_enabled!
   before_action :ensure_user_in_family!
-
-  def locations
-    family_locations = Families::Locations.new(current_api_user).call
-
-    render json: {
-      locations: family_locations,
-      updated_at: Time.current.iso8601,
-      sharing_enabled: current_api_user.family_sharing_enabled?
-    }
-  end
 
   private
 

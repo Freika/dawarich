@@ -62,7 +62,7 @@ export default class extends Controller {
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-      const response = await fetch(`/family/update_location_sharing`, {
+      const response = await fetch(`/api/v1/families/locations/toggle`, {
         method: 'PATCH',
         headers: {
           'Accept': 'application/json',
