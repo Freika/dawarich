@@ -56,6 +56,7 @@ Rails.application.routes.draw do
   resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
   resources :trips
+  resources :tags, except: [:show]
 
   # Family management routes (only if feature is enabled)
   if DawarichSettings.family_feature_enabled?
@@ -120,6 +121,11 @@ Rails.application.routes.draw do
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index create update destroy]
+      resources :places,    only: %i[index show create update destroy] do
+        collection do
+          get 'nearby'
+        end
+      end
       resources :locations, only: %i[index] do
         collection do
           get 'suggestions'

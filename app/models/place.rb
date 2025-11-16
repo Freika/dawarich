@@ -12,7 +12,10 @@ class Place < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
-  validates :name, :lonlat, presence: true
+  validates :name, presence: true
+  validates :latitude, :longitude, presence: true
+
+  before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
 
   enum :source, { manual: 0, photon: 1 }
 
@@ -41,5 +44,11 @@ class Place < ApplicationRecord
 
   def osm_type
     geodata.dig('properties', 'osm_type')
+  end
+
+  private
+
+  def build_lonlat
+    self.lonlat = "POINT(#{longitude} #{latitude})"
   end
 end

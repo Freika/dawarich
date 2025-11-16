@@ -1,0 +1,57 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Tags</h1>
+    <%= link_to "New Tag", new_tag_path, class: "btn btn-primary" %>
+  </div>
+
+  <% if @tags.any? %>
+    <div class="overflow-x-auto">
+      <table class="table table-zebra w-full">
+        <thead>
+          <tr>
+            <th>Icon</th>
+            <th>Name</th>
+            <th>Color</th>
+            <th>Places Count</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @tags.each do |tag| %>
+            <tr>
+              <td class="text-2xl"><%= tag.icon %></td>
+              <td class="font-semibold"><%= tag.name %></td>
+              <td>
+                <% if tag.color.present? %>
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded" style="background-color: <%= tag.color %>;"></div>
+                    <span class="text-sm"><%= tag.color %></span>
+                  </div>
+                <% else %>
+                  <span class="text-gray-400">No color</span>
+                <% end %>
+              </td>
+              <td><%= tag.places.count %></td>
+              <td class="text-right">
+                <div class="flex gap-2 justify-end">
+                  <%= link_to "Edit", edit_tag_path(tag), class: "btn btn-sm btn-ghost" %>
+                  <%= button_to "Delete", tag_path(tag), method: :delete,
+                      data: { turbo_confirm: "Are you sure?" },
+                      class: "btn btn-sm btn-error" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+  <% else %>
+    <div class="alert alert-info">
+      <div>
+        <p>No tags yet. Create your first tag to organize your places!</p>
+        <%= link_to "Create Tag", new_tag_path, class: "btn btn-sm btn-primary mt-2" %>
+      </div>
+    </div>
+  <% end %>
+</div>

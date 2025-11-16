@@ -1,0 +1,79 @@
+<%= form_with(model: tag, class: "space-y-4") do |f| %>
+  <% if tag.errors.any? %>
+    <div class="alert alert-error">
+      <div>
+        <h3 class="font-bold"><%= pluralize(tag.errors.count, "error") %> prohibited this tag from being saved:</h3>
+        <ul class="list-disc list-inside">
+          <% tag.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="form-control">
+    <%= f.label :name, class: "label" %>
+    <%= f.text_field :name, class: "input input-bordered w-full", placeholder: "Home, Work, Restaurant..." %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :icon, class: "label" %>
+    <div class="flex gap-2">
+      <%= f.text_field :icon, class: "input input-bordered flex-1", placeholder: "🏠" %>
+      <div class="dropdown dropdown-end">
+        <button type="button" tabindex="0" class="btn btn-outline">
+          Pick Icon
+        </button>
+        <div tabindex="0" class="dropdown-content card card-compact w-72 p-2 shadow bg-base-100 z-10">
+          <div class="card-body">
+            <div class="grid grid-cols-6 gap-2" data-action="click->icon-picker#select">
+              <% %w[📍 🏠 🏢 🍴 ☕ 🏨 🎭 🏛️ 🌳 ⛰️ 🏖️ 🎪 🏪 🏬 🏭 🏯 🏰 🗼 🗽 ⛪ 🕌 🛕 🕍 ⛩️].each do |emoji| %>
+                <button type="button" class="btn btn-sm text-2xl hover:bg-base-200" data-icon="<%= emoji %>">
+                  <%= emoji %>
+                </button>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="label">
+      <span class="label-text-alt">Click an emoji or paste any emoji</span>
+    </label>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :color, class: "label" %>
+    <div class="flex gap-2 items-center">
+      <%= f.color_field :color, class: "w-16 h-12 rounded cursor-pointer" %>
+      <%= f.text_field :color, class: "input input-bordered flex-1", placeholder: "#FF5733" %>
+    </div>
+    <label class="label">
+      <span class="label-text-alt">Optional - Choose a color for this tag</span>
+    </label>
+  </div>
+
+  <div class="form-control mt-6">
+    <div class="flex gap-2">
+      <%= f.submit class: "btn btn-primary" %>
+      <%= link_to "Cancel", tags_path, class: "btn btn-ghost" %>
+    </div>
+  </div>
+<% end %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const iconButtons = document.querySelectorAll('[data-icon]');
+    const iconInput = document.querySelector('input[name="tag[icon]"]');
+
+    iconButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (iconInput) {
+          iconInput.value = button.dataset.icon;
+        }
+      });
+    });
+  });
+</script>
