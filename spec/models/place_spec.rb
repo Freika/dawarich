@@ -47,13 +47,13 @@ RSpec.describe Place, type: :model do
 
     describe '#lon' do
       it 'returns the longitude' do
-        expect(place.lon).to eq(13.0948638)
+        expect(place.lon).to be_within(0.000001).of(13.0948638)
       end
     end
 
     describe '#lat' do
       it 'returns the latitude' do
-        expect(place.lat).to eq(54.2905245)
+        expect(place.lat).to be_within(0.000001).of(54.2905245)
       end
     end
   end

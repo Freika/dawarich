@@ -12,10 +12,11 @@ class Place < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
+  before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
+
   validates :name, presence: true
   validates :latitude, :longitude, presence: true
-
-  before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
+  validates :lonlat, presence: true
 
   enum :source, { manual: 0, photon: 1 }
 
