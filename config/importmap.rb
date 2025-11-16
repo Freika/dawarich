@@ -4,6 +4,7 @@
 
 pin_all_from 'app/javascript/channels', under: 'channels'
 pin_all_from 'app/javascript/maps', under: 'maps'
+pin_all_from 'app/javascript/maps_v2', under: 'maps_v2'
 
 pin 'application', preload: true
 pin '@rails/actioncable', to: 'actioncable.esm.js'
@@ -26,3 +27,4 @@ pin 'imports_channel', to: 'channels/imports_channel.js'
 pin 'family_locations_channel', to: 'channels/family_locations_channel.js'
 pin 'trix'
 pin '@rails/actiontext', to: 'actiontext.esm.js'
+pin "maplibre-gl" # @5.12.0

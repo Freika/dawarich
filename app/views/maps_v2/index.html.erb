@@ -1,0 +1,144 @@
+<div class="maps-v2-container"
+     data-controller="maps-v2"
+     data-maps-v2-api-key-value="<%= current_user.api_key %>"
+     data-maps-v2-start-date-value="<%= @start_date.to_s %>"
+     data-maps-v2-end-date-value="<%= @end_date.to_s %>">
+
+  <!-- Map container -->
+  <div class="map-wrapper">
+    <div data-maps-v2-target="container" class="map-container"></div>
+
+    <!-- Loading overlay -->
+    <div data-maps-v2-target="loading" class="loading-overlay hidden">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading points...</div>
+    </div>
+  </div>
+
+  <!-- Month selector -->
+  <div class="controls-panel">
+    <div class="control-group">
+      <label for="month-select">Month:</label>
+      <select id="month-select"
+              data-maps-v2-target="monthSelect"
+              data-action="change->maps-v2#monthChanged"
+              class="month-selector">
+        <% 12.times do |i| %>
+          <% date = Date.today.beginning_of_month - i.months %>
+          <option value="<%= date.strftime('%Y-%m') %>"
+                  <%= 'selected' if date.year == @start_date.year && date.month == @start_date.month %>>
+            <%= date.strftime('%B %Y') %>
+          </option>
+        <% end %>
+      </select>
+    </div>
+  </div>
+</div>
+
+<style>
+  .maps-v2-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .map-wrapper {
+    flex: 1;
+    position: relative;
+  }
+
+  .map-container {
+    width: 100%;
+    height: 100%;
+  }
+
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .loading-overlay.hidden {
+    display: none;
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    margin-top: 16px;
+    font-size: 14px;
+    color: #6b7280;
+  }
+
+  .controls-panel {
+    padding: 16px;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .control-group label {
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .month-selector {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  /* Popup styles */
+  .point-popup {
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  .popup-header {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .popup-body {
+    font-size: 13px;
+  }
+
+  .popup-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 0;
+  }
+
+  .popup-row .label {
+    color: #6b7280;
+  }
+
+  .popup-row .value {
+    font-weight: 500;
+    color: #111827;
+  }
+</style>

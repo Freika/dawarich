@@ -111,6 +111,9 @@ Rails.application.routes.draw do
 
   get 'map', to: 'map#index'
 
+  # Maps V2
+  get '/maps_v2', to: 'maps_v2#index', as: :maps_v2
+
   namespace :api do
     namespace :v1 do
       get   'photos', to: 'photos#index'
