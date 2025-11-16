@@ -25,6 +25,7 @@ OIDC_REDIRECT_URI=https://your-dawarich-url.com/users/auth/openid_connect/callba
 ## Fixed
 
 - The map settings panel is now scrollable
+- Fixed a bug where family location sharing settings were not being updated correctly. #1940
 
 ## Changed
 

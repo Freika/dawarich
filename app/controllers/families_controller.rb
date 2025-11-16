@@ -3,7 +3,7 @@
 class FamiliesController < ApplicationController
   before_action :authenticate_user!
   before_action :ensure_family_feature_enabled!
-  before_action :set_family, only: %i[show edit update destroy update_location_sharing]
+  before_action :set_family, only: %i[show edit update destroy]
 
   def show
     authorize @family
@@ -74,18 +74,6 @@ class FamiliesController < ApplicationController
       @family.destroy
       redirect_to new_family_path, notice: 'Family deleted successfully!'
     end
-  end
-
-  def update_location_sharing
-    authorize @family, :update_location_sharing?
-
-    result = Families::UpdateLocationSharing.new(
-      user: current_user,
-      enabled: params[:enabled],
-      duration: params[:duration]
-    ).call
-
-    render json: result.payload, status: result.status
   end
 
   private

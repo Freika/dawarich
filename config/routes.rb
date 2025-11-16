@@ -60,10 +60,10 @@ Rails.application.routes.draw do
   # Family management routes (only if feature is enabled)
   if DawarichSettings.family_feature_enabled?
     resource :family, only: %i[show new create edit update destroy] do
-      patch :update_location_sharing, on: :member
-
       resources :invitations, except: %i[edit update], controller: 'family/invitations'
       resources :members, only: %i[destroy], controller: 'family/memberships'
+
+      patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
     end
 
     get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
@@ -171,10 +171,8 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :families, only: [] do
-        collection do
-          get :locations
-        end
+      namespace :families do
+        resources :locations, only: [:index]
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
