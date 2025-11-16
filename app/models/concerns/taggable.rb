@@ -13,22 +13,18 @@ module Taggable
     }
   end
 
-  # Add a tag to this taggable record
   def add_tag(tag)
     tags << tag unless tags.include?(tag)
   end
 
-  # Remove a tag from this taggable record
   def remove_tag(tag)
     tags.delete(tag)
   end
 
-  # Get all tag names for this taggable record
   def tag_names
     tags.pluck(:name)
   end
 
-  # Check if tagged with specific tag
   def tagged_with?(tag)
     tags.include?(tag)
   end

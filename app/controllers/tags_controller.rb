@@ -6,16 +6,19 @@ class TagsController < ApplicationController
 
   def index
     @tags = policy_scope(Tag).ordered
+
     authorize Tag
   end
 
   def new
     @tag = current_user.tags.build
+
     authorize @tag
   end
 
   def create
     @tag = current_user.tags.build(tag_params)
+
     authorize @tag
 
     if @tag.save
@@ -41,7 +44,9 @@ class TagsController < ApplicationController
 
   def destroy
     authorize @tag
+
     @tag.destroy!
+
     redirect_to tags_path, notice: 'Tag was successfully deleted.', status: :see_other
   end
 

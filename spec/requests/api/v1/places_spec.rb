@@ -6,7 +6,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
   let(:user) { create(:user) }
   let!(:place) { create(:place, user: user, name: 'Home', latitude: 40.7128, longitude: -74.0060) }
   let!(:tag) { create(:tag, user: user, name: 'Favorite') }
-  let(:headers) { { 'APIKEY' => user.api_key } }
+  let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
   describe 'GET /api/v1/places' do
     it 'returns user places' do

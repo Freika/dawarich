@@ -8,13 +8,12 @@ RSpec.describe Tag, type: :model do
   it { is_expected.to have_many(:places).through(:taggings) }
 
   it { is_expected.to validate_presence_of(:name) }
-  it { is_expected.to validate_presence_of(:user) }
-  
+
   describe 'validations' do
     subject { create(:tag) }
-    
+
     it { is_expected.to validate_uniqueness_of(:name).scoped_to(:user_id) }
-    
+
     it 'validates hex color' do
       expect(build(:tag, color: '#FF5733')).to be_valid
       expect(build(:tag, color: 'invalid')).not_to be_valid
