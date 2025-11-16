@@ -62,6 +62,8 @@ Rails.application.routes.draw do
     resource :family, only: %i[show new create edit update destroy] do
       resources :invitations, except: %i[edit update], controller: 'family/invitations'
       resources :members, only: %i[destroy], controller: 'family/memberships'
+
+      patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
     end
 
     get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
@@ -170,11 +172,7 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
-        resources :locations, only: [:index] do
-          collection do
-            patch :toggle
-          end
-        end
+        resources :locations, only: [:index]
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
