@@ -2,10 +2,11 @@
 
 FactoryBot.define do
   factory :place do
-    name { 'MyString' }
+    sequence(:name) { |n| "Place #{n}" }
     latitude { 54.2905245 }
     longitude { 13.0948638 }
     lonlat { "SRID=4326;POINT(#{longitude} #{latitude})" }
+    association :user
 
     trait :with_geodata do
       geodata do

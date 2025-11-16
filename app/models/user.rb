@@ -15,7 +15,9 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
-  has_many :places, through: :visits
+  has_many :visited_places, through: :visits, source: :place
+  has_many :places,         dependent: :destroy
+  has_many :tags,           dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
 
