@@ -47,15 +47,15 @@ module Visits
     # Step 1: Find existing place
     def find_existing_place(lat, lon, name)
       # Try to find existing place by location first
-      existing_by_location = Place.near([lat, lon], SIMILARITY_RADIUS, :m).first
+      existing_by_location = user.places.near([lat, lon], SIMILARITY_RADIUS, :m).first
       return existing_by_location if existing_by_location
 
       # Then try by name if available
       return nil if name.blank?
 
-      Place.where(name: name)
-           .near([lat, lon], SEARCH_RADIUS, :m)
-           .first
+      user.places.where(name: name)
+                 .near([lat, lon], SEARCH_RADIUS, :m)
+                 .first
     end
 
     # Step 2: Collect potential places from all sources
@@ -113,14 +113,14 @@ module Visits
       return nil if name == Place::DEFAULT_NAME
 
       # Look for existing place with this name
-      existing = Place.where(name: name)
-                      .near([point.lat, point.lon], SIMILARITY_RADIUS, :m)
-                      .first
+      existing = user.places.where(name: name)
+                            .near([point.lat, point.lon], SIMILARITY_RADIUS, :m)
+                            .first
 
       return existing if existing
 
       # Create new place
-      place = Place.new(
+      place = user.places.build(
         name: name,
         lonlat: "POINT(#{point.lon} #{point.lat})",
         latitude: point.lat,
@@ -165,14 +165,14 @@ module Visits
       return nil if name == Place::DEFAULT_NAME
 
       # Look for existing place with this name
-      existing = Place.where(name: name)
-                      .near([result.latitude, result.longitude], SIMILARITY_RADIUS, :m)
-                      .first
+      existing = user.places.where(name: name)
+                            .near([result.latitude, result.longitude], SIMILARITY_RADIUS, :m)
+                            .first
 
       return existing if existing
 
       # Create new place
-      place = Place.new(
+      place = user.places.build(
         name: name,
         lonlat: "POINT(#{result.longitude} #{result.latitude})",
         latitude: result.latitude,
@@ -205,7 +205,7 @@ module Visits
     def create_default_place(lat, lon, suggested_name)
       name = suggested_name.presence || Place::DEFAULT_NAME
 
-      place = Place.new(
+      place = user.places.build(
         name: name,
         lonlat: "POINT(#{lon} #{lat})",
         latitude: lat,
@@ -219,7 +219,7 @@ module Visits
 
     # Step 9: Find suggested places
     def find_suggested_places(lat, lon)
-      Place.near([lat, lon], SEARCH_RADIUS, :m).with_distance([lat, lon], :m)
+      user.places.near([lat, lon], SEARCH_RADIUS, :m).with_distance([lat, lon], :m)
     end
 
     # Helper methods
