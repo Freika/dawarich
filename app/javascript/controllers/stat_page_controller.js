@@ -1,10 +1,11 @@
 import L from "leaflet";
 import "leaflet.heat";
 import { createAllMapLayers } from "../maps/layers";
+import { PlacesManager } from "../maps/places";
 import BaseController from "./base_controller";
 
 export default class extends BaseController {
-  static targets = ["map", "loading", "heatmapBtn", "pointsBtn"];
+  static targets = ["map", "loading", "heatmapBtn", "pointsBtn", "placesBtn"];
 
   connect() {
     super.connect();
@@ -63,6 +64,10 @@ export default class extends BaseController {
       // Initialize layers
       this.markersLayer = L.layerGroup(); // Don't add to map initially
       this.heatmapLayer = null;
+
+      // Initialize Places Manager
+      this.placesManager = new PlacesManager(this.map, this.apiKey);
+      this.placesManager.initialize();
 
       // Load data for this month
       this.loadMonthData();
@@ -226,6 +231,40 @@ export default class extends BaseController {
         this.heatmapBtnTarget.classList.remove('btn-active');
       }
     }
+  }
+
+  togglePlaces() {
+    if (!this.placesManager) {
+      console.warn("Places manager not initialized");
+      return;
+    }
+
+    if (this.map.hasLayer(this.placesManager.placesLayer)) {
+      // Remove places layer
+      this.map.removeLayer(this.placesManager.placesLayer);
+      if (this.hasPlacesBtnTarget) {
+        this.placesBtnTarget.classList.remove('btn-active');
+      }
+    } else {
+      // Add places layer
+      this.map.addLayer(this.placesManager.placesLayer);
+      if (this.hasPlacesBtnTarget) {
+        this.placesBtnTarget.classList.add('btn-active');
+      }
+    }
+  }
+
+  filterPlacesByTags(event) {
+    if (!this.placesManager) return;
+
+    // Collect all checked tag IDs
+    const checkboxes = event.currentTarget.closest('[data-controller="stat-page"]').querySelectorAll('input[type="checkbox"][data-tag-id]');
+    const selectedTagIds = Array.from(checkboxes)
+      .filter(cb => cb.checked)
+      .map(cb => parseInt(cb.dataset.tagId));
+
+    // Filter places by selected tags (or show all if none selected)
+    this.placesManager.filterByTags(selectedTagIds.length > 0 ? selectedTagIds : null);
   }
 
   showLoading(show) {

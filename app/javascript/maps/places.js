@@ -29,7 +29,7 @@ export class PlacesManager {
       }
 
       const response = await fetch(url, {
-        headers: { 'APIKEY': this.apiKey }
+        headers: { 'Authorization': `Bearer ${this.apiKey}` }
       });
 
       if (!response.ok) throw new Error('Failed to load places');
@@ -171,7 +171,7 @@ export class PlacesManager {
     try {
       const response = await fetch(`/api/v1/places/${placeId}`, {
         method: 'DELETE',
-        headers: { 'APIKEY': this.apiKey }
+        headers: { 'Authorization': `Bearer ${this.apiKey}` }
       });
 
       if (!response.ok) throw new Error('Failed to delete place');

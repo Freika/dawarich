@@ -316,6 +316,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_16_134520) do
     t.datetime "updated_at", null: false
     t.geometry "path", limit: {srid: 3857, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
+    t.uuid "sharing_uuid"
+    t.jsonb "sharing_settings", default: {}
+    t.index ["sharing_uuid"], name: "index_trips_on_sharing_uuid", unique: true
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -383,7 +386,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_16_134520) do
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
-  add_foreign_key "places", "users"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"

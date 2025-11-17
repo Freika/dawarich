@@ -43,7 +43,7 @@ export default class extends Controller {
     try {
       const response = await fetch(
         `/api/v1/places/nearby?latitude=${latitude}&longitude=${longitude}&limit=5`,
-        { headers: { 'APIKEY': this.apiKeyValue } }
+        { headers: { 'Authorization': `Bearer ${this.apiKeyValue}` } }
       )
 
       if (!response.ok) throw new Error('Failed to load nearby places')
@@ -110,7 +110,7 @@ export default class extends Controller {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'APIKEY': this.apiKeyValue
+          'Authorization': `Bearer ${this.apiKeyValue}`
         },
         body: JSON.stringify(payload)
       })

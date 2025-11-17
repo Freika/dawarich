@@ -37,6 +37,7 @@ import { countryCodesMap } from "../maps/country_codes";
 import { VisitsManager } from "../maps/visits";
 import { ScratchLayer } from "../maps/scratch_layer";
 import { LocationSearch } from "../maps/location_search";
+import { PlacesManager } from "../maps/places";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
@@ -213,6 +214,10 @@ export default class extends BaseController {
     // Expose visits manager globally for location search integration
     window.visitsManager = this.visitsManager;
 
+    // Initialize the places manager
+    this.placesManager = new PlacesManager(this.map, this.apiKey);
+    this.placesManager.initialize();
+
     // Expose maps controller globally for family integration
     window.mapsController = this;
 
@@ -258,7 +263,8 @@ export default class extends BaseController {
       Areas: this.areasLayer,
       Photos: this.photoMarkers,
       "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
-      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
+      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer(),
+      "Places": this.placesManager.placesLayer
     };
 
     this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
@@ -2214,6 +2220,33 @@ export default class extends BaseController {
         layer.addTo(this.map);
       }
     });
+  }
+
+  togglePlaceCreationMode() {
+    if (!this.placesManager) {
+      console.warn("Places manager not initialized");
+      return;
+    }
+
+    const button = document.getElementById('create-place-btn');
+
+    if (this.placesManager.creationMode) {
+      // Disable creation mode
+      this.placesManager.disableCreationMode();
+      if (button) {
+        button.classList.remove('btn-error');
+        button.classList.add('btn-success');
+        button.title = 'Click to create a place on the map';
+      }
+    } else {
+      // Enable creation mode
+      this.placesManager.enableCreationMode();
+      if (button) {
+        button.classList.remove('btn-success');
+        button.classList.add('btn-error');
+        button.title = 'Click map to place marker (click again to cancel)';
+      }
+    }
   }
 
 
