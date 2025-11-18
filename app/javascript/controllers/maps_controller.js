@@ -39,6 +39,7 @@ import { VisitsManager } from "../maps/visits";
 import { ScratchLayer } from "../maps/scratch_layer";
 import { LocationSearch } from "../maps/location_search";
 import { PlacesManager } from "../maps/places";
+import { PrivacyZoneManager } from "../maps/privacy_zones";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
@@ -63,7 +64,7 @@ export default class extends BaseController {
   tracksVisible = false;
   tracksSubscription = null;
 
-  connect() {
+  async connect() {
     super.connect();
     console.log("Map controller connected");
 
@@ -163,6 +164,12 @@ export default class extends BaseController {
     var bounds = L.latLngBounds(southWest, northEast);
 
     this.map.setMaxBounds(bounds);
+
+    // Initialize privacy zone manager
+    this.privacyZoneManager = new PrivacyZoneManager(this.map, this.apiKey);
+
+    // Load privacy zones and apply filtering BEFORE creating map layers
+    await this.initializePrivacyZones();
 
     this.markersArray = createMarkersArray(this.markers, this.userSettings, this.apiKey);
     this.markersLayer = L.layerGroup(this.markersArray);
@@ -2358,6 +2365,26 @@ export default class extends BaseController {
         setCreatePlaceButtonInactive(button, this.userTheme);
         button.setAttribute('data-tip', 'Create a place');
       }
+    }
+  }
+
+  async initializePrivacyZones() {
+    try {
+      await this.privacyZoneManager.loadPrivacyZones();
+
+      if (this.privacyZoneManager.hasPrivacyZones()) {
+        console.log(`[Privacy Zones] Loaded ${this.privacyZoneManager.getZoneCount()} zones covering ${this.privacyZoneManager.getTotalPlacesCount()} places`);
+
+        // Apply filtering to markers BEFORE they're rendered
+        this.markers = this.privacyZoneManager.filterPoints(this.markers);
+
+        // Apply filtering to tracks if they exist
+        if (this.tracksData && Array.isArray(this.tracksData)) {
+          this.tracksData = this.privacyZoneManager.filterTracks(this.tracksData);
+        }
+      }
+    } catch (error) {
+      console.error('[Privacy Zones] Error initializing privacy zones:', error);
     }
   }
 }

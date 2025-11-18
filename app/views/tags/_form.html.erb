@@ -57,6 +57,51 @@
     </div>
   </div>
 
+  <!-- Privacy Zone Settings -->
+  <div data-controller="privacy-radius">
+    <div class="form-control">
+      <label class="label cursor-pointer">
+        <span class="label-text font-semibold">🔒 Privacy Zone</span>
+        <input type="checkbox"
+               class="toggle toggle-error"
+               data-privacy-radius-target="toggle"
+               data-action="change->privacy-radius#toggleRadius"
+               <%= 'checked' if tag.privacy_radius_meters.present? %>>
+      </label>
+      <label class="label">
+        <span class="label-text-alt">Hide map data around places with this tag</span>
+      </label>
+    </div>
+
+    <div class="form-control <%= 'hidden' unless tag.privacy_radius_meters.present? %>"
+         data-privacy-radius-target="radiusInput">
+      <%= f.label :privacy_radius_meters, "Privacy Radius", class: "label" %>
+      <div class="flex flex-col gap-2">
+        <input type="range"
+               min="50"
+               max="5000"
+               step="50"
+               value="<%= tag.privacy_radius_meters || 1000 %>"
+               class="range range-error"
+               data-privacy-radius-target="slider"
+               data-action="input->privacy-radius#updateFromSlider">
+        <div class="flex justify-between text-xs px-2">
+          <span>50m</span>
+          <span class="font-semibold" data-privacy-radius-target="label">
+            <%= tag.privacy_radius_meters || 1000 %>m
+          </span>
+          <span>5000m</span>
+        </div>
+        <%= f.hidden_field :privacy_radius_meters,
+            value: tag.privacy_radius_meters || 1000,
+            data: { privacy_radius_target: "field" } %>
+      </div>
+      <label class="label">
+        <span class="label-text-alt">Data within this radius will be hidden from the map</span>
+      </label>
+    </div>
+  </div>
+
   <div class="form-control mt-6">
     <div class="flex gap-2">
       <%= f.submit class: "btn btn-primary" %>

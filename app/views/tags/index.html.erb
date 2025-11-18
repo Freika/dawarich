@@ -20,7 +20,14 @@
           <% @tags.each do |tag| %>
             <tr>
               <td class="text-2xl"><%= tag.icon %></td>
-              <td class="font-semibold">#<%= tag.name %></td>
+              <td class="font-semibold">
+                #<%= tag.name %>
+                <% if tag.privacy_zone? %>
+                  <span class="badge badge-sm badge-error gap-1 ml-2">
+                    🔒 <%= tag.privacy_radius_meters %>m
+                  </span>
+                <% end %>
+              </td>
               <td>
                 <% if tag.color.present? %>
                   <div class="flex items-center gap-2">

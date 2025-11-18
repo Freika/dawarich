@@ -111,7 +111,8 @@ module Api
               id: tag.id,
               name: tag.name,
               icon: tag.icon,
-              color: tag.color
+              color: tag.color,
+              privacy_radius_meters: tag.privacy_radius_meters
             }
           end
         }

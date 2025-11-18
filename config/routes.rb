@@ -144,6 +144,11 @@ Rails.application.routes.draw do
         end
       end
       resources :stats, only: :index
+      resources :tags, only: [] do
+        collection do
+          get 'privacy_zones'
+        end
+      end
 
       namespace :overland do
         resources :batches, only: :create
