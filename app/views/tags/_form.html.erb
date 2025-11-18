@@ -17,15 +17,15 @@
     <%= f.text_field :name, class: "input input-bordered w-full", placeholder: "Home, Work, Restaurant..." %>
   </div>
 
-  <div class="form-control" data-controller="icon-picker">
-    <%= f.label :icon, class: "label" %>
-    <div class="flex gap-2">
-      <%= f.text_field :icon, class: "input input-bordered flex-1 text-2xl text-center cursor-pointer", placeholder: "🏠", readonly: true, data: { icon_picker_target: "input" } %>
-      <div class="dropdown dropdown-end">
-        <label tabindex="0" class="btn btn-outline">
-          Pick Icon
+  <div class="grid grid-cols-2 gap-4">
+    <!-- Icon Picker -->
+    <div class="form-control" data-controller="icon-picker">
+      <%= f.label :icon, class: "label" %>
+      <div class="dropdown dropdown-bottom w-full">
+        <label tabindex="0" class="input input-bordered w-full flex items-center justify-center text-4xl cursor-pointer hover:bg-base-200 min-h-[4rem]" data-icon-picker-target="input">
+          <span data-icon-picker-target="display"><%= tag.icon.presence || '🏠' %></span>
         </label>
-        <div tabindex="0" class="dropdown-content card card-compact w-72 p-2 shadow bg-base-100 z-[1]">
+        <div tabindex="0" class="dropdown-content card card-compact w-full p-2 shadow bg-base-100 z-[1] mt-1">
           <div class="card-body">
             <div class="grid grid-cols-6 gap-2">
               <% %w[📍 🏠 🏢 🍴 ☕ 🏨 🎭 🏛️ 🌳 ⛰️ 🏖️ 🎪 🏪 🏬 🏭 🏯 🏰 🗼 🗽 ⛪ 🕌 🛕 🕍 ⛩️ 🙋‍♂️].each do |emoji| %>
@@ -37,21 +37,24 @@
           </div>
         </div>
       </div>
+      <%= f.hidden_field :icon, data: { icon_picker_target: "hiddenInput" } %>
+      <label class="label">
+        <span class="label-text-alt">Click to select an icon</span>
+      </label>
     </div>
-    <label class="label">
-      <span class="label-text-alt">Select an icon from the picker</span>
-    </label>
-  </div>
 
-  <div class="form-control">
-    <%= f.label :color, class: "label" %>
-    <div class="flex gap-2 items-center">
-      <%= f.color_field :color, class: "w-16 h-12 rounded cursor-pointer" %>
-      <%= f.text_field :color, class: "input input-bordered flex-1", placeholder: "#FF5733" %>
+    <!-- Color Picker -->
+    <div class="form-control" data-controller="color-picker">
+      <%= f.label :color, class: "label" %>
+      <label class="input input-bordered w-full flex items-center justify-center cursor-pointer hover:bg-base-200 min-h-[4rem] relative overflow-hidden">
+        <%= f.color_field :color, class: "absolute inset-0 w-full h-full cursor-pointer opacity-0", data: { color_picker_target: "picker", action: "input->color-picker#updateFromPicker" } %>
+        <div class="w-12 h-12 rounded border-2 border-base-content/20" data-color-picker-target="display" style="background-color: <%= tag.color.presence || '#6ab0a4' %>;"></div>
+      </label>
+      <%= f.hidden_field :color, data: { color_picker_target: "hiddenInput" } %>
+      <label class="label">
+        <span class="label-text-alt">Click to select a color</span>
+      </label>
     </div>
-    <label class="label">
-      <span class="label-text-alt">Optional - Choose a color for this tag</span>
-    </label>
   </div>
 
   <div class="form-control mt-6">
