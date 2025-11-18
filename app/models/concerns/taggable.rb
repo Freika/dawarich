@@ -4,7 +4,7 @@ module Taggable
   extend ActiveSupport::Concern
 
   included do
-    has_many :taggings, as: :taggable, dependent: :destroy
+    has_many :taggings, -> { order(created_at: :asc) }, as: :taggable, dependent: :destroy
     has_many :tags, through: :taggings
 
     scope :with_tags, ->(tag_ids) { joins(:taggings).where(taggings: { tag_id: tag_ids }).distinct }

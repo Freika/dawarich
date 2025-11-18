@@ -20,7 +20,7 @@
           <% @tags.each do |tag| %>
             <tr>
               <td class="text-2xl"><%= tag.icon %></td>
-              <td class="font-semibold"><%= tag.name %></td>
+              <td class="font-semibold">#<%= tag.name %></td>
               <td>
                 <% if tag.color.present? %>
                   <div class="flex items-center gap-2">

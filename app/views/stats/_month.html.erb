@@ -100,7 +100,7 @@
                      data-action="change->stat-page#filterPlacesByTags"
                      class="checkbox checkbox-sm checkbox-primary">
               <span class="text-xl"><%= tag.icon %></span>
-              <span class="text-sm font-medium"><%= tag.name %></span>
+              <span class="text-sm font-medium">#<%= tag.name %></span>
               <% if tag.color.present? %>
                 <span class="w-3 h-3 rounded-full ml-1" style="background-color: <%= tag.color %>;"></span>
               <% end %>

@@ -111,7 +111,7 @@ export function createPlacesControl(placesManager, tags, userTheme = 'dark') {
                          style="margin-right: 8px; cursor: pointer;"
                          ${this.activeFilters.has(tag.id) ? 'checked' : ''}>
                   <span style="font-size: 18px; margin-right: 6px;">${tag.icon || '📍'}</span>
-                  <span style="flex: 1;">${this.escapeHtml(tag.name)}</span>
+                  <span style="flex: 1;">#${this.escapeHtml(tag.name)}</span>
                   ${tag.color ? `<span style="width: 12px; height: 12px; border-radius: 50%; background-color: ${tag.color}; margin-left: 4px;"></span>` : ''}
                 </label>
               `).join('')}

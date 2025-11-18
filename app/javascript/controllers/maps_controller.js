@@ -483,7 +483,7 @@ export default class extends BaseController {
     if (this.userTags && this.userTags.length > 0) {
       this.userTags.forEach(tag => {
         const icon = tag.icon || '📍';
-        const label = `${icon} ${tag.name}`;
+        const label = `${icon} #${tag.name}`;
         const tagLayer = this.placesManager?.createFilteredLayer([tag.id]) || L.layerGroup();
         this.placesFilteredLayers[label] = tagLayer;
         placesChildren.push({

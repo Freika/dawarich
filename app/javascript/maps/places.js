@@ -133,9 +133,9 @@ export class PlacesManager {
   }
 
   createPopupContent(place) {
-    const tags = place.tags.map(tag => 
+    const tags = place.tags.map(tag =>
       `<span class="badge badge-sm" style="background-color: ${tag.color}">
-        ${tag.icon} ${tag.name}
+        ${tag.icon} #${tag.name}
       </span>`
     ).join(' ');
 
