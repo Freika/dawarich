@@ -47,12 +47,46 @@ export class PrivacyZoneManager {
   filterPoints(points) {
     if (!this.zones || this.zones.length === 0) return points;
 
-    return points.filter(point => {
-      // Point format: [lat, lng, ...]
+    // Filter points and ensure polylines break at privacy zone boundaries
+    // We need to manipulate timestamps to force polyline breaks
+    const filteredPoints = [];
+    let lastWasPrivate = false;
+    let privacyZoneEncountered = false;
+
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
       const lat = point[0];
       const lng = point[1];
-      return !this.isPointInPrivacyZone(lat, lng);
-    });
+      const isPrivate = this.isPointInPrivacyZone(lat, lng);
+
+      if (!isPrivate) {
+        // Point is not in privacy zone, include it
+        const newPoint = [...point]; // Clone the point array
+
+        // If we just exited a privacy zone, force a polyline break by adding
+        // a large time gap that exceeds minutes_between_routes threshold
+        if (privacyZoneEncountered && filteredPoints.length > 0) {
+          // Add 2 hours (120 minutes) to timestamp to force a break
+          // This is larger than default minutes_between_routes (30 min)
+          const lastPoint = filteredPoints[filteredPoints.length - 1];
+          if (newPoint[4]) { // If timestamp exists (index 4)
+            newPoint[4] = lastPoint[4] + (120 * 60); // Add 120 minutes in seconds
+          }
+          privacyZoneEncountered = false;
+        }
+
+        filteredPoints.push(newPoint);
+        lastWasPrivate = false;
+      } else {
+        // Point is in privacy zone - skip it
+        if (!lastWasPrivate) {
+          privacyZoneEncountered = true;
+        }
+        lastWasPrivate = true;
+      }
+    }
+
+    return filteredPoints;
   }
 
   filterTracks(tracks) {

@@ -25,13 +25,28 @@
             <label class="label">
               <span class="label-text font-semibold">Place Name *</span>
             </label>
-            <input 
-              type="text" 
-              name="name" 
-              placeholder="Enter place name..." 
-              class="input input-bordered w-full" 
+            <input
+              type="text"
+              name="name"
+              placeholder="Enter place name..."
+              class="input input-bordered w-full"
               data-place-creation-target="nameInput"
               required>
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Note</span>
+            </label>
+            <textarea
+              name="note"
+              placeholder="Add a personal note about this place..."
+              class="textarea textarea-bordered w-full bg-base-100"
+              rows="3"
+              data-place-creation-target="noteInput"></textarea>
+            <label class="label">
+              <span class="label-text-alt">Optional - Add any notes or details about this place</span>
+            </label>
           </div>
 
           <div class="form-control">

@@ -75,7 +75,7 @@ module Api
       end
 
       def place_params
-        params.require(:place).permit(:name, :latitude, :longitude, :source)
+        params.require(:place).permit(:name, :latitude, :longitude, :source, :note)
       end
 
       def tag_ids
@@ -102,6 +102,7 @@ module Api
           latitude: place.latitude,
           longitude: place.longitude,
           source: place.source,
+          note: place.note,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
           visits_count: place.visits.count,

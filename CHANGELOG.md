@@ -21,6 +21,10 @@ OIDC_REDIRECT_URI=https://your-dawarich-url.com/users/auth/openid_connect/callba
 
 - Support for KML file uploads. #350
 - Added a commented line in the `docker-compose.yml` file to use an alternative PostGIS image for ARM architecture.
+- User can now create a place directly from the map and add tags and notes to it. If reverse geocoding is enabled, list of nearby places will be shown as suggestions.
+- User can create and manage tags for places.
+  - [ ] Tags can be added when creating or editing a place.
+- User can enable or disable places layers on the map to show/hide all or just some of their places based on tags.
 
 ## Fixed
 

@@ -143,6 +143,7 @@ export class PlacesManager {
       <div class="place-popup" style="min-width: 200px;">
         <h3 class="font-bold text-lg mb-2">${place.name}</h3>
         ${tags ? `<div class="mb-2">${tags}</div>` : ''}
+        ${place.note ? `<p class="text-sm text-gray-600 mb-2 italic">${this.escapeHtml(place.note)}</p>` : ''}
         ${place.visits_count ? `<p class="text-sm">Visits: ${place.visits_count}</p>` : ''}
         <div class="mt-2 flex gap-2">
           <button class="btn btn-xs btn-error" data-place-id="${place.id}" data-action="delete-place">
@@ -151,6 +152,12 @@ export class PlacesManager {
         </div>
       </div>
     `;
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   setupMapClickHandler() {
