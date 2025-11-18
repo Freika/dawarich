@@ -8,6 +8,7 @@ module Taggable
     has_many :tags, through: :taggings
 
     scope :with_tags, ->(tag_ids) { joins(:taggings).where(taggings: { tag_id: tag_ids }).distinct }
+    scope :without_tags, -> { left_joins(:taggings).where(taggings: { id: nil }) }
     scope :tagged_with, ->(tag_name, user) {
       joins(:tags).where(tags: { name: tag_name, user: user }).distinct
     }

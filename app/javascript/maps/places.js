@@ -2,6 +2,7 @@
 // Handles displaying user places with tag icons and colors on the map
 
 import L from 'leaflet';
+import { showFlashMessage } from './helpers';
 
 export class PlacesManager {
   constructor(map, apiKey) {
@@ -13,12 +14,45 @@ export class PlacesManager {
     this.selectedTags = new Set();
     this.creationMode = false;
     this.creationMarker = null;
+
   }
 
   async initialize() {
-    this.placesLayer = L.layerGroup().addTo(this.map);
+    this.placesLayer = L.layerGroup();
+
+    // Add event listener to reload places when layer is added to map
+    this.placesLayer.on('add', () => {
+      this.loadPlaces();
+    });
+
+    console.log("[PlacesManager] Initializing, loading places for first time...");
     await this.loadPlaces();
     this.setupMapClickHandler();
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    // Refresh places when a new place is created
+    document.addEventListener('place:created', async (event) => {
+      const { place } = event.detail;
+
+      // Show success message
+      showFlashMessage('success', `Place "${place.name}" created successfully!`);
+
+      // Add the new place to the main places layer
+      await this.refreshPlaces();
+
+      // Refresh all filtered layers that are currently on the map
+      this.map.eachLayer((layer) => {
+        if (layer._tagIds !== undefined) {
+          // This is a filtered layer, reload it
+          this.loadPlacesIntoLayer(layer, layer._tagIds);
+        }
+      });
+
+      // Ensure the main Places layer is visible
+      this.ensurePlacesLayerVisible();
+    });
   }
 
   async loadPlaces(tagIds = null) {
@@ -28,6 +62,7 @@ export class PlacesManager {
         tagIds.forEach(id => url.searchParams.append('tag_ids[]', id));
       }
 
+      console.log("[PlacesManager] loadPlaces called, fetching from:", url.toString());
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${this.apiKey}` }
       });
@@ -59,7 +94,7 @@ export class PlacesManager {
     if (!place.latitude || !place.longitude) return null;
 
     const icon = this.createPlaceIcon(place);
-    const marker = L.marker([place.latitude, place.longitude], { icon });
+    const marker = L.marker([place.latitude, place.longitude], { icon, placeId: place.id });
 
     const popupContent = this.createPopupContent(place);
     marker.bindPopup(popupContent);
@@ -129,7 +164,7 @@ export class PlacesManager {
     this.map.on('popupopen', (e) => {
       const popup = e.popup;
       const deleteBtn = popup.getElement()?.querySelector('[data-action="delete-place"]');
-      
+
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
           const placeId = deleteBtn.dataset.placeId;
@@ -176,18 +211,30 @@ export class PlacesManager {
 
       if (!response.ok) throw new Error('Failed to delete place');
 
-      // Remove marker and reload
+      // Remove marker from main layer
       if (this.markers[placeId]) {
         this.placesLayer.removeLayer(this.markers[placeId]);
         delete this.markers[placeId];
       }
 
+      // Remove from all layers on the map (including filtered layers)
+      this.map.eachLayer((layer) => {
+        if (layer instanceof L.LayerGroup) {
+          layer.eachLayer((marker) => {
+            if (marker.options && marker.options.placeId === parseInt(placeId)) {
+              layer.removeLayer(marker);
+            }
+          });
+        }
+      });
+
+      // Remove from places array
       this.places = this.places.filter(p => p.id !== parseInt(placeId));
       
-      this.showNotification('Place deleted successfully', 'success');
+      showFlashMessage('success', 'Place deleted successfully');
     } catch (error) {
       console.error('Error deleting place:', error);
-      this.showNotification('Failed to delete place', 'error');
+      showFlashMessage('error', 'Failed to delete place');
     }
   }
 
@@ -212,9 +259,96 @@ export class PlacesManager {
     this.loadPlaces(tagIds.length > 0 ? tagIds : null);
   }
 
+  /**
+   * Create a filtered layer for tree control
+   * Returns a layer group that will be populated with filtered places
+   */
+  createFilteredLayer(tagIds) {
+    const filteredLayer = L.layerGroup();
+
+    // Store tag IDs for this layer
+    filteredLayer._tagIds = tagIds;
+
+    // Add event listener to load places when layer is added to map
+    filteredLayer.on('add', () => {
+      console.log(`[PlacesManager] Filtered layer added to map, tagIds:`, tagIds);
+      this.loadPlacesIntoLayer(filteredLayer, tagIds);
+    });
+
+    console.log(`[PlacesManager] Created filtered layer for tagIds:`, tagIds);
+    return filteredLayer;
+  }
+
+  /**
+   * Load places into a specific layer with tag filtering
+   */
+  async loadPlacesIntoLayer(layer, tagIds) {
+    try {
+      console.log(`[PlacesManager] loadPlacesIntoLayer called with tagIds:`, tagIds);
+      let url = `/api/v1/places?api_key=${this.apiKey}`;
+
+      if (Array.isArray(tagIds) && tagIds.length > 0) {
+        // Specific tags requested
+        url += `&tag_ids=${tagIds.join(',')}`;
+      } else if (Array.isArray(tagIds) && tagIds.length === 0) {
+        // Empty array means untagged places only
+        url += '&untagged=true';
+      }
+
+      console.log(`[PlacesManager] Fetching from URL:`, url);
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log(`[PlacesManager] Received ${data.length} places for tagIds:`, tagIds);
+
+      // Clear existing markers in this layer
+      layer.clearLayers();
+
+      // Add markers to this layer
+      data.forEach(place => {
+        const marker = this.createPlaceMarker(place);
+        layer.addLayer(marker);
+      });
+
+      console.log(`[PlacesManager] Added ${data.length} markers to layer`);
+    } catch (error) {
+      console.error('Error loading places into layer:', error);
+    }
+  }
+
   async refreshPlaces() {
     const tagIds = this.selectedTags.size > 0 ? Array.from(this.selectedTags) : null;
     await this.loadPlaces(tagIds);
+  }
+
+  ensurePlacesLayerVisible() {
+    // Check if the main places layer is already on the map
+    if (this.map.hasLayer(this.placesLayer)) {
+      console.log('Places layer already visible');
+      return;
+    }
+
+    // Try to find and enable the Places checkbox in the tree control
+    const layerControl = document.querySelector('.leaflet-control-layers');
+    if (!layerControl) {
+      console.log('Layer control not found, adding places layer directly');
+      this.map.addLayer(this.placesLayer);
+      return;
+    }
+
+    // Find the Places checkbox and enable it
+    setTimeout(() => {
+      const inputs = layerControl.querySelectorAll('input[type="checkbox"]');
+      inputs.forEach(input => {
+        const label = input.closest('label') || input.nextElementSibling;
+        if (label && label.textContent.trim() === 'Places') {
+          if (!input.checked) {
+            input.checked = true;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log('Enabled Places layer in tree control');
+          }
+        }
+      });
+    }, 100);
   }
 
   show() {

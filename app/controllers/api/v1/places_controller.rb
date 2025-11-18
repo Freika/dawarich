@@ -8,6 +8,7 @@ module Api
       def index
         @places = policy_scope(Place).includes(:tags, :visits)
         @places = @places.with_tags(params[:tag_ids]) if params[:tag_ids].present?
+        @places = @places.without_tags if params[:untagged] == 'true'
 
         render json: @places.map { |place| serialize_place(place) }
       end

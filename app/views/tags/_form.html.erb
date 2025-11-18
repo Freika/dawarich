@@ -17,19 +17,19 @@
     <%= f.text_field :name, class: "input input-bordered w-full", placeholder: "Home, Work, Restaurant..." %>
   </div>
 
-  <div class="form-control">
+  <div class="form-control" data-controller="icon-picker">
     <%= f.label :icon, class: "label" %>
     <div class="flex gap-2">
-      <%= f.text_field :icon, class: "input input-bordered flex-1", placeholder: "🏠" %>
+      <%= f.text_field :icon, class: "input input-bordered flex-1 text-2xl text-center cursor-pointer", placeholder: "🏠", readonly: true, data: { icon_picker_target: "input" } %>
       <div class="dropdown dropdown-end">
-        <button type="button" tabindex="0" class="btn btn-outline">
+        <label tabindex="0" class="btn btn-outline">
           Pick Icon
-        </button>
-        <div tabindex="0" class="dropdown-content card card-compact w-72 p-2 shadow bg-base-100 z-10">
+        </label>
+        <div tabindex="0" class="dropdown-content card card-compact w-72 p-2 shadow bg-base-100 z-[1]">
           <div class="card-body">
-            <div class="grid grid-cols-6 gap-2" data-action="click->icon-picker#select">
-              <% %w[📍 🏠 🏢 🍴 ☕ 🏨 🎭 🏛️ 🌳 ⛰️ 🏖️ 🎪 🏪 🏬 🏭 🏯 🏰 🗼 🗽 ⛪ 🕌 🛕 🕍 ⛩️].each do |emoji| %>
-                <button type="button" class="btn btn-sm text-2xl hover:bg-base-200" data-icon="<%= emoji %>">
+            <div class="grid grid-cols-6 gap-2">
+              <% %w[📍 🏠 🏢 🍴 ☕ 🏨 🎭 🏛️ 🌳 ⛰️ 🏖️ 🎪 🏪 🏬 🏭 🏯 🏰 🗼 🗽 ⛪ 🕌 🛕 🕍 ⛩️ 🙋‍♂️].each do |emoji| %>
+                <button type="button" class="btn btn-sm text-2xl hover:bg-base-200" data-icon="<%= emoji %>" data-action="click->icon-picker#select">
                   <%= emoji %>
                 </button>
               <% end %>
@@ -39,7 +39,7 @@
       </div>
     </div>
     <label class="label">
-      <span class="label-text-alt">Click an emoji or paste any emoji</span>
+      <span class="label-text-alt">Select an icon from the picker</span>
     </label>
   </div>
 
@@ -61,19 +61,3 @@
     </div>
   </div>
 <% end %>
-
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const iconButtons = document.querySelectorAll('[data-icon]');
-    const iconInput = document.querySelector('input[name="tag[icon]"]');
-
-    iconButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (iconInput) {
-          iconInput.value = button.dataset.icon;
-        }
-      });
-    });
-  });
-</script>
