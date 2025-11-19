@@ -15,7 +15,6 @@ class Place < ApplicationRecord
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
 
   validates :name, presence: true
-  validates :latitude, :longitude, presence: true
   validates :lonlat, presence: true
 
   enum :source, { manual: 0, photon: 1 }

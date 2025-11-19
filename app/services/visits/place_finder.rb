@@ -174,7 +174,6 @@ module Visits
       # Create new place
       place = user.places.build(
         name: name,
-        lonlat: "POINT(#{result.longitude} #{result.latitude})",
         latitude: result.latitude,
         longitude: result.longitude,
         city: properties['city'],

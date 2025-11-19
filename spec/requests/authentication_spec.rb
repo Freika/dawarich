@@ -5,13 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Authentication', type: :request do
   let(:user) { create(:user, password: 'password123') }
 
-  before do
-    stub_request(:get, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .with(headers: { 'Accept' => '*/*', 'Accept-Encoding' => /.*/,
-              'Host' => 'api.github.com', 'User-Agent' => /.*/ })
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   describe 'Route Protection' do
     it 'redirects to sign in page when accessing protected routes while signed out' do
       get map_path
