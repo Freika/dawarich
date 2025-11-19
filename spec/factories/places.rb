@@ -41,6 +41,26 @@ FactoryBot.define do
       end
     end
 
+    # Trait for setting coordinates from lonlat geometry
+    # This is forward-compatible for when latitude/longitude are deprecated
+    trait :from_lonlat do
+      transient do
+        lonlat_wkt { nil }
+      end
+
+      after(:build) do |place, evaluator|
+        if evaluator.lonlat_wkt
+          # Parse WKT to extract coordinates
+          # Format: "POINT(longitude latitude)" or "SRID=4326;POINT(longitude latitude)"
+          coords = evaluator.lonlat_wkt.match(/POINT\(([^ ]+) ([^ ]+)\)/)
+          if coords
+            place.longitude = coords[1].to_f
+            place.latitude = coords[2].to_f
+          end
+        end
+      end
+    end
+
     # Special trait for testing with nil lonlat
     trait :without_lonlat do
       # Skip validation to create an invalid record for testing

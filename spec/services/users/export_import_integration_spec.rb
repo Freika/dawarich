@@ -128,9 +128,9 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       original_user = create(:user, email: 'original@example.com')
 
       # Create places with different characteristics
-      home_place = create(:place, name: 'Home', latitude: 40.7128, longitude: -74.0060)
-      office_place = create(:place, name: 'Office', latitude: 40.7589, longitude: -73.9851)
-      gym_place = create(:place, name: 'Gym', latitude: 40.7505, longitude: -73.9934)
+      home_place = create(:place, user: original_user, name: 'Home', latitude: 40.7128, longitude: -74.0060)
+      office_place = create(:place, user: original_user, name: 'Office', latitude: 40.7589, longitude: -73.9851)
+      gym_place = create(:place, user: original_user, name: 'Gym', latitude: 40.7505, longitude: -73.9934)
 
       # Create visits associated with those places
       create(:visit, user: original_user, place: home_place, name: 'Home Visit')

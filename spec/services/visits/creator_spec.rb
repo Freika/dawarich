@@ -25,7 +25,7 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when a confirmed visit already exists at the same location' do
-      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place') }
+      let(:place) { create(:place, user: user, latitude: 40.7128, longitude: -74.0060, name: 'Existing Place') }
       let!(:existing_visit) do
         create(
           :visit,
@@ -61,7 +61,7 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when a confirmed visit exists but at a different location' do
-      let(:different_place) { create(:place, lonlat: 'POINT(-73.9000 41.0000)', name: 'Different Place') }
+      let(:different_place) { create(:place, user: user, latitude: 41.0000, longitude: -73.9000, name: 'Different Place') }
       let!(:existing_visit) do
         create(
           :visit,

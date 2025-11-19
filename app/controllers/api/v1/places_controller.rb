@@ -18,10 +18,11 @@ module Api
       end
 
       def create
-        @place = current_api_user.places.build(place_params)
+        @place = current_api_user.places.build(place_params.except(:tag_ids))
 
         if @place.save
           add_tags if tag_ids.present?
+          @place.reload # Reload to get updated associations
           render json: serialize_place(@place), status: :created
         else
           render json: { errors: @place.errors.full_messages }, status: :unprocessable_entity
@@ -65,11 +66,13 @@ module Api
       end
 
       def place_params
-        params.require(:place).permit(:name, :latitude, :longitude, :source, :note)
+        params.require(:place).permit(:name, :latitude, :longitude, :source, :note, tag_ids: [])
       end
 
       def tag_ids
-        params.dig(:place, :tag_ids) || []
+        # tag_ids can be in params[:place][:tag_ids] or params[:tag_ids]
+        ids = params.dig(:place, :tag_ids) || params[:tag_ids]
+        Array(ids).compact
       end
 
       def add_tags
