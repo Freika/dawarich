@@ -14,6 +14,8 @@ RSpec.describe User, type: :model do
     it { is_expected.to have_many(:places).through(:visits) }
     it { is_expected.to have_many(:trips).dependent(:destroy) }
     it { is_expected.to have_many(:tracks).dependent(:destroy) }
+    it { is_expected.to have_many(:tags).dependent(:destroy) }
+    it { is_expected.to have_many(:visited_places).through(:visits) }
   end
 
   describe 'enums' do
