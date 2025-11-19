@@ -24,6 +24,7 @@ OIDC_REDIRECT_URI=https://your-dawarich-url.com/users/auth/openid_connect/callba
 - User can now create a place directly from the map and add tags and notes to it. If reverse geocoding is enabled, list of nearby places will be shown as suggestions.
 - User can create and manage tags for places.
   - [ ] Tags can be added when creating or editing a place.
+  - [ ] Provide sensible list of default tags for the user to choose from.
 - User can enable or disable places layers on the map to show/hide all or just some of their places based on tags.
 - User can define privacy zones around places with specific tags to hide map data within a certain radius.
 

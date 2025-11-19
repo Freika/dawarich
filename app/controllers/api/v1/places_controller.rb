@@ -6,7 +6,7 @@ module Api
       before_action :set_place, only: [:show, :update, :destroy]
 
       def index
-        @places = policy_scope(Place).includes(:tags, :visits)
+        @places = current_api_user.places.includes(:tags, :visits)
         @places = @places.with_tags(params[:tag_ids]) if params[:tag_ids].present?
         @places = @places.without_tags if params[:untagged] == 'true'
 
@@ -14,15 +14,11 @@ module Api
       end
 
       def show
-        authorize @place
-
         render json: serialize_place(@place)
       end
 
       def create
         @place = current_api_user.places.build(place_params)
-
-        authorize @place
 
         if @place.save
           add_tags if tag_ids.present?
@@ -33,8 +29,6 @@ module Api
       end
 
       def update
-        authorize @place
-
         if @place.update(place_params)
           set_tags if params[:place][:tag_ids]
           render json: serialize_place(@place)
@@ -44,16 +38,12 @@ module Api
       end
 
       def destroy
-        authorize @place
-
         @place.destroy!
 
         head :no_content
       end
 
       def nearby
-        authorize Place, :nearby?
-
         unless params[:latitude].present? && params[:longitude].present?
           return render json: { error: 'latitude and longitude are required' }, status: :bad_request
         end
@@ -99,8 +89,8 @@ module Api
         {
           id: place.id,
           name: place.name,
-          latitude: place.latitude,
-          longitude: place.longitude,
+          latitude: place.lat,
+          longitude: place.lon,
           source: place.source,
           note: place.note,
           icon: place.tags.first&.icon,

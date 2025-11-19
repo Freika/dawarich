@@ -51,11 +51,12 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
 
     it 'returns 404 for other users place' do
-      other_place = create(:place, user: create(:user))
-      
-      expect {
-        get "/api/v1/places/#{other_place.id}", headers: headers
-      }.to raise_error(ActiveRecord::RecordNotFound)
+      other_user = create(:user)
+      other_place = create(:place, user: other_user)
+
+      get "/api/v1/places/#{other_place.id}", headers: headers
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -119,13 +120,15 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
 
     it 'prevents updating other users places' do
-      other_place = create(:place, user: create(:user))
-      
-      expect {
-        patch "/api/v1/places/#{other_place.id}",
-              params: { place: { name: 'Hacked' } },
-              headers: headers
-      }.to raise_error(ActiveRecord::RecordNotFound)
+      other_user = create(:user)
+      other_place = create(:place, user: other_user)
+
+      patch "/api/v1/places/#{other_place.id}",
+            params: { place: { name: 'Hacked' } },
+            headers: headers
+
+      expect(response).to have_http_status(:not_found)
+      expect(other_place.reload.name).not_to eq('Hacked')
     end
   end
 
@@ -139,11 +142,14 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
 
     it 'prevents deleting other users places' do
-      other_place = create(:place, user: create(:user))
-      
+      other_user = create(:user)
+      other_place = create(:place, user: other_user)
+
       expect {
         delete "/api/v1/places/#{other_place.id}", headers: headers
-      }.to raise_error(ActiveRecord::RecordNotFound)
+      }.not_to change(Place, :count)
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 
