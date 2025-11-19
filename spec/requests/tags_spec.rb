@@ -50,9 +50,8 @@ RSpec.describe "Tags", type: :request do
     it "prevents editing other users' tags" do
       other_tag = create(:tag, user: create(:user))
 
-      expect {
-        get edit_tag_path(other_tag)
-      }.to raise_error(ActiveRecord::RecordNotFound)
+      get edit_tag_path(other_tag)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -116,9 +115,8 @@ RSpec.describe "Tags", type: :request do
     it "prevents updating other users' tags" do
       other_tag = create(:tag, user: create(:user))
 
-      expect {
-        patch tag_path(other_tag), params: { tag: { name: 'Hacked' } }
-      }.to raise_error(ActiveRecord::RecordNotFound)
+      patch tag_path(other_tag), params: { tag: { name: 'Hacked' } }
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -139,9 +137,8 @@ RSpec.describe "Tags", type: :request do
     it "prevents deleting other users' tags" do
       other_tag = create(:tag, user: create(:user))
 
-      expect {
-        delete tag_path(other_tag)
-      }.to raise_error(ActiveRecord::RecordNotFound)
+      delete tag_path(other_tag)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
