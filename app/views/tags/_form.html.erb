@@ -18,41 +18,84 @@
   </div>
 
   <div class="grid grid-cols-2 gap-4">
-    <!-- Icon Picker -->
-    <div class="form-control" data-controller="icon-picker">
+    <!-- Emoji Picker -->
+    <div class="form-control" data-controller="emoji-picker" data-emoji-picker-auto-submit-value="false">
       <%= f.label :icon, class: "label" %>
-      <div class="dropdown dropdown-bottom w-full">
-        <label tabindex="0" class="input input-bordered w-full flex items-center justify-center text-4xl cursor-pointer hover:bg-base-200 min-h-[4rem]" data-icon-picker-target="input">
-          <span data-icon-picker-target="display"><%= tag.icon.presence || '🏠' %></span>
-        </label>
-        <div tabindex="0" class="dropdown-content card card-compact w-full p-2 shadow bg-base-100 z-[1] mt-1">
-          <div class="card-body">
-            <div class="grid grid-cols-6 gap-2">
-              <% %w[📍 🏠 🏢 🍴 ☕ 🏨 🎭 🏛️ 🌳 ⛰️ 🏖️ 🎪 🏪 🏬 🏭 🏯 🏰 🗼 🗽 ⛪ 🕌 🛕 🕍 ⛩️ 🙋‍♂️].each do |emoji| %>
-                <button type="button" class="btn btn-sm text-2xl hover:bg-base-200" data-icon="<%= emoji %>" data-action="click->icon-picker#select">
-                  <%= emoji %>
-                </button>
-              <% end %>
-            </div>
-          </div>
-        </div>
+      <div class="relative w-full">
+        <!-- Display button -->
+        <button type="button"
+                class="input input-bordered w-full flex items-center justify-center text-4xl cursor-pointer hover:bg-base-200 min-h-[4rem]"
+                data-action="click->emoji-picker#toggle"
+                data-emoji-picker-target="button"
+                data-default-icon="🏠">
+          <span data-emoji-picker-display><%= tag.icon.presence || '🏠' %></span>
+        </button>
+
+        <!-- Picker container -->
+        <div data-emoji-picker-target="pickerContainer"
+             class="hidden absolute z-50 mt-2 left-0"></div>
+
+        <!-- Hidden input for form submission -->
+        <%= f.hidden_field :icon, data: { emoji_picker_target: "input" } %>
       </div>
-      <%= f.hidden_field :icon, data: { icon_picker_target: "hiddenInput" } %>
       <label class="label">
-        <span class="label-text-alt">Click to select an icon</span>
+        <span class="label-text-alt">Click to select an emoji</span>
       </label>
     </div>
 
-    <!-- Color Picker -->
-    <div class="form-control" data-controller="color-picker">
+
+    <!-- Color Picker with Swatches -->
+    <div class="form-control" data-controller="color-picker" data-color-picker-default-value="<%= tag.color.presence || '#6ab0a4' %>">
       <%= f.label :color, class: "label" %>
-      <label class="input input-bordered w-full flex items-center justify-center cursor-pointer hover:bg-base-200 min-h-[4rem] relative overflow-hidden">
-        <%= f.color_field :color, class: "absolute inset-0 w-full h-full cursor-pointer opacity-0", data: { color_picker_target: "picker", action: "input->color-picker#updateFromPicker" } %>
-        <div class="w-12 h-12 rounded border-2 border-base-content/20" data-color-picker-target="display" style="background-color: <%= tag.color.presence || '#6ab0a4' %>;"></div>
-      </label>
-      <%= f.hidden_field :color, data: { color_picker_target: "hiddenInput" } %>
+
+      <div class="flex flex-col gap-3">
+        <!-- Color Swatches Grid -->
+        <div class="grid grid-cols-6 gap-2">
+          <% [
+            '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
+            '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+            '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#64748b'
+          ].each do |color| %>
+            <button type="button"
+                    class="w-10 h-10 rounded-lg cursor-pointer transition-all hover:scale-110 border-2 border-base-300"
+                    style="background-color: <%= color %>;"
+                    data-color="<%= color %>"
+                    data-color-picker-target="swatch"
+                    data-action="click->color-picker#selectSwatch"
+                    title="<%= color %>">
+            </button>
+          <% end %>
+        </div>
+
+        <!-- Custom Color Picker -->
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <span class="text-sm font-medium">Custom:</span>
+            <%= f.color_field :color,
+                class: "w-12 h-12 rounded-lg cursor-pointer border-2 border-base-300 hover:scale-105 transition-transform color-input",
+                data: {
+                  color_picker_target: "picker",
+                  action: "input->color-picker#updateFromPicker"
+                },
+                value: tag.color.presence || '#6ab0a4' %>
+          </label>
+
+          <!-- Color Display -->
+          <div class="flex-1 flex items-center gap-2">
+            <div class="w-8 h-8 rounded border-2 border-base-300"
+                 data-color-picker-target="display"
+                 style="background-color: <%= tag.color.presence || '#6ab0a4' %>;"></div>
+            <span class="text-sm text-base-content/60" data-color-picker-target="displayText">
+              <%= tag.color.presence || '#6ab0a4' %>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <%= f.hidden_field :color, data: { color_picker_target: "input" } %>
+
       <label class="label">
-        <span class="label-text-alt">Click to select a color</span>
+        <span class="label-text-alt">Choose from swatches or pick a custom color</span>
       </label>
     </div>
   </div>
@@ -61,7 +104,7 @@
   <div data-controller="privacy-radius">
     <div class="form-control">
       <label class="label cursor-pointer">
-        <span class="label-text font-semibold">🔒 Privacy Zone</span>
+        <span class="label-text font-semibold"><%= icon 'lock-open', class: "inline-block w-4" %> Privacy Zone</span>
         <input type="checkbox"
                class="toggle toggle-error"
                data-privacy-radius-target="toggle"

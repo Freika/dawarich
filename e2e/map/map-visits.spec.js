@@ -23,7 +23,7 @@ test.describe('Visit Interactions', () => {
     await closeOnboardingModal(page);
     await waitForMap(page);
 
-    await enableLayer(page, 'Confirmed Visits');
+    await enableLayer(page, 'Confirmed');
     await page.waitForTimeout(2000);
 
     // Pan map to ensure a visit marker is in viewport
@@ -96,7 +96,7 @@ test.describe('Visit Interactions', () => {
     expect(content).toMatch(/Visit|Place|Duration|Started|Ended/i);
   });
 
-  test('should change place in dropdown and save', async ({ page }) => {
+  test('should change place in dropdown and save @destructive', async ({ page }) => {
     const visitCircle = page.locator('.leaflet-interactive[stroke="#10b981"]').first();
     const hasVisits = await visitCircle.count() > 0;
 
@@ -144,7 +144,7 @@ test.describe('Visit Interactions', () => {
     }
   });
 
-  test('should change visit name and save', async ({ page }) => {
+  test('should change visit name and save @destructive', async ({ page }) => {
     const visitCircle = page.locator('.leaflet-interactive[stroke="#10b981"]').first();
     const hasVisits = await visitCircle.count() > 0;
 
@@ -190,7 +190,7 @@ test.describe('Visit Interactions', () => {
     }
   });
 
-  test('should delete confirmed visit from map', async ({ page }) => {
+  test('should delete confirmed visit from map @destructive', async ({ page }) => {
     const visitCircle = page.locator('.leaflet-interactive[stroke="#10b981"]').first();
     const hasVisits = await visitCircle.count() > 0;
 

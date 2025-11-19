@@ -27,3 +27,4 @@ pin 'family_locations_channel', to: 'channels/family_locations_channel.js'
 pin 'trix'
 pin '@rails/actiontext', to: 'actiontext.esm.js'
 pin "leaflet.control.layers.tree" # @1.2.0
+pin "emoji-mart" # @5.6.0

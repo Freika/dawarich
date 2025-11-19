@@ -72,7 +72,7 @@ test.describe('Point Interactions', () => {
     expect(content).toContain('Id:');
   });
 
-  test('should delete a point and redraw route', async ({ page }) => {
+  test('should delete a point and redraw route @destructive', async ({ page }) => {
     // Enable Routes layer to verify route redraw
     await enableLayer(page, 'Routes');
     await page.waitForTimeout(1000);

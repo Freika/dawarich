@@ -21,12 +21,14 @@
             <tr>
               <td class="text-2xl"><%= tag.icon %></td>
               <td class="font-semibold">
-                #<%= tag.name %>
-                <% if tag.privacy_zone? %>
-                  <span class="badge badge-sm badge-error gap-1 ml-2">
-                    🔒 <%= tag.privacy_radius_meters %>m
-                  </span>
-                <% end %>
+                <div class="flex items-center">
+                  #<%= tag.name %>
+                  <% if tag.privacy_zone? %>
+                    <span class="badge badge-sm badge-error gap-1 ml-2">
+                      <%= icon 'lock-open', class: "inline-block w-4" %> <%= tag.privacy_radius_meters %>m
+                    </span>
+                  <% end %>
+                </div>
               </td>
               <td>
                 <% if tag.color.present? %>

@@ -1,7 +1,7 @@
 <% content_for :title, 'Map' %>
 
 <!-- Date Navigation Controls - Native Page Element -->
-<div class="w-full px-4 py-3 bg-base-100" data-controller="map-controls">
+<div class="w-full px-4 bg-base-100" data-controller="map-controls">
   <!-- Mobile: Compact Toggle Button -->
   <div class="lg:hidden flex justify-center">
     <button
@@ -24,22 +24,22 @@
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
             <span class="tooltip" data-tip="<%= human_date(@start_at - 1.day) %>">
-              <%= link_to map_path(start_at: @start_at - 1.day, end_at: @end_at - 1.day, import_id: params[:import_id]), class: "btn border border-base-300 hover:btn-ghost w-full" do %>
+              <%= link_to map_path(start_at: @start_at - 1.day, end_at: @end_at - 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-left' %>
               <% end %>
             </span>
           </div>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="Start date and time">
-          <%= f.datetime_local_field :start_at, include_seconds: false, class: "input input-bordered hover:cursor-pointer hover:input-primary w-full", value: @start_at %>
+          <%= f.datetime_local_field :start_at, include_seconds: false, class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: @start_at %>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="End date and time">
-          <%= f.datetime_local_field :end_at, include_seconds: false, class: "input input-bordered hover:cursor-pointer hover:input-primary w-full", value: @end_at %>
+          <%= f.datetime_local_field :end_at, include_seconds: false, class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: @end_at %>
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
             <span class="tooltip" data-tip="<%= human_date(@start_at + 1.day) %>">
-              <%= link_to map_path(start_at: @start_at + 1.day, end_at: @end_at + 1.day, import_id: params[:import_id]), class: "btn border border-base-300 hover:btn-ghost w-full" do %>
+              <%= link_to map_path(start_at: @start_at + 1.day, end_at: @end_at + 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-right' %>
               <% end %>
             </span>
@@ -47,24 +47,24 @@
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <%= f.submit "Search", class: "btn btn-primary hover:btn-info w-full" %>
+            <%= f.submit "Search", class: "btn btn-sm btn-primary hover:btn-info w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2 text-center">
             <%= link_to "Today",
               map_path(start_at: Time.current.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]),
-              class: "btn border border-base-300 hover:btn-ghost w-full" %>
+              class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last 7 days", map_path(start_at: 1.week.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to "Last 7 days", map_path(start_at: 1.week.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last month", map_path(start_at: 1.month.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to "Last month", map_path(start_at: 1.month.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
       </div>
