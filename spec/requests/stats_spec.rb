@@ -3,8 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe '/stats', type: :request do
-
-
   context 'when user is not signed in' do
     describe 'GET /index' do
       it 'redirects to the sign in page' do

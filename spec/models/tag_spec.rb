@@ -8,6 +8,9 @@ RSpec.describe Tag, type: :model do
   it { is_expected.to have_many(:places).through(:taggings) }
 
   it { is_expected.to validate_presence_of(:name) }
+  it { is_expected.to validate_length_of(:icon).is_at_most(10) }
+  it { is_expected.to allow_value(nil).for(:icon) }
+  it { is_expected.to validate_numericality_of(:privacy_radius_meters).is_greater_than(0).is_less_than_or_equal_to(5000).allow_nil }
 
   describe 'validations' do
     subject { create(:tag) }

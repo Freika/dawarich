@@ -591,7 +591,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
     end
 
     context 'when lonlat is already present on existing place' do
-      let!(:existing_place) { create(:place, :with_geodata, latitude: 50.0, longitude: 10.0) }
+      let!(:existing_place) { create(:place, :with_geodata, lonlat: 'POINT(10.0 50.0)') }
       let(:existing_data) do
         double(
           data: {
@@ -600,9 +600,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
               'osm_id' => existing_place.geodata.dig('properties', 'osm_id'),
               'name' => 'Updated Name'
             }
-          },
-          latitude: 55.0,
-          longitude: 15.0
+          }
         )
       end
 
@@ -614,10 +612,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         service.call
 
         existing_place.reload
-        # lonlat is auto-generated from latitude/longitude, so it should remain based on original coordinates
         expect(existing_place.lonlat.to_s).to eq('POINT (10.0 50.0)')
-        expect(existing_place.latitude).to eq(50.0)
-        expect(existing_place.longitude).to eq(10.0)
       end
     end
   end

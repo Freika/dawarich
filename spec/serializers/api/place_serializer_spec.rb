@@ -11,6 +11,7 @@ RSpec.describe Api::PlaceSerializer do
         name: 'Central Park',
         longitude: -73.9665,
         latitude: 40.7812,
+        lonlat: 'SRID=4326;POINT(-73.9665 40.7812)',
         city: 'New York',
         country: 'United States',
         source: 'photon',

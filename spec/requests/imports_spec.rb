@@ -3,8 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe 'Imports', type: :request do
-
-
   describe 'GET /imports' do
     context 'when user is logged in' do
       let(:user) { create(:user) }

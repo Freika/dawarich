@@ -7,8 +7,6 @@ RSpec.describe 'Family Workflows', type: :request do
   let(:user2) { create(:user, email: 'bob@example.com') }
   let(:user3) { create(:user, email: 'charlie@example.com') }
 
-
-
   describe 'Complete family creation and management workflow' do
     it 'allows creating a family, inviting members, and managing the family' do
       # Step 1: User1 creates a family

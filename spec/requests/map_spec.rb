@@ -3,8 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe 'Map', type: :request do
-
-
   describe 'GET /index' do
     context 'when user signed in' do
       let(:user) { create(:user) }

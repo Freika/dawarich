@@ -10,8 +10,6 @@ RSpec.describe 'Users::Registrations', type: :request do
     create(:family_invitation, family: family, invited_by: family_owner, email: 'invited@example.com')
   end
 
-
-
   describe 'Family Invitation Registration Flow' do
     context 'when accessing registration with a valid invitation token' do
       it 'shows family-focused registration page' do

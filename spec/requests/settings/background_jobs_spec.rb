@@ -3,8 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe '/settings/background_jobs', type: :request do
-
-
   context 'when Dawarich is in self-hosted mode' do
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)

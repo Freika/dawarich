@@ -8,8 +8,6 @@ RSpec.describe 'Family::Invitations', type: :request do
   let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }
   let(:invitation) { create(:family_invitation, family: family, invited_by: user) }
 
-
-
   describe 'GET /family/invitations' do
     before { sign_in user }
 

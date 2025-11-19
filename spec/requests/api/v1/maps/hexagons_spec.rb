@@ -5,8 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
   let(:user) { create(:user) }
 
-
-
   describe 'GET /api/v1/maps/hexagons' do
     let(:valid_params) do
       {

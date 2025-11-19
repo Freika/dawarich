@@ -3,8 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe '/notifications', type: :request do
-
-
   context 'when user is not logged in' do
     it 'redirects to the login page' do
       get notifications_url

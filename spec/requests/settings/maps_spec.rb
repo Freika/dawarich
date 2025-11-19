@@ -3,8 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe 'settings/maps', type: :request do
-
-
   context 'when user is authenticated' do
     let!(:user) { create(:user) }
 
