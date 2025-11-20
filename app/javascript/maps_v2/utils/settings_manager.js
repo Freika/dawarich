@@ -12,7 +12,9 @@ const DEFAULT_SETTINGS = {
   pointsVisible: true,
   routesVisible: true,
   visitsEnabled: false,
-  photosEnabled: false
+  photosEnabled: false,
+  areasEnabled: false,
+  tracksEnabled: false
 }
 
 export class SettingsManager {

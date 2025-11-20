@@ -109,6 +109,54 @@ export class ApiClient {
     return response.json()
   }
 
+  /**
+   * Fetch areas
+   */
+  async fetchAreas() {
+    const response = await fetch(`${this.baseURL}/areas`, {
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch areas: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Fetch tracks
+   */
+  async fetchTracks() {
+    const response = await fetch(`${this.baseURL}/tracks`, {
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch tracks: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Create area
+   * @param {Object} area - Area data
+   */
+  async createArea(area) {
+    const response = await fetch(`${this.baseURL}/areas`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ area })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to create area: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
   getHeaders() {
     return {
       'Authorization': `Bearer ${this.apiKey}`,

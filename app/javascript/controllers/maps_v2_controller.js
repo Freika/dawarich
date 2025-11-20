@@ -6,11 +6,14 @@ import { RoutesLayer } from 'maps_v2/layers/routes_layer'
 import { HeatmapLayer } from 'maps_v2/layers/heatmap_layer'
 import { VisitsLayer } from 'maps_v2/layers/visits_layer'
 import { PhotosLayer } from 'maps_v2/layers/photos_layer'
+import { AreasLayer } from 'maps_v2/layers/areas_layer'
+import { TracksLayer } from 'maps_v2/layers/tracks_layer'
 import { pointsToGeoJSON } from 'maps_v2/utils/geojson_transformers'
 import { PopupFactory } from 'maps_v2/components/popup_factory'
 import { VisitPopupFactory } from 'maps_v2/components/visit_popup'
 import { PhotoPopupFactory } from 'maps_v2/components/photo_popup'
 import { SettingsManager } from 'maps_v2/utils/settings_manager'
+import { createCircle } from 'maps_v2/utils/geometry'
 
 /**
  * Main map controller for Maps V2
@@ -181,17 +184,63 @@ export default class extends Controller {
         }
       }
 
+      // Load areas
+      let areas = []
+      try {
+        areas = await this.api.fetchAreas()
+      } catch (error) {
+        console.warn('Failed to fetch areas:', error)
+        // Continue with empty areas array
+      }
+
+      const areasGeoJSON = this.areasToGeoJSON(areas)
+
+      const addAreasLayer = () => {
+        if (!this.areasLayer) {
+          this.areasLayer = new AreasLayer(this.map, {
+            visible: this.settings.areasEnabled || false
+          })
+          this.areasLayer.add(areasGeoJSON)
+        } else {
+          this.areasLayer.update(areasGeoJSON)
+        }
+      }
+
+      // Load tracks
+      let tracks = []
+      try {
+        tracks = await this.api.fetchTracks()
+      } catch (error) {
+        console.warn('Failed to fetch tracks:', error)
+        // Continue with empty tracks array
+      }
+
+      const tracksGeoJSON = this.tracksToGeoJSON(tracks)
+
+      const addTracksLayer = () => {
+        if (!this.tracksLayer) {
+          this.tracksLayer = new TracksLayer(this.map, {
+            visible: this.settings.tracksEnabled || false
+          })
+          this.tracksLayer.add(tracksGeoJSON)
+        } else {
+          this.tracksLayer.update(tracksGeoJSON)
+        }
+      }
+
       // Add all layers when style is ready
       // Note: Layer order matters - layers added first render below layers added later
-      // Order: heatmap (bottom) -> routes -> visits -> photos -> points (top)
+      // Order: heatmap (bottom) -> areas -> tracks -> routes -> visits -> photos -> points (top)
       const addAllLayers = async () => {
         addHeatmapLayer()  // Add heatmap first (renders at bottom)
-        addRoutesLayer()   // Add routes second
-        addVisitsLayer()   // Add visits third
+        addAreasLayer()    // Add areas second
+        addTracksLayer()   // Add tracks third
+        addRoutesLayer()   // Add routes fourth
+        addVisitsLayer()   // Add visits fifth
 
         // Add photos layer with error handling (async, might fail loading images)
         try {
-          await addPhotosLayer()  // Add photos fourth (async for image loading)
+          await addPhotosLayer()  // Add photos sixth (async for image loading)
         } catch (error) {
           console.warn('Failed to add photos layer:', error)
         }
@@ -485,6 +534,56 @@ export default class extends Controller {
   }
 
   /**
+   * Convert areas to GeoJSON
+   * Backend returns circular areas with latitude, longitude, radius
+   */
+  areasToGeoJSON(areas) {
+    return {
+      type: 'FeatureCollection',
+      features: areas.map(area => {
+        // Create circle polygon from center and radius
+        const center = [area.longitude, area.latitude]
+        const coordinates = createCircle(center, area.radius)
+
+        return {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [coordinates]
+          },
+          properties: {
+            id: area.id,
+            name: area.name,
+            color: area.color || '#3b82f6',
+            radius: area.radius
+          }
+        }
+      })
+    }
+  }
+
+  /**
+   * Convert tracks to GeoJSON
+   */
+  tracksToGeoJSON(tracks) {
+    return {
+      type: 'FeatureCollection',
+      features: tracks.map(track => ({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: track.coordinates
+        },
+        properties: {
+          id: track.id,
+          name: track.name,
+          color: track.color || '#8b5cf6'
+        }
+      }))
+    }
+  }
+
+  /**
    * Handle visit click
    */
   handleVisitClick(e) {
@@ -590,5 +689,37 @@ export default class extends Controller {
 
     const geojson = this.visitsToGeoJSON(filtered)
     this.visitsLayer.update(geojson)
+  }
+
+  /**
+   * Toggle areas layer
+   */
+  toggleAreas(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting('areasEnabled', enabled)
+
+    if (this.areasLayer) {
+      if (enabled) {
+        this.areasLayer.show()
+      } else {
+        this.areasLayer.hide()
+      }
+    }
+  }
+
+  /**
+   * Toggle tracks layer
+   */
+  toggleTracks(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting('tracksEnabled', enabled)
+
+    if (this.tracksLayer) {
+      if (enabled) {
+        this.tracksLayer.show()
+      } else {
+        this.tracksLayer.hide()
+      }
+    }
   }
 }
