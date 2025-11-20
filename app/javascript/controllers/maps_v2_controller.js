@@ -8,12 +8,15 @@ import { VisitsLayer } from 'maps_v2/layers/visits_layer'
 import { PhotosLayer } from 'maps_v2/layers/photos_layer'
 import { AreasLayer } from 'maps_v2/layers/areas_layer'
 import { TracksLayer } from 'maps_v2/layers/tracks_layer'
+import { FogLayer } from 'maps_v2/layers/fog_layer'
+import { ScratchLayer } from 'maps_v2/layers/scratch_layer'
 import { pointsToGeoJSON } from 'maps_v2/utils/geojson_transformers'
 import { PopupFactory } from 'maps_v2/components/popup_factory'
 import { VisitPopupFactory } from 'maps_v2/components/visit_popup'
 import { PhotoPopupFactory } from 'maps_v2/components/photo_popup'
 import { SettingsManager } from 'maps_v2/utils/settings_manager'
 import { createCircle } from 'maps_v2/utils/geometry'
+import { Toast } from 'maps_v2/components/toast'
 
 /**
  * Main map controller for Maps V2
@@ -228,24 +231,49 @@ export default class extends Controller {
         }
       }
 
+      // Add fog layer (canvas overlay, separate from MapLibre layers)
+      if (!this.fogLayer) {
+        this.fogLayer = new FogLayer(this.map, {
+          clearRadius: 1000,
+          visible: this.settings.fogEnabled || false
+        })
+        this.fogLayer.add(pointsGeoJSON)
+      } else {
+        this.fogLayer.update(pointsGeoJSON)
+      }
+
+      // Add scratch layer
+      const addScratchLayer = async () => {
+        if (!this.scratchLayer) {
+          this.scratchLayer = new ScratchLayer(this.map, {
+            visible: this.settings.scratchEnabled || false
+          })
+          await this.scratchLayer.add(pointsGeoJSON)
+        } else {
+          await this.scratchLayer.update(pointsGeoJSON)
+        }
+      }
+
       // Add all layers when style is ready
       // Note: Layer order matters - layers added first render below layers added later
-      // Order: heatmap (bottom) -> areas -> tracks -> routes -> visits -> photos -> points (top)
+      // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> photos -> points (top) -> fog (canvas overlay)
       const addAllLayers = async () => {
-        addHeatmapLayer()  // Add heatmap first (renders at bottom)
-        addAreasLayer()    // Add areas second
-        addTracksLayer()   // Add tracks third
-        addRoutesLayer()   // Add routes fourth
-        addVisitsLayer()   // Add visits fifth
+        await addScratchLayer() // Add scratch first (renders at bottom)
+        addHeatmapLayer()      // Add heatmap second
+        addAreasLayer()        // Add areas third
+        addTracksLayer()       // Add tracks fourth
+        addRoutesLayer()       // Add routes fifth
+        addVisitsLayer()       // Add visits sixth
 
         // Add photos layer with error handling (async, might fail loading images)
         try {
-          await addPhotosLayer()  // Add photos sixth (async for image loading)
+          await addPhotosLayer()  // Add photos seventh (async for image loading)
         } catch (error) {
           console.warn('Failed to add photos layer:', error)
         }
 
         addPointsLayer()   // Add points last (renders on top)
+        // Note: Fog layer is canvas overlay, renders above all MapLibre layers
 
         // Add click handlers for visits and photos
         this.map.on('click', 'visits', this.handleVisitClick.bind(this))
@@ -281,9 +309,12 @@ export default class extends Controller {
         this.fitMapToBounds(pointsGeoJSON)
       }
 
+      // Show success toast
+      Toast.success(`Loaded ${points.length} location ${points.length === 1 ? 'point' : 'points'}`)
+
     } catch (error) {
       console.error('Failed to load map data:', error)
-      alert('Failed to load location data. Please try again.')
+      Toast.error('Failed to load location data. Please try again.')
     } finally {
       this.hideLoading()
     }
@@ -719,6 +750,34 @@ export default class extends Controller {
         this.tracksLayer.show()
       } else {
         this.tracksLayer.hide()
+      }
+    }
+  }
+
+  /**
+   * Toggle fog of war layer
+   */
+  toggleFog(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting('fogEnabled', enabled)
+
+    if (this.fogLayer) {
+      this.fogLayer.toggle(enabled)
+    }
+  }
+
+  /**
+   * Toggle scratch map layer
+   */
+  toggleScratch(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting('scratchEnabled', enabled)
+
+    if (this.scratchLayer) {
+      if (enabled) {
+        this.scratchLayer.show()
+      } else {
+        this.scratchLayer.hide()
       }
     }
   }

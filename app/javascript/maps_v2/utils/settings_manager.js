@@ -14,7 +14,9 @@ const DEFAULT_SETTINGS = {
   visitsEnabled: false,
   photosEnabled: false,
   areasEnabled: false,
-  tracksEnabled: false
+  tracksEnabled: false,
+  fogEnabled: false,
+  scratchEnabled: false
 }
 
 export class SettingsManager {
