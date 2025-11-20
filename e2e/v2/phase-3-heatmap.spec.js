@@ -163,9 +163,13 @@ test.describe('Phase 3: Heatmap + Settings', () => {
 
   test.describe('Regression Tests', () => {
     test('points layer still works', async ({ page }) => {
-      // Points source should be available after waitForMapLibre
-      // Just add a small delay to ensure layers are fully added
-      await page.waitForTimeout(1000)
+      // Wait for points source to be available
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-controller="maps-v2"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        return controller?.map?.getSource('points-source') !== undefined
+      }, { timeout: 10000 })
 
       const hasPoints = await page.evaluate(() => {
         const element = document.querySelector('[data-controller="maps-v2"]')
@@ -179,9 +183,13 @@ test.describe('Phase 3: Heatmap + Settings', () => {
     })
 
     test('routes layer still works', async ({ page }) => {
-      // Routes source should be available after waitForMapLibre
-      // Just add a small delay to ensure layers are fully added
-      await page.waitForTimeout(1000)
+      // Wait for routes source to be available
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-controller="maps-v2"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        return controller?.map?.getSource('routes-source') !== undefined
+      }, { timeout: 10000 })
 
       const hasRoutes = await page.evaluate(() => {
         const element = document.querySelector('[data-controller="maps-v2"]')

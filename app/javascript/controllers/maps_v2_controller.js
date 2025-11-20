@@ -94,24 +94,19 @@ export default class extends Controller {
         onProgress: this.updateLoadingProgress.bind(this)
       })
 
-      console.log(`Loaded ${points.length} points`)
-
       // Transform to GeoJSON for points
       const pointsGeoJSON = pointsToGeoJSON(points)
 
       // Create routes from points
       const routesGeoJSON = RoutesLayer.pointsToRoutes(points)
-      console.log(`Routes: Created ${routesGeoJSON.features.length} route segments`)
 
       // Define all layer add functions
       const addRoutesLayer = () => {
         if (!this.routesLayer) {
           this.routesLayer = new RoutesLayer(this.map)
           this.routesLayer.add(routesGeoJSON)
-          console.log('Routes layer added')
         } else {
           this.routesLayer.update(routesGeoJSON)
-          console.log('Routes layer updated')
         }
       }
 
@@ -119,10 +114,8 @@ export default class extends Controller {
         if (!this.pointsLayer) {
           this.pointsLayer = new PointsLayer(this.map)
           this.pointsLayer.add(pointsGeoJSON)
-          console.log('Points layer added')
         } else {
           this.pointsLayer.update(pointsGeoJSON)
-          console.log('Points layer updated')
         }
       }
 
@@ -132,10 +125,8 @@ export default class extends Controller {
             visible: this.settings.heatmapEnabled
           })
           this.heatmapLayer.add(pointsGeoJSON)
-          console.log(`Heatmap layer added (visible: ${this.settings.heatmapEnabled})`)
         } else {
           this.heatmapLayer.update(pointsGeoJSON)
-          console.log('Heatmap layer updated')
         }
       }
 
@@ -146,7 +137,6 @@ export default class extends Controller {
           start_at: this.startDateValue,
           end_at: this.endDateValue
         })
-        console.log(`Loaded ${visits.length} visits`)
       } catch (error) {
         console.warn('Failed to fetch visits:', error)
         // Continue with empty visits array
@@ -161,10 +151,8 @@ export default class extends Controller {
             visible: this.settings.visitsEnabled || false
           })
           this.visitsLayer.add(visitsGeoJSON)
-          console.log('Visits layer added')
         } else {
           this.visitsLayer.update(visitsGeoJSON)
-          console.log('Visits layer updated')
         }
       }
 
@@ -175,7 +163,6 @@ export default class extends Controller {
           start_at: this.startDateValue,
           end_at: this.endDateValue
         })
-        console.log(`Loaded ${photos.length} photos`)
       } catch (error) {
         console.warn('Failed to fetch photos:', error)
         // Continue with empty photos array
@@ -189,10 +176,8 @@ export default class extends Controller {
             visible: this.settings.photosEnabled || false
           })
           await this.photosLayer.add(photosGeoJSON)
-          console.log('Photos layer added')
         } else {
           await this.photosLayer.update(photosGeoJSON)
-          console.log('Photos layer updated')
         }
       }
 
@@ -203,7 +188,14 @@ export default class extends Controller {
         addHeatmapLayer()  // Add heatmap first (renders at bottom)
         addRoutesLayer()   // Add routes second
         addVisitsLayer()   // Add visits third
-        await addPhotosLayer()  // Add photos fourth (async for image loading)
+
+        // Add photos layer with error handling (async, might fail loading images)
+        try {
+          await addPhotosLayer()  // Add photos fourth (async for image loading)
+        } catch (error) {
+          console.warn('Failed to add photos layer:', error)
+        }
+
         addPointsLayer()   // Add points last (renders on top)
 
         // Add click handlers for visits and photos
@@ -225,13 +217,12 @@ export default class extends Controller {
         })
       }
 
-      if (this.map.isStyleLoaded()) {
-        console.log('Style already loaded, adding layers immediately')
+      // Use 'load' event which fires when map is fully initialized
+      // This is more reliable than 'style.load'
+      if (this.map.loaded()) {
         await addAllLayers()
       } else {
-        console.log('Style not loaded, waiting for style.load event')
-        this.map.once('style.load', async () => {
-          console.log('Style.load event fired, adding layers')
+        this.map.once('load', async () => {
           await addAllLayers()
         })
       }

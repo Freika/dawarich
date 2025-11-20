@@ -89,8 +89,16 @@ test.describe('Phase 1: MVP - Basic Map with Points', () => {
     await navigateToMapsV2WithDate(page, '2025-10-15T00:00', '2025-10-15T23:59');
 
     // navigateToMapsV2WithDate already waits for loading to complete
-    // Give a bit more time for data to be added to the map
-    await page.waitForTimeout(500);
+    // Wait for style to load and layers to be added
+    await page.waitForFunction(() => {
+      const element = document.querySelector('[data-controller="maps-v2"]');
+      const app = window.Stimulus || window.Application;
+      const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2');
+      return controller?.map?.getSource('points-source') !== undefined;
+    }, { timeout: 15000 }).catch(() => {
+      console.log('Timeout waiting for points source');
+      return false;
+    });
 
     // Check if points source exists and has data
     const sourceData = await getPointsSourceData(page);
