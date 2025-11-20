@@ -15,7 +15,7 @@ Each phase delivers a **working, deployable application**. You can:
 ## 📚 Implementation Phases
 
 ### **Phase 1: MVP - Basic Map** ✅ (Week 1)
-**File**: [PHASE_1_MVP.md](./PHASE_1_MVP.md) | **Test**: `e2e/v2/phase-1-mvp.spec.ts`
+**File**: [PHASE_1_MVP.md](./PHASE_1_MVP.md) | **Test**: `e2e/v2/phase-1-mvp.spec.js`
 
 **Deployable MVP**: Basic location history viewer
 
@@ -31,7 +31,7 @@ Each phase delivers a **working, deployable application**. You can:
 ---
 
 ### **Phase 2: Routes + Navigation** ✅ (Week 2)
-**File**: [PHASE_2_ROUTES.md](./PHASE_2_ROUTES.md) | **Test**: `e2e/v2/phase-2-routes.spec.ts`
+**File**: [PHASE_2_ROUTES.md](./PHASE_2_ROUTES.md) | **Test**: `e2e/v2/phase-2-routes.spec.js`
 
 **Builds on Phase 1 + adds**:
 - ✅ Routes layer (speed-colored)
@@ -44,7 +44,7 @@ Each phase delivers a **working, deployable application**. You can:
 ---
 
 ### **Phase 3: Heatmap + Mobile** ✅ (Week 3)
-**File**: [PHASE_3_MOBILE.md](./PHASE_3_MOBILE.md) | **Test**: `e2e/v2/phase-3-mobile.spec.ts`
+**File**: [PHASE_3_MOBILE.md](./PHASE_3_MOBILE.md) | **Test**: `e2e/v2/phase-3-mobile.spec.js`
 
 **Builds on Phase 2 + adds**:
 - ✅ Heatmap layer
@@ -58,7 +58,7 @@ Each phase delivers a **working, deployable application**. You can:
 ---
 
 ### **Phase 4: Visits + Photos** ✅ (Week 4)
-**File**: [PHASE_4_VISITS.md](./PHASE_4_VISITS.md) | **Test**: `e2e/v2/phase-4-visits.spec.ts`
+**File**: [PHASE_4_VISITS.md](./PHASE_4_VISITS.md) | **Test**: `e2e/v2/phase-4-visits.spec.js`
 
 **Builds on Phase 3 + adds**:
 - ✅ Visits layer (suggested + confirmed)
@@ -71,7 +71,7 @@ Each phase delivers a **working, deployable application**. You can:
 ---
 
 ### **Phase 5: Areas + Drawing** ✅ (Week 5)
-**File**: [PHASE_5_AREAS.md](./PHASE_5_AREAS.md) | **Test**: `e2e/v2/phase-5-areas.spec.ts`
+**File**: [PHASE_5_AREAS.md](./PHASE_5_AREAS.md) | **Test**: `e2e/v2/phase-5-areas.spec.js`
 
 **Builds on Phase 4 + adds**:
 - ✅ Areas layer
@@ -84,7 +84,7 @@ Each phase delivers a **working, deployable application**. You can:
 ---
 
 ### **Phase 6: Fog + Scratch + Advanced** ✅ (Week 6)
-**File**: [PHASE_6_ADVANCED.md](./PHASE_6_ADVANCED.md) | **Test**: `e2e/v2/phase-6-advanced.spec.ts`
+**File**: [PHASE_6_ADVANCED.md](./PHASE_6_ADVANCED.md) | **Test**: `e2e/v2/phase-6-advanced.spec.js`
 
 **Builds on Phase 5 + adds**:
 - ✅ Fog of war layer
@@ -97,7 +97,7 @@ Each phase delivers a **working, deployable application**. You can:
 ---
 
 ### **Phase 7: Real-time + Family** ✅ (Week 7)
-**File**: [PHASE_7_REALTIME.md](./PHASE_7_REALTIME.md) | **Test**: `e2e/v2/phase-7-realtime.spec.ts`
+**File**: [PHASE_7_REALTIME.md](./PHASE_7_REALTIME.md) | **Test**: `e2e/v2/phase-7-realtime.spec.js`
 
 **Builds on Phase 6 + adds**:
 - ✅ ActionCable integration
@@ -110,7 +110,7 @@ Each phase delivers a **working, deployable application**. You can:
 ---
 
 ### **Phase 8: Performance + Polish** ✅ (Week 8)
-**File**: [PHASE_8_PERFORMANCE.md](./PHASE_8_PERFORMANCE.md) | **Test**: `e2e/v2/phase-8-performance.spec.ts`
+**File**: [PHASE_8_PERFORMANCE.md](./PHASE_8_PERFORMANCE.md) | **Test**: `e2e/v2/phase-8-performance.spec.js`
 
 **Builds on Phase 7 + adds**:
 - ✅ Lazy loading
@@ -221,7 +221,7 @@ cat PHASES_SUMMARY.md
 cat PHASE_1_MVP.md
 
 # Create files as specified in guide
-# Run E2E tests: npx playwright test e2e/v2/phase-1-mvp.spec.ts
+# Run E2E tests: npx playwright test e2e/v2/phase-1-mvp.spec.js
 # Deploy to staging
 # Get user feedback
 ```

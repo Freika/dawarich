@@ -1,0 +1,195 @@
+<div class="settings-panel" data-maps-v2-target="settingsPanel">
+  <div class="settings-header">
+    <h3>Map Settings</h3>
+    <button data-action="click->maps-v2#toggleSettings"
+            class="close-btn"
+            title="Close settings">
+      ✕
+    </button>
+  </div>
+
+  <div class="settings-body">
+    <!-- Map Style -->
+    <div class="setting-group">
+      <label for="map-style">Map Style</label>
+      <select id="map-style"
+              data-action="change->maps-v2#updateMapStyle"
+              class="setting-select">
+        <option value="positron">Light</option>
+        <option value="dark-matter">Dark</option>
+        <option value="voyager">Voyager</option>
+      </select>
+    </div>
+
+    <!-- Heatmap Toggle -->
+    <div class="setting-group">
+      <label class="setting-checkbox">
+        <input type="checkbox"
+               data-action="change->maps-v2#toggleHeatmap">
+        <span>Show Heatmap</span>
+      </label>
+    </div>
+
+    <!-- Clustering Toggle -->
+    <div class="setting-group">
+      <label class="setting-checkbox">
+        <input type="checkbox"
+               checked
+               data-action="change->maps-v2#toggleClustering">
+        <span>Enable Point Clustering</span>
+      </label>
+    </div>
+
+    <!-- Visits Layer Toggle -->
+    <div class="setting-group">
+      <label class="setting-checkbox">
+        <input type="checkbox"
+               data-action="change->maps-v2#toggleVisits">
+        <span>Show Visits</span>
+      </label>
+    </div>
+
+    <!-- Photos Layer Toggle -->
+    <div class="setting-group">
+      <label class="setting-checkbox">
+        <input type="checkbox"
+               data-action="change->maps-v2#togglePhotos">
+        <span>Show Photos</span>
+      </label>
+    </div>
+
+    <!-- Visits Search (shown when visits enabled) -->
+    <div class="setting-group" data-maps-v2-target="visitsSearch" style="display: none;">
+      <label for="visits-search">Search Visits</label>
+      <input type="text"
+             id="visits-search"
+             data-action="input->maps-v2#searchVisits"
+             placeholder="Filter by name..."
+             class="setting-input">
+
+      <select data-action="change->maps-v2#filterVisits"
+              class="setting-select"
+              style="margin-top: 8px;">
+        <option value="all">All Visits</option>
+        <option value="confirmed">Confirmed Only</option>
+        <option value="suggested">Suggested Only</option>
+      </select>
+    </div>
+
+    <!-- Reset Button -->
+    <button data-action="click->maps-v2#resetSettings"
+            class="reset-btn">
+      Reset to Defaults
+    </button>
+  </div>
+</div>
+
+<style>
+  .settings-panel {
+    position: fixed;
+    top: 0;
+    right: -320px;
+    width: 320px;
+    height: 100vh;
+    background: white;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+  }
+
+  .settings-panel.open {
+    right: 0;
+  }
+
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .settings-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .close-btn {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .close-btn:hover {
+    color: #111827;
+  }
+
+  .settings-body {
+    padding: 20px;
+  }
+
+  .setting-group {
+    margin-bottom: 24px;
+  }
+
+  .setting-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .setting-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  .setting-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  .setting-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .setting-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+
+  .reset-btn {
+    width: 100%;
+    padding: 10px;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .reset-btn:hover {
+    background: #e5e7eb;
+  }
+</style>

@@ -17,8 +17,8 @@ test.describe('Bulk Delete Points', () => {
     // Close onboarding modal if present
     await closeOnboardingModal(page);
 
-    // Navigate to a date with points (October 13, 2024)
-    await navigateToDate(page, '2024-10-13T00:00', '2024-10-13T23:59');
+    // Navigate to a date with points (October 15, 2024)
+    await navigateToDate(page, '2024-10-15T00:00', '2024-10-15T23:59');
 
     // Enable Points layer
     await enableLayer(page, 'Points');

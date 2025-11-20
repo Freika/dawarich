@@ -64,6 +64,22 @@ export class BaseLayer {
   }
 
   /**
+   * Show layer
+   */
+  show() {
+    this.visible = true
+    this.setVisibility(true)
+  }
+
+  /**
+   * Hide layer
+   */
+  hide() {
+    this.visible = false
+    this.setVisibility(false)
+  }
+
+  /**
    * Toggle layer visibility
    * @param {boolean} visible - Show/hide layer
    */

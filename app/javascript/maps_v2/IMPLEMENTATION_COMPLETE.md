@@ -77,14 +77,14 @@ All Leaflet V1 features reimplemented in MapLibre V2:
 
 ### ✅ Complete E2E Test Coverage
 8 comprehensive test files covering all features:
-- `e2e/v2/phase-1-mvp.spec.ts`
-- `e2e/v2/phase-2-routes.spec.ts`
-- `e2e/v2/phase-3-mobile.spec.ts`
-- `e2e/v2/phase-4-visits.spec.ts`
-- `e2e/v2/phase-5-areas.spec.ts`
-- `e2e/v2/phase-6-advanced.spec.ts`
-- `e2e/v2/phase-7-realtime.spec.ts`
-- `e2e/v2/phase-8-performance.spec.ts`
+- `e2e/v2/phase-1-mvp.spec.js`
+- `e2e/v2/phase-2-routes.spec.js`
+- `e2e/v2/phase-3-mobile.spec.js`
+- `e2e/v2/phase-4-visits.spec.js`
+- `e2e/v2/phase-5-areas.spec.js`
+- `e2e/v2/phase-6-advanced.spec.js`
+- `e2e/v2/phase-7-realtime.spec.js`
+- `e2e/v2/phase-8-performance.spec.js`
 
 ---
 
@@ -214,14 +214,14 @@ public/
 └── maps-v2-sw.js                      # Service worker
 
 e2e/v2/
-├── phase-1-mvp.spec.ts                # Phase 1 tests
-├── phase-2-routes.spec.ts             # Phase 2 tests
-├── phase-3-mobile.spec.ts             # Phase 3 tests
-├── phase-4-visits.spec.ts             # Phase 4 tests
-├── phase-5-areas.spec.ts              # Phase 5 tests
-├── phase-6-advanced.spec.ts           # Phase 6 tests
-├── phase-7-realtime.spec.ts           # Phase 7 tests
-├── phase-8-performance.spec.ts        # Phase 8 tests
+├── phase-1-mvp.spec.js                # Phase 1 tests
+├── phase-2-routes.spec.js             # Phase 2 tests
+├── phase-3-mobile.spec.js             # Phase 3 tests
+├── phase-4-visits.spec.js             # Phase 4 tests
+├── phase-5-areas.spec.js              # Phase 5 tests
+├── phase-6-advanced.spec.js           # Phase 6 tests
+├── phase-7-realtime.spec.js           # Phase 7 tests
+├── phase-8-performance.spec.js        # Phase 8 tests
 └── helpers/
     └── setup.ts                       # Test helpers
 ```
@@ -235,7 +235,7 @@ e2e/v2/
 1. **Start**: Read [START_HERE.md](./START_HERE.md)
 2. **Understand**: Read [PHASES_OVERVIEW.md](./PHASES_OVERVIEW.md)
 3. **Implement Phase 1**: Follow [PHASE_1_MVP.md](./PHASE_1_MVP.md)
-4. **Test**: Run `npx playwright test e2e/v2/phase-1-mvp.spec.ts`
+4. **Test**: Run `npx playwright test e2e/v2/phase-1-mvp.spec.js`
 5. **Deploy**: Ship Phase 1 to production
 6. **Repeat**: Continue with phases 2-8
 
@@ -261,10 +261,10 @@ cat app/javascript/maps_v2/PHASE_1_MVP.md
 npx playwright test e2e/v2/
 
 # Run specific phase tests
-npx playwright test e2e/v2/phase-1-mvp.spec.ts
+npx playwright test e2e/v2/phase-1-mvp.spec.js
 
 # Run regression tests (phases 1-3)
-npx playwright test e2e/v2/phase-[1-3]-*.spec.ts
+npx playwright test e2e/v2/phase-[1-3]-*.spec.js
 
 # Deploy workflow
 git checkout -b maps-v2-phase-1

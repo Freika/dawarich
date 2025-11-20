@@ -50,7 +50,7 @@ app/channels/
 └── map_channel.rb                     # NEW: Rails channel
 
 e2e/v2/
-└── phase-7-realtime.spec.ts           # NEW: E2E tests
+└── phase-7-realtime.spec.js           # NEW: E2E tests
 ```
 
 ---
@@ -702,7 +702,7 @@ Add to view template.
 
 ## 🧪 E2E Tests
 
-**File**: `e2e/v2/phase-7-realtime.spec.ts`
+**File**: `e2e/v2/phase-7-realtime.spec.js`
 
 ```typescript
 import { test, expect } from '@playwright/test'

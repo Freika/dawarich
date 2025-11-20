@@ -1,58 +1,61 @@
-<div class="maps-v2-container"
-     data-controller="maps-v2"
+<% content_for :title, 'Map' %>
+
+<%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
+
+<div data-controller="maps-v2"
      data-maps-v2-api-key-value="<%= current_user.api_key %>"
-     data-maps-v2-start-date-value="<%= @start_date.to_s %>"
-     data-maps-v2-end-date-value="<%= @end_date.to_s %>">
+     data-maps-v2-start-date-value="<%= @start_at.to_s %>"
+     data-maps-v2-end-date-value="<%= @end_at.to_s %>"
+     style="width: 100%; height: 100%; position: relative;">
 
-  <!-- Map container -->
-  <div class="map-wrapper">
-    <div data-maps-v2-target="container" class="map-container"></div>
+  <!-- Map container takes full width and height -->
+  <div data-maps-v2-target="container" style="width: 100%; height: 100%;"></div>
 
-    <!-- Loading overlay -->
-    <div data-maps-v2-target="loading" class="loading-overlay hidden">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Loading points...</div>
-    </div>
+  <!-- Layer Controls (top-left corner) -->
+  <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+    <button data-action="click->maps-v2#toggleLayer"
+            data-layer="points"
+            class="btn btn-sm btn-primary">
+      <%= icon 'map-pin' %>
+      <span class="ml-1">Points</span>
+    </button>
+
+    <button data-action="click->maps-v2#toggleLayer"
+            data-layer="routes"
+            class="btn btn-sm btn-primary">
+      <%= icon 'route' %>
+      <span class="ml-1">Routes</span>
+    </button>
+
+    <!-- Cluster toggle -->
+    <button data-action="click->maps-v2#toggleClustering"
+            data-maps-v2-target="clusterToggle"
+            class="btn btn-sm btn-primary"
+            title="Toggle point clustering">
+      <%= icon 'grid2x2' %>
+      <span class="ml-1">Cluster</span>
+    </button>
+
+    <!-- Settings button -->
+    <button data-action="click->maps-v2#toggleSettings"
+            class="btn btn-sm btn-primary"
+            title="Settings">
+      <%= icon 'square-pen' %>
+      <span class="ml-1">Settings</span>
+    </button>
   </div>
 
-  <!-- Month selector -->
-  <div class="controls-panel">
-    <div class="control-group">
-      <label for="month-select">Month:</label>
-      <select id="month-select"
-              data-maps-v2-target="monthSelect"
-              data-action="change->maps-v2#monthChanged"
-              class="month-selector">
-        <% 12.times do |i| %>
-          <% date = Date.today.beginning_of_month - i.months %>
-          <option value="<%= date.strftime('%Y-%m') %>"
-                  <%= 'selected' if date.year == @start_date.year && date.month == @start_date.month %>>
-            <%= date.strftime('%B %Y') %>
-          </option>
-        <% end %>
-      </select>
-    </div>
+  <!-- Loading overlay -->
+  <div data-maps-v2-target="loading" class="loading-overlay hidden">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" data-maps-v2-target="loadingText">Loading points...</div>
   </div>
+
+  <!-- Settings panel -->
+  <%= render 'maps_v2/settings_panel' %>
 </div>
 
 <style>
-  .maps-v2-container {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .map-wrapper {
-    flex: 1;
-    position: relative;
-  }
-
-  .map-container {
-    width: 100%;
-    height: 100%;
-  }
-
   .loading-overlay {
     position: absolute;
     inset: 0;
@@ -85,30 +88,6 @@
     margin-top: 16px;
     font-size: 14px;
     color: #6b7280;
-  }
-
-  .controls-panel {
-    padding: 16px;
-    background: white;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .control-group {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .control-group label {
-    font-weight: 500;
-    color: #374151;
-  }
-
-  .month-selector {
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
   }
 
   /* Popup styles */

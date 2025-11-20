@@ -47,7 +47,7 @@ app/javascript/maps_v2/
     └── geometry.js                    # NEW: Geo calculations
 
 e2e/v2/
-└── phase-5-areas.spec.ts              # NEW: E2E tests
+└── phase-5-areas.spec.js              # NEW: E2E tests
 ```
 
 ---
@@ -696,7 +696,7 @@ async createArea(area) {
 
 ## 🧪 E2E Tests
 
-**File**: `e2e/v2/phase-5-areas.spec.ts`
+**File**: `e2e/v2/phase-5-areas.spec.js`
 
 ```typescript
 import { test, expect } from '@playwright/test'

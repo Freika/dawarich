@@ -317,9 +317,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_190924) do
     t.integer "points_count", default: 0, null: false
     t.string "provider"
     t.string "uid"
-    t.text "patreon_access_token"
-    t.text "patreon_refresh_token"
-    t.datetime "patreon_token_expires_at"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"

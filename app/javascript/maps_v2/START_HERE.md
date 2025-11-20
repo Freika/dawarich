@@ -52,8 +52,8 @@ Complete guide with architecture, features, and quick start.
 4. Test locally: Visit `/maps_v2`
 
 ### Day 5: Testing
-1. Write E2E tests (`e2e/v2/phase-1-mvp.spec.ts`)
-2. Run tests: `npx playwright test e2e/v2/phase-1-mvp.spec.ts`
+1. Write E2E tests (`e2e/v2/phase-1-mvp.spec.js`)
+2. Run tests: `npx playwright test e2e/v2/phase-1-mvp.spec.js`
 3. Fix any failing tests
 4. Manual QA checklist
 
@@ -90,7 +90,7 @@ app/controllers/
 └── maps_v2_controller.rb              ✅ Rails controller
 
 e2e/v2/
-├── phase-1-mvp.spec.ts               ✅ E2E tests
+├── phase-1-mvp.spec.js               ✅ E2E tests
 └── helpers/
     └── setup.ts                       ✅ Test helpers
 ```

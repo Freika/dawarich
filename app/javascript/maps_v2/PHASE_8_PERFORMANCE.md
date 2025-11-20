@@ -50,7 +50,7 @@ public/
 └── maps-v2-sw.js                      # NEW: Service worker
 
 e2e/v2/
-└── phase-8-performance.spec.ts        # NEW: E2E tests
+└── phase-8-performance.spec.js        # NEW: E2E tests
 ```
 
 ---
@@ -690,7 +690,7 @@ async registerServiceWorker() {
 
 ## 🧪 E2E Tests
 
-**File**: `e2e/v2/phase-8-performance.spec.ts`
+**File**: `e2e/v2/phase-8-performance.spec.js`
 
 ```typescript
 import { test, expect } from '@playwright/test'

@@ -82,12 +82,12 @@ test.describe('Map Page', () => {
     // Clear and fill in the start date/time input (midnight)
     const startInput = page.locator('input[type="datetime-local"][name="start_at"]');
     await startInput.clear();
-    await startInput.fill('2024-10-13T00:00');
+    await startInput.fill('2024-10-15T00:00');
 
     // Clear and fill in the end date/time input (end of day)
     const endInput = page.locator('input[type="datetime-local"][name="end_at"]');
     await endInput.clear();
-    await endInput.fill('2024-10-13T23:59');
+    await endInput.fill('2024-10-15T23:59');
 
     // Click the Search button to submit
     await page.click('input[type="submit"][value="Search"]');

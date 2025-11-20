@@ -57,16 +57,56 @@ export class ApiClient {
       page++
 
       if (onProgress) {
+        // Avoid division by zero - if no pages, progress is 100%
+        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
         onProgress({
           loaded: allPoints.length,
           currentPage,
           totalPages,
-          progress: currentPage / totalPages
+          progress
         })
       }
     } while (page <= totalPages)
 
     return allPoints
+  }
+
+  /**
+   * Fetch visits for date range
+   */
+  async fetchVisits({ start_at, end_at }) {
+    const params = new URLSearchParams({ start_at, end_at })
+
+    const response = await fetch(`${this.baseURL}/visits?${params}`, {
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch visits: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Fetch photos for date range
+   */
+  async fetchPhotos({ start_at, end_at }) {
+    // Photos API uses start_date/end_date parameters
+    const params = new URLSearchParams({
+      start_date: start_at,
+      end_date: end_at
+    })
+
+    const response = await fetch(`${this.baseURL}/photos?${params}`, {
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch photos: ${response.statusText}`)
+    }
+
+    return response.json()
   }
 
   getHeaders() {

@@ -40,7 +40,7 @@ You can **deploy after any phase** and have a functional map application.
 - ✅ API client for points endpoint
 - ✅ Loading states
 
-**E2E Tests** (`e2e/v2/phase-1-mvp.spec.ts`):
+**E2E Tests** (`e2e/v2/phase-1-mvp.spec.js`):
 - Map loads successfully
 - Points render on map
 - Clicking point shows popup
@@ -60,7 +60,7 @@ You can **deploy after any phase** and have a functional map application.
 - ✅ Zoom controls
 - ✅ Auto-fit bounds to data
 
-**E2E Tests** (`e2e/v2/phase-2-routes.spec.ts`):
+**E2E Tests** (`e2e/v2/phase-2-routes.spec.js`):
 - Routes render correctly
 - Date navigation works
 - Layer toggles work
@@ -80,7 +80,7 @@ You can **deploy after any phase** and have a functional map application.
 - ✅ Settings panel
 - ✅ Responsive breakpoints
 
-**E2E Tests** (`e2e/v2/phase-3-mobile.spec.ts`):
+**E2E Tests** (`e2e/v2/phase-3-mobile.spec.js`):
 - Heatmap renders
 - Bottom sheet works on mobile
 - Touch gestures functional
@@ -100,7 +100,7 @@ You can **deploy after any phase** and have a functional map application.
 - ✅ Photo popup with preview
 - ✅ Visit statistics
 
-**E2E Tests** (`e2e/v2/phase-4-visits.spec.ts`):
+**E2E Tests** (`e2e/v2/phase-4-visits.spec.js`):
 - Visits render with correct colors
 - Photos display on map
 - Visits drawer opens/filters
@@ -120,7 +120,7 @@ You can **deploy after any phase** and have a functional map application.
 - ✅ Area management UI
 - ✅ Tracks layer
 
-**E2E Tests** (`e2e/v2/phase-5-areas.spec.ts`):
+**E2E Tests** (`e2e/v2/phase-5-areas.spec.js`):
 - Areas render on map
 - Drawing tools work
 - Area selection functional
@@ -140,7 +140,7 @@ You can **deploy after any phase** and have a functional map application.
 - ✅ Click handler (centralized)
 - ✅ Toast notifications
 
-**E2E Tests** (`e2e/v2/phase-6-advanced.spec.ts`):
+**E2E Tests** (`e2e/v2/phase-6-advanced.spec.js`):
 - Fog layer renders correctly
 - Scratch map highlights countries
 - Keyboard shortcuts work
@@ -160,7 +160,7 @@ You can **deploy after any phase** and have a functional map application.
 - ✅ Live notifications
 - ✅ WebSocket reconnection
 
-**E2E Tests** (`e2e/v2/phase-7-realtime.spec.ts`):
+**E2E Tests** (`e2e/v2/phase-7-realtime.spec.js`):
 - Real-time updates appear
 - Family locations show
 - WebSocket reconnects
@@ -181,7 +181,7 @@ You can **deploy after any phase** and have a functional map application.
 - ✅ Memory leak fixes
 - ✅ Bundle optimization
 
-**E2E Tests** (`e2e/v2/phase-8-performance.spec.ts`):
+**E2E Tests** (`e2e/v2/phase-8-performance.spec.js`):
 - Large datasets perform well
 - Offline mode works
 - No memory leaks
@@ -198,14 +198,14 @@ You can **deploy after any phase** and have a functional map application.
 ```
 e2e/
 └── v2/
-    ├── phase-1-mvp.spec.ts           # Basic map + points
-    ├── phase-2-routes.spec.ts        # Routes + navigation
-    ├── phase-3-mobile.spec.ts        # Heatmap + mobile
-    ├── phase-4-visits.spec.ts        # Visits + photos
-    ├── phase-5-areas.spec.ts         # Areas + drawing
-    ├── phase-6-advanced.spec.ts      # Fog + scratch
-    ├── phase-7-realtime.spec.ts      # Real-time + family
-    ├── phase-8-performance.spec.ts   # Performance tests
+    ├── phase-1-mvp.spec.js           # Basic map + points
+    ├── phase-2-routes.spec.js        # Routes + navigation
+    ├── phase-3-mobile.spec.js        # Heatmap + mobile
+    ├── phase-4-visits.spec.js        # Visits + photos
+    ├── phase-5-areas.spec.js         # Areas + drawing
+    ├── phase-6-advanced.spec.js      # Fog + scratch
+    ├── phase-7-realtime.spec.js      # Real-time + family
+    ├── phase-8-performance.spec.js   # Performance tests
     └── helpers/
         ├── setup.ts                  # Common setup
         └── assertions.ts             # Custom assertions
@@ -218,10 +218,10 @@ e2e/
 npx playwright test e2e/v2/
 
 # Run specific phase
-npx playwright test e2e/v2/phase-1-mvp.spec.ts
+npx playwright test e2e/v2/phase-1-mvp.spec.js
 
 # Run in headed mode (watch)
-npx playwright test e2e/v2/phase-1-mvp.spec.ts --headed
+npx playwright test e2e/v2/phase-1-mvp.spec.js --headed
 
 # Run with UI
 npx playwright test e2e/v2/ --ui
@@ -235,12 +235,12 @@ npx playwright test e2e/v2/ --ui
 
 1. **Run E2E tests**
    ```bash
-   npx playwright test e2e/v2/phase-X-*.spec.ts
+   npx playwright test e2e/v2/phase-X-*.spec.js
    ```
 
 2. **Run previous phase tests** (regression)
    ```bash
-   npx playwright test e2e/v2/phase-[1-X]-*.spec.ts
+   npx playwright test e2e/v2/phase-[1-X]-*.spec.js
    ```
 
 3. **Deploy to staging**
@@ -284,7 +284,7 @@ For each phase:
 ```bash
 # Week 1: Phase 1
 - Implement Phase 1 code
-- Write e2e/v2/phase-1-mvp.spec.ts
+- Write e2e/v2/phase-1-mvp.spec.js
 - All tests pass ✅
 - Deploy to staging ✅
 - User testing ✅
@@ -292,9 +292,9 @@ For each phase:
 
 # Week 2: Phase 2
 - Implement Phase 2 code (on top of Phase 1)
-- Write e2e/v2/phase-2-routes.spec.ts
-- Run phase-1-mvp.spec.ts (regression) ✅
-- Run phase-2-routes.spec.ts ✅
+- Write e2e/v2/phase-2-routes.spec.js
+- Run phase-1-mvp.spec.js (regression) ✅
+- Run phase-2-routes.spec.js ✅
 - Deploy to staging ✅
 - User testing ✅
 - Deploy to production ✅

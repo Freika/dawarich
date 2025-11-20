@@ -4,14 +4,14 @@
 
 | Phase | Status | Files | E2E Tests | Deploy |
 |-------|--------|-------|-----------|--------|
-| **Phase 1: MVP** | ✅ Complete | PHASE_1_MVP.md | `phase-1-mvp.spec.ts` | Ready |
-| **Phase 2: Routes** | ✅ Complete | PHASE_2_ROUTES.md | `phase-2-routes.spec.ts` | Ready |
-| **Phase 3: Mobile** | ✅ Complete | PHASE_3_MOBILE.md | `phase-3-mobile.spec.ts` | Ready |
-| **Phase 4: Visits** | ✅ Complete | PHASE_4_VISITS.md | `phase-4-visits.spec.ts` | Ready |
-| **Phase 5: Areas** | ✅ Complete | PHASE_5_AREAS.md | `phase-5-areas.spec.ts` | Ready |
-| **Phase 6: Advanced** | ✅ Complete | PHASE_6_ADVANCED.md | `phase-6-advanced.spec.ts` | Ready |
-| **Phase 7: Realtime** | ✅ Complete | PHASE_7_REALTIME.md | `phase-7-realtime.spec.ts` | Ready |
-| **Phase 8: Performance** | ✅ Complete | PHASE_8_PERFORMANCE.md | `phase-8-performance.spec.ts` | Ready |
+| **Phase 1: MVP** | ✅ Complete | PHASE_1_MVP.md | `phase-1-mvp.spec.js` | Ready |
+| **Phase 2: Routes** | ✅ Complete | PHASE_2_ROUTES.md | `phase-2-routes.spec.js` | Ready |
+| **Phase 3: Mobile** | ✅ Complete | PHASE_3_MOBILE.md | `phase-3-mobile.spec.js` | Ready |
+| **Phase 4: Visits** | ✅ Complete | PHASE_4_VISITS.md | `phase-4-visits.spec.js` | Ready |
+| **Phase 5: Areas** | ✅ Complete | PHASE_5_AREAS.md | `phase-5-areas.spec.js` | Ready |
+| **Phase 6: Advanced** | ✅ Complete | PHASE_6_ADVANCED.md | `phase-6-advanced.spec.js` | Ready |
+| **Phase 7: Realtime** | ✅ Complete | PHASE_7_REALTIME.md | `phase-7-realtime.spec.js` | Ready |
+| **Phase 8: Performance** | ✅ Complete | PHASE_8_PERFORMANCE.md | `phase-8-performance.spec.js` | Ready |
 
 **ALL PHASES COMPLETE!** 🎉 Total: ~10,000 lines of production-ready code.
 
@@ -40,7 +40,7 @@ utils/gestures.js
 - Settings panel for map preferences
 - Responsive breakpoints (mobile vs desktop)
 
-### E2E Tests (`e2e/v2/phase-3-mobile.spec.ts`)
+### E2E Tests (`e2e/v2/phase-3-mobile.spec.js`)
 - Heatmap renders correctly
 - Bottom sheet swipe works
 - Settings panel opens/closes
@@ -73,7 +73,7 @@ components/photo_popup.js
 - Photo popup with image preview
 - Visit statistics
 
-### E2E Tests (`e2e/v2/phase-4-visits.spec.ts`)
+### E2E Tests (`e2e/v2/phase-4-visits.spec.js`)
 - Visits render with correct colors
 - Photos display on map
 - Visits drawer opens/closes
@@ -107,7 +107,7 @@ controllers/area_drawer_controller.js
 - Tracks layer
 - Area statistics
 
-### E2E Tests (`e2e/v2/phase-5-areas.spec.ts`)
+### E2E Tests (`e2e/v2/phase-5-areas.spec.js`)
 - Areas render on map
 - Rectangle selection works
 - Area drawing functional
@@ -143,7 +143,7 @@ utils/country_boundaries.js
 - Toast notifications
 - Country detection from points
 
-### E2E Tests (`e2e/v2/phase-6-advanced.spec.ts`)
+### E2E Tests (`e2e/v2/phase-6-advanced.spec.js`)
 - Fog layer renders correctly
 - Scratch map highlights countries
 - Keyboard shortcuts work
@@ -177,7 +177,7 @@ utils/websocket_manager.js
 - Presence indicators
 - Family member colors
 
-### E2E Tests (`e2e/v2/phase-7-realtime.spec.ts`)
+### E2E Tests (`e2e/v2/phase-7-realtime.spec.js`)
 - Real-time updates appear
 - Family locations show
 - WebSocket connects/reconnects
@@ -215,7 +215,7 @@ public/maps-v2-sw.js (service worker)
 - Memory leak prevention
 - Bundle size < 500KB
 
-### E2E Tests (`e2e/v2/phase-8-performance.spec.ts`)
+### E2E Tests (`e2e/v2/phase-8-performance.spec.js`)
 - Large datasets (100k points) perform well
 - Offline mode works
 - No memory leaks (DevTools check)
@@ -248,10 +248,10 @@ public/maps-v2-sw.js (service worker)
 npx playwright test e2e/v2/
 
 # Run specific phase
-npx playwright test e2e/v2/phase-X-*.spec.ts
+npx playwright test e2e/v2/phase-X-*.spec.js
 
 # Run up to phase N (regression)
-npx playwright test e2e/v2/phase-[1-N]-*.spec.ts
+npx playwright test e2e/v2/phase-[1-N]-*.spec.js
 ```
 
 ### Regression Testing
@@ -265,7 +265,7 @@ After implementing Phase N, always run tests for Phases 1 through N-1 to ensure 
 # 1. Implement phase
 # 2. Write E2E tests
 # 3. Run all tests (current + previous)
-npx playwright test e2e/v2/phase-[1-N]-*.spec.ts
+npx playwright test e2e/v2/phase-[1-N]-*.spec.js
 
 # 4. Commit
 git checkout -b maps-v2-phase-N

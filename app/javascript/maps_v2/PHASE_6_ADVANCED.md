@@ -47,7 +47,7 @@ app/javascript/maps_v2/
     └── country_boundaries.js          # NEW: Country polygons
 
 e2e/v2/
-└── phase-6-advanced.spec.ts           # NEW: E2E tests
+└── phase-6-advanced.spec.js           # NEW: E2E tests
 ```
 
 ---
@@ -652,7 +652,7 @@ Toast.success(`Loaded ${points.length} points`)
 
 ## 🧪 E2E Tests
 
-**File**: `e2e/v2/phase-6-advanced.spec.ts`
+**File**: `e2e/v2/phase-6-advanced.spec.js`
 
 ```typescript
 import { test, expect } from '@playwright/test'

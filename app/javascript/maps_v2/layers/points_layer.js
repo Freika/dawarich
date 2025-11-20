@@ -1,13 +1,14 @@
 import { BaseLayer } from './base_layer'
 
 /**
- * Points layer with automatic clustering
+ * Points layer with toggleable clustering
  */
 export class PointsLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: 'points', ...options })
     this.clusterRadius = options.clusterRadius || 50
     this.clusterMaxZoom = options.clusterMaxZoom || 14
+    this.clusteringEnabled = options.clustering !== false // Default to enabled
   }
 
   getSourceConfig() {
@@ -17,7 +18,7 @@ export class PointsLayer extends BaseLayer {
         type: 'FeatureCollection',
         features: []
       },
-      cluster: true,
+      cluster: this.clusteringEnabled,
       clusterMaxZoom: this.clusterMaxZoom,
       clusterRadius: this.clusterRadius
     }
@@ -81,5 +82,57 @@ export class PointsLayer extends BaseLayer {
         }
       }
     ]
+  }
+
+  /**
+   * Toggle clustering on/off
+   * @param {boolean} enabled - Whether to enable clustering
+   */
+  toggleClustering(enabled) {
+    if (!this.data) {
+      console.warn('Cannot toggle clustering: no data loaded')
+      return
+    }
+
+    this.clusteringEnabled = enabled
+
+    // Need to recreate the source with new clustering setting
+    // MapLibre doesn't support changing cluster setting dynamically
+    // So we remove and re-add the source
+    const currentData = this.data
+    const wasVisible = this.visible
+
+    // Remove all layers first
+    this.getLayerIds().forEach(layerId => {
+      if (this.map.getLayer(layerId)) {
+        this.map.removeLayer(layerId)
+      }
+    })
+
+    // Remove source
+    if (this.map.getSource(this.sourceId)) {
+      this.map.removeSource(this.sourceId)
+    }
+
+    // Re-add source with new clustering setting
+    this.map.addSource(this.sourceId, this.getSourceConfig())
+
+    // Re-add layers
+    const layers = this.getLayerConfigs()
+    layers.forEach(layerConfig => {
+      this.map.addLayer(layerConfig)
+    })
+
+    // Restore visibility state
+    this.visible = wasVisible
+    this.setVisibility(wasVisible)
+
+    // Update data
+    this.data = currentData
+    const source = this.map.getSource(this.sourceId)
+    if (source && source.setData) {
+      source.setData(currentData)
+    }
+
   }
 }
