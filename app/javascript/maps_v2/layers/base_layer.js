@@ -16,22 +16,31 @@ export class BaseLayer {
    * @param {Object} data - GeoJSON or layer-specific data
    */
   add(data) {
+    console.log(`[BaseLayer:${this.id}] add() called, visible:`, this.visible, 'features:', data?.features?.length || 0)
     this.data = data
 
     // Add source
     if (!this.map.getSource(this.sourceId)) {
+      console.log(`[BaseLayer:${this.id}] Adding source:`, this.sourceId)
       this.map.addSource(this.sourceId, this.getSourceConfig())
+    } else {
+      console.log(`[BaseLayer:${this.id}] Source already exists:`, this.sourceId)
     }
 
     // Add layers
     const layers = this.getLayerConfigs()
+    console.log(`[BaseLayer:${this.id}] Adding ${layers.length} layer(s)`)
     layers.forEach(layerConfig => {
       if (!this.map.getLayer(layerConfig.id)) {
+        console.log(`[BaseLayer:${this.id}] Adding layer:`, layerConfig.id, 'type:', layerConfig.type)
         this.map.addLayer(layerConfig)
+      } else {
+        console.log(`[BaseLayer:${this.id}] Layer already exists:`, layerConfig.id)
       }
     })
 
     this.setVisibility(this.visible)
+    console.log(`[BaseLayer:${this.id}] Layer added successfully`)
   }
 
   /**

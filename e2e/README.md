@@ -113,3 +113,7 @@ Tests run with:
 - JUnit XML reports
 
 See `playwright.config.js` for full configuration.
+
+## Important considerations
+
+- We're using Rails 8 with Turbo, which might not cause full page reloads.

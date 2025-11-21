@@ -7,9 +7,19 @@
      data-maps-v2-start-date-value="<%= @start_at.to_s %>"
      data-maps-v2-end-date-value="<%= @end_at.to_s %>"
      style="width: 100%; height: 100%; position: relative;">
+  <!--
+    Phase 7 Realtime Controller: Currently disabled pending initialization fix
+    To enable: Add "maps-v2-realtime" to data-controller and add data-maps-v2-realtime-enabled-value="true"
+  -->
 
   <!-- Map container takes full width and height -->
-  <div data-maps-v2-target="container" style="width: 100%; height: 100%;"></div>
+  <div data-maps-v2-target="container" class="maps-v2-container" style="width: 100%; height: 100%;"></div>
+
+  <!-- Connection indicator -->
+  <div class="connection-indicator disconnected">
+    <span class="indicator-dot"></span>
+    <span class="indicator-text"></span>
+  </div>
 
   <!-- Layer Controls (top-left corner) -->
   <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
@@ -119,5 +129,53 @@
   .popup-row .value {
     font-weight: 500;
     color: #111827;
+  }
+
+  /* Connection indicator styles */
+  .connection-indicator {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 20;
+    transition: all 0.3s;
+  }
+
+  .indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .connection-indicator.connected .indicator-dot {
+    background: #22c55e;
+  }
+
+  .connection-indicator.connected .indicator-text::before {
+    content: 'Connected';
+  }
+
+  .connection-indicator.disconnected .indicator-text::before {
+    content: 'Connecting...';
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 </style>

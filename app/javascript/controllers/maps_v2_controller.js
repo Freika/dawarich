@@ -10,6 +10,7 @@ import { AreasLayer } from 'maps_v2/layers/areas_layer'
 import { TracksLayer } from 'maps_v2/layers/tracks_layer'
 import { FogLayer } from 'maps_v2/layers/fog_layer'
 import { ScratchLayer } from 'maps_v2/layers/scratch_layer'
+import { FamilyLayer } from 'maps_v2/layers/family_layer'
 import { pointsToGeoJSON } from 'maps_v2/utils/geojson_transformers'
 import { PopupFactory } from 'maps_v2/components/popup_factory'
 import { VisitPopupFactory } from 'maps_v2/components/visit_popup'
@@ -36,6 +37,12 @@ export default class extends Controller {
     this.initializeMap()
     this.initializeAPI()
     this.currentVisitFilter = 'all'
+
+    // Format initial dates from backend to match V1 API format
+    this.startDateValue = this.formatDateForAPI(new Date(this.startDateValue))
+    this.endDateValue = this.formatDateForAPI(new Date(this.endDateValue))
+    console.log('[Maps V2] Initial dates:', this.startDateValue, 'to', this.endDateValue)
+
     this.loadMapData()
   }
 
@@ -165,25 +172,35 @@ export default class extends Controller {
       // Load photos
       let photos = []
       try {
+        console.log('[Photos] Fetching photos from:', this.startDateValue, 'to', this.endDateValue)
         photos = await this.api.fetchPhotos({
           start_at: this.startDateValue,
           end_at: this.endDateValue
         })
+        console.log('[Photos] Fetched photos:', photos.length, 'photos')
+        console.log('[Photos] Sample photo:', photos[0])
       } catch (error) {
-        console.warn('Failed to fetch photos:', error)
+        console.error('[Photos] Failed to fetch photos:', error)
         // Continue with empty photos array
       }
 
       const photosGeoJSON = this.photosToGeoJSON(photos)
+      console.log('[Photos] Converted to GeoJSON:', photosGeoJSON.features.length, 'features')
+      console.log('[Photos] Sample feature:', photosGeoJSON.features[0])
 
       const addPhotosLayer = async () => {
+        console.log('[Photos] Adding photos layer, visible:', this.settings.photosEnabled)
         if (!this.photosLayer) {
           this.photosLayer = new PhotosLayer(this.map, {
             visible: this.settings.photosEnabled || false
           })
+          console.log('[Photos] Created new PhotosLayer instance')
           await this.photosLayer.add(photosGeoJSON)
+          console.log('[Photos] Added photos to layer')
         } else {
+          console.log('[Photos] Updating existing PhotosLayer')
           await this.photosLayer.update(photosGeoJSON)
+          console.log('[Photos] Updated photos layer')
         }
       }
 
@@ -209,15 +226,9 @@ export default class extends Controller {
         }
       }
 
-      // Load tracks
-      let tracks = []
-      try {
-        tracks = await this.api.fetchTracks()
-      } catch (error) {
-        console.warn('Failed to fetch tracks:', error)
-        // Continue with empty tracks array
-      }
-
+      // Load tracks - DISABLED: Backend API not yet implemented
+      // TODO: Re-enable when /api/v1/tracks endpoint is created
+      const tracks = []
       const tracksGeoJSON = this.tracksToGeoJSON(tracks)
 
       const addTracksLayer = () => {
@@ -246,7 +257,8 @@ export default class extends Controller {
       const addScratchLayer = async () => {
         if (!this.scratchLayer) {
           this.scratchLayer = new ScratchLayer(this.map, {
-            visible: this.settings.scratchEnabled || false
+            visible: this.settings.scratchEnabled || false,
+            apiClient: this.api // Pass API client for authenticated requests
           })
           await this.scratchLayer.add(pointsGeoJSON)
         } else {
@@ -254,9 +266,19 @@ export default class extends Controller {
         }
       }
 
+      // Add family layer (for real-time family locations)
+      const addFamilyLayer = () => {
+        if (!this.familyLayer) {
+          this.familyLayer = new FamilyLayer(this.map, {
+            visible: false // Initially hidden, shown when family locations arrive via ActionCable
+          })
+          this.familyLayer.add({ type: 'FeatureCollection', features: [] })
+        }
+      }
+
       // Add all layers when style is ready
       // Note: Layer order matters - layers added first render below layers added later
-      // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> photos -> points (top) -> fog (canvas overlay)
+      // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> photos -> family -> points (top) -> fog (canvas overlay)
       const addAllLayers = async () => {
         await addScratchLayer() // Add scratch first (renders at bottom)
         addHeatmapLayer()      // Add heatmap second
@@ -272,6 +294,7 @@ export default class extends Controller {
           console.warn('Failed to add photos layer:', error)
         }
 
+        addFamilyLayer()   // Add family layer (real-time family locations)
         addPointsLayer()   // Add points last (renders on top)
         // Note: Fog layer is canvas overlay, renders above all MapLibre layers
 
@@ -352,15 +375,34 @@ export default class extends Controller {
   }
 
   /**
+   * Format date for API requests (matching V1 format)
+   * Format: "YYYY-MM-DDTHH:MM" (e.g., "2025-10-15T00:00", "2025-10-15T23:59")
+   */
+  formatDateForAPI(date) {
+    const pad = (n) => String(n).padStart(2, '0')
+    const year = date.getFullYear()
+    const month = pad(date.getMonth() + 1)
+    const day = pad(date.getDate())
+    const hours = pad(date.getHours())
+    const minutes = pad(date.getMinutes())
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
+  /**
    * Month selector changed
    */
   monthChanged(event) {
     const [year, month] = event.target.value.split('-')
 
-    // Update date values
-    this.startDateValue = `${year}-${month}-01T00:00:00Z`
+    const startDate = new Date(year, month - 1, 1, 0, 0, 0)
     const lastDay = new Date(year, month, 0).getDate()
-    this.endDateValue = `${year}-${month}-${lastDay}T23:59:59Z`
+    const endDate = new Date(year, month - 1, lastDay, 23, 59, 0)
+
+    this.startDateValue = this.formatDateForAPI(startDate)
+    this.endDateValue = this.formatDateForAPI(endDate)
+
+    console.log('[Maps V2] Date range changed:', this.startDateValue, 'to', this.endDateValue)
 
     // Reload data
     this.loadMapData()
@@ -546,21 +588,29 @@ export default class extends Controller {
   photosToGeoJSON(photos) {
     return {
       type: 'FeatureCollection',
-      features: photos.map(photo => ({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [photo.longitude, photo.latitude]
-        },
-        properties: {
-          id: photo.id,
-          thumbnail_url: photo.thumbnail_url,
-          url: photo.url,
-          taken_at: photo.taken_at,
-          camera: photo.camera,
-          location_name: photo.location_name
+      features: photos.map(photo => {
+        // Construct thumbnail URL
+        const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.api.apiKey}&source=${photo.source}`
+
+        return {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [photo.longitude, photo.latitude]
+          },
+          properties: {
+            id: photo.id,
+            thumbnail_url: thumbnailUrl,
+            taken_at: photo.localDateTime,
+            filename: photo.originalFileName,
+            city: photo.city,
+            state: photo.state,
+            country: photo.country,
+            type: photo.type,
+            source: photo.source
+          }
         }
-      }))
+      })
     }
   }
 

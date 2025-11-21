@@ -8,25 +8,35 @@ export class PhotoPopupFactory {
    * @returns {string} HTML for popup
    */
   static createPhotoPopup(properties) {
-    const { id, thumbnail_url, url, taken_at, camera, location_name } = properties
+    const {
+      id,
+      thumbnail_url,
+      taken_at,
+      filename,
+      city,
+      state,
+      country,
+      type,
+      source
+    } = properties
 
-    const takenDate = taken_at ? new Date(taken_at * 1000).toLocaleString() : null
+    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : 'Unknown'
+    const location = [city, state, country].filter(Boolean).join(', ') || 'Unknown location'
+    const mediaType = type === 'VIDEO' ? '🎥 Video' : '📷 Photo'
 
     return `
       <div class="photo-popup">
         <div class="photo-preview">
-          <img src="${url || thumbnail_url}"
-               alt="Photo"
-               loading="lazy"
-               onerror="this.src='${thumbnail_url}'">
+          <img src="${thumbnail_url}"
+               alt="${filename}"
+               loading="lazy">
         </div>
         <div class="photo-info">
-          ${location_name ? `<div class="location">${location_name}</div>` : ''}
-          ${takenDate ? `<div class="timestamp">${takenDate}</div>` : ''}
-          ${camera ? `<div class="camera">${camera}</div>` : ''}
-        </div>
-        <div class="photo-actions">
-          <a href="${url}" target="_blank" class="view-full-btn">View Full Size →</a>
+          <div class="filename">${filename}</div>
+          <div class="timestamp">Taken: ${takenDate}</div>
+          <div class="location">Location: ${location}</div>
+          <div class="source">Source: ${source}</div>
+          <div class="media-type">${mediaType}</div>
         </div>
       </div>
 
@@ -54,46 +64,35 @@ export class PhotoPopupFactory {
 
         .photo-info {
           font-size: 13px;
-          margin-bottom: 12px;
         }
 
-        .photo-info .location {
+        .photo-info > div {
+          margin-bottom: 6px;
+        }
+
+        .photo-info .filename {
           font-weight: 600;
           color: #111827;
-          margin-bottom: 4px;
         }
 
         .photo-info .timestamp {
           color: #6b7280;
           font-size: 12px;
-          margin-bottom: 4px;
         }
 
-        .photo-info .camera {
+        .photo-info .location {
+          color: #6b7280;
+          font-size: 12px;
+        }
+
+        .photo-info .source {
           color: #9ca3af;
           font-size: 11px;
         }
 
-        .photo-actions {
-          padding-top: 8px;
-          border-top: 1px solid #e5e7eb;
-        }
-
-        .view-full-btn {
-          display: block;
-          text-align: center;
-          padding: 6px 12px;
-          background: #3b82f6;
-          color: white;
-          text-decoration: none;
-          border-radius: 6px;
-          font-size: 13px;
-          font-weight: 500;
-          transition: background 0.2s;
-        }
-
-        .view-full-btn:hover {
-          background: #2563eb;
+        .photo-info .media-type {
+          font-size: 14px;
+          margin-top: 8px;
         }
       </style>
     `

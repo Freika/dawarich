@@ -3,7 +3,9 @@ import { BaseLayer } from './base_layer'
 /**
  * Scratch map layer
  * Highlights countries that have been visited based on points' country_name attribute
- * "Scratches off" countries by overlaying gold/yellow polygons
+ * Extracts country names from points (via database country relationship)
+ * Matches country names to polygons in lib/assets/countries.geojson by name field
+ * "Scratches off" visited countries by overlaying gold/amber polygons
  */
 export class ScratchLayer extends BaseLayer {
   constructor(map, options = {}) {
@@ -11,15 +13,17 @@ export class ScratchLayer extends BaseLayer {
     this.visitedCountries = new Set()
     this.countriesData = null
     this.loadingCountries = null // Promise for loading countries
+    this.apiClient = options.apiClient // For authenticated requests
   }
 
   async add(data) {
-    // Extract visited countries from points
     const points = data.features || []
-    this.visitedCountries = this.detectCountries(points)
 
-    // Load country boundaries if not already loaded
+    // Load country boundaries
     await this.loadCountryBoundaries()
+
+    // Detect which countries have been visited
+    this.visitedCountries = this.detectCountriesFromPoints(points)
 
     // Create GeoJSON with visited countries
     const geojson = this.createCountriesGeoJSON()
@@ -29,36 +33,39 @@ export class ScratchLayer extends BaseLayer {
 
   async update(data) {
     const points = data.features || []
-    this.visitedCountries = this.detectCountries(points)
 
     // Countries already loaded from add()
+    this.visitedCountries = this.detectCountriesFromPoints(points)
+
     const geojson = this.createCountriesGeoJSON()
+
     super.update(geojson)
   }
 
   /**
-   * Detect which countries have been visited from points' country_name attribute
-   * @param {Array} points - Array of point features
+   * Extract country names from points' country_name attribute
+   * Points already have country association from database (country_id relationship)
+   * @param {Array} points - Array of point features with properties.country_name
    * @returns {Set} Set of country names
    */
-  detectCountries(points) {
-    const countries = new Set()
+  detectCountriesFromPoints(points) {
+    const visitedCountries = new Set()
 
+    // Extract unique country names from points
     points.forEach(point => {
       const countryName = point.properties?.country_name
-      if (countryName && countryName.trim()) {
-        // Normalize country name
-        countries.add(countryName.trim())
+
+      if (countryName && countryName !== 'Unknown') {
+        visitedCountries.add(countryName)
       }
     })
 
-    console.log(`Scratch map: Found ${countries.size} visited countries`, Array.from(countries))
-    return countries
+    return visitedCountries
   }
 
   /**
-   * Load country boundaries from Natural Earth data via CDN
-   * Uses simplified 110m resolution for performance
+   * Load country boundaries from internal API endpoint
+   * Endpoint: GET /api/v1/countries/borders
    */
   async loadCountryBoundaries() {
     // Return existing promise if already loading
@@ -73,19 +80,23 @@ export class ScratchLayer extends BaseLayer {
 
     this.loadingCountries = (async () => {
       try {
-        // Load Natural Earth 110m countries data (simplified)
-        const response = await fetch(
-          'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson'
-        )
+        // Use internal API endpoint with authentication
+        const headers = {}
+        if (this.apiClient) {
+          headers['Authorization'] = `Bearer ${this.apiClient.apiKey}`
+        }
+
+        const response = await fetch('/api/v1/countries/borders.json', {
+          headers: headers
+        })
 
         if (!response.ok) {
-          throw new Error(`Failed to load countries: ${response.statusText}`)
+          throw new Error(`Failed to load country borders: ${response.statusText}`)
         }
 
         this.countriesData = await response.json()
-        console.log(`Scratch map: Loaded ${this.countriesData.features.length} country boundaries`)
       } catch (error) {
-        console.error('Failed to load country boundaries:', error)
+        console.error('[ScratchLayer] Failed to load country boundaries:', error)
         // Fallback to empty data
         this.countriesData = { type: 'FeatureCollection', features: [] }
       }
@@ -96,7 +107,7 @@ export class ScratchLayer extends BaseLayer {
 
   /**
    * Create GeoJSON for visited countries
-   * Matches visited country names to boundary polygons
+   * Matches visited country names from points to boundary polygons by name
    * @returns {Object} GeoJSON FeatureCollection
    */
   createCountriesGeoJSON() {
@@ -107,24 +118,17 @@ export class ScratchLayer extends BaseLayer {
       }
     }
 
-    // Filter countries by visited names
+    // Filter country features by matching name field to visited country names
     const visitedFeatures = this.countriesData.features.filter(country => {
-      // Try multiple name fields for matching
-      const name = country.properties?.NAME ||
-                   country.properties?.name ||
-                   country.properties?.ADMIN ||
-                   country.properties?.admin
+      const countryName = country.properties.name || country.properties.NAME
 
-      if (!name) return false
+      if (!countryName) return false
 
-      // Check if this country was visited (case-insensitive match)
-      return this.visitedCountries.has(name) ||
-             Array.from(this.visitedCountries).some(visited =>
-               visited.toLowerCase() === name.toLowerCase()
-             )
+      // Case-insensitive exact match
+      return Array.from(this.visitedCountries).some(visitedName =>
+        countryName.toLowerCase() === visitedName.toLowerCase()
+      )
     })
-
-    console.log(`Scratch map: Highlighting ${visitedFeatures.length} countries`)
 
     return {
       type: 'FeatureCollection',

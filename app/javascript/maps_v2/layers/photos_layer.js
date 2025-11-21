@@ -1,125 +1,215 @@
 import { BaseLayer } from './base_layer'
+import maplibregl from 'maplibre-gl'
 
 /**
  * Photos layer with thumbnail markers
- * Uses circular image markers loaded from photo thumbnails
+ * Uses HTML DOM markers with circular image thumbnails
  */
 export class PhotosLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: 'photos', ...options })
-    this.loadedImages = new Set()
+    this.markers = [] // Store marker references for cleanup
   }
 
   async add(data) {
-    // Load thumbnail images before adding layer
-    await this.loadThumbnailImages(data)
-    super.add(data)
+    console.log('[PhotosLayer] add() called with data:', {
+      featuresCount: data.features?.length || 0,
+      sampleFeature: data.features?.[0],
+      visible: this.visible
+    })
+
+    // Store data
+    this.data = data
+
+    // Create HTML markers for photos
+    this.createPhotoMarkers(data)
+    console.log('[PhotosLayer] Photo markers created')
   }
 
   async update(data) {
-    await this.loadThumbnailImages(data)
-    super.update(data)
+    console.log('[PhotosLayer] update() called with data:', {
+      featuresCount: data.features?.length || 0
+    })
+
+    // Remove existing markers
+    this.clearMarkers()
+
+    // Create new markers
+    this.createPhotoMarkers(data)
+    console.log('[PhotosLayer] Photo markers updated')
   }
 
   /**
-   * Load thumbnail images into map
+   * Create HTML markers with photo thumbnails
    * @param {Object} geojson - GeoJSON with photo features
    */
-  async loadThumbnailImages(geojson) {
-    if (!geojson?.features) return
+  createPhotoMarkers(geojson) {
+    if (!geojson?.features) {
+      console.log('[PhotosLayer] No features to create markers for')
+      return
+    }
 
-    const imagePromises = geojson.features.map(async (feature) => {
-      const photoId = feature.properties.id
-      const thumbnailUrl = feature.properties.thumbnail_url
-      const imageId = `photo-${photoId}`
+    console.log('[PhotosLayer] Creating markers for', geojson.features.length, 'photos')
+    console.log('[PhotosLayer] Sample feature:', geojson.features[0])
 
-      // Skip if already loaded
-      if (this.loadedImages.has(imageId) || this.map.hasImage(imageId)) {
-        return
+    geojson.features.forEach((feature, index) => {
+      const { id, thumbnail_url, photo_url, taken_at } = feature.properties
+      const [lng, lat] = feature.geometry.coordinates
+
+      if (index === 0) {
+        console.log('[PhotosLayer] First marker thumbnail_url:', thumbnail_url)
       }
 
-      try {
-        await this.loadImageToMap(imageId, thumbnailUrl)
-        this.loadedImages.add(imageId)
-      } catch (error) {
-        console.warn(`Failed to load photo thumbnail ${photoId}:`, error)
+      // Create marker container (MapLibre will position this)
+      const container = document.createElement('div')
+      container.style.cssText = `
+        display: ${this.visible ? 'block' : 'none'};
+      `
+
+      // Create inner element for the image (this is what we'll transform)
+      const el = document.createElement('div')
+      el.className = 'photo-marker'
+      el.style.cssText = `
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+        background-size: cover;
+        background-position: center;
+        background-image: url('${thumbnail_url}');
+        border: 3px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        transition: transform 0.2s, box-shadow 0.2s;
+      `
+
+      // Add hover effect
+      el.addEventListener('mouseenter', () => {
+        el.style.transform = 'scale(1.2)'
+        el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.4)'
+        el.style.zIndex = '1000'
+      })
+
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = 'scale(1)'
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'
+        el.style.zIndex = '1'
+      })
+
+      // Add click handler to show popup
+      el.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this.showPhotoPopup(feature)
+      })
+
+      // Add image element to container
+      container.appendChild(el)
+
+      // Create MapLibre marker with container
+      const marker = new maplibregl.Marker({ element: container })
+        .setLngLat([lng, lat])
+        .addTo(this.map)
+
+      this.markers.push(marker)
+
+      if (index === 0) {
+        console.log('[PhotosLayer] First marker created at:', lng, lat)
       }
     })
 
-    await Promise.all(imagePromises)
+    console.log('[PhotosLayer] Created', this.markers.length, 'markers, visible:', this.visible)
   }
 
   /**
-   * Load image into MapLibre
-   * @param {string} imageId - Unique image identifier
-   * @param {string} url - Image URL
+   * Show photo popup with image
+   * @param {Object} feature - GeoJSON feature with photo properties
    */
-  async loadImageToMap(imageId, url) {
-    return new Promise((resolve, reject) => {
-      this.map.loadImage(url, (error, image) => {
-        if (error) {
-          reject(error)
-          return
-        }
+  showPhotoPopup(feature) {
+    const { thumbnail_url, taken_at, filename, city, state, country, type, source } = feature.properties
+    const [lng, lat] = feature.geometry.coordinates
 
-        // Add image if not already added
-        if (!this.map.hasImage(imageId)) {
-          this.map.addImage(imageId, image)
-        }
-        resolve()
-      })
+    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : 'Unknown'
+    const location = [city, state, country].filter(Boolean).join(', ') || 'Unknown location'
+    const mediaType = type === 'VIDEO' ? '🎥 Video' : '📷 Photo'
+
+    // Create popup HTML with thumbnail image
+    const popupHTML = `
+      <div class="photo-popup" style="font-family: system-ui, -apple-system, sans-serif; max-width: 350px;">
+        <div style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: #f3f4f6;">
+          <img
+            src="${thumbnail_url}"
+            alt="${filename || 'Photo'}"
+            style="width: 100%; height: auto; max-height: 350px; object-fit: contain; display: block;"
+            loading="lazy"
+          />
+        </div>
+        <div style="font-size: 13px;">
+          ${filename ? `<div style="font-weight: 600; color: #111827; margin-bottom: 6px; word-wrap: break-word;">${filename}</div>` : ''}
+          <div style="color: #6b7280; font-size: 12px; margin-bottom: 6px;">📅 ${takenDate}</div>
+          <div style="color: #6b7280; font-size: 12px; margin-bottom: 6px;">📍 ${location}</div>
+          <div style="color: #6b7280; font-size: 12px; margin-bottom: 6px;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+          ${source ? `<div style="color: #9ca3af; font-size: 11px; margin-bottom: 6px;">Source: ${source}</div>` : ''}
+          <div style="font-size: 14px; margin-top: 8px;">${mediaType}</div>
+        </div>
+      </div>
+    `
+
+    // Create and show popup
+    new maplibregl.Popup({
+      closeButton: true,
+      closeOnClick: true,
+      maxWidth: '400px'
+    })
+      .setLngLat([lng, lat])
+      .setHTML(popupHTML)
+      .addTo(this.map)
+  }
+
+  /**
+   * Clear all markers from map
+   */
+  clearMarkers() {
+    this.markers.forEach(marker => marker.remove())
+    this.markers = []
+  }
+
+  /**
+   * Override remove to clean up markers
+   */
+  remove() {
+    this.clearMarkers()
+    super.remove()
+  }
+
+  /**
+   * Override show to display markers
+   */
+  show() {
+    this.visible = true
+    this.markers.forEach(marker => {
+      marker.getElement().style.display = 'block'
     })
   }
 
+  /**
+   * Override hide to hide markers
+   */
+  hide() {
+    this.visible = false
+    this.markers.forEach(marker => {
+      marker.getElement().style.display = 'none'
+    })
+  }
+
+  // Override these methods since we're not using source/layer approach
   getSourceConfig() {
-    return {
-      type: 'geojson',
-      data: this.data || {
-        type: 'FeatureCollection',
-        features: []
-      }
-    }
+    return null
   }
 
   getLayerConfigs() {
-    return [
-      // Photo thumbnail background circle
-      {
-        id: `${this.id}-background`,
-        type: 'circle',
-        source: this.sourceId,
-        paint: {
-          'circle-radius': 22,
-          'circle-color': '#ffffff',
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#3b82f6'
-        }
-      },
-
-      // Photo thumbnail images
-      {
-        id: this.id,
-        type: 'symbol',
-        source: this.sourceId,
-        layout: {
-          'icon-image': ['concat', 'photo-', ['get', 'id']],
-          'icon-size': 0.15, // Scale down thumbnails
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true
-        }
-      }
-    ]
+    return []
   }
 
   getLayerIds() {
-    return [`${this.id}-background`, this.id]
-  }
-
-  /**
-   * Clean up loaded images when layer is removed
-   */
-  remove() {
-    super.remove()
-    // Note: We don't remove images from map as they might be reused
+    return []
   }
 }

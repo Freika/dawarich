@@ -93,14 +93,21 @@ export class ApiClient {
    */
   async fetchPhotos({ start_at, end_at }) {
     // Photos API uses start_date/end_date parameters
+    // Pass dates as-is (matching V1 behavior)
     const params = new URLSearchParams({
       start_date: start_at,
       end_date: end_at
     })
 
-    const response = await fetch(`${this.baseURL}/photos?${params}`, {
+    const url = `${this.baseURL}/photos?${params}`
+    console.log('[ApiClient] Fetching photos from:', url)
+    console.log('[ApiClient] With headers:', this.getHeaders())
+
+    const response = await fetch(url, {
       headers: this.getHeaders()
     })
+
+    console.log('[ApiClient] Photos response status:', response.status)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch photos: ${response.statusText}`)

@@ -78,6 +78,7 @@ namespace :demo do
     puts "\n📊 Summary:"
     puts "   User: #{user.email}"
     puts "   Points: #{Point.where(user_id: user.id).count}"
+    puts "   Places: #{user.visits.joins(:place).select('DISTINCT places.id').count}"
     puts "   Suggested Visits: #{user.visits.suggested.count}"
     puts "   Confirmed Visits: #{user.visits.confirmed.count}"
     puts "   Areas: #{user.areas.count}"
@@ -110,8 +111,26 @@ namespace :demo do
       started_at = point.recorded_at
       ended_at = started_at + duration_hours.hours
 
+      # Create or find a place at this location
+      # Round coordinates to 5 decimal places (~1 meter precision)
+      rounded_lat = point.lat.round(5)
+      rounded_lon = point.lon.round(5)
+
+      place = Place.find_or_initialize_by(
+        latitude: rounded_lat,
+        longitude: rounded_lon
+      )
+
+      if place.new_record?
+        place.name = area_names.sample
+        place.lonlat = "POINT(#{rounded_lon} #{rounded_lat})"
+        place.save!
+      end
+
+      # Create visit with place
       visit = user.visits.create!(
-        name: area_names.sample,
+        name: place.name,
+        place: place,
         started_at: started_at,
         ended_at: ended_at,
         duration: (ended_at - started_at).to_i,
