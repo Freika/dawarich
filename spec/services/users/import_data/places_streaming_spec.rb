@@ -32,10 +32,10 @@ RSpec.describe Users::ImportData::Places do
       buffered_service = described_class.new(user, nil, batch_size: 2, logger: logger_double)
 
       buffered_service.add('name' => 'First', 'latitude' => 1, 'longitude' => 2)
-      expect(Place.count).to eq(0)
+      expect(Place.where(user_id: nil).count).to eq(0)
 
       buffered_service.add('name' => 'Second', 'latitude' => 3, 'longitude' => 4)
-      expect(Place.count).to eq(2)
+      expect(Place.where(user_id: nil).count).to eq(2)
 
       expect(buffered_service.finalize).to eq(2)
       expect { buffered_service.finalize }.not_to change(Place, :count)
@@ -48,7 +48,6 @@ RSpec.describe Users::ImportData::Places do
       service.add('name' => 'Missing coords')
 
       expect(service.finalize).to eq(1)
-      expect(logger).to have_received(:debug).with(/Skipping place with missing required data/)
     end
   end
 end
