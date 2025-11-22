@@ -1,14 +1,17 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modal", "form", "nameInput", "latitudeInput", "longitudeInput", 
-                   "nearbyList", "loadingSpinner", "tagCheckboxes"]
+  static targets = ["modal", "form", "nameInput", "latitudeInput", "longitudeInput",
+                   "nearbyList", "loadingSpinner", "tagCheckboxes", "loadMoreContainer", "loadMoreButton"]
   static values = {
     apiKey: String
   }
 
   connect() {
     this.setupEventListeners()
+    this.currentRadius = 0.5 // Start with 500m (0.5km)
+    this.maxRadius = 1.5 // Max 1500m (1.5km)
+    this.setupTagListeners()
   }
 
   setupEventListeners() {
@@ -17,13 +20,40 @@ export default class extends Controller {
     })
   }
 
+  setupTagListeners() {
+    // Listen for checkbox changes to update badge styling
+    if (this.hasTagCheckboxesTarget) {
+      this.tagCheckboxesTarget.addEventListener('change', (e) => {
+        if (e.target.type === 'checkbox' && e.target.name === 'tag_ids[]') {
+          const badge = e.target.nextElementSibling
+          const color = badge.dataset.color
+
+          if (e.target.checked) {
+            // Filled style
+            badge.classList.remove('badge-outline')
+            badge.style.backgroundColor = color
+            badge.style.borderColor = color
+            badge.style.color = 'white'
+          } else {
+            // Outline style
+            badge.classList.add('badge-outline')
+            badge.style.backgroundColor = 'transparent'
+            badge.style.borderColor = color
+            badge.style.color = color
+          }
+        }
+      })
+    }
+  }
+
   async open(latitude, longitude) {
     this.latitudeInputTarget.value = latitude
     this.longitudeInputTarget.value = longitude
-    
+    this.currentRadius = 0.5 // Reset radius when opening modal
+
     this.modalTarget.classList.add('modal-open')
     this.nameInputTarget.focus()
-    
+
     await this.loadNearbyPlaces(latitude, longitude)
   }
 
@@ -31,25 +61,43 @@ export default class extends Controller {
     this.modalTarget.classList.remove('modal-open')
     this.formTarget.reset()
     this.nearbyListTarget.innerHTML = ''
-    
+    this.loadMoreContainerTarget.classList.add('hidden')
+    this.currentRadius = 0.5
+
     const event = new CustomEvent('place:create:cancelled')
     document.dispatchEvent(event)
   }
 
-  async loadNearbyPlaces(latitude, longitude) {
+  async loadNearbyPlaces(latitude, longitude, radius = null) {
     this.loadingSpinnerTarget.classList.remove('hidden')
-    this.nearbyListTarget.innerHTML = ''
+
+    // Use provided radius or current radius
+    const searchRadius = radius || this.currentRadius
+    const isLoadingMore = radius !== null && radius > this.currentRadius - 0.5
+
+    // Only clear the list on initial load, not when loading more
+    if (!isLoadingMore) {
+      this.nearbyListTarget.innerHTML = ''
+    }
 
     try {
       const response = await fetch(
-        `/api/v1/places/nearby?latitude=${latitude}&longitude=${longitude}&limit=5`,
+        `/api/v1/places/nearby?latitude=${latitude}&longitude=${longitude}&radius=${searchRadius}&limit=5`,
         { headers: { 'Authorization': `Bearer ${this.apiKeyValue}` } }
       )
 
       if (!response.ok) throw new Error('Failed to load nearby places')
 
       const data = await response.json()
-      this.renderNearbyPlaces(data.places)
+      this.renderNearbyPlaces(data.places, isLoadingMore)
+
+      // Show load more button if we can expand radius further
+      if (searchRadius < this.maxRadius) {
+        this.loadMoreContainerTarget.classList.remove('hidden')
+        this.updateLoadMoreButton(searchRadius)
+      } else {
+        this.loadMoreContainerTarget.classList.add('hidden')
+      }
     } catch (error) {
       console.error('Error loading nearby places:', error)
       this.nearbyListTarget.innerHTML = '<p class="text-error">Failed to load suggestions</p>'
@@ -58,27 +106,59 @@ export default class extends Controller {
     }
   }
 
-  renderNearbyPlaces(places) {
+  renderNearbyPlaces(places, append = false) {
     if (!places || places.length === 0) {
-      this.nearbyListTarget.innerHTML = '<p class="text-sm text-gray-500">No nearby places found</p>'
+      if (!append) {
+        this.nearbyListTarget.innerHTML = '<p class="text-sm text-gray-500">No nearby places found</p>'
+      }
       return
     }
 
-    const html = places.map(place => `
+    // Calculate starting index based on existing items
+    const currentCount = append ? this.nearbyListTarget.querySelectorAll('.card').length : 0
+
+    const html = places.map((place, index) => `
       <div class="card card-compact bg-base-200 cursor-pointer hover:bg-base-300 transition"
            data-action="click->place-creation#selectNearby"
            data-place-name="${this.escapeHtml(place.name)}"
            data-place-latitude="${place.latitude}"
            data-place-longitude="${place.longitude}">
         <div class="card-body">
-          <h4 class="font-semibold">${this.escapeHtml(place.name)}</h4>
-          ${place.street ? `<p class="text-sm">${this.escapeHtml(place.street)}</p>` : ''}
-          ${place.city ? `<p class="text-xs text-gray-500">${this.escapeHtml(place.city)}, ${this.escapeHtml(place.country || '')}</p>` : ''}
+          <div class="flex gap-2">
+            <span class="badge badge-primary badge-sm">#${currentCount + index + 1}</span>
+            <div class="flex-1">
+              <h4 class="font-semibold">${this.escapeHtml(place.name)}</h4>
+              ${place.street ? `<p class="text-sm">${this.escapeHtml(place.street)}</p>` : ''}
+              ${place.city ? `<p class="text-xs text-gray-500">${this.escapeHtml(place.city)}, ${this.escapeHtml(place.country || '')}</p>` : ''}
+            </div>
+          </div>
         </div>
       </div>
     `).join('')
 
-    this.nearbyListTarget.innerHTML = html
+    if (append) {
+      this.nearbyListTarget.insertAdjacentHTML('beforeend', html)
+    } else {
+      this.nearbyListTarget.innerHTML = html
+    }
+  }
+
+  async loadMore() {
+    // Increase radius by 500m (0.5km) up to max of 1500m (1.5km)
+    if (this.currentRadius >= this.maxRadius) return
+
+    this.currentRadius = Math.min(this.currentRadius + 0.5, this.maxRadius)
+
+    const latitude = parseFloat(this.latitudeInputTarget.value)
+    const longitude = parseFloat(this.longitudeInputTarget.value)
+
+    await this.loadNearbyPlaces(latitude, longitude, this.currentRadius)
+  }
+
+  updateLoadMoreButton(currentRadius) {
+    const nextRadius = Math.min(currentRadius + 0.5, this.maxRadius)
+    const radiusInMeters = Math.round(nextRadius * 1000)
+    this.loadMoreButtonTarget.textContent = `Load More (search up to ${radiusInMeters}m)`
   }
 
   selectNearby(event) {

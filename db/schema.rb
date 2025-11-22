@@ -319,9 +319,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_210506) do
     t.datetime "updated_at", null: false
     t.geometry "path", limit: {srid: 3857, type: "line_string"}
     t.jsonb "visited_countries", default: {}, null: false
-    t.uuid "sharing_uuid"
-    t.jsonb "sharing_settings", default: {}
-    t.index ["sharing_uuid"], name: "index_trips_on_sharing_uuid", unique: true
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -347,9 +344,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_210506) do
     t.integer "points_count", default: 0, null: false
     t.string "provider"
     t.string "uid"
-    t.text "patreon_access_token"
-    t.text "patreon_refresh_token"
-    t.datetime "patreon_token_expires_at"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"

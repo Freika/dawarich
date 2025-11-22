@@ -45,7 +45,7 @@
                 <div class="flex gap-2 justify-end">
                   <%= link_to "Edit", edit_tag_path(tag), class: "btn btn-sm btn-ghost" %>
                   <%= button_to "Delete", tag_path(tag), method: :delete,
-                      data: { turbo_confirm: "Are you sure?" },
+                      data: { turbo_confirm: "Are you sure?", turbo_method: :delete },
                       class: "btn btn-sm btn-error" %>
                 </div>
               </td>

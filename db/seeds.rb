@@ -49,7 +49,9 @@ if Tag.none?
     { name: 'Travel Plans', color: '#F1C40F', icon: '🗺️' },
   ]
 
-  default_tags.each do |tag_attrs|
-    Tag.create!(tag_attrs)
+  User.find_each do |user|
+    default_tags.each do |tag_attrs|
+      Tag.create!(tag_attrs.merge(user: user))
+    end
   end
 end
