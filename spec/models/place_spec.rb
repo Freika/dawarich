@@ -40,6 +40,15 @@ RSpec.describe Place, type: :model do
       end
     end
 
+    describe '.global' do
+      let(:global_place) { create(:place, user: nil) }
+
+      it 'returns places with no user' do
+        expect(Place.global).to include(global_place)
+        expect(Place.global).not_to include(place1, place2, place3)
+      end
+    end
+
     describe '.ordered' do
       it 'orders places by name alphabetically' do
         expect(Place.for_user(user1).ordered).to eq([place2, place1])

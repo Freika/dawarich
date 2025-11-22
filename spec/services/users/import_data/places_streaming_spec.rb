@@ -32,10 +32,10 @@ RSpec.describe Users::ImportData::Places do
       buffered_service = described_class.new(user, nil, batch_size: 2, logger: logger_double)
 
       buffered_service.add('name' => 'First', 'latitude' => 1, 'longitude' => 2)
-      expect(Place.where(user_id: nil).count).to eq(0)
+      expect(Place.global.count).to eq(0)
 
       buffered_service.add('name' => 'Second', 'latitude' => 3, 'longitude' => 4)
-      expect(Place.where(user_id: nil).count).to eq(2)
+      expect(Place.global.count).to eq(2)
 
       expect(buffered_service.finalize).to eq(2)
       expect { buffered_service.finalize }.not_to change(Place, :count)

@@ -98,7 +98,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         it 'updates the original place and creates others' do
           service.call
 
-          created_place = Place.where(user_id: nil).where.not(id: place.id).first
+          created_place = Place.global.where.not(id: place.id).first
           expect(created_place.name).to include('Second Place')
           expect(created_place.city).to eq('Hamburg')
         end
@@ -584,7 +584,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         place # Force place creation
         expect { service.call }.to change { Place.count }.by(1)
 
-        created_place = Place.where(user_id: nil).where.not(id: place.id).first
+        created_place = Place.global.where.not(id: place.id).first
         expect(created_place.latitude).to eq(54.0)
         expect(created_place.longitude).to eq(13.0)
       end

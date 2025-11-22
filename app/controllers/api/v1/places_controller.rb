@@ -23,7 +23,7 @@ module Api
         if @place.save
           add_tags if tag_ids.present?
 
-          render json: serialize_place(@place.reload), status: :created
+          render json: serialize_place(@place), status: :created
         else
           render json: { errors: @place.errors.full_messages }, status: :unprocessable_entity
         end

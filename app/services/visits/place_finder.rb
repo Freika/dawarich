@@ -47,7 +47,7 @@ module Visits
     # Step 1: Find existing place
     def find_existing_place(lat, lon, name)
       # Try to find existing place by location first
-      existing_by_location = Place.where(user_id: nil).near([lat, lon], SIMILARITY_RADIUS, :m).first
+      existing_by_location = Place.global.near([lat, lon], SIMILARITY_RADIUS, :m).first
       return existing_by_location if existing_by_location
 
       # Then try by name if available

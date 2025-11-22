@@ -11,7 +11,7 @@ class Tag < ApplicationRecord
   validates :color, format: { with: /\A#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\z/, allow_blank: true }
   validates :privacy_radius_meters, numericality: {
     greater_than: 0,
-    less_than_or_equal: 5000,
+    less_than_or_equal_to: 5000,
     allow_nil: true
   }
 

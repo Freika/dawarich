@@ -82,7 +82,7 @@ class ReverseGeocoding::Places::FetchData
 
   def find_existing_places(osm_ids)
     Place.where("geodata->'properties'->>'osm_id' IN (?)", osm_ids)
-      .where(user_id: nil)
+      .global
       .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
       .compact
   end

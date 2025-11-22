@@ -111,7 +111,7 @@ RSpec.describe Users::ImportData::Places, type: :service do
       end
 
       it 'creates the place since name is different' do
-        expect { service.call }.to change { Place.where(user_id: nil).count }.by(2)
+        expect { service.call }.to change { Place.global.count }.by(2)
       end
 
       it 'creates both places with different names' do

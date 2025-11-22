@@ -27,65 +27,65 @@ RSpec.describe Taggable do
 
     describe '.with_tags' do
       it 'returns places with any of the specified tag IDs' do
-        results = Place.with_tags([tag1.id])
+        results = Place.for_user(user).with_tags([tag1.id])
         expect(results).to contain_exactly(place1, place2)
       end
 
       it 'returns places with multiple tag IDs' do
-        results = Place.with_tags([tag1.id, tag2.id])
+        results = Place.for_user(user).with_tags([tag1.id, tag2.id])
         expect(results).to contain_exactly(place1, place2)
       end
 
       it 'returns distinct results when place has multiple matching tags' do
-        results = Place.with_tags([tag1.id, tag2.id])
+        results = Place.for_user(user).with_tags([tag1.id, tag2.id])
         expect(results.count).to eq(2)
         expect(results).to contain_exactly(place1, place2)
       end
 
       it 'returns empty when no places have the specified tags' do
-        results = Place.with_tags([tag3.id])
+        results = Place.for_user(user).with_tags([tag3.id])
         expect(results).to be_empty
       end
 
       it 'accepts a single tag ID' do
-        results = Place.with_tags(tag1.id)
+        results = Place.for_user(user).with_tags(tag1.id)
         expect(results).to contain_exactly(place1, place2)
       end
     end
 
     describe '.without_tags' do
       it 'returns only places without any tags' do
-        results = Place.without_tags
+        results = Place.for_user(user).without_tags
         expect(results).to contain_exactly(place3)
       end
 
       it 'returns empty when all places have tags' do
         place3.tags << tag3
-        results = Place.without_tags
+        results = Place.for_user(user).without_tags
         expect(results).to be_empty
       end
 
       it 'returns all places when none have tags' do
         place1.tags.clear
         place2.tags.clear
-        results = Place.without_tags
+        results = Place.for_user(user).without_tags
         expect(results).to contain_exactly(place1, place2, place3)
       end
     end
 
     describe '.tagged_with' do
       it 'returns places tagged with the specified tag name' do
-        results = Place.tagged_with('Home', user)
+        results = Place.for_user(user).tagged_with('Home', user)
         expect(results).to contain_exactly(place1, place2)
       end
 
       it 'returns distinct results' do
-        results = Place.tagged_with('Home', user)
+        results = Place.for_user(user).tagged_with('Home', user)
         expect(results.count).to eq(2)
       end
 
       it 'returns empty when no places have the tag name' do
-        results = Place.tagged_with('NonExistent', user)
+        results = Place.for_user(user).tagged_with('NonExistent', user)
         expect(results).to be_empty
       end
 
@@ -95,7 +95,7 @@ RSpec.describe Taggable do
         other_place = create(:place, user: other_user)
         other_place.tags << other_tag
 
-        results = Place.tagged_with('Home', user)
+        results = Place.for_user(user).tagged_with('Home', user)
         expect(results).to contain_exactly(place1, place2)
         expect(results).not_to include(other_place)
       end
