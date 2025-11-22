@@ -150,6 +150,17 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     points.where.not(city: [nil, '']).distinct.pluck(:city).compact
   end
 
+  def home_place_coordinates
+    home_tag = tags.find_by('LOWER(name) = ?', 'home')
+    return nil unless home_tag
+    return nil if home_tag.privacy_zone?
+
+    home_place = home_tag.places.first
+    return nil unless home_place
+
+    [home_place.latitude, home_place.longitude]
+  end
+
   private
 
   def create_api_key
@@ -186,16 +197,5 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   def schedule_post_trial_emails
     Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
     Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
-  end
-
-  def home_place_coordinates
-    home_tag = tags.find_by('LOWER(name) = ?', 'home')
-    return nil unless home_tag
-    return nil if home_tag.privacy_zone?
-
-    home_place = home_tag.places.first
-    return nil unless home_place
-
-    [home_place.latitude, home_place.longitude]
   end
 end
