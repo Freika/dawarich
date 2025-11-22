@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Enhanced Color Picker Controller
 // Based on RailsBlocks pattern: https://railsblocks.com/docs/color-picker
 export default class extends Controller {
-  static targets = ["picker", "display", "input", "swatch"]
+  static targets = ["picker", "display", "displayText", "input", "swatch"]
   static values = {
     default: { type: String, default: "#6ab0a4" }
   }
@@ -47,6 +47,11 @@ export default class extends Controller {
     // Update display
     if (this.hasDisplayTarget) {
       this.displayTarget.style.backgroundColor = color
+    }
+
+    // Update display text
+    if (this.hasDisplayTextTarget) {
+      this.displayTextTarget.textContent = color
     }
 
     // Update active swatch styling

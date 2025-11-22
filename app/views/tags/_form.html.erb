@@ -71,13 +71,11 @@
         <div class="flex items-center gap-3">
           <label class="flex items-center gap-2 cursor-pointer group">
             <span class="text-sm font-medium">Custom:</span>
-            <%= f.color_field :color,
-                class: "w-12 h-12 rounded-lg cursor-pointer border-2 border-base-300 hover:scale-105 transition-transform color-input",
-                data: {
-                  color_picker_target: "picker",
-                  action: "input->color-picker#updateFromPicker"
-                },
-                value: tag.color.presence || '#6ab0a4' %>
+            <input type="color"
+                   class="w-12 h-12 rounded-lg cursor-pointer border-2 border-base-300 hover:scale-105 transition-transform color-input"
+                   value="<%= tag.color.presence || '#6ab0a4' %>"
+                   data-color-picker-target="picker"
+                   data-action="input->color-picker#updateFromPicker">
           </label>
 
           <!-- Color Display -->
@@ -92,7 +90,7 @@
         </div>
       </div>
 
-      <%= f.hidden_field :color, data: { color_picker_target: "input" } %>
+      <%= f.hidden_field :color, value: tag.color.presence || '#6ab0a4', data: { color_picker_target: "input" } %>
 
       <label class="label">
         <span class="label-text-alt">Choose from swatches or pick a custom color</span>
