@@ -20,7 +20,7 @@ RSpec.describe Visits::PlaceFinder do
     end
 
     context 'when an existing place is found' do
-      let!(:existing_place) { create(:place, latitude: latitude, longitude: longitude) }
+      let!(:existing_place) { create(:place, latitude: latitude, longitude: longitude, lonlat: "POINT(#{longitude} #{latitude})") }
 
       it 'returns the existing place as main_place' do
         result = subject.find_or_create_place(visit_data)
@@ -40,7 +40,9 @@ RSpec.describe Visits::PlaceFinder do
         similar_named_place = create(:place,
                                      name: 'Test Place',
                                      latitude: latitude + 0.0001,
-                                     longitude: longitude + 0.0001)
+                                     longitude: longitude + 0.0001,
+                                     lonlat: "POINT(#{longitude + 0.0001} #{latitude + 0.0001})"
+                                     )
 
         allow(subject).to receive(:find_existing_place).and_return(similar_named_place)
 
