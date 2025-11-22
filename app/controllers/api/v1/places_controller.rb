@@ -70,9 +70,9 @@ module Api
       end
 
       def tag_ids
-    ids = params.dig(:place, :tag_ids)
-    Array(ids).compact
-  end
+        ids = params.dig(:place, :tag_ids)
+        Array(ids).compact
+      end
 
       def add_tags
         return if tag_ids.empty?

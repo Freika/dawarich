@@ -98,7 +98,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         it 'updates the original place and creates others' do
           service.call
 
-          created_place = Place.where.not(id: place.id).first
+          created_place = Place.where(user_id: nil).where.not(id: place.id).first
           expect(created_place.name).to include('Second Place')
           expect(created_place.city).to eq('Hamburg')
         end
@@ -584,15 +584,15 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         place # Force place creation
         expect { service.call }.to change { Place.count }.by(1)
 
-        created_place = Place.where.not(id: place.id).first
+        created_place = Place.where(user_id: nil).where.not(id: place.id).first
         expect(created_place.latitude).to eq(54.0)
         expect(created_place.longitude).to eq(13.0)
       end
     end
 
     context 'when lonlat is already present on existing place' do
-      let!(:existing_place) { create(:place, :with_geodata, lonlat: 'POINT(10.0 50.0)') }
-      let(:existing_data) do
+      let!(:existing_place) { create(:place, :with_geodata, lonlat: 'POINT(10.0 50.0)', latitude: 50.0, longitude: 10.0) }
+      let(:mock_data) do
         double(
           data: {
             'geometry' => { 'coordinates' => [15.0, 55.0] },
@@ -605,7 +605,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
 
       before do
-        allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, existing_data])
+        allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, mock_data])
       end
 
       it 'does not override existing coordinates when updating geodata' do
