@@ -117,8 +117,22 @@ export default class extends BaseController {
       this.markers = [];
     }
 
-    // Set default center (Berlin) if no markers available
-    this.center = this.markers.length > 0 ? this.markers[this.markers.length - 1] : [52.514568, 13.350111];
+    // Set default center based on priority: Home place > last marker > Berlin
+    let defaultCenter = [52.514568, 13.350111]; // Berlin as final fallback
+
+    // Try to get Home place coordinates
+    try {
+      const homeCoords = this.element.dataset.home_coordinates ?
+        JSON.parse(this.element.dataset.home_coordinates) : null;
+      if (homeCoords && Array.isArray(homeCoords) && homeCoords.length === 2) {
+        defaultCenter = homeCoords;
+      }
+    } catch (error) {
+      console.warn('Error parsing home coordinates:', error);
+    }
+
+    // Use last marker if available, otherwise use default center (Home or Berlin)
+    this.center = this.markers.length > 0 ? this.markers[this.markers.length - 1] : defaultCenter;
 
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
