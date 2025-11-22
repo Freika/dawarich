@@ -22,8 +22,8 @@ module Api
 
         if @place.save
           add_tags if tag_ids.present?
-          @place.reload # Reload to get updated associations
-          render json: serialize_place(@place), status: :created
+
+          render json: serialize_place(@place.reload), status: :created
         else
           render json: { errors: @place.errors.full_messages }, status: :unprocessable_entity
         end
@@ -70,10 +70,9 @@ module Api
       end
 
       def tag_ids
-        # tag_ids can be in params[:place][:tag_ids] or params[:tag_ids]
-        ids = params.dig(:place, :tag_ids) || params[:tag_ids]
-        Array(ids).compact
-      end
+    ids = params.dig(:place, :tag_ids)
+    Array(ids).compact
+  end
 
       def add_tags
         return if tag_ids.empty?

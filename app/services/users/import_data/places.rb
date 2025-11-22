@@ -76,10 +76,10 @@ class Users::ImportData::Places
     logger.debug "Processing place for import: #{name} at (#{latitude}, #{longitude})"
 
     existing_place = Place.where(
-      user_id: user.id,
       name: name,
       latitude: latitude,
-      longitude: longitude
+      longitude: longitude,
+      user_id: nil
     ).first
 
     if existing_place
@@ -94,7 +94,6 @@ class Users::ImportData::Places
     place_attributes['lonlat'] = "POINT(#{longitude} #{latitude})"
     place_attributes['latitude'] = latitude
     place_attributes['longitude'] = longitude
-    place_attributes['user_id'] = user.id
     place_attributes.delete('user')
 
     logger.debug "Creating place with attributes: #{place_attributes.inspect}"

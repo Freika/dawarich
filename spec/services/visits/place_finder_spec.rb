@@ -20,7 +20,7 @@ RSpec.describe Visits::PlaceFinder do
     end
 
     context 'when an existing place is found' do
-      let!(:existing_place) { create(:place, user: user, latitude: latitude, longitude: longitude) }
+      let!(:existing_place) { create(:place, latitude: latitude, longitude: longitude) }
 
       it 'returns the existing place as main_place' do
         result = subject.find_or_create_place(visit_data)
@@ -38,7 +38,6 @@ RSpec.describe Visits::PlaceFinder do
 
       it 'finds an existing place by name within search radius' do
         similar_named_place = create(:place,
-                                     user: user,
                                      name: 'Test Place',
                                      latitude: latitude + 0.0001,
                                      longitude: longitude + 0.0001)
@@ -184,9 +183,9 @@ RSpec.describe Visits::PlaceFinder do
     end
 
     context 'with multiple potential places' do
-      let!(:place1) { create(:place, user: user, name: 'Place 1', latitude: latitude, longitude: longitude) }
-      let!(:place2) { create(:place, user: user, name: 'Place 2', latitude: latitude + 0.0005, longitude: longitude + 0.0005) }
-      let!(:place3) { create(:place, user: user, name: 'Place 3', latitude: latitude + 0.001, longitude: longitude + 0.001) }
+      let!(:place1) { create(:place, name: 'Place 1', latitude: latitude, longitude: longitude) }
+      let!(:place2) { create(:place, name: 'Place 2', latitude: latitude + 0.0005, longitude: longitude + 0.0005) }
+      let!(:place3) { create(:place, name: 'Place 3', latitude: latitude + 0.001, longitude: longitude + 0.001) }
 
       it 'selects the closest place as main_place' do
         result = subject.find_or_create_place(visit_data)
@@ -202,7 +201,7 @@ RSpec.describe Visits::PlaceFinder do
       end
 
       it 'may include places with the same name' do
-        dup_place = create(:place, user: user, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
+        dup_place = create(:place, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
 
         allow(subject).to receive(:place_name_exists?).and_return(false)
 

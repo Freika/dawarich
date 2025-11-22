@@ -141,7 +141,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       create(:visit, user: original_user, place: nil, name: 'Unknown Location')
 
       # Calculate counts properly - places are accessed through visits
-      original_places_count = original_user.places.distinct.count
+      original_places_count = original_user.visited_places.distinct.count
       original_visits_count = original_user.visits.count
 
       # Export the data
@@ -187,7 +187,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
         "Expected #{original_visits_count} visits to be created, got #{import_stats[:visits_created]}"
 
       # Verify the imported user has access to all their data
-      imported_places_count = import_user.places.distinct.count
+      imported_places_count = import_user.visited_places.distinct.count
       imported_visits_count = import_user.visits.count
 
       expect(imported_places_count).to \
@@ -309,7 +309,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       notifications: user.notifications.count,
       points: user.points.count,
       visits: user.visits.count,
-      places: user.places.count
+      places: user.visited_places.count
     }
   end
 

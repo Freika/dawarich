@@ -71,9 +71,10 @@ RSpec.describe Users::ImportData::Places, type: :service do
 
     context 'with duplicate places (same name)' do
       before do
-        # Create an existing place with same name but different coordinates for the same user
-        create(:place, user: user, name: 'Home',
-               latitude: 41.0000, longitude: -75.0000)
+        # Create an existing place with same name but different coordinates
+        create(:place, name: 'Home',
+               latitude: 41.0000, longitude: -75.0000,
+               lonlat: 'POINT(-75.0000 41.0000)')
       end
 
       it 'creates the place since coordinates are different' do
@@ -82,7 +83,7 @@ RSpec.describe Users::ImportData::Places, type: :service do
 
       it 'creates both places with different coordinates' do
         service.call
-        home_places = user.places.where(name: 'Home')
+        home_places = Place.where(name: 'Home')
         expect(home_places.count).to eq(2)
 
         imported_home = home_places.find_by(latitude: 40.7128, longitude: -74.0060)
@@ -92,9 +93,10 @@ RSpec.describe Users::ImportData::Places, type: :service do
 
     context 'with exact duplicate places (same name and coordinates)' do
       before do
-        # Create an existing place with exact same name and coordinates for the same user
-        create(:place, user: user, name: 'Home',
-               latitude: 40.7128, longitude: -74.0060)
+        # Create an existing place with exact same name and coordinates
+        create(:place, name: 'Home',
+               latitude: 40.7128, longitude: -74.0060,
+               lonlat: 'POINT(-74.0060 40.7128)')
       end
 
       it 'skips exact duplicate places' do
@@ -116,9 +118,10 @@ RSpec.describe Users::ImportData::Places, type: :service do
 
     context 'with duplicate places (same coordinates)' do
       before do
-        # Create an existing place with same coordinates but different name for the same user
-        create(:place, user: user, name: 'Different Name',
-               latitude: 40.7128, longitude: -74.0060)
+        # Create an existing place with same coordinates but different name
+        create(:place, name: 'Different Name',
+               latitude: 40.7128, longitude: -74.0060,
+               lonlat: 'POINT(-74.0060 40.7128)')
       end
 
       it 'creates the place since name is different' do
@@ -127,7 +130,7 @@ RSpec.describe Users::ImportData::Places, type: :service do
 
       it 'creates both places with different names' do
         service.call
-        places_at_location = user.places.where(latitude: 40.7128, longitude: -74.0060)
+        places_at_location = Place.where(latitude: 40.7128, longitude: -74.0060)
         expect(places_at_location.count).to eq(2)
         expect(places_at_location.pluck(:name)).to contain_exactly('Home', 'Different Name')
       end
@@ -135,8 +138,9 @@ RSpec.describe Users::ImportData::Places, type: :service do
 
     context 'with places having same name but different coordinates' do
       before do
-        create(:place, user: user, name: 'Different Place',
-               latitude: 41.0000, longitude: -75.0000)
+        create(:place, name: 'Different Place',
+               latitude: 41.0000, longitude: -75.0000,
+               lonlat: 'POINT(-75.0000 41.0000)')
       end
 
       it 'creates both places since coordinates and names differ' do
