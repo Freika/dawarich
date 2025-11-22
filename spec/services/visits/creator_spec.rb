@@ -25,7 +25,7 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when a confirmed visit already exists at the same location' do
-      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place') }
+      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place', latitude: 40.7128, longitude: -74.0060, user_id: nil) }
       let!(:existing_visit) do
         create(
           :visit,
@@ -46,7 +46,7 @@ RSpec.describe Visits::Creator do
         expect(visits.first.status).to eq('confirmed')
 
         # Verify no new visits were created
-        expect(Visit.count).to eq(1)
+        expect(user.visits.reload.count).to eq(1)
       end
 
       it 'does not change points associations' do
@@ -61,7 +61,7 @@ RSpec.describe Visits::Creator do
     end
 
     context 'when a confirmed visit exists but at a different location' do
-      let(:different_place) { create(:place, lonlat: 'POINT(-73.9000 41.0000)', name: 'Different Place') }
+      let(:different_place) { create(:place, lonlat: 'POINT(-73.9000 41.0000)', name: 'Different Place', latitude: 41.0000, longitude: -73.9000) }
       let!(:existing_visit) do
         create(
           :visit,
@@ -73,7 +73,7 @@ RSpec.describe Visits::Creator do
           duration: 45
         )
       end
-      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'New Place') }
+      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'New Place', latitude: 40.7128, longitude: -74.0060) }
       let(:place_finder) { instance_double(Visits::PlaceFinder) }
 
       before do
@@ -90,7 +90,7 @@ RSpec.describe Visits::Creator do
         expect(visits.first.status).to eq('suggested')
 
         # Should now have two visits
-        expect(Visit.count).to eq(2)
+        expect(user.visits.reload.count).to eq(2)
       end
     end
 
