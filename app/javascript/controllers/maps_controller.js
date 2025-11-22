@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
 import "leaflet.heat";
+import "leaflet.control.layers.tree";
 import consumer from "../channels/consumer";
 
 import { createMarkersArray } from "../maps/markers";
@@ -37,6 +38,8 @@ import { countryCodesMap } from "../maps/country_codes";
 import { VisitsManager } from "../maps/visits";
 import { ScratchLayer } from "../maps/scratch_layer";
 import { LocationSearch } from "../maps/location_search";
+import { PlacesManager } from "../maps/places";
+import { PrivacyZoneManager } from "../maps/privacy_zones";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
@@ -44,7 +47,11 @@ import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
 import { createAllMapLayers } from "../maps/layers";
 import { applyThemeToControl, applyThemeToButton, applyThemeToPanel } from "../maps/theme_utils";
-import { addTopRightButtons } from "../maps/map_controls";
+import {
+  addTopRightButtons,
+  setCreatePlaceButtonActive,
+  setCreatePlaceButtonInactive
+} from "../maps/map_controls";
 
 export default class extends BaseController {
   static targets = ["container"];
@@ -57,7 +64,7 @@ export default class extends BaseController {
   tracksVisible = false;
   tracksSubscription = null;
 
-  connect() {
+  async connect() {
     super.connect();
     console.log("Map controller connected");
 
@@ -110,8 +117,22 @@ export default class extends BaseController {
       this.markers = [];
     }
 
-    // Set default center (Berlin) if no markers available
-    this.center = this.markers.length > 0 ? this.markers[this.markers.length - 1] : [52.514568, 13.350111];
+    // Set default center based on priority: Home place > last marker > Berlin
+    let defaultCenter = [52.514568, 13.350111]; // Berlin as final fallback
+
+    // Try to get Home place coordinates
+    try {
+      const homeCoords = this.element.dataset.home_coordinates ?
+        JSON.parse(this.element.dataset.home_coordinates) : null;
+      if (homeCoords && Array.isArray(homeCoords) && homeCoords.length === 2) {
+        defaultCenter = homeCoords;
+      }
+    } catch (error) {
+      console.warn('Error parsing home coordinates:', error);
+    }
+
+    // Use last marker if available, otherwise use default center (Home or Berlin)
+    this.center = this.markers.length > 0 ? this.markers[this.markers.length - 1] : defaultCenter;
 
     this.map = L.map(this.containerTarget).setView([this.center[0], this.center[1]], 14);
 
@@ -157,6 +178,12 @@ export default class extends BaseController {
     var bounds = L.latLngBounds(southWest, northEast);
 
     this.map.setMaxBounds(bounds);
+
+    // Initialize privacy zone manager
+    this.privacyZoneManager = new PrivacyZoneManager(this.map, this.apiKey);
+
+    // Load privacy zones and apply filtering BEFORE creating map layers
+    await this.initializePrivacyZones();
 
     this.markersArray = createMarkersArray(this.markers, this.userSettings, this.apiKey);
     this.markersLayer = L.layerGroup(this.markersArray);
@@ -213,6 +240,18 @@ export default class extends BaseController {
     // Expose visits manager globally for location search integration
     window.visitsManager = this.visitsManager;
 
+    // Initialize the places manager
+    this.placesManager = new PlacesManager(this.map, this.apiKey);
+    this.placesManager.initialize();
+
+    // Parse user tags for places layer control
+    try {
+      this.userTags = this.element.dataset.user_tags ? JSON.parse(this.element.dataset.user_tags) : [];
+    } catch (error) {
+      console.error('Error parsing user tags:', error);
+      this.userTags = [];
+    }
+
     // Expose maps controller globally for family integration
     window.mapsController = this;
 
@@ -229,9 +268,6 @@ export default class extends BaseController {
     }
     this.switchRouteMode('routes', true);
 
-    // Initialize layers based on settings
-    this.initializeLayersFromSettings();
-
     // Listen for Family Members layer becoming ready
     this.setupFamilyLayerListener();
 
@@ -247,21 +283,12 @@ export default class extends BaseController {
     // Add all top-right buttons in the correct order
     this.initializeTopRightButtons();
 
-    // Initialize layers for the layer control
-    const controlsLayer = {
-      Points: this.markersLayer,
-      Routes: this.polylinesLayer,
-      Tracks: this.tracksLayer,
-      Heatmap: this.heatmapLayer,
-      "Fog of War": this.fogOverlay,
-      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
-      Areas: this.areasLayer,
-      Photos: this.photoMarkers,
-      "Suggested Visits": this.visitsManager.getVisitCirclesLayer(),
-      "Confirmed Visits": this.visitsManager.getConfirmedVisitCirclesLayer()
-    };
+    // Initialize tree-based layer control (must be before initializeLayersFromSettings)
+    this.layerControl = this.createTreeLayerControl();
+    this.map.addControl(this.layerControl);
 
-    this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+    // Initialize layers based on settings (must be after tree control creation)
+    this.initializeLayersFromSettings();
 
 
     // Initialize Live Map Handler
@@ -441,6 +468,144 @@ export default class extends BaseController {
     return maps;
   }
 
+  createTreeLayerControl(additionalLayers = {}) {
+    // Build base maps tree structure
+    const baseMapsTree = {
+      label: 'Map Styles',
+      children: []
+    };
+
+    const maps = this.baseMaps();
+    Object.entries(maps).forEach(([name, layer]) => {
+      baseMapsTree.children.push({
+        label: name,
+        layer: layer
+      });
+    });
+
+    // Build places subtree with tags
+    // Store filtered layers for later restoration
+    if (!this.placesFilteredLayers) {
+      this.placesFilteredLayers = {};
+    }
+    // Store mapping of tag IDs to layers for persistence
+    if (!this.tagLayerMapping) {
+      this.tagLayerMapping = {};
+    }
+
+    // Create Untagged layer
+    const untaggedLayer = this.placesManager?.createFilteredLayer([]) || L.layerGroup();
+    this.placesFilteredLayers['Untagged'] = untaggedLayer;
+    // Store layer reference with special ID for untagged
+    untaggedLayer._placeTagId = 'untagged';
+
+    const placesChildren = [
+      {
+        label: 'Untagged',
+        layer: untaggedLayer
+      }
+    ];
+
+    // Add individual tag layers
+    if (this.userTags && this.userTags.length > 0) {
+      this.userTags.forEach(tag => {
+        const icon = tag.icon || '📍';
+        const label = `${icon} #${tag.name}`;
+        const tagLayer = this.placesManager?.createFilteredLayer([tag.id]) || L.layerGroup();
+        this.placesFilteredLayers[label] = tagLayer;
+        // Store tag ID on the layer itself for easy identification
+        tagLayer._placeTagId = tag.id;
+        // Store in mapping for lookup by ID
+        this.tagLayerMapping[tag.id] = { layer: tagLayer, label: label };
+        placesChildren.push({
+          label: label,
+          layer: tagLayer
+        });
+      });
+    }
+
+    // Build visits subtree
+    const visitsChildren = [
+      {
+        label: 'Suggested',
+        layer: this.visitsManager?.getVisitCirclesLayer() || L.layerGroup()
+      },
+      {
+        label: 'Confirmed',
+        layer: this.visitsManager?.getConfirmedVisitCirclesLayer() || L.layerGroup()
+      }
+    ];
+
+    // Build the overlays tree structure
+    const overlaysTree = {
+      label: 'Layers',
+      selectAllCheckbox: false,
+      children: [
+        {
+          label: 'Points',
+          layer: this.markersLayer
+        },
+        {
+          label: 'Routes',
+          layer: this.polylinesLayer
+        },
+        {
+          label: 'Tracks',
+          layer: this.tracksLayer
+        },
+        {
+          label: 'Heatmap',
+          layer: this.heatmapLayer
+        },
+        {
+          label: 'Fog of War',
+          layer: this.fogOverlay
+        },
+        {
+          label: 'Scratch map',
+          layer: this.scratchLayerManager?.getLayer() || L.layerGroup()
+        },
+        {
+          label: 'Areas',
+          layer: this.areasLayer
+        },
+        {
+          label: 'Photos',
+          layer: this.photoMarkers
+        },
+        {
+          label: 'Visits',
+          selectAllCheckbox: true,
+          children: visitsChildren
+        },
+        {
+          label: 'Places',
+          selectAllCheckbox: true,
+          children: placesChildren
+        }
+      ]
+    };
+
+    // Add Family Members layer if available
+    if (additionalLayers['Family Members']) {
+      overlaysTree.children.push({
+        label: 'Family Members',
+        layer: additionalLayers['Family Members']
+      });
+    }
+
+    // Create the tree control
+    return L.control.layers.tree(
+      baseMapsTree,
+      overlaysTree,
+      {
+        namedToggle: false,
+        collapsed: true,
+        position: 'topright'
+      }
+    );
+  }
+
   removeEventListeners() {
     document.removeEventListener('click', this.handleDeleteClick);
   }
@@ -505,7 +670,7 @@ export default class extends BaseController {
           endDate: endDate,
           userSettings: this.userSettings
         });
-      } else if (event.name === 'Suggested Visits' || event.name === 'Confirmed Visits') {
+      } else if (event.name === 'Suggested' || event.name === 'Confirmed') {
         // Load visits when layer is enabled
         console.log(`${event.name} layer enabled via layer control`);
         if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
@@ -548,9 +713,9 @@ export default class extends BaseController {
         if (this.drawControl && this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
           this.map.removeControl(this.drawControl);
         }
-      } else if (event.name === 'Suggested Visits') {
+      } else if (event.name === 'Suggested') {
         // Clear suggested visits when layer is disabled
-        console.log('Suggested Visits layer disabled via layer control');
+        console.log('Suggested layer disabled via layer control');
         if (this.visitsManager) {
           // Clear the visit circles when layer is disabled
           this.visitsManager.visitCircles.clearLayers();
@@ -565,6 +730,15 @@ export default class extends BaseController {
         // Fog canvas will be automatically removed by the layer's onRemove method
         this.fogOverlay = null;
       }
+    });
+
+    // Listen for place creation events to disable creation mode
+    document.addEventListener('place:created', () => {
+      this.disablePlaceCreationMode();
+    });
+
+    document.addEventListener('place:create:cancelled', () => {
+      this.disablePlaceCreationMode();
     });
   }
 
@@ -593,13 +767,10 @@ export default class extends BaseController {
 
   saveEnabledLayers() {
     const enabledLayers = [];
-    const layerNames = [
-      'Points', 'Routes', 'Tracks', 'Heatmap', 'Fog of War',
-      'Scratch map', 'Areas', 'Photos', 'Suggested Visits', 'Confirmed Visits',
-      'Family Members'
-    ];
 
-    const controlsLayer = {
+    // Iterate through all layers on the map to determine which are enabled
+    // This is more reliable than parsing the DOM
+    const layersToCheck = {
       'Points': this.markersLayer,
       'Routes': this.polylinesLayer,
       'Tracks': this.tracksLayer,
@@ -608,17 +779,26 @@ export default class extends BaseController {
       'Scratch map': this.scratchLayerManager?.getLayer(),
       'Areas': this.areasLayer,
       'Photos': this.photoMarkers,
-      'Suggested Visits': this.visitsManager?.getVisitCirclesLayer(),
-      'Confirmed Visits': this.visitsManager?.getConfirmedVisitCirclesLayer(),
+      'Suggested': this.visitsManager?.getVisitCirclesLayer(),
+      'Confirmed': this.visitsManager?.getConfirmedVisitCirclesLayer(),
       'Family Members': window.familyMembersController?.familyMarkersLayer
     };
 
-    layerNames.forEach(name => {
-      const layer = controlsLayer[name];
+    // Check standard layers
+    Object.entries(layersToCheck).forEach(([name, layer]) => {
       if (layer && this.map.hasLayer(layer)) {
         enabledLayers.push(name);
       }
     });
+
+    // Check place tag layers - save as "place_tag:ID" format
+    if (this.placesFilteredLayers) {
+      Object.values(this.placesFilteredLayers).forEach(layer => {
+        if (layer && this.map.hasLayer(layer) && layer._placeTagId !== undefined) {
+          enabledLayers.push(`place_tag:${layer._placeTagId}`);
+        }
+      });
+    }
 
     fetch('/api/v1/settings', {
       method: 'PATCH',
@@ -636,7 +816,7 @@ export default class extends BaseController {
     .then((data) => {
       if (data.status === 'success') {
         console.log('Enabled layers saved:', enabledLayers);
-        showFlashMessage('notice', 'Map layer preferences saved');
+        // showFlashMessage('notice', 'Map layer preferences saved');
       } else {
         console.error('Failed to save enabled layers:', data.message);
         showFlashMessage('error', `Failed to save layer preferences: ${data.message}`);
@@ -693,16 +873,8 @@ export default class extends BaseController {
       // Update the layer control
       if (this.layerControl) {
         this.map.removeControl(this.layerControl);
-        const controlsLayer = {
-          Points: this.markersLayer || L.layerGroup(),
-          Routes: this.polylinesLayer || L.layerGroup(),
-          Heatmap: this.heatmapLayer || L.layerGroup(),
-          "Fog of War": this.fogOverlay,
-          "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
-          Areas: this.areasLayer || L.layerGroup(),
-          Photos: this.photoMarkers || L.layerGroup()
-        };
-        this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+        this.layerControl = this.createTreeLayerControl();
+        this.map.addControl(this.layerControl);
       }
 
       // Update heatmap
@@ -1274,7 +1446,8 @@ export default class extends BaseController {
       };
 
       // Re-add the layer control in the same position
-      this.layerControl = L.control.layers(this.baseMaps(), controlsLayer).addTo(this.map);
+      this.layerControl = this.createTreeLayerControl();
+      this.map.addControl(this.layerControl);
 
       // Restore layer visibility states
       Object.entries(layerStates).forEach(([name, wasVisible]) => {
@@ -1315,7 +1488,7 @@ export default class extends BaseController {
 
   initializeTopRightButtons() {
     // Add all top-right buttons in the correct order:
-    // 1. Select Area, 2. Add Visit, 3. Open Calendar, 4. Open Drawer
+    // 1. Select Area, 2. Add Visit, 3. Create Place, 4. Open Calendar, 5. Open Drawer
     // Note: Layer control is added separately and appears at the top
 
     this.topRightControls = addTopRightButtons(
@@ -1324,6 +1497,7 @@ export default class extends BaseController {
         onSelectArea: () => this.visitsManager.toggleSelectionMode(),
         // onAddVisit is intentionally null - the add_visit_controller will attach its handler
         onAddVisit: null,
+        onCreatePlace: () => this.togglePlaceCreationMode(),
         onToggleCalendar: () => this.toggleRightPanel(),
         onToggleDrawer: () => this.visitsManager.toggleDrawer()
       },
@@ -1517,6 +1691,7 @@ export default class extends BaseController {
     const enabledLayers = this.userSettings.enabled_map_layers || ['Points', 'Routes', 'Heatmap'];
     console.log('Initializing layers from settings:', enabledLayers);
 
+    // Standard layers mapping
     const controlsLayer = {
       'Points': this.markersLayer,
       'Routes': this.polylinesLayer,
@@ -1526,12 +1701,12 @@ export default class extends BaseController {
       'Scratch map': this.scratchLayerManager?.getLayer(),
       'Areas': this.areasLayer,
       'Photos': this.photoMarkers,
-      'Suggested Visits': this.visitsManager?.getVisitCirclesLayer(),
-      'Confirmed Visits': this.visitsManager?.getConfirmedVisitCirclesLayer(),
+      'Suggested': this.visitsManager?.getVisitCirclesLayer(),
+      'Confirmed': this.visitsManager?.getConfirmedVisitCirclesLayer(),
       'Family Members': window.familyMembersController?.familyMarkersLayer
     };
 
-    // Apply saved layer preferences
+    // Apply saved layer preferences for standard layers
     Object.entries(controlsLayer).forEach(([name, layer]) => {
       if (!layer) {
         if (enabledLayers.includes(name)) {
@@ -1572,7 +1747,7 @@ export default class extends BaseController {
           });
         } else if (name === 'Fog of War') {
           this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
-        } else if (name === 'Suggested Visits' || name === 'Confirmed Visits') {
+        } else if (name === 'Suggested' || name === 'Confirmed') {
           if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
             this.visitsManager.fetchAndDisplayVisits();
           }
@@ -1598,6 +1773,81 @@ export default class extends BaseController {
         // Remove layer from map
         this.map.removeLayer(layer);
         console.log(`Disabled layer: ${name}`);
+      }
+    });
+
+    // Handle place tag layers (format: "place_tag:ID" or "place_tag:untagged")
+    enabledLayers.forEach(layerKey => {
+      if (layerKey.startsWith('place_tag:')) {
+        const tagId = layerKey.replace('place_tag:', '');
+        let layer;
+
+        if (tagId === 'untagged') {
+          // Find untagged layer
+          layer = Object.values(this.placesFilteredLayers || {}).find(l => l._placeTagId === 'untagged');
+        } else {
+          // Find layer by tag ID
+          const tagIdNum = parseInt(tagId);
+          layer = Object.values(this.placesFilteredLayers || {}).find(l => l._placeTagId === tagIdNum);
+        }
+
+        if (layer && !this.map.hasLayer(layer)) {
+          this.isRestoringLayers = true;
+          layer.addTo(this.map);
+          console.log(`Enabled place tag layer: ${tagId}`);
+          setTimeout(() => { this.isRestoringLayers = false; }, 100);
+        }
+      }
+    });
+
+    // Update the tree control checkboxes to reflect the layer states
+    // Wait a bit for the tree control to be fully initialized
+    setTimeout(() => {
+      this.updateTreeControlCheckboxes(enabledLayers);
+    }, 100);
+  }
+
+  updateTreeControlCheckboxes(enabledLayers) {
+    const layerControl = document.querySelector('.leaflet-control-layers');
+    if (!layerControl) {
+      console.log('Layer control not found, skipping checkbox update');
+      return;
+    }
+
+    // Extract place tag IDs from enabledLayers
+    const enabledTagIds = new Set();
+    enabledLayers.forEach(key => {
+      if (key.startsWith('place_tag:')) {
+        const tagId = key.replace('place_tag:', '');
+        enabledTagIds.add(tagId === 'untagged' ? 'untagged' : parseInt(tagId));
+      }
+    });
+
+    // Find and check/uncheck all layer checkboxes based on saved state
+    const inputs = layerControl.querySelectorAll('input[type="checkbox"]');
+    inputs.forEach(input => {
+      const label = input.closest('label') || input.nextElementSibling;
+      if (label) {
+        const layerName = label.textContent.trim();
+
+        // Check if this is a standard layer
+        let shouldBeEnabled = enabledLayers.includes(layerName);
+
+        // Check if this is a place tag layer by finding the layer object
+        if (!shouldBeEnabled && this.placesFilteredLayers) {
+          const placeLayer = this.placesFilteredLayers[layerName];
+          if (placeLayer && placeLayer._placeTagId !== undefined) {
+            shouldBeEnabled = enabledTagIds.has(placeLayer._placeTagId);
+          }
+        }
+
+        // Skip group headers that might have checkboxes
+        if (layerName && !layerName.includes('Map Styles') && !layerName.includes('Layers')) {
+          if (shouldBeEnabled !== input.checked) {
+            input.checked = shouldBeEnabled;
+            console.log(`Updated checkbox for ${layerName}: ${shouldBeEnabled}`);
+          }
+        }
       }
     });
   }
@@ -2149,72 +2399,73 @@ export default class extends BaseController {
   updateLayerControl(additionalLayers = {}) {
     if (!this.layerControl) return;
 
-    // Store which base and overlay layers are currently visible
-    const overlayStates = {};
-    let activeBaseLayer = null;
-    let activeBaseLayerName = null;
-
-    if (this.layerControl._layers) {
-      Object.values(this.layerControl._layers).forEach(layerObj => {
-        if (layerObj.overlay && layerObj.layer) {
-          // Store overlay layer states
-          overlayStates[layerObj.name] = this.map.hasLayer(layerObj.layer);
-        } else if (!layerObj.overlay && this.map.hasLayer(layerObj.layer)) {
-          // Store the currently active base layer
-          activeBaseLayer = layerObj.layer;
-          activeBaseLayerName = layerObj.name;
-        }
-      });
-    }
-
     // Remove existing layer control
     this.map.removeControl(this.layerControl);
 
-    // Create base controls layer object
-    const baseControlsLayer = {
-      Points: this.markersLayer || L.layerGroup(),
-      Routes: this.polylinesLayer || L.layerGroup(),
-      Tracks: this.tracksLayer || L.layerGroup(),
-      Heatmap: this.heatmapLayer || L.heatLayer([]),
-      "Fog of War": this.fogOverlay,
-      "Scratch map": this.scratchLayerManager?.getLayer() || L.layerGroup(),
-      Areas: this.areasLayer || L.layerGroup(),
-      Photos: this.photoMarkers || L.layerGroup(),
-      "Suggested Visits": this.visitsManager?.getVisitCirclesLayer() || L.layerGroup(),
-      "Confirmed Visits": this.visitsManager?.getConfirmedVisitCirclesLayer() || L.layerGroup()
-    };
-
-    // Merge with additional layers (like family members)
-    const controlsLayer = { ...baseControlsLayer, ...additionalLayers };
-
-    // Get base maps and re-add the layer control
-    const baseMaps = this.baseMaps();
-    this.layerControl = L.control.layers(baseMaps, controlsLayer).addTo(this.map);
-
-    // Restore the active base layer if we had one
-    if (activeBaseLayer && activeBaseLayerName) {
-      console.log(`Restoring base layer: ${activeBaseLayerName}`);
-      // Make sure the base layer is added to the map
-      if (!this.map.hasLayer(activeBaseLayer)) {
-        activeBaseLayer.addTo(this.map);
-      }
-    } else {
-      // If no active base layer was found, ensure we have a default one
-      console.log('No active base layer found, adding default');
-      const defaultBaseLayer = Object.values(baseMaps)[0];
-      if (defaultBaseLayer && !this.map.hasLayer(defaultBaseLayer)) {
-        defaultBaseLayer.addTo(this.map);
-      }
-    }
-
-    // Restore overlay layer visibility states
-    Object.entries(overlayStates).forEach(([name, wasVisible]) => {
-      const layer = controlsLayer[name];
-      if (layer && wasVisible && !this.map.hasLayer(layer)) {
-        layer.addTo(this.map);
-      }
-    });
+    // Re-add the layer control with additional layers
+    this.layerControl = this.createTreeLayerControl(additionalLayers);
+    this.map.addControl(this.layerControl);
   }
 
+  togglePlaceCreationMode() {
+    if (!this.placesManager) {
+      console.warn("Places manager not initialized");
+      return;
+    }
 
+    const button = document.getElementById('create-place-btn');
+
+    if (this.placesManager.creationMode) {
+      // Disable creation mode
+      this.placesManager.disableCreationMode();
+      if (button) {
+        setCreatePlaceButtonInactive(button, this.userTheme);
+        button.setAttribute('data-tip', 'Create a place');
+      }
+    } else {
+      // Enable creation mode
+      this.placesManager.enableCreationMode();
+      if (button) {
+        setCreatePlaceButtonActive(button);
+        button.setAttribute('data-tip', 'Click map to place marker (click to cancel)');
+      }
+    }
+  }
+
+  disablePlaceCreationMode() {
+    if (!this.placesManager) {
+      return;
+    }
+
+    // Only disable if currently in creation mode
+    if (this.placesManager.creationMode) {
+      this.placesManager.disableCreationMode();
+
+      const button = document.getElementById('create-place-btn');
+      if (button) {
+        setCreatePlaceButtonInactive(button, this.userTheme);
+        button.setAttribute('data-tip', 'Create a place');
+      }
+    }
+  }
+
+  async initializePrivacyZones() {
+    try {
+      await this.privacyZoneManager.loadPrivacyZones();
+
+      if (this.privacyZoneManager.hasPrivacyZones()) {
+        console.log(`[Privacy Zones] Loaded ${this.privacyZoneManager.getZoneCount()} zones covering ${this.privacyZoneManager.getTotalPlacesCount()} places`);
+
+        // Apply filtering to markers BEFORE they're rendered
+        this.markers = this.privacyZoneManager.filterPoints(this.markers);
+
+        // Apply filtering to tracks if they exist
+        if (this.tracksData && Array.isArray(this.tracksData)) {
+          this.tracksData = this.privacyZoneManager.filterTracks(this.tracksData);
+        }
+      }
+    } catch (error) {
+      console.error('[Privacy Zones] Error initializing privacy zones:', error);
+    }
+  }
 }

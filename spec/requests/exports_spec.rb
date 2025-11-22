@@ -6,11 +6,6 @@ RSpec.describe '/exports', type: :request do
   let(:user) { create(:user) }
   let(:params) { { start_at: 1.day.ago, end_at: Time.zone.now } }
 
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   describe 'GET /index' do
     context 'when user is not logged in' do
       it 'redirects to the login page' do

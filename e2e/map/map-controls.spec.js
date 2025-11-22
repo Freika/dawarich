@@ -149,8 +149,8 @@ test.describe('Map Page', () => {
 
     // Verify that at least one layer has data
     const hasData = layerInfo.markersCount > 0 ||
-                    layerInfo.polylinesCount > 0 ||
-                    layerInfo.tracksCount > 0;
+      layerInfo.polylinesCount > 0 ||
+      layerInfo.tracksCount > 0;
 
     expect(hasData).toBe(true);
   });

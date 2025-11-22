@@ -7,7 +7,7 @@ class DataMigrations::MigratePlacesLonlatJob < ApplicationJob
     user = User.find(user_id)
 
     # Find all places with nil lonlat
-    places_to_update = user.places.where(lonlat: nil)
+    places_to_update = user.visited_places.where(lonlat: nil)
 
     # For each place, set the lonlat value based on longitude and latitude
     places_to_update.find_each do |place|
@@ -20,7 +20,7 @@ class DataMigrations::MigratePlacesLonlatJob < ApplicationJob
     end
 
     # Double check if there are any remaining places without lonlat
-    remaining = user.places.where(lonlat: nil)
+    remaining = user.visited_places.where(lonlat: nil)
     return unless remaining.exists?
 
     # Log an error for these places

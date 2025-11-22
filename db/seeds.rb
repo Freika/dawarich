@@ -38,3 +38,20 @@ if Country.none?
     end
   end
 end
+
+if Tag.none?
+  puts 'Creating default tags...'
+
+  default_tags = [
+    { name: 'Home', color: '#FF5733', icon: '🏡' },
+    { name: 'Work', color: '#33FF57', icon: '💼' },
+    { name: 'Favorite', color: '#3357FF', icon: '⭐' },
+    { name: 'Travel Plans', color: '#F1C40F', icon: '🗺️' },
+  ]
+
+  User.find_each do |user|
+    default_tags.each do |tag_attrs|
+      Tag.create!(tag_attrs.merge(user: user))
+    end
+  end
+end

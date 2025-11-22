@@ -5,11 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
   let(:user) { create(:user) }
 
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   describe 'GET /api/v1/maps/hexagons' do
     let(:valid_params) do
       {

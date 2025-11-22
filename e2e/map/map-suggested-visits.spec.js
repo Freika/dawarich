@@ -23,7 +23,7 @@ test.describe('Suggested Visit Interactions', () => {
     await closeOnboardingModal(page);
     await waitForMap(page);
 
-    await enableLayer(page, 'Suggested Visits');
+    await enableLayer(page, 'Suggested');
     await page.waitForTimeout(2000);
 
     // Pan map to ensure a visit marker is in viewport
@@ -96,7 +96,7 @@ test.describe('Suggested Visit Interactions', () => {
     expect(content).toMatch(/Visit|Place|Duration|Started|Ended|Suggested/i);
   });
 
-  test('should confirm suggested visit', async ({ page }) => {
+  test('should confirm suggested visit @destructive', async ({ page }) => {
     // Click visit programmatically
     const visitClicked = await clickSuggestedVisit(page);
 
@@ -157,7 +157,7 @@ test.describe('Suggested Visit Interactions', () => {
     expect(popupVisible).toBe(false);
   });
 
-  test('should decline suggested visit', async ({ page }) => {
+  test('should decline suggested visit @destructive', async ({ page }) => {
     // Click visit programmatically
     const visitClicked = await clickSuggestedVisit(page);
 
@@ -243,7 +243,7 @@ test.describe('Suggested Visit Interactions', () => {
     expect(newValue).toBeTruthy();
   });
 
-  test('should delete suggested visit from map', async ({ page }) => {
+  test('should delete suggested visit from map @destructive', async ({ page }) => {
     const visitCircle = page.locator('.leaflet-interactive[stroke="#f59e0b"]').first();
     const hasVisits = await visitCircle.count() > 0;
 

@@ -22,7 +22,15 @@ export async function enableLayer(page, layerName) {
   await page.locator('.leaflet-control-layers').hover();
   await page.waitForTimeout(300);
 
-  const checkbox = page.locator(`.leaflet-control-layers-overlays label:has-text("${layerName}") input[type="checkbox"]`);
+  // Find the layer by its name in the tree structure
+  // Layer names are in spans with class="leaflet-layerstree-header-name"
+  // The checkbox is in the same .leaflet-layerstree-header container
+  const layerHeader = page.locator(
+    `.leaflet-layerstree-header:has(.leaflet-layerstree-header-name:text-is("${layerName}"))`
+  ).first();
+
+  const checkbox = layerHeader.locator('input[type="checkbox"]').first();
+
   const isChecked = await checkbox.isChecked();
 
   if (!isChecked) {

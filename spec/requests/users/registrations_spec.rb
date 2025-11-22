@@ -10,11 +10,6 @@ RSpec.describe 'Users::Registrations', type: :request do
     create(:family_invitation, family: family, invited_by: family_owner, email: 'invited@example.com')
   end
 
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   describe 'Family Invitation Registration Flow' do
     context 'when accessing registration with a valid invitation token' do
       it 'shows family-focused registration page' do

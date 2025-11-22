@@ -3,11 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe 'Imports', type: :request do
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   describe 'GET /imports' do
     context 'when user is logged in' do
       let(:user) { create(:user) }
@@ -63,7 +58,7 @@ RSpec.describe 'Imports', type: :request do
 
       it 'prevents viewing other users import' do
         get import_path(other_import)
-        
+
         expect(response).to redirect_to(root_path)
         expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
@@ -100,7 +95,7 @@ RSpec.describe 'Imports', type: :request do
 
       it 'prevents access to new import form' do
         get new_import_path
-        
+
         expect(response).to redirect_to(root_path)
         expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end

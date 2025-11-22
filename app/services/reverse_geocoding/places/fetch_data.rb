@@ -15,7 +15,7 @@ class ReverseGeocoding::Places::FetchData
       return
     end
 
-    places = reverse_geocoded_places
+    places = geocoder_places
     first_place = places.shift
     update_place(first_place)
 
@@ -82,6 +82,7 @@ class ReverseGeocoding::Places::FetchData
 
   def find_existing_places(osm_ids)
     Place.where("geodata->'properties'->>'osm_id' IN (?)", osm_ids)
+      .global
       .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
       .compact
   end
@@ -145,7 +146,7 @@ class ReverseGeocoding::Places::FetchData
     "POINT(#{coordinates[0]} #{coordinates[1]})"
   end
 
-  def reverse_geocoded_places
+  def geocoder_places
     data = Geocoder.search(
       [place.lat, place.lon],
       limit: 10,
