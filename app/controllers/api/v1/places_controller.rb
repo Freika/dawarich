@@ -22,6 +22,7 @@ module Api
 
         if @place.save
           add_tags if tag_ids.present?
+          @place = current_api_user.places.includes(:tags, :visits).find(@place.id)
 
           render json: serialize_place(@place), status: :created
         else
@@ -32,6 +33,8 @@ module Api
       def update
         if @place.update(place_params)
           set_tags if params[:place][:tag_ids]
+          @place = current_api_user.places.includes(:tags, :visits).find(@place.id)
+
           render json: serialize_place(@place)
         else
           render json: { errors: @place.errors.full_messages }, status: :unprocessable_entity

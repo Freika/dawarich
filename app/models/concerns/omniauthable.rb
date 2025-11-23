@@ -19,7 +19,7 @@ module Omniauthable
 
       if user
         # Update provider and uid for existing user (first-time linking)
-        user.update(provider: provider, uid: uid)
+        user.update!(provider: provider, uid: uid)
         return user
       end
 

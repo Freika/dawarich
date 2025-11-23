@@ -46,7 +46,12 @@ OMNIAUTH_PROVIDERS =
   else
     # Cloud: only GitHub and Google
     providers = []
-    providers << :github if ENV['GITHUB_OAUTH_CLIENT_ID'].present?
-    providers << :google_oauth2 if ENV['GOOGLE_OAUTH_CLIENT_ID'].present?
-    providers
+
+    if ENV['GITHUB_OAUTH_CLIENT_ID'].present? && ENV['GITHUB_OAUTH_CLIENT_SECRET'].present?
+      providers << :github
+    end
+
+    if ENV['GOOGLE_OAUTH_CLIENT_ID'].present? && ENV['GOOGLE_OAUTH_CLIENT_SECRET'].present?
+      providers << :google_oauth2
+    end
   end
