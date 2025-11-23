@@ -25,7 +25,6 @@ export class PlacesManager {
       this.loadPlaces();
     });
 
-    console.log("[PlacesManager] Initializing, loading places for first time...");
     await this.loadPlaces();
     this.setupMapClickHandler();
     this.setupEventListeners();
@@ -55,14 +54,19 @@ export class PlacesManager {
     });
   }
 
-  async loadPlaces(tagIds = null) {
+  async loadPlaces(tagIds = null, untaggedOnly = false) {
     try {
       const url = new URL('/api/v1/places', window.location.origin);
-      if (tagIds && tagIds.length > 0) {
+
+      if (untaggedOnly) {
+        // Load only untagged places
+        url.searchParams.append('untagged', 'true');
+      } else if (tagIds && tagIds.length > 0) {
+        // Load places with specific tags
         tagIds.forEach(id => url.searchParams.append('tag_ids[]', id));
       }
+      // If neither untaggedOnly nor tagIds, load all places
 
-      console.log("[PlacesManager] loadPlaces called, fetching from:", url.toString());
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${this.apiKey}` }
       });
@@ -261,9 +265,9 @@ export class PlacesManager {
     }
   }
 
-  filterByTags(tagIds) {
-    this.selectedTags = new Set(tagIds);
-    this.loadPlaces(tagIds.length > 0 ? tagIds : null);
+  filterByTags(tagIds, untaggedOnly = false) {
+    this.selectedTags = new Set(tagIds || []);
+    this.loadPlaces(tagIds && tagIds.length > 0 ? tagIds : null, untaggedOnly);
   }
 
   /**
@@ -278,11 +282,9 @@ export class PlacesManager {
 
     // Add event listener to load places when layer is added to map
     filteredLayer.on('add', () => {
-      console.log(`[PlacesManager] Filtered layer added to map, tagIds:`, tagIds);
       this.loadPlacesIntoLayer(filteredLayer, tagIds);
     });
 
-    console.log(`[PlacesManager] Created filtered layer for tagIds:`, tagIds);
     return filteredLayer;
   }
 
@@ -291,21 +293,20 @@ export class PlacesManager {
    */
   async loadPlacesIntoLayer(layer, tagIds) {
     try {
-      console.log(`[PlacesManager] loadPlacesIntoLayer called with tagIds:`, tagIds);
-      let url = `/api/v1/places?api_key=${this.apiKey}`;
+      const url = new URL('/api/v1/places', window.location.origin);
 
       if (Array.isArray(tagIds) && tagIds.length > 0) {
         // Specific tags requested
-        url += `&tag_ids=${tagIds.join(',')}`;
+        tagIds.forEach(id => url.searchParams.append('tag_ids[]', id));
       } else if (Array.isArray(tagIds) && tagIds.length === 0) {
         // Empty array means untagged places only
-        url += '&untagged=true';
+        url.searchParams.append('untagged', 'true');
       }
 
-      console.log(`[PlacesManager] Fetching from URL:`, url);
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${this.apiKey}` }
+      });
       const data = await response.json();
-      console.log(`[PlacesManager] Received ${data.length} places for tagIds:`, tagIds);
 
       // Clear existing markers in this layer
       layer.clearLayers();
@@ -315,8 +316,6 @@ export class PlacesManager {
         const marker = this.createPlaceMarker(place);
         layer.addLayer(marker);
       });
-
-      console.log(`[PlacesManager] Added ${data.length} markers to layer`);
     } catch (error) {
       console.error('Error loading places into layer:', error);
     }
@@ -330,14 +329,12 @@ export class PlacesManager {
   ensurePlacesLayerVisible() {
     // Check if the main places layer is already on the map
     if (this.map.hasLayer(this.placesLayer)) {
-      console.log('Places layer already visible');
       return;
     }
 
     // Try to find and enable the Places checkbox in the tree control
     const layerControl = document.querySelector('.leaflet-control-layers');
     if (!layerControl) {
-      console.log('Layer control not found, adding places layer directly');
       this.map.addLayer(this.placesLayer);
       return;
     }
@@ -356,7 +353,6 @@ export class PlacesManager {
 
             input.checked = true;
             input.dispatchEvent(new Event('change', { bubbles: true }));
-            console.log('Enabled Places layer in tree control');
 
             // Reset the flag after a short delay to allow the event to process
             setTimeout(() => {

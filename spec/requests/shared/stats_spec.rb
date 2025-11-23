@@ -3,8 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe 'Shared::Stats', type: :request do
-
-
   context 'public sharing' do
     let(:user) { create(:user) }
     let(:stat) { create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6) }

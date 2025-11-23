@@ -42,7 +42,7 @@ METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', 'prometheus')
 OMNIAUTH_PROVIDERS =
   if SELF_HOSTED
     # Self-hosted: only OpenID Connect
-    ENV['OIDC_CLIENT_ID'].present? ? %i[openid_connect] : []
+    (ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present?) ? %i[openid_connect] : []
   else
     # Cloud: only GitHub and Google
     providers = []

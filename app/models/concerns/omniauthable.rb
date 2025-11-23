@@ -15,23 +15,23 @@ module Omniauthable
       return user if user
 
       # If not found, try to find by email
-      user = find_by(email: data['email'])
+      user = find_by(email: data['email']) if data['email'].present?
 
       if user
         # Update provider and uid for existing user (first-time linking)
         user.update!(provider: provider, uid: uid)
+
         return user
       end
 
-      # Create new user if not found
-      user = create(
+      return nil unless data['email'].present?
+
+      create(
         email: data['email'],
         password: Devise.friendly_token[0, 20],
         provider: provider,
         uid: uid
       )
-
-      user
     end
   end
 end

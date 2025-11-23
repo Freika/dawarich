@@ -636,6 +636,21 @@ export default class extends BaseController {
 
     // Add event listeners for overlay layer changes to keep routes/tracks selector in sync
     this.map.on('overlayadd', (event) => {
+      // Track place tag layer restoration
+      if (this.isRestoringLayers && event.layer && this.placesFilteredLayers) {
+        // Check if this is a place tag layer being restored
+        const isPlaceTagLayer = Object.values(this.placesFilteredLayers).includes(event.layer);
+        if (isPlaceTagLayer && this.restoredPlaceTagLayers !== undefined) {
+          const tagId = event.layer._placeTagId;
+          this.restoredPlaceTagLayers.add(tagId);
+
+          // Check if all expected place tag layers have been restored
+          if (this.restoredPlaceTagLayers.size >= this.expectedPlaceTagLayerCount) {
+            this.isRestoringLayers = false;
+          }
+        }
+      }
+
       // Save enabled layers whenever a layer is added (unless we're restoring from settings)
       if (!this.isRestoringLayers) {
         this.saveEnabledLayers();
@@ -1784,42 +1799,30 @@ export default class extends BaseController {
       }
     });
 
-    // Handle place tag layers (format: "place_tag:ID" or "place_tag:untagged")
-    const placeTagLayers = enabledLayers.filter(key => key.startsWith('place_tag:'));
-    if (placeTagLayers.length > 0) {
-      // Set flag once before restoring all place tag layers
-      this.isRestoringLayers = true;
+    // Place tag layers will be restored by updateTreeControlCheckboxes
+    // which triggers the tree control's change events to properly add/remove layers
 
-      placeTagLayers.forEach(layerKey => {
-        const tagId = layerKey.replace('place_tag:', '');
-        let layer;
+    // Track expected place tag layers to be restored
+    const expectedPlaceTagLayers = enabledLayers.filter(key => key.startsWith('place_tag:'));
+    this.restoredPlaceTagLayers = new Set();
+    this.expectedPlaceTagLayerCount = expectedPlaceTagLayers.length;
 
-        if (tagId === 'untagged') {
-          // Find untagged layer
-          layer = Object.values(this.placesFilteredLayers || {}).find(l => l._placeTagId === 'untagged');
-        } else {
-          // Find layer by tag ID
-          const tagIdNum = parseInt(tagId);
-          layer = Object.values(this.placesFilteredLayers || {}).find(l => l._placeTagId === tagIdNum);
-        }
-
-        if (layer && !this.map.hasLayer(layer)) {
-          layer.addTo(this.map);
-          console.log(`Enabled place tag layer: ${tagId}`);
-        }
-      });
-
-      // Reset flag after all layers have been added and events processed
-      setTimeout(() => {
-        this.isRestoringLayers = false;
-        console.log('[initializeLayersFromSettings] Finished restoring place tag layers');
-      }, 150);
-    }
+    // Set flag to prevent saving during layer restoration
+    this.isRestoringLayers = true;
 
     // Update the tree control checkboxes to reflect the layer states
+    // The tree control will handle adding/removing layers when checkboxes change
     // Wait a bit for the tree control to be fully initialized
     setTimeout(() => {
       this.updateTreeControlCheckboxes(enabledLayers);
+
+      // Set a fallback timeout in case not all layers get added
+      setTimeout(() => {
+        if (this.isRestoringLayers) {
+          console.warn('[initializeLayersFromSettings] Timeout reached, forcing restoration complete');
+          this.isRestoringLayers = false;
+        }
+      }, 2000);
     }, 200);
   }
 
@@ -1849,19 +1852,30 @@ export default class extends BaseController {
         // Check if this is a standard layer
         let shouldBeEnabled = enabledLayers.includes(layerName);
 
-        // Check if this is a place tag layer by finding the layer object
-        if (!shouldBeEnabled && this.placesFilteredLayers) {
-          const placeLayer = this.placesFilteredLayers[layerName];
+        // Also check if this is a place tag layer
+        let placeLayer = null;
+        if (this.placesFilteredLayers) {
+          placeLayer = this.placesFilteredLayers[layerName];
           if (placeLayer && placeLayer._placeTagId !== undefined) {
-            shouldBeEnabled = enabledTagIds.has(placeLayer._placeTagId);
+            // This is a place tag layer - check if it should be enabled
+            const placeLayerEnabled = enabledTagIds.has(placeLayer._placeTagId);
+            if (placeLayerEnabled) {
+              shouldBeEnabled = true;
+            }
           }
         }
 
         // Skip group headers that might have checkboxes
         if (layerName && !layerName.includes('Map Styles') && !layerName.includes('Layers')) {
           if (shouldBeEnabled !== input.checked) {
-            input.checked = shouldBeEnabled;
-            console.log(`Updated checkbox for ${layerName}: ${shouldBeEnabled}`);
+            // Checkbox state needs to change - simulate a click to trigger tree control
+            // The tree control listens for click events, not change events
+            input.click();
+          } else if (shouldBeEnabled && placeLayer && !this.map.hasLayer(placeLayer)) {
+            // Checkbox is already checked but layer isn't on map (edge case)
+            // This can happen if the checkbox was checked in HTML but layer wasn't added
+            // Manually add the layer since clicking won't help (checkbox is already checked)
+            placeLayer.addTo(this.map);
           }
         }
       }

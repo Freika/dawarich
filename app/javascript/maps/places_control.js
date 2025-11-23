@@ -171,21 +171,18 @@ export function createPlacesControl(placesManager, tags, userTheme = 'dark') {
     applyCurrentFilters: function() {
       if (!this.placesEnabled) return;
 
-      // If no specific filters, show all places
-      if (this.activeFilters.size === 0 && !this.showUntagged) {
-        this.placesManager.filterByTags(null);
-      } else {
-        // Build filter criteria
-        const tagIds = Array.from(this.activeFilters);
+      // Build filter criteria
+      const tagIds = Array.from(this.activeFilters);
 
-        // For now, just filter by tags
-        // TODO: Add support for untagged filter in PlacesManager
-        if (tagIds.length > 0) {
-          this.placesManager.filterByTags(tagIds);
-        } else if (this.showUntagged) {
-          // Show only untagged places
-          this.placesManager.filterByTags([]);
-        }
+      if (this.showUntagged && tagIds.length === 0) {
+        // Show only untagged places
+        this.placesManager.filterByTags(null, true);
+      } else if (tagIds.length > 0) {
+        // Show places with specific tags
+        this.placesManager.filterByTags(tagIds, false);
+      } else {
+        // Show all places (no filters)
+        this.placesManager.filterByTags(null, false);
       }
     },
 

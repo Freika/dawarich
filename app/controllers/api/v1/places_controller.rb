@@ -65,7 +65,7 @@ module Api
       private
 
       def set_place
-        @place = current_api_user.places.find(params[:id])
+        @place = current_api_user.places.includes(:tags, :visits).find(params[:id])
       end
 
       def place_params
