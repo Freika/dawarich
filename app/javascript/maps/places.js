@@ -349,9 +349,21 @@ export class PlacesManager {
         const label = input.closest('label') || input.nextElementSibling;
         if (label && label.textContent.trim() === 'Places') {
           if (!input.checked) {
+            // Set a flag to prevent saving during programmatic layer addition
+            if (window.mapsController) {
+              window.mapsController.isRestoringLayers = true;
+            }
+
             input.checked = true;
             input.dispatchEvent(new Event('change', { bubbles: true }));
             console.log('Enabled Places layer in tree control');
+
+            // Reset the flag after a short delay to allow the event to process
+            setTimeout(() => {
+              if (window.mapsController) {
+                window.mapsController.isRestoringLayers = false;
+              }
+            }, 50);
           }
         }
       });

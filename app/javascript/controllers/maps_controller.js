@@ -766,6 +766,12 @@ export default class extends BaseController {
   }
 
   saveEnabledLayers() {
+    // Don't save if we're restoring layers from settings
+    if (this.isRestoringLayers) {
+      console.log('[saveEnabledLayers] Skipping save - currently restoring layers from settings');
+      return;
+    }
+
     const enabledLayers = [];
 
     // Iterate through all layers on the map to determine which are enabled
@@ -798,6 +804,8 @@ export default class extends BaseController {
           enabledLayers.push(`place_tag:${layer._placeTagId}`);
         }
       });
+    } else {
+      console.warn('[saveEnabledLayers] placesFilteredLayers is not initialized');
     }
 
     fetch('/api/v1/settings', {
@@ -1777,8 +1785,12 @@ export default class extends BaseController {
     });
 
     // Handle place tag layers (format: "place_tag:ID" or "place_tag:untagged")
-    enabledLayers.forEach(layerKey => {
-      if (layerKey.startsWith('place_tag:')) {
+    const placeTagLayers = enabledLayers.filter(key => key.startsWith('place_tag:'));
+    if (placeTagLayers.length > 0) {
+      // Set flag once before restoring all place tag layers
+      this.isRestoringLayers = true;
+
+      placeTagLayers.forEach(layerKey => {
         const tagId = layerKey.replace('place_tag:', '');
         let layer;
 
@@ -1792,19 +1804,23 @@ export default class extends BaseController {
         }
 
         if (layer && !this.map.hasLayer(layer)) {
-          this.isRestoringLayers = true;
           layer.addTo(this.map);
           console.log(`Enabled place tag layer: ${tagId}`);
-          setTimeout(() => { this.isRestoringLayers = false; }, 100);
         }
-      }
-    });
+      });
+
+      // Reset flag after all layers have been added and events processed
+      setTimeout(() => {
+        this.isRestoringLayers = false;
+        console.log('[initializeLayersFromSettings] Finished restoring place tag layers');
+      }, 150);
+    }
 
     // Update the tree control checkboxes to reflect the layer states
     // Wait a bit for the tree control to be fully initialized
     setTimeout(() => {
       this.updateTreeControlCheckboxes(enabledLayers);
-    }, 100);
+    }, 200);
   }
 
   updateTreeControlCheckboxes(enabledLayers) {

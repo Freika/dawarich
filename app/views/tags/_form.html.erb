@@ -19,6 +19,7 @@
 
   <div class="grid grid-cols-2 gap-4">
     <!-- Emoji Picker -->
+    <% default_emoji = tag.icon.presence || (tag.new_record? ? random_tag_emoji : '🏠') %>
     <div class="form-control" data-controller="emoji-picker" data-emoji-picker-auto-submit-value="false">
       <%= f.label :icon, class: "label" %>
       <div class="relative w-full">
@@ -27,8 +28,8 @@
                 class="input input-bordered w-full flex items-center justify-center text-4xl cursor-pointer hover:bg-base-200 min-h-[4rem]"
                 data-action="click->emoji-picker#toggle"
                 data-emoji-picker-target="button"
-                data-default-icon="🏠">
-          <span data-emoji-picker-display><%= tag.icon.presence || '🏠' %></span>
+                data-default-icon="<%= default_emoji %>">
+          <span data-emoji-picker-display><%= default_emoji %></span>
         </button>
 
         <!-- Picker container -->
@@ -36,7 +37,7 @@
              class="hidden absolute z-50 mt-2 left-0"></div>
 
         <!-- Hidden input for form submission -->
-        <%= f.hidden_field :icon, data: { emoji_picker_target: "input" } %>
+        <%= f.hidden_field :icon, value: default_emoji, data: { emoji_picker_target: "input" } %>
       </div>
       <label class="label">
         <span class="label-text-alt">Click to select an emoji</span>
@@ -134,7 +135,7 @@
           <span>5000m</span>
         </div>
         <%= f.hidden_field :privacy_radius_meters,
-            value: tag.privacy_radius_meters || 1000,
+            value: tag.privacy_radius_meters,
             data: { privacy_radius_target: "field" } %>
       </div>
       <label class="label">

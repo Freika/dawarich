@@ -11,12 +11,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [ ] KML upload
 - [ ] OIDC login with Authentik
   - [ ] How does it work with existing settings to disable registrations?
-- [ ] Place creation
-- [ ] Tag creation + management
-- [ ] Place privacy zones
-- [ ] Settings panel is scrollable
+- [x] Place creation
+- [x] Tag creation + management
+- [x] Place privacy zones
+- [x] Settings panel is scrollable
 - [ ] Family members can enable their location sharing and see each other on the map
-- [ ] Home location
+- [x] Home location
 
 # OIDC and KML support release
 
