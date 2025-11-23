@@ -41,7 +41,6 @@ class OwnTracks::FamilyLocationsFormatter
       alt: point.altitude,
       batt: point.battery,
       bs: OwnTracks::Params.battery_status_to_numeric(point.battery_status),
-      # t: OwnTracks::Params.trigger_to_string(point.trigger),
       vel: OwnTracks::Params.velocity_to_kmh(point.velocity),
       conn: OwnTracks::Params.connection_to_string(point.connection),
     }
