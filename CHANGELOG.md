@@ -4,9 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+# [0.36.0] - 2025-11-24
 
-# OIDC and KML support release
+## OIDC and KML support release
+
+So, you want to configure your OIDC provider. If not — skip to the actual changelog. You're going to need to provide at least 4 environment variables: `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ISSUER`, and `OIDC_REDIRECT_URI`. Then, if you want to rename the provider from "OpenID Connect" to something else (e.g. "Authentik"), set `OIDC_PROVIDER_NAME` variable as well. If you want to disable email/password registration and allow only OIDC login, set `ALLOW_EMAIL_PASSWORD_REGISTRATION` to `false`. After just 7 brand new environment variables, you'll never have to deal with passwords in Dawarich again!
+
+Jokes aside, even though I'm not a fan of bloating the environment with too many variables, this is a nice addition and it will be reused in the cloud version of Dawarich as well. Thanks for waiting more than a year for this feature!
 
 To configure your OIDC provider, set the following environment variables:
 
@@ -19,10 +23,6 @@ OIDC_AUTO_REGISTER=true # optional, default is false
 OIDC_PROVIDER_NAME=YourProviderName # optional, default is OpenID Connect
 ALLOW_EMAIL_PASSWORD_REGISTRATION=false # optional, default is true
 ```
-
-So, you want to configure your OIDC provider. If not — skip to the actual changelog. You're going to need to provide at least 4 environment variables: `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ISSUER`, and `OIDC_REDIRECT_URI`. Then, if you want to rename the provider from "OpenID Connect" to something else (e.g. "Authentik"), set `OIDC_PROVIDER_NAME` variable as well. If you want to disable email/password registration and allow only OIDC login, set `ALLOW_EMAIL_PASSWORD_REGISTRATION` to `false`. After just 7 brand new environment variables, you'll never have to deal with passwords in Dawarich again!
-
-Jokes aside, even though I'm not a fan of bloating the environment with too many variables, this is a nice addition and it will be reused in the cloud version of Dawarich as well. Thanks for waiting more than a year for this feature!
 
 ## Added
 
