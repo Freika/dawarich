@@ -14,7 +14,9 @@ RSpec.configure do |config|
               'state' => 'New York',
               'name' => 'Test Location'
             }
-          }
+          },
+          latitude: 40.7128,
+          longitude: -74.0060
         )
       ]
     )

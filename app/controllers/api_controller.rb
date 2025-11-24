@@ -5,7 +5,13 @@ class ApiController < ApplicationController
   before_action :set_version_header
   before_action :authenticate_api_key
 
+  rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
+
   private
+
+  def record_not_found
+    render json: { error: 'Record not found' }, status: :not_found
+  end
 
   def set_version_header
     message = "Hey, I\'m alive#{current_api_user ? ' and authenticated' : ''}!"

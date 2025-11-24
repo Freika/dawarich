@@ -42,11 +42,23 @@ METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', 'prometheus')
 OMNIAUTH_PROVIDERS =
   if SELF_HOSTED
     # Self-hosted: only OpenID Connect
-    ENV['OIDC_CLIENT_ID'].present? ? %i[openid_connect] : []
+    ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present? ? %i[openid_connect] : []
   else
     # Cloud: only GitHub and Google
     providers = []
-    providers << :github if ENV['GITHUB_OAUTH_CLIENT_ID'].present?
-    providers << :google_oauth2 if ENV['GOOGLE_OAUTH_CLIENT_ID'].present?
+
+    providers << :github if ENV['GITHUB_OAUTH_CLIENT_ID'].present? && ENV['GITHUB_OAUTH_CLIENT_SECRET'].present?
+
+    providers << :google_oauth2 if ENV['GOOGLE_OAUTH_CLIENT_ID'].present? && ENV['GOOGLE_OAUTH_CLIENT_SECRET'].present?
+
     providers
   end
+
+# Custom OIDC provider display name
+OIDC_PROVIDER_NAME = ENV.fetch('OIDC_PROVIDER_NAME', 'Openid Connect').freeze
+
+# OIDC auto-registration setting (default: true for backward compatibility)
+OIDC_AUTO_REGISTER = ENV.fetch('OIDC_AUTO_REGISTER', 'true') == 'true'
+
+# Email/password registration setting (default: false for self-hosted, true for cloud)
+ALLOW_EMAIL_PASSWORD_REGISTRATION = ENV.fetch('ALLOW_EMAIL_PASSWORD_REGISTRATION', 'false') == 'true'

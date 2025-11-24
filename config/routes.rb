@@ -56,14 +56,15 @@ Rails.application.routes.draw do
   resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
   resources :trips
+  resources :tags, except: [:show]
 
   # Family management routes (only if feature is enabled)
   if DawarichSettings.family_feature_enabled?
     resource :family, only: %i[show new create edit update destroy] do
-      patch :update_location_sharing, on: :member
-
       resources :invitations, except: %i[edit update], controller: 'family/invitations'
       resources :members, only: %i[destroy], controller: 'family/memberships'
+
+      patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
     end
 
     get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
@@ -123,6 +124,11 @@ Rails.application.routes.draw do
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index create update destroy]
+      resources :places,    only: %i[index show create update destroy] do
+        collection do
+          get 'nearby'
+        end
+      end
       resources :locations, only: %i[index] do
         collection do
           get 'suggestions'
@@ -141,6 +147,11 @@ Rails.application.routes.draw do
         end
       end
       resources :stats, only: :index
+      resources :tags, only: [] do
+        collection do
+          get 'privacy_zones'
+        end
+      end
 
       namespace :overland do
         resources :batches, only: :create
@@ -174,10 +185,8 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :families, only: [] do
-        collection do
-          get :locations
-        end
+      namespace :families do
+        resources :locations, only: [:index]
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'

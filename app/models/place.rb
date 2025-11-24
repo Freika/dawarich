@@ -3,16 +3,25 @@
 class Place < ApplicationRecord
   include Nearable
   include Distanceable
+  include Taggable
 
   DEFAULT_NAME = 'Suggested place'
 
-  validates :name, :lonlat, presence: true
-
+  belongs_to :user, optional: true # Optional during migration period
   has_many :visits, dependent: :destroy
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
+  before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
+
+  validates :name, presence: true
+  validates :lonlat, presence: true
+
   enum :source, { manual: 0, photon: 1 }
+
+  scope :for_user, ->(user) { where(user: user) }
+  scope :global, -> { where(user: nil) }
+  scope :ordered, -> { order(:name) }
 
   def lon
     lonlat.x
@@ -36,5 +45,11 @@ class Place < ApplicationRecord
 
   def osm_type
     geodata.dig('properties', 'osm_type')
+  end
+
+  private
+
+  def build_lonlat
+    self.lonlat = "POINT(#{longitude} #{latitude})"
   end
 end

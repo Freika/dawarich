@@ -45,6 +45,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def check_registration_allowed
     return unless self_hosted_mode?
     return if valid_invitation_token?
+    return if email_password_registration_allowed?
 
     redirect_to root_path,
                 alert: 'Registration is not available. Please contact your administrator for access.'
@@ -95,5 +96,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def sign_up_params
     super
+  end
+
+  def email_password_registration_allowed?
+    ALLOW_EMAIL_PASSWORD_REGISTRATION
   end
 end

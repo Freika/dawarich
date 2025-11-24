@@ -3,7 +3,7 @@ import { drawSelectionRectangle } from '../helpers/selection.js';
 import { navigateToDate, closeOnboardingModal } from '../helpers/navigation.js';
 import { waitForMap, enableLayer } from '../helpers/map.js';
 
-test.describe('Bulk Delete Points', () => {
+test.describe('Bulk Delete Points @destructive', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to map page
     await page.goto('/map', {
@@ -368,7 +368,7 @@ test.describe('Bulk Delete Points', () => {
     const isSelectionActive = await page.evaluate(() => {
       const controller = window.Stimulus?.controllers.find(c => c.identifier === 'maps');
       return controller?.visitsManager?.isSelectionActive === false &&
-             controller?.visitsManager?.selectedPoints?.length === 0;
+        controller?.visitsManager?.selectedPoints?.length === 0;
     });
 
     expect(isSelectionActive).toBe(true);

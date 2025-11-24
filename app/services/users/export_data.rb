@@ -325,7 +325,7 @@ class Users::ExportData
       notifications: user.notifications.count,
       points: user.points_count,
       visits: user.visits.count,
-      places: user.places.count
+      places: user.visited_places.count
     }
 
     Rails.logger.info "Entity counts: #{counts}"

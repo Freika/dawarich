@@ -21,7 +21,7 @@ RSpec.describe '/places', type: :request do
   end
 
   describe 'DELETE /destroy' do
-    let!(:place) { create(:place) }
+    let!(:place) { create(:place, user:) }
     let!(:visit) { create(:visit, place:, user:) }
 
     it 'destroys the requested place' do

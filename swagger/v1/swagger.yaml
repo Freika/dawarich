@@ -686,6 +686,347 @@ paths:
                     - photoprism
         '404':
           description: photo not found
+  "/api/v1/places":
+    get:
+      summary: Retrieves all places for the authenticated user
+      tags:
+      - Places
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API key for authentication
+        schema:
+          type: string
+      - name: tag_ids
+        in: query
+        items:
+          type: integer
+        required: false
+        description: Filter places by tag IDs
+        schema:
+          type: array
+      responses:
+        '200':
+          description: places found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    latitude:
+                      type: number
+                      format: float
+                    longitude:
+                      type: number
+                      format: float
+                    source:
+                      type: string
+                    icon:
+                      type: string
+                      nullable: true
+                    color:
+                      type: string
+                      nullable: true
+                    visits_count:
+                      type: integer
+                    created_at:
+                      type: string
+                      format: date-time
+                    tags:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          name:
+                            type: string
+                          icon:
+                            type: string
+                          color:
+                            type: string
+                  required:
+                  - id
+                  - name
+                  - latitude
+                  - longitude
+        '401':
+          description: unauthorized
+    post:
+      summary: Creates a place
+      tags:
+      - Places
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API key for authentication
+        schema:
+          type: string
+      responses:
+        '201':
+          description: place created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  latitude:
+                    type: number
+                    format: float
+                  longitude:
+                    type: number
+                    format: float
+                  source:
+                    type: string
+                  icon:
+                    type: string
+                    nullable: true
+                  color:
+                    type: string
+                    nullable: true
+                  visits_count:
+                    type: integer
+                  created_at:
+                    type: string
+                    format: date-time
+                  tags:
+                    type: array
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                latitude:
+                  type: number
+                  format: float
+                longitude:
+                  type: number
+                  format: float
+                source:
+                  type: string
+                tag_ids:
+                  type: array
+                  items:
+                    type: integer
+              required:
+              - name
+              - latitude
+              - longitude
+  "/api/v1/places/nearby":
+    get:
+      summary: Searches for nearby places using Photon geocoding API
+      tags:
+      - Places
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API key for authentication
+        schema:
+          type: string
+      - name: latitude
+        in: query
+        format: float
+        required: true
+        description: Latitude coordinate
+        schema:
+          type: number
+      - name: longitude
+        in: query
+        format: float
+        required: true
+        description: Longitude coordinate
+        schema:
+          type: number
+      - name: radius
+        in: query
+        format: float
+        required: false
+        description: 'Search radius in kilometers (default: 0.5)'
+        schema:
+          type: number
+      - name: limit
+        in: query
+        required: false
+        description: 'Maximum number of results (default: 10)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: nearby places found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  places:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        latitude:
+                          type: number
+                          format: float
+                        longitude:
+                          type: number
+                          format: float
+                        distance:
+                          type: number
+                          format: float
+                        type:
+                          type: string
+        '401':
+          description: unauthorized
+  "/api/v1/places/{id}":
+    parameters:
+    - name: id
+      in: path
+      description: Place ID
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retrieves a specific place
+      tags:
+      - Places
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API key for authentication
+        schema:
+          type: string
+      responses:
+        '200':
+          description: place found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  latitude:
+                    type: number
+                    format: float
+                  longitude:
+                    type: number
+                    format: float
+                  source:
+                    type: string
+                  icon:
+                    type: string
+                    nullable: true
+                  color:
+                    type: string
+                    nullable: true
+                  visits_count:
+                    type: integer
+                  created_at:
+                    type: string
+                    format: date-time
+                  tags:
+                    type: array
+        '404':
+          description: place not found
+        '401':
+          description: unauthorized
+    patch:
+      summary: Updates a place
+      tags:
+      - Places
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API key for authentication
+        schema:
+          type: string
+      responses:
+        '200':
+          description: place updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  latitude:
+                    type: number
+                    format: float
+                  longitude:
+                    type: number
+                    format: float
+                  tags:
+                    type: array
+        '404':
+          description: place not found
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                latitude:
+                  type: number
+                  format: float
+                longitude:
+                  type: number
+                  format: float
+                tag_ids:
+                  type: array
+                  items:
+                    type: integer
+    delete:
+      summary: Deletes a place
+      tags:
+      - Places
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API key for authentication
+        schema:
+          type: string
+      responses:
+        '204':
+          description: place deleted
+        '404':
+          description: place not found
+        '401':
+          description: unauthorized
   "/api/v1/points/tracked_months":
     get:
       summary: Returns list of tracked years and months

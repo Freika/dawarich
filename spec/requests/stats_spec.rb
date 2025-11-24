@@ -3,11 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe '/stats', type: :request do
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   context 'when user is not signed in' do
     describe 'GET /index' do
       it 'redirects to the sign in page' do

@@ -14,6 +14,7 @@ class MapController < ApplicationController
     @years = years_range
     @points_number = points_count
     @features = DawarichSettings.features
+    @home_coordinates = current_user.home_place_coordinates
   end
 
   private

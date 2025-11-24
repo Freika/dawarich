@@ -19,6 +19,8 @@
     data-points_number="<%= @points_number %>"
     data-timezone="<%= Rails.configuration.time_zone %>"
     data-features='<%= @features.to_json.html_safe %>'
+    data-user_tags='<%= current_user.tags.ordered.select(:id, :name, :icon, :color).as_json.to_json.html_safe %>'
+    data-home_coordinates='<%= @home_coordinates.to_json.html_safe %>'
     data-family-members-features-value='<%= @features.to_json.html_safe %>'
     data-family-members-user-theme-value="<%= current_user&.theme || 'dark' %>">
     <div data-maps-target="container" class="w-full h-full">
@@ -28,3 +30,6 @@
 </div>
 
 <%= render 'map/settings_modals' %>
+
+<!-- Include Place Creation Modal -->
+<%= render 'shared/place_creation_modal' %>
