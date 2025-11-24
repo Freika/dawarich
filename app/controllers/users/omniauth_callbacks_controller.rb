@@ -62,9 +62,6 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   end
 
   def oidc_auto_register_enabled?
-    env_value = ENV['OIDC_AUTO_REGISTER']
-    return true if env_value.nil?
-
-    ActiveModel::Type::Boolean.new.cast(env_value)
+    OIDC_AUTO_REGISTER
   end
 end

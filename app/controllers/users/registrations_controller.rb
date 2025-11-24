@@ -99,9 +99,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def email_password_registration_allowed?
-    env_value = ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION']
-    return false if env_value.nil?
-
-    ActiveModel::Type::Boolean.new.cast(env_value)
+    ALLOW_EMAIL_PASSWORD_REGISTRATION
   end
 end

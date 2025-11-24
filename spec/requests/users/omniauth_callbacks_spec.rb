@@ -65,11 +65,8 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
     include_examples 'successful OAuth authentication', :openid_connect, 'OpenID Connect'
 
     context 'when OIDC auto-registration is disabled' do
-      around do |example|
-        original_value = ENV['OIDC_AUTO_REGISTER']
-        ENV['OIDC_AUTO_REGISTER'] = 'false'
-        example.run
-        ENV['OIDC_AUTO_REGISTER'] = original_value
+      before do
+        stub_const('OIDC_AUTO_REGISTER', false)
       end
 
       context "when user doesn't exist" do

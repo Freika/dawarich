@@ -140,9 +140,6 @@ module ApplicationHelper
   def email_password_registration_enabled?
     return true unless DawarichSettings.self_hosted?
 
-    env_value = ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION']
-    return false if env_value.nil?
-
-    ActiveModel::Type::Boolean.new.cast(env_value)
+    ALLOW_EMAIL_PASSWORD_REGISTRATION
   end
 end

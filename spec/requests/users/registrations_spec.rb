@@ -142,7 +142,7 @@ RSpec.describe 'Users::Registrations', type: :request do
 
     context 'when accessing registration without invitation token and email/password registration disabled' do
       before do
-        allow(ENV).to receive(:[]).with('ALLOW_EMAIL_PASSWORD_REGISTRATION').and_return(nil)
+        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
       end
 
       it 'redirects to root with error message' do
@@ -169,11 +169,8 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
 
     context 'when email/password registration is enabled' do
-      around do |example|
-        original_value = ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION']
-        ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = 'true'
-        example.run
-        ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = original_value
+      before do
+        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
       end
 
       it 'allows registration page access' do

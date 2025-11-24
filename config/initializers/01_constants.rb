@@ -56,3 +56,9 @@ OMNIAUTH_PROVIDERS =
 
 # Custom OIDC provider display name
 OIDC_PROVIDER_NAME = ENV.fetch('OIDC_PROVIDER_NAME', 'Openid Connect').freeze
+
+# OIDC auto-registration setting (default: true for backward compatibility)
+OIDC_AUTO_REGISTER = ENV.fetch('OIDC_AUTO_REGISTER', 'true') == 'true'
+
+# Email/password registration setting (default: false for self-hosted, true for cloud)
+ALLOW_EMAIL_PASSWORD_REGISTRATION = ENV.fetch('ALLOW_EMAIL_PASSWORD_REGISTRATION', 'false') == 'true'

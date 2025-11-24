@@ -39,11 +39,7 @@ module Omniauthable
     private
 
     def oidc_auto_register_enabled?
-      # Default to true for backward compatibility
-      env_value = ENV['OIDC_AUTO_REGISTER']
-      return true if env_value.nil?
-
-      ActiveModel::Type::Boolean.new.cast(env_value)
+      OIDC_AUTO_REGISTER
     end
   end
 end

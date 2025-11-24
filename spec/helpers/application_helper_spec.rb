@@ -46,11 +46,8 @@ RSpec.describe ApplicationHelper, type: :helper do
       end
 
       context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is true' do
-        around do |example|
-          original_value = ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION']
-          ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = 'true'
-          example.run
-          ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = original_value
+        before do
+          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
         end
 
         it 'returns true' do
@@ -59,11 +56,8 @@ RSpec.describe ApplicationHelper, type: :helper do
       end
 
       context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is false' do
-        around do |example|
-          original_value = ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION']
-          ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = 'false'
-          example.run
-          ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = original_value
+        before do
+          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
         end
 
         it 'returns false' do
@@ -71,12 +65,9 @@ RSpec.describe ApplicationHelper, type: :helper do
         end
       end
 
-      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is not set' do
-        around do |example|
-          original_value = ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION']
-          ENV.delete('ALLOW_EMAIL_PASSWORD_REGISTRATION')
-          example.run
-          ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = original_value
+      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is not set (default)' do
+        before do
+          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
         end
 
         it 'returns false (default)' do
