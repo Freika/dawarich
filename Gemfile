@@ -55,6 +55,7 @@ gem 'stimulus-rails'
 gem 'tailwindcss-rails', '= 3.3.2'
 gem 'turbo-rails', '>= 2.0.17'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
+gem 'foreman'
 
 group :development, :test, :staging do
   gem 'brakeman', require: false
@@ -81,7 +82,6 @@ end
 
 group :development do
   gem 'database_consistency', '>= 2.0.5', require: false
-  gem 'foreman'
   gem 'rubocop-rails', '>= 2.33.4', require: false
   gem 'strong_migrations', '>= 2.4.0'
 end
