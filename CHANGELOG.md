@@ -6,18 +6,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-## TEST
-
-- [ ] KML upload
-- [ ] OIDC login with Authentik
-  - [ ] How does it work with existing settings to disable registrations?
-- [x] Place creation
-- [x] Tag creation + management
-- [x] Place privacy zones
-- [x] Settings panel is scrollable
-- [ ] Family members can enable their location sharing and see each other on the map
-- [x] Home location
-
 # OIDC and KML support release
 
 To configure your OIDC provider, set the following environment variables:
@@ -27,7 +15,14 @@ OIDC_CLIENT_ID=client_id_example
 OIDC_CLIENT_SECRET=client_secret_example
 OIDC_ISSUER=https://authentik.yourdomain.com/application/o/dawarich/
 OIDC_REDIRECT_URI=https://your-dawarich-url.com/users/auth/openid_connect/callback
+OIDC_AUTO_REGISTER=true # optional, default is false
+OIDC_PROVIDER_NAME=YourProviderName # optional, default is OpenID Connect
+ALLOW_EMAIL_PASSWORD_REGISTRATION=false # optional, default is true
 ```
+
+So, you want to configure your OIDC provider. If not — skip to the actual changelog. You're going to need to provide at least 4 environment variables: `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ISSUER`, and `OIDC_REDIRECT_URI`. Then, if you want to rename the provider from "OpenID Connect" to something else (e.g. "Authentik"), set `OIDC_PROVIDER_NAME` variable as well. If you want to disable email/password registration and allow only OIDC login, set `ALLOW_EMAIL_PASSWORD_REGISTRATION` to `false`. After just 7 brand new environment variables, you'll never have to deal with passwords in Dawarich again!
+
+Jokes aside, even though I'm not a fan of bloating the environment with too many variables, this is a nice addition and it will be reused in the cloud version of Dawarich as well. Thanks for waiting more than a year for this feature!
 
 ## Added
 
@@ -35,6 +30,7 @@ OIDC_REDIRECT_URI=https://your-dawarich-url.com/users/auth/openid_connect/callba
 - Added a commented line in the `docker-compose.yml` file to use an alternative PostGIS image for ARM architecture.
 - User can now create a place directly from the map and add tags and notes to it. If reverse geocoding is enabled, list of nearby places will be shown as suggestions.
 - User can create and manage tags for places.
+- Visits for manually created places are being suggested automatically, just like for areas.
 - User can enable or disable places layers on the map to show/hide all or just some of their visited places based on tags.
 - User can define privacy zones around places with specific tags to hide map data within a certain radius.
 - If user has a place tagged with a tag named "Home" (case insensitive), and this place doesn't have a privacy zone defined, this place will be used as home location for days with no tracked data. #1659 #1575

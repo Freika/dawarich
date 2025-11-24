@@ -24,14 +24,26 @@ module Omniauthable
         return user
       end
 
-      return nil unless data['email'].present?
+      # Check if auto-registration is allowed for OIDC
+      return nil if provider == 'openid_connect' && !oidc_auto_register_enabled?
 
+      # Attempt to create user (will fail validation if email is blank)
       create(
         email: data['email'],
         password: Devise.friendly_token[0, 20],
         provider: provider,
         uid: uid
       )
+    end
+
+    private
+
+    def oidc_auto_register_enabled?
+      # Default to true for backward compatibility
+      env_value = ENV['OIDC_AUTO_REGISTER']
+      return true if env_value.nil?
+
+      ActiveModel::Type::Boolean.new.cast(env_value)
     end
   end
 end

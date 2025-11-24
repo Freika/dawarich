@@ -38,19 +38,89 @@ export class PlacesManager {
       // Show success message
       showFlashMessage('success', `Place "${place.name}" created successfully!`);
 
-      // Add the new place to the main places layer
-      await this.refreshPlaces();
+      // Add the place to our local array
+      this.places.push(place);
 
-      // Refresh all filtered layers that are currently on the map
-      this.map.eachLayer((layer) => {
-        if (layer._tagIds !== undefined) {
-          // This is a filtered layer, reload it
-          this.loadPlacesIntoLayer(layer, layer._tagIds);
-        }
-      });
+      // Create marker for the new place and add to main layer
+      const marker = this.createPlaceMarker(place);
+      if (marker) {
+        this.markers[place.id] = marker;
+        marker.addTo(this.placesLayer);
+      }
 
       // Ensure the main Places layer is visible
       this.ensurePlacesLayerVisible();
+
+      // Also add to any filtered layers that match this place's tags
+      this.map.eachLayer((layer) => {
+        if (layer._tagIds !== undefined) {
+          // Check if this place's tags match this filtered layer
+          const placeTagIds = place.tags.map(tag => tag.id);
+          const layerTagIds = layer._tagIds;
+
+          // If it's an untagged layer (empty array) and place has no tags
+          if (layerTagIds.length === 0 && placeTagIds.length === 0) {
+            const marker = this.createPlaceMarker(place);
+            if (marker) layer.addLayer(marker);
+          }
+          // If place has any tags that match this layer's tags
+          else if (placeTagIds.some(tagId => layerTagIds.includes(tagId))) {
+            const marker = this.createPlaceMarker(place);
+            if (marker) layer.addLayer(marker);
+          }
+        }
+      });
+    });
+
+    // Refresh places when a place is updated
+    document.addEventListener('place:updated', async (event) => {
+      const { place } = event.detail;
+
+      // Show success message
+      showFlashMessage('success', `Place "${place.name}" updated successfully!`);
+
+      // Update the place in our local array
+      const index = this.places.findIndex(p => p.id === place.id);
+      if (index !== -1) {
+        this.places[index] = place;
+      }
+
+      // Remove old marker and add updated one to main layer
+      if (this.markers[place.id]) {
+        this.placesLayer.removeLayer(this.markers[place.id]);
+      }
+      const marker = this.createPlaceMarker(place);
+      if (marker) {
+        this.markers[place.id] = marker;
+        marker.addTo(this.placesLayer);
+      }
+
+      // Update in all filtered layers
+      this.map.eachLayer((layer) => {
+        if (layer._tagIds !== undefined) {
+          // Remove old marker from this layer
+          layer.eachLayer((layerMarker) => {
+            if (layerMarker.options && layerMarker.options.placeId === place.id) {
+              layer.removeLayer(layerMarker);
+            }
+          });
+
+          // Check if updated place should be in this layer
+          const placeTagIds = place.tags.map(tag => tag.id);
+          const layerTagIds = layer._tagIds;
+
+          // If it's an untagged layer (empty array) and place has no tags
+          if (layerTagIds.length === 0 && placeTagIds.length === 0) {
+            const marker = this.createPlaceMarker(place);
+            if (marker) layer.addLayer(marker);
+          }
+          // If place has any tags that match this layer's tags
+          else if (placeTagIds.some(tagId => layerTagIds.includes(tagId))) {
+            const marker = this.createPlaceMarker(place);
+            if (marker) layer.addLayer(marker);
+          }
+        }
+      });
     });
   }
 
@@ -150,6 +220,9 @@ export class PlacesManager {
         ${place.note ? `<p class="text-sm text-gray-600 mb-2 italic">${this.escapeHtml(place.note)}</p>` : ''}
         ${place.visits_count ? `<p class="text-sm">Visits: ${place.visits_count}</p>` : ''}
         <div class="mt-2 flex gap-2">
+          <button class="btn btn-xs btn-primary" data-place-id="${place.id}" data-action="edit-place">
+            Edit
+          </button>
           <button class="btn btn-xs btn-error" data-place-id="${place.id}" data-action="delete-place">
             Delete
           </button>
@@ -171,10 +244,21 @@ export class PlacesManager {
       }
     });
 
-    // Delegate event handling for delete buttons
+    // Delegate event handling for edit and delete buttons
     this.map.on('popupopen', (e) => {
       const popup = e.popup;
-      const deleteBtn = popup.getElement()?.querySelector('[data-action="delete-place"]');
+      const popupElement = popup.getElement();
+
+      const editBtn = popupElement?.querySelector('[data-action="edit-place"]');
+      const deleteBtn = popupElement?.querySelector('[data-action="delete-place"]');
+
+      if (editBtn) {
+        editBtn.addEventListener('click', () => {
+          const placeId = editBtn.dataset.placeId;
+          this.editPlace(placeId);
+          popup.remove();
+        });
+      }
 
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
@@ -206,6 +290,20 @@ export class PlacesManager {
   async triggerPlaceCreation(lat, lng) {
     const event = new CustomEvent('place:create', {
       detail: { latitude: lat, longitude: lng },
+      bubbles: true
+    });
+    document.dispatchEvent(event);
+  }
+
+  editPlace(placeId) {
+    const place = this.places.find(p => p.id === parseInt(placeId));
+    if (!place) {
+      console.error('Place not found:', placeId);
+      return;
+    }
+
+    const event = new CustomEvent('place:edit', {
+      detail: { place },
       bubbles: true
     });
     document.dispatchEvent(event);
@@ -332,38 +430,37 @@ export class PlacesManager {
       return;
     }
 
-    // Try to find and enable the Places checkbox in the tree control
+    // Directly add the layer to the map first for immediate visibility
+    this.map.addLayer(this.placesLayer);
+
+    // Then try to sync the checkbox in the layer control if it exists
     const layerControl = document.querySelector('.leaflet-control-layers');
-    if (!layerControl) {
-      this.map.addLayer(this.placesLayer);
-      return;
-    }
-
-    // Find the Places checkbox and enable it
-    setTimeout(() => {
-      const inputs = layerControl.querySelectorAll('input[type="checkbox"]');
-      inputs.forEach(input => {
-        const label = input.closest('label') || input.nextElementSibling;
-        if (label && label.textContent.trim() === 'Places') {
-          if (!input.checked) {
-            // Set a flag to prevent saving during programmatic layer addition
-            if (window.mapsController) {
-              window.mapsController.isRestoringLayers = true;
-            }
-
-            input.checked = true;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-
-            // Reset the flag after a short delay to allow the event to process
-            setTimeout(() => {
+    if (layerControl) {
+      setTimeout(() => {
+        const inputs = layerControl.querySelectorAll('input[type="checkbox"]');
+        inputs.forEach(input => {
+          const label = input.closest('label') || input.nextElementSibling;
+          if (label && label.textContent.trim() === 'Places') {
+            if (!input.checked) {
+              // Set a flag to prevent saving during programmatic layer addition
               if (window.mapsController) {
-                window.mapsController.isRestoringLayers = false;
+                window.mapsController.isRestoringLayers = true;
               }
-            }, 50);
+
+              input.checked = true;
+              // Don't dispatch change event since we already added the layer
+
+              // Reset the flag after a short delay
+              setTimeout(() => {
+                if (window.mapsController) {
+                  window.mapsController.isRestoringLayers = false;
+                }
+              }, 50);
+            }
           }
-        }
-      });
-    }, 100);
+        });
+      }, 100);
+    }
   }
 
   show() {

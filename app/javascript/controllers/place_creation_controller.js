@@ -1,8 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modal", "form", "nameInput", "latitudeInput", "longitudeInput",
-                   "nearbyList", "loadingSpinner", "tagCheckboxes", "loadMoreContainer", "loadMoreButton"]
+  static targets = ["modal", "form", "nameInput", "latitudeInput", "longitudeInput", "noteInput",
+                   "nearbyList", "loadingSpinner", "tagCheckboxes", "loadMoreContainer", "loadMoreButton",
+                   "modalTitle", "submitButton", "placeIdInput"]
   static values = {
     apiKey: String
   }
@@ -12,11 +13,16 @@ export default class extends Controller {
     this.currentRadius = 0.5 // Start with 500m (0.5km)
     this.maxRadius = 1.5 // Max 1500m (1.5km)
     this.setupTagListeners()
+    this.editingPlaceId = null
   }
 
   setupEventListeners() {
     document.addEventListener('place:create', (e) => {
       this.open(e.detail.latitude, e.detail.longitude)
+    })
+
+    document.addEventListener('place:edit', (e) => {
+      this.openForEdit(e.detail.place)
     })
   }
 
@@ -47,14 +53,62 @@ export default class extends Controller {
   }
 
   async open(latitude, longitude) {
+    this.editingPlaceId = null
     this.latitudeInputTarget.value = latitude
     this.longitudeInputTarget.value = longitude
     this.currentRadius = 0.5 // Reset radius when opening modal
+
+    // Update modal for creation mode
+    if (this.hasModalTitleTarget) {
+      this.modalTitleTarget.textContent = 'Create New Place'
+    }
+    if (this.hasSubmitButtonTarget) {
+      this.submitButtonTarget.textContent = 'Create Place'
+    }
 
     this.modalTarget.classList.add('modal-open')
     this.nameInputTarget.focus()
 
     await this.loadNearbyPlaces(latitude, longitude)
+  }
+
+  async openForEdit(place) {
+    this.editingPlaceId = place.id
+    this.currentRadius = 0.5
+
+    // Fill in form with place data
+    this.nameInputTarget.value = place.name
+    this.latitudeInputTarget.value = place.latitude
+    this.longitudeInputTarget.value = place.longitude
+
+    if (this.hasNoteInputTarget && place.note) {
+      this.noteInputTarget.value = place.note
+    }
+
+    // Update modal for edit mode
+    if (this.hasModalTitleTarget) {
+      this.modalTitleTarget.textContent = 'Edit Place'
+    }
+    if (this.hasSubmitButtonTarget) {
+      this.submitButtonTarget.textContent = 'Update Place'
+    }
+
+    // Check the appropriate tag checkboxes
+    const tagCheckboxes = this.formTarget.querySelectorAll('input[name="tag_ids[]"]')
+    tagCheckboxes.forEach(checkbox => {
+      const isSelected = place.tags.some(tag => tag.id === parseInt(checkbox.value))
+      checkbox.checked = isSelected
+
+      // Trigger change event to update badge styling
+      const event = new Event('change', { bubbles: true })
+      checkbox.dispatchEvent(event)
+    })
+
+    this.modalTarget.classList.add('modal-open')
+    this.nameInputTarget.focus()
+
+    // Load nearby places for suggestions
+    await this.loadNearbyPlaces(place.latitude, place.longitude)
   }
 
   close() {
@@ -63,6 +117,7 @@ export default class extends Controller {
     this.nearbyListTarget.innerHTML = ''
     this.loadMoreContainerTarget.classList.add('hidden')
     this.currentRadius = 0.5
+    this.editingPlaceId = null
 
     const event = new CustomEvent('place:create:cancelled')
     document.dispatchEvent(event)
@@ -180,14 +235,19 @@ export default class extends Controller {
         name: formData.get('name'),
         latitude: parseFloat(formData.get('latitude')),
         longitude: parseFloat(formData.get('longitude')),
+        note: formData.get('note') || null,
         source: 'manual',
         tag_ids: tagIds
       }
     }
 
     try {
-      const response = await fetch('/api/v1/places', {
-        method: 'POST',
+      const isEdit = this.editingPlaceId !== null
+      const url = isEdit ? `/api/v1/places/${this.editingPlaceId}` : '/api/v1/places'
+      const method = isEdit ? 'PATCH' : 'POST'
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKeyValue}`
@@ -197,18 +257,19 @@ export default class extends Controller {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.errors?.join(', ') || 'Failed to create place')
+        throw new Error(error.errors?.join(', ') || `Failed to ${isEdit ? 'update' : 'create'} place`)
       }
 
       const place = await response.json()
-      
+
       this.close()
-      this.showNotification('Place created successfully!', 'success')
-      
-      const event = new CustomEvent('place:created', { detail: { place } })
-      document.dispatchEvent(event)
+      this.showNotification(`Place ${isEdit ? 'updated' : 'created'} successfully!`, 'success')
+
+      const eventName = isEdit ? 'place:updated' : 'place:created'
+      const customEvent = new CustomEvent(eventName, { detail: { place } })
+      document.dispatchEvent(customEvent)
     } catch (error) {
-      console.error('Error creating place:', error)
+      console.error(`Error ${this.editingPlaceId ? 'updating' : 'creating'} place:`, error)
       this.showNotification(error.message, 'error')
     }
   }

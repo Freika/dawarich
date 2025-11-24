@@ -1,7 +1,7 @@
 <div data-controller="place-creation" data-place-creation-api-key-value="<%= current_user.api_key %>">
   <div class="modal" data-place-creation-target="modal">
     <div class="modal-box max-w-2xl">
-      <h3 class="font-bold text-lg mb-4">Create New Place</h3>
+      <h3 class="font-bold text-lg mb-4" data-place-creation-target="modalTitle">Create New Place</h3>
 
       <form data-place-creation-target="form" data-action="submit->place-creation#submit">
         <input type="hidden" name="latitude" data-place-creation-target="latitudeInput">
@@ -80,7 +80,7 @@
 
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" data-action="click->place-creation#close">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create Place</button>
+          <button type="submit" class="btn btn-primary" data-place-creation-target="submitButton">Create Place</button>
         </div>
       </form>
     </div>

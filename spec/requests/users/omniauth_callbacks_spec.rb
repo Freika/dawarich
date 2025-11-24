@@ -63,6 +63,45 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
     end
 
     include_examples 'successful OAuth authentication', :openid_connect, 'OpenID Connect'
+
+    context 'when OIDC auto-registration is disabled' do
+      around do |example|
+        original_value = ENV['OIDC_AUTO_REGISTER']
+        ENV['OIDC_AUTO_REGISTER'] = 'false'
+        example.run
+        ENV['OIDC_AUTO_REGISTER'] = original_value
+      end
+
+      context "when user doesn't exist" do
+        it 'rejects the user with an appropriate error message' do
+          expect do
+            Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
+            get '/users/auth/openid_connect/callback'
+          end.not_to change(User, :count)
+
+          expect(response).to redirect_to(root_path)
+          expect(flash[:alert]).to include('Your account must be created by an administrator')
+        end
+      end
+
+      context 'when user already exists (account linking)' do
+        let!(:existing_user) { create(:user, email: email) }
+
+        it 'signs in the existing user and links OIDC provider' do
+          expect do
+            Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
+            get '/users/auth/openid_connect/callback'
+          end.not_to change(User, :count)
+
+          expect(response).to redirect_to(root_path)
+          expect(flash[:notice]).to include('OpenID Connect')
+
+          existing_user.reload
+          expect(existing_user.provider).to eq('openid_connect')
+          expect(existing_user.uid).to be_present
+        end
+      end
+    end
   end
 
   describe 'OAuth flow integration with OpenID Connect' do
