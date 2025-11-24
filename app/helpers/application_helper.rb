@@ -130,4 +130,19 @@ module ApplicationHelper
       'btn-success'
     end
   end
+
+  def oauth_provider_name(provider)
+    return OIDC_PROVIDER_NAME if provider == :openid_connect
+
+    OmniAuth::Utils.camelize(provider)
+  end
+
+  def email_password_registration_enabled?
+    return true unless DawarichSettings.self_hosted?
+
+    env_value = ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION']
+    return false if env_value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(env_value)
+  end
 end

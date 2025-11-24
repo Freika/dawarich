@@ -47,7 +47,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:notifications).and_return(double(count: 10))
         allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
-        allow(user).to receive(:places).and_return(double(count: 20))
+        allow(user).to receive(:visited_places).and_return(double(count: 20))
 
         # Mock Export creation and file attachment
         exports_double = double('Exports', count: 3)
@@ -376,7 +376,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:notifications).and_return(double(count: 10))
         allow(user).to receive(:points_count).and_return(15000)
         allow(user).to receive(:visits).and_return(double(count: 45))
-        allow(user).to receive(:places).and_return(double(count: 20))
+        allow(user).to receive(:visited_places).and_return(double(count: 20))
         allow(Rails.logger).to receive(:info)
       end
 

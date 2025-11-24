@@ -1,0 +1,36 @@
+.leaflet-control-layers-toggle.leaflet-layerstree-named-toggle {
+    margin: 2px 5px;
+    width: auto;
+    height: auto;
+    background-image: none;
+}
+
+.leaflet-layerstree-header input {
+    margin-left: 0px;
+}
+
+.leaflet-layerstree-header label {
+    display: inline-block;
+    cursor: pointer;
+}
+
+.leaflet-layerstree-header-pointer,
+.leaflet-layerstree-expand-collapse {
+    cursor: pointer;
+}
+
+.leaflet-layerstree-children {
+    padding-left: 10px;
+}
+
+.leaflet-layerstree-children-nopad {
+    padding-left: 0px;
+}
+
+.leaflet-layerstree-hide,
+.leaflet-layerstree-nevershow {
+    display: none;
+}
+.leaflet-control-layers label {
+    line-height: 1.5rem!important;
+}

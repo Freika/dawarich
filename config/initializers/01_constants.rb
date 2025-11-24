@@ -36,3 +36,23 @@ MANAGER_URL = SELF_HOSTED ? nil : ENV.fetch('MANAGER_URL', nil)
 METRICS_USERNAME = ENV.fetch('METRICS_USERNAME', 'prometheus')
 METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', 'prometheus')
 # /Prometheus metrics
+
+# Configure OAuth providers based on environment
+# Self-hosted: only OpenID Connect, Cloud: only GitHub and Google
+OMNIAUTH_PROVIDERS =
+  if SELF_HOSTED
+    # Self-hosted: only OpenID Connect
+    ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present? ? %i[openid_connect] : []
+  else
+    # Cloud: only GitHub and Google
+    providers = []
+
+    providers << :github if ENV['GITHUB_OAUTH_CLIENT_ID'].present? && ENV['GITHUB_OAUTH_CLIENT_SECRET'].present?
+
+    providers << :google_oauth2 if ENV['GOOGLE_OAUTH_CLIENT_ID'].present? && ENV['GOOGLE_OAUTH_CLIENT_SECRET'].present?
+
+    providers
+  end
+
+# Custom OIDC provider display name
+OIDC_PROVIDER_NAME = ENV.fetch('OIDC_PROVIDER_NAME', 'Openid Connect').freeze

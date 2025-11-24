@@ -10,11 +10,6 @@ RSpec.describe 'Users::Registrations', type: :request do
     create(:family_invitation, family: family, invited_by: family_owner, email: 'invited@example.com')
   end
 
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   describe 'Family Invitation Registration Flow' do
     context 'when accessing registration with a valid invitation token' do
       it 'shows family-focused registration page' do
@@ -145,7 +140,11 @@ RSpec.describe 'Users::Registrations', type: :request do
       allow(ENV).to receive(:[]).with('SELF_HOSTED').and_return('true')
     end
 
-    context 'when accessing registration without invitation token' do
+    context 'when accessing registration without invitation token and email/password registration disabled' do
+      before do
+        allow(ENV).to receive(:[]).with('ALLOW_EMAIL_PASSWORD_REGISTRATION').and_return(nil)
+      end
+
       it 'redirects to root with error message' do
         get new_user_registration_path
 
@@ -166,6 +165,37 @@ RSpec.describe 'Users::Registrations', type: :request do
 
         expect(response).to redirect_to(root_path)
         expect(flash[:alert]).to include('Registration is not available')
+      end
+    end
+
+    context 'when email/password registration is enabled' do
+      around do |example|
+        original_value = ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION']
+        ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = 'true'
+        example.run
+        ENV['ALLOW_EMAIL_PASSWORD_REGISTRATION'] = original_value
+      end
+
+      it 'allows registration page access' do
+        get new_user_registration_path
+
+        expect(response).to have_http_status(:success)
+      end
+
+      it 'allows account creation' do
+        expect do
+          post user_registration_path, params: {
+            user: {
+              email: 'newuser@example.com',
+              password: 'password123',
+              password_confirmation: 'password123'
+            }
+          }
+        end.to change(User, :count).by(1)
+
+        user = User.find_by(email: 'newuser@example.com')
+        expect(user).to be_present
+        expect(response).to redirect_to(root_path)
       end
     end
 

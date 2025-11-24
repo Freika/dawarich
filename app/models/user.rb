@@ -2,8 +2,11 @@
 
 class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   include UserFamily
+  include Omniauthable
+
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable, :trackable
+         :recoverable, :rememberable, :validatable, :trackable,
+         :omniauthable, omniauth_providers: ::OMNIAUTH_PROVIDERS
 
   has_many :points, dependent: :destroy
   has_many :imports,        dependent: :destroy
@@ -12,7 +15,9 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
-  has_many :places, through: :visits
+  has_many :visited_places, through: :visits, source: :place
+  has_many :places,         dependent: :destroy
+  has_many :tags,           dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
 
@@ -143,6 +148,17 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
 
   def cities_visited_uncached
     points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+  end
+
+  def home_place_coordinates
+    home_tag = tags.find_by('LOWER(name) = ?', 'home')
+    return nil unless home_tag
+    return nil if home_tag.privacy_zone?
+
+    home_place = home_tag.places.first
+    return nil unless home_place
+
+    [home_place.latitude, home_place.longitude]
   end
 
   private

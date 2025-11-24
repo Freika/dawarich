@@ -20,12 +20,12 @@ services:
 
   dawarich_db:
     image: postgis/postgis:17-3.5-alpine
+    # image: imresamu/postgis:17-3.5-alpine # If you're on ARM architecture, use this image instead
     shm_size: 1G
     container_name: dawarich_db
     volumes:
       - dawarich_db_data:/var/lib/postgresql/data
       - dawarich_shared:/var/shared
-      # - ./postgresql.conf:/etc/postgresql/postgresql.conf # Optional, uncomment if you want to use a custom config
     networks:
       - dawarich
     environment:

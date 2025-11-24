@@ -16,8 +16,8 @@ RSpec.describe Users::ExportData::Places, type: :service do
     end
 
     context 'when user has places' do
-      let!(:place1) { create(:place, name: 'Home', longitude: -74.0059, latitude: 40.7128) }
-      let!(:place2) { create(:place, name: 'Office', longitude: -73.9851, latitude: 40.7589) }
+      let!(:place1) { create(:place, user: user, name: 'Home', longitude: -74.0059, latitude: 40.7128) }
+      let!(:place2) { create(:place, user: user, name: 'Office', longitude: -73.9851, latitude: 40.7589) }
       let!(:visit1) { create(:visit, user: user, place: place1) }
       let!(:visit2) { create(:visit, user: user, place: place2) }
 

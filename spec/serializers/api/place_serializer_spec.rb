@@ -15,7 +15,8 @@ RSpec.describe Api::PlaceSerializer do
         city: 'New York',
         country: 'United States',
         source: 'photon',
-        geodata: { 'amenity' => 'park', 'leisure' => 'park' }, reverse_geocoded_at: Time.zone.parse('2023-01-15T12:00:00Z')
+        geodata: { 'amenity' => 'park', 'leisure' => 'park' },
+        reverse_geocoded_at: Time.zone.parse('2023-01-15T12:00:00Z')
       )
     end
 

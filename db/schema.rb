@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_30_190924) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_18_210506) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -180,8 +180,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_190924) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
+    t.bigint "user_id"
+    t.text "note"
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
+    t.index ["user_id"], name: "index_places_on_user_id"
   end
 
   create_table "points", force: :cascade do |t|
@@ -265,6 +268,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_190924) do
     t.index ["year"], name: "index_stats_on_year"
   end
 
+  create_table "taggings", force: :cascade do |t|
+    t.string "taggable_type", null: false
+    t.bigint "taggable_id", null: false
+    t.bigint "tag_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tag_id"], name: "index_taggings_on_tag_id"
+    t.index ["taggable_type", "taggable_id", "tag_id"], name: "index_taggings_on_taggable_and_tag", unique: true
+    t.index ["taggable_type", "taggable_id"], name: "index_taggings_on_taggable"
+  end
+
+  create_table "tags", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "icon"
+    t.string "color"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "privacy_radius_meters"
+    t.index ["privacy_radius_meters"], name: "index_tags_on_privacy_radius_meters", where: "(privacy_radius_meters IS NOT NULL)"
+    t.index ["user_id", "name"], name: "index_tags_on_user_id_and_name", unique: true
+    t.index ["user_id"], name: "index_tags_on_user_id"
+  end
+
   create_table "tracks", force: :cascade do |t|
     t.datetime "start_at", null: false
     t.datetime "end_at", null: false
@@ -317,9 +344,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_190924) do
     t.integer "points_count", default: 0, null: false
     t.string "provider"
     t.string "uid"
-    t.text "patreon_access_token"
-    t.text "patreon_refresh_token"
-    t.datetime "patreon_token_expires_at"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
@@ -362,6 +386,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_30_190924) do
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "stats", "users"
+  add_foreign_key "taggings", "tags"
+  add_foreign_key "tags", "users"
   add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"

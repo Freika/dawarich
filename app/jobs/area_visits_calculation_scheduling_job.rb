@@ -5,6 +5,9 @@ class AreaVisitsCalculationSchedulingJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform
-    User.find_each { AreaVisitsCalculatingJob.perform_later(_1.id) }
+    User.find_each do |user|
+      AreaVisitsCalculatingJob.perform_later(user.id)
+      PlaceVisitsCalculatingJob.perform_later(user.id)
+    end
   end
 end
