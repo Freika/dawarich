@@ -50,6 +50,8 @@ OMNIAUTH_PROVIDERS =
     providers << :github if ENV['GITHUB_OAUTH_CLIENT_ID'].present? && ENV['GITHUB_OAUTH_CLIENT_SECRET'].present?
 
     providers << :google_oauth2 if ENV['GOOGLE_OAUTH_CLIENT_ID'].present? && ENV['GOOGLE_OAUTH_CLIENT_SECRET'].present?
+
+    providers
   end
 
 # Custom OIDC provider display name

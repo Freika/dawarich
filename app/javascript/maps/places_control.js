@@ -100,7 +100,10 @@ export function createPlacesControl(placesManager, tags, userTheme = 'dark') {
               FILTER BY TAG
             </div>
             <div style="max-height: 250px; overflow-y: auto; margin-right: -5px; padding-right: 5px;">
-              ${this.tags.map(tag => `
+              ${this.tags.map(tag => {
+                const safeIcon = tag.icon ? this.escapeHtml(tag.icon) : '📍';
+                const safeColor = this.sanitizeColor(tag.color);
+                return `
                 <label style="display: flex; align-items: center; padding: 6px; cursor: pointer; border-radius: 4px; margin-bottom: 2px;"
                        class="places-control-item"
                        onmouseover="this.style.backgroundColor='rgba(128,128,128,0.2)'"
@@ -110,11 +113,12 @@ export function createPlacesControl(placesManager, tags, userTheme = 'dark') {
                          data-tag-id="${tag.id}"
                          style="margin-right: 8px; cursor: pointer;"
                          ${this.activeFilters.has(tag.id) ? 'checked' : ''}>
-                  <span style="font-size: 18px; margin-right: 6px;">${tag.icon || '📍'}</span>
+                  <span style="font-size: 18px; margin-right: 6px;">${safeIcon}</span>
                   <span style="flex: 1;">#${this.escapeHtml(tag.name)}</span>
-                  ${tag.color ? `<span style="width: 12px; height: 12px; border-radius: 50%; background-color: ${tag.color}; margin-left: 4px;"></span>` : ''}
+                  ${tag.color ? `<span style="width: 12px; height: 12px; border-radius: 50%; background-color: ${safeColor}; margin-left: 4px;"></span>` : ''}
                 </label>
-              `).join('')}
+              `;
+              }).join('')}
             </div>
           </div>
         ` : '<div style="font-size: 12px; opacity: 0.6; padding: 8px; text-align: center;">No tags created yet</div>'}
@@ -209,6 +213,20 @@ export function createPlacesControl(placesManager, tags, userTheme = 'dark') {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    },
+
+    sanitizeColor: function(color) {
+      // Validate hex color format (#RGB or #RRGGBB)
+      if (!color || typeof color !== 'string') {
+        return '#4CAF50'; // Default green
+      }
+
+      const hexColorRegex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+      if (hexColorRegex.test(color)) {
+        return color;
+      }
+
+      return '#4CAF50'; // Default green for invalid colors
     }
   });
 }

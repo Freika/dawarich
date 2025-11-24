@@ -177,8 +177,10 @@ export class PlacesManager {
   }
 
   createPlaceIcon(place) {
-    const emoji = place.icon || place.tags[0]?.icon || '📍';
-    const color = place.color || place.tags[0]?.color || '#4CAF50';
+    const rawEmoji = place.icon || place.tags[0]?.icon || '📍';
+    const emoji = this.escapeHtml(rawEmoji);
+    const rawColor = place.color || place.tags[0]?.color || '#4CAF50';
+    const color = this.sanitizeColor(rawColor);
 
     const iconHtml = `
       <div class="place-marker" style="
@@ -207,18 +209,24 @@ export class PlacesManager {
   }
 
   createPopupContent(place) {
-    const tags = place.tags.map(tag =>
-      `<span class="badge badge-sm" style="background-color: ${tag.color}">
-        ${tag.icon} #${tag.name}
-      </span>`
-    ).join(' ');
+    const tags = place.tags.map(tag => {
+      const safeIcon = this.escapeHtml(tag.icon || '');
+      const safeName = this.escapeHtml(tag.name || '');
+      const safeColor = this.sanitizeColor(tag.color);
+      return `<span class="badge badge-sm" style="background-color: ${safeColor}">
+        ${safeIcon} #${safeName}
+      </span>`;
+    }).join(' ');
+
+    const safeName = this.escapeHtml(place.name || '');
+    const safeVisitsCount = place.visits_count ? parseInt(place.visits_count, 10) : 0;
 
     return `
       <div class="place-popup" style="min-width: 200px;">
-        <h3 class="font-bold text-lg mb-2">${place.name}</h3>
+        <h3 class="font-bold text-lg mb-2">${safeName}</h3>
         ${tags ? `<div class="mb-2">${tags}</div>` : ''}
         ${place.note ? `<p class="text-sm text-gray-600 mb-2 italic">${this.escapeHtml(place.note)}</p>` : ''}
-        ${place.visits_count ? `<p class="text-sm">Visits: ${place.visits_count}</p>` : ''}
+        ${safeVisitsCount > 0 ? `<p class="text-sm">Visits: ${safeVisitsCount}</p>` : ''}
         <div class="mt-2 flex gap-2">
           <button class="btn btn-xs btn-primary" data-place-id="${place.id}" data-action="edit-place">
             Edit
@@ -235,6 +243,20 @@ export class PlacesManager {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  sanitizeColor(color) {
+    // Validate hex color format (#RGB or #RRGGBB)
+    if (!color || typeof color !== 'string') {
+      return '#4CAF50'; // Default green
+    }
+
+    const hexColorRegex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+    if (hexColorRegex.test(color)) {
+      return color;
+    }
+
+    return '#4CAF50'; // Default green for invalid colors
   }
 
   setupMapClickHandler() {
