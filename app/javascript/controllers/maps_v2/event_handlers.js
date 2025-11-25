@@ -1,0 +1,55 @@
+import maplibregl from 'maplibre-gl'
+import { PopupFactory } from 'maps_v2/components/popup_factory'
+import { VisitPopupFactory } from 'maps_v2/components/visit_popup'
+import { PhotoPopupFactory } from 'maps_v2/components/photo_popup'
+
+/**
+ * Handles map interaction events (clicks, popups)
+ */
+export class EventHandlers {
+  constructor(map) {
+    this.map = map
+  }
+
+  /**
+   * Handle point click
+   */
+  handlePointClick(e) {
+    const feature = e.features[0]
+    const coordinates = feature.geometry.coordinates.slice()
+    const properties = feature.properties
+
+    new maplibregl.Popup()
+      .setLngLat(coordinates)
+      .setHTML(PopupFactory.createPointPopup(properties))
+      .addTo(this.map)
+  }
+
+  /**
+   * Handle visit click
+   */
+  handleVisitClick(e) {
+    const feature = e.features[0]
+    const coordinates = feature.geometry.coordinates.slice()
+    const properties = feature.properties
+
+    new maplibregl.Popup()
+      .setLngLat(coordinates)
+      .setHTML(VisitPopupFactory.createVisitPopup(properties))
+      .addTo(this.map)
+  }
+
+  /**
+   * Handle photo click
+   */
+  handlePhotoClick(e) {
+    const feature = e.features[0]
+    const coordinates = feature.geometry.coordinates.slice()
+    const properties = feature.properties
+
+    new maplibregl.Popup()
+      .setLngLat(coordinates)
+      .setHTML(PhotoPopupFactory.createPhotoPopup(properties))
+      .addTo(this.map)
+  }
+}

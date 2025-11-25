@@ -120,7 +120,7 @@ test.describe('Phase 3: Heatmap + Settings', () => {
       await page.waitForTimeout(300)
 
       const styleSelect = page.locator('#map-style')
-      await styleSelect.selectOption('dark-matter')
+      await styleSelect.selectOption('dark')
 
       // Wait for style to load
       await page.waitForTimeout(1000)
@@ -130,7 +130,7 @@ test.describe('Phase 3: Heatmap + Settings', () => {
         return settings.mapStyle
       })
 
-      expect(savedStyle).toBe('dark-matter')
+      expect(savedStyle).toBe('dark')
     })
 
     test('settings persist across page loads', async ({ page }) => {
@@ -161,7 +161,7 @@ test.describe('Phase 3: Heatmap + Settings', () => {
       await page.click('button[title="Settings"]')
       await page.waitForTimeout(300)
 
-      await page.locator('#map-style').selectOption('dark-matter')
+      await page.locator('#map-style').selectOption('dark')
       await page.waitForTimeout(300)
 
       const heatmapCheckbox = page.locator('label.setting-checkbox:has-text("Show Heatmap")').locator('input[type="checkbox"]')
