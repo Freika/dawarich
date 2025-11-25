@@ -30,13 +30,18 @@ test.describe('Phase 3: Heatmap + Settings', () => {
   test.describe('Heatmap Layer', () => {
     test('heatmap layer can be created', async ({ page }) => {
       // Heatmap layer might not exist by default, but should be creatable
-      // Open settings and enable heatmap
+      // Open settings panel
       await page.click('button[title="Settings"]')
       await page.waitForTimeout(500)
 
-      const heatmapLabel = page.locator('label.setting-checkbox:has-text("Show Heatmap")')
-      const heatmapCheckbox = heatmapLabel.locator('input[type="checkbox"]')
-      await heatmapCheckbox.check()
+      // Switch to Layers tab
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
+      // Find and toggle heatmap using DaisyUI toggle
+      const heatmapLabel = page.locator('label:has-text("Heatmap")').first()
+      const heatmapToggle = heatmapLabel.locator('input.toggle')
+      await heatmapToggle.check()
       await page.waitForTimeout(500)
 
       // Check if heatmap layer now exists
@@ -53,14 +58,18 @@ test.describe('Phase 3: Heatmap + Settings', () => {
     })
 
     test('heatmap can be toggled', async ({ page }) => {
-      // Open settings
+      // Open settings panel
       await page.click('button[title="Settings"]')
       await page.waitForTimeout(500)
 
-      // Toggle heatmap on - find checkbox by its label text
-      const heatmapLabel = page.locator('label.setting-checkbox:has-text("Show Heatmap")')
-      const heatmapCheckbox = heatmapLabel.locator('input[type="checkbox"]')
-      await heatmapCheckbox.check()
+      // Switch to Layers tab
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
+      // Toggle heatmap on - find toggle by its label text
+      const heatmapLabel = page.locator('label:has-text("Heatmap")').first()
+      const heatmapToggle = heatmapLabel.locator('input.toggle')
+      await heatmapToggle.check()
       await page.waitForTimeout(500)
 
       const isVisible = await page.evaluate(() => {
@@ -78,8 +87,12 @@ test.describe('Phase 3: Heatmap + Settings', () => {
       await page.click('button[title="Settings"]')
       await page.waitForTimeout(300)
 
-      const heatmapCheckbox = page.locator('label.setting-checkbox:has-text("Show Heatmap")').locator('input[type="checkbox"]')
-      await heatmapCheckbox.check()
+      // Switch to Layers tab
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
+      const heatmapToggle = page.locator('label:has-text("Heatmap")').first().locator('input.toggle')
+      await heatmapToggle.check()
       await page.waitForTimeout(300)
 
       // Check localStorage
@@ -98,28 +111,52 @@ test.describe('Phase 3: Heatmap + Settings', () => {
       await settingsBtn.click()
 
       // Wait for panel to open (animation takes 300ms)
-      const panel = page.locator('.settings-panel')
+      const panel = page.locator('.map-control-panel')
       await page.waitForTimeout(400)
       await expect(panel).toHaveClass(/open/)
 
-      // Close the panel - trigger the Stimulus action directly
-      await page.evaluate(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
-        const app = window.Stimulus || window.Application
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
-        controller.toggleSettings()
-      })
+      // Close the panel using the close button
+      await page.click('.panel-header button[title="Close panel"]')
 
       // Wait for panel close animation
       await page.waitForTimeout(400)
       await expect(panel).not.toHaveClass(/open/)
     })
 
+    test('tab switching works', async ({ page }) => {
+      await page.click('button[title="Settings"]')
+      await page.waitForTimeout(400)
+
+      // Check default tab is Search
+      const searchTab = page.locator('[data-tab-content="search"]')
+      await expect(searchTab).toHaveClass(/active/)
+
+      // Switch to Layers tab
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
+      const layersTab = page.locator('[data-tab-content="layers"]')
+      await expect(layersTab).toHaveClass(/active/)
+      await expect(searchTab).not.toHaveClass(/active/)
+
+      // Switch to Settings tab
+      await page.click('button[data-tab="settings"]')
+      await page.waitForTimeout(300)
+
+      const settingsTab = page.locator('[data-tab-content="settings"]')
+      await expect(settingsTab).toHaveClass(/active/)
+      await expect(layersTab).not.toHaveClass(/active/)
+    })
+
     test('map style can be changed', async ({ page }) => {
       await page.click('button[title="Settings"]')
       await page.waitForTimeout(300)
 
-      const styleSelect = page.locator('#map-style')
+      // Switch to Settings tab
+      await page.click('button[data-tab="settings"]')
+      await page.waitForTimeout(300)
+
+      const styleSelect = page.locator('select.select-bordered').first()
       await styleSelect.selectOption('dark')
 
       // Wait for style to load
@@ -138,8 +175,12 @@ test.describe('Phase 3: Heatmap + Settings', () => {
       await page.click('button[title="Settings"]')
       await page.waitForTimeout(300)
 
-      const heatmapCheckbox = page.locator('label.setting-checkbox:has-text("Show Heatmap")').locator('input[type="checkbox"]')
-      await heatmapCheckbox.check()
+      // Switch to Layers tab
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
+      const heatmapToggle = page.locator('label:has-text("Heatmap")').first().locator('input.toggle')
+      await heatmapToggle.check()
       await page.waitForTimeout(300)
 
       // Reload page
@@ -161,18 +202,30 @@ test.describe('Phase 3: Heatmap + Settings', () => {
       await page.click('button[title="Settings"]')
       await page.waitForTimeout(300)
 
-      await page.locator('#map-style').selectOption('dark')
+      // Switch to Settings tab
+      await page.click('button[data-tab="settings"]')
       await page.waitForTimeout(300)
 
-      const heatmapCheckbox = page.locator('label.setting-checkbox:has-text("Show Heatmap")').locator('input[type="checkbox"]')
-      await heatmapCheckbox.check()
+      await page.locator('select.select-bordered').first().selectOption('dark')
+      await page.waitForTimeout(300)
+
+      // Switch to Layers tab to enable heatmap
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
+      const heatmapToggle = page.locator('label:has-text("Heatmap")').first().locator('input.toggle')
+      await heatmapToggle.check()
+      await page.waitForTimeout(300)
+
+      // Switch back to Settings tab
+      await page.click('button[data-tab="settings"]')
       await page.waitForTimeout(300)
 
       // Setup dialog handler before clicking reset
       page.on('dialog', dialog => dialog.accept())
 
       // Reset - this will reload the page
-      await page.click('.reset-btn')
+      await page.click('.btn-outline:has-text("Reset to Defaults")')
 
       // Wait for page reload
       await closeOnboardingModal(page)
@@ -235,13 +288,17 @@ test.describe('Phase 3: Heatmap + Settings', () => {
       await page.click('button[title="Settings"]')
       await page.waitForTimeout(400)
 
+      // Switch to Layers tab
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
       // Check that settings panel is open
-      const settingsPanel = page.locator('.settings-panel.open')
+      const settingsPanel = page.locator('.map-control-panel.open')
       await expect(settingsPanel).toBeVisible()
 
-      // Check that at least one checkbox exists (any layer toggle)
-      const checkboxes = page.locator('.setting-checkbox input[type="checkbox"]')
-      const count = await checkboxes.count()
+      // Check that DaisyUI toggles exist (any layer toggle)
+      const toggles = page.locator('input.toggle')
+      const count = await toggles.count()
       expect(count).toBeGreaterThan(0)
     })
   })

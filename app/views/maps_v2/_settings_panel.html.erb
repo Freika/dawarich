@@ -1,243 +1,408 @@
-<div class="settings-panel" data-maps-v2-target="settingsPanel">
-  <div class="settings-header">
-    <h3>Map Settings</h3>
-    <button data-action="click->maps-v2#toggleSettings"
-            class="close-btn"
-            title="Close settings">
-      ✕
+<div class="map-control-panel" data-maps-v2-target="settingsPanel" data-controller="map-panel">
+  <!-- Vertical Icon Tabs (Left Side) -->
+  <div class="panel-tabs">
+    <button class="tab-btn active"
+            data-action="click->map-panel#switchTab"
+            data-tab="search"
+            data-map-panel-target="tabButton"
+            title="Search">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+    </button>
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
+            data-tab="layers"
+            data-map-panel-target="tabButton"
+            title="Map Layers">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+        <polyline points="2 17 12 22 22 17"></polyline>
+        <polyline points="2 12 12 17 22 12"></polyline>
+      </svg>
+    </button>
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
+            data-tab="settings"
+            data-map-panel-target="tabButton"
+            title="Settings">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
     </button>
   </div>
 
-  <div class="settings-body">
-    <!-- Map Style -->
-    <div class="setting-group">
-      <label for="map-style">Map Style</label>
-      <select id="map-style"
-              data-action="change->maps-v2#updateMapStyle"
-              class="setting-select">
-        <option value="light" selected>Light</option>
-        <option value="dark">Dark</option>
-        <option value="white">White</option>
-        <option value="black">Black</option>
-        <option value="grayscale">Grayscale</option>
-      </select>
+  <!-- Panel Content -->
+  <div class="panel-content">
+    <!-- Panel Header -->
+    <div class="panel-header">
+      <h3 class="panel-title" data-map-panel-target="title">Search</h3>
+      <button class="btn btn-ghost btn-sm btn-circle"
+              data-action="click->maps-v2#toggleSettings"
+              title="Close panel">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
-    <!-- Heatmap Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               data-action="change->maps-v2#toggleHeatmap">
-        <span>Show Heatmap</span>
-      </label>
+    <!-- Panel Body -->
+    <div class="panel-body">
+      <!-- Search Tab -->
+      <div class="tab-content active" data-tab-content="search" data-map-panel-target="tabContent">
+        <div class="form-control w-full">
+          <label class="label">
+            <span class="label-text">Search for a place</span>
+          </label>
+          <input type="text"
+                 placeholder="Enter name of a place"
+                 class="input input-bordered w-full" />
+        </div>
+      </div>
+
+      <!-- Layers Tab -->
+      <div class="tab-content" data-tab-content="layers" data-map-panel-target="tabContent">
+        <div class="space-y-4">
+          <!-- Points Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     checked
+                     data-layer="points" />
+              <span class="label-text font-medium">Points</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show individual location points</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Routes Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     checked
+                     data-layer="routes" />
+              <span class="label-text font-medium">Routes</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show connected route lines</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Heatmap Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps-v2#toggleHeatmap" />
+              <span class="label-text font-medium">Heatmap</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show density heatmap</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Visits Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps-v2#toggleVisits" />
+              <span class="label-text font-medium">Visits</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show detected area visits</p>
+          </div>
+
+          <!-- Visits Search (conditionally shown) -->
+          <div class="ml-14 space-y-2" data-maps-v2-target="visitsSearch" style="display: none;">
+            <input type="text"
+                   id="visits-search"
+                   placeholder="Filter by name..."
+                   class="input input-sm input-bordered w-full"
+                   data-action="input->maps-v2#searchVisits" />
+
+            <select class="select select-sm select-bordered w-full"
+                    data-action="change->maps-v2#filterVisits">
+              <option value="all">All Visits</option>
+              <option value="confirmed">Confirmed Only</option>
+              <option value="suggested">Suggested Only</option>
+            </select>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Photos Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps-v2#togglePhotos" />
+              <span class="label-text font-medium">Photos</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show geotagged photos</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Areas Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps-v2#toggleAreas" />
+              <span class="label-text font-medium">Areas</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show defined areas</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Tracks Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps-v2#toggleTracks" />
+              <span class="label-text font-medium">Tracks</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show saved tracks</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Fog of War Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps-v2#toggleFog" />
+              <span class="label-text font-medium">Fog of War</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show explored areas</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Scratch Map Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps-v2#toggleScratch" />
+              <span class="label-text font-medium">Scratch Map</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show scratched countries</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div class="tab-content" data-tab-content="settings" data-map-panel-target="tabContent">
+        <div class="space-y-6">
+          <!-- Map Style -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Map Style</span>
+            </label>
+            <select class="select select-bordered w-full"
+                    data-action="change->maps-v2#updateMapStyle">
+              <option value="light" selected>Light</option>
+              <option value="dark">Dark</option>
+              <option value="white">White</option>
+              <option value="black">Black</option>
+              <option value="grayscale">Grayscale</option>
+            </select>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Clustering -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     checked
+                     data-action="change->maps-v2#toggleClustering" />
+              <span class="label-text font-medium">Point Clustering</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Group nearby points together</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Live Mode -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps-v2-realtime#toggleLiveMode"
+                     data-maps-v2-realtime-target="liveModeToggle" />
+              <span class="label-text font-medium">Live Mode</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Reset Settings -->
+          <button class="btn btn-outline btn-block"
+                  data-action="click->maps-v2#resetSettings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+              <path d="M21 3v5h-5"></path>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+              <path d="M3 21v-5h5"></path>
+            </svg>
+            Reset to Defaults
+          </button>
+        </div>
+      </div>
     </div>
-
-    <!-- Clustering Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               checked
-               data-action="change->maps-v2#toggleClustering">
-        <span>Enable Point Clustering</span>
-      </label>
-    </div>
-
-    <!-- Visits Layer Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               data-action="change->maps-v2#toggleVisits">
-        <span>Show Visits</span>
-      </label>
-    </div>
-
-    <!-- Photos Layer Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               data-action="change->maps-v2#togglePhotos">
-        <span>Show Photos</span>
-      </label>
-    </div>
-
-    <!-- Areas Layer Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               data-action="change->maps-v2#toggleAreas">
-        <span>Show Areas</span>
-      </label>
-    </div>
-
-    <!-- Tracks Layer Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               data-action="change->maps-v2#toggleTracks">
-        <span>Show Tracks</span>
-      </label>
-    </div>
-
-    <!-- Fog of War Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               data-action="change->maps-v2#toggleFog">
-        <span>Show Fog of War</span>
-      </label>
-    </div>
-
-    <!-- Scratch Map Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               data-action="change->maps-v2#toggleScratch">
-        <span>Show Scratch Map</span>
-      </label>
-    </div>
-
-    <!-- Live Mode Toggle -->
-    <div class="setting-group">
-      <label class="setting-checkbox">
-        <input type="checkbox"
-               data-action="change->maps-v2-realtime#toggleLiveMode"
-               data-maps-v2-realtime-target="liveModeToggle">
-        <span>Live Mode (Show New Points)</span>
-      </label>
-    </div>
-
-    <!-- Visits Search (shown when visits enabled) -->
-    <div class="setting-group" data-maps-v2-target="visitsSearch" style="display: none;">
-      <label for="visits-search">Search Visits</label>
-      <input type="text"
-             id="visits-search"
-             data-action="input->maps-v2#searchVisits"
-             placeholder="Filter by name..."
-             class="setting-input">
-
-      <select data-action="change->maps-v2#filterVisits"
-              class="setting-select"
-              style="margin-top: 8px;">
-        <option value="all">All Visits</option>
-        <option value="confirmed">Confirmed Only</option>
-        <option value="suggested">Suggested Only</option>
-      </select>
-    </div>
-
-    <!-- Reset Button -->
-    <button data-action="click->maps-v2#resetSettings"
-            class="reset-btn">
-      Reset to Defaults
-    </button>
   </div>
 </div>
 
 <style>
-  .settings-panel {
-    position: fixed;
+  .map-control-panel {
+    position: absolute;
     top: 0;
-    right: -320px;
-    width: 320px;
-    height: 100vh;
-    background: white;
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    right: -420px; /* Hidden by default */
+    width: 420px;
+    height: 100%;
+    background: oklch(var(--b1));
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
     z-index: 9999;
-    transition: right 0.3s ease;
-    overflow-y: auto;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    overflow: hidden;
   }
 
-  .settings-panel.open {
+  .map-control-panel.open {
     right: 0;
   }
 
-  .settings-header {
+  /* Vertical Tab Bar */
+  .panel-tabs {
+    width: 64px;
+    background: oklch(var(--b2));
+    border-right: 1px solid oklch(var(--bc) / 0.1);
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 16px 0;
+    gap: 8px;
   }
 
-  .settings-header h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-  }
-
-  .close-btn {
-    background: transparent;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #6b7280;
-    width: 32px;
-    height: 32px;
+  .tab-btn {
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    color: oklch(var(--bc) / 0.6);
   }
 
-  .close-btn:hover {
-    color: #111827;
+  .tab-btn:hover {
+    background: oklch(var(--b3));
+    color: oklch(var(--bc));
   }
 
-  .settings-body {
-    padding: 20px;
+  .tab-btn.active {
+    background: oklch(var(--p));
+    color: oklch(var(--pc));
   }
 
-  .setting-group {
-    margin-bottom: 24px;
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 24px;
+    background: oklch(var(--p));
+    border-radius: 2px 0 0 2px;
   }
 
-  .setting-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #374151;
+  .tab-icon {
+    width: 24px;
+    height: 24px;
   }
 
-  .setting-select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-  }
-
-  .setting-input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-  }
-
-  .setting-checkbox {
+  /* Panel Content */
+  .panel-content {
+    flex: 1;
     display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    cursor: pointer;
+    padding: 20px 24px;
+    border-bottom: 1px solid oklch(var(--bc) / 0.1);
+    background: oklch(var(--b1));
   }
 
-  .setting-checkbox input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
+  .panel-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: oklch(var(--bc));
   }
 
-  .reset-btn {
-    width: 100%;
-    padding: 10px;
-    background: #f3f4f6;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
   }
 
-  .reset-btn:hover {
-    background: #e5e7eb;
+  /* Tab Content */
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  /* Custom Scrollbar */
+  .panel-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .panel-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .panel-body::-webkit-scrollbar-thumb {
+    background: oklch(var(--bc) / 0.2);
+    border-radius: 4px;
+  }
+
+  .panel-body::-webkit-scrollbar-thumb:hover {
+    background: oklch(var(--bc) / 0.3);
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .map-control-panel {
+      width: 100%;
+      right: -100%;
+    }
   }
 </style>
