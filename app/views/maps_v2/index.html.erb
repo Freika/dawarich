@@ -141,13 +141,18 @@
     background: white;
     border-radius: 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    display: flex;
+    display: none; /* Hidden by default, shown when family sharing is active */
     align-items: center;
     gap: 8px;
     font-size: 13px;
     font-weight: 500;
     z-index: 20;
     transition: all 0.3s;
+  }
+
+  /* Show connection indicator when family sharing is active */
+  .connection-indicator.active {
+    display: flex;
   }
 
   .indicator-dot {

@@ -12,7 +12,8 @@ import {
 
 test.describe('Phase 2: Routes + Layer Controls', () => {
   test.beforeEach(async ({ page }) => {
-    await navigateToMapsV2(page);
+    // Navigate directly with URL parameters to date range with data
+    await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59');
     await closeOnboardingModal(page);
     await waitForMapLibre(page);
     await waitForLoadingComplete(page);
@@ -281,12 +282,14 @@ test.describe('Phase 2: Routes + Layer Controls', () => {
     const initialRoutes = await hasLayer(page, 'routes');
     expect(initialRoutes).toBe(true);
 
-    // Navigate to a different date with known data (same as other tests use)
-    await navigateToMapsV2WithDate(page, '2025-10-15T00:00', '2025-10-15T23:59');
+    // Navigate to a different date with known data (Oct 16 instead of Oct 15)
+    await navigateToMapsV2WithDate(page, '2025-10-16T00:00', '2025-10-16T23:59');
     await closeOnboardingModal(page);
 
-    // Wait for map to reinitialize and routes layer to be added
-    await page.waitForTimeout(1000);
+    // Wait for map to fully reload
+    await waitForMapLibre(page);
+    await waitForLoadingComplete(page);
+    await page.waitForTimeout(1500);
 
     // Verify routes layer still exists after navigation
     const hasRoutesLayer = await hasLayer(page, 'routes');

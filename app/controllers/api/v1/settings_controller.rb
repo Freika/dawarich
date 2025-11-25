@@ -31,6 +31,9 @@ class Api::V1::SettingsController < ApiController
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,
       :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
       :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold,
+      :maps_v2_style, :maps_v2_heatmap, :maps_v2_visits, :maps_v2_photos,
+      :maps_v2_areas, :maps_v2_tracks, :maps_v2_fog, :maps_v2_scratch,
+      :maps_v2_clustering, :maps_v2_cluster_radius,
       enabled_map_layers: []
     )
   end

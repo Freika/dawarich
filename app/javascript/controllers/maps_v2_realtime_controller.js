@@ -205,6 +205,8 @@ export default class extends Controller {
   updateConnectionIndicator(connected) {
     const indicator = document.querySelector('.connection-indicator')
     if (indicator) {
+      // Show the indicator when connection is attempted
+      indicator.classList.add('active')
       indicator.classList.toggle('connected', connected)
       indicator.classList.toggle('disconnected', !connected)
     }

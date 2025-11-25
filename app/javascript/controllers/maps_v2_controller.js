@@ -9,7 +9,6 @@ import { PhotosLayer } from 'maps_v2/layers/photos_layer'
 import { AreasLayer } from 'maps_v2/layers/areas_layer'
 import { TracksLayer } from 'maps_v2/layers/tracks_layer'
 import { FogLayer } from 'maps_v2/layers/fog_layer'
-import { ScratchLayer } from 'maps_v2/layers/scratch_layer'
 import { FamilyLayer } from 'maps_v2/layers/family_layer'
 import { pointsToGeoJSON } from 'maps_v2/utils/geojson_transformers'
 import { PopupFactory } from 'maps_v2/components/popup_factory'
@@ -18,6 +17,11 @@ import { PhotoPopupFactory } from 'maps_v2/components/photo_popup'
 import { SettingsManager } from 'maps_v2/utils/settings_manager'
 import { createCircle } from 'maps_v2/utils/geometry'
 import { Toast } from 'maps_v2/components/toast'
+import { lazyLoader } from 'maps_v2/utils/lazy_loader'
+import { ProgressiveLoader } from 'maps_v2/utils/progressive_loader'
+import { performanceMonitor } from 'maps_v2/utils/performance_monitor'
+import { CleanupHelper } from 'maps_v2/utils/cleanup_helper'
+import { getMapStyle } from 'maps_v2/utils/style_manager'
 
 /**
  * Main map controller for Maps V2
@@ -32,9 +36,16 @@ export default class extends Controller {
 
   static targets = ['container', 'loading', 'loadingText', 'monthSelect', 'clusterToggle', 'settingsPanel', 'visitsSearch']
 
-  connect() {
-    this.loadSettings()
-    this.initializeMap()
+  async connect() {
+    this.cleanup = new CleanupHelper()
+
+    // Initialize settings manager with API key for backend sync
+    SettingsManager.initialize(this.apiKeyValue)
+
+    // Sync settings from backend (will fall back to localStorage if needed)
+    await this.loadSettings()
+
+    await this.initializeMap()
     this.initializeAPI()
     this.currentVisitFilter = 'all'
 
@@ -47,26 +58,29 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.cleanup.cleanup()
     this.map?.remove()
+    performanceMonitor.logReport()
   }
 
   /**
-   * Load settings from localStorage
+   * Load settings (sync from backend and localStorage)
    */
-  loadSettings() {
-    this.settings = SettingsManager.getSettings()
+  async loadSettings() {
+    this.settings = await SettingsManager.sync()
+    console.log('[Maps V2] Settings loaded:', this.settings)
   }
 
   /**
    * Initialize MapLibre map
    */
-  initializeMap() {
-    // Get map style URL from settings
-    const styleUrl = this.getMapStyleUrl(this.settings.mapStyle)
+  async initializeMap() {
+    // Get map style from local files (async)
+    const style = await getMapStyle(this.settings.mapStyle)
 
     this.map = new maplibregl.Map({
       container: this.containerTarget,
-      style: styleUrl,
+      style: style,
       center: [0, 0],
       zoom: 2
     })
@@ -97,18 +111,23 @@ export default class extends Controller {
    * Load points data from API
    */
   async loadMapData() {
+    performanceMonitor.mark('load-map-data')
     this.showLoading()
 
     try {
       // Fetch all points for selected month
+      performanceMonitor.mark('fetch-points')
       const points = await this.api.fetchAllPoints({
         start_at: this.startDateValue,
         end_at: this.endDateValue,
         onProgress: this.updateLoadingProgress.bind(this)
       })
+      performanceMonitor.measure('fetch-points')
 
       // Transform to GeoJSON for points
+      performanceMonitor.mark('transform-geojson')
       const pointsGeoJSON = pointsToGeoJSON(points)
+      performanceMonitor.measure('transform-geojson')
 
       // Create routes from points
       const routesGeoJSON = RoutesLayer.pointsToRoutes(points)
@@ -242,27 +261,21 @@ export default class extends Controller {
         }
       }
 
-      // Add fog layer (canvas overlay, separate from MapLibre layers)
-      if (!this.fogLayer) {
-        this.fogLayer = new FogLayer(this.map, {
-          clearRadius: 1000,
-          visible: this.settings.fogEnabled || false
-        })
-        this.fogLayer.add(pointsGeoJSON)
-      } else {
-        this.fogLayer.update(pointsGeoJSON)
-      }
-
-      // Add scratch layer
+      // Add scratch layer (lazy loaded)
       const addScratchLayer = async () => {
-        if (!this.scratchLayer) {
-          this.scratchLayer = new ScratchLayer(this.map, {
-            visible: this.settings.scratchEnabled || false,
-            apiClient: this.api // Pass API client for authenticated requests
-          })
-          await this.scratchLayer.add(pointsGeoJSON)
-        } else {
-          await this.scratchLayer.update(pointsGeoJSON)
+        try {
+          if (!this.scratchLayer && this.settings.scratchEnabled) {
+            const ScratchLayer = await lazyLoader.loadLayer('scratch')
+            this.scratchLayer = new ScratchLayer(this.map, {
+              visible: true,
+              apiClient: this.api // Pass API client for authenticated requests
+            })
+            await this.scratchLayer.add(pointsGeoJSON)
+          } else if (this.scratchLayer) {
+            await this.scratchLayer.update(pointsGeoJSON)
+          }
+        } catch (error) {
+          console.warn('Failed to load scratch layer:', error)
         }
       }
 
@@ -280,7 +293,9 @@ export default class extends Controller {
       // Note: Layer order matters - layers added first render below layers added later
       // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> photos -> family -> points (top) -> fog (canvas overlay)
       const addAllLayers = async () => {
-        await addScratchLayer() // Add scratch first (renders at bottom)
+        performanceMonitor.mark('add-layers')
+
+        await addScratchLayer() // Add scratch first (renders at bottom) - lazy loaded
         addHeatmapLayer()      // Add heatmap second
         addAreasLayer()        // Add areas third
         addTracksLayer()       // Add tracks fourth
@@ -296,7 +311,20 @@ export default class extends Controller {
 
         addFamilyLayer()   // Add family layer (real-time family locations)
         addPointsLayer()   // Add points last (renders on top)
-        // Note: Fog layer is canvas overlay, renders above all MapLibre layers
+
+        // Add fog layer (canvas overlay, separate from MapLibre layers)
+        // Always create fog layer for backward compatibility
+        if (!this.fogLayer) {
+          this.fogLayer = new FogLayer(this.map, {
+            clearRadius: 1000,
+            visible: this.settings.fogEnabled || false
+          })
+          this.fogLayer.add(pointsGeoJSON)
+        } else {
+          this.fogLayer.update(pointsGeoJSON)
+        }
+
+        performanceMonitor.measure('add-layers')
 
         // Add click handlers for visits and photos
         this.map.on('click', 'visits', this.handleVisitClick.bind(this))
@@ -340,6 +368,8 @@ export default class extends Controller {
       Toast.error('Failed to load location data. Please try again.')
     } finally {
       this.hideLoading()
+      const duration = performanceMonitor.measure('load-map-data')
+      console.log(`[Performance] Map data loaded in ${duration}ms`)
     }
   }
 
@@ -491,26 +521,13 @@ export default class extends Controller {
   }
 
   /**
-   * Get map style URL
-   */
-  getMapStyleUrl(styleName) {
-    const styleUrls = {
-      positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-      'dark-matter': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-      voyager: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'
-    }
-
-    return styleUrls[styleName] || styleUrls.positron
-  }
-
-  /**
    * Update map style from settings
    */
-  updateMapStyle(event) {
-    const style = event.target.value
-    SettingsManager.updateSetting('mapStyle', style)
+  async updateMapStyle(event) {
+    const styleName = event.target.value
+    SettingsManager.updateSetting('mapStyle', styleName)
 
-    const styleUrl = this.getMapStyleUrl(style)
+    const style = await getMapStyle(styleName)
 
     // Store current data
     const pointsData = this.pointsLayer?.data
@@ -522,7 +539,7 @@ export default class extends Controller {
     this.routesLayer = null
     this.heatmapLayer = null
 
-    this.map.setStyle(styleUrl)
+    this.map.setStyle(style)
 
     // Reload layers after style change
     this.map.once('style.load', () => {
@@ -813,22 +830,38 @@ export default class extends Controller {
 
     if (this.fogLayer) {
       this.fogLayer.toggle(enabled)
+    } else {
+      console.warn('Fog layer not yet initialized')
     }
   }
 
   /**
    * Toggle scratch map layer
    */
-  toggleScratch(event) {
+  async toggleScratch(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting('scratchEnabled', enabled)
 
-    if (this.scratchLayer) {
-      if (enabled) {
-        this.scratchLayer.show()
-      } else {
-        this.scratchLayer.hide()
+    try {
+      if (!this.scratchLayer && enabled) {
+        // Lazy load scratch layer
+        const ScratchLayer = await lazyLoader.loadLayer('scratch')
+        this.scratchLayer = new ScratchLayer(this.map, {
+          visible: true,
+          apiClient: this.api
+        })
+        const pointsData = this.pointsLayer?.data || { type: 'FeatureCollection', features: [] }
+        await this.scratchLayer.add(pointsData)
+      } else if (this.scratchLayer) {
+        if (enabled) {
+          this.scratchLayer.show()
+        } else {
+          this.scratchLayer.hide()
+        }
       }
+    } catch (error) {
+      console.error('Failed to toggle scratch layer:', error)
+      Toast.error('Failed to load scratch layer')
     }
   }
 }

@@ -1,25 +1,38 @@
 import { test, expect } from '@playwright/test'
 import { closeOnboardingModal } from '../helpers/navigation'
 import {
-  navigateToMapsV2,
+  navigateToMapsV2WithDate,
   waitForMapLibre,
   waitForLoadingComplete
 } from './helpers/setup'
 
 test.describe('Phase 6: Advanced Features (Fog + Scratch + Toast)', () => {
   test.beforeEach(async ({ page }) => {
-    await navigateToMapsV2(page)
+    // Clear settings BEFORE navigation to ensure clean state
+    await page.goto('/maps_v2')
+    await page.evaluate(() => {
+      localStorage.removeItem('maps_v2_settings')
+    })
+
+    // Now navigate to a date range with data
+    await navigateToMapsV2WithDate(page, '2025-10-15T00:00', '2025-10-15T23:59')
     await closeOnboardingModal(page)
+
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)
     await page.waitForTimeout(1500)
   })
 
   test.describe('Fog of War Layer', () => {
-    test('fog layer starts hidden', async ({ page }) => {
-      const fogCanvas = await page.locator('.fog-canvas')
-      const isHidden = await fogCanvas.evaluate(el => el.style.display === 'none')
-      expect(isHidden).toBe(true)
+    test('fog layer is disabled by default in settings', async ({ page }) => {
+      // Check that fog is disabled in settings by default
+      const fogEnabled = await page.evaluate(() => {
+        const settings = JSON.parse(localStorage.getItem('maps_v2_settings') || '{}')
+        return settings.fogEnabled
+      })
+
+      // undefined or false both mean disabled
+      expect(fogEnabled).toBeFalsy()
     })
 
     test('can toggle fog layer in settings', async ({ page }) => {
@@ -34,14 +47,12 @@ test.describe('Phase 6: Advanced Features (Fog + Scratch + Toast)', () => {
 
       // Check if visible
       const fogCanvas = await page.locator('.fog-canvas')
+      await fogCanvas.waitFor({ state: 'attached', timeout: 5000 })
       const isVisible = await fogCanvas.evaluate(el => el.style.display !== 'none')
       expect(isVisible).toBe(true)
     })
 
-    test('fog canvas exists on map', async ({ page }) => {
-      const fogCanvas = await page.locator('.fog-canvas')
-      await expect(fogCanvas).toBeAttached()
-    })
+    // Note: Fog canvas is created lazily, so we test it through the toggle test above
   })
 
   test.describe('Scratch Map Layer', () => {
