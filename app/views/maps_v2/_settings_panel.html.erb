@@ -106,6 +106,32 @@
             <p class="text-sm text-base-content/60 ml-14">Show connected route lines</p>
           </div>
 
+          <!-- Speed-Colored Routes Options (conditionally shown) -->
+          <div class="ml-14 space-y-3" data-maps-v2-target="routesOptions" style="display: none;">
+            <div class="form-control">
+              <label class="label cursor-pointer py-2">
+                <span class="label-text text-sm">Color by speed</span>
+                <input type="checkbox"
+                       class="toggle toggle-sm toggle-primary"
+                       data-maps-v2-target="speedColoredToggle"
+                       data-action="change->maps-v2#toggleSpeedColoredRoutes" />
+              </label>
+            </div>
+
+            <!-- Speed Color Scale Editor (shown when speed colors enabled) -->
+            <div class="hidden" data-maps-v2-target="speedColorScaleContainer">
+              <button type="button"
+                      class="btn btn-sm btn-outline w-full"
+                      data-action="click->maps-v2#openSpeedColorEditor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+                Edit Color Gradient
+              </button>
+              <input type="hidden" data-maps-v2-target="speedColorScaleInput" value="" />
+            </div>
+          </div>
+
           <div class="divider my-2"></div>
 
           <!-- Heatmap Layer -->

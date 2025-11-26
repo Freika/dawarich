@@ -31,7 +31,14 @@ export class RoutesLayer extends BaseLayer {
           'line-cap': 'round'
         },
         paint: {
-          'line-color': '#f97316',  // Orange color (more visible than blue)
+          // Use color from feature properties if available (for speed-colored routes)
+          // Otherwise fall back to default orange
+          'line-color': [
+            'case',
+            ['has', 'color'],
+            ['get', 'color'],
+            '#f97316'  // Default orange color
+          ],
           'line-width': 3,
           'line-opacity': 0.8
         }
