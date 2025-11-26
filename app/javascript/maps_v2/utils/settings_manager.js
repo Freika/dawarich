@@ -7,31 +7,34 @@ const STORAGE_KEY = 'dawarich-maps-v2-settings'
 
 const DEFAULT_SETTINGS = {
   mapStyle: 'light',
-  clustering: true,
-  clusterRadius: 50,
-  heatmapEnabled: false,
-  pointsVisible: true,
-  routesVisible: true,
-  visitsEnabled: false,
-  photosEnabled: false,
-  areasEnabled: false,
-  tracksEnabled: false,
-  fogEnabled: false,
-  scratchEnabled: false
+  enabledMapLayers: ['Points', 'Routes'], // Compatible with v1 map
+  // Advanced settings
+  routeOpacity: 1.0,
+  fogOfWarRadius: 1000,
+  fogOfWarThreshold: 1,
+  metersBetweenRoutes: 500,
+  minutesBetweenRoutes: 60,
+  pointsRenderingMode: 'raw',
+  speedColoredRoutes: false
+}
+
+// Mapping between v2 layer names and v1 layer names in enabled_map_layers array
+const LAYER_NAME_MAP = {
+  'Points': 'pointsVisible',
+  'Routes': 'routesVisible',
+  'Heatmap': 'heatmapEnabled',
+  'Visits': 'visitsEnabled',
+  'Photos': 'photosEnabled',
+  'Areas': 'areasEnabled',
+  'Tracks': 'tracksEnabled',
+  'Fog of War': 'fogEnabled',
+  'Scratch map': 'scratchEnabled'
 }
 
 // Mapping between frontend settings and backend API keys
 const BACKEND_SETTINGS_MAP = {
   mapStyle: 'maps_v2_style',
-  heatmapEnabled: 'maps_v2_heatmap',
-  visitsEnabled: 'maps_v2_visits',
-  photosEnabled: 'maps_v2_photos',
-  areasEnabled: 'maps_v2_areas',
-  tracksEnabled: 'maps_v2_tracks',
-  fogEnabled: 'maps_v2_fog',
-  scratchEnabled: 'maps_v2_scratch',
-  clustering: 'maps_v2_clustering',
-  clusterRadius: 'maps_v2_cluster_radius'
+  enabledMapLayers: 'enabled_map_layers'
 }
 
 export class SettingsManager {
@@ -47,16 +50,53 @@ export class SettingsManager {
 
   /**
    * Get all settings (localStorage first, then merge with defaults)
+   * Converts enabled_map_layers array to individual boolean flags
    * @returns {Object} Settings object
    */
   static getSettings() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
-      return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS
+      const settings = stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS
+
+      // Convert enabled_map_layers array to individual boolean flags
+      return this._expandLayerSettings(settings)
     } catch (error) {
       console.error('Failed to load settings:', error)
       return DEFAULT_SETTINGS
     }
+  }
+
+  /**
+   * Convert enabled_map_layers array to individual boolean flags
+   * @param {Object} settings - Settings with enabledMapLayers array
+   * @returns {Object} Settings with individual layer booleans
+   */
+  static _expandLayerSettings(settings) {
+    const enabledLayers = settings.enabledMapLayers || []
+
+    // Set boolean flags based on array contents
+    Object.entries(LAYER_NAME_MAP).forEach(([layerName, settingKey]) => {
+      settings[settingKey] = enabledLayers.includes(layerName)
+    })
+
+    return settings
+  }
+
+  /**
+   * Convert individual boolean flags to enabled_map_layers array
+   * @param {Object} settings - Settings with individual layer booleans
+   * @returns {Array} Array of enabled layer names
+   */
+  static _collapseLayerSettings(settings) {
+    const enabledLayers = []
+
+    Object.entries(LAYER_NAME_MAP).forEach(([layerName, settingKey]) => {
+      if (settings[settingKey] === true) {
+        enabledLayers.push(layerName)
+      }
+    })
+
+    return enabledLayers
   }
 
   /**
@@ -92,11 +132,21 @@ export class SettingsManager {
         }
       })
 
-      // Merge with defaults and save to localStorage
+      // Merge with defaults, but prioritize backend's enabled_map_layers completely
       const mergedSettings = { ...DEFAULT_SETTINGS, ...frontendSettings }
-      this.saveToLocalStorage(mergedSettings)
 
-      return mergedSettings
+      // If backend has enabled_map_layers, use it as-is (don't merge with defaults)
+      if (backendSettings.enabled_map_layers) {
+        mergedSettings.enabledMapLayers = backendSettings.enabled_map_layers
+      }
+
+      // Convert enabled_map_layers array to individual boolean flags
+      const expandedSettings = this._expandLayerSettings(mergedSettings)
+
+      // Save to localStorage
+      this.saveToLocalStorage(expandedSettings)
+
+      return expandedSettings
     } catch (error) {
       console.error('[Settings] Failed to load from backend:', error)
       return null
@@ -127,10 +177,16 @@ export class SettingsManager {
     }
 
     try {
+      // Convert individual layer booleans to enabled_map_layers array
+      const enabledMapLayers = this._collapseLayerSettings(settings)
+
       // Convert frontend settings to backend format
       const backendSettings = {}
       Object.entries(BACKEND_SETTINGS_MAP).forEach(([frontendKey, backendKey]) => {
-        if (frontendKey in settings) {
+        if (frontendKey === 'enabledMapLayers') {
+          // Use the collapsed array
+          backendSettings[backendKey] = enabledMapLayers
+        } else if (frontendKey in settings) {
           backendSettings[backendKey] = settings[frontendKey]
         }
       })
@@ -148,7 +204,7 @@ export class SettingsManager {
         throw new Error(`Failed to save settings: ${response.status}`)
       }
 
-      console.log('[Settings] Saved to backend successfully')
+      console.log('[Settings] Saved to backend successfully:', backendSettings)
       return true
     } catch (error) {
       console.error('[Settings] Failed to save to backend:', error)

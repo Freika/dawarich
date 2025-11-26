@@ -24,7 +24,30 @@ export default class extends Controller {
     endDate: String
   }
 
-  static targets = ['container', 'loading', 'loadingText', 'monthSelect', 'clusterToggle', 'settingsPanel', 'visitsSearch']
+  static targets = [
+    'container',
+    'loading',
+    'loadingText',
+    'monthSelect',
+    'clusterToggle',
+    'settingsPanel',
+    'visitsSearch',
+    'routeOpacityRange',
+    'fogRadiusValue',
+    'fogThresholdValue',
+    'metersBetweenValue',
+    'minutesBetweenValue',
+    // Layer toggles
+    'pointsToggle',
+    'routesToggle',
+    'heatmapToggle',
+    'visitsToggle',
+    'photosToggle',
+    'areasToggle',
+    // 'tracksToggle',
+    'fogToggle',
+    'scratchToggle'
+  ]
 
   async connect() {
     this.cleanup = new CleanupHelper()
@@ -34,6 +57,9 @@ export default class extends Controller {
 
     // Sync settings from backend (will fall back to localStorage if needed)
     await this.loadSettings()
+
+    // Sync toggle states with loaded settings
+    this.syncToggleStates()
 
     await this.initializeMap()
     this.initializeAPI()
@@ -64,6 +90,90 @@ export default class extends Controller {
   async loadSettings() {
     this.settings = await SettingsManager.sync()
     console.log('[Maps V2] Settings loaded:', this.settings)
+  }
+
+  /**
+   * Sync UI controls with loaded settings
+   */
+  syncToggleStates() {
+    // Sync layer toggles
+    const toggleMap = {
+      pointsToggle: 'pointsVisible',
+      routesToggle: 'routesVisible',
+      heatmapToggle: 'heatmapEnabled',
+      visitsToggle: 'visitsEnabled',
+      photosToggle: 'photosEnabled',
+      areasToggle: 'areasEnabled',
+      // tracksToggle: 'tracksEnabled',
+      fogToggle: 'fogEnabled',
+      scratchToggle: 'scratchEnabled'
+    }
+
+    Object.entries(toggleMap).forEach(([targetName, settingKey]) => {
+      const target = `${targetName}Target`
+      if (this[target]) {
+        this[target].checked = this.settings[settingKey]
+      }
+    })
+
+    // Sync route opacity slider
+    if (this.hasRouteOpacityRangeTarget) {
+      this.routeOpacityRangeTarget.value = (this.settings.routeOpacity || 1.0) * 100
+    }
+
+    // Sync map style dropdown
+    const mapStyleSelect = this.element.querySelector('select[name="mapStyle"]')
+    if (mapStyleSelect) {
+      mapStyleSelect.value = this.settings.mapStyle || 'light'
+    }
+
+    // Sync fog of war settings
+    const fogRadiusInput = this.element.querySelector('input[name="fogOfWarRadius"]')
+    if (fogRadiusInput) {
+      fogRadiusInput.value = this.settings.fogOfWarRadius || 1000
+      if (this.hasFogRadiusValueTarget) {
+        this.fogRadiusValueTarget.textContent = `${fogRadiusInput.value}m`
+      }
+    }
+
+    const fogThresholdInput = this.element.querySelector('input[name="fogOfWarThreshold"]')
+    if (fogThresholdInput) {
+      fogThresholdInput.value = this.settings.fogOfWarThreshold || 1
+      if (this.hasFogThresholdValueTarget) {
+        this.fogThresholdValueTarget.textContent = fogThresholdInput.value
+      }
+    }
+
+    // Sync route generation settings
+    const metersBetweenInput = this.element.querySelector('input[name="metersBetweenRoutes"]')
+    if (metersBetweenInput) {
+      metersBetweenInput.value = this.settings.metersBetweenRoutes || 500
+      if (this.hasMetersBetweenValueTarget) {
+        this.metersBetweenValueTarget.textContent = `${metersBetweenInput.value}m`
+      }
+    }
+
+    const minutesBetweenInput = this.element.querySelector('input[name="minutesBetweenRoutes"]')
+    if (minutesBetweenInput) {
+      minutesBetweenInput.value = this.settings.minutesBetweenRoutes || 60
+      if (this.hasMinutesBetweenValueTarget) {
+        this.minutesBetweenValueTarget.textContent = `${minutesBetweenInput.value}min`
+      }
+    }
+
+    // Sync points rendering mode radio buttons
+    const pointsRenderingRadios = this.element.querySelectorAll('input[name="pointsRenderingMode"]')
+    pointsRenderingRadios.forEach(radio => {
+      radio.checked = radio.value === (this.settings.pointsRenderingMode || 'raw')
+    })
+
+    // Sync speed-colored routes toggle
+    const speedColoredRoutesToggle = this.element.querySelector('input[name="speedColoredRoutes"]')
+    if (speedColoredRoutesToggle) {
+      speedColoredRoutesToggle.checked = this.settings.speedColoredRoutes || false
+    }
+
+    console.log('[Maps V2] UI controls synced with settings')
   }
 
   /**
@@ -213,46 +323,59 @@ export default class extends Controller {
    * Toggle layer visibility
    */
   toggleLayer(event) {
-    const button = event.currentTarget
-    const layerName = button.dataset.layer
+    const element = event.currentTarget
+    const layerName = element.dataset.layer || event.params?.layer
 
     const visible = this.layerManager.toggleLayer(layerName)
     if (visible === null) return
 
-    // Update button style
-    if (visible) {
-      button.classList.add('btn-primary')
-      button.classList.remove('btn-outline')
-    } else {
-      button.classList.remove('btn-primary')
-      button.classList.add('btn-outline')
+    // Update button style (for button-based toggles)
+    if (element.tagName === 'BUTTON') {
+      if (visible) {
+        element.classList.add('btn-primary')
+        element.classList.remove('btn-outline')
+      } else {
+        element.classList.remove('btn-primary')
+        element.classList.add('btn-outline')
+      }
+    }
+
+    // Update checkbox state (for checkbox-based toggles)
+    if (element.tagName === 'INPUT' && element.type === 'checkbox') {
+      element.checked = visible
     }
   }
 
   /**
-   * Toggle point clustering
+   * Toggle points layer visibility
    */
-  toggleClustering(event) {
+  togglePoints(event) {
+    const element = event.currentTarget
+    const visible = element.checked
+
     const pointsLayer = this.layerManager.getLayer('points')
-    if (!pointsLayer) return
-
-    const button = event.currentTarget
-
-    // Toggle clustering state
-    const newClusteringState = !pointsLayer.clusteringEnabled
-    pointsLayer.toggleClustering(newClusteringState)
-
-    // Update button style to reflect state
-    if (newClusteringState) {
-      button.classList.add('btn-primary')
-      button.classList.remove('btn-outline')
-    } else {
-      button.classList.remove('btn-primary')
-      button.classList.add('btn-outline')
+    if (pointsLayer) {
+      pointsLayer.toggle(visible)
     }
 
     // Save setting
-    SettingsManager.updateSetting('clustering', newClusteringState)
+    SettingsManager.updateSetting('pointsVisible', visible)
+  }
+
+  /**
+   * Toggle routes layer visibility
+   */
+  toggleRoutes(event) {
+    const element = event.currentTarget
+    const visible = element.checked
+
+    const routesLayer = this.layerManager.getLayer('routes')
+    if (routesLayer) {
+      routesLayer.toggle(visible)
+    }
+
+    // Save setting
+    SettingsManager.updateSetting('routesVisible', visible)
   }
 
   /**
@@ -309,6 +432,119 @@ export default class extends Controller {
     if (confirm('Reset all settings to defaults? This will reload the page.')) {
       SettingsManager.resetToDefaults()
       window.location.reload()
+    }
+  }
+
+  /**
+   * Update route opacity in real-time
+   */
+  updateRouteOpacity(event) {
+    const opacity = parseInt(event.target.value) / 100
+
+    const routesLayer = this.layerManager.getLayer('routes')
+    if (routesLayer && this.map.getLayer('routes')) {
+      this.map.setPaintProperty('routes', 'line-opacity', opacity)
+    }
+
+    // Save setting
+    SettingsManager.updateSetting('routeOpacity', opacity)
+  }
+
+  /**
+   * Update fog radius display value
+   */
+  updateFogRadiusDisplay(event) {
+    if (this.hasFogRadiusValueTarget) {
+      this.fogRadiusValueTarget.textContent = `${event.target.value}m`
+    }
+  }
+
+  /**
+   * Update fog threshold display value
+   */
+  updateFogThresholdDisplay(event) {
+    if (this.hasFogThresholdValueTarget) {
+      this.fogThresholdValueTarget.textContent = event.target.value
+    }
+  }
+
+  /**
+   * Update meters between routes display value
+   */
+  updateMetersBetweenDisplay(event) {
+    if (this.hasMetersBetweenValueTarget) {
+      this.metersBetweenValueTarget.textContent = `${event.target.value}m`
+    }
+  }
+
+  /**
+   * Update minutes between routes display value
+   */
+  updateMinutesBetweenDisplay(event) {
+    if (this.hasMinutesBetweenValueTarget) {
+      this.minutesBetweenValueTarget.textContent = `${event.target.value}min`
+    }
+  }
+
+  /**
+   * Update advanced settings from form submission
+   */
+  async updateAdvancedSettings(event) {
+    event.preventDefault()
+
+    const formData = new FormData(event.target)
+    const settings = {
+      routeOpacity: parseFloat(formData.get('routeOpacity')) / 100,
+      fogOfWarRadius: parseInt(formData.get('fogOfWarRadius')),
+      fogOfWarThreshold: parseInt(formData.get('fogOfWarThreshold')),
+      metersBetweenRoutes: parseInt(formData.get('metersBetweenRoutes')),
+      minutesBetweenRoutes: parseInt(formData.get('minutesBetweenRoutes')),
+      pointsRenderingMode: formData.get('pointsRenderingMode'),
+      speedColoredRoutes: formData.get('speedColoredRoutes') === 'on'
+    }
+
+    // Apply settings to current map
+    await this.applySettingsToMap(settings)
+
+    // Save to backend and localStorage
+    for (const [key, value] of Object.entries(settings)) {
+      await SettingsManager.updateSetting(key, value)
+    }
+
+    Toast.success('Settings updated successfully')
+  }
+
+  /**
+   * Apply settings to map without reload
+   */
+  async applySettingsToMap(settings) {
+    // Update route opacity
+    if (settings.routeOpacity !== undefined) {
+      const routesLayer = this.layerManager.getLayer('routes')
+      if (routesLayer && this.map.getLayer('routes')) {
+        this.map.setPaintProperty('routes', 'line-opacity', settings.routeOpacity)
+      }
+    }
+
+    // Update fog of war settings
+    if (settings.fogOfWarRadius !== undefined || settings.fogOfWarThreshold !== undefined) {
+      const fogLayer = this.layerManager.getLayer('fog')
+      if (fogLayer) {
+        if (settings.fogOfWarRadius) {
+          fogLayer.clearRadius = settings.fogOfWarRadius
+        }
+        // Redraw fog layer
+        if (fogLayer.visible) {
+          await fogLayer.update(fogLayer.data)
+        }
+      }
+    }
+
+    // For settings that require data reload (points rendering mode, speed-colored routes, etc)
+    // we need to reload the map data
+    if (settings.pointsRenderingMode || settings.speedColoredRoutes !== undefined) {
+      Toast.info('Reloading map data with new settings...')
+      await this.loadMapData()
     }
   }
 

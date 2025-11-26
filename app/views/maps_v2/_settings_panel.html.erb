@@ -73,8 +73,8 @@
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
-                     checked
-                     data-layer="points" />
+                     data-maps-v2-target="pointsToggle"
+                     data-action="change->maps-v2#togglePoints" />
               <span class="label-text font-medium">Points</span>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show individual location points</p>
@@ -87,8 +87,8 @@
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
-                     checked
-                     data-layer="routes" />
+                     data-maps-v2-target="routesToggle"
+                     data-action="change->maps-v2#toggleRoutes" />
               <span class="label-text font-medium">Routes</span>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show connected route lines</p>
@@ -101,6 +101,7 @@
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
+                     data-maps-v2-target="heatmapToggle"
                      data-action="change->maps-v2#toggleHeatmap" />
               <span class="label-text font-medium">Heatmap</span>
             </label>
@@ -114,6 +115,7 @@
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
+                     data-maps-v2-target="visitsToggle"
                      data-action="change->maps-v2#toggleVisits" />
               <span class="label-text font-medium">Visits</span>
             </label>
@@ -128,7 +130,7 @@
                    class="input input-sm input-bordered w-full"
                    data-action="input->maps-v2#searchVisits" />
 
-            <select class="select select-sm select-bordered w-full"
+            <select class="select select-bordered w-full"
                     data-action="change->maps-v2#filterVisits">
               <option value="all">All Visits</option>
               <option value="confirmed">Confirmed Only</option>
@@ -143,6 +145,7 @@
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
+                     data-maps-v2-target="photosToggle"
                      data-action="change->maps-v2#togglePhotos" />
               <span class="label-text font-medium">Photos</span>
             </label>
@@ -156,6 +159,7 @@
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
+                     data-maps-v2-target="areasToggle"
                      data-action="change->maps-v2#toggleAreas" />
               <span class="label-text font-medium">Areas</span>
             </label>
@@ -165,23 +169,25 @@
           <div class="divider my-2"></div>
 
           <!-- Tracks Layer -->
-          <div class="form-control">
+          <%# <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
+                     data-maps-v2-target="tracksToggle"
                      data-action="change->maps-v2#toggleTracks" />
               <span class="label-text font-medium">Tracks</span>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show saved tracks</p>
-          </div>
+          </div> %>
 
-          <div class="divider my-2"></div>
+          <%# <div class="divider my-2"></div> %>
 
           <!-- Fog of War Layer -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
+                     data-maps-v2-target="fogToggle"
                      data-action="change->maps-v2#toggleFog" />
               <span class="label-text font-medium">Fog of War</span>
             </label>
@@ -195,23 +201,26 @@
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
+                     data-maps-v2-target="scratchToggle"
                      data-action="change->maps-v2#toggleScratch" />
               <span class="label-text font-medium">Scratch Map</span>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show scratched countries</p>
           </div>
+
         </div>
       </div>
 
       <!-- Settings Tab -->
       <div class="tab-content" data-tab-content="settings" data-map-panel-target="tabContent">
-        <div class="space-y-6">
+        <form data-action="submit->maps-v2#updateAdvancedSettings" class="space-y-4">
           <!-- Map Style -->
           <div class="form-control w-full">
             <label class="label">
               <span class="label-text font-medium">Map Style</span>
             </label>
             <select class="select select-bordered w-full"
+                    name="mapStyle"
                     data-action="change->maps-v2#updateMapStyle">
               <option value="light" selected>Light</option>
               <option value="dark">Dark</option>
@@ -221,21 +230,160 @@
             </select>
           </div>
 
-          <div class="divider"></div>
+          <div class="divider my-2"></div>
 
-          <!-- Clustering -->
+          <!-- Route Opacity -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Route Opacity</span>
+              <span class="label-text-alt">%</span>
+            </label>
+            <input type="range"
+                   name="routeOpacity"
+                   min="10"
+                   max="100"
+                   step="10"
+                   value="100"
+                   class="range range-primary range-sm"
+                   data-maps-v2-target="routeOpacityRange"
+                   data-action="input->maps-v2#updateRouteOpacity" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>10%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Fog of War Settings -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Fog of War Radius</span>
+              <span class="label-text-alt" data-maps-v2-target="fogRadiusValue">1000m</span>
+            </label>
+            <input type="range"
+                   name="fogOfWarRadius"
+                   min="5"
+                   max="2000"
+                   step="5"
+                   value="1000"
+                   class="range range-primary range-sm"
+                   data-action="input->maps-v2#updateFogRadiusDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>5m</span>
+              <span>1000m</span>
+              <span>2000m</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Clear radius around visited points</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Fog of War Threshold</span>
+              <span class="label-text-alt" data-maps-v2-target="fogThresholdValue">1</span>
+            </label>
+            <input type="range"
+                   name="fogOfWarThreshold"
+                   min="1"
+                   max="10"
+                   step="1"
+                   value="1"
+                   class="range range-primary range-sm"
+                   data-action="input->maps-v2#updateFogThresholdDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>1</span>
+              <span>5</span>
+              <span>10</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Minimum points to clear fog</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Route Generation Settings -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Meters Between Routes</span>
+              <span class="label-text-alt" data-maps-v2-target="metersBetweenValue">500m</span>
+            </label>
+            <input type="range"
+                   name="metersBetweenRoutes"
+                   min="100"
+                   max="5000"
+                   step="100"
+                   value="500"
+                   class="range range-primary range-sm"
+                   data-action="input->maps-v2#updateMetersBetweenDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>100m</span>
+              <span>2500m</span>
+              <span>5000m</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Distance threshold for route splitting</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Minutes Between Routes</span>
+              <span class="label-text-alt" data-maps-v2-target="minutesBetweenValue">60min</span>
+            </label>
+            <input type="range"
+                   name="minutesBetweenRoutes"
+                   min="1"
+                   max="180"
+                   step="1"
+                   value="60"
+                   class="range range-primary range-sm"
+                   data-action="input->maps-v2#updateMinutesBetweenDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>1min</span>
+              <span>90min</span>
+              <span>180min</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Time threshold for route splitting</p>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Points Rendering Mode -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Points Rendering Mode</span>
+            </label>
+            <div class="flex flex-col gap-2">
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="raw"
+                       class="radio radio-primary radio-sm"
+                       checked />
+                <span class="label-text">Raw (all points)</span>
+              </label>
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="simplified"
+                       class="radio radio-primary radio-sm" />
+                <span class="label-text">Simplified (reduced points)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Speed-Colored Routes -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
-                     class="toggle toggle-primary"
-                     checked
-                     data-action="change->maps-v2#toggleClustering" />
-              <span class="label-text font-medium">Point Clustering</span>
+                     name="speedColoredRoutes"
+                     class="toggle toggle-primary" />
+              <span class="label-text font-medium">Speed-Colored Routes</span>
             </label>
-            <p class="text-sm text-base-content/60 mt-1">Group nearby points together</p>
+            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
           </div>
 
-          <div class="divider"></div>
+          <div class="divider my-2"></div>
 
           <!-- Live Mode -->
           <div class="form-control">
@@ -249,10 +397,20 @@
             <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
           </div>
 
-          <div class="divider"></div>
+          <div class="divider my-2"></div>
+
+          <!-- Update Button -->
+          <button type="submit" class="btn btn-primary btn-block">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+              <polyline points="12 2 12 12 14.5 14.5"></polyline>
+            </svg>
+            Apply Settings
+          </button>
 
           <!-- Reset Settings -->
-          <button class="btn btn-outline btn-block"
+          <button type="button"
+                  class="btn btn-outline btn-block"
                   data-action="click->maps-v2#resetSettings">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
@@ -262,7 +420,7 @@
             </svg>
             Reset to Defaults
           </button>
-        </div>
+        </form>
       </div>
     </div>
   </div>
@@ -272,8 +430,8 @@
   .map-control-panel {
     position: absolute;
     top: 0;
-    right: -420px; /* Hidden by default */
-    width: 420px;
+    right: -480px; /* Hidden by default */
+    width: 480px;
     height: 100%;
     background: oklch(var(--b1));
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
@@ -297,6 +455,7 @@
     align-items: center;
     padding: 16px 0;
     gap: 8px;
+    flex-shrink: 0;
   }
 
   .tab-btn {
@@ -347,6 +506,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-width: 0;
   }
 
   .panel-header {
@@ -356,6 +516,7 @@
     padding: 20px 24px;
     border-bottom: 1px solid oklch(var(--bc) / 0.1);
     background: oklch(var(--b1));
+    flex-shrink: 0;
   }
 
   .panel-title {
@@ -398,11 +559,156 @@
     background: oklch(var(--bc) / 0.3);
   }
 
-  /* Responsive */
+  /* Toggle Focus State - Remove all focus indicators */
+  .toggle:focus,
+  .toggle:focus-visible,
+  .toggle:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: inherit !important;
+  }
+
+  /* Override DaisyUI toggle focus styles */
+  .toggle:focus-visible:checked,
+  .toggle:checked:focus,
+  .toggle:checked:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure no outline on the toggle container */
+  .form-control .toggle:focus {
+    outline: none !important;
+  }
+
+  /* Prevent indeterminate visual state on toggles */
+  .toggle:indeterminate {
+    opacity: 1;
+  }
+
+  /* Ensure smooth toggle transitions without intermediate states */
+  .toggle {
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .toggle:checked {
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  /* Remove any active/pressed state that might cause intermediate appearance */
+  .toggle:active,
+  .toggle:active:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Responsive Breakpoints */
+
+  /* Large tablets and smaller desktops (1024px - 1280px) */
+  @media (max-width: 1280px) {
+    .map-control-panel {
+      width: 420px;
+      right: -420px;
+    }
+  }
+
+  /* Tablets (768px - 1024px) */
+  @media (max-width: 1024px) {
+    .map-control-panel {
+      width: 380px;
+      right: -380px;
+    }
+
+    .panel-body {
+      padding: 20px;
+    }
+  }
+
+  /* Small tablets and large phones (640px - 768px) */
+  @media (max-width: 768px) {
+    .map-control-panel {
+      width: 90%;
+      right: -90%;
+      max-width: 400px;
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+    }
+
+    .panel-title {
+      font-size: 1.125rem;
+    }
+
+    .panel-body {
+      padding: 16px 20px;
+    }
+  }
+
+  /* Mobile phones (< 640px) */
   @media (max-width: 640px) {
     .map-control-panel {
       width: 100%;
       right: -100%;
+      max-width: none;
+    }
+
+    .panel-tabs {
+      width: 56px;
+      padding: 12px 0;
+      gap: 6px;
+    }
+
+    .tab-btn {
+      width: 44px;
+      height: 44px;
+    }
+
+    .tab-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .panel-header {
+      padding: 14px 16px;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    /* Reduce spacing on mobile */
+    .space-y-4 > * + * {
+      margin-top: 0.75rem;
+    }
+
+    .space-y-6 > * + * {
+      margin-top: 1rem;
+    }
+  }
+
+  /* Very small phones (< 375px) */
+  @media (max-width: 375px) {
+    .panel-tabs {
+      width: 52px;
+      padding: 10px 0;
+    }
+
+    .tab-btn {
+      width: 40px;
+      height: 40px;
+    }
+
+    .panel-header {
+      padding: 12px;
+    }
+
+    .panel-body {
+      padding: 12px;
     }
   }
 </style>

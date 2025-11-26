@@ -21,35 +21,11 @@
     <span class="indicator-text"></span>
   </div>
 
-  <!-- Layer Controls (top-left corner) -->
-  <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
-    <button data-action="click->maps-v2#toggleLayer"
-            data-layer="points"
-            class="btn btn-sm btn-primary">
-      <%= icon 'map-pin' %>
-      <span class="ml-1">Points</span>
-    </button>
-
-    <button data-action="click->maps-v2#toggleLayer"
-            data-layer="routes"
-            class="btn btn-sm btn-primary">
-      <%= icon 'route' %>
-      <span class="ml-1">Routes</span>
-    </button>
-
-    <!-- Cluster toggle -->
-    <button data-action="click->maps-v2#toggleClustering"
-            data-maps-v2-target="clusterToggle"
-            class="btn btn-sm btn-primary"
-            title="Toggle point clustering">
-      <%= icon 'grid2x2' %>
-      <span class="ml-1">Cluster</span>
-    </button>
-
-    <!-- Settings button -->
+  <!-- Settings button (top-left corner) -->
+  <div class="absolute top-4 left-4 z-10">
     <button data-action="click->maps-v2#toggleSettings"
             class="btn btn-sm btn-primary"
-            title="Settings">
+            title="Open map settings">
       <%= icon 'square-pen' %>
       <span class="ml-1">Settings</span>
     </button>

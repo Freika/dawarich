@@ -160,7 +160,9 @@ export class LayerManager {
 
   _addRoutesLayer(routesGeoJSON) {
     if (!this.layers.routesLayer) {
-      this.layers.routesLayer = new RoutesLayer(this.map)
+      this.layers.routesLayer = new RoutesLayer(this.map, {
+        visible: this.settings.routesVisible !== false // Default true unless explicitly false
+      })
       this.layers.routesLayer.add(routesGeoJSON)
     } else {
       this.layers.routesLayer.update(routesGeoJSON)
@@ -205,7 +207,9 @@ export class LayerManager {
 
   _addPointsLayer(pointsGeoJSON) {
     if (!this.layers.pointsLayer) {
-      this.layers.pointsLayer = new PointsLayer(this.map)
+      this.layers.pointsLayer = new PointsLayer(this.map, {
+        visible: this.settings.pointsVisible !== false // Default true unless explicitly false
+      })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {
       this.layers.pointsLayer.update(pointsGeoJSON)

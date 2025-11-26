@@ -1,6 +1,6 @@
 # Maps V2 Settings Persistence
 
-Maps V2 now persists user settings across sessions and devices using a hybrid approach with backend API storage and localStorage fallback.
+Maps V2 persists user settings across sessions and devices using a hybrid approach with backend API storage and localStorage fallback. **Settings are shared with Maps V1** for seamless migration.
 
 ## Architecture
 
@@ -10,6 +10,7 @@ Maps V2 now persists user settings across sessions and devices using a hybrid ap
    - Settings stored in User's `settings` JSONB column
    - Syncs across all devices/browsers
    - Requires authentication via API key
+   - **Compatible with v1 map settings**
 
 2. **Fallback: localStorage**
    - Instant save/load without network
@@ -18,22 +19,27 @@ Maps V2 now persists user settings across sessions and devices using a hybrid ap
 
 ## Settings Stored
 
-All Maps V2 user preferences are persisted:
+Maps V2 shares layer visibility settings with v1 using the `enabled_map_layers` array:
 
 | Frontend Setting | Backend Key | Type | Default |
 |-----------------|-------------|------|---------|
 | `mapStyle` | `maps_v2_style` | string | `'light'` |
-| `clustering` | `maps_v2_clustering` | boolean | `true` |
-| `clusterRadius` | `maps_v2_cluster_radius` | number | `50` |
-| `heatmapEnabled` | `maps_v2_heatmap` | boolean | `false` |
-| `pointsVisible` | `maps_v2_points` | boolean | `true` |
-| `routesVisible` | `maps_v2_routes` | boolean | `true` |
-| `visitsEnabled` | `maps_v2_visits` | boolean | `false` |
-| `photosEnabled` | `maps_v2_photos` | boolean | `false` |
-| `areasEnabled` | `maps_v2_areas` | boolean | `false` |
-| `tracksEnabled` | `maps_v2_tracks` | boolean | `false` |
-| `fogEnabled` | `maps_v2_fog` | boolean | `false` |
-| `scratchEnabled` | `maps_v2_scratch` | boolean | `false` |
+| `enabledMapLayers` | `enabled_map_layers` | array | `['Points', 'Routes']` |
+
+### Layer Names
+
+The `enabled_map_layers` array contains layer names as strings:
+- `'Points'` - Individual location points
+- `'Routes'` - Connected route lines
+- `'Heatmap'` - Density heatmap
+- `'Visits'` - Detected area visits
+- `'Photos'` - Geotagged photos
+- `'Areas'` - Defined areas
+- `'Tracks'` - Saved tracks
+- `'Fog of War'` - Explored areas
+- `'Scratch map'` - Scratched countries
+
+Internally, v2 converts these to boolean flags (e.g., `pointsVisible`, `routesVisible`) for easier state management, but always saves back to the shared array format.
 
 ## How It Works
 
@@ -58,9 +64,11 @@ All Maps V2 user preferences are persisted:
 ### Update Flow
 
 ```
-User changes setting (e.g., enables heatmap)
+User toggles Heatmap layer
    ↓
 SettingsManager.updateSetting('heatmapEnabled', true)
+   ↓
+Convert booleans → array: ['Points', 'Routes', 'Heatmap']
    ↓
 ┌──────────────────┬──────────────────┐
 │ Save to          │ Save to          │
@@ -68,8 +76,40 @@ SettingsManager.updateSetting('heatmapEnabled', true)
 │ (instant)        │ (async)          │
 └──────────────────┴──────────────────┘
    ↓                      ↓
-UI updates          Backend stores
-immediately         (non-blocking)
+UI updates          Backend stores:
+immediately         { enabled_map_layers: [...] }
+```
+
+### Format Conversion
+
+v2 internally uses boolean flags for state management but saves/loads using v1's array format:
+
+**Loading (Array → Booleans)**:
+```javascript
+// Backend returns
+{ enabled_map_layers: ['Points', 'Routes', 'Heatmap'] }
+
+// Converted to
+{
+  pointsVisible: true,
+  routesVisible: true,
+  heatmapEnabled: true,
+  visitsEnabled: false,
+  // ... etc
+}
+```
+
+**Saving (Booleans → Array)**:
+```javascript
+// v2 state
+{
+  pointsVisible: true,
+  routesVisible: false,
+  heatmapEnabled: true
+}
+
+// Saved as
+{ enabled_map_layers: ['Points', 'Heatmap'] }
 ```
 
 ## API Integration
@@ -242,16 +282,14 @@ Existing users with localStorage settings will seamlessly migrate:
 Settings stored in `users.settings` JSONB column:
 
 ```sql
--- Example user settings
+-- Example user settings (shared between v1 and v2)
 {
   "maps_v2_style": "dark",
-  "maps_v2_heatmap": true,
-  "maps_v2_clustering": true,
-  "maps_v2_cluster_radius": 50,
-  // ... other Maps V2 settings
-  // ... Maps V1 settings (coexist)
-  "preferred_map_layer": "Light",
-  "enabled_map_layers": ["Routes", "Heatmap"]
+  "enabled_map_layers": ["Points", "Routes", "Heatmap", "Visits"],
+  // ... other settings shared by both versions
+  "preferred_map_layer": "OpenStreetMap",
+  "fog_of_war_meters": "100",
+  "route_opacity": 60
 }
 ```
 

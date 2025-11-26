@@ -126,21 +126,22 @@ export async function getMapCenter(page) {
 export async function getPointsSourceData(page) {
   return await page.evaluate(() => {
     const element = document.querySelector('[data-controller="maps-v2"]');
-    if (!element) return { hasSource: false, featureCount: 0 };
+    if (!element) return { hasSource: false, featureCount: 0, features: [] };
 
     const app = window.Stimulus || window.Application;
-    if (!app) return { hasSource: false, featureCount: 0 };
+    if (!app) return { hasSource: false, featureCount: 0, features: [] };
 
     const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
-    if (!controller?.map) return { hasSource: false, featureCount: 0 };
+    if (!controller?.map) return { hasSource: false, featureCount: 0, features: [] };
 
     const source = controller.map.getSource('points-source');
-    if (!source) return { hasSource: false, featureCount: 0 };
+    if (!source) return { hasSource: false, featureCount: 0, features: [] };
 
     const data = source._data;
     return {
       hasSource: true,
-      featureCount: data?.features?.length || 0
+      featureCount: data?.features?.length || 0,
+      features: data?.features || []
     };
   });
 }
