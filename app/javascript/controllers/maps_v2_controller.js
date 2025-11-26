@@ -2,6 +2,7 @@ import { Controller } from '@hotwired/stimulus'
 import maplibregl from 'maplibre-gl'
 import { ApiClient } from 'maps_v2/services/api_client'
 import { SettingsManager } from 'maps_v2/utils/settings_manager'
+import { SearchManager } from 'maps_v2/utils/search_manager'
 import { Toast } from 'maps_v2/components/toast'
 import { performanceMonitor } from 'maps_v2/utils/performance_monitor'
 import { CleanupHelper } from 'maps_v2/utils/cleanup_helper'
@@ -37,6 +38,9 @@ export default class extends Controller {
     'fogThresholdValue',
     'metersBetweenValue',
     'minutesBetweenValue',
+    // Search
+    'searchInput',
+    'searchResults',
     // Layer toggles
     'pointsToggle',
     'routesToggle',
@@ -70,6 +74,13 @@ export default class extends Controller {
     this.eventHandlers = new EventHandlers(this.map)
     this.filterManager = new FilterManager(this.dataLoader)
 
+    // Initialize search manager
+    this.initializeSearch()
+
+    // Listen for visit creation events
+    this.boundHandleVisitCreated = this.handleVisitCreated.bind(this)
+    this.cleanup.addEventListener(document, 'visit:created', this.boundHandleVisitCreated)
+
     // Format initial dates from backend to match V1 API format
     this.startDateValue = DateManager.formatDateForAPI(new Date(this.startDateValue))
     this.endDateValue = DateManager.formatDateForAPI(new Date(this.endDateValue))
@@ -79,6 +90,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.searchManager?.destroy()
     this.cleanup.cleanup()
     this.map?.remove()
     performanceMonitor.logReport()
@@ -199,6 +211,46 @@ export default class extends Controller {
    */
   initializeAPI() {
     this.api = new ApiClient(this.apiKeyValue)
+  }
+
+  /**
+   * Initialize location search
+   */
+  initializeSearch() {
+    if (!this.hasSearchInputTarget || !this.hasSearchResultsTarget) {
+      console.warn('[Maps V2] Search targets not found, search functionality disabled')
+      return
+    }
+
+    this.searchManager = new SearchManager(this.map, this.apiKeyValue)
+    this.searchManager.initialize(this.searchInputTarget, this.searchResultsTarget)
+
+    console.log('[Maps V2] Search manager initialized')
+  }
+
+  /**
+   * Handle visit creation event - reload visits and update layer
+   */
+  async handleVisitCreated(event) {
+    console.log('[Maps V2] Visit created, reloading visits...', event.detail)
+
+    try {
+      // Fetch updated visits
+      const visits = await this.api.fetchVisits({
+        start_at: this.startDateValue,
+        end_at: this.endDateValue
+      })
+
+      // Convert to GeoJSON
+      const visitsGeoJSON = this.dataLoader.visitsToGeoJSON(visits)
+
+      // Update visits layer
+      this.layerManager.updateLayer('visits', visitsGeoJSON)
+
+      console.log('[Maps V2] Visits reloaded successfully')
+    } catch (error) {
+      console.error('[Maps V2] Failed to reload visits:', error)
+    }
   }
 
   /**

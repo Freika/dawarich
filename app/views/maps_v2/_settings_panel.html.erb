@@ -59,9 +59,21 @@
           <label class="label">
             <span class="label-text">Search for a place</span>
           </label>
-          <input type="text"
-                 placeholder="Enter name of a place"
-                 class="input input-bordered w-full" />
+          <div class="relative">
+            <input type="text"
+                   placeholder="Enter name of a place"
+                   class="input input-bordered w-full"
+                   data-maps-v2-target="searchInput"
+                   autocomplete="off" />
+            <!-- Search Results -->
+            <div class="absolute z-50 w-full mt-1 bg-base-100 rounded-lg shadow-lg border border-base-300 hidden max-h-96 overflow-y-auto"
+                 data-maps-v2-target="searchResults">
+              <!-- Results will be populated by SearchManager -->
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">
+            Search for a location to navigate on the map
+          </p>
         </div>
       </div>
 
