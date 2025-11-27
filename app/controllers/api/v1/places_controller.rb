@@ -7,8 +7,28 @@ module Api
 
       def index
         @places = current_api_user.places.includes(:tags, :visits)
-        @places = @places.with_tags(params[:tag_ids]) if params[:tag_ids].present?
-        @places = @places.without_tags if params[:untagged] == 'true'
+
+        if params[:tag_ids].present?
+          tag_ids = Array(params[:tag_ids])
+
+          # Separate numeric tag IDs from "untagged"
+          numeric_tag_ids = tag_ids.reject { |id| id == 'untagged' }.map(&:to_i)
+          include_untagged = tag_ids.include?('untagged')
+
+          if numeric_tag_ids.any? && include_untagged
+            # Both tagged and untagged: return union (OR logic)
+            tagged = current_api_user.places.includes(:tags, :visits).with_tags(numeric_tag_ids)
+            untagged = current_api_user.places.includes(:tags, :visits).without_tags
+            @places = Place.from("(#{tagged.to_sql} UNION #{untagged.to_sql}) AS places")
+                           .includes(:tags, :visits)
+          elsif numeric_tag_ids.any?
+            # Only tagged places with ANY of the selected tags (OR logic)
+            @places = @places.with_tags(numeric_tag_ids)
+          elsif include_untagged
+            # Only untagged places
+            @places = @places.without_tags
+          end
+        end
 
         render json: @places.map { |place| serialize_place(place) }
       end

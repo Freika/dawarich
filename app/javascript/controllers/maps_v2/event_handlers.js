@@ -52,4 +52,18 @@ export class EventHandlers {
       .setHTML(PhotoPopupFactory.createPhotoPopup(properties))
       .addTo(this.map)
   }
+
+  /**
+   * Handle place click
+   */
+  handlePlaceClick(e) {
+    const feature = e.features[0]
+    const coordinates = feature.geometry.coordinates.slice()
+    const properties = feature.properties
+
+    new maplibregl.Popup()
+      .setLngLat(coordinates)
+      .setHTML(PopupFactory.createPlacePopup(properties))
+      .addTo(this.map)
+  }
 }

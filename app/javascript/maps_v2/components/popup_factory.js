@@ -50,4 +50,56 @@ export class PopupFactory {
       </div>
     `
   }
+
+  /**
+   * Create popup for a place
+   * @param {Object} properties - Place properties
+   * @returns {string} HTML for popup
+   */
+  static createPlacePopup(properties) {
+    const { id, name, latitude, longitude, note, tags } = properties
+
+    // Parse tags if they're stringified
+    let parsedTags = tags
+    if (typeof tags === 'string') {
+      try {
+        parsedTags = JSON.parse(tags)
+      } catch (e) {
+        parsedTags = []
+      }
+    }
+
+    // Format tags as badges
+    const tagsHtml = parsedTags && Array.isArray(parsedTags) && parsedTags.length > 0
+      ? parsedTags.map(tag => `
+          <span class="badge badge-sm" style="background-color: ${tag.color}; color: white;">
+            ${tag.icon} #${tag.name}
+          </span>
+        `).join(' ')
+      : '<span class="badge badge-sm badge-outline">Untagged</span>'
+
+    return `
+      <div class="place-popup">
+        <div class="popup-header">
+          <strong>${name || `Place #${id}`}</strong>
+        </div>
+        <div class="popup-body">
+          ${note ? `
+            <div class="popup-row">
+              <span class="label">Note:</span>
+              <span class="value">${note}</span>
+            </div>
+          ` : ''}
+          <div class="popup-row">
+            <span class="label">Tags:</span>
+            <div class="value">${tagsHtml}</div>
+          </div>
+          <div class="popup-row">
+            <span class="label">Coordinates:</span>
+            <span class="value">${latitude.toFixed(5)}, ${longitude.toFixed(5)}</span>
+          </div>
+        </div>
+      </div>
+    `
+  }
 }

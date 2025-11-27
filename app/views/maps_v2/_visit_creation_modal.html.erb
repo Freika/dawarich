@@ -1,0 +1,85 @@
+<div data-controller="visit-creation-v2" data-visit-creation-v2-api-key-value="<%= current_user.api_key %>">
+  <div class="modal" data-visit-creation-v2-target="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold text-lg mb-4" data-visit-creation-v2-target="modalTitle">Create New Visit</h3>
+
+      <form data-visit-creation-v2-target="form" data-action="submit->visit-creation-v2#submit">
+        <input type="hidden" name="latitude" data-visit-creation-v2-target="latitudeInput">
+        <input type="hidden" name="longitude" data-visit-creation-v2-target="longitudeInput">
+
+        <div class="space-y-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Visit Name *</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              placeholder="Enter visit name..."
+              class="input input-bordered w-full"
+              data-visit-creation-v2-target="nameInput"
+              required>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-semibold">Start Time *</span>
+              </label>
+              <input
+                type="datetime-local"
+                name="started_at"
+                class="input input-bordered w-full"
+                data-visit-creation-v2-target="startTimeInput"
+                required>
+            </div>
+
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-semibold">End Time *</span>
+              </label>
+              <input
+                type="datetime-local"
+                name="ended_at"
+                class="input input-bordered w-full"
+                data-visit-creation-v2-target="endTimeInput"
+                required>
+            </div>
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Location</span>
+            </label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                data-visit-creation-v2-target="locationDisplay"
+                readonly>
+              <button
+                type="button"
+                class="btn btn-outline btn-sm"
+                data-action="click->visit-creation-v2#adjustLocation"
+                title="Adjust location on map">
+                📍 Adjust
+              </button>
+            </div>
+            <label class="label">
+              <span class="label-text-alt">Click on the map to change location</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <button type="button" class="btn btn-ghost" data-action="click->visit-creation-v2#close">Cancel</button>
+          <button type="submit" class="btn btn-primary" data-visit-creation-v2-target="submitButton">
+            <span class="loading loading-spinner loading-sm hidden" data-visit-creation-v2-target="submitSpinner"></span>
+            <span data-visit-creation-v2-target="submitText">Create Visit</span>
+          </button>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop" data-action="click->visit-creation-v2#close"></div>
+  </div>
+</div>

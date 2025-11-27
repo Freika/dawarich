@@ -34,6 +34,26 @@
         <circle cx="12" cy="12" r="3"></circle>
       </svg>
     </button>
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
+            data-tab="tools"
+            data-map-panel-target="tabButton"
+            title="Tools">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+      </svg>
+    </button>
+
+    <% if !DawarichSettings.self_hosted? %>
+      <button class="tab-btn"
+              data-action="click->map-panel#switchTab"
+              data-tab="links"
+              data-map-panel-target="tabButton"
+              title="Links">
+        <%= icon 'info' %>
+      </button>
+    <% end %>
   </div>
 
   <!-- Panel Content -->
@@ -174,6 +194,71 @@
               <option value="confirmed">Confirmed Only</option>
               <option value="suggested">Suggested Only</option>
             </select>
+          </div>
+
+          <div class="divider my-2"></div>
+
+          <!-- Places Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps-v2-target="placesToggle"
+                     data-action="change->maps-v2#togglePlaces" />
+              <span class="label-text font-medium">Places</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show your saved places</p>
+          </div>
+
+          <!-- Places Tags (conditionally shown) -->
+          <div class="ml-14 space-y-2" data-maps-v2-target="placesFilters" style="display: none;">
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-2">
+                <input type="checkbox"
+                       class="toggle toggle-sm"
+                       data-maps-v2-target="enableAllPlaceTagsToggle"
+                       data-action="change->maps-v2#toggleAllPlaceTags">
+                <span class="label-text text-sm">Enable All Tags</span>
+              </label>
+            </div>
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text text-sm">Filter by Tags</span>
+              </label>
+              <div class="flex flex-wrap gap-2">
+                <!-- Untagged option -->
+                <label class="cursor-pointer">
+                  <input type="checkbox"
+                         name="place_tag_ids[]"
+                         value="untagged"
+                         class="checkbox checkbox-xs hidden peer"
+                         data-action="change->maps-v2#filterPlacesByTags">
+                  <span class="badge badge-sm badge-outline transition-all peer-checked:scale-105"
+                        style="border-color: #94a3b8; color: #94a3b8;"
+                        data-checked-style="background-color: #94a3b8; color: white;">
+                    🏷️ Untagged
+                  </span>
+                </label>
+
+                <% current_user.tags.ordered.each do |tag| %>
+                  <label class="cursor-pointer">
+                    <input type="checkbox"
+                           name="place_tag_ids[]"
+                           value="<%= tag.id %>"
+                           class="checkbox checkbox-xs hidden peer"
+                           data-action="change->maps-v2#filterPlacesByTags">
+                    <span class="badge badge-sm badge-outline transition-all peer-checked:scale-105"
+                          style="border-color: <%= tag.color %>; color: <%= tag.color %>;"
+                          data-checked-style="background-color: <%= tag.color %>; color: white;">
+                      <%= tag.icon %> #<%= tag.name %>
+                    </span>
+                  </label>
+                <% end %>
+              </div>
+              <label class="label">
+                <span class="label-text-alt">Click tags to filter places</span>
+              </label>
+            </div>
           </div>
 
           <div class="divider my-2"></div>
@@ -460,6 +545,98 @@
           </button>
         </form>
       </div>
+
+      <!-- Tools Tab -->
+      <div class="tab-content" data-tab-content="tools" data-map-panel-target="tabContent">
+        <div class="space-y-4">
+          <!-- Create a Visit Button -->
+          <button type="button"
+                  class="btn btn-primary btn-block"
+                  data-action="click->maps-v2#startCreateVisit">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            Create a Visit
+          </button>
+
+          <div class="divider my-2"></div>
+
+          <!-- Create a Place Button -->
+          <button type="button"
+                  class="btn btn-outline btn-block"
+                  data-action="click->maps-v2#startCreatePlace">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            Create a Place
+          </button>
+
+          <div class="divider my-2"></div>
+
+          <!-- Select Area Button -->
+          <button type="button"
+                  class="btn btn-outline btn-block"
+                  disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <path d="M9 3v18"></path>
+              <path d="M15 3v18"></path>
+              <path d="M3 9h18"></path>
+              <path d="M3 15h18"></path>
+            </svg>
+            Select Area
+          </button>
+          <p class="text-xs text-base-content/60 text-center">Coming soon</p>
+        </div>
+      </div>
+
+      <% if !DawarichSettings.self_hosted? %>
+        <!-- Links Tab -->
+        <div class="tab-content" data-tab-content="links" data-map-panel-target="tabContent">
+          <div class="space-y-6">
+            <!-- Community Section -->
+            <div>
+              <h4 class="font-semibold text-base mb-3">Community</h4>
+              <div class="flex flex-col gap-2">
+                <a href="https://discord.gg/pHsBjpt5J8" target="_blank" class="link-hover text-sm">Discord</a>
+                <a href="https://x.com/freymakesstuff" target="_blank" class="link-hover text-sm">X</a>
+                <a href="https://github.com/Freika/dawarich" target="_blank" class="link-hover text-sm">Github</a>
+                <a href="https://mastodon.social/@dawarich" target="_blank" class="link-hover text-sm">Mastodon</a>
+              </div>
+            </div>
+
+            <div class="divider my-2"></div>
+
+            <!-- Docs Section -->
+            <div>
+              <h4 class="font-semibold text-base mb-3">Docs</h4>
+              <div class="flex flex-col gap-2">
+                <a href="https://dawarich.app/docs/intro" target="_blank" class="link-hover text-sm">Tutorial</a>
+                <a href="https://dawarich.app/docs/tutorials/import-existing-data" target="_blank" class="link-hover text-sm">Import existing data</a>
+                <a href="https://dawarich.app/docs/tutorials/export-your-data" target="_blank" class="link-hover text-sm">Exporting data</a>
+                <a href="https://dawarich.app/docs/FAQ" target="_blank" class="link-hover text-sm">FAQ</a>
+                <a href="https://dawarich.app/contact" target="_blank" class="link-hover text-sm">Contact</a>
+              </div>
+            </div>
+
+            <div class="divider my-2"></div>
+
+            <!-- More Section -->
+            <div>
+              <h4 class="font-semibold text-base mb-3">More</h4>
+              <div class="flex flex-col gap-2">
+                <a href="https://dawarich.app/privacy-policy" target="_blank" class="link-hover text-sm">Privacy policy</a>
+                <a href="https://dawarich.app/terms-and-conditions" target="_blank" class="link-hover text-sm">Terms and Conditions</a>
+                <a href="https://dawarich.app/refund-policy" target="_blank" class="link-hover text-sm">Refund policy</a>
+                <a href="https://dawarich.app/impressum" target="_blank" class="link-hover text-sm">Impressum</a>
+                <a href="https://dawarich.app/blog" target="_blank" class="link-hover text-sm">Blog</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>

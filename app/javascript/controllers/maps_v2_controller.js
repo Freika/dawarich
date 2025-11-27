@@ -34,6 +34,8 @@ export default class extends Controller {
     'settingsPanel',
     'visitsSearch',
     'routeOpacityRange',
+    'placesFilters',
+    'enableAllPlaceTagsToggle',
     'fogRadiusValue',
     'fogThresholdValue',
     'metersBetweenValue',
@@ -49,6 +51,7 @@ export default class extends Controller {
     'photosToggle',
     'areasToggle',
     // 'tracksToggle',
+    'placesToggle',
     'fogToggle',
     'scratchToggle',
     // Speed-colored routes
@@ -86,6 +89,10 @@ export default class extends Controller {
     this.boundHandleVisitCreated = this.handleVisitCreated.bind(this)
     this.cleanup.addEventListener(document, 'visit:created', this.boundHandleVisitCreated)
 
+    // Listen for place creation events
+    this.boundHandlePlaceCreated = this.handlePlaceCreated.bind(this)
+    this.cleanup.addEventListener(document, 'place:created', this.boundHandlePlaceCreated)
+
     // Format initial dates from backend to match V1 API format
     this.startDateValue = DateManager.formatDateForAPI(new Date(this.startDateValue))
     this.endDateValue = DateManager.formatDateForAPI(new Date(this.endDateValue))
@@ -121,6 +128,7 @@ export default class extends Controller {
       visitsToggle: 'visitsEnabled',
       photosToggle: 'photosEnabled',
       areasToggle: 'areasEnabled',
+      placesToggle: 'placesEnabled',
       // tracksToggle: 'tracksEnabled',
       fogToggle: 'fogEnabled',
       scratchToggle: 'scratchEnabled',
@@ -133,6 +141,24 @@ export default class extends Controller {
         this[target].checked = this.settings[settingKey]
       }
     })
+
+    // Show/hide visits search based on initial toggle state
+    if (this.hasVisitsToggleTarget && this.hasVisitsSearchTarget) {
+      if (this.visitsToggleTarget.checked) {
+        this.visitsSearchTarget.style.display = 'block'
+      } else {
+        this.visitsSearchTarget.style.display = 'none'
+      }
+    }
+
+    // Show/hide places filters based on initial toggle state
+    if (this.hasPlacesToggleTarget && this.hasPlacesFiltersTarget) {
+      if (this.placesToggleTarget.checked) {
+        this.placesFiltersTarget.style.display = 'block'
+      } else {
+        this.placesFiltersTarget.style.display = 'none'
+      }
+    }
 
     // Sync route opacity slider
     if (this.hasRouteOpacityRangeTarget) {
@@ -257,16 +283,154 @@ export default class extends Controller {
         end_at: this.endDateValue
       })
 
+      console.log('[Maps V2] Fetched visits:', visits.length)
+
+      // Update FilterManager with all visits (for search functionality)
+      this.filterManager.setAllVisits(visits)
+
       // Convert to GeoJSON
       const visitsGeoJSON = this.dataLoader.visitsToGeoJSON(visits)
 
-      // Update visits layer
-      this.layerManager.updateLayer('visits', visitsGeoJSON)
+      console.log('[Maps V2] Converted to GeoJSON:', visitsGeoJSON.features.length, 'features')
 
-      console.log('[Maps V2] Visits reloaded successfully')
+      // Get the visits layer and update it
+      const visitsLayer = this.layerManager.getLayer('visits')
+      if (visitsLayer) {
+        visitsLayer.update(visitsGeoJSON)
+        console.log('[Maps V2] Visits layer updated successfully')
+      } else {
+        console.warn('[Maps V2] Visits layer not found, cannot update')
+      }
     } catch (error) {
       console.error('[Maps V2] Failed to reload visits:', error)
     }
+  }
+
+  /**
+   * Handle place creation event - reload places and update layer
+   */
+  async handlePlaceCreated(event) {
+    console.log('[Maps V2] Place created, reloading places...', event.detail)
+
+    try {
+      // Get currently selected tag filters
+      const selectedTags = this.getSelectedPlaceTags()
+
+      // Fetch updated places with filters
+      const places = await this.api.fetchPlaces({
+        tag_ids: selectedTags
+      })
+
+      console.log('[Maps V2] Fetched places:', places.length)
+
+      // Convert to GeoJSON
+      const placesGeoJSON = this.dataLoader.placesToGeoJSON(places)
+
+      console.log('[Maps V2] Converted to GeoJSON:', placesGeoJSON.features.length, 'features')
+
+      // Get the places layer and update it
+      const placesLayer = this.layerManager.getLayer('places')
+      if (placesLayer) {
+        placesLayer.update(placesGeoJSON)
+        console.log('[Maps V2] Places layer updated successfully')
+      } else {
+        console.warn('[Maps V2] Places layer not found, cannot update')
+      }
+    } catch (error) {
+      console.error('[Maps V2] Failed to reload places:', error)
+    }
+  }
+
+  /**
+   * Start create visit mode
+   * Allows user to click on map to create a new visit
+   */
+  startCreateVisit() {
+    console.log('[Maps V2] Starting create visit mode')
+
+    // Close settings panel
+    if (this.hasSettingsPanelTarget && this.settingsPanelTarget.classList.contains('open')) {
+      this.toggleSettings()
+    }
+
+    // Change cursor to crosshair
+    this.map.getCanvas().style.cursor = 'crosshair'
+
+    // Show info message
+    Toast.info('Click on the map to place a visit')
+
+    // Add map click listener
+    this.handleCreateVisitClick = (e) => {
+      const { lng, lat } = e.lngLat
+      this.openVisitCreationModal(lat, lng)
+      // Reset cursor
+      this.map.getCanvas().style.cursor = ''
+    }
+
+    this.map.once('click', this.handleCreateVisitClick)
+  }
+
+  /**
+   * Open visit creation modal
+   */
+  openVisitCreationModal(lat, lng) {
+    console.log('[Maps V2] Opening visit creation modal', { lat, lng })
+
+    // Find the visit creation controller
+    const modalElement = document.querySelector('[data-controller="visit-creation-v2"]')
+
+    if (!modalElement) {
+      console.error('[Maps V2] Visit creation modal not found')
+      Toast.error('Visit creation modal not available')
+      return
+    }
+
+    // Get the controller instance
+    const controller = this.application.getControllerForElementAndIdentifier(
+      modalElement,
+      'visit-creation-v2'
+    )
+
+    if (controller) {
+      controller.open(lat, lng, this)
+    } else {
+      console.error('[Maps V2] Visit creation controller not found')
+      Toast.error('Visit creation controller not available')
+    }
+  }
+
+  /**
+   * Start create place mode
+   * Allows user to click on map to create a new place
+   */
+  startCreatePlace() {
+    console.log('[Maps V2] Starting create place mode')
+
+    // Close settings panel
+    if (this.hasSettingsPanelTarget && this.settingsPanelTarget.classList.contains('open')) {
+      this.toggleSettings()
+    }
+
+    // Change cursor to crosshair
+    this.map.getCanvas().style.cursor = 'crosshair'
+
+    // Show info message
+    Toast.info('Click on the map to place a place')
+
+    // Add map click listener
+    this.handleCreatePlaceClick = (e) => {
+      const { lng, lat } = e.lngLat
+
+      // Dispatch event for place creation modal (reuse existing controller)
+      document.dispatchEvent(new CustomEvent('place:create', {
+        detail: { latitude: lat, longitude: lng }
+      }))
+
+      // Reset cursor
+      this.map.getCanvas().style.cursor = ''
+    }
+
+    this.map.once('click', this.handleCreatePlaceClick)
   }
 
   /**
@@ -295,14 +459,16 @@ export default class extends Controller {
           data.visitsGeoJSON,
           data.photosGeoJSON,
           data.areasGeoJSON,
-          data.tracksGeoJSON
+          data.tracksGeoJSON,
+          data.placesGeoJSON
         )
 
         // Setup event handlers
         this.layerManager.setupLayerEventHandlers({
           handlePointClick: this.eventHandlers.handlePointClick.bind(this.eventHandlers),
           handleVisitClick: this.eventHandlers.handleVisitClick.bind(this.eventHandlers),
-          handlePhotoClick: this.eventHandlers.handlePhotoClick.bind(this.eventHandlers)
+          handlePhotoClick: this.eventHandlers.handlePhotoClick.bind(this.eventHandlers),
+          handlePlaceClick: this.eventHandlers.handlePlaceClick.bind(this.eventHandlers)
         })
       }
 
@@ -644,6 +810,237 @@ export default class extends Controller {
         }
       }
     }
+  }
+
+  /**
+   * Toggle places layer
+   */
+  togglePlaces(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting('placesEnabled', enabled)
+
+    const placesLayer = this.layerManager.getLayer('places')
+    if (placesLayer) {
+      if (enabled) {
+        placesLayer.show()
+        // Show places filters
+        if (this.hasPlacesFiltersTarget) {
+          this.placesFiltersTarget.style.display = 'block'
+        }
+
+        // Initialize tag filters: enable all tags if no saved selection exists
+        this.initializePlaceTagFilters()
+      } else {
+        placesLayer.hide()
+        // Hide places filters
+        if (this.hasPlacesFiltersTarget) {
+          this.placesFiltersTarget.style.display = 'none'
+        }
+      }
+    }
+  }
+
+  /**
+   * Initialize place tag filters (enable all by default or restore saved state)
+   */
+  initializePlaceTagFilters() {
+    const savedFilters = this.settings.placesTagFilters
+
+    if (savedFilters && savedFilters.length > 0) {
+      // Restore saved tag selection
+      this.restoreSavedTagFilters(savedFilters)
+    } else {
+      // Default: enable all tags
+      this.enableAllTagsInitial()
+    }
+  }
+
+  /**
+   * Restore saved tag filters
+   */
+  restoreSavedTagFilters(savedFilters) {
+    const tagCheckboxes = document.querySelectorAll('input[name="place_tag_ids[]"]')
+
+    tagCheckboxes.forEach(checkbox => {
+      const value = checkbox.value === 'untagged' ? checkbox.value : parseInt(checkbox.value)
+      const shouldBeChecked = savedFilters.includes(value)
+
+      if (checkbox.checked !== shouldBeChecked) {
+        checkbox.checked = shouldBeChecked
+
+        // Update badge styling
+        const badge = checkbox.nextElementSibling
+        const color = badge.style.borderColor
+
+        if (shouldBeChecked) {
+          badge.classList.remove('badge-outline')
+          badge.style.backgroundColor = color
+          badge.style.color = 'white'
+        } else {
+          badge.classList.add('badge-outline')
+          badge.style.backgroundColor = 'transparent'
+          badge.style.color = color
+        }
+      }
+    })
+
+    // Sync "Enable All Tags" toggle
+    this.syncEnableAllTagsToggle()
+
+    // Load places with restored filters
+    this.loadPlacesWithTags(savedFilters)
+  }
+
+  /**
+   * Enable all tags initially
+   */
+  enableAllTagsInitial() {
+    if (this.hasEnableAllPlaceTagsToggleTarget) {
+      this.enableAllPlaceTagsToggleTarget.checked = true
+    }
+
+    const tagCheckboxes = document.querySelectorAll('input[name="place_tag_ids[]"]')
+    const allTagIds = []
+
+    tagCheckboxes.forEach(checkbox => {
+      checkbox.checked = true
+
+      // Update badge styling
+      const badge = checkbox.nextElementSibling
+      const color = badge.style.borderColor
+      badge.classList.remove('badge-outline')
+      badge.style.backgroundColor = color
+      badge.style.color = 'white'
+
+      // Collect tag IDs
+      const value = checkbox.value === 'untagged' ? checkbox.value : parseInt(checkbox.value)
+      allTagIds.push(value)
+    })
+
+    // Save to settings
+    SettingsManager.updateSetting('placesTagFilters', allTagIds)
+
+    // Load places with all tags
+    this.loadPlacesWithTags(allTagIds)
+  }
+
+  /**
+   * Get selected place tag IDs
+   */
+  getSelectedPlaceTags() {
+    return Array.from(
+      document.querySelectorAll('input[name="place_tag_ids[]"]:checked')
+    ).map(cb => {
+      const value = cb.value
+      // Keep "untagged" as string, convert others to integers
+      return value === 'untagged' ? value : parseInt(value)
+    })
+  }
+
+  /**
+   * Filter places by selected tags
+   */
+  filterPlacesByTags(event) {
+    // Update badge styles
+    const badge = event.target.nextElementSibling
+    const color = badge.style.borderColor
+
+    if (event.target.checked) {
+      badge.classList.remove('badge-outline')
+      badge.style.backgroundColor = color
+      badge.style.color = 'white'
+    } else {
+      badge.classList.add('badge-outline')
+      badge.style.backgroundColor = 'transparent'
+      badge.style.color = color
+    }
+
+    // Sync "Enable All Tags" toggle state
+    this.syncEnableAllTagsToggle()
+
+    // Get all checked tag checkboxes
+    const checkedTags = this.getSelectedPlaceTags()
+
+    // Save selection to settings
+    SettingsManager.updateSetting('placesTagFilters', checkedTags)
+
+    // Reload places with selected tags (empty array = show NO places)
+    this.loadPlacesWithTags(checkedTags)
+  }
+
+  /**
+   * Sync "Enable All Tags" toggle with individual tag states
+   */
+  syncEnableAllTagsToggle() {
+    if (!this.hasEnableAllPlaceTagsToggleTarget) return
+
+    const tagCheckboxes = document.querySelectorAll('input[name="place_tag_ids[]"]')
+    const allChecked = Array.from(tagCheckboxes).every(cb => cb.checked)
+    const noneChecked = Array.from(tagCheckboxes).every(cb => !cb.checked)
+
+    // Update toggle state without triggering change event
+    this.enableAllPlaceTagsToggleTarget.checked = allChecked
+  }
+
+  /**
+   * Load places filtered by tags
+   */
+  async loadPlacesWithTags(tagIds = []) {
+    try {
+      let places = []
+
+      if (tagIds.length > 0) {
+        // Fetch places with selected tags
+        places = await this.api.fetchPlaces({ tag_ids: tagIds })
+      }
+      // If tagIds is empty, places remains empty array = show NO places
+
+      const placesGeoJSON = this.dataLoader.placesToGeoJSON(places)
+
+      const placesLayer = this.layerManager.getLayer('places')
+      if (placesLayer) {
+        placesLayer.update(placesGeoJSON)
+      }
+    } catch (error) {
+      console.error('[Maps V2] Failed to load places:', error)
+    }
+  }
+
+  /**
+   * Toggle all place tags on/off
+   */
+  toggleAllPlaceTags(event) {
+    const enableAll = event.target.checked
+    const tagCheckboxes = document.querySelectorAll('input[name="place_tag_ids[]"]')
+
+    tagCheckboxes.forEach(checkbox => {
+      if (checkbox.checked !== enableAll) {
+        checkbox.checked = enableAll
+
+        // Update badge styling
+        const badge = checkbox.nextElementSibling
+        const color = badge.style.borderColor
+
+        if (enableAll) {
+          badge.classList.remove('badge-outline')
+          badge.style.backgroundColor = color
+          badge.style.color = 'white'
+        } else {
+          badge.classList.add('badge-outline')
+          badge.style.backgroundColor = 'transparent'
+          badge.style.color = color
+        }
+      }
+    })
+
+    // Get selected tags
+    const selectedTags = this.getSelectedPlaceTags()
+
+    // Save selection to settings
+    SettingsManager.updateSetting('placesTagFilters', selectedTags)
+
+    // Reload places with selected tags
+    this.loadPlacesWithTags(selectedTags)
   }
 
   /**

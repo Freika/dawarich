@@ -71,6 +71,15 @@ export class DataLoader {
     }
     data.areasGeoJSON = this.areasToGeoJSON(data.areas)
 
+    // Fetch places (no date filtering)
+    try {
+      data.places = await this.api.fetchPlaces()
+    } catch (error) {
+      console.warn('Failed to fetch places:', error)
+      data.places = []
+    }
+    data.placesGeoJSON = this.placesToGeoJSON(data.places)
+
     // Tracks - DISABLED: Backend API not yet implemented
     // TODO: Re-enable when /api/v1/tracks endpoint is created
     data.tracks = []
@@ -133,6 +142,33 @@ export class DataLoader {
           }
         }
       })
+    }
+  }
+
+  /**
+   * Convert places to GeoJSON
+   */
+  placesToGeoJSON(places) {
+    return {
+      type: 'FeatureCollection',
+      features: places.map(place => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [place.longitude, place.latitude]
+        },
+        properties: {
+          id: place.id,
+          name: place.name,
+          latitude: place.latitude,
+          longitude: place.longitude,
+          note: place.note,
+          // Stringify tags for MapLibre GL JS compatibility
+          tags: JSON.stringify(place.tags || []),
+          // Use first tag's color if available
+          color: place.tags?.[0]?.color || '#6366f1'
+        }
+      }))
     }
   }
 

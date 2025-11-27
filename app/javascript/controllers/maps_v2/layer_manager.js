@@ -5,6 +5,7 @@ import { VisitsLayer } from 'maps_v2/layers/visits_layer'
 import { PhotosLayer } from 'maps_v2/layers/photos_layer'
 import { AreasLayer } from 'maps_v2/layers/areas_layer'
 import { TracksLayer } from 'maps_v2/layers/tracks_layer'
+import { PlacesLayer } from 'maps_v2/layers/places_layer'
 import { FogLayer } from 'maps_v2/layers/fog_layer'
 import { FamilyLayer } from 'maps_v2/layers/family_layer'
 import { lazyLoader } from 'maps_v2/utils/lazy_loader'
@@ -24,11 +25,11 @@ export class LayerManager {
   /**
    * Add or update all layers with provided data
    */
-  async addAllLayers(pointsGeoJSON, routesGeoJSON, visitsGeoJSON, photosGeoJSON, areasGeoJSON, tracksGeoJSON) {
+  async addAllLayers(pointsGeoJSON, routesGeoJSON, visitsGeoJSON, photosGeoJSON, areasGeoJSON, tracksGeoJSON, placesGeoJSON) {
     performanceMonitor.mark('add-layers')
 
     // Layer order matters - layers added first render below layers added later
-    // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> photos -> family -> points (top) -> fog (canvas overlay)
+    // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> places -> photos -> family -> points (top) -> fog (canvas overlay)
 
     await this._addScratchLayer(pointsGeoJSON)
     this._addHeatmapLayer(pointsGeoJSON)
@@ -36,6 +37,7 @@ export class LayerManager {
     this._addTracksLayer(tracksGeoJSON)
     this._addRoutesLayer(routesGeoJSON)
     this._addVisitsLayer(visitsGeoJSON)
+    this._addPlacesLayer(placesGeoJSON)
 
     // Add photos layer with error handling (async, might fail loading images)
     try {
@@ -59,6 +61,7 @@ export class LayerManager {
     this.map.on('click', 'points', handlers.handlePointClick)
     this.map.on('click', 'visits', handlers.handleVisitClick)
     this.map.on('click', 'photos', handlers.handlePhotoClick)
+    this.map.on('click', 'places', handlers.handlePlaceClick)
 
     // Cursor change on hover
     this.map.on('mouseenter', 'points', () => {
@@ -77,6 +80,12 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = 'pointer'
     })
     this.map.on('mouseleave', 'photos', () => {
+      this.map.getCanvas().style.cursor = ''
+    })
+    this.map.on('mouseenter', 'places', () => {
+      this.map.getCanvas().style.cursor = 'pointer'
+    })
+    this.map.on('mouseleave', 'places', () => {
       this.map.getCanvas().style.cursor = ''
     })
   }
@@ -177,6 +186,17 @@ export class LayerManager {
       this.layers.visitsLayer.add(visitsGeoJSON)
     } else {
       this.layers.visitsLayer.update(visitsGeoJSON)
+    }
+  }
+
+  _addPlacesLayer(placesGeoJSON) {
+    if (!this.layers.placesLayer) {
+      this.layers.placesLayer = new PlacesLayer(this.map, {
+        visible: this.settings.placesEnabled || false
+      })
+      this.layers.placesLayer.add(placesGeoJSON)
+    } else {
+      this.layers.placesLayer.update(placesGeoJSON)
     }
   }
 

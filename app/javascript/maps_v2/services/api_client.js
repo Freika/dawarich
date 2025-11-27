@@ -89,6 +89,29 @@ export class ApiClient {
   }
 
   /**
+   * Fetch places optionally filtered by tags
+   */
+  async fetchPlaces({ tag_ids = [] } = {}) {
+    const params = new URLSearchParams()
+
+    if (tag_ids && tag_ids.length > 0) {
+      tag_ids.forEach(id => params.append('tag_ids[]', id))
+    }
+
+    const url = `${this.baseURL}/places${params.toString() ? '?' + params.toString() : ''}`
+
+    const response = await fetch(url, {
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch places: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Fetch photos for date range
    */
   async fetchPhotos({ start_at, end_at }) {
