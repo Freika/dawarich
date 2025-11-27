@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+
+## Fixed
+
+- Exporting user data now works a lot faster and consumes less memory.
+
 # [0.36.0] - 2025-11-24
 
 ## OIDC and KML support release
