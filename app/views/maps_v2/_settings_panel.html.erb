@@ -92,7 +92,7 @@
             </div>
           </div>
           <p class="text-xs text-base-content/60 mt-2">
-            Search for a location to navigate on the map
+            Search for a location to find places you visited
           </p>
         </div>
       </div>
@@ -367,7 +367,7 @@
                    max="100"
                    step="10"
                    value="100"
-                   class="range range-primary range-sm"
+                   class="range range-sm"
                    data-maps-v2-target="routeOpacityRange"
                    data-action="input->maps-v2#updateRouteOpacity" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
@@ -391,7 +391,7 @@
                    max="2000"
                    step="5"
                    value="1000"
-                   class="range range-primary range-sm"
+                   class="range range-sm"
                    data-action="input->maps-v2#updateFogRadiusDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
               <span>5m</span>
@@ -412,7 +412,7 @@
                    max="10"
                    step="1"
                    value="1"
-                   class="range range-primary range-sm"
+                   class="range range-sm"
                    data-action="input->maps-v2#updateFogThresholdDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
               <span>1</span>
@@ -436,7 +436,7 @@
                    max="5000"
                    step="100"
                    value="500"
-                   class="range range-primary range-sm"
+                   class="range range-sm"
                    data-action="input->maps-v2#updateMetersBetweenDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
               <span>100m</span>
@@ -457,7 +457,7 @@
                    max="180"
                    step="1"
                    value="60"
-                   class="range range-primary range-sm"
+                   class="range range-sm"
                    data-action="input->maps-v2#updateMinutesBetweenDisplay" />
             <div class="w-full flex justify-between text-xs px-2 mt-1">
               <span>1min</span>
@@ -569,11 +569,19 @@
 
             <!-- Select Area Button -->
             <button type="button"
-                    class="btn btn-sm btn-outline md:col-span-2"
+                    class="btn btn-sm btn-outline"
                     data-maps-v2-target="selectAreaButton"
                     data-action="click->maps-v2#startSelectArea">
               <%= icon 'square-dashed-mouse-pointer' %>
               Select Area
+            </button>
+
+            <!-- Create Area Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    data-action="click->maps-v2#startCreateArea">
+              <%= icon 'circle-plus' %>
+              Create an Area
             </button>
           </div>
 

@@ -1,0 +1,86 @@
+<div data-controller="area-creation-v2"
+     data-area-creation-v2-api-key-value="<%= current_user.api_key %>"
+     data-area-drawer-area-creation-v2-outlet=".area-creation-v2"
+     data-action="area-drawer:drawn->area-creation-v2#handleAreaDrawn">
+  <div class="modal" data-area-creation-v2-target="modal">
+    <div class="modal-box max-w-xl">
+      <h3 class="font-bold text-lg mb-4">Create New Area</h3>
+
+      <form data-area-creation-v2-target="form" data-action="submit->area-creation-v2#submit">
+        <input type="hidden" name="latitude" data-area-creation-v2-target="latitudeInput">
+        <input type="hidden" name="longitude" data-area-creation-v2-target="longitudeInput">
+        <input type="hidden" name="radius" data-area-creation-v2-target="radiusInput">
+
+        <div class="space-y-4">
+          <!-- Area Name -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Area Name *</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              placeholder="e.g. Home, Office, Gym..."
+              class="input input-bordered w-full"
+              data-area-creation-v2-target="nameInput"
+              required>
+          </div>
+
+          <!-- Radius Display -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Radius</span>
+            </label>
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                data-area-creation-v2-target="radiusDisplay"
+                readonly>
+              <div class="badge badge-info">meters</div>
+            </div>
+            <label class="label">
+              <span class="label-text-alt">Draw on the map to set the radius</span>
+            </label>
+          </div>
+
+          <!-- Center Location -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Center Location</span>
+            </label>
+            <input
+              type="text"
+              class="input input-bordered w-full text-sm"
+              data-area-creation-v2-target="locationDisplay"
+              readonly>
+          </div>
+
+          <!-- Drawing Instructions -->
+          <div class="alert alert-info">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="text-sm">
+              <strong>How to draw:</strong>
+              <ol class="list-decimal list-inside mt-1">
+                <li>Click once to set the center point</li>
+                <li>Move mouse to adjust radius</li>
+                <li>Click again to finish drawing</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <button type="button" class="btn btn-ghost" data-action="click->area-creation-v2#close">Cancel</button>
+          <button type="submit" class="btn btn-primary" data-area-creation-v2-target="submitButton">
+            <span class="loading loading-spinner loading-sm hidden" data-area-creation-v2-target="submitSpinner"></span>
+            <span data-area-creation-v2-target="submitText">Create Area</span>
+          </button>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop" data-action="click->area-creation-v2#close"></div>
+  </div>
+</div>
