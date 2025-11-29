@@ -1,8 +1,8 @@
 import { BaseLayer } from './base_layer'
 
 /**
- * Routes layer with speed-based coloring
- * Connects points chronologically to show travel paths
+ * Routes layer showing travel paths
+ * Connects points chronologically with solid color
  */
 export class RoutesLayer extends BaseLayer {
   constructor(map, options = {}) {
@@ -31,14 +31,7 @@ export class RoutesLayer extends BaseLayer {
           'line-cap': 'round'
         },
         paint: {
-          // Use color from feature properties if available (for speed-colored routes)
-          // Otherwise fall back to default orange
-          'line-color': [
-            'case',
-            ['has', 'color'],
-            ['get', 'color'],
-            '#f97316'  // Default orange color
-          ],
+          'line-color': '#f97316',  // Solid orange color
           'line-width': 3,
           'line-opacity': 0.8
         }

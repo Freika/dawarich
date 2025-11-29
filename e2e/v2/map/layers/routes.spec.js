@@ -90,7 +90,7 @@ test.describe('Routes Layer', () => {
   })
 
   test.describe('Styling', () => {
-    test('routes have solid color (not speed-based)', async ({ page }) => {
+    test('routes have solid color', async ({ page }) => {
       await page.waitForFunction(() => {
         const element = document.querySelector('[data-controller="maps-v2"]')
         if (!element) return false

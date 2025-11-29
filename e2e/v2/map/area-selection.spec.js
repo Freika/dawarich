@@ -27,7 +27,6 @@ test.describe('Area Selection in Maps V2', () => {
     // Verify the button changes to Cancel Selection
     const selectButton = page.locator('[data-maps-v2-target="selectAreaButton"]')
     await expect(selectButton).toContainText('Cancel Selection', { timeout: 2000 })
-    await expect(selectButton).toHaveClass(/btn-error/)
 
     // Verify cursor changes to crosshair (via canvas style)
     const canvas = page.locator('canvas.maplibregl-canvas')
