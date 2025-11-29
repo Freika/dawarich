@@ -134,12 +134,12 @@ Rails.application.routes.draw do
           get 'suggestions'
         end
       end
-      resources :points,    only: %i[index create update destroy] do
+      resources :points, only: %i[index create update destroy] do
         collection do
           delete :bulk_destroy
         end
       end
-      resources :visits,    only: %i[index create update destroy] do
+      resources :visits, only: %i[index create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
         collection do
           post 'merge', to: 'visits#merge'

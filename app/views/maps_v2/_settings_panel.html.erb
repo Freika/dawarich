@@ -86,7 +86,7 @@
                    data-maps-v2-target="searchInput"
                    autocomplete="off" />
             <!-- Search Results -->
-            <div class="absolute z-50 w-full mt-1 bg-base-100 rounded-lg shadow-lg border border-base-300 hidden max-h-96 overflow-y-auto"
+            <div class="absolute z-50 w-full mt-1 bg-base-100 rounded-lg shadow-lg border border-base-300 hidden max-h-full overflow-y-auto"
                  data-maps-v2-target="searchResults">
               <!-- Results will be populated by SearchManager -->
             </div>
@@ -112,7 +112,7 @@
             <p class="text-sm text-base-content/60 ml-14">Show individual location points</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Routes Layer -->
           <div class="form-control">
@@ -152,7 +152,7 @@
             </div>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Heatmap Layer -->
           <div class="form-control">
@@ -166,7 +166,7 @@
             <p class="text-sm text-base-content/60 ml-14">Show density heatmap</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Visits Layer -->
           <div class="form-control">
@@ -196,7 +196,7 @@
             </select>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Places Layer -->
           <div class="form-control">
@@ -261,7 +261,7 @@
             </div>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Photos Layer -->
           <div class="form-control">
@@ -275,7 +275,7 @@
             <p class="text-sm text-base-content/60 ml-14">Show geotagged photos</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Areas Layer -->
           <div class="form-control">
@@ -289,7 +289,7 @@
             <p class="text-sm text-base-content/60 ml-14">Show defined areas</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Tracks Layer -->
           <%# <div class="form-control">
@@ -303,7 +303,7 @@
             <p class="text-sm text-base-content/60 ml-14">Show saved tracks</p>
           </div> %>
 
-          <%# <div class="divider my-2"></div> %>
+          <%# <div class="divider"></div> %>
 
           <!-- Fog of War Layer -->
           <div class="form-control">
@@ -317,7 +317,7 @@
             <p class="text-sm text-base-content/60 ml-14">Show explored areas</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Scratch Map Layer -->
           <div class="form-control">
@@ -353,7 +353,7 @@
             </select>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Route Opacity -->
           <div class="form-control w-full">
@@ -377,7 +377,7 @@
             </div>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Fog of War Settings -->
           <div class="form-control w-full">
@@ -422,7 +422,7 @@
             <p class="text-xs text-base-content/60 mt-1">Minimum points to clear fog</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Route Generation Settings -->
           <div class="form-control w-full">
@@ -467,7 +467,7 @@
             <p class="text-xs text-base-content/60 mt-1">Time threshold for route splitting</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Points Rendering Mode -->
           <div class="form-control w-full">
@@ -493,7 +493,7 @@
             </div>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Speed-Colored Routes -->
           <div class="form-control">
@@ -506,7 +506,7 @@
             <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Live Mode -->
           <div class="form-control">
@@ -520,10 +520,10 @@
             <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
           </div>
 
-          <div class="divider my-2"></div>
+          <div class="divider"></div>
 
           <!-- Update Button -->
-          <button type="submit" class="btn btn-primary btn-block">
+          <button type="submit" class="btn btn-sm btn-primary btn-block">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
               <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
               <polyline points="12 2 12 12 14.5 14.5"></polyline>
@@ -533,7 +533,7 @@
 
           <!-- Reset Settings -->
           <button type="button"
-                  class="btn btn-outline btn-block"
+                  class="btn btn-sm btn-outline btn-block"
                   data-action="click->maps-v2#resetSettings">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
@@ -549,46 +549,54 @@
       <!-- Tools Tab -->
       <div class="tab-content" data-tab-content="tools" data-map-panel-target="tabContent">
         <div class="space-y-4">
-          <!-- Create a Visit Button -->
-          <button type="button"
-                  class="btn btn-primary btn-block"
-                  data-action="click->maps-v2#startCreateVisit">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            Create a Visit
-          </button>
+          <!-- Tools Grid: 2 columns on md+ screens, 1 column on smaller screens -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Create a Visit Button -->
+            <button type="button"
+                    class="btn btn-sm btn-primary"
+                    data-action="click->maps-v2#startCreateVisit">
+              <%= icon 'map-pin-plus' %>
+              Create a Visit
+            </button>
 
-          <div class="divider my-2"></div>
+            <!-- Create a Place Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    data-action="click->maps-v2#startCreatePlace">
+              <%= icon 'map-pin-plus' %>
+              Create a Place
+            </button>
 
-          <!-- Create a Place Button -->
-          <button type="button"
-                  class="btn btn-outline btn-block"
-                  data-action="click->maps-v2#startCreatePlace">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            Create a Place
-          </button>
+            <!-- Select Area Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline md:col-span-2"
+                    data-maps-v2-target="selectAreaButton"
+                    data-action="click->maps-v2#startSelectArea">
+              <%= icon 'square-dashed-mouse-pointer' %>
+              Select Area
+            </button>
+          </div>
 
-          <div class="divider my-2"></div>
+          <!-- Selection Actions (shown after area is selected) -->
+          <div class="hidden mt-4 space-y-2" data-maps-v2-target="selectionActions">
+            <button type="button"
+                    class="btn btn-sm btn-outline btn-error btn-block"
+                    data-action="click->maps-v2#deleteSelectedPoints"
+                    data-maps-v2-target="deletePointsButton">
+              <%= icon 'trash-2' %>
+              <span data-maps-v2-target="deleteButtonText">Delete Selected Points</span>
+            </button>
 
-          <!-- Select Area Button -->
-          <button type="button"
-                  class="btn btn-outline btn-block"
-                  disabled>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <path d="M9 3v18"></path>
-              <path d="M15 3v18"></path>
-              <path d="M3 9h18"></path>
-              <path d="M3 15h18"></path>
-            </svg>
-            Select Area
-          </button>
-          <p class="text-xs text-base-content/60 text-center">Coming soon</p>
+            <!-- Selected Visits Container -->
+            <div class="hidden mt-4 max-h-full overflow-y-auto" data-maps-v2-target="selectedVisitsContainer">
+              <!-- Visit cards will be dynamically inserted here -->
+            </div>
+
+            <!-- Bulk Actions for Visits -->
+            <div class="hidden" data-maps-v2-target="selectedVisitsBulkActions">
+              <!-- Bulk action buttons will be dynamically inserted here -->
+            </div>
+          </div>
         </div>
       </div>
 
@@ -607,7 +615,7 @@
               </div>
             </div>
 
-            <div class="divider my-2"></div>
+            <div class="divider"></div>
 
             <!-- Docs Section -->
             <div>
@@ -621,7 +629,7 @@
               </div>
             </div>
 
-            <div class="divider my-2"></div>
+            <div class="divider"></div>
 
             <!-- More Section -->
             <div>

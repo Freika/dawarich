@@ -90,3 +90,16 @@ export async function getMapZoom(page) {
     return controller?.map?.getZoom() || null;
   });
 }
+
+/**
+ * Wait for MapLibre map (Maps V2) to be fully initialized
+ * @param {Page} page - Playwright page object
+ */
+export async function waitForMapLoad(page) {
+  await page.waitForFunction(() => {
+    return window.map && window.map.loaded();
+  }, { timeout: 10000 });
+
+  // Wait for initial data load to complete
+  await page.waitForSelector('[data-maps-v2-target="loading"].hidden', { timeout: 15000 });
+}

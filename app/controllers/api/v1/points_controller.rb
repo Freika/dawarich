@@ -12,6 +12,23 @@ class Api::V1::PointsController < ApiController
     points = current_api_user
              .points
              .where(timestamp: start_at..end_at)
+
+    # Filter by geographic bounds if provided
+    if params[:min_longitude].present? && params[:max_longitude].present? &&
+       params[:min_latitude].present? && params[:max_latitude].present?
+      min_lng = params[:min_longitude].to_f
+      max_lng = params[:max_longitude].to_f
+      min_lat = params[:min_latitude].to_f
+      max_lat = params[:max_latitude].to_f
+
+      # Use PostGIS to filter points within bounding box
+      points = points.where(
+        'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
+        min_lng, max_lng, min_lat, max_lat
+      )
+    end
+
+    points = points
              .order(timestamp: order)
              .page(params[:page])
              .per(params[:per_page] || 100)
