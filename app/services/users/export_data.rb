@@ -273,7 +273,7 @@ class Users::ExportData
         file.write(Users::ExportData::Notifications.new(user).call.to_json)
 
         file.write(',"points":')
-        file.write(Users::ExportData::Points.new(user).call.to_json)
+        Users::ExportData::Points.new(user, file).call
 
         file.write(',"visits":')
         file.write(Users::ExportData::Visits.new(user).call.to_json)

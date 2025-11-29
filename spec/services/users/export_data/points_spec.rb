@@ -264,5 +264,35 @@ RSpec.describe Users::ExportData::Points, type: :service do
         expect(point_data).to be_nil
       end
     end
+
+    context 'streaming mode' do
+      let!(:points) { create_list(:point, 25, user: user) }
+      let(:output) { StringIO.new }
+      let(:streaming_service) { described_class.new(user, output) }
+
+      it 'writes JSON array directly to file without loading all into memory' do
+        streaming_service.call
+        output.rewind
+        json_output = output.read
+
+        expect(json_output).to start_with('[')
+        expect(json_output).to end_with(']')
+
+        parsed = JSON.parse(json_output)
+        expect(parsed).to be_an(Array)
+        expect(parsed.size).to eq(25)
+      end
+
+      it 'returns nil in streaming mode instead of array' do
+        expect(streaming_service.call).to be_nil
+      end
+
+      it 'logs progress for large datasets' do
+        expect(Rails.logger).to receive(:info).with(/Streaming \d+ points to file.../)
+        expect(Rails.logger).to receive(:info).with(/Completed streaming \d+ points to file/)
+
+        streaming_service.call
+      end
+    end
   end
 end
