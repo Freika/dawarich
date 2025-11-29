@@ -4,11 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[0.36.1] - 2025-11-29
 
 ## Fixed
 
 - Exporting user data now works a lot faster and consumes less memory.
+- Fix the restart loop. #1937 #1975
 
 # [0.36.0] - 2025-11-24
 
