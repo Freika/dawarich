@@ -1,12 +1,12 @@
 import { Controller } from '@hotwired/stimulus'
-import maplibregl from 'maplibre-gl'
 import { ApiClient } from 'maps_v2/services/api_client'
 import { SettingsManager } from 'maps_v2/utils/settings_manager'
 import { SearchManager } from 'maps_v2/utils/search_manager'
 import { Toast } from 'maps_v2/components/toast'
 import { performanceMonitor } from 'maps_v2/utils/performance_monitor'
 import { CleanupHelper } from 'maps_v2/utils/cleanup_helper'
-import { getMapStyle } from 'maps_v2/utils/style_manager'
+import { MapInitializer } from './maps_v2/map_initializer'
+import { MapDataManager } from './maps_v2/map_data_manager'
 import { LayerManager } from './maps_v2/layer_manager'
 import { DataLoader } from './maps_v2/data_loader'
 import { EventHandlers } from './maps_v2/event_handlers'
@@ -90,6 +90,7 @@ export default class extends Controller {
     this.dataLoader = new DataLoader(this.api, this.apiKeyValue)
     this.eventHandlers = new EventHandlers(this.map)
     this.filterManager = new FilterManager(this.dataLoader)
+    this.mapDataManager = new MapDataManager(this)
 
     // Initialize feature managers
     this.areaSelectionManager = new AreaSelectionManager(this)
@@ -129,16 +130,9 @@ export default class extends Controller {
    * Initialize MapLibre map
    */
   async initializeMap() {
-    const style = await getMapStyle(this.settings.mapStyle)
-
-    this.map = new maplibregl.Map({
-      container: this.containerTarget,
-      style: style,
-      center: [0, 0],
-      zoom: 2
+    this.map = await MapInitializer.initialize(this.containerTarget, {
+      mapStyle: this.settings.mapStyle
     })
-
-    this.map.addControl(new maplibregl.NavigationControl(), 'top-right')
   }
 
   /**
@@ -167,88 +161,14 @@ export default class extends Controller {
    * Load map data from API
    */
   async loadMapData(options = {}) {
-    const {
-      showLoading = true,
-      fitBounds = true,
-      showToast = true
-    } = options
-
-    performanceMonitor.mark('load-map-data')
-
-    if (showLoading) {
-      this.showLoading()
-    }
-
-    try {
-      const data = await this.dataLoader.fetchMapData(
-        this.startDateValue,
-        this.endDateValue,
-        showLoading ? this.updateLoadingProgress.bind(this) : null
-      )
-
-      this.filterManager.setAllVisits(data.visits)
-
-      const addAllLayers = async () => {
-        await this.layerManager.addAllLayers(
-          data.pointsGeoJSON,
-          data.routesGeoJSON,
-          data.visitsGeoJSON,
-          data.photosGeoJSON,
-          data.areasGeoJSON,
-          data.tracksGeoJSON,
-          data.placesGeoJSON
-        )
-
-        this.layerManager.setupLayerEventHandlers({
-          handlePointClick: this.eventHandlers.handlePointClick.bind(this.eventHandlers),
-          handleVisitClick: this.eventHandlers.handleVisitClick.bind(this.eventHandlers),
-          handlePhotoClick: this.eventHandlers.handlePhotoClick.bind(this.eventHandlers),
-          handlePlaceClick: this.eventHandlers.handlePlaceClick.bind(this.eventHandlers)
-        })
+    return this.mapDataManager.loadMapData(
+      this.startDateValue,
+      this.endDateValue,
+      {
+        ...options,
+        onProgress: this.updateLoadingProgress.bind(this)
       }
-
-      if (this.map.loaded()) {
-        await addAllLayers()
-      } else {
-        this.map.once('load', async () => {
-          await addAllLayers()
-        })
-      }
-
-      if (fitBounds && data.points.length > 0) {
-        this.fitMapToBounds(data.pointsGeoJSON)
-      }
-
-      if (showToast) {
-        Toast.success(`Loaded ${data.points.length} location ${data.points.length === 1 ? 'point' : 'points'}`)
-      }
-
-    } catch (error) {
-      console.error('Failed to load map data:', error)
-      Toast.error('Failed to load location data. Please try again.')
-    } finally {
-      if (showLoading) {
-        this.hideLoading()
-      }
-      const duration = performanceMonitor.measure('load-map-data')
-      console.log(`[Performance] Map data loaded in ${duration}ms`)
-    }
-  }
-
-  /**
-   * Fit map to data bounds
-   */
-  fitMapToBounds(geojson) {
-    const coordinates = geojson.features.map(f => f.geometry.coordinates)
-
-    const bounds = coordinates.reduce((bounds, coord) => {
-      return bounds.extend(coord)
-    }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]))
-
-    this.map.fitBounds(bounds, {
-      padding: 50,
-      maxZoom: 15
-    })
+    )
   }
 
   /**
