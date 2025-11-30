@@ -107,6 +107,9 @@ export default class extends Controller {
     this.boundHandlePlaceCreated = this.placesManager.handlePlaceCreated.bind(this.placesManager)
     this.cleanup.addEventListener(document, 'place:created', this.boundHandlePlaceCreated)
 
+    this.boundHandleAreaCreated = this.handleAreaCreated.bind(this)
+    this.cleanup.addEventListener(document, 'area:created', this.boundHandleAreaCreated)
+
     // Format initial dates
     this.startDateValue = DateManager.formatDateForAPI(new Date(this.startDateValue))
     this.endDateValue = DateManager.formatDateForAPI(new Date(this.endDateValue))
@@ -330,23 +333,73 @@ export default class extends Controller {
       this.toggleSettings()
     }
 
-    const modalElement = document.querySelector('[data-controller="area-creation-v2"]')
-    if (!modalElement) {
-      console.error('[Maps V2] Area creation modal not found')
-      Toast.error('Area creation modal not available')
-      return
-    }
-
-    const controller = this.application.getControllerForElementAndIdentifier(
-      modalElement,
-      'area-creation-v2'
+    // Find area drawer controller on the same element
+    const drawerController = this.application.getControllerForElementAndIdentifier(
+      this.element,
+      'area-drawer'
     )
 
-    if (controller) {
-      controller.open(null, null, this)
+    if (drawerController) {
+      console.log('[Maps V2] Area drawer controller found, starting drawing with map:', this.map)
+      drawerController.startDrawing(this.map)
     } else {
-      console.error('[Maps V2] Area creation controller not found')
-      Toast.error('Area creation controller not available')
+      console.error('[Maps V2] Area drawer controller not found')
+      Toast.error('Area drawer controller not available')
+    }
+  }
+
+  async handleAreaCreated(event) {
+    console.log('[Maps V2] Area created:', event.detail.area)
+
+    try {
+      // Fetch all areas from API
+      const areas = await this.api.fetchAreas()
+      console.log('[Maps V2] Fetched areas:', areas.length)
+
+      // Convert to GeoJSON
+      const areasGeoJSON = this.dataLoader.areasToGeoJSON(areas)
+      console.log('[Maps V2] Converted to GeoJSON:', areasGeoJSON.features.length, 'features')
+      if (areasGeoJSON.features.length > 0) {
+        console.log('[Maps V2] First area GeoJSON:', JSON.stringify(areasGeoJSON.features[0], null, 2))
+      }
+
+      // Get or create the areas layer
+      let areasLayer = this.layerManager.getLayer('areas')
+      console.log('[Maps V2] Areas layer exists?', !!areasLayer, 'visible?', areasLayer?.visible)
+
+      if (areasLayer) {
+        // Update existing layer
+        areasLayer.update(areasGeoJSON)
+        console.log('[Maps V2] Areas layer updated')
+      } else {
+        // Create the layer if it doesn't exist yet
+        console.log('[Maps V2] Creating areas layer')
+        this.layerManager._addAreasLayer(areasGeoJSON)
+        areasLayer = this.layerManager.getLayer('areas')
+        console.log('[Maps V2] Areas layer created, visible?', areasLayer?.visible)
+      }
+
+      // Enable the layer if it wasn't already
+      if (areasLayer) {
+        if (!areasLayer.visible) {
+          console.log('[Maps V2] Showing areas layer')
+          areasLayer.show()
+          this.settings.layers.areas = true
+          this.settingsController.saveSetting('layers.areas', true)
+
+          // Update toggle state
+          if (this.hasAreasToggleTarget) {
+            this.areasToggleTarget.checked = true
+          }
+        } else {
+          console.log('[Maps V2] Areas layer already visible')
+        }
+      }
+
+      Toast.success('Area created successfully!')
+    } catch (error) {
+      console.error('[Maps V2] Failed to reload areas:', error)
+      Toast.error('Failed to reload areas')
     }
   }
 

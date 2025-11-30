@@ -1,9 +1,8 @@
 import { Controller } from '@hotwired/stimulus'
-import { Toast } from 'maps_v2/components/toast'
 
 /**
- * Area creation controller for Maps V2
- * Handles area creation workflow with area drawer
+ * Area creation controller
+ * Handles the area creation modal and form submission
  */
 export default class extends Controller {
   static targets = [
@@ -24,154 +23,87 @@ export default class extends Controller {
     apiKey: String
   }
 
-  static outlets = ['area-drawer']
-
   connect() {
-    console.log('[Area Creation V2] Connected')
-    this.latitude = null
-    this.longitude = null
-    this.radius = null
-    this.mapsController = null
+    this.area = null
+    this.setupEventListeners()
+    console.log('[Area Creation V2] Controller connected')
   }
 
   /**
-   * Open modal and start drawing mode
-   * @param {number} lat - Initial latitude (optional)
-   * @param {number} lng - Initial longitude (optional)
-   * @param {object} mapsController - Maps V2 controller reference
+   * Setup event listeners for area drawing
    */
-  open(lat = null, lng = null, mapsController = null) {
-    console.log('[Area Creation V2] Opening modal', { lat, lng })
+  setupEventListeners() {
+    document.addEventListener('area:drawn', (e) => {
+      console.log('[Area Creation V2] area:drawn event received:', e.detail)
+      this.open(e.detail.center, e.detail.radius)
+    })
+  }
 
-    this.mapsController = mapsController
-    this.latitude = lat
-    this.longitude = lng
-    this.radius = 100 // Default radius in meters
+  /**
+   * Open the modal with area data
+   */
+  open(center, radius) {
+    console.log('[Area Creation V2] open() called with center:', center, 'radius:', radius)
 
-    // Update hidden inputs if coordinates provided
-    if (lat && lng) {
-      this.latitudeInputTarget.value = lat
-      this.longitudeInputTarget.value = lng
-      this.radiusInputTarget.value = this.radius
-      this.updateLocationDisplay(lat, lng)
-      this.updateRadiusDisplay(this.radius)
-    }
+    // Store area data
+    this.area = { center, radius }
 
-    // Clear form
-    this.nameInputTarget.value = ''
+    // Update form fields
+    this.latitudeInputTarget.value = center[1]
+    this.longitudeInputTarget.value = center[0]
+    this.radiusInputTarget.value = Math.round(radius)
+    this.radiusDisplayTarget.value = Math.round(radius)
+    this.locationDisplayTarget.value = `${center[1].toFixed(6)}, ${center[0].toFixed(6)}`
 
     // Show modal
     this.modalTarget.classList.add('modal-open')
-
-    // Start drawing mode if area-drawer outlet is available
-    if (this.hasAreaDrawerOutlet) {
-      console.log('[Area Creation V2] Starting drawing mode')
-      this.areaDrawerOutlet.startDrawing()
-    } else {
-      console.warn('[Area Creation V2] Area drawer outlet not found')
-    }
+    this.nameInputTarget.focus()
   }
 
   /**
-   * Close modal and cancel drawing
+   * Close the modal
    */
   close() {
-    console.log('[Area Creation V2] Closing modal')
-
     this.modalTarget.classList.remove('modal-open')
-
-    // Cancel drawing mode
-    if (this.hasAreaDrawerOutlet) {
-      this.areaDrawerOutlet.cancelDrawing()
-    }
-
-    // Reset form
-    this.formTarget.reset()
-    this.latitude = null
-    this.longitude = null
-    this.radius = null
+    this.resetForm()
   }
 
   /**
-   * Handle area drawn event from area-drawer
-   */
-  handleAreaDrawn(event) {
-    console.log('[Area Creation V2] Area drawn', event.detail)
-
-    const { area } = event.detail
-    const [lng, lat] = area.center
-    const radius = Math.round(area.radius)
-
-    this.latitude = lat
-    this.longitude = lng
-    this.radius = radius
-
-    // Update form fields
-    this.latitudeInputTarget.value = lat
-    this.longitudeInputTarget.value = lng
-    this.radiusInputTarget.value = radius
-
-    // Update displays
-    this.updateLocationDisplay(lat, lng)
-    this.updateRadiusDisplay(radius)
-
-    console.log('[Area Creation V2] Form updated with drawn area')
-  }
-
-  /**
-   * Update location display
-   */
-  updateLocationDisplay(lat, lng) {
-    this.locationDisplayTarget.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-  }
-
-  /**
-   * Update radius display
-   */
-  updateRadiusDisplay(radius) {
-    this.radiusDisplayTarget.value = `${radius.toLocaleString()}`
-  }
-
-  /**
-   * Handle form submission
+   * Submit the form
    */
   async submit(event) {
     event.preventDefault()
 
-    console.log('[Area Creation V2] Submitting form')
-
-    // Validate
-    if (!this.latitude || !this.longitude || !this.radius) {
-      Toast.error('Please draw an area on the map first')
+    if (!this.area) {
+      console.error('No area data available')
       return
     }
 
     const formData = new FormData(this.formTarget)
     const name = formData.get('name')
+    const latitude = parseFloat(formData.get('latitude'))
+    const longitude = parseFloat(formData.get('longitude'))
+    const radius = parseFloat(formData.get('radius'))
 
-    if (!name || name.trim() === '') {
-      Toast.error('Please enter an area name')
-      this.nameInputTarget.focus()
+    if (!name || !latitude || !longitude || !radius) {
+      alert('Please fill in all required fields')
       return
     }
 
-    // Show loading state
-    this.submitButtonTarget.disabled = true
-    this.submitSpinnerTarget.classList.remove('hidden')
-    this.submitTextTarget.textContent = 'Creating...'
+    this.setLoading(true)
 
     try {
       const response = await fetch('/api/v1/areas', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKeyValue}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKeyValue}`
         },
         body: JSON.stringify({
-          name: name.trim(),
-          latitude: this.latitude,
-          longitude: this.longitude,
-          radius: this.radius
+          name,
+          latitude,
+          longitude,
+          radius
         })
       })
 
@@ -180,25 +112,59 @@ export default class extends Controller {
         throw new Error(error.message || 'Failed to create area')
       }
 
-      const data = await response.json()
-      console.log('[Area Creation V2] Area created:', data)
+      const area = await response.json()
 
-      Toast.success(`Area "${name}" created successfully`)
+      // Close modal
+      this.close()
 
-      // Dispatch event to notify maps controller
+      // Dispatch document event for area created
       document.dispatchEvent(new CustomEvent('area:created', {
-        detail: { area: data }
+        detail: { area }
       }))
 
-      this.close()
     } catch (error) {
-      console.error('[Area Creation V2] Failed to create area:', error)
-      Toast.error(error.message || 'Failed to create area')
+      console.error('Error creating area:', error)
+      alert(`Error creating area: ${error.message}`)
     } finally {
-      // Reset button state
-      this.submitButtonTarget.disabled = false
+      this.setLoading(false)
+    }
+  }
+
+  /**
+   * Set loading state
+   */
+  setLoading(loading) {
+    this.submitButtonTarget.disabled = loading
+
+    if (loading) {
+      this.submitSpinnerTarget.classList.remove('hidden')
+      this.submitTextTarget.textContent = 'Creating...'
+    } else {
       this.submitSpinnerTarget.classList.add('hidden')
       this.submitTextTarget.textContent = 'Create Area'
+    }
+  }
+
+  /**
+   * Reset form
+   */
+  resetForm() {
+    this.formTarget.reset()
+    this.area = null
+    this.radiusDisplayTarget.value = ''
+    this.locationDisplayTarget.value = ''
+  }
+
+  /**
+   * Show success message
+   */
+  showSuccess(message) {
+    // You can replace this with a toast notification if available
+    console.log(message)
+
+    // Try to use the Toast component if available
+    if (window.Toast) {
+      window.Toast.show(message, 'success')
     }
   }
 }

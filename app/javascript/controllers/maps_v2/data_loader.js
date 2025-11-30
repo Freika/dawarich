@@ -181,7 +181,8 @@ export class DataLoader {
       type: 'FeatureCollection',
       features: areas.map(area => {
         // Create circle polygon from center and radius
-        const center = [area.longitude, area.latitude]
+        // Parse as floats since API returns strings
+        const center = [parseFloat(area.longitude), parseFloat(area.latitude)]
         const coordinates = createCircle(center, area.radius)
 
         return {
@@ -193,7 +194,7 @@ export class DataLoader {
           properties: {
             id: area.id,
             name: area.name,
-            color: area.color || '#3b82f6',
+            color: area.color || '#ef4444',
             radius: area.radius
           }
         }

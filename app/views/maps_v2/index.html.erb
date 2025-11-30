@@ -2,11 +2,11 @@
 
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
-<div data-controller="maps-v2 area-drawer"
+<div id="maps-v2-container"
+     data-controller="maps-v2 area-drawer"
      data-maps-v2-api-key-value="<%= current_user.api_key %>"
      data-maps-v2-start-date-value="<%= @start_at.to_s %>"
      data-maps-v2-end-date-value="<%= @end_at.to_s %>"
-     data-area-drawer-maps-v2-outlet="#maps-v2-container"
      style="width: 100%; height: 100%; position: relative;">
   <!--
     Phase 7 Realtime Controller: Currently disabled pending initialization fix

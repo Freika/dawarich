@@ -26,8 +26,8 @@ export class AreasLayer extends BaseLayer {
         type: 'fill',
         source: this.sourceId,
         paint: {
-          'fill-color': ['get', 'color'],
-          'fill-opacity': 0.2
+          'fill-color': '#ff0000',
+          'fill-opacity': 0.4
         }
       },
 
@@ -37,8 +37,8 @@ export class AreasLayer extends BaseLayer {
         type: 'line',
         source: this.sourceId,
         paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 2
+          'line-color': '#ff0000',
+          'line-width': 3
         }
       },
 

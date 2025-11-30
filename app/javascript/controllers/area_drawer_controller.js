@@ -6,25 +6,31 @@ import { createCircle, calculateDistance } from 'maps_v2/utils/geometry'
  * Draw circular areas on map
  */
 export default class extends Controller {
-  static outlets = ['mapsV2']
-
   connect() {
     this.isDrawing = false
     this.center = null
     this.radius = 0
+    this.map = null
+
+    // Bind event handlers to maintain context
+    this.onClick = this.onClick.bind(this)
+    this.onMouseMove = this.onMouseMove.bind(this)
   }
 
   /**
    * Start drawing mode
+   * @param {maplibregl.Map} map - The MapLibre map instance
    */
-  startDrawing() {
-    if (!this.hasMapsV2Outlet) {
-      console.error('Maps V2 outlet not found')
+  startDrawing(map) {
+    console.log('[Area Drawer] startDrawing called with map:', map)
+    if (!map) {
+      console.error('[Area Drawer] Map instance not provided')
       return
     }
 
+    console.log('[Area Drawer] Starting drawing mode')
     this.isDrawing = true
-    const map = this.mapsV2Outlet.map
+    this.map = map
     map.getCanvas().style.cursor = 'crosshair'
 
     // Add temporary layer
@@ -64,43 +70,47 @@ export default class extends Controller {
    * Cancel drawing mode
    */
   cancelDrawing() {
-    if (!this.hasMapsV2Outlet) return
+    if (!this.map) return
 
     this.isDrawing = false
     this.center = null
     this.radius = 0
 
-    const map = this.mapsV2Outlet.map
-    map.getCanvas().style.cursor = ''
+    this.map.getCanvas().style.cursor = ''
 
     // Clear drawing
-    const source = map.getSource('draw-source')
+    const source = this.map.getSource('draw-source')
     if (source) {
       source.setData({ type: 'FeatureCollection', features: [] })
     }
 
     // Remove event listeners
-    map.off('click', this.onClick)
-    map.off('mousemove', this.onMouseMove)
+    this.map.off('click', this.onClick)
+    this.map.off('mousemove', this.onMouseMove)
   }
 
   /**
    * Click handler
    */
-  onClick = (e) => {
-    if (!this.isDrawing || !this.hasMapsV2Outlet) return
+  onClick(e) {
+    if (!this.isDrawing || !this.map) return
 
     if (!this.center) {
       // First click - set center
+      console.log('[Area Drawer] First click - setting center:', e.lngLat)
       this.center = [e.lngLat.lng, e.lngLat.lat]
     } else {
       // Second click - finish drawing
-      const area = {
-        center: this.center,
-        radius: this.radius
-      }
+      console.log('[Area Drawer] Second click - finishing drawing')
 
-      this.dispatch('drawn', { detail: { area } })
+      console.log('[Area Drawer] Dispatching area:drawn event')
+      document.dispatchEvent(new CustomEvent('area:drawn', {
+        detail: {
+          center: this.center,
+          radius: this.radius
+        }
+      }))
+
       this.cancelDrawing()
     }
   }
@@ -108,8 +118,8 @@ export default class extends Controller {
   /**
    * Mouse move handler
    */
-  onMouseMove = (e) => {
-    if (!this.isDrawing || !this.center || !this.hasMapsV2Outlet) return
+  onMouseMove(e) {
+    if (!this.isDrawing || !this.center || !this.map) return
 
     const currentPoint = [e.lngLat.lng, e.lngLat.lat]
     this.radius = calculateDistance(this.center, currentPoint)
@@ -121,11 +131,11 @@ export default class extends Controller {
    * Update drawing visualization
    */
   updateDrawing() {
-    if (!this.center || this.radius === 0 || !this.hasMapsV2Outlet) return
+    if (!this.center || this.radius === 0 || !this.map) return
 
     const coordinates = createCircle(this.center, this.radius)
 
-    const source = this.mapsV2Outlet.map.getSource('draw-source')
+    const source = this.map.getSource('draw-source')
     if (source) {
       source.setData({
         type: 'FeatureCollection',
