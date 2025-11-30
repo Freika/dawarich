@@ -3,25 +3,27 @@
   <div class="panel-tabs">
     <button class="tab-btn active"
             data-action="click->map-panel#switchTab"
-            data-tab="search"
+            data-tab="layers"
             data-map-panel-target="tabButton"
-            title="Search">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon">
-        <circle cx="11" cy="11" r="8"></circle>
-        <path d="m21 21-4.35-4.35"></path>
-      </svg>
+            title="Map Layers">
+      <%= icon 'layer' %>
     </button>
 
     <button class="tab-btn"
             data-action="click->map-panel#switchTab"
-            data-tab="layers"
+            data-tab="search"
             data-map-panel-target="tabButton"
-            title="Map Layers">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon">
-        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-        <polyline points="2 17 12 22 22 17"></polyline>
-        <polyline points="2 12 12 17 22 12"></polyline>
-      </svg>
+            title="Search">
+      <%= icon 'search' %>
+    </button>
+
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
+            data-tab="tools"
+            data-map-panel-target="tabButton"
+            title="Tools">
+      <%= icon 'pocket-knife' %>
     </button>
 
     <button class="tab-btn"
@@ -29,20 +31,7 @@
             data-tab="settings"
             data-map-panel-target="tabButton"
             title="Settings">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg>
-    </button>
-
-    <button class="tab-btn"
-            data-action="click->map-panel#switchTab"
-            data-tab="tools"
-            data-map-panel-target="tabButton"
-            title="Tools">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon">
-        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-      </svg>
+      <%= icon 'settings' %>
     </button>
 
     <% if !DawarichSettings.self_hosted? %>
@@ -60,21 +49,18 @@
   <div class="panel-content">
     <!-- Panel Header -->
     <div class="panel-header">
-      <h3 class="panel-title" data-map-panel-target="title">Search</h3>
+      <h3 class="panel-title" data-map-panel-target="title">Layers</h3>
       <button class="btn btn-ghost btn-sm btn-circle"
               data-action="click->maps-v2#toggleSettings"
               title="Close panel">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+        <%= icon 'search' %>
       </button>
     </div>
 
     <!-- Panel Body -->
     <div class="panel-body">
       <!-- Search Tab -->
-      <div class="tab-content active" data-tab-content="search" data-map-panel-target="tabContent">
+      <div class="tab-content" data-tab-content="search" data-map-panel-target="tabContent">
         <div class="form-control w-full">
           <label class="label">
             <span class="label-text">Search for a place</span>
@@ -98,7 +84,7 @@
       </div>
 
       <!-- Layers Tab -->
-      <div class="tab-content" data-tab-content="layers" data-map-panel-target="tabContent">
+      <div class="tab-content active" data-tab-content="layers" data-map-panel-target="tabContent">
         <div class="space-y-4">
           <!-- Points Layer -->
           <div class="form-control">
@@ -524,10 +510,7 @@
 
           <!-- Update Button -->
           <button type="submit" class="btn btn-sm btn-primary btn-block">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-              <polyline points="12 2 12 12 14.5 14.5"></polyline>
-            </svg>
+            <%= icon 'save' %>
             Apply Settings
           </button>
 
@@ -535,12 +518,7 @@
           <button type="button"
                   class="btn btn-sm btn-outline btn-block"
                   data-action="click->maps-v2#resetSettings">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-              <path d="M21 3v5h-5"></path>
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-              <path d="M3 21v-5h5"></path>
-            </svg>
+            <%= icon 'rotate-ccw' %>
             Reset to Defaults
           </button>
         </form>

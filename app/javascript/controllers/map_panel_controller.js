@@ -11,6 +11,8 @@ export default class extends Controller {
   static titles = {
     search: 'Search',
     layers: 'Map Layers',
+    tools: 'Tools',
+    links: 'Links',
     settings: 'Settings'
   }
 
