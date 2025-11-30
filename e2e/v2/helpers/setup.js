@@ -44,7 +44,7 @@ export async function waitForMapLibre(page, timeout = 10000) {
 
   // Wait for map instance to exist and style to be loaded
   await page.waitForFunction(() => {
-    const element = document.querySelector('[data-controller="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps-v2"]');
     if (!element) return false;
     const app = window.Stimulus || window.Application;
     if (!app) return false;
@@ -67,7 +67,7 @@ export async function waitForMapLibre(page, timeout = 10000) {
  */
 export async function hasMapInstance(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps-v2"]');
     if (!element) return false;
 
     // Get Stimulus controller instance
@@ -86,7 +86,7 @@ export async function hasMapInstance(page) {
  */
 export async function getMapZoom(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps-v2"]');
     if (!element) return null;
 
     const app = window.Stimulus || window.Application;
@@ -104,7 +104,7 @@ export async function getMapZoom(page) {
  */
 export async function getMapCenter(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps-v2"]');
     if (!element) return null;
 
     const app = window.Stimulus || window.Application;
@@ -125,7 +125,7 @@ export async function getMapCenter(page) {
  */
 export async function getPointsSourceData(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps-v2"]');
     if (!element) return { hasSource: false, featureCount: 0, features: [] };
 
     const app = window.Stimulus || window.Application;
@@ -154,7 +154,7 @@ export async function getPointsSourceData(page) {
  */
 export async function hasLayer(page, layerId) {
   return await page.evaluate((id) => {
-    const element = document.querySelector('[data-controller="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps-v2"]');
     if (!element) return false;
 
     const app = window.Stimulus || window.Application;
@@ -207,7 +207,7 @@ export async function hasPopup(page) {
  */
 export async function getLayerVisibility(page, layerId) {
   return await page.evaluate((id) => {
-    const element = document.querySelector('[data-controller="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps-v2"]');
     if (!element) return false;
 
     const app = window.Stimulus || window.Application;
@@ -228,7 +228,7 @@ export async function getLayerVisibility(page, layerId) {
  */
 export async function getRoutesSourceData(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps-v2"]');
     if (!element) return { hasSource: false, featureCount: 0, features: [] };
 
     const app = window.Stimulus || window.Application;

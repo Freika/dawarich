@@ -21,7 +21,7 @@ test.describe('Routes Layer', () => {
   test.describe('Layer Existence', () => {
     test('routes layer exists on map', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
         if (!app) return false
@@ -37,7 +37,7 @@ test.describe('Routes Layer', () => {
   test.describe('Data Source', () => {
     test('routes source has data', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
         if (!app) return false
@@ -92,7 +92,7 @@ test.describe('Routes Layer', () => {
   test.describe('Styling', () => {
     test('routes have solid color', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
         if (!app) return false
@@ -101,7 +101,7 @@ test.describe('Routes Layer', () => {
       }, { timeout: 20000 })
 
       const routeLayerInfo = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         if (!element) return null
 
         const app = window.Stimulus || window.Application
@@ -132,7 +132,7 @@ test.describe('Routes Layer', () => {
   test.describe('Layer Order', () => {
     test('routes layer renders below points layer', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
         return controller?.map?.getLayer('routes') !== undefined &&
@@ -140,7 +140,7 @@ test.describe('Routes Layer', () => {
       }, { timeout: 10000 })
 
       const layerOrder = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         if (!element) return null
 
         const app = window.Stimulus || window.Application

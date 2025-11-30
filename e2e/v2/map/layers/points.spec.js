@@ -19,7 +19,7 @@ test.describe('Points Layer', () => {
     test('displays points layer', async ({ page }) => {
       // Wait for points layer to be added
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
         return controller?.map?.getLayer('points') !== undefined
@@ -31,7 +31,7 @@ test.describe('Points Layer', () => {
 
     test('loads and displays point data', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
         return controller?.map?.getSource('points-source') !== undefined
@@ -47,7 +47,7 @@ test.describe('Points Layer', () => {
     test('points source contains valid GeoJSON features', async ({ page }) => {
       // Wait for source to be added
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
         return controller?.map?.getSource('points-source') !== undefined

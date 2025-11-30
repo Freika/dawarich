@@ -100,7 +100,7 @@ test.describe('Location Search', () => {
       await page.waitForTimeout(1000)
 
       const hasSearchManager = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         if (!element) return false
 
         const app = window.Stimulus || window.Application

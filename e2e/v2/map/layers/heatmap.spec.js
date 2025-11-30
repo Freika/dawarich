@@ -22,7 +22,7 @@ test.describe('Heatmap Layer', () => {
 
       // Wait for heatmap layer to be created
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
@@ -30,7 +30,7 @@ test.describe('Heatmap Layer', () => {
       }, { timeout: 3000 }).catch(() => false)
 
       const hasHeatmap = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')

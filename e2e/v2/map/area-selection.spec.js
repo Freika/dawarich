@@ -50,7 +50,7 @@ test.describe('Area Selection in Maps V2', () => {
 
     // Check if selection layer has been added to map
     const hasSelectionLayer = await page.evaluate(() => {
-      const element = document.querySelector('[data-controller="maps-v2"]')
+      const element = document.querySelector('[data-controller*="maps-v2"]')
       const app = window.Stimulus || window.Application
       const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
       return controller.selectionLayer !== undefined
@@ -295,7 +295,7 @@ test.describe('Area Selection in Maps V2', () => {
 
     // Check if selected points layer exists
     const hasSelectedPointsLayer = await page.evaluate(() => {
-      const element = document.querySelector('[data-controller="maps-v2"]')
+      const element = document.querySelector('[data-controller*="maps-v2"]')
       const app = window.Stimulus || window.Application
       const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
       return controller?.selectedPointsLayer !== undefined
@@ -305,7 +305,7 @@ test.describe('Area Selection in Maps V2', () => {
     if (hasSelectedPointsLayer) {
       // Verify layer is on the map
       const layerExistsOnMap = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
         return controller?.map?.getLayer('selected-points') !== undefined

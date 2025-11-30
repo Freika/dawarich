@@ -14,7 +14,7 @@ test.describe('Realtime Family Tracking', () => {
     test.skip('family layer exists but is hidden by default', async ({ page }) => {
       // Family layer is created but hidden until ActionCable data arrives
       const layerExists = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
         return controller?.map?.getLayer('family') !== undefined

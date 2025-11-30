@@ -57,7 +57,7 @@ test.describe('Map Settings', () => {
     test('points layer visibility matches toggle state', async ({ page }) => {
       // Wait for points layer to exist
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
         return controller?.map?.getLayer('points') !== undefined
@@ -79,7 +79,7 @@ test.describe('Map Settings', () => {
     test('routes layer visibility matches toggle state', async ({ page }) => {
       // Wait for routes layer to exist
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps-v2"]')
         const app = window.Stimulus || window.Application
         const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
         return controller?.map?.getLayer('routes') !== undefined
