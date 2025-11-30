@@ -7,19 +7,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [Unreleased]
 
-# Map V2 initial release (Maplibre)
-
-## Added
-
-- Places layer to Map V2 with tag filtering support (OR logic)
-- "Enable All Tags" toggle for Places layer
-- "Untagged" filter option for places without tags
-- Visit creation functionality in Map V2 via Tools tab
-- Place creation functionality in Map V2 via Tools tab
-- Clickable place markers with detailed popups showing tags, notes, and coordinates
-- Tag filter persistence via user settings (saved to backend)
-- Default behavior: all tags enabled when Places layer is first activated
-- E2E tests for Places layer functionality (13 test cases)
 
 ## Fixed
 
@@ -30,9 +17,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Points on the Map page are now loaded in chunks to improve performance and reduce memory consumption.
-- Places tag filtering uses OR logic (shows places with ANY selected tag)
-- "Enable All Tags" toggle auto-syncs with individual tag checkbox states
-- Empty tag selection shows no places (not all places)
 
 
 # [0.36.0] - 2025-11-24
