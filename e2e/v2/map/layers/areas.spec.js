@@ -97,7 +97,10 @@ test.describe('Areas Layer', () => {
 
       // Verify draw layers exist
       const hasDrawLayers = await page.evaluate(() => {
-        const map = window.maplibreMap
+        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const map = controller?.map
         return map && map.getSource('draw-source') !== undefined
       })
       expect(hasDrawLayers).toBe(true)
@@ -118,9 +121,9 @@ test.describe('Areas Layer', () => {
       await page.waitForTimeout(300)
       await mapCanvas.click({ position: { x: 450, y: 350 } })
 
-      // Wait for area creation modal to appear
-      const areaModalBox = page.locator('[data-controller="area-creation-v2"] .modal-box')
-      await areaModalBox.waitFor({ state: 'visible', timeout: 5000 })
+      // Wait for area creation modal to open
+      const areaModal = page.locator('[data-area-creation-v2-target="modal"]')
+      await expect(areaModal).toHaveClass(/modal-open/, { timeout: 5000 })
 
       // Verify form fields exist
       await expect(page.locator('[data-area-creation-v2-target="nameInput"]')).toBeVisible()
@@ -142,17 +145,24 @@ test.describe('Areas Layer', () => {
       await page.waitForTimeout(300)
       await mapCanvas.click({ position: { x: 450, y: 350 } })
 
-      // Wait for modal
-      const areaModalBox = page.locator('[data-controller="area-creation-v2"] .modal-box')
-      await areaModalBox.waitFor({ state: 'visible', timeout: 5000 })
+      // Wait for modal to open
+      const areaModal = page.locator('[data-area-creation-v2-target="modal"]')
+      await expect(areaModal).toHaveClass(/modal-open/, { timeout: 5000 })
+
+      // Wait for fields to be populated
+      const radiusDisplay = page.locator('[data-area-creation-v2-target="radiusDisplay"]')
+      const locationDisplay = page.locator('[data-area-creation-v2-target="locationDisplay"]')
+
+      // Wait for radius to have a non-empty value
+      await expect(radiusDisplay).not.toHaveValue('', { timeout: 3000 })
 
       // Verify radius has a value
-      const radiusValue = await page.locator('[data-area-creation-v2-target="radiusDisplay"]').inputValue()
+      const radiusValue = await radiusDisplay.inputValue()
       expect(parseInt(radiusValue)).toBeGreaterThan(0)
 
       // Verify location has a value (should be coordinates)
-      const locationValue = await page.locator('[data-area-creation-v2-target="locationDisplay"]').inputValue()
-      expect(locationValue).toMatch(/\d+\.\d+,\s*\d+\.\d+/)
+      const locationValue = await locationDisplay.inputValue()
+      expect(locationValue).toMatch(/-?\d+\.\d+,\s*-?\d+\.\d+/)
     })
 
     test('should create area and enable layer when submitted', async ({ page }) => {
@@ -169,24 +179,63 @@ test.describe('Areas Layer', () => {
       await page.waitForTimeout(300)
       await mapCanvas.click({ position: { x: 450, y: 350 } })
 
-      // Wait for modal and fill form
-      const areaModalBox = page.locator('[data-controller="area-creation-v2"] .modal-box')
-      await areaModalBox.waitFor({ state: 'visible', timeout: 5000 })
+      // Wait for modal to be open
+      const areaModal = page.locator('[data-area-creation-v2-target="modal"]')
+      await expect(areaModal).toHaveClass(/modal-open/, { timeout: 5000 })
+
+      // Wait for fields to be populated before filling the form
+      const radiusDisplay = page.locator('[data-area-creation-v2-target="radiusDisplay"]')
+      await expect(radiusDisplay).not.toHaveValue('', { timeout: 3000 })
 
       await page.locator('[data-area-creation-v2-target="nameInput"]').fill('Test Area E2E')
-      await page.locator('button[type="submit"]:has-text("Create Area")').click()
 
-      // Wait for modal to close
-      await areaModalBox.waitFor({ state: 'hidden', timeout: 5000 })
+      // Listen for console errors
+      page.on('console', msg => {
+        if (msg.type() === 'error') {
+          console.log('Browser console error:', msg.text())
+        }
+      })
 
-      // Verify areas layer is now enabled
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
-      await page.waitForTimeout(200)
-      await page.locator('button[data-tab="layers"]').click()
-      await page.waitForTimeout(200)
+      // Handle potential alert dialog
+      let dialogMessage = null
+      page.once('dialog', async dialog => {
+        dialogMessage = dialog.message()
+        console.log('Dialog appeared:', dialogMessage)
+        await dialog.accept()
+      })
 
-      const areasToggle = page.locator('label:has-text("Areas")').first().locator('input.toggle')
-      await expect(areasToggle).toBeChecked()
+      // Wait for API response
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          response => response.url().includes('/api/v1/areas') && response.request().method() === 'POST',
+          { timeout: 10000 }
+        ),
+        page.locator('button[type="submit"]:has-text("Create Area")').click()
+      ])
+
+      const status = response.status()
+      console.log('API response status:', status)
+
+      if (status >= 200 && status < 300) {
+        // Success - verify modal closes (modal-open class is removed)
+        await expect(areaModal).not.toHaveClass(/modal-open/, { timeout: 5000 })
+
+        // Wait for area:created event to be processed
+        await page.waitForTimeout(1000)
+
+        // Verify areas layer is now enabled
+        await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+        await page.waitForTimeout(200)
+        await page.locator('button[data-tab="layers"]').click()
+        await page.waitForTimeout(200)
+
+        const areasToggle = page.locator('label:has-text("Areas")').first().locator('input.toggle')
+        await expect(areasToggle).toBeChecked({ timeout: 3000 })
+      } else {
+        // API failed - log the error and fail the test with helpful info
+        const responseBody = await response.text()
+        throw new Error(`API call failed with status ${status}: ${responseBody}`)
+      }
     })
   })
 })

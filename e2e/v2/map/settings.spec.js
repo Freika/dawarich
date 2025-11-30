@@ -11,18 +11,23 @@ test.describe('Map Settings', () => {
 
   test.describe('Settings Panel', () => {
     test('opens and closes settings panel', async ({ page }) => {
-      const settingsButton = page.locator('button[title="Open map settings"]')
-      await settingsButton.waitFor({ state: 'visible', timeout: 5000 })
-      await settingsButton.click()
-      await page.waitForTimeout(500)
-
       const panel = page.locator('[data-maps-v2-target="settingsPanel"]')
-      await expect(panel).toHaveClass(/open/)
 
+      // Verify panel exists but is not open initially
+      await expect(panel).toBeVisible()
+      await expect(panel).not.toHaveClass(/open/)
+
+      // Open the panel
+      const settingsButton = page.locator('button[title="Open map settings"]')
+      await settingsButton.click()
+
+      // Wait for the panel to have the open class
+      await expect(panel).toHaveClass(/open/, { timeout: 3000 })
+
+      // Close the panel
       const closeButton = page.locator('button[title="Close panel"]')
       await closeButton.click()
-      await page.waitForTimeout(500)
-      await expect(panel).not.toHaveClass(/open/)
+      await expect(panel).not.toHaveClass(/open/, { timeout: 3000 })
     })
 
     test('displays layer controls in settings', async ({ page }) => {

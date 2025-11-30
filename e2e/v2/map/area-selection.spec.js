@@ -53,7 +53,7 @@ test.describe('Area Selection in Maps V2', () => {
       const element = document.querySelector('[data-controller*="maps-v2"]')
       const app = window.Stimulus || window.Application
       const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
-      return controller.selectionLayer !== undefined
+      return controller.areaSelectionManager?.selectionLayer !== undefined
     })
     expect(hasSelectionLayer).toBeTruthy()
 
@@ -298,7 +298,7 @@ test.describe('Area Selection in Maps V2', () => {
       const element = document.querySelector('[data-controller*="maps-v2"]')
       const app = window.Stimulus || window.Application
       const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
-      return controller?.selectedPointsLayer !== undefined
+      return controller?.areaSelectionManager?.selectedPointsLayer !== undefined
     })
 
     // If points were selected, layer should exist
