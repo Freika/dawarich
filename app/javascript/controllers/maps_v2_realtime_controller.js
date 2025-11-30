@@ -147,36 +147,62 @@ export default class extends Controller {
 
   /**
    * Handle new point
+   * Point data is broadcast as: [lat, lon, battery, altitude, timestamp, velocity, id, country_name]
    */
-  handleNewPoint(point) {
+  handleNewPoint(pointData) {
     const mapsController = this.mapsV2Controller
     if (!mapsController) {
       console.warn('[Realtime Controller] Maps V2 controller not found')
       return
     }
 
-    // Add point to map
-    const pointsLayer = mapsController.pointsLayer
-    if (pointsLayer) {
-      const currentData = pointsLayer.data
-      const features = currentData.features || []
+    console.log('[Realtime Controller] Received point data:', pointData)
 
-      features.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [point.longitude, point.latitude]
-        },
-        properties: point
-      })
+    // Parse point data from array format
+    const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] = pointData
 
-      pointsLayer.update({
-        type: 'FeatureCollection',
-        features
-      })
-
-      Toast.info('New location recorded')
+    // Get points layer from layer manager
+    const pointsLayer = mapsController.layerManager?.getLayer('points')
+    if (!pointsLayer) {
+      console.warn('[Realtime Controller] Points layer not found')
+      return
     }
+
+    // Get current data
+    const currentData = pointsLayer.data || { type: 'FeatureCollection', features: [] }
+    const features = [...(currentData.features || [])]
+
+    // Add new point
+    features.push({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [parseFloat(lon), parseFloat(lat)]
+      },
+      properties: {
+        id: parseInt(id),
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lon),
+        battery: parseFloat(battery) || null,
+        altitude: parseFloat(altitude) || null,
+        timestamp: timestamp,
+        velocity: parseFloat(velocity) || null,
+        country_name: countryName || null
+      }
+    })
+
+    // Update layer with new data
+    pointsLayer.update({
+      type: 'FeatureCollection',
+      features
+    })
+
+    console.log('[Realtime Controller] Added new point to map:', id)
+
+    // Zoom to the new point
+    this.zoomToPoint(parseFloat(lon), parseFloat(lat))
+
+    Toast.info('New location recorded')
   }
 
   /**
@@ -197,6 +223,29 @@ export default class extends Controller {
    */
   handleNotification(notification) {
     Toast.info(notification.message || 'New notification')
+  }
+
+  /**
+   * Zoom map to a specific point
+   */
+  zoomToPoint(longitude, latitude) {
+    const mapsController = this.mapsV2Controller
+    if (!mapsController || !mapsController.map) {
+      console.warn('[Realtime Controller] Map not available for zooming')
+      return
+    }
+
+    const map = mapsController.map
+
+    // Fly to the new point with a smooth animation
+    map.flyTo({
+      center: [longitude, latitude],
+      zoom: Math.max(map.getZoom(), 14), // Zoom to at least level 14, or keep current zoom if higher
+      duration: 2000, // 2 second animation
+      essential: true // This animation is considered essential with respect to prefers-reduced-motion
+    })
+
+    console.log('[Realtime Controller] Zoomed to point:', longitude, latitude)
   }
 
   /**

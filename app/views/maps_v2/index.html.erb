@@ -3,15 +3,12 @@
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
 <div id="maps-v2-container"
-     data-controller="maps-v2 area-drawer"
+     data-controller="maps-v2 area-drawer maps-v2-realtime"
      data-maps-v2-api-key-value="<%= current_user.api_key %>"
      data-maps-v2-start-date-value="<%= @start_at.to_s %>"
      data-maps-v2-end-date-value="<%= @end_at.to_s %>"
+     data-maps-v2-realtime-enabled-value="true"
      style="width: 100%; height: 100%; position: relative;">
-  <!--
-    Phase 7 Realtime Controller: Currently disabled pending initialization fix
-    To enable: Add "maps-v2-realtime" to data-controller and add data-maps-v2-realtime-enabled-value="true"
-  -->
 
   <!-- Map container takes full width and height -->
   <div data-maps-v2-target="container" class="maps-v2-container" style="width: 100%; height: 100%;"></div>
