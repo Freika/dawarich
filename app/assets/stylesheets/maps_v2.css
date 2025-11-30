@@ -66,6 +66,73 @@
   color: #111827;
 }
 
+/* MapLibre Popup Theme Support */
+.maplibregl-popup-content {
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Larger close button */
+.maplibregl-popup-close-button {
+  width: 32px;
+  height: 32px;
+  font-size: 24px;
+  line-height: 32px;
+  right: 4px;
+  top: 4px;
+  padding: 0;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.maplibregl-popup-close-button:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Light theme (default) */
+.maplibregl-popup-content {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+.maplibregl-popup-close-button {
+  color: #6b7280;
+}
+
+.maplibregl-popup-close-button:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: #ffffff;
+}
+
+/* Dark theme */
+html[data-theme="dark"] .maplibregl-popup-content,
+html.dark .maplibregl-popup-content {
+  background-color: #1f2937;
+  color: #f9fafb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .maplibregl-popup-close-button,
+html.dark .maplibregl-popup-close-button {
+  color: #d1d5db;
+}
+
+html[data-theme="dark"] .maplibregl-popup-close-button:hover,
+html.dark .maplibregl-popup-close-button:hover {
+  background-color: #374151;
+  color: #f9fafb;
+}
+
+html[data-theme="dark"] .maplibregl-popup-tip,
+html.dark .maplibregl-popup-tip {
+  border-top-color: #1f2937;
+}
+
 /* Connection Indicator */
 .connection-indicator {
   position: absolute;
