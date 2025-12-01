@@ -1,4 +1,5 @@
 import { formatTimestamp } from '../utils/geojson_transformers'
+import { getCurrentTheme, getThemeColors } from '../utils/popup_theme'
 
 /**
  * Factory for creating visit popups
@@ -16,6 +17,10 @@ export class VisitPopupFactory {
     const endTime = formatTimestamp(ended_at)
     const durationHours = Math.round(duration / 3600)
     const durationDisplay = durationHours >= 1 ? `${durationHours}h` : `${Math.round(duration / 60)}m`
+
+    // Get theme colors
+    const theme = getCurrentTheme()
+    const colors = getThemeColors(theme)
 
     return `
       <div class="visit-popup">
@@ -54,7 +59,7 @@ export class VisitPopupFactory {
           align-items: center;
           margin-bottom: 12px;
           padding-bottom: 8px;
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid ${colors.border};
         }
 
         .visit-badge {
@@ -67,13 +72,13 @@ export class VisitPopupFactory {
         }
 
         .visit-badge.suggested {
-          background: #fef3c7;
-          color: #92400e;
+          background: ${colors.badgeSuggested.bg};
+          color: ${colors.badgeSuggested.text};
         }
 
         .visit-badge.confirmed {
-          background: #d1fae5;
-          color: #065f46;
+          background: ${colors.badgeConfirmed.bg};
+          color: ${colors.badgeConfirmed.text};
         }
 
         .popup-body {
@@ -89,24 +94,24 @@ export class VisitPopupFactory {
         }
 
         .popup-row .label {
-          color: #6b7280;
+          color: ${colors.textMuted};
         }
 
         .popup-row .value {
           font-weight: 500;
-          color: #111827;
+          color: ${colors.textPrimary};
         }
 
         .popup-footer {
           padding-top: 8px;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid ${colors.border};
         }
 
         .view-details-btn {
           display: block;
           text-align: center;
           padding: 6px 12px;
-          background: #3b82f6;
+          background: ${colors.accent};
           color: white;
           text-decoration: none;
           border-radius: 6px;
@@ -116,7 +121,7 @@ export class VisitPopupFactory {
         }
 
         .view-details-btn:hover {
-          background: #2563eb;
+          background: ${colors.accentHover};
         }
       </style>
     `

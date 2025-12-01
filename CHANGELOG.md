@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Heatmap and Fog of War now are moving correctly during map interactions. #1798
 - Polyline crossing international date line now are rendered correctly. #1162
 - Place popup tags parsing (MapLibre GL JS compatibility)
+- Stats calculation should be faster now.
 
 ## Changed
 

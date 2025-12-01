@@ -1,5 +1,6 @@
 import { BaseLayer } from './base_layer'
 import maplibregl from 'maplibre-gl'
+import { getCurrentTheme, getThemeColors } from '../utils/popup_theme'
 
 /**
  * Photos layer with thumbnail markers
@@ -131,10 +132,14 @@ export class PhotosLayer extends BaseLayer {
     const location = [city, state, country].filter(Boolean).join(', ') || 'Unknown location'
     const mediaType = type === 'VIDEO' ? '🎥 Video' : '📷 Photo'
 
-    // Create popup HTML with thumbnail image
+    // Get theme colors
+    const theme = getCurrentTheme()
+    const colors = getThemeColors(theme)
+
+    // Create popup HTML with theme-aware styling
     const popupHTML = `
       <div class="photo-popup" style="font-family: system-ui, -apple-system, sans-serif; max-width: 350px;">
-        <div style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: #f3f4f6;">
+        <div style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: ${colors.backgroundAlt};">
           <img
             src="${thumbnail_url}"
             alt="${filename || 'Photo'}"
@@ -143,12 +148,12 @@ export class PhotosLayer extends BaseLayer {
           />
         </div>
         <div style="font-size: 13px;">
-          ${filename ? `<div style="font-weight: 600; color: #111827; margin-bottom: 6px; word-wrap: break-word;">${filename}</div>` : ''}
-          <div style="color: #6b7280; font-size: 12px; margin-bottom: 6px;">📅 ${takenDate}</div>
-          <div style="color: #6b7280; font-size: 12px; margin-bottom: 6px;">📍 ${location}</div>
-          <div style="color: #6b7280; font-size: 12px; margin-bottom: 6px;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-          ${source ? `<div style="color: #9ca3af; font-size: 11px; margin-bottom: 6px;">Source: ${source}</div>` : ''}
-          <div style="font-size: 14px; margin-top: 8px;">${mediaType}</div>
+          ${filename ? `<div style="font-weight: 600; color: ${colors.textPrimary}; margin-bottom: 6px; word-wrap: break-word;">${filename}</div>` : ''}
+          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📅 ${takenDate}</div>
+          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📍 ${location}</div>
+          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">Source: ${source}</div>` : ''}
+          <div style="font-size: 14px; margin-top: 8px; color: ${colors.textPrimary};">${mediaType}</div>
         </div>
       </div>
     `
