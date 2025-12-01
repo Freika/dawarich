@@ -1,6 +1,6 @@
-import { SettingsManager } from 'maps_v2/utils/settings_manager'
-import { getMapStyle } from 'maps_v2/utils/style_manager'
-import { Toast } from 'maps_v2/components/toast'
+import { SettingsManager } from 'maps_maplibre/utils/settings_manager'
+import { getMapStyle } from 'maps_maplibre/utils/style_manager'
+import { Toast } from 'maps_maplibre/components/toast'
 
 /**
  * Handles all settings-related operations for Maps V2

@@ -1,11 +1,12 @@
-class MapsV2Controller < ApplicationController
-  before_action :authenticate_user!
-  layout 'map'
+module Maps
+  class MaplibreController < ApplicationController
+    before_action :authenticate_user!
+    layout 'map'
 
-  def index
-    @start_at = parsed_start_at
-    @end_at = parsed_end_at
-  end
+    def index
+      @start_at = parsed_start_at
+      @end_at = parsed_end_at
+    end
 
   private
 
@@ -27,5 +28,6 @@ class MapsV2Controller < ApplicationController
 
   def parsed_end_at
     Time.zone.at(end_at)
+  end
   end
 end

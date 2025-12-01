@@ -1,7 +1,7 @@
 import consumer from '../../channels/consumer'
 
 /**
- * Create map channel subscription for maps_v2
+ * Create map channel subscription for maps_maplibre
  * Wraps the existing FamilyLocationsChannel and other channels for real-time updates
  * @param {Object} options - { received, connected, disconnected, enableLiveMode }
  * @returns {Object} Subscriptions object with multiple channels

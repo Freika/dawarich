@@ -73,7 +73,7 @@ test.describe('Visits Layer', () => {
       await page.waitForTimeout(500)
 
       // Verify settings panel closed
-      const settingsPanel = page.locator('[data-maps-v2-target="settingsPanel"]')
+      const settingsPanel = page.locator('[data-maps--maplibre-target="settingsPanel"]')
       const hasPanelOpenClass = await settingsPanel.evaluate((el) => el.classList.contains('open'))
       expect(hasPanelOpenClass).toBe(false)
 

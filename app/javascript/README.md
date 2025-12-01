@@ -1,6 +1,6 @@
 # Dawarich JavaScript Architecture
 
-This document provides a comprehensive guide to the JavaScript architecture used in the Dawarich application, with a focus on the Maps V2 implementation.
+This document provides a comprehensive guide to the JavaScript architecture used in the Dawarich application, with a focus on the Maps (MapLibre) implementation.
 
 ## Table of Contents
 
@@ -9,13 +9,13 @@ This document provides a comprehensive guide to the JavaScript architecture used
 - [Architecture Patterns](#architecture-patterns)
 - [Directory Structure](#directory-structure)
 - [Core Concepts](#core-concepts)
-- [Maps V2 Architecture](#maps-v2-architecture)
+- [Maps (MapLibre) Architecture](#maps-v2-architecture)
 - [Creating New Features](#creating-new-features)
 - [Best Practices](#best-practices)
 
 ## Overview
 
-Dawarich uses a modern JavaScript architecture built on **Hotwire (Turbo + Stimulus)** for page interactions and **MapLibre GL JS** for map rendering. The Maps V2 implementation follows object-oriented principles with clear separation of concerns.
+Dawarich uses a modern JavaScript architecture built on **Hotwire (Turbo + Stimulus)** for page interactions and **MapLibre GL JS** for map rendering. The Maps (MapLibre) implementation follows object-oriented principles with clear separation of concerns.
 
 ## Technology Stack
 
@@ -61,7 +61,7 @@ export default class extends Controller {
 
 **Purpose:** Encapsulate business logic and API communication
 
-**Location:** `app/javascript/maps_v2/services/`
+**Location:** `app/javascript/maps_maplibre/services/`
 
 **Pattern:**
 ```javascript
@@ -89,7 +89,7 @@ export class ApiClient {
 
 **Purpose:** Manage map visualization layers
 
-**Location:** `app/javascript/maps_v2/layers/`
+**Location:** `app/javascript/maps_maplibre/layers/`
 
 **Pattern:**
 ```javascript
@@ -129,7 +129,7 @@ export class CustomLayer extends BaseLayer {
 
 **Purpose:** Provide reusable helper functions
 
-**Location:** `app/javascript/maps_v2/utils/`
+**Location:** `app/javascript/maps_maplibre/utils/`
 
 **Pattern:**
 ```javascript
@@ -147,7 +147,7 @@ export const utilityInstance = new UtilityClass()
 
 **Purpose:** Reusable UI components
 
-**Location:** `app/javascript/maps_v2/components/`
+**Location:** `app/javascript/maps_maplibre/components/`
 
 **Pattern:**
 ```javascript
@@ -164,15 +164,15 @@ export class PopupFactory {
 app/javascript/
 ├── application.js              # Entry point
 ├── controllers/                # Stimulus controllers
-│   ├── maps_v2_controller.js   # Main map controller
-│   ├── maps_v2/                # Controller modules
+│   ├── maps/maplibre_controller.js   # Main map controller
+│   ├── maps_maplibre/                # Controller modules
 │   │   ├── layer_manager.js    # Layer lifecycle management
 │   │   ├── data_loader.js      # API data fetching
 │   │   ├── event_handlers.js   # Map event handling
 │   │   ├── filter_manager.js   # Data filtering
 │   │   └── date_manager.js     # Date range management
 │   └── ...                     # Other controllers
-├── maps_v2/                    # Maps V2 implementation
+├── maps_maplibre/                    # Maps (MapLibre) implementation
 │   ├── layers/                 # Map layer classes
 │   │   ├── base_layer.js       # Abstract base class
 │   │   ├── points_layer.js     # Point markers
@@ -206,7 +206,7 @@ app/javascript/
 
 ### Manager Pattern
 
-The Maps V2 controller delegates responsibilities to specialized managers:
+The Maps (MapLibre) controller delegates responsibilities to specialized managers:
 
 1. **LayerManager** - Layer lifecycle (add/remove/toggle/update)
 2. **DataLoader** - API data fetching and transformation
@@ -277,7 +277,7 @@ map.on('click', 'layer-id', (e) => {
 })
 ```
 
-## Maps V2 Architecture
+## Maps (MapLibre) Architecture
 
 ### Layer Hierarchy
 
@@ -393,7 +393,7 @@ All data is transformed to GeoJSON before rendering:
 
 ### Adding a New Layer
 
-1. **Create layer class** in `app/javascript/maps_v2/layers/`:
+1. **Create layer class** in `app/javascript/maps_maplibre/layers/`:
 
 ```javascript
 import { BaseLayer } from './base_layer'
@@ -422,10 +422,10 @@ export class NewLayer extends BaseLayer {
 }
 ```
 
-2. **Register in LayerManager** (`controllers/maps_v2/layer_manager.js`):
+2. **Register in LayerManager** (`controllers/maps_maplibre/layer_manager.js`):
 
 ```javascript
-import { NewLayer } from 'maps_v2/layers/new_layer'
+import { NewLayer } from 'maps_maplibre/layers/new_layer'
 
 // In addAllLayers method
 _addNewLayer(dataGeoJSON) {
@@ -528,7 +528,7 @@ export const newManager = new NewManager()
 2. **Import and use:**
 
 ```javascript
-import { NewUtility } from 'maps_v2/utils/new_utility'
+import { NewUtility } from 'maps_maplibre/utils/new_utility'
 
 const result = NewUtility.calculate(input)
 ```
@@ -705,19 +705,19 @@ When updating features, follow this pattern:
 
 ### Complete Layer Implementation
 
-See `app/javascript/maps_v2/layers/heatmap_layer.js` for a simple example.
+See `app/javascript/maps_maplibre/layers/heatmap_layer.js` for a simple example.
 
 ### Complete Utility Implementation
 
-See `app/javascript/maps_v2/utils/settings_manager.js` for state management.
+See `app/javascript/maps_maplibre/utils/settings_manager.js` for state management.
 
 ### Complete Service Implementation
 
-See `app/javascript/maps_v2/services/api_client.js` for API communication.
+See `app/javascript/maps_maplibre/services/api_client.js` for API communication.
 
 ### Complete Controller Implementation
 
-See `app/javascript/controllers/maps_v2_controller.js` for orchestration.
+See `app/javascript/controllers/maps/maplibre_controller.js` for orchestration.
 
 ---
 

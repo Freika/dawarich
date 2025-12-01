@@ -1,7 +1,7 @@
-import { pointsToGeoJSON } from 'maps_v2/utils/geojson_transformers'
-import { RoutesLayer } from 'maps_v2/layers/routes_layer'
-import { createCircle } from 'maps_v2/utils/geometry'
-import { performanceMonitor } from 'maps_v2/utils/performance_monitor'
+import { pointsToGeoJSON } from 'maps_maplibre/utils/geojson_transformers'
+import { RoutesLayer } from 'maps_maplibre/layers/routes_layer'
+import { createCircle } from 'maps_maplibre/utils/geometry'
+import { performanceMonitor } from 'maps_maplibre/utils/performance_monitor'
 
 /**
  * Handles loading and transforming data from API

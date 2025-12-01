@@ -14,7 +14,7 @@ test.describe('Live Mode', () => {
   test.describe('Live Mode Toggle', () => {
     test('should have live mode toggle in settings', async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(300)
 
       // Click Settings tab
@@ -22,7 +22,7 @@ test.describe('Live Mode', () => {
       await page.waitForTimeout(300)
 
       // Verify Live Mode toggle exists
-      const liveModeToggle = page.locator('[data-maps-v2-realtime-target="liveModeToggle"]')
+      const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]')
       await expect(liveModeToggle).toBeVisible()
 
       // Verify label text
@@ -36,12 +36,12 @@ test.describe('Live Mode', () => {
 
     test('should toggle live mode on and off', async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(300)
       await page.locator('button[data-tab="settings"]').click()
       await page.waitForTimeout(300)
 
-      const liveModeToggle = page.locator('[data-maps-v2-realtime-target="liveModeToggle"]')
+      const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]')
 
       // Get initial state
       const initialState = await liveModeToggle.isChecked()
@@ -65,12 +65,12 @@ test.describe('Live Mode', () => {
 
     test('should show toast notification when toggling live mode', async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(300)
       await page.locator('button[data-tab="settings"]').click()
       await page.waitForTimeout(300)
 
-      const liveModeToggle = page.locator('[data-maps-v2-realtime-target="liveModeToggle"]')
+      const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]')
       const initialState = await liveModeToggle.isChecked()
 
       // Toggle and watch for toast
@@ -86,20 +86,20 @@ test.describe('Live Mode', () => {
   test.describe('Realtime Controller', () => {
     test('should initialize realtime controller when enabled', async ({ page }) => {
       const realtimeControllerExists = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2-realtime"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
         return controller !== undefined
       })
 
       expect(realtimeControllerExists).toBe(true)
     })
 
-    test('should have access to maps-v2 controller', async ({ page }) => {
+    test('should have access to maps--maplibre controller', async ({ page }) => {
       const hasMapsController = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2-realtime"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
         const app = window.Stimulus || window.Application
-        const realtimeController = app?.getControllerForElementAndIdentifier(element, 'maps-v2-realtime')
+        const realtimeController = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
         const mapsController = realtimeController?.mapsV2Controller
         return mapsController !== undefined && mapsController.map !== undefined
       })
@@ -112,9 +112,9 @@ test.describe('Live Mode', () => {
       await page.waitForTimeout(2000)
 
       const channelsInitialized = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2-realtime"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
         return controller?.channels !== undefined
       })
 
@@ -181,9 +181,9 @@ test.describe('Live Mode', () => {
   test.describe('Point Handling', () => {
     test('should have handleNewPoint method', async ({ page }) => {
       const hasMethod = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2-realtime"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
         return typeof controller?.handleNewPoint === 'function'
       })
 
@@ -192,9 +192,9 @@ test.describe('Live Mode', () => {
 
     test('should have zoomToPoint method', async ({ page }) => {
       const hasMethod = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2-realtime"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
         return typeof controller?.zoomToPoint === 'function'
       })
 
@@ -207,9 +207,9 @@ test.describe('Live Mode', () => {
 
       // Get initial point count
       const initialCount = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         const pointsLayer = controller?.layerManager?.getLayer('points')
         return pointsLayer?.data?.features?.length || 0
       })
@@ -238,12 +238,12 @@ test.describe('Live Mode', () => {
   test.describe('Live Mode State Persistence', () => {
     test('should maintain live mode state after toggling', async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(300)
       await page.locator('button[data-tab="settings"]').click()
       await page.waitForTimeout(300)
 
-      const liveModeToggle = page.locator('[data-maps-v2-realtime-target="liveModeToggle"]')
+      const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]')
 
       // Enable live mode
       if (!await liveModeToggle.isChecked()) {
@@ -255,9 +255,9 @@ test.describe('Live Mode', () => {
       expect(await liveModeToggle.isChecked()).toBe(true)
 
       // Close and reopen settings
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(300)
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(300)
       await page.locator('button[data-tab="settings"]').click()
       await page.waitForTimeout(300)
@@ -271,9 +271,9 @@ test.describe('Live Mode', () => {
     test('should handle missing maps controller gracefully', async ({ page }) => {
       // This is tested by the controller's defensive checks
       const hasDefensiveChecks = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2-realtime"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
 
         // The controller should have the mapsV2Controller getter
         return typeof controller?.mapsV2Controller !== 'undefined'

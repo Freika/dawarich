@@ -4,14 +4,14 @@ import { getLayerVisibility } from '../helpers/setup.js'
 
 test.describe('Map Settings', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await page.waitForTimeout(2000)
   })
 
   test.describe('Settings Panel', () => {
     test('opens and closes settings panel', async ({ page }) => {
-      const panel = page.locator('[data-maps-v2-target="settingsPanel"]')
+      const panel = page.locator('[data-maps--maplibre-target="settingsPanel"]')
 
       // Verify panel exists but is not open initially
       await expect(panel).toBeVisible()
@@ -62,9 +62,9 @@ test.describe('Map Settings', () => {
     test('points layer visibility matches toggle state', async ({ page }) => {
       // Wait for points layer to exist
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('points') !== undefined
       }, { timeout: 5000 }).catch(() => false)
 
@@ -84,9 +84,9 @@ test.describe('Map Settings', () => {
     test('routes layer visibility matches toggle state', async ({ page }) => {
       // Wait for routes layer to exist
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('routes') !== undefined
       }, { timeout: 5000 }).catch(() => false)
 
@@ -182,7 +182,7 @@ test.describe('Map Settings', () => {
       const initialState = await pointsToggle.isChecked()
 
       const settings = await page.evaluate(() => {
-        return localStorage.getItem('dawarich-maps-v2-settings')
+        return localStorage.getItem('dawarich-maps--maplibre-settings')
       })
 
       expect(settings).toBeTruthy()

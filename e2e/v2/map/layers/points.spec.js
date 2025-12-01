@@ -9,7 +9,7 @@ import {
 
 test.describe('Points Layer', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await waitForLoadingComplete(page)
     await page.waitForTimeout(1500)
@@ -19,9 +19,9 @@ test.describe('Points Layer', () => {
     test('displays points layer', async ({ page }) => {
       // Wait for points layer to be added
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('points') !== undefined
       }, { timeout: 10000 }).catch(() => false)
 
@@ -31,9 +31,9 @@ test.describe('Points Layer', () => {
 
     test('loads and displays point data', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getSource('points-source') !== undefined
       }, { timeout: 15000 }).catch(() => false)
 
@@ -47,9 +47,9 @@ test.describe('Points Layer', () => {
     test('points source contains valid GeoJSON features', async ({ page }) => {
       // Wait for source to be added
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getSource('points-source') !== undefined
       }, { timeout: 10000 }).catch(() => false)
 

@@ -1,7 +1,7 @@
 import maplibregl from 'maplibre-gl'
-import { PopupFactory } from 'maps_v2/components/popup_factory'
-import { VisitPopupFactory } from 'maps_v2/components/visit_popup'
-import { PhotoPopupFactory } from 'maps_v2/components/photo_popup'
+import { PopupFactory } from 'maps_maplibre/components/popup_factory'
+import { VisitPopupFactory } from 'maps_maplibre/components/visit_popup'
+import { PhotoPopupFactory } from 'maps_maplibre/components/photo_popup'
 
 /**
  * Handles map interaction events (clicks, popups)

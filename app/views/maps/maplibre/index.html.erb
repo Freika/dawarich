@@ -2,16 +2,16 @@
 
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
-<div id="maps-v2-container"
-     data-controller="maps-v2 area-drawer maps-v2-realtime"
-     data-maps-v2-api-key-value="<%= current_user.api_key %>"
-     data-maps-v2-start-date-value="<%= @start_at.to_s %>"
-     data-maps-v2-end-date-value="<%= @end_at.to_s %>"
-     data-maps-v2-realtime-enabled-value="true"
+<div id="maps-maplibre-container"
+     data-controller="maps--maplibre area-drawer maps--maplibre-realtime"
+     data-maps--maplibre-api-key-value="<%= current_user.api_key %>"
+     data-maps--maplibre-start-date-value="<%= @start_at.to_s %>"
+     data-maps--maplibre-end-date-value="<%= @end_at.to_s %>"
+     data-maps--maplibre-realtime-enabled-value="true"
      style="width: 100%; height: 100%; position: relative;">
 
   <!-- Map container takes full width and height -->
-  <div data-maps-v2-target="container" class="maps-v2-container" style="width: 100%; height: 100%;"></div>
+  <div data-maps--maplibre-target="container" class="maps-maplibre-container" style="width: 100%; height: 100%;"></div>
 
   <!-- Connection indicator -->
   <div class="connection-indicator disconnected">
@@ -21,7 +21,7 @@
 
   <!-- Settings button (top-left corner) -->
   <div class="absolute top-4 left-4 z-10">
-    <button data-action="click->maps-v2#toggleSettings"
+    <button data-action="click->maps--maplibre#toggleSettings"
             class="btn btn-sm btn-primary"
             title="Open map settings">
       <%= icon 'square-pen' %>
@@ -30,19 +30,19 @@
   </div>
 
   <!-- Loading overlay -->
-  <div data-maps-v2-target="loading" class="loading-overlay hidden">
+  <div data-maps--maplibre-target="loading" class="loading-overlay hidden">
     <div class="loading-spinner"></div>
-    <div class="loading-text" data-maps-v2-target="loadingText">Loading points...</div>
+    <div class="loading-text" data-maps--maplibre-target="loadingText">Loading points...</div>
   </div>
 
   <!-- Settings panel -->
-  <%= render 'maps_v2/settings_panel' %>
+  <%= render 'maps/maplibre/settings_panel' %>
 
   <!-- Visit creation modal -->
-  <%= render 'maps_v2/visit_creation_modal' %>
+  <%= render 'maps/maplibre/visit_creation_modal' %>
 
   <!-- Area creation modal -->
-  <%= render 'maps_v2/area_creation_modal' %>
+  <%= render 'maps/maplibre/area_creation_modal' %>
 
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>

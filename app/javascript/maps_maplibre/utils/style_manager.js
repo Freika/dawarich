@@ -31,7 +31,7 @@ async function loadStyleFile(styleName) {
   }
 
   // Fetch the style file from the public assets
-  const response = await fetch(`/maps_v2/styles/${styleName}.json`)
+  const response = await fetch(`/maps_maplibre/styles/${styleName}.json`)
   if (!response.ok) {
     throw new Error(`Failed to load style: ${styleName} (${response.status})`)
   }

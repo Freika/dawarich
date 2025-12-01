@@ -9,7 +9,7 @@ import {
 
 test.describe('Map Interactions', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await waitForLoadingComplete(page)
     await page.waitForTimeout(500)
@@ -57,7 +57,7 @@ test.describe('Map Interactions', () => {
 
   test.describe('Hover Effects', () => {
     test('map container is interactive', async ({ page }) => {
-      const mapContainer = page.locator('[data-maps-v2-target="container"]')
+      const mapContainer = page.locator('[data-maps--maplibre-target="container"]')
       await expect(mapContainer).toBeVisible()
     })
   })

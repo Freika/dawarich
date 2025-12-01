@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import { createRectangle } from 'maps_v2/utils/geometry'
+import { createRectangle } from 'maps_maplibre/utils/geometry'
 
 /**
  * Area selector controller

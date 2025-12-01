@@ -7,7 +7,7 @@
  * @param {Page} page - Playwright page object
  */
 export async function navigateToMapsV2(page) {
-  await page.goto('/maps_v2');
+  await page.goto('/maps/maplibre');
 }
 
 /**
@@ -44,18 +44,18 @@ export async function waitForMapLibre(page, timeout = 10000) {
 
   // Wait for map instance to exist and style to be loaded
   await page.waitForFunction(() => {
-    const element = document.querySelector('[data-controller*="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
     if (!element) return false;
     const app = window.Stimulus || window.Application;
     if (!app) return false;
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     // Check if map exists and style is loaded (more reliable than loaded())
     return controller?.map && controller.map.isStyleLoaded();
   }, { timeout: 15000 });
 
   // Wait for loading overlay to be hidden
   await page.waitForFunction(() => {
-    const loading = document.querySelector('[data-maps-v2-target="loading"]');
+    const loading = document.querySelector('[data-maps--maplibre-target="loading"]');
     return loading && loading.classList.contains('hidden');
   }, { timeout: 15000 });
 }
@@ -67,14 +67,14 @@ export async function waitForMapLibre(page, timeout = 10000) {
  */
 export async function hasMapInstance(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller*="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
     if (!element) return false;
 
     // Get Stimulus controller instance
     const app = window.Stimulus || window.Application;
     if (!app) return false;
 
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     return controller && controller.map !== undefined;
   });
 }
@@ -86,13 +86,13 @@ export async function hasMapInstance(page) {
  */
 export async function getMapZoom(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller*="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
     if (!element) return null;
 
     const app = window.Stimulus || window.Application;
     if (!app) return null;
 
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     return controller?.map?.getZoom() || null;
   });
 }
@@ -104,13 +104,13 @@ export async function getMapZoom(page) {
  */
 export async function getMapCenter(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller*="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
     if (!element) return null;
 
     const app = window.Stimulus || window.Application;
     if (!app) return null;
 
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     if (!controller?.map) return null;
 
     const center = controller.map.getCenter();
@@ -125,13 +125,13 @@ export async function getMapCenter(page) {
  */
 export async function getPointsSourceData(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller*="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
     if (!element) return { hasSource: false, featureCount: 0, features: [] };
 
     const app = window.Stimulus || window.Application;
     if (!app) return { hasSource: false, featureCount: 0, features: [] };
 
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     if (!controller?.map) return { hasSource: false, featureCount: 0, features: [] };
 
     const source = controller.map.getSource('points-source');
@@ -154,13 +154,13 @@ export async function getPointsSourceData(page) {
  */
 export async function hasLayer(page, layerId) {
   return await page.evaluate((id) => {
-    const element = document.querySelector('[data-controller*="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
     if (!element) return false;
 
     const app = window.Stimulus || window.Application;
     if (!app) return false;
 
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     if (!controller?.map) return false;
 
     return controller.map.getLayer(id) !== undefined;
@@ -174,7 +174,7 @@ export async function hasLayer(page, layerId) {
  * @param {number} y - Y coordinate
  */
 export async function clickMapAt(page, x, y) {
-  const mapContainer = page.locator('[data-maps-v2-target="container"]');
+  const mapContainer = page.locator('[data-maps--maplibre-target="container"]');
   await mapContainer.click({ position: { x, y } });
 }
 
@@ -184,7 +184,7 @@ export async function clickMapAt(page, x, y) {
  */
 export async function waitForLoadingComplete(page) {
   await page.waitForFunction(() => {
-    const loading = document.querySelector('[data-maps-v2-target="loading"]');
+    const loading = document.querySelector('[data-maps--maplibre-target="loading"]');
     return loading && loading.classList.contains('hidden');
   }, { timeout: 15000 });
 }
@@ -207,13 +207,13 @@ export async function hasPopup(page) {
  */
 export async function getLayerVisibility(page, layerId) {
   return await page.evaluate((id) => {
-    const element = document.querySelector('[data-controller*="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
     if (!element) return false;
 
     const app = window.Stimulus || window.Application;
     if (!app) return false;
 
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     if (!controller?.map) return false;
 
     const visibility = controller.map.getLayoutProperty(id, 'visibility');
@@ -228,13 +228,13 @@ export async function getLayerVisibility(page, layerId) {
  */
 export async function getRoutesSourceData(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller*="maps-v2"]');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
     if (!element) return { hasSource: false, featureCount: 0, features: [] };
 
     const app = window.Stimulus || window.Application;
     if (!app) return { hasSource: false, featureCount: 0, features: [] };
 
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2');
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     if (!controller?.map) return { hasSource: false, featureCount: 0, features: [] };
 
     const source = controller.map.getSource('routes-source');

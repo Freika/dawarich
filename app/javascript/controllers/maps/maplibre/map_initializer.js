@@ -1,5 +1,5 @@
 import maplibregl from 'maplibre-gl'
-import { getMapStyle } from 'maps_v2/utils/style_manager'
+import { getMapStyle } from 'maps_maplibre/utils/style_manager'
 
 /**
  * Handles map initialization for Maps V2

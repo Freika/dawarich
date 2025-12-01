@@ -1,6 +1,6 @@
-import { SettingsManager } from 'maps_v2/utils/settings_manager'
-import { Toast } from 'maps_v2/components/toast'
-import { lazyLoader } from 'maps_v2/utils/lazy_loader'
+import { SettingsManager } from 'maps_maplibre/utils/settings_manager'
+import { Toast } from 'maps_maplibre/components/toast'
+import { lazyLoader } from 'maps_maplibre/utils/lazy_loader'
 
 /**
  * Manages routes-related operations for Maps V2
@@ -176,7 +176,7 @@ export class RoutesManager {
       const distanceThresholdMeters = this.settings.metersBetweenRoutes || 500
       const timeThresholdMinutes = this.settings.minutesBetweenRoutes || 60
 
-      const { calculateSpeed, getSpeedColor } = await import('maps_v2/utils/speed_colors')
+      const { calculateSpeed, getSpeedColor } = await import('maps_maplibre/utils/speed_colors')
 
       const routesGeoJSON = await this.generateRoutesWithSpeedColors(
         points,
@@ -199,7 +199,7 @@ export class RoutesManager {
    * Generate routes with speed coloring
    */
   async generateRoutesWithSpeedColors(points, options, calculateSpeed, getSpeedColor) {
-    const { RoutesLayer } = await import('maps_v2/layers/routes_layer')
+    const { RoutesLayer } = await import('maps_maplibre/layers/routes_layer')
     const useSpeedColors = this.settings.speedColoredRoutesEnabled || false
     const speedColorScale = this.settings.speedColorScale || '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300'
 

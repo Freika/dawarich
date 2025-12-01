@@ -1,6 +1,6 @@
 import maplibregl from 'maplibre-gl'
-import { Toast } from 'maps_v2/components/toast'
-import { performanceMonitor } from 'maps_v2/utils/performance_monitor'
+import { Toast } from 'maps_maplibre/components/toast'
+import { performanceMonitor } from 'maps_maplibre/utils/performance_monitor'
 
 /**
  * Manages data loading and layer setup for the map

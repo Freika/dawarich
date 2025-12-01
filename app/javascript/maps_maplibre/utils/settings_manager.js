@@ -33,7 +33,7 @@ const LAYER_NAME_MAP = {
 
 // Mapping between frontend settings and backend API keys
 const BACKEND_SETTINGS_MAP = {
-  mapStyle: 'maps_v2_style',
+  mapStyle: 'maps_maplibre_style',
   enabledMapLayers: 'enabled_map_layers'
 }
 

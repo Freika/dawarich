@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus'
-import { createMapChannel } from 'maps_v2/channels/map_channel'
-import { WebSocketManager } from 'maps_v2/utils/websocket_manager'
-import { Toast } from 'maps_v2/components/toast'
+import { createMapChannel } from 'maps_maplibre/channels/map_channel'
+import { WebSocketManager } from 'maps_maplibre/utils/websocket_manager'
+import { Toast } from 'maps_maplibre/components/toast'
 
 /**
  * Real-time controller

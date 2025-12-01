@@ -1,5 +1,5 @@
-import { SettingsManager } from 'maps_v2/utils/settings_manager'
-import { Toast } from 'maps_v2/components/toast'
+import { SettingsManager } from 'maps_maplibre/utils/settings_manager'
+import { Toast } from 'maps_maplibre/components/toast'
 
 /**
  * Manages places-related operations for Maps V2

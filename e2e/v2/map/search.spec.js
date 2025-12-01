@@ -4,7 +4,7 @@ import { waitForMapLibre, waitForLoadingComplete } from '../helpers/setup.js'
 
 test.describe('Location Search', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)
@@ -18,7 +18,7 @@ test.describe('Location Search', () => {
       await page.waitForTimeout(400)
 
       // Search tab should be active by default
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       await expect(searchInput).toBeVisible()
       await expect(searchInput).toHaveAttribute('placeholder', 'Enter name of a place')
     })
@@ -27,7 +27,7 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
       await expect(resultsContainer).toBeAttached()
       await expect(resultsContainer).toHaveClass(/hidden/)
     })
@@ -38,14 +38,14 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
 
       // Type a search query
       await searchInput.fill('New')
       await page.waitForTimeout(500) // Wait for debounce
 
       // Results container should become visible (or show loading)
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Wait for results to appear
       await page.waitForTimeout(1000)
@@ -63,8 +63,8 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Type single character
       await searchInput.fill('N')
@@ -78,8 +78,8 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Type search query
       await searchInput.fill('New York')
@@ -100,18 +100,18 @@ test.describe('Location Search', () => {
       await page.waitForTimeout(1000)
 
       const hasSearchManager = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!element) return false
 
         const app = window.Stimulus || window.Application
         if (!app) return false
 
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.searchManager !== undefined
       })
 
       // Search manager should exist if search targets are present
-      const hasSearchTargets = await page.locator('[data-maps-v2-target="searchInput"]').count()
+      const hasSearchTargets = await page.locator('[data-maps--maplibre-target="searchInput"]').count()
       if (hasSearchTargets > 0) {
         expect(hasSearchManager).toBe(true)
       }
@@ -121,7 +121,7 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       await expect(searchInput).toHaveAttribute('autocomplete', 'off')
     })
   })
@@ -131,8 +131,8 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Search for a location
       await searchInput.fill('Sterndamm')
@@ -157,8 +157,8 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Search and select location
       await searchInput.fill('Sterndamm')
@@ -191,8 +191,8 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Search and select location
       await searchInput.fill('Sterndamm')
@@ -236,8 +236,8 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Search and select location
       await searchInput.fill('Sterndamm')
@@ -288,7 +288,7 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const resultsContainer = page.locator('[data-maps-v2-target="searchResults"]')
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Check max-height class is set appropriately (max-h-96)
       const hasMaxHeight = await resultsContainer.evaluate(el => {
@@ -305,7 +305,7 @@ test.describe('Location Search', () => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
 
-      const searchInput = page.locator('[data-maps-v2-target="searchInput"]')
+      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
 
       // Focus input with keyboard
       await searchInput.focus()

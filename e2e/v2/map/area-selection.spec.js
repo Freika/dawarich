@@ -5,7 +5,7 @@ import { waitForMapLibre, waitForLoadingComplete } from '../helpers/setup.js'
 test.describe('Area Selection in Maps V2', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to Maps V2 with specific date range that has data
-    await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)
@@ -15,17 +15,17 @@ test.describe('Area Selection in Maps V2', () => {
 
   test('should enable area selection mode when clicking Select Area button', async ({ page }) => {
     // Open settings panel and switch to Tools tab
-    await page.click('[data-action="click->maps-v2#toggleSettings"]')
+    await page.click('[data-action="click->maps--maplibre#toggleSettings"]')
     await page.click('button[data-tab="tools"]')
 
     // Click Select Area button
-    await page.click('[data-maps-v2-target="selectAreaButton"]')
+    await page.click('[data-maps--maplibre-target="selectAreaButton"]')
 
     // Wait a moment for UI to update
     await page.waitForTimeout(100)
 
     // Verify the button changes to Cancel Selection
-    const selectButton = page.locator('[data-maps-v2-target="selectAreaButton"]')
+    const selectButton = page.locator('[data-maps--maplibre-target="selectAreaButton"]')
     await expect(selectButton).toContainText('Cancel Selection', { timeout: 2000 })
 
     // Verify cursor changes to crosshair (via canvas style)
@@ -39,20 +39,20 @@ test.describe('Area Selection in Maps V2', () => {
 
   test('should draw selection rectangle when dragging mouse', async ({ page }) => {
     // Open settings panel and switch to Tools tab
-    await page.click('[data-action="click->maps-v2#toggleSettings"]')
+    await page.click('[data-action="click->maps--maplibre#toggleSettings"]')
     await page.click('button[data-tab="tools"]')
 
     // Click Select Area button
-    await page.click('[data-maps-v2-target="selectAreaButton"]')
+    await page.click('[data-maps--maplibre-target="selectAreaButton"]')
 
     // Wait for selection mode to be enabled
     await page.waitForTimeout(500)
 
     // Check if selection layer has been added to map
     const hasSelectionLayer = await page.evaluate(() => {
-      const element = document.querySelector('[data-controller*="maps-v2"]')
+      const element = document.querySelector('[data-controller*="maps--maplibre"]')
       const app = window.Stimulus || window.Application
-      const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+      const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
       return controller.areaSelectionManager?.selectionLayer !== undefined
     })
     expect(hasSelectionLayer).toBeTruthy()
@@ -77,11 +77,11 @@ test.describe('Area Selection in Maps V2', () => {
 
   test('should show selection actions when points are selected', async ({ page }) => {
     // Open settings panel and switch to Tools tab
-    await page.click('[data-action="click->maps-v2#toggleSettings"]')
+    await page.click('[data-action="click->maps--maplibre#toggleSettings"]')
     await page.click('button[data-tab="tools"]')
 
     // Click Select Area button
-    await page.click('[data-maps-v2-target="selectAreaButton"]')
+    await page.click('[data-maps--maplibre-target="selectAreaButton"]')
 
     // Get map canvas
     const canvas = page.locator('canvas.maplibregl-canvas')
@@ -103,30 +103,30 @@ test.describe('Area Selection in Maps V2', () => {
     await page.waitForTimeout(1000)
 
     // If points were found, verify UI updates
-    const selectionActions = page.locator('[data-maps-v2-target="selectionActions"]')
+    const selectionActions = page.locator('[data-maps--maplibre-target="selectionActions"]')
     const isVisible = await selectionActions.isVisible().catch(() => false)
 
     if (isVisible) {
       // Verify delete button is visible and shows count
-      const deleteButton = page.locator('[data-maps-v2-target="deleteButtonText"]')
+      const deleteButton = page.locator('[data-maps--maplibre-target="deleteButtonText"]')
       await expect(deleteButton).toBeVisible()
 
       // Wait for button text to update with count
       await expect(deleteButton).toContainText(/Delete \d+ Points?/, { timeout: 2000 })
 
       // Verify the Select Area button has changed to Cancel Selection (at top of tools)
-      const selectButton = page.locator('[data-maps-v2-target="selectAreaButton"]')
+      const selectButton = page.locator('[data-maps--maplibre-target="selectAreaButton"]')
       await expect(selectButton).toContainText('Cancel Selection')
     }
   })
 
   test('should cancel area selection', async ({ page }) => {
     // Open settings panel and switch to Tools tab
-    await page.click('[data-action="click->maps-v2#toggleSettings"]')
+    await page.click('[data-action="click->maps--maplibre#toggleSettings"]')
     await page.click('button[data-tab="tools"]')
 
     // Click Select Area button
-    await page.click('[data-maps-v2-target="selectAreaButton"]')
+    await page.click('[data-maps--maplibre-target="selectAreaButton"]')
 
     // Wait for selection mode
     await page.waitForTimeout(500)
@@ -150,12 +150,12 @@ test.describe('Area Selection in Maps V2', () => {
     await page.waitForTimeout(500)
 
     // Check if selection actions are visible
-    const selectionActions = page.locator('[data-maps-v2-target="selectionActions"]')
+    const selectionActions = page.locator('[data-maps--maplibre-target="selectionActions"]')
     const isVisible = await selectionActions.isVisible().catch(() => false)
 
     if (isVisible) {
       // Click Cancel button (the red one at the top that replaced Select Area)
-      const cancelButton = page.locator('[data-maps-v2-target="selectAreaButton"]')
+      const cancelButton = page.locator('[data-maps--maplibre-target="selectAreaButton"]')
       await expect(cancelButton).toContainText('Cancel Selection')
       await cancelButton.click()
 
@@ -171,11 +171,11 @@ test.describe('Area Selection in Maps V2', () => {
 
   test('should display delete confirmation dialog', async ({ page }) => {
     // Open settings panel and switch to Tools tab
-    await page.click('[data-action="click->maps-v2#toggleSettings"]')
+    await page.click('[data-action="click->maps--maplibre#toggleSettings"]')
     await page.click('button[data-tab="tools"]')
 
     // Click Select Area button
-    await page.click('[data-maps-v2-target="selectAreaButton"]')
+    await page.click('[data-maps--maplibre-target="selectAreaButton"]')
 
     // Get map canvas
     const canvas = page.locator('canvas.maplibregl-canvas')
@@ -196,7 +196,7 @@ test.describe('Area Selection in Maps V2', () => {
     await page.waitForTimeout(500)
 
     // Check if selection actions are visible
-    const selectionActions = page.locator('[data-maps-v2-target="selectionActions"]')
+    const selectionActions = page.locator('[data-maps--maplibre-target="selectionActions"]')
     const isVisible = await selectionActions.isVisible().catch(() => false)
 
     if (isVisible) {
@@ -210,7 +210,7 @@ test.describe('Area Selection in Maps V2', () => {
       })
 
       // Click Delete button (text now includes count like "Delete 100 Points")
-      await page.locator('[data-maps-v2-target="deletePointsButton"]').click()
+      await page.locator('[data-maps--maplibre-target="deletePointsButton"]').click()
 
       // Wait for dialog to be handled
       await page.waitForTimeout(1000)
@@ -228,11 +228,11 @@ test.describe('Area Selection in Maps V2', () => {
     // by verifying the API call is made with the correct parameters when selecting an area
 
     // Open settings panel and switch to Tools tab
-    await page.click('[data-action="click->maps-v2#toggleSettings"]')
+    await page.click('[data-action="click->maps--maplibre#toggleSettings"]')
     await page.click('button[data-tab="tools"]')
 
     // Click Select Area button
-    await page.click('[data-maps-v2-target="selectAreaButton"]')
+    await page.click('[data-maps--maplibre-target="selectAreaButton"]')
     await page.waitForTimeout(500)
 
     // Get map canvas
@@ -269,11 +269,11 @@ test.describe('Area Selection in Maps V2', () => {
 
   test('should add selected points layer to map when points are selected', async ({ page }) => {
     // Open settings panel and switch to Tools tab
-    await page.click('[data-action="click->maps-v2#toggleSettings"]')
+    await page.click('[data-action="click->maps--maplibre#toggleSettings"]')
     await page.click('button[data-tab="tools"]')
 
     // Click Select Area button
-    await page.click('[data-maps-v2-target="selectAreaButton"]')
+    await page.click('[data-maps--maplibre-target="selectAreaButton"]')
 
     // Get map canvas
     const canvas = page.locator('canvas.maplibregl-canvas')
@@ -295,9 +295,9 @@ test.describe('Area Selection in Maps V2', () => {
 
     // Check if selected points layer exists
     const hasSelectedPointsLayer = await page.evaluate(() => {
-      const element = document.querySelector('[data-controller*="maps-v2"]')
+      const element = document.querySelector('[data-controller*="maps--maplibre"]')
       const app = window.Stimulus || window.Application
-      const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+      const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
       return controller?.areaSelectionManager?.selectedPointsLayer !== undefined
     })
 
@@ -305,9 +305,9 @@ test.describe('Area Selection in Maps V2', () => {
     if (hasSelectedPointsLayer) {
       // Verify layer is on the map
       const layerExistsOnMap = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('selected-points') !== undefined
       })
       expect(layerExistsOnMap).toBeTruthy()

@@ -4,7 +4,7 @@
 
 pin_all_from 'app/javascript/channels', under: 'channels'
 pin_all_from 'app/javascript/maps', under: 'maps'
-pin_all_from 'app/javascript/maps_v2', under: 'maps_v2'
+pin_all_from 'app/javascript/maps_maplibre', under: 'maps_maplibre'
 
 pin 'application', preload: true
 pin '@rails/actioncable', to: 'actioncable.esm.js'

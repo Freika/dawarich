@@ -3,7 +3,7 @@ import { closeOnboardingModal } from '../../../helpers/navigation.js'
 
 test.describe('Heatmap Layer', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await page.waitForTimeout(2000)
   })
@@ -22,18 +22,18 @@ test.describe('Heatmap Layer', () => {
 
       // Wait for heatmap layer to be created
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('heatmap') !== undefined
       }, { timeout: 3000 }).catch(() => false)
 
       const hasHeatmap = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('heatmap') !== undefined
       })
 
@@ -70,7 +70,7 @@ test.describe('Heatmap Layer', () => {
       await page.waitForTimeout(500)
 
       const settings = await page.evaluate(() => {
-        return localStorage.getItem('dawarich-maps-v2-settings')
+        return localStorage.getItem('dawarich-maps--maplibre-settings')
       })
 
       const parsed = JSON.parse(settings)

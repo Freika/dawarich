@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import { createCircle, calculateDistance } from 'maps_v2/utils/geometry'
+import { createCircle, calculateDistance } from 'maps_maplibre/utils/geometry'
 
 /**
  * Area drawer controller

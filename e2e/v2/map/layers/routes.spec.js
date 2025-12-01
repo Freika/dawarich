@@ -11,7 +11,7 @@ import {
 
 test.describe('Routes Layer', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)
@@ -21,11 +21,11 @@ test.describe('Routes Layer', () => {
   test.describe('Layer Existence', () => {
     test('routes layer exists on map', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
         if (!app) return false
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('routes') !== undefined
       }, { timeout: 10000 }).catch(() => false)
 
@@ -37,11 +37,11 @@ test.describe('Routes Layer', () => {
   test.describe('Data Source', () => {
     test('routes source has data', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
         if (!app) return false
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getSource('routes-source') !== undefined
       }, { timeout: 20000 })
 
@@ -92,22 +92,22 @@ test.describe('Routes Layer', () => {
   test.describe('Styling', () => {
     test('routes have solid color', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!element) return false
         const app = window.Stimulus || window.Application
         if (!app) return false
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('routes') !== undefined
       }, { timeout: 20000 })
 
       const routeLayerInfo = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!element) return null
 
         const app = window.Stimulus || window.Application
         if (!app) return null
 
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         if (!controller?.map) return null
 
         const layer = controller.map.getLayer('routes')
@@ -132,21 +132,21 @@ test.describe('Routes Layer', () => {
   test.describe('Layer Order', () => {
     test('routes layer renders below points layer', async ({ page }) => {
       await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         return controller?.map?.getLayer('routes') !== undefined &&
                controller?.map?.getLayer('points') !== undefined
       }, { timeout: 10000 })
 
       const layerOrder = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!element) return null
 
         const app = window.Stimulus || window.Application
         if (!app) return null
 
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         if (!controller?.map) return null
 
         const style = controller.map.getStyle()

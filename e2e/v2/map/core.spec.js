@@ -18,7 +18,7 @@ test.describe('Map Core', () => {
 
   test.describe('Initialization', () => {
     test('loads map container', async ({ page }) => {
-      const mapContainer = page.locator('[data-maps-v2-target="container"]')
+      const mapContainer = page.locator('[data-maps--maplibre-target="container"]')
       await expect(mapContainer).toBeVisible()
     })
 
@@ -33,7 +33,7 @@ test.describe('Map Core', () => {
     })
 
     test('has valid initial center and zoom', async ({ page }) => {
-      await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+      await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
       await closeOnboardingModal(page)
       await waitForMapLibre(page)
       await waitForLoadingComplete(page)
@@ -55,7 +55,7 @@ test.describe('Map Core', () => {
 
   test.describe('Loading States', () => {
     test('shows loading indicator during data fetch', async ({ page }) => {
-      const loading = page.locator('[data-maps-v2-target="loading"]')
+      const loading = page.locator('[data-maps--maplibre-target="loading"]')
 
       const navigationPromise = page.reload({ waitUntil: 'domcontentloaded' })
 
@@ -83,7 +83,7 @@ test.describe('Map Core', () => {
 
   test.describe('Data Bounds', () => {
     test('fits map bounds to loaded data', async ({ page }) => {
-      await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+      await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
       await closeOnboardingModal(page)
       await waitForMapLibre(page)
       await waitForLoadingComplete(page)
@@ -96,7 +96,7 @@ test.describe('Map Core', () => {
 
   test.describe('Lifecycle', () => {
     test('cleans up and reinitializes on navigation', async ({ page }) => {
-      await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+      await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
       await closeOnboardingModal(page)
       await waitForLoadingComplete(page)
 
@@ -114,7 +114,7 @@ test.describe('Map Core', () => {
     })
 
     test('reloads data when changing date range', async ({ page }) => {
-      await page.goto('/maps_v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+      await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
       await closeOnboardingModal(page)
       await waitForLoadingComplete(page)
 

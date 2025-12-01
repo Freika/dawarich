@@ -14,7 +14,7 @@ test.describe('Areas Layer', () => {
   test.describe('Toggle', () => {
     test('areas layer toggle exists', async ({ page }) => {
       // Open settings panel
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
 
       // Click Layers tab
@@ -27,7 +27,7 @@ test.describe('Areas Layer', () => {
 
     test('can toggle areas layer', async ({ page }) => {
       // Open settings panel
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
 
       // Click Layers tab
@@ -46,7 +46,7 @@ test.describe('Areas Layer', () => {
   test.describe('Area Creation', () => {
     test('should have Create an Area button in Tools tab', async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
 
       // Click Tools tab
@@ -60,7 +60,7 @@ test.describe('Areas Layer', () => {
 
     test('should change cursor to crosshair when Create an Area is clicked', async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
@@ -79,7 +79,7 @@ test.describe('Areas Layer', () => {
 
     test('should show area preview while drawing', async ({ page }) => {
       // Enable creation mode
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
@@ -97,9 +97,9 @@ test.describe('Areas Layer', () => {
 
       // Verify draw layers exist
       const hasDrawLayers = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps-v2"]')
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2')
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         const map = controller?.map
         return map && map.getSource('draw-source') !== undefined
       })
@@ -108,7 +108,7 @@ test.describe('Areas Layer', () => {
 
     test('should open modal when area is drawn', async ({ page }) => {
       // Enable creation mode
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
@@ -133,7 +133,7 @@ test.describe('Areas Layer', () => {
 
     test('should display radius and location in modal', async ({ page }) => {
       // Enable creation mode and draw area
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
@@ -167,7 +167,7 @@ test.describe('Areas Layer', () => {
 
     test('should create area and enable layer when submitted', async ({ page }) => {
       // Draw area
-      await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
@@ -224,7 +224,7 @@ test.describe('Areas Layer', () => {
         await page.waitForTimeout(1000)
 
         // Verify areas layer is now enabled
-        await page.locator('[data-action="click->maps-v2#toggleSettings"]').first().click()
+        await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
         await page.waitForTimeout(200)
         await page.locator('button[data-tab="layers"]').click()
         await page.waitForTimeout(200)

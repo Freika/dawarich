@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import { Toast } from 'maps_v2/components/toast'
+import { Toast } from 'maps_maplibre/components/toast'
 
 /**
  * Controller for visit creation modal in Maps V2

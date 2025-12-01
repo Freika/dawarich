@@ -1,8 +1,8 @@
-import { SelectionLayer } from 'maps_v2/layers/selection_layer'
-import { SelectedPointsLayer } from 'maps_v2/layers/selected_points_layer'
-import { pointsToGeoJSON } from 'maps_v2/utils/geojson_transformers'
-import { VisitCard } from 'maps_v2/components/visit_card'
-import { Toast } from 'maps_v2/components/toast'
+import { SelectionLayer } from 'maps_maplibre/layers/selection_layer'
+import { SelectedPointsLayer } from 'maps_maplibre/layers/selected_points_layer'
+import { pointsToGeoJSON } from 'maps_maplibre/utils/geojson_transformers'
+import { VisitCard } from 'maps_maplibre/components/visit_card'
+import { Toast } from 'maps_maplibre/components/toast'
 
 /**
  * Manages area selection and bulk operations for Maps V2
