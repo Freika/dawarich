@@ -80,7 +80,7 @@ export class RoutesManager {
     modal.id = 'speed-color-editor-modal'
     modal.setAttribute('data-controller', 'speed-color-editor')
     modal.setAttribute('data-speed-color-editor-color-stops-value', currentScale)
-    modal.setAttribute('data-action', 'speed-color-editor:save->maps-v2#handleSpeedColorSave')
+    modal.setAttribute('data-action', 'speed-color-editor:save->maps--maplibre#handleSpeedColorSave')
 
     modal.innerHTML = `
       <input type="checkbox" id="speed-color-editor-toggle" class="modal-toggle" />

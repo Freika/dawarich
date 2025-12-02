@@ -137,12 +137,12 @@ export default class extends Controller {
   }
 
   /**
-   * Get the maps-v2 controller (on same element)
+   * Get the maps--maplibre controller (on same element)
    */
   get mapsV2Controller() {
     const element = this.element
     const app = this.application
-    return app.getControllerForElementAndIdentifier(element, 'maps-v2')
+    return app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
   }
 
   /**
@@ -152,7 +152,7 @@ export default class extends Controller {
   handleNewPoint(pointData) {
     const mapsController = this.mapsV2Controller
     if (!mapsController) {
-      console.warn('[Realtime Controller] Maps V2 controller not found')
+      console.warn('[Realtime Controller] Maps controller not found')
       return
     }
 

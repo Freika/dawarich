@@ -66,7 +66,7 @@ export class AreaSelectionManager {
         </svg>
         Cancel Selection
       `
-      this.controller.selectAreaButtonTarget.dataset.action = 'click->maps-v2#cancelAreaSelection'
+      this.controller.selectAreaButtonTarget.dataset.action = 'click->maps--maplibre#cancelAreaSelection'
     }
 
     Toast.info('Draw a rectangle on the map to select points')
@@ -487,7 +487,7 @@ export class AreaSelectionManager {
       `
       this.controller.selectAreaButtonTarget.classList.remove('btn-error')
       this.controller.selectAreaButtonTarget.classList.add('btn', 'btn-outline')
-      this.controller.selectAreaButtonTarget.dataset.action = 'click->maps-v2#startSelectArea'
+      this.controller.selectAreaButtonTarget.dataset.action = 'click->maps--maplibre#startSelectArea'
     }
 
     if (this.controller.hasSelectionActionsTarget) {

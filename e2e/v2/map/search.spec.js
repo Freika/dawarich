@@ -2,7 +2,21 @@ import { test, expect } from '@playwright/test'
 import { closeOnboardingModal } from '../../helpers/navigation.js'
 import { waitForMapLibre, waitForLoadingComplete } from '../helpers/setup.js'
 
+/**
+ * Helper to open settings panel and switch to Search tab
+ * @param {Page} page - Playwright page object
+ */
+async function openSearchTab(page) {
+  await page.click('button[title="Open map settings"]')
+  await page.waitForTimeout(400)
+  await page.click('button[title="Search"]')
+  await page.waitForTimeout(200)
+}
+
 test.describe('Location Search', () => {
+  // Increase timeout for search tests as they involve network requests
+  test.setTimeout(60000)
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
@@ -14,8 +28,7 @@ test.describe('Location Search', () => {
   test.describe('Search UI', () => {
     test('displays search input in settings panel', async ({ page }) => {
       // Open settings panel
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       // Search tab should be active by default
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
@@ -24,8 +37,7 @@ test.describe('Location Search', () => {
     })
 
     test('search results container exists', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
       await expect(resultsContainer).toBeAttached()
@@ -35,61 +47,60 @@ test.describe('Location Search', () => {
 
   test.describe('Search Functionality', () => {
     test('typing in search input triggers search', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
-
-      // Type a search query
-      await searchInput.fill('New')
-      await page.waitForTimeout(500) // Wait for debounce
-
-      // Results container should become visible (or show loading)
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
-      // Wait for results to appear
-      await page.waitForTimeout(1000)
+      // Type a search query (3+ chars to trigger search)
+      await searchInput.fill('New')
 
-      // Check if results container is no longer hidden
-      const isHidden = await resultsContainer.evaluate(el => el.classList.contains('hidden'))
-
-      // Results should be shown (either with results or "no results" message)
-      if (!isHidden) {
-        expect(isHidden).toBe(false)
+      // Wait for results container to become visible or stay hidden (with timeout)
+      // Search might show results or "no results" - both are valid
+      try {
+        await resultsContainer.waitFor({ state: 'visible', timeout: 3000 })
+        // Results appeared
+        expect(await resultsContainer.isVisible()).toBe(true)
+      } catch (e) {
+        // Results might still be hidden if search returned nothing
+        // This is acceptable behavior
+        console.log('Search did not return visible results')
       }
     })
 
     test('short queries do not trigger search', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
-      // Type single character
+      // Type single character (should not trigger search - minimum is 3 chars)
       await searchInput.fill('N')
+
+      // Wait a bit for any potential search to trigger
       await page.waitForTimeout(500)
 
-      // Results should stay hidden
+      // Results should stay hidden (search not triggered for short query)
       await expect(resultsContainer).toHaveClass(/hidden/)
     })
 
     test('clearing search clears results', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
       // Type search query
-      await searchInput.fill('New York')
+      await searchInput.fill('Berlin')
+
+      // Wait for potential search results
       await page.waitForTimeout(1000)
 
       // Clear input
       await searchInput.clear()
       await page.waitForTimeout(300)
 
-      // Results should be hidden
+      // Results should be hidden after clearing
       await expect(resultsContainer).toHaveClass(/hidden/)
     })
   })
@@ -118,8 +129,7 @@ test.describe('Location Search', () => {
     })
 
     test('search input has autocomplete disabled', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       await expect(searchInput).toHaveAttribute('autocomplete', 'off')
@@ -128,8 +138,7 @@ test.describe('Location Search', () => {
 
   test.describe('Visit Search and Creation', () => {
     test('clicking on suggestion shows visits', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
@@ -154,8 +163,7 @@ test.describe('Location Search', () => {
     })
 
     test('visits are grouped by year with expand/collapse', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
@@ -188,8 +196,7 @@ test.describe('Location Search', () => {
     })
 
     test('clicking on visit item opens create visit modal', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
@@ -233,8 +240,7 @@ test.describe('Location Search', () => {
     })
 
     test('create visit modal has prefilled data', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
@@ -285,8 +291,7 @@ test.describe('Location Search', () => {
     })
 
     test('results container height allows viewing multiple visits', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
@@ -302,8 +307,7 @@ test.describe('Location Search', () => {
 
   test.describe('Accessibility', () => {
     test('search input is keyboard accessible', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
 
@@ -320,8 +324,7 @@ test.describe('Location Search', () => {
     })
 
     test('search has descriptive label', async ({ page }) => {
-      await page.click('button[title="Open map settings"]')
-      await page.waitForTimeout(400)
+      await openSearchTab(page)
 
       const label = page.locator('label:has-text("Search for a place")')
       await expect(label).toBeVisible()

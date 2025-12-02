@@ -9,7 +9,7 @@ This document provides a comprehensive guide to the JavaScript architecture used
 - [Architecture Patterns](#architecture-patterns)
 - [Directory Structure](#directory-structure)
 - [Core Concepts](#core-concepts)
-- [Maps (MapLibre) Architecture](#maps-v2-architecture)
+- [Maps (MapLibre) Architecture](#maps-maplibre-architecture)
 - [Creating New Features](#creating-new-features)
 - [Best Practices](#best-practices)
 

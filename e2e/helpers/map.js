@@ -101,5 +101,5 @@ export async function waitForMapLoad(page) {
   }, { timeout: 10000 });
 
   // Wait for initial data load to complete
-  await page.waitForSelector('[data-maps-v2-target="loading"].hidden', { timeout: 15000 });
+  await page.waitForSelector('[data-maps--maplibre-target="loading"].hidden', { timeout: 15000 });
 }

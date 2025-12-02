@@ -3,7 +3,7 @@
  * Supports both localStorage (fallback) and backend API (primary)
  */
 
-const STORAGE_KEY = 'dawarich-maps-v2-settings'
+const STORAGE_KEY = 'dawarich-maps-maplibre-settings'
 
 const DEFAULT_SETTINGS = {
   mapStyle: 'light',

@@ -5,7 +5,7 @@ test.describe('Advanced Layers', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/maps/maplibre')
     await page.evaluate(() => {
-      localStorage.removeItem('dawarich-maps--maplibre-settings')
+      localStorage.removeItem('dawarich-maps-maplibre-settings')
     })
 
     await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
@@ -16,7 +16,7 @@ test.describe('Advanced Layers', () => {
   test.describe('Fog of War', () => {
     test('fog layer is disabled by default', async ({ page }) => {
       const fogEnabled = await page.evaluate(() => {
-        const settings = JSON.parse(localStorage.getItem('dawarich-maps--maplibre-settings') || '{}')
+        const settings = JSON.parse(localStorage.getItem('dawarich-maps-maplibre-settings') || '{}')
         return settings.fogEnabled
       })
 

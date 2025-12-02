@@ -201,9 +201,9 @@ expect(isVisible).toBe(true);
 
 // Wait for layer to exist
 await page.waitForFunction(() => {
-  const element = document.querySelector('[data-controller="maps-v2"]');
+  const element = document.querySelector('[data-controller*="maps--maplibre"]');
   const app = window.Stimulus || window.Application;
-  const controller = app?.getControllerForElementAndIdentifier(element, 'maps-v2');
+  const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre');
   return controller?.map?.getLayer('routes') !== undefined;
 }, { timeout: 5000 });
 ```
