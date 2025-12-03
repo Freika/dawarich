@@ -67,7 +67,12 @@ export default class extends Controller {
     'selectionActions',
     'deleteButtonText',
     'selectedVisitsContainer',
-    'selectedVisitsBulkActions'
+    'selectedVisitsBulkActions',
+    // Info display
+    'infoDisplay',
+    'infoTitle',
+    'infoContent',
+    'infoActions'
   ]
 
   async connect() {
@@ -88,7 +93,7 @@ export default class extends Controller {
     // Initialize managers
     this.layerManager = new LayerManager(this.map, this.settings, this.api)
     this.dataLoader = new DataLoader(this.api, this.apiKeyValue)
-    this.eventHandlers = new EventHandlers(this.map)
+    this.eventHandlers = new EventHandlers(this.map, this)
     this.filterManager = new FilterManager(this.dataLoader)
     this.mapDataManager = new MapDataManager(this)
 
@@ -335,4 +340,50 @@ export default class extends Controller {
   toggleSpeedColoredRoutes(event) { return this.routesManager.toggleSpeedColoredRoutes(event) }
   openSpeedColorEditor() { return this.routesManager.openSpeedColorEditor() }
   handleSpeedColorSave(event) { return this.routesManager.handleSpeedColorSave(event) }
+
+  // Info Display methods
+  showInfo(title, content, actions = []) {
+    if (!this.hasInfoDisplayTarget) return
+
+    // Set title
+    this.infoTitleTarget.textContent = title
+
+    // Set content
+    this.infoContentTarget.innerHTML = content
+
+    // Set actions
+    if (actions.length > 0) {
+      this.infoActionsTarget.innerHTML = actions.map(action =>
+        `<a href="${action.url}" class="btn btn-sm btn-primary">${action.label}</a>`
+      ).join('')
+    } else {
+      this.infoActionsTarget.innerHTML = ''
+    }
+
+    // Show info display
+    this.infoDisplayTarget.classList.remove('hidden')
+
+    // Switch to tools tab and open panel
+    this.switchToToolsTab()
+  }
+
+  closeInfo() {
+    if (!this.hasInfoDisplayTarget) return
+    this.infoDisplayTarget.classList.add('hidden')
+  }
+
+  switchToToolsTab() {
+    // Open the panel if it's not already open
+    if (!this.settingsPanelTarget.classList.contains('open')) {
+      this.toggleSettings()
+    }
+
+    // Find the map-panel controller and switch to tools tab
+    const panelElement = this.settingsPanelTarget
+    const panelController = this.application.getControllerForElementAndIdentifier(panelElement, 'map-panel')
+
+    if (panelController && panelController.switchToTab) {
+      panelController.switchToTab('tools')
+    }
+  }
 }

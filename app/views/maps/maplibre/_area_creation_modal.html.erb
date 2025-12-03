@@ -29,29 +29,12 @@
             <label class="label">
               <span class="label-text font-semibold">Radius</span>
             </label>
-            <div class="flex items-center gap-2">
-              <input
-                type="text"
-                class="input input-bordered w-full"
-                data-area-creation-v2-target="radiusDisplay"
-                readonly>
-              <div class="badge badge-info">meters</div>
+            <div class="text-lg font-semibold">
+              <span data-area-creation-v2-target="radiusDisplay">0</span> meters
             </div>
             <label class="label">
               <span class="label-text-alt">Draw on the map to set the radius</span>
             </label>
-          </div>
-
-          <!-- Center Location -->
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-semibold">Center Location</span>
-            </label>
-            <input
-              type="text"
-              class="input input-bordered w-full text-sm"
-              data-area-creation-v2-target="locationDisplay"
-              readonly>
           </div>
 
           <!-- Drawing Instructions -->
@@ -73,7 +56,7 @@
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" data-action="click->area-creation-v2#close">Cancel</button>
           <button type="submit" class="btn btn-primary" data-area-creation-v2-target="submitButton">
-            <span class="loading loading-spinner loading-sm hidden" data-area-creation-v2-target="submitSpinner"></span>
+            <span class="loading loading-sm hidden" data-area-creation-v2-target="submitSpinner"></span>
             <span data-area-creation-v2-target="submitText">Create Area</span>
           </button>
         </div>

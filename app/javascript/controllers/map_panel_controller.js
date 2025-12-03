@@ -27,11 +27,30 @@ export default class extends Controller {
     const button = event.currentTarget
     const tabName = button.dataset.tab
 
+    this.activateTab(tabName)
+  }
+
+  /**
+   * Programmatically switch to a tab by name
+   */
+  switchToTab(tabName) {
+    this.activateTab(tabName)
+  }
+
+  /**
+   * Internal method to activate a tab
+   */
+  activateTab(tabName) {
+    // Find the button for this tab
+    const button = this.tabButtonTargets.find(btn => btn.dataset.tab === tabName)
+
     // Update active button
     this.tabButtonTargets.forEach(btn => {
       btn.classList.remove('active')
     })
-    button.classList.add('active')
+    if (button) {
+      button.classList.add('active')
+    }
 
     // Update tab content
     this.tabContentTargets.forEach(content => {

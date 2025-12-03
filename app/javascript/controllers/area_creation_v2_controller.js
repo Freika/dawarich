@@ -13,7 +13,6 @@ export default class extends Controller {
     'longitudeInput',
     'radiusInput',
     'radiusDisplay',
-    'locationDisplay',
     'submitButton',
     'submitSpinner',
     'submitText'
@@ -52,8 +51,7 @@ export default class extends Controller {
     this.latitudeInputTarget.value = center[1]
     this.longitudeInputTarget.value = center[0]
     this.radiusInputTarget.value = Math.round(radius)
-    this.radiusDisplayTarget.value = Math.round(radius)
-    this.locationDisplayTarget.value = `${center[1].toFixed(6)}, ${center[0].toFixed(6)}`
+    this.radiusDisplayTarget.textContent = Math.round(radius)
 
     // Show modal
     this.modalTarget.classList.add('modal-open')
@@ -151,8 +149,7 @@ export default class extends Controller {
   resetForm() {
     this.formTarget.reset()
     this.area = null
-    this.radiusDisplayTarget.value = ''
-    this.locationDisplayTarget.value = ''
+    this.radiusDisplayTarget.textContent = '0'
   }
 
   /**

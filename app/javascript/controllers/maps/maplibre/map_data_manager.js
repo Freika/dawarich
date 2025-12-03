@@ -94,7 +94,8 @@ export class MapDataManager {
         handlePointClick: this.eventHandlers.handlePointClick.bind(this.eventHandlers),
         handleVisitClick: this.eventHandlers.handleVisitClick.bind(this.eventHandlers),
         handlePhotoClick: this.eventHandlers.handlePhotoClick.bind(this.eventHandlers),
-        handlePlaceClick: this.eventHandlers.handlePlaceClick.bind(this.eventHandlers)
+        handlePlaceClick: this.eventHandlers.handlePlaceClick.bind(this.eventHandlers),
+        handleAreaClick: this.eventHandlers.handleAreaClick.bind(this.eventHandlers)
       })
     }
 

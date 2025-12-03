@@ -62,6 +62,10 @@ export class LayerManager {
     this.map.on('click', 'visits', handlers.handleVisitClick)
     this.map.on('click', 'photos', handlers.handlePhotoClick)
     this.map.on('click', 'places', handlers.handlePlaceClick)
+    // Areas have multiple layers (fill, outline, labels)
+    this.map.on('click', 'areas-fill', handlers.handleAreaClick)
+    this.map.on('click', 'areas-outline', handlers.handleAreaClick)
+    this.map.on('click', 'areas-labels', handlers.handleAreaClick)
 
     // Cursor change on hover
     this.map.on('mouseenter', 'points', () => {
@@ -86,6 +90,25 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = 'pointer'
     })
     this.map.on('mouseleave', 'places', () => {
+      this.map.getCanvas().style.cursor = ''
+    })
+    // Areas hover handlers for all sub-layers
+    this.map.on('mouseenter', 'areas-fill', () => {
+      this.map.getCanvas().style.cursor = 'pointer'
+    })
+    this.map.on('mouseleave', 'areas-fill', () => {
+      this.map.getCanvas().style.cursor = ''
+    })
+    this.map.on('mouseenter', 'areas-outline', () => {
+      this.map.getCanvas().style.cursor = 'pointer'
+    })
+    this.map.on('mouseleave', 'areas-outline', () => {
+      this.map.getCanvas().style.cursor = ''
+    })
+    this.map.on('mouseenter', 'areas-labels', () => {
+      this.map.getCanvas().style.cursor = 'pointer'
+    })
+    this.map.on('mouseleave', 'areas-labels', () => {
       this.map.getCanvas().style.cursor = ''
     })
   }

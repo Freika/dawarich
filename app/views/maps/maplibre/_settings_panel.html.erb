@@ -53,7 +53,7 @@
       <button class="btn btn-ghost btn-sm btn-circle"
               data-action="click->maps--maplibre#toggleSettings"
               title="Close panel">
-        <%= icon 'search' %>
+        <%= icon 'x' %>
       </button>
     </div>
 
@@ -561,6 +561,24 @@
               <%= icon 'circle-plus' %>
               Create an Area
             </button>
+          </div>
+
+          <!-- Info Display (shown when clicking on visit/area/place) -->
+          <div class="hidden mt-4" data-maps--maplibre-target="infoDisplay">
+            <div class="card bg-base-200 shadow-md">
+              <div class="card-body p-4">
+                <div class="flex justify-between items-start mb-2">
+                  <h4 class="card-title text-base" data-maps--maplibre-target="infoTitle"></h4>
+                  <button class="btn btn-ghost btn-xs btn-circle" data-action="click->maps--maplibre#closeInfo" title="Close">✕</button>
+                </div>
+                <div class="space-y-2 text-sm" data-maps--maplibre-target="infoContent">
+                  <!-- Content will be dynamically inserted -->
+                </div>
+                <div class="card-actions justify-end mt-3" data-maps--maplibre-target="infoActions">
+                  <!-- Action buttons will be dynamically inserted -->
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Selection Actions (shown after area is selected) -->

@@ -50,25 +50,33 @@ export class VisitPopupFactory {
       <style>
         .visit-popup {
           font-family: system-ui, -apple-system, sans-serif;
-          min-width: 250px;
+          min-width: 280px;
         }
 
         .popup-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
-          padding-bottom: 8px;
+          margin-bottom: 16px;
+          padding-bottom: 12px;
           border-bottom: 1px solid ${colors.border};
+          gap: 12px;
+        }
+
+        .popup-header strong {
+          font-size: 15px;
+          flex: 1;
         }
 
         .visit-badge {
-          padding: 2px 8px;
+          padding: 4px 8px;
           border-radius: 4px;
           font-size: 10px;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .visit-badge.suggested {
@@ -83,39 +91,40 @@ export class VisitPopupFactory {
 
         .popup-body {
           font-size: 13px;
-          margin-bottom: 12px;
+          margin-bottom: 16px;
         }
 
         .popup-row {
-          display: flex;
-          justify-content: space-between;
-          gap: 16px;
-          padding: 4px 0;
+          margin-bottom: 10px;
         }
 
         .popup-row .label {
           color: ${colors.textMuted};
+          display: block;
+          margin-bottom: 4px;
+          font-size: 12px;
         }
 
         .popup-row .value {
           font-weight: 500;
           color: ${colors.textPrimary};
+          display: block;
         }
 
         .popup-footer {
-          padding-top: 8px;
+          padding-top: 12px;
           border-top: 1px solid ${colors.border};
         }
 
         .view-details-btn {
           display: block;
           text-align: center;
-          padding: 6px 12px;
+          padding: 10px 16px;
           background: ${colors.accent};
           color: white;
           text-decoration: none;
           border-radius: 6px;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 500;
           transition: background 0.2s;
         }

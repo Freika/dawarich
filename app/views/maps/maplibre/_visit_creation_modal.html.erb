@@ -47,36 +47,11 @@
             </div>
           </div>
 
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-semibold">Location</span>
-            </label>
-            <div class="flex gap-2">
-              <input
-                type="text"
-                class="input input-bordered w-full"
-                data-visit-creation-v2-target="locationDisplay"
-                readonly>
-              <button
-                type="button"
-                class="btn btn-outline btn-sm"
-                data-action="click->visit-creation-v2#adjustLocation"
-                title="Adjust location on map">
-                📍 Adjust
-              </button>
-            </div>
-            <label class="label">
-              <span class="label-text-alt">Click on the map to change location</span>
-            </label>
-          </div>
         </div>
 
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" data-action="click->visit-creation-v2#close">Cancel</button>
-          <button type="submit" class="btn btn-primary" data-visit-creation-v2-target="submitButton">
-            <span class="loading loading-spinner loading-sm hidden" data-visit-creation-v2-target="submitSpinner"></span>
-            <span data-visit-creation-v2-target="submitText">Create Visit</span>
-          </button>
+          <button type="submit" class="btn btn-primary">Create Visit</button>
         </div>
       </form>
     </div>

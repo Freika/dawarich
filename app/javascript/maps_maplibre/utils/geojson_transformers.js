@@ -27,11 +27,23 @@ export function pointsToGeoJSON(points) {
 
 /**
  * Format timestamp for display
- * @param {number} timestamp - Unix timestamp
+ * @param {number|string} timestamp - Unix timestamp (seconds) or ISO 8601 string
  * @returns {string} Formatted date/time
  */
 export function formatTimestamp(timestamp) {
-  const date = new Date(timestamp * 1000)
+  // Handle different timestamp formats
+  let date
+  if (typeof timestamp === 'string') {
+    // ISO 8601 string
+    date = new Date(timestamp)
+  } else if (timestamp < 10000000000) {
+    // Unix timestamp in seconds
+    date = new Date(timestamp * 1000)
+  } else {
+    // Unix timestamp in milliseconds
+    date = new Date(timestamp)
+  }
+
   return date.toLocaleString('en-US', {
     year: 'numeric',
     month: 'short',

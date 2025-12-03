@@ -167,7 +167,15 @@ test.describe('Routes Layer', () => {
 
   test.describe('Persistence', () => {
     test('date navigation preserves routes layer', async ({ page }) => {
-      await page.waitForTimeout(1000)
+      // Wait for routes layer to be added to the map
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        if (!element) return false
+        const app = window.Stimulus || window.Application
+        if (!app) return false
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        return controller?.map?.getLayer('routes') !== undefined
+      }, { timeout: 10000 })
 
       const initialRoutes = await hasLayer(page, 'routes')
       expect(initialRoutes).toBe(true)
