@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-# [Unreleased]
+# [0.36.2] - Unreleased
 
 
 ## Fixed
@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Points on the Map page are now loaded in chunks to improve performance and reduce memory consumption.
 
+
+# [0.36.1] - 2025-11-29
+
+## Fixed
+
+- Exporting user data now works a lot faster and consumes less memory.
+- Fix the restart loop. #1937 #1975
 
 # [0.36.0] - 2025-11-24
 
