@@ -57,4 +57,39 @@ module TripsHelper
     parts = ["0 hours"] if parts.empty?
     parts.join(', ')
   end
+
+  def trip_sharing_status_badge(trip)
+    return unless trip.sharing_enabled?
+
+    if trip.sharing_expired?
+      content_tag(:span, 'Expired', class: 'badge badge-warning')
+    else
+      content_tag(:span, 'Shared', class: 'badge badge-success')
+    end
+  end
+
+  def trip_sharing_expiration_text(trip)
+    return 'Not shared' unless trip.sharing_enabled?
+
+    expiration = trip.sharing_settings['expiration']
+    expires_at = trip.sharing_settings['expires_at']
+
+    case expiration
+    when 'permanent'
+      'Never expires'
+    when '1h', '12h', '24h'
+      if expires_at
+        expires_at_time = Time.zone.parse(expires_at)
+        if expires_at_time > Time.current
+          "Expires #{time_ago_in_words(expires_at_time)} from now"
+        else
+          'Expired'
+        end
+      else
+        'Invalid expiration'
+      end
+    else
+      'Unknown expiration'
+    end
+  end
 end

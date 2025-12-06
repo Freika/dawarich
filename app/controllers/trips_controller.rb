@@ -39,6 +39,18 @@ class TripsController < ApplicationController
   end
 
   def update
+    # Handle sharing settings update
+    if params[:trip] && params[:trip][:sharing]
+      handle_sharing_update
+
+      respond_to do |format|
+        format.turbo_stream { render turbo_stream: turbo_stream.replace("sharing_form_#{@trip.id}", partial: 'trips/sharing', locals: { trip: @trip }) }
+        format.html { redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other }
+      end
+      return
+    end
+
+    # Handle regular trip update
     if @trip.update(trip_params)
       redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
     else
@@ -64,7 +76,27 @@ class TripsController < ApplicationController
     ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
   end
 
+  def handle_sharing_update
+    sharing_params = params[:trip][:sharing]
+
+    if to_boolean(sharing_params[:enabled])
+      sharing_options = {
+        expiration: sharing_params[:expiration] || '24h',
+        share_notes: to_boolean(sharing_params[:share_notes]),
+        share_photos: to_boolean(sharing_params[:share_photos])
+      }
+
+      @trip.enable_sharing!(**sharing_options)
+    else
+      @trip.disable_sharing!
+    end
+  end
+
   def trip_params
     params.require(:trip).permit(:name, :started_at, :ended_at, :notes)
+  end
+
+  def to_boolean(value)
+    ActiveModel::Type::Boolean.new.cast(value)
   end
 end
