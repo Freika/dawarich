@@ -144,10 +144,14 @@ test.describe('Visits Layer', () => {
       await expect(visitModal.locator('input[name="name"]')).toBeVisible()
       await expect(visitModal.locator('input[name="started_at"]')).toBeVisible()
       await expect(visitModal.locator('input[name="ended_at"]')).toBeVisible()
-      await expect(visitModal.locator('input[data-visit-creation-v2-target="locationDisplay"]')).toBeVisible()
-      await expect(visitModal.locator('button:has-text("Adjust")')).toBeVisible()
       await expect(visitModal.locator('button:has-text("Create Visit")')).toBeVisible()
       await expect(visitModal.locator('button:has-text("Cancel")')).toBeVisible()
+
+      // Verify hidden coordinate inputs are populated
+      const latInput = visitModal.locator('input[name="latitude"]')
+      const lngInput = visitModal.locator('input[name="longitude"]')
+      await expect(latInput).toHaveValue(/.+/)
+      await expect(lngInput).toHaveValue(/.+/)
 
       // Verify start and end time have default values
       const startValue = await visitModal.locator('input[name="started_at"]').inputValue()
@@ -326,6 +330,207 @@ test.describe('Visits Layer', () => {
       // Verify name field has validation error (HTML5 validation)
       const isNameValid = await visitModal.locator('input[name="name"]').evaluate((el) => el.validity.valid)
       expect(isNameValid).toBe(false)
+    })
+  })
+
+  test.describe('Visit Edit', () => {
+    test('should open edit modal when clicking Edit in info display', async ({ page }) => {
+      // Enable visits layer
+      await page.click('button[title="Open map settings"]')
+      await page.waitForTimeout(400)
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+      const visitsToggle = page.locator('label:has-text("Visits")').first().locator('input.toggle')
+      await visitsToggle.check()
+      await page.waitForTimeout(1000)
+
+      // Close settings panel
+      await page.click('button[title="Close panel"]')
+      await page.waitForTimeout(500)
+
+      // Click on a visit marker on the map to trigger info display
+      // We need to find visits layer features
+      const hasVisits = await page.evaluate(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const visitsLayer = controller?.layerManager?.getLayer('visits')
+        return visitsLayer?.data?.features?.length > 0
+      })
+
+      if (!hasVisits) {
+        console.log('No visits found, skipping test')
+        test.skip()
+        return
+      }
+
+      // Get a visit feature from the map
+      const visitId = await page.evaluate(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const visitsLayer = controller?.layerManager?.getLayer('visits')
+        return visitsLayer?.data?.features[0]?.properties?.id
+      })
+
+      if (!visitId) {
+        console.log('No visit ID found, skipping test')
+        test.skip()
+        return
+      }
+
+      // Simulate clicking on a visit to trigger the info display
+      await page.evaluate((id) => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+
+        // Simulate a visit click event
+        const mockEvent = {
+          features: [{
+            properties: {
+              id: id,
+              name: 'Test Visit',
+              started_at: new Date().toISOString(),
+              ended_at: new Date().toISOString(),
+              duration: 3600,
+              status: 'confirmed'
+            }
+          }]
+        }
+        controller.eventHandlers.handleVisitClick(mockEvent)
+      }, visitId)
+
+      await page.waitForTimeout(1000)
+
+      // Verify info display is shown
+      const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+      await expect(infoDisplay).toBeVisible({ timeout: 5000 })
+
+      // Click Edit button
+      const editButton = infoDisplay.locator('button:has-text("Edit")')
+      await expect(editButton).toBeVisible()
+      await editButton.click()
+      await page.waitForTimeout(1500)
+
+      // Verify edit modal opens with "Edit Visit" title
+      await expect(page.locator('h3:has-text("Edit Visit")')).toBeVisible({ timeout: 5000 })
+
+      // Verify the modal has the visit creation controller (now used for editing too)
+      const visitModal = getVisitCreationModal(page)
+      await expect(visitModal).toBeVisible()
+
+      // Verify form fields are populated
+      const nameInput = visitModal.locator('input[name="name"]')
+      const nameValue = await nameInput.inputValue()
+      expect(nameValue).toBeTruthy()
+    })
+
+    test('should update visit successfully and refresh map', async ({ page }) => {
+      // Enable visits layer
+      await page.click('button[title="Open map settings"]')
+      await page.waitForTimeout(400)
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+      const visitsToggle = page.locator('label:has-text("Visits")').first().locator('input.toggle')
+      await visitsToggle.check()
+      await page.waitForTimeout(1000)
+
+      // First create a visit to edit
+      await page.click('button[data-tab="tools"]')
+      await page.waitForTimeout(300)
+      await page.click('button:has-text("Create a Visit")')
+      await page.waitForTimeout(500)
+
+      const mapContainer = page.locator('.maplibregl-canvas')
+      const bbox = await mapContainer.boundingBox()
+      await page.mouse.click(bbox.x + bbox.width * 0.4, bbox.y + bbox.height * 0.4)
+      await page.waitForTimeout(2000)
+
+      const visitModal = getVisitCreationModal(page)
+      await expect(visitModal).toBeVisible({ timeout: 5000 })
+
+      const originalName = `Edit Test Visit ${Date.now()}`
+      await visitModal.locator('input[name="name"]').fill(originalName)
+      await visitModal.locator('button:has-text("Create Visit")').click()
+
+      // Wait for success toast
+      await expect(page.locator('.toast:has-text("created successfully")')).toBeVisible({ timeout: 10000 })
+      await page.waitForTimeout(2000)
+
+      // Now trigger edit - simulate clicking on the visit
+      const visitId = await page.evaluate((name) => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const visitsLayer = controller?.layerManager?.getLayer('visits')
+        const visit = visitsLayer?.data?.features?.find(f => f.properties.name === name)
+        return visit?.properties?.id
+      }, originalName)
+
+      if (!visitId) {
+        console.log('Created visit not found in layer, skipping edit test')
+        test.skip()
+        return
+      }
+
+      // Simulate clicking on the visit
+      await page.evaluate((id) => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+
+        const mockEvent = {
+          features: [{
+            properties: {
+              id: id,
+              name: 'Test Visit',
+              started_at: new Date().toISOString(),
+              ended_at: new Date().toISOString(),
+              duration: 3600,
+              status: 'confirmed'
+            }
+          }]
+        }
+        controller.eventHandlers.handleVisitClick(mockEvent)
+      }, visitId)
+
+      await page.waitForTimeout(1000)
+
+      // Click Edit button
+      const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+      const editButton = infoDisplay.locator('button:has-text("Edit")')
+      await expect(editButton).toBeVisible({ timeout: 5000 })
+      await editButton.click()
+      await page.waitForTimeout(1500)
+
+      // Wait for edit modal
+      await expect(page.locator('h3:has-text("Edit Visit")')).toBeVisible({ timeout: 5000 })
+
+      // Update the name
+      const updatedName = `${originalName} EDITED`
+      const editModal = getVisitCreationModal(page)
+      await editModal.locator('input[name="name"]').fill(updatedName)
+
+      // Submit the update
+      await editModal.locator('button:has-text("Update Visit")').click()
+
+      // Wait for success toast
+      await expect(page.locator('.toast:has-text("updated successfully")')).toBeVisible({ timeout: 10000 })
+
+      // Wait for modal to close
+      await page.waitForTimeout(1500)
+
+      // Verify the visit was updated in the layer
+      const visitUpdated = await page.evaluate((name) => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const visitsLayer = controller?.layerManager?.getLayer('visits')
+        return visitsLayer?.data?.features?.some(f => f.properties.name === name)
+      }, updatedName)
+
+      expect(visitUpdated).toBe(true)
     })
   })
 })

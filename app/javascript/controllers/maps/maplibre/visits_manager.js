@@ -140,4 +140,14 @@ export class VisitsManager {
       console.error('[Maps V2] Failed to reload visits:', error)
     }
   }
+
+  /**
+   * Handle visit update event - reload visits and update layer
+   */
+  async handleVisitUpdated(event) {
+    console.log('[Maps V2] Visit updated, reloading visits...', event.detail)
+
+    // Reuse the same logic as creation
+    await this.handleVisitCreated(event)
+  }
 }

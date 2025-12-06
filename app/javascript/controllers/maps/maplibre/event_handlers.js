@@ -49,7 +49,13 @@ export class EventHandlers {
       </div>
     `
 
-    const actions = [{ url: `/visits/${properties.id}`, label: 'View Details →' }]
+    const actions = [{
+      type: 'button',
+      handler: 'handleEdit',
+      id: properties.id,
+      entityType: 'visit',
+      label: 'Edit'
+    }]
 
     this.controller.showInfo(properties.name || properties.place_name || 'Visit', content, actions)
   }
@@ -85,7 +91,13 @@ export class EventHandlers {
       </div>
     `
 
-    const actions = properties.id ? [{ url: `/places/${properties.id}`, label: 'View Details →' }] : []
+    const actions = properties.id ? [{
+      type: 'button',
+      handler: 'handleEdit',
+      id: properties.id,
+      entityType: 'place',
+      label: 'Edit'
+    }] : []
 
     this.controller.showInfo(properties.name || 'Place', content, actions)
   }
@@ -104,7 +116,13 @@ export class EventHandlers {
       </div>
     `
 
-    const actions = properties.id ? [{ url: `/areas/${properties.id}`, label: 'View Details →' }] : []
+    const actions = properties.id ? [{
+      type: 'button',
+      handler: 'handleDelete',
+      id: properties.id,
+      entityType: 'area',
+      label: 'Delete'
+    }] : []
 
     this.controller.showInfo(properties.name || 'Area', content, actions)
   }

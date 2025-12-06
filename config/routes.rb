@@ -132,7 +132,7 @@ Rails.application.routes.draw do
       get   'settings', to: 'settings#index'
       get   'users/me', to: 'users#me'
 
-      resources :areas,     only: %i[index create update destroy]
+      resources :areas,     only: %i[index show create update destroy]
       resources :places,    only: %i[index show create update destroy] do
         collection do
           get 'nearby'
@@ -148,7 +148,7 @@ Rails.application.routes.draw do
           delete :bulk_destroy
         end
       end
-      resources :visits, only: %i[index create update destroy] do
+      resources :visits, only: %i[index show create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
         collection do
           post 'merge', to: 'visits#merge'

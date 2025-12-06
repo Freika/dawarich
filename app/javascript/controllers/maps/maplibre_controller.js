@@ -106,12 +106,18 @@ export default class extends Controller {
     // Initialize search manager
     this.initializeSearch()
 
-    // Listen for visit and place creation events
+    // Listen for visit and place creation/update events
     this.boundHandleVisitCreated = this.visitsManager.handleVisitCreated.bind(this.visitsManager)
     this.cleanup.addEventListener(document, 'visit:created', this.boundHandleVisitCreated)
 
+    this.boundHandleVisitUpdated = this.visitsManager.handleVisitUpdated.bind(this.visitsManager)
+    this.cleanup.addEventListener(document, 'visit:updated', this.boundHandleVisitUpdated)
+
     this.boundHandlePlaceCreated = this.placesManager.handlePlaceCreated.bind(this.placesManager)
     this.cleanup.addEventListener(document, 'place:created', this.boundHandlePlaceCreated)
+
+    this.boundHandlePlaceUpdated = this.placesManager.handlePlaceUpdated.bind(this.placesManager)
+    this.cleanup.addEventListener(document, 'place:updated', this.boundHandlePlaceUpdated)
 
     this.boundHandleAreaCreated = this.handleAreaCreated.bind(this)
     this.cleanup.addEventListener(document, 'area:created', this.boundHandleAreaCreated)
@@ -353,9 +359,17 @@ export default class extends Controller {
 
     // Set actions
     if (actions.length > 0) {
-      this.infoActionsTarget.innerHTML = actions.map(action =>
-        `<a href="${action.url}" class="btn btn-sm btn-primary">${action.label}</a>`
-      ).join('')
+      this.infoActionsTarget.innerHTML = actions.map(action => {
+        if (action.type === 'button') {
+          // For button actions (modals, etc.), create a button with data-action
+          // Use error styling for delete buttons
+          const buttonClass = action.label === 'Delete' ? 'btn btn-sm btn-error' : 'btn btn-sm btn-primary'
+          return `<button class="${buttonClass}" data-action="click->maps--maplibre#${action.handler}" data-id="${action.id}" data-entity-type="${action.entityType}">${action.label}</button>`
+        } else {
+          // For link actions, keep the original behavior
+          return `<a href="${action.url}" class="btn btn-sm btn-primary">${action.label}</a>`
+        }
+      }).join('')
     } else {
       this.infoActionsTarget.innerHTML = ''
     }
@@ -370,6 +384,146 @@ export default class extends Controller {
   closeInfo() {
     if (!this.hasInfoDisplayTarget) return
     this.infoDisplayTarget.classList.add('hidden')
+  }
+
+  /**
+   * Handle edit action from info display
+   */
+  handleEdit(event) {
+    const button = event.currentTarget
+    const id = button.dataset.id
+    const entityType = button.dataset.entityType
+
+    console.log('[Maps V2] Opening edit for', entityType, id)
+
+    switch (entityType) {
+      case 'visit':
+        this.openVisitModal(id)
+        break
+      case 'place':
+        this.openPlaceEditModal(id)
+        break
+      default:
+        console.warn('[Maps V2] Unknown entity type:', entityType)
+    }
+  }
+
+  /**
+   * Handle delete action from info display
+   */
+  handleDelete(event) {
+    const button = event.currentTarget
+    const id = button.dataset.id
+    const entityType = button.dataset.entityType
+
+    console.log('[Maps V2] Deleting', entityType, id)
+
+    switch (entityType) {
+      case 'area':
+        this.deleteArea(id)
+        break
+      default:
+        console.warn('[Maps V2] Unknown entity type for delete:', entityType)
+    }
+  }
+
+  /**
+   * Open visit edit modal
+   */
+  async openVisitModal(visitId) {
+    try {
+      // Fetch visit details
+      const response = await fetch(`/api/v1/visits/${visitId}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKeyValue}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch visit: ${response.status}`)
+      }
+
+      const visit = await response.json()
+
+      // Trigger visit edit event
+      const event = new CustomEvent('visit:edit', {
+        detail: { visit },
+        bubbles: true
+      })
+      document.dispatchEvent(event)
+    } catch (error) {
+      console.error('[Maps V2] Failed to load visit:', error)
+      Toast.error('Failed to load visit details')
+    }
+  }
+
+  /**
+   * Delete area with confirmation
+   */
+  async deleteArea(areaId) {
+    try {
+      // Fetch area details
+      const area = await this.api.fetchArea(areaId)
+
+      // Show delete confirmation
+      const confirmed = confirm(`Delete area "${area.name}"?\n\nThis action cannot be undone.`)
+
+      if (!confirmed) return
+
+      Toast.info('Deleting area...')
+
+      // Delete the area
+      await this.api.deleteArea(areaId)
+
+      // Reload areas
+      const areas = await this.api.fetchAreas()
+      const areasGeoJSON = this.dataLoader.areasToGeoJSON(areas)
+
+      const areasLayer = this.layerManager.getLayer('areas')
+      if (areasLayer) {
+        areasLayer.update(areasGeoJSON)
+      }
+
+      // Close info display
+      this.closeInfo()
+
+      Toast.success('Area deleted successfully')
+    } catch (error) {
+      console.error('[Maps V2] Failed to delete area:', error)
+      Toast.error('Failed to delete area')
+    }
+  }
+
+  /**
+   * Open place edit modal
+   */
+  async openPlaceEditModal(placeId) {
+    try {
+      // Fetch place details
+      const response = await fetch(`/api/v1/places/${placeId}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKeyValue}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch place: ${response.status}`)
+      }
+
+      const place = await response.json()
+
+      // Trigger place edit event
+      const event = new CustomEvent('place:edit', {
+        detail: { place },
+        bubbles: true
+      })
+      document.dispatchEvent(event)
+    } catch (error) {
+      console.error('[Maps V2] Failed to load place:', error)
+      Toast.error('Failed to load place details')
+    }
   }
 
   switchToToolsTab() {

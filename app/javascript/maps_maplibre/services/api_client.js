@@ -155,6 +155,22 @@ export class ApiClient {
   }
 
   /**
+   * Fetch single area by ID
+   * @param {number} areaId - Area ID
+   */
+  async fetchArea(areaId) {
+    const response = await fetch(`${this.baseURL}/areas/${areaId}`, {
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch area: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Fetch tracks
    */
   async fetchTracks() {
@@ -182,6 +198,23 @@ export class ApiClient {
 
     if (!response.ok) {
       throw new Error(`Failed to create area: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Delete area by ID
+   * @param {number} areaId - Area ID
+   */
+  async deleteArea(areaId) {
+    const response = await fetch(`${this.baseURL}/areas/${areaId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete area: ${response.statusText}`)
     }
 
     return response.json()

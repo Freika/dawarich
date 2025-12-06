@@ -268,4 +268,14 @@ export class PlacesManager {
       console.error('[Maps V2] Failed to reload places:', error)
     }
   }
+
+  /**
+   * Handle place update event - reload places and update layer
+   */
+  async handlePlaceUpdated(event) {
+    console.log('[Maps V2] Place updated, reloading places...', event.detail)
+
+    // Reuse the same logic as creation
+    await this.handlePlaceCreated(event)
+  }
 }

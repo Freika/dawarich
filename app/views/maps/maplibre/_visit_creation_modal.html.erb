@@ -1,5 +1,5 @@
 <div data-controller="visit-creation-v2" data-visit-creation-v2-api-key-value="<%= current_user.api_key %>">
-  <div class="modal" data-visit-creation-v2-target="modal">
+  <div class="modal z-[10000]" data-visit-creation-v2-target="modal">
     <div class="modal-box max-w-2xl">
       <h3 class="font-bold text-lg mb-4" data-visit-creation-v2-target="modalTitle">Create New Visit</h3>
 
@@ -51,7 +51,7 @@
 
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" data-action="click->visit-creation-v2#close">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create Visit</button>
+          <button type="submit" class="btn btn-primary" data-visit-creation-v2-target="submitButton">Create Visit</button>
         </div>
       </form>
     </div>

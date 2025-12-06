@@ -13,7 +13,8 @@ export default class extends Controller {
     'startTimeInput',
     'endTimeInput',
     'latitudeInput',
-    'longitudeInput'
+    'longitudeInput',
+    'submitButton'
   ]
 
   static values = {
@@ -24,6 +25,14 @@ export default class extends Controller {
     console.log('[Visit Creation V2] Controller connected')
     this.marker = null
     this.mapController = null
+    this.editingVisitId = null
+    this.setupEventListeners()
+  }
+
+  setupEventListeners() {
+    document.addEventListener('visit:edit', (e) => {
+      this.openForEdit(e.detail.visit)
+    })
   }
 
   disconnect() {
@@ -36,9 +45,18 @@ export default class extends Controller {
   open(lat, lng, mapController) {
     console.log('[Visit Creation V2] Opening modal', { lat, lng })
 
+    this.editingVisitId = null
     this.mapController = mapController
     this.latitudeInputTarget.value = lat
     this.longitudeInputTarget.value = lng
+
+    // Set modal title and button for creation
+    if (this.hasModalTitleTarget) {
+      this.modalTitleTarget.textContent = 'Create New Visit'
+    }
+    if (this.hasSubmitButtonTarget) {
+      this.submitButtonTarget.textContent = 'Create Visit'
+    }
 
     // Set default times
     const now = new Date()
@@ -58,6 +76,48 @@ export default class extends Controller {
   }
 
   /**
+   * Open the modal for editing an existing visit
+   */
+  openForEdit(visit) {
+    console.log('[Visit Creation V2] Opening modal for edit', visit)
+
+    this.editingVisitId = visit.id
+
+    // Set modal title and button for editing
+    if (this.hasModalTitleTarget) {
+      this.modalTitleTarget.textContent = 'Edit Visit'
+    }
+    if (this.hasSubmitButtonTarget) {
+      this.submitButtonTarget.textContent = 'Update Visit'
+    }
+
+    // Fill form with visit data
+    this.nameInputTarget.value = visit.name || ''
+    this.latitudeInputTarget.value = visit.latitude
+    this.longitudeInputTarget.value = visit.longitude
+
+    // Convert timestamps to datetime-local format
+    this.startTimeInputTarget.value = this.formatDateTime(new Date(visit.started_at))
+    this.endTimeInputTarget.value = this.formatDateTime(new Date(visit.ended_at))
+
+    // Show modal
+    this.modalTarget.classList.add('modal-open')
+
+    // Focus on name input
+    setTimeout(() => this.nameInputTarget.focus(), 100)
+
+    // Try to get map controller from the maps--maplibre controller
+    const mapElement = document.querySelector('[data-controller*="maps--maplibre"]')
+    if (mapElement) {
+      const app = window.Stimulus || window.Application
+      this.mapController = app?.getControllerForElementAndIdentifier(mapElement, 'maps--maplibre')
+    }
+
+    // Add marker to map
+    this.addMarker(visit.latitude, visit.longitude)
+  }
+
+  /**
    * Close the modal
    */
   close() {
@@ -69,6 +129,9 @@ export default class extends Controller {
     // Reset form
     this.formTarget.reset()
 
+    // Reset editing state
+    this.editingVisitId = null
+
     // Remove marker
     this.removeMarker()
   }
@@ -79,7 +142,8 @@ export default class extends Controller {
   async submit(event) {
     event.preventDefault()
 
-    console.log('[Visit Creation V2] Submitting form')
+    const isEdit = this.editingVisitId !== null
+    console.log(`[Visit Creation V2] Submitting form (${isEdit ? 'edit' : 'create'})`)
 
     const formData = new FormData(this.formTarget)
 
@@ -95,8 +159,11 @@ export default class extends Controller {
     }
 
     try {
-      const response = await fetch('/api/v1/visits', {
-        method: 'POST',
+      const url = isEdit ? `/api/v1/visits/${this.editingVisitId}` : '/api/v1/visits'
+      const method = isEdit ? 'PATCH' : 'POST'
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKeyValue}`,
@@ -107,26 +174,27 @@ export default class extends Controller {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create visit')
+        throw new Error(errorData.error || `Failed to ${isEdit ? 'update' : 'create'} visit`)
       }
 
-      const createdVisit = await response.json()
+      const visit = await response.json()
 
-      console.log('[Visit Creation V2] Visit created successfully', createdVisit)
+      console.log(`[Visit Creation V2] Visit ${isEdit ? 'updated' : 'created'} successfully`, visit)
 
       // Show success message
-      this.showToast('Visit created successfully', 'success')
+      this.showToast(`Visit ${isEdit ? 'updated' : 'created'} successfully`, 'success')
 
       // Close modal
       this.close()
 
       // Dispatch event to notify map controller
-      document.dispatchEvent(new CustomEvent('visit:created', {
-        detail: createdVisit
+      const eventName = isEdit ? 'visit:updated' : 'visit:created'
+      document.dispatchEvent(new CustomEvent(eventName, {
+        detail: { visit }
       }))
     } catch (error) {
-      console.error('[Visit Creation V2] Error creating visit:', error)
-      this.showToast(error.message || 'Failed to create visit', 'error')
+      console.error(`[Visit Creation V2] Error ${isEdit ? 'updating' : 'creating'} visit:`, error)
+      this.showToast(error.message || `Failed to ${isEdit ? 'update' : 'create'} visit`, 'error')
     }
   }
 

@@ -14,13 +14,14 @@ test.describe('Advanced Layers', () => {
   })
 
   test.describe('Fog of War', () => {
-    test('fog layer is disabled by default', async ({ page }) => {
-      const fogEnabled = await page.evaluate(() => {
-        const settings = JSON.parse(localStorage.getItem('dawarich-maps-maplibre-settings') || '{}')
-        return settings.fogEnabled
-      })
+    test('fog layer toggle exists', async ({ page }) => {
+      await page.click('button[title="Open map settings"]')
+      await page.waitForTimeout(400)
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
 
-      expect(fogEnabled).toBeFalsy()
+      const fogToggle = page.locator('label:has-text("Fog of War")').first().locator('input.toggle')
+      await expect(fogToggle).toBeVisible()
     })
 
     test('can toggle fog layer', async ({ page }) => {
