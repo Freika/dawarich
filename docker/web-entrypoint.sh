@@ -34,6 +34,14 @@ export DATABASE_NAME
 # Remove pre-existing puma/passenger server.pid
 rm -f $APP_PATH/tmp/pids/server.pid
 
+# Sync static assets from image to volume
+# This ensures new files (like maps_maplibre styles) are copied to the persistent volume
+if [ -d "/tmp/public_assets" ]; then
+  echo "📦 Syncing new static assets to public volume..."
+  cp -rn /tmp/public_assets/* $APP_PATH/public/ 2>/dev/null || true
+  echo "✅ Static assets synced!"
+fi
+
 # Function to check and create a PostgreSQL database
 create_database() {
   local db_name=$1
