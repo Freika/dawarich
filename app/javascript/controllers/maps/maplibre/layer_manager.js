@@ -8,6 +8,7 @@ import { TracksLayer } from 'maps_maplibre/layers/tracks_layer'
 import { PlacesLayer } from 'maps_maplibre/layers/places_layer'
 import { FogLayer } from 'maps_maplibre/layers/fog_layer'
 import { FamilyLayer } from 'maps_maplibre/layers/family_layer'
+import { RecentPointLayer } from 'maps_maplibre/layers/recent_point_layer'
 import { lazyLoader } from 'maps_maplibre/utils/lazy_loader'
 import { performanceMonitor } from 'maps_maplibre/utils/performance_monitor'
 
@@ -29,7 +30,7 @@ export class LayerManager {
     performanceMonitor.mark('add-layers')
 
     // Layer order matters - layers added first render below layers added later
-    // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> places -> photos -> family -> points (top) -> fog (canvas overlay)
+    // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> places -> photos -> family -> points -> recent-point (top) -> fog (canvas overlay)
 
     await this._addScratchLayer(pointsGeoJSON)
     this._addHeatmapLayer(pointsGeoJSON)
@@ -48,6 +49,7 @@ export class LayerManager {
 
     this._addFamilyLayer()
     this._addPointsLayer(pointsGeoJSON)
+    this._addRecentPointLayer()
     this._addFogLayer(pointsGeoJSON)
 
     performanceMonitor.measure('add-layers')
@@ -250,6 +252,15 @@ export class LayerManager {
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {
       this.layers.pointsLayer.update(pointsGeoJSON)
+    }
+  }
+
+  _addRecentPointLayer() {
+    if (!this.layers.recentPointLayer) {
+      this.layers.recentPointLayer = new RecentPointLayer(this.map, {
+        visible: false // Initially hidden, shown only when live mode is enabled
+      })
+      this.layers.recentPointLayer.add({ type: 'FeatureCollection', features: [] })
     }
   }
 

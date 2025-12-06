@@ -81,6 +81,9 @@ export default class extends Controller {
   toggleLiveMode(event) {
     this.liveModeEnabled = event.target.checked
 
+    // Update recent point layer visibility
+    this.updateRecentPointLayerVisibility()
+
     // Reconnect channels with new settings
     if (this.channels) {
       this.channels.unsubscribeAll()
@@ -89,6 +92,28 @@ export default class extends Controller {
 
     const message = this.liveModeEnabled ? 'Live mode enabled' : 'Live mode disabled'
     Toast.info(message)
+  }
+
+  /**
+   * Update recent point layer visibility based on live mode state
+   */
+  updateRecentPointLayerVisibility() {
+    const mapsController = this.mapsV2Controller
+    if (!mapsController) {
+      return
+    }
+
+    const recentPointLayer = mapsController.layerManager?.getLayer('recentPoint')
+    if (!recentPointLayer) {
+      return
+    }
+
+    if (this.liveModeEnabled) {
+      recentPointLayer.show()
+    } else {
+      recentPointLayer.hide()
+      recentPointLayer.clear()
+    }
   }
 
   /**
@@ -199,6 +224,16 @@ export default class extends Controller {
 
     console.log('[Realtime Controller] Added new point to map:', id)
 
+    // Update recent point marker (always visible in live mode)
+    this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
+      id: parseInt(id),
+      battery: parseFloat(battery) || null,
+      altitude: parseFloat(altitude) || null,
+      timestamp: timestamp,
+      velocity: parseFloat(velocity) || null,
+      country_name: countryName || null
+    })
+
     // Zoom to the new point
     this.zoomToPoint(parseFloat(lon), parseFloat(lat))
 
@@ -223,6 +258,31 @@ export default class extends Controller {
    */
   handleNotification(notification) {
     Toast.info(notification.message || 'New notification')
+  }
+
+  /**
+   * Update the recent point marker
+   * This marker is always visible in live mode, independent of points layer visibility
+   */
+  updateRecentPoint(longitude, latitude, properties = {}) {
+    const mapsController = this.mapsV2Controller
+    if (!mapsController) {
+      console.warn('[Realtime Controller] Maps controller not found')
+      return
+    }
+
+    const recentPointLayer = mapsController.layerManager?.getLayer('recentPoint')
+    if (!recentPointLayer) {
+      console.warn('[Realtime Controller] Recent point layer not found')
+      return
+    }
+
+    // Show the layer if live mode is enabled and update with new point
+    if (this.liveModeEnabled) {
+      recentPointLayer.show()
+      recentPointLayer.updateRecentPoint(longitude, latitude, properties)
+      console.log('[Realtime Controller] Updated recent point marker:', longitude, latitude)
+    }
   }
 
   /**
