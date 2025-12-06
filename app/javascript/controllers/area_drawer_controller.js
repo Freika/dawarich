@@ -22,13 +22,11 @@ export default class extends Controller {
    * @param {maplibregl.Map} map - The MapLibre map instance
    */
   startDrawing(map) {
-    console.log('[Area Drawer] startDrawing called with map:', map)
     if (!map) {
       console.error('[Area Drawer] Map instance not provided')
       return
     }
 
-    console.log('[Area Drawer] Starting drawing mode')
     this.isDrawing = true
     this.map = map
     map.getCanvas().style.cursor = 'crosshair'
@@ -97,13 +95,9 @@ export default class extends Controller {
 
     if (!this.center) {
       // First click - set center
-      console.log('[Area Drawer] First click - setting center:', e.lngLat)
       this.center = [e.lngLat.lng, e.lngLat.lat]
     } else {
       // Second click - finish drawing
-      console.log('[Area Drawer] Second click - finishing drawing')
-
-      console.log('[Area Drawer] Dispatching area:drawn event')
       document.dispatchEvent(new CustomEvent('area:drawn', {
         detail: {
           center: this.center,

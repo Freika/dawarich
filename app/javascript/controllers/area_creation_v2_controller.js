@@ -33,7 +33,6 @@ export default class extends Controller {
    */
   setupEventListeners() {
     document.addEventListener('area:drawn', (e) => {
-      console.log('[Area Creation V2] area:drawn event received:', e.detail)
       this.open(e.detail.center, e.detail.radius)
     })
   }
@@ -42,8 +41,6 @@ export default class extends Controller {
    * Open the modal with area data
    */
   open(center, radius) {
-    console.log('[Area Creation V2] open() called with center:', center, 'radius:', radius)
-
     // Store area data
     this.area = { center, radius }
 
@@ -156,9 +153,6 @@ export default class extends Controller {
    * Show success message
    */
   showSuccess(message) {
-    // You can replace this with a toast notification if available
-    console.log(message)
-
     // Try to use the Toast component if available
     if (window.Toast) {
       window.Toast.show(message, 'success')

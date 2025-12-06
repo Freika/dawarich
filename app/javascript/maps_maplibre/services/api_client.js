@@ -123,14 +123,10 @@ export class ApiClient {
     })
 
     const url = `${this.baseURL}/photos?${params}`
-    console.log('[ApiClient] Fetching photos from:', url)
-    console.log('[ApiClient] With headers:', this.getHeaders())
 
     const response = await fetch(url, {
       headers: this.getHeaders()
     })
-
-    console.log('[ApiClient] Photos response status:', response.status)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch photos: ${response.statusText}`)
