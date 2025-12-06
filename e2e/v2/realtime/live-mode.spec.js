@@ -8,6 +8,17 @@ test.describe('Live Mode', () => {
     await closeOnboardingModal(page)
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)
+
+    // Wait for layers to be fully initialized
+    await page.waitForFunction(() => {
+      const element = document.querySelector('[data-controller*="maps--maplibre"]')
+      if (!element) return false
+      const app = window.Stimulus || window.Application
+      if (!app) return false
+      const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+      return controller?.layerManager?.layers?.recentPointLayer !== undefined
+    }, { timeout: 10000 })
+
     await page.waitForTimeout(1000)
   })
 
