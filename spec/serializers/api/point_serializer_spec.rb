@@ -12,6 +12,7 @@ RSpec.describe Api::PointSerializer do
       point.attributes.except(*all_excluded).tap do |attributes|
         attributes['latitude'] = point.lat.to_s
         attributes['longitude'] = point.lon.to_s
+        attributes['country_name'] = point.country_name
       end
     end
 

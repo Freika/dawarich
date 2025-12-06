@@ -100,7 +100,7 @@ RSpec.describe Users::ExportData, type: :service do
         expect(Users::ExportData::Trips).to receive(:new).with(user)
         expect(Users::ExportData::Stats).to receive(:new).with(user)
         expect(Users::ExportData::Notifications).to receive(:new).with(user)
-        expect(Users::ExportData::Points).to receive(:new).with(user)
+        expect(Users::ExportData::Points).to receive(:new).with(user, an_instance_of(StringIO))
         expect(Users::ExportData::Visits).to receive(:new).with(user)
         expect(Users::ExportData::Places).to receive(:new).with(user)
 
