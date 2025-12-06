@@ -4,6 +4,7 @@
 
 pin_all_from 'app/javascript/channels', under: 'channels'
 pin_all_from 'app/javascript/maps', under: 'maps'
+pin_all_from 'app/javascript/maps_maplibre', under: 'maps_maplibre'
 
 pin 'application', preload: true
 pin '@rails/actioncable', to: 'actioncable.esm.js'
@@ -14,7 +15,7 @@ pin '@hotwired/stimulus', to: 'stimulus.min.js', preload: true
 pin '@hotwired/stimulus-loading', to: 'stimulus-loading.js', preload: true
 pin_all_from 'app/javascript/controllers', under: 'controllers'
 
-pin "leaflet" # @1.9.4
+pin 'leaflet' # @1.9.4
 pin 'leaflet-providers' # @2.0.0
 pin 'chartkick', to: 'chartkick.js'
 pin 'Chart.bundle', to: 'Chart.bundle.js'
@@ -26,5 +27,6 @@ pin 'imports_channel', to: 'channels/imports_channel.js'
 pin 'family_locations_channel', to: 'channels/family_locations_channel.js'
 pin 'trix'
 pin '@rails/actiontext', to: 'actiontext.esm.js'
-pin "leaflet.control.layers.tree" # @1.2.0
-pin "emoji-mart" # @5.6.0
+pin 'leaflet.control.layers.tree' # @1.2.0
+pin 'emoji-mart' # @5.6.0
+pin 'maplibre-gl' # @5.12.0

@@ -110,11 +110,11 @@ test.describe('Selection Tool', () => {
     // Navigate to a date with known data (October 13, 2024 - same as bulk delete tests)
     const startInput = page.locator('input[type="datetime-local"][name="start_at"]');
     await startInput.clear();
-    await startInput.fill('2024-10-13T00:00');
+    await startInput.fill('2024-10-15T00:00');
 
     const endInput = page.locator('input[type="datetime-local"][name="end_at"]');
     await endInput.clear();
-    await endInput.fill('2024-10-13T23:59');
+    await endInput.fill('2024-10-15T23:59');
 
     await page.click('input[type="submit"][value="Search"]');
     await page.waitForLoadState('networkidle');

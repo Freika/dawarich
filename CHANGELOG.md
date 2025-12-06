@@ -4,7 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[0.36.1] - 2025-11-29
+
+# [0.36.2] - Unreleased
+
+
+## Fixed
+
+- Heatmap and Fog of War now are moving correctly during map interactions. #1798
+- Polyline crossing international date line now are rendered correctly. #1162
+- Place popup tags parsing (MapLibre GL JS compatibility)
+- Stats calculation should be faster now.
+
+## Changed
+
+- Points on the Map page are now loaded in chunks to improve performance and reduce memory consumption.
+
+
+# [0.36.1] - 2025-11-29
 
 ## Fixed
 

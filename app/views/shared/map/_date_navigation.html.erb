@@ -1,5 +1,3 @@
-<% content_for :title, 'Map' %>
-
 <!-- Date Navigation Controls - Native Page Element -->
 <div class="w-full px-4 bg-base-100" data-controller="map-controls">
   <!-- Mobile: Compact Toggle Button -->
@@ -11,7 +9,7 @@
       <span data-map-controls-target="toggleIcon">
         <%= icon 'chevron-down' %>
       </span>
-      <span class="ml-2"><%= human_date(@start_at) %></span>
+      <span class="ml-2"><%= human_date(start_at) %></span>
     </button>
   </div>
 
@@ -23,23 +21,23 @@
       <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-end">
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <span class="tooltip" data-tip="<%= human_date(@start_at - 1.day) %>">
-              <%= link_to map_path(start_at: @start_at - 1.day, end_at: @end_at - 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+            <span class="tooltip" data-tip="<%= human_date(start_at - 1.day) %>">
+              <%= link_to map_path(start_at: start_at - 1.day, end_at: end_at - 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-left' %>
               <% end %>
             </span>
           </div>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="Start date and time">
-          <%= f.datetime_local_field :start_at, include_seconds: false, class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: @start_at %>
+          <%= f.datetime_local_field :start_at, include_seconds: false, class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: start_at %>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="End date and time">
-          <%= f.datetime_local_field :end_at, include_seconds: false, class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: @end_at %>
+          <%= f.datetime_local_field :end_at, include_seconds: false, class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at %>
         </div>
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
-            <span class="tooltip" data-tip="<%= human_date(@start_at + 1.day) %>">
-              <%= link_to map_path(start_at: @start_at + 1.day, end_at: @end_at + 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+            <span class="tooltip" data-tip="<%= human_date(start_at + 1.day) %>">
+              <%= link_to map_path(start_at: start_at + 1.day, end_at: end_at + 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-right' %>
               <% end %>
             </span>
@@ -71,35 +69,3 @@
     <% end %>
   </div>
 </div>
-
-<!-- Map Container - Fills remaining space -->
-<div class="w-full h-full">
-  <div
-    id='map'
-    class="w-full h-full"
-    data-controller="maps points add-visit family-members"
-    data-points-target="map"
-    data-api_key="<%= current_user.api_key %>"
-    data-self_hosted="<%= @self_hosted %>"
-    data-user_settings='<%= current_user.safe_settings.settings.to_json %>'
-    data-user_theme="<%= current_user&.theme || 'dark' %>"
-    data-coordinates='<%= @coordinates.to_json.html_safe %>'
-    data-tracks='<%= @tracks.to_json.html_safe %>'
-    data-distance="<%= @distance %>"
-    data-points_number="<%= @points_number %>"
-    data-timezone="<%= Rails.configuration.time_zone %>"
-    data-features='<%= @features.to_json.html_safe %>'
-    data-user_tags='<%= current_user.tags.ordered.select(:id, :name, :icon, :color).as_json.to_json.html_safe %>'
-    data-home_coordinates='<%= @home_coordinates.to_json.html_safe %>'
-    data-family-members-features-value='<%= @features.to_json.html_safe %>'
-    data-family-members-user-theme-value="<%= current_user&.theme || 'dark' %>">
-    <div data-maps-target="container" class="w-full h-full">
-      <div id="fog" class="fog"></div>
-    </div>
-  </div>
-</div>
-
-<%= render 'map/settings_modals' %>
-
-<!-- Include Place Creation Modal -->
-<%= render 'shared/place_creation_modal' %>

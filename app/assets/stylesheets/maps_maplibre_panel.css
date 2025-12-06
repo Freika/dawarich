@@ -1,0 +1,286 @@
+/* Maps V2 Control Panel Styles */
+
+.map-control-panel {
+  position: absolute;
+  top: 0;
+  right: -480px; /* Hidden by default */
+  width: 480px;
+  height: 100%;
+  background: oklch(var(--b1));
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  overflow: hidden;
+}
+
+.map-control-panel.open {
+  right: 0;
+}
+
+/* Vertical Tab Bar */
+.panel-tabs {
+  width: 64px;
+  background: oklch(var(--b2));
+  border-right: 1px solid oklch(var(--bc) / 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  color: oklch(var(--bc) / 0.6);
+}
+
+.tab-btn:hover {
+  background: oklch(var(--b3));
+  color: oklch(var(--bc));
+}
+
+.tab-btn.active {
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: oklch(var(--p));
+  border-radius: 2px 0 0 2px;
+}
+
+.tab-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Panel Content */
+.panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+  background: oklch(var(--b1));
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: oklch(var(--bc));
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Tab Content */
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Custom Scrollbar */
+.panel-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+  background: oklch(var(--bc) / 0.2);
+  border-radius: 4px;
+}
+
+.panel-body::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--bc) / 0.3);
+}
+
+/* Toggle Focus State - Remove all focus indicators */
+.toggle:focus,
+.toggle:focus-visible,
+.toggle:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: inherit !important;
+}
+
+/* Override DaisyUI toggle focus styles */
+.toggle:focus-visible:checked,
+.toggle:checked:focus,
+.toggle:checked:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure no outline on the toggle container */
+.form-control .toggle:focus {
+  outline: none !important;
+}
+
+/* Prevent indeterminate visual state on toggles */
+.toggle:indeterminate {
+  opacity: 1;
+}
+
+/* Ensure smooth toggle transitions without intermediate states */
+.toggle {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.toggle:checked {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Remove any active/pressed state that might cause intermediate appearance */
+.toggle:active,
+.toggle:active:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Responsive Breakpoints */
+
+/* Large tablets and smaller desktops (1024px - 1280px) */
+@media (max-width: 1280px) {
+  .map-control-panel {
+    width: 420px;
+    right: -420px;
+  }
+}
+
+/* Tablets (768px - 1024px) */
+@media (max-width: 1024px) {
+  .map-control-panel {
+    width: 380px;
+    right: -380px;
+  }
+
+  .panel-body {
+    padding: 20px;
+  }
+}
+
+/* Small tablets and large phones (640px - 768px) */
+@media (max-width: 768px) {
+  .map-control-panel {
+    width: 95%;
+    right: -95%;
+    max-width: 480px;
+  }
+
+  .panel-header {
+    padding: 16px 20px;
+  }
+
+  .panel-title {
+    font-size: 1.125rem;
+  }
+
+  .panel-body {
+    padding: 16px 20px;
+  }
+}
+
+/* Mobile phones (< 640px) */
+@media (max-width: 640px) {
+  .map-control-panel {
+    width: 100%;
+    right: -100%;
+    max-width: none;
+  }
+
+  .panel-tabs {
+    width: 56px;
+    padding: 12px 0;
+    gap: 6px;
+  }
+
+  .tab-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tab-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .panel-header {
+    padding: 14px 16px;
+  }
+
+  .panel-title {
+    font-size: 1rem;
+  }
+
+  .panel-body {
+    padding: 16px;
+  }
+
+  /* Reduce spacing on mobile */
+  .space-y-4 > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .space-y-6 > * + * {
+    margin-top: 1rem;
+  }
+}
+
+/* Very small phones (< 375px) */
+@media (max-width: 375px) {
+  .panel-tabs {
+    width: 52px;
+    padding: 10px 0;
+  }
+
+  .tab-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .panel-header {
+    padding: 12px;
+  }
+
+  .panel-body {
+    padding: 12px;
+  }
+}

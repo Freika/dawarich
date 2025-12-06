@@ -1,0 +1,49 @@
+<% content_for :title, 'Map' %>
+
+<%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
+
+<div id="maps-maplibre-container"
+     data-controller="maps--maplibre area-drawer maps--maplibre-realtime"
+     data-maps--maplibre-api-key-value="<%= current_user.api_key %>"
+     data-maps--maplibre-start-date-value="<%= @start_at.to_s %>"
+     data-maps--maplibre-end-date-value="<%= @end_at.to_s %>"
+     data-maps--maplibre-realtime-enabled-value="true"
+     style="width: 100%; height: 100%; position: relative;">
+
+  <!-- Map container takes full width and height -->
+  <div data-maps--maplibre-target="container" class="maps-maplibre-container" style="width: 100%; height: 100%;"></div>
+
+  <!-- Connection indicator -->
+  <div class="connection-indicator disconnected">
+    <span class="indicator-dot"></span>
+    <span class="indicator-text"></span>
+  </div>
+
+  <!-- Settings button (top-left corner) -->
+  <div class="absolute top-4 left-4 z-10">
+    <button data-action="click->maps--maplibre#toggleSettings"
+            class="btn btn-sm btn-primary"
+            title="Open map settings">
+      <%= icon 'square-pen' %>
+      <span class="ml-1">Settings</span>
+    </button>
+  </div>
+
+  <!-- Loading overlay -->
+  <div data-maps--maplibre-target="loading" class="loading-overlay hidden">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" data-maps--maplibre-target="loadingText">Loading points...</div>
+  </div>
+
+  <!-- Settings panel -->
+  <%= render 'map/maplibre/settings_panel' %>
+
+  <!-- Visit creation modal -->
+  <%= render 'map/maplibre/visit_creation_modal' %>
+
+  <!-- Area creation modal -->
+  <%= render 'map/maplibre/area_creation_modal' %>
+
+  <!-- Place creation modal (shared) -->
+  <%= render 'shared/place_creation_modal' %>
+</div>
