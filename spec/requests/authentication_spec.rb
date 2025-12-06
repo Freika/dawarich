@@ -7,7 +7,7 @@ RSpec.describe 'Authentication', type: :request do
 
   describe 'Route Protection' do
     it 'redirects to sign in page when accessing protected routes while signed out' do
-      get map_path
+      get map_v1_path
       expect(response).to redirect_to(new_user_session_path)
     end
 

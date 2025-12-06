@@ -17,6 +17,7 @@ class Api::PointSerializer
 
       attributes['latitude']  = lat&.to_s
       attributes['longitude'] = lon&.to_s
+      attributes['country_name'] = point.country_name
     end
   end
 

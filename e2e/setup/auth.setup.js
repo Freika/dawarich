@@ -16,8 +16,8 @@ setup('authenticate', async ({ page }) => {
   // Click login button
   await page.click('input[type="submit"][value="Log in"]');
 
-  // Wait for successful navigation
-  await page.waitForURL('/map', { timeout: 10000 });
+  // Wait for successful navigation to map (v1 or v2 depending on user preference)
+  await page.waitForURL(/\/map(\/v[12])?/, { timeout: 10000 });
 
   // Save authentication state
   await page.context().storageState({ path: authFile });

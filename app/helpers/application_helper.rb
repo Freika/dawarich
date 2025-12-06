@@ -142,4 +142,11 @@ module ApplicationHelper
 
     ALLOW_EMAIL_PASSWORD_REGISTRATION
   end
+
+  def preferred_map_path
+    return map_v1_path unless user_signed_in?
+
+    preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
+    preferred_version == 'v2' ? map_v2_path : map_v1_path
+  end
 end

@@ -5,7 +5,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
       </label>
       <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-        <li><%= link_to 'Map', map_url, class: "#{active_class?(map_url)}" %></li>
+        <li><%= link_to 'Map', preferred_map_path, class: "#{active_class?(preferred_map_path)}" %></li>
         <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
         <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
         <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
@@ -44,7 +44,7 @@
         <% end %>
       </ul>
     </div>
-    <%= link_to 'Dawarich<sup>α</sup>'.html_safe, root_path, class: 'btn btn-ghost normal-case text-xl'%>
+    <%= link_to 'Dawarich<sup>α</sup>'.html_safe, (user_signed_in? ? preferred_map_path : root_path), class: 'btn btn-ghost normal-case text-xl'%>
     <div class="badge mx-4 <%= 'badge-outline' if new_version_available? %>">
       <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
         <% if new_version_available? %>
@@ -71,7 +71,7 @@
   </div>
   <div class="navbar-center hidden lg:flex">
     <ul class="menu menu-horizontal px-1">
-      <li><%= link_to 'Map', map_url, class: "mx-1 #{active_class?(map_url)}" %></li>
+      <li><%= link_to 'Map', preferred_map_path, class: "mx-1 #{active_class?(preferred_map_path)}" %></li>
       <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
       <li><%= link_to 'Stats', stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
       <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>

@@ -4,7 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[0.36.1] - 2025-11-29
+
+# [0.36.2] - 2025-12-06
+
+## The Map v2 release
+
+In this release we're introducing Map v2 based on MapLibre GL JS. It brings better performance, smoother interactions and more features in the future. User can select between Map v1 (Leaflet) and Map v2 (MapLibre GL JS) in the Settings -> Map Settings. New map features will be added to Map v2 only.
+
+## Added
+
+- User can select between Map v1 (Leaflet) and Map v2 (MapLibre GL JS) in the User Settings.
+
+## Fixed
+
+- Heatmap and Fog of War now are moving correctly during map interactions on v2 map. #1798
+- Polyline crossing international date line now are rendered correctly on v2 map. #1162
+- Place popup tags parsing (MapLibre GL JS compatibility)
+- Stats calculation should be faster now.
+
+
+# [0.36.1] - 2025-11-29
 
 ## Fixed
 

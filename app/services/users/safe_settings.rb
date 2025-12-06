@@ -20,7 +20,8 @@ class Users::SafeSettings
     'photoprism_api_key' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
-    'enabled_map_layers' => ['Routes', 'Heatmap']
+    'enabled_map_layers' => ['Routes', 'Heatmap'],
+    'maps_maplibre_style' => 'light'
   }.freeze
 
   def initialize(settings = {})
@@ -28,7 +29,7 @@ class Users::SafeSettings
   end
 
   # rubocop:disable Metrics/MethodLength
-  def default_settings
+  def config
     {
       fog_of_war_meters: fog_of_war_meters,
       meters_between_routes: meters_between_routes,
@@ -49,7 +50,8 @@ class Users::SafeSettings
       visits_suggestions_enabled: visits_suggestions_enabled?,
       speed_color_scale: speed_color_scale,
       fog_of_war_threshold: fog_of_war_threshold,
-      enabled_map_layers: enabled_map_layers
+      enabled_map_layers: enabled_map_layers,
+      maps_maplibre_style: maps_maplibre_style
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -132,5 +134,9 @@ class Users::SafeSettings
 
   def enabled_map_layers
     settings['enabled_map_layers']
+  end
+
+  def maps_maplibre_style
+    settings['maps_maplibre_style']
   end
 end

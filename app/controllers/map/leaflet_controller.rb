@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class MapController < ApplicationController
+class Map::LeafletController < ApplicationController
   before_action :authenticate_user!
   layout 'map', only: :index
 

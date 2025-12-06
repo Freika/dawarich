@@ -73,7 +73,7 @@ Simply install one of the supported apps on your device and configure it to send
 1. Clone the repository.
 2. Run the following command to start the app:
    ```bash
-   docker-compose -f docker/docker-compose.yml up
+   docker compose -f docker/docker-compose.yml up
    ```
 3. Access the app at `http://localhost:3000`.
 

@@ -10,6 +10,11 @@ class Api::V1::VisitsController < ApiController
     render json: serialized_visits
   end
 
+  def show
+    visit = current_api_user.visits.find(params[:id])
+    render json: Api::VisitSerializer.new(visit).call
+  end
+
   def create
     service = Visits::Create.new(current_api_user, visit_params)
 
