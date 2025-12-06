@@ -93,23 +93,17 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = ''
     })
     // Areas hover handlers for all sub-layers
-    this.map.on('mouseenter', 'areas-fill', () => {
-      this.map.getCanvas().style.cursor = 'pointer'
-    })
-    this.map.on('mouseleave', 'areas-fill', () => {
-      this.map.getCanvas().style.cursor = ''
-    })
-    this.map.on('mouseenter', 'areas-outline', () => {
-      this.map.getCanvas().style.cursor = 'pointer'
-    })
-    this.map.on('mouseleave', 'areas-outline', () => {
-      this.map.getCanvas().style.cursor = ''
-    })
-    this.map.on('mouseenter', 'areas-labels', () => {
-      this.map.getCanvas().style.cursor = 'pointer'
-    })
-    this.map.on('mouseleave', 'areas-labels', () => {
-      this.map.getCanvas().style.cursor = ''
+    const areaLayers = ['areas-fill', 'areas-outline', 'areas-labels']
+    areaLayers.forEach(layerId => {
+      // Only add handlers if layer exists
+      if (this.map.getLayer(layerId)) {
+        this.map.on('mouseenter', layerId, () => {
+          this.map.getCanvas().style.cursor = 'pointer'
+        })
+        this.map.on('mouseleave', layerId, () => {
+          this.map.getCanvas().style.cursor = ''
+        })
+      }
     })
   }
 

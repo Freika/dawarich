@@ -5,7 +5,7 @@ class Api::V1::SettingsController < ApiController
 
   def index
     render json: {
-      settings: current_api_user.settings,
+      settings: current_api_user.safe_settings.config,
       status: 'success'
     }, status: :ok
   end

@@ -28,7 +28,7 @@ class Users::SafeSettings
   end
 
   # rubocop:disable Metrics/MethodLength
-  def default_settings
+  def config
     {
       fog_of_war_meters: fog_of_war_meters,
       meters_between_routes: meters_between_routes,

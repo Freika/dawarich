@@ -3,13 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe Users::SafeSettings do
-  describe '#default_settings' do
+  describe '#config' do
     context 'with default values' do
       let(:settings) { {} }
       let(:safe_settings) { described_class.new(settings) }
 
       it 'returns default configuration' do
-        expect(safe_settings.default_settings).to eq(
+        expect(safe_settings.config).to eq(
           {
             fog_of_war_meters: 50,
             meters_between_routes: 500,
@@ -84,8 +84,8 @@ RSpec.describe Users::SafeSettings do
         )
       end
 
-      it 'returns custom default_settings configuration' do
-        expect(safe_settings.default_settings).to eq(
+      it 'returns custom config configuration' do
+        expect(safe_settings.config).to eq(
           {
             fog_of_war_meters: 100,
             meters_between_routes: 1000,
