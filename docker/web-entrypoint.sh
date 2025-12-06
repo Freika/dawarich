@@ -83,4 +83,4 @@ echo "Running seeds..."
 bundle exec rails db:seed
 
 # run passed commands
-bundle exec ${@}
+exec bundle exec ${@}
