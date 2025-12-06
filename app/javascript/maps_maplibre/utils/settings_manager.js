@@ -39,6 +39,7 @@ const BACKEND_SETTINGS_MAP = {
 
 export class SettingsManager {
   static apiKey = null
+  static cachedSettings = null
 
   /**
    * Initialize settings manager with API key
@@ -46,20 +47,32 @@ export class SettingsManager {
    */
   static initialize(apiKey) {
     this.apiKey = apiKey
+    this.cachedSettings = null // Clear cache on initialization
   }
 
   /**
    * Get all settings (localStorage first, then merge with defaults)
    * Converts enabled_map_layers array to individual boolean flags
+   * Uses cached settings if available to avoid race conditions
    * @returns {Object} Settings object
    */
   static getSettings() {
+    // Return cached settings if available
+    if (this.cachedSettings) {
+      return { ...this.cachedSettings }
+    }
+
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       const settings = stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS
 
       // Convert enabled_map_layers array to individual boolean flags
-      return this._expandLayerSettings(settings)
+      const expandedSettings = this._expandLayerSettings(settings)
+
+      // Cache the settings
+      this.cachedSettings = expandedSettings
+
+      return { ...expandedSettings }
     } catch (error) {
       console.error('Failed to load settings:', error)
       return DEFAULT_SETTINGS
@@ -143,7 +156,7 @@ export class SettingsManager {
       // Convert enabled_map_layers array to individual boolean flags
       const expandedSettings = this._expandLayerSettings(mergedSettings)
 
-      // Save to localStorage
+      // Save to localStorage and cache
       this.saveToLocalStorage(expandedSettings)
 
       return expandedSettings
@@ -154,11 +167,14 @@ export class SettingsManager {
   }
 
   /**
-   * Save all settings to localStorage
+   * Save all settings to localStorage and update cache
    * @param {Object} settings - Settings object
    */
   static saveToLocalStorage(settings) {
     try {
+      // Update cache first
+      this.cachedSettings = { ...settings }
+      // Then save to localStorage
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
     } catch (error) {
       console.error('Failed to save settings to localStorage:', error)
@@ -230,6 +246,13 @@ export class SettingsManager {
     const settings = this.getSettings()
     settings[key] = value
 
+    // If this is a layer visibility setting, also update the enabledMapLayers array
+    // This ensures the array is in sync before backend save
+    const isLayerSetting = Object.values(LAYER_NAME_MAP).includes(key)
+    if (isLayerSetting) {
+      settings.enabledMapLayers = this._collapseLayerSettings(settings)
+    }
+
     // Save to localStorage immediately
     this.saveToLocalStorage(settings)
 
@@ -245,6 +268,7 @@ export class SettingsManager {
   static resetToDefaults() {
     try {
       localStorage.removeItem(STORAGE_KEY)
+      this.cachedSettings = null // Clear cache
 
       // Also reset on backend
       if (this.apiKey) {

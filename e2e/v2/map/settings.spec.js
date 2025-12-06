@@ -169,6 +169,78 @@ test.describe('Map Settings', () => {
       expect(pointsVisible).toBe(true)
       expect(routesVisible).toBe(true)
     })
+
+    test('rapidly toggling multiple layers without page reload persists all changes', async ({ page }) => {
+      await page.click('button[title="Open map settings"]')
+      await page.waitForTimeout(400)
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
+      // Get all layer toggles
+      const pointsToggle = page.locator('label:has-text("Points")').first().locator('input.toggle')
+      const routesToggle = page.locator('label:has-text("Routes")').first().locator('input.toggle')
+      const heatmapToggle = page.locator('label:has-text("Heatmap")').first().locator('input.toggle')
+
+      // Record initial states
+      const initialPoints = await pointsToggle.isChecked()
+      const initialRoutes = await routesToggle.isChecked()
+      const initialHeatmap = await heatmapToggle.isChecked()
+
+      // Rapidly toggle all three layers without waiting between toggles
+      await pointsToggle.click()
+      await routesToggle.click()
+      await heatmapToggle.click()
+
+      // Wait for settings to be saved (backend saves are async)
+      await page.waitForTimeout(1000)
+
+      // Verify toggle states changed
+      expect(await pointsToggle.isChecked()).toBe(!initialPoints)
+      expect(await routesToggle.isChecked()).toBe(!initialRoutes)
+      expect(await heatmapToggle.isChecked()).toBe(!initialHeatmap)
+
+      // Verify settings persisted in localStorage
+      const settings = await page.evaluate(() => {
+        return localStorage.getItem('dawarich-maps-maplibre-settings')
+      })
+
+      if (settings) {
+        const parsed = JSON.parse(settings)
+        expect(parsed.pointsVisible).toBe(!initialPoints)
+        expect(parsed.routesVisible).toBe(!initialRoutes)
+        expect(parsed.heatmapEnabled).toBe(!initialHeatmap)
+
+        // Verify enabledMapLayers array is also updated correctly
+        if (!initialPoints) {
+          expect(parsed.enabledMapLayers).toContain('Points')
+        } else {
+          expect(parsed.enabledMapLayers).not.toContain('Points')
+        }
+        if (!initialRoutes) {
+          expect(parsed.enabledMapLayers).toContain('Routes')
+        } else {
+          expect(parsed.enabledMapLayers).not.toContain('Routes')
+        }
+        if (!initialHeatmap) {
+          expect(parsed.enabledMapLayers).toContain('Heatmap')
+        } else {
+          expect(parsed.enabledMapLayers).not.toContain('Heatmap')
+        }
+      }
+
+      // Toggle them back rapidly
+      await pointsToggle.click()
+      await routesToggle.click()
+      await heatmapToggle.click()
+
+      // Wait for settings to be saved
+      await page.waitForTimeout(1000)
+
+      // Verify all states returned to initial values
+      expect(await pointsToggle.isChecked()).toBe(initialPoints)
+      expect(await routesToggle.isChecked()).toBe(initialRoutes)
+      expect(await heatmapToggle.isChecked()).toBe(initialHeatmap)
+    })
   })
 
   test.describe('Settings Persistence', () => {
