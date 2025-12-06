@@ -16,10 +16,6 @@
     "@playwright/test": "^1.56.1",
     "@types/node": "^24.0.13"
   },
-  "scripts": {
-    "build": "esbuild app/javascript/*.* --bundle --splitting --format=esm --outdir=app/assets/builds",
-    "analyze": "esbuild app/javascript/*.* --bundle --metafile=meta.json --analyze"
-  },
   "sideEffects": [
     "*.css",
     "maplibre-gl/dist/maplibre-gl.css"
