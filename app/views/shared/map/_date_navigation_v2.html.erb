@@ -17,12 +17,12 @@
   <div
     data-map-controls-target="panel"
     class="hidden lg:!block bg-base-100 rounded-lg shadow-lg p-4 mt-2 lg:mt-0">
-    <%= form_with url: maps_maplibre_path(import_id: params[:import_id]), method: :get do |f| %>
+    <%= form_with url: maps_v2_path(import_id: params[:import_id]), method: :get do |f| %>
       <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-end">
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
             <span class="tooltip" data-tip="<%= human_date(start_at - 1.day) %>">
-              <%= link_to maps_maplibre_path(start_at: start_at - 1.day, end_at: end_at - 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+              <%= link_to maps_v2_path(start_at: start_at - 1.day, end_at: end_at - 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-left' %>
               <% end %>
             </span>
@@ -37,7 +37,7 @@
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2">
             <span class="tooltip" data-tip="<%= human_date(start_at + 1.day) %>">
-              <%= link_to maps_maplibre_path(start_at: start_at + 1.day, end_at: end_at + 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+              <%= link_to maps_v2_path(start_at: start_at + 1.day, end_at: end_at + 1.day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
                 <%= icon 'chevron-right' %>
               <% end %>
             </span>
@@ -51,18 +51,18 @@
         <div class="w-full lg:w-1/12">
           <div class="flex flex-col space-y-2 text-center">
             <%= link_to "Today",
-              maps_maplibre_path(start_at: Time.current.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]),
+              maps_v2_path(start_at: Time.current.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]),
               class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last 7 days", maps_maplibre_path(start_at: 1.week.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to "Last 7 days", maps_v2_path(start_at: 1.week.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
         <div class="w-full lg:w-2/12">
           <div class="flex flex-col space-y-2 text-center">
-            <%= link_to "Last month", maps_maplibre_path(start_at: 1.month.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
+            <%= link_to "Last month", maps_v2_path(start_at: 1.month.ago.beginning_of_day, end_at: Time.current.end_of_day, import_id: params[:import_id]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
           </div>
         </div>
       </div>

@@ -7,7 +7,7 @@
  * @param {Page} page - Playwright page object
  */
 export async function navigateToMapsV2(page) {
-  await page.goto('/maps/maplibre');
+  await page.goto('/maps/v2');
 }
 
 /**

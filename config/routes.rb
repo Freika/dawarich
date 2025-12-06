@@ -118,11 +118,12 @@ Rails.application.routes.draw do
 
   # Maps namespace
   namespace :maps do
-    get '/maplibre', to: 'maplibre#index', as: :maplibre
+    get '/v2', to: 'maplibre#index', as: :v2
   end
 
-  # Backward compatibility redirect
-  get '/maps_v2', to: redirect('/maps/maplibre')
+  # Backward compatibility redirects
+  get '/maps_v2', to: redirect('/maps/v2')
+  get '/maps/maplibre', to: redirect('/maps/v2')
 
   namespace :api do
     namespace :v1 do

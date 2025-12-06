@@ -147,6 +147,6 @@ module ApplicationHelper
     return map_path unless user_signed_in?
 
     preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
-    preferred_version == 'v2' ? maps_maplibre_path : map_path
+    preferred_version == 'v2' ? maps_v2_path : map_path
   end
 end

@@ -33,7 +33,7 @@ test.describe('Map Core', () => {
     })
 
     test('has valid initial center and zoom', async ({ page }) => {
-      await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+      await page.goto('/maps/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
       await closeOnboardingModal(page)
       await waitForMapLibre(page)
       await waitForLoadingComplete(page)
@@ -83,7 +83,7 @@ test.describe('Map Core', () => {
 
   test.describe('Data Bounds', () => {
     test('fits map bounds to loaded data', async ({ page }) => {
-      await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+      await page.goto('/maps/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
       await closeOnboardingModal(page)
       await waitForMapLibre(page)
       await waitForLoadingComplete(page)
@@ -96,7 +96,7 @@ test.describe('Map Core', () => {
 
   test.describe('Lifecycle', () => {
     test('cleans up and reinitializes on navigation', async ({ page }) => {
-      await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+      await page.goto('/maps/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
       await closeOnboardingModal(page)
       await waitForLoadingComplete(page)
 
@@ -114,7 +114,7 @@ test.describe('Map Core', () => {
     })
 
     test('reloads data when changing date range', async ({ page }) => {
-      await page.goto('/maps/maplibre?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+      await page.goto('/maps/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
       await closeOnboardingModal(page)
       await waitForLoadingComplete(page)
 
