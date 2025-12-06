@@ -20,6 +20,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   has_many :tags,           dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
+  has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
