@@ -15,9 +15,5 @@
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "@types/node": "^24.0.13"
-  },
-  "sideEffects": [
-    "*.css",
-    "maplibre-gl/dist/maplibre-gl.css"
-  ]
+  }
 }
