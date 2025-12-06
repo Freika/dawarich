@@ -30,7 +30,8 @@ RSpec.describe Users::SafeSettings do
             visits_suggestions_enabled: true,
             speed_color_scale: nil,
             fog_of_war_threshold: nil,
-            enabled_map_layers: ['Routes', 'Heatmap']
+            enabled_map_layers: ['Routes', 'Heatmap'],
+            maps_maplibre_style: 'light'
           }
         )
       end
@@ -79,7 +80,8 @@ RSpec.describe Users::SafeSettings do
             "photoprism_api_key" => "photoprism-key",
             "maps" => { "name" => "custom", "url" => "https://custom.example.com" },
             "visits_suggestions_enabled" => false,
-            "enabled_map_layers" => ['Points', 'Routes', 'Areas', 'Photos']
+            "enabled_map_layers" => ['Points', 'Routes', 'Areas', 'Photos'],
+            "maps_maplibre_style" => "light"
           }
         )
       end
@@ -106,7 +108,8 @@ RSpec.describe Users::SafeSettings do
             visits_suggestions_enabled: false,
             speed_color_scale: nil,
             fog_of_war_threshold: nil,
-            enabled_map_layers: ['Points', 'Routes', 'Areas', 'Photos']
+            enabled_map_layers: ['Points', 'Routes', 'Areas', 'Photos'],
+            maps_maplibre_style: 'light'
           }
         )
       end
