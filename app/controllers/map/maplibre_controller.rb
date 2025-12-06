@@ -1,4 +1,4 @@
-module Maps
+module Map
   class MaplibreController < ApplicationController
     before_action :authenticate_user!
     layout 'map'

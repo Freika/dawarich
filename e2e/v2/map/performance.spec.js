@@ -6,7 +6,7 @@ test.describe('Map Performance', () => {
   test('map loads within acceptable time', async ({ page }) => {
     const startTime = Date.now()
 
-    await page.goto('/maps/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)
@@ -19,7 +19,7 @@ test.describe('Map Performance', () => {
   })
 
   test('handles large datasets efficiently', async ({ page }) => {
-    await page.goto('/maps/v2?start_at=2025-10-01T00:00&end_at=2025-10-31T23:59')
+    await page.goto('/map/v2?start_at=2025-10-01T00:00&end_at=2025-10-31T23:59')
     await closeOnboardingModal(page)
 
     const startTime = Date.now()

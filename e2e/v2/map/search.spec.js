@@ -18,7 +18,7 @@ test.describe('Location Search', () => {
   test.setTimeout(60000)
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/maps/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
     await closeOnboardingModal(page)
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)

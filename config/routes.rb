@@ -110,20 +110,15 @@ Rails.application.routes.draw do
 
   resources :metrics, only: [:index]
 
-  # V1 (Leaflet) - legacy
-  get 'map', to: 'map#index'
-
-  # Main maps entry - redirects to MapLibre
-  get '/maps', to: 'maps#index', as: :maps
-
-  # Maps namespace
-  namespace :maps do
+  # Map namespace with versioning
+  namespace :map do
+    get '/v1', to: 'leaflet#index', as: :v1
     get '/v2', to: 'maplibre#index', as: :v2
   end
 
   # Backward compatibility redirects
-  get '/maps_v2', to: redirect('/maps/v2')
-  get '/maps/maplibre', to: redirect('/maps/v2')
+  get '/map', to: 'map/leaflet#index'
+  get '/maps/v2', to: redirect('/map/v2')
 
   namespace :api do
     namespace :v1 do
