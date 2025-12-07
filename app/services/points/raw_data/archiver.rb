@@ -164,12 +164,13 @@ module Points
         )
 
         # Attach compressed file via ActiveStorage
-        filename = "raw_data_#{user_id}_#{year}_#{format('%02d', month)}_chunk#{format('%03d', chunk_number)}.jsonl.gz"
-
+        # Uses directory structure: raw_data_archives/:user_id/:year/:month/:chunk.jsonl.gz
+        # The key parameter controls the actual storage path
         archive.file.attach(
           io: StringIO.new(compressed_data),
-          filename: filename,
-          content_type: 'application/gzip'
+          filename: "#{format('%03d', chunk_number)}.jsonl.gz",
+          content_type: 'application/gzip',
+          key: "raw_data_archives/#{user_id}/#{year}/#{format('%02d', month)}/#{format('%03d', chunk_number)}.jsonl.gz"
         )
 
         archive

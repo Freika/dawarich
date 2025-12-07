@@ -64,9 +64,9 @@ RSpec.describe Points::RawDataArchive, type: :model do
   end
 
   describe '#filename' do
-    it 'generates correct filename' do
+    it 'generates correct filename with directory structure' do
       archive = build(:points_raw_data_archive, user_id: 123, year: 2024, month: 6, chunk_number: 5)
-      expect(archive.filename).to eq('raw_data_123_2024_06_chunk005.jsonl.gz')
+      expect(archive.filename).to eq('raw_data_archives/123/2024/06/005.jsonl.gz')
     end
   end
 

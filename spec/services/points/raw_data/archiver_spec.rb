@@ -131,7 +131,7 @@ RSpec.describe Points::RawData::Archiver do
 
       archive = user.raw_data_archives.last
       expect(archive.file).to be_attached
-      expect(archive.file.filename.to_s).to match(/raw_data_.*_chunk001\.jsonl\.gz/)
+      expect(archive.file.key).to match(%r{raw_data_archives/\d+/\d{4}/\d{2}/001\.jsonl\.gz})
     end
   end
 
