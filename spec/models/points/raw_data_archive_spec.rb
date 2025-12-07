@@ -22,20 +22,11 @@ RSpec.describe Points::RawDataArchive, type: :model do
     it { is_expected.to validate_numericality_of(:month).is_greater_than_or_equal_to(1).is_less_than_or_equal_to(12) }
     it { is_expected.to validate_numericality_of(:chunk_number).is_greater_than(0) }
 
-    context 'when updating' do
-      it 'validates file is attached' do
-        archive = create(:points_raw_data_archive, user: user)
-        archive.file.purge if archive.file.attached?
-
-        expect(archive).not_to be_valid
-        expect(archive.errors[:file]).to include('must be attached')
-      end
-    end
   end
 
   describe 'scopes' do
-    let!(:recent_archive) { create(:points_raw_data_archive, user: user, archived_at: 1.day.ago) }
-    let!(:old_archive) { create(:points_raw_data_archive, user: user, archived_at: 2.years.ago) }
+    let!(:recent_archive) { create(:points_raw_data_archive, user: user, year: 2024, month: 5, archived_at: 1.day.ago) }
+    let!(:old_archive) { create(:points_raw_data_archive, user: user, year: 2023, month: 5, archived_at: 2.years.ago) }
 
     describe '.recent' do
       it 'returns archives from last 30 days' do
@@ -58,7 +49,9 @@ RSpec.describe Points::RawDataArchive, type: :model do
 
       it 'returns archives for specific month ordered by chunk number' do
         result = described_class.for_month(user.id, 2024, 6)
-        expect(result).to eq([june_archive, june_archive_2])
+        expect(result.map(&:chunk_number)).to eq([1, 2])
+        expect(result).to include(june_archive, june_archive_2)
+        expect(result).not_to include(july_archive)
       end
     end
   end

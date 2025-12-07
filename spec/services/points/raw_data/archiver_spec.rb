@@ -138,27 +138,36 @@ RSpec.describe Points::RawData::Archiver do
       allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('true')
     end
 
-    let(:test_date) { 3.months.ago.beginning_of_month }
-    let(:test_date_utc) { Time.at(test_date.to_i).utc }
+    # Use UTC from the start to avoid timezone issues
+    let(:test_date_utc) { 3.months.ago.utc.beginning_of_month }
     let!(:june_points_batch1) do
       create_list(:point, 2, user: user,
-                            timestamp: test_date.to_i,
+                            timestamp: test_date_utc.to_i,
                             raw_data: { lon: 13.4, lat: 52.5 })
     end
 
-    xit 'creates additional chunks for same month' do
+    it 'creates additional chunks for same month' do
       # First archival
       archiver.archive_specific_month(user.id, test_date_utc.year, test_date_utc.month)
       expect(Points::RawDataArchive.for_month(user.id, test_date_utc.year, test_date_utc.month).count).to eq(1)
       expect(Points::RawDataArchive.last.chunk_number).to eq(1)
 
-      # Add more points for same month (retrospective import)
-      mid_month = test_date_utc + 15.days
-      june_points_batch2 = create_list(:point, 2, user: user,
-                                                  timestamp: mid_month.to_i,
-                                                  raw_data: { lon: 14.0, lat: 53.0 })
+      # Verify first batch is archived
+      june_points_batch1.each(&:reload)
+      expect(june_points_batch1.all? { |p| p.raw_data_archived }).to be true
 
-      # Second archival
+      # Add more points for same month (retrospective import)
+      # Use unique timestamps to avoid uniqueness validation errors
+      mid_month = test_date_utc + 15.days
+      june_points_batch2 = [
+        create(:point, user: user, timestamp: mid_month.to_i, raw_data: { lon: 14.0, lat: 53.0 }),
+        create(:point, user: user, timestamp: (mid_month + 1.hour).to_i, raw_data: { lon: 14.0, lat: 53.0 })
+      ]
+
+      # Verify second batch exists and is not archived
+      expect(june_points_batch2.all? { |p| !p.raw_data_archived }).to be true
+
+      # Second archival should create chunk 2
       archiver.archive_specific_month(user.id, test_date_utc.year, test_date_utc.month)
       expect(Points::RawDataArchive.for_month(user.id, test_date_utc.year, test_date_utc.month).count).to eq(2)
       expect(Points::RawDataArchive.last.chunk_number).to eq(2)
