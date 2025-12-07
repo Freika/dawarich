@@ -7,7 +7,6 @@ RSpec.describe Points::RawData::Archiver do
   let(:archiver) { described_class.new }
 
   before do
-    # Stub broadcasting to avoid ActionCable issues in tests
     allow(PointsChannel).to receive(:broadcast_to)
   end
 
@@ -20,6 +19,7 @@ RSpec.describe Points::RawData::Archiver do
 
       it 'returns early without processing' do
         result = archiver.call
+
         expect(result).to eq({ processed: 0, archived: 0, failed: 0 })
       end
     end
@@ -44,18 +44,20 @@ RSpec.describe Points::RawData::Archiver do
 
       it 'marks points as archived' do
         archiver.call
+
         expect(Point.where(raw_data_archived: true).count).to eq(5)
       end
 
       it 'nullifies raw_data column' do
         archiver.call
-        Point.where(user: user).each do |point|
+        Point.where(user: user).find_each do |point|
           expect(point.raw_data).to be_nil
         end
       end
 
       it 'returns correct stats' do
         result = archiver.call
+
         expect(result[:processed]).to eq(1)
         expect(result[:archived]).to eq(5)
         expect(result[:failed]).to eq(0)
@@ -115,7 +117,8 @@ RSpec.describe Points::RawData::Archiver do
     it 'creates archive with correct metadata' do
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
 
-      archive = Points::RawDataArchive.last
+      archive = user.raw_data_archives.last
+
       expect(archive.user_id).to eq(user.id)
       expect(archive.year).to eq(test_date.year)
       expect(archive.month).to eq(test_date.month)
@@ -126,7 +129,7 @@ RSpec.describe Points::RawData::Archiver do
     it 'attaches compressed file' do
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
 
-      archive = Points::RawDataArchive.last
+      archive = user.raw_data_archives.last
       expect(archive.file).to be_attached
       expect(archive.file.filename.to_s).to match(/raw_data_.*_chunk001\.jsonl\.gz/)
     end
@@ -154,7 +157,7 @@ RSpec.describe Points::RawData::Archiver do
 
       # Verify first batch is archived
       june_points_batch1.each(&:reload)
-      expect(june_points_batch1.all? { |p| p.raw_data_archived }).to be true
+      expect(june_points_batch1.all?(&:raw_data_archived)).to be true
 
       # Add more points for same month (retrospective import)
       # Use unique timestamps to avoid uniqueness validation errors

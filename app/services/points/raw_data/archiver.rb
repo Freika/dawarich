@@ -84,8 +84,8 @@ module Points
 
         Rails.logger.info("Skipping #{lock_key} - already locked") unless lock_acquired
       rescue StandardError => e
-        Rails.logger.error("Archive failed for #{user_id}/#{year}/#{month}: #{e.message}")
-        Sentry.capture_exception(e) if defined?(Sentry)
+        ExceptionReporter.call(e, "Failed to archive points for user #{user_id}, #{year}-#{month}")
+
         @stats[:failed] += 1
       end
 

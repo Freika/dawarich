@@ -6,6 +6,8 @@ module Points
       queue_as :archival
 
       def perform
+        return unless ENV['ARCHIVE_RAW_DATA'] == 'true'
+
         stats = Points::RawData::Archiver.new.call
 
         Rails.logger.info("Archive job complete: #{stats}")
