@@ -51,7 +51,7 @@ RSpec.describe Points::RawData::Archiver do
       it 'nullifies raw_data column' do
         archiver.call
         Point.where(user: user).find_each do |point|
-          expect(point.raw_data).to be_nil
+          expect(point.raw_data).to eq({})
         end
       end
 

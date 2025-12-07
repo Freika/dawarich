@@ -121,7 +121,7 @@ module Points
           Point.where(id: point_ids).update_all(
             raw_data_archived: true,
             raw_data_archive_id: archive_id,
-            raw_data: nil
+            raw_data: {}
           )
         end
       end
