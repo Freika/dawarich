@@ -2,7 +2,7 @@
 
 class ExceptionReporter
   def self.call(exception, human_message = 'Exception reported')
-    return unless DawarichSettings.self_hosted?
+    return if DawarichSettings.self_hosted?
 
     Rails.logger.error "#{human_message}: #{exception.message}"
 

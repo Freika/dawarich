@@ -17,7 +17,7 @@ module Points
 
         Rails.logger.info('Starting points raw_data archival...')
 
-        archivable_months.find_each do |month_data|
+        archivable_months.each do |month_data|
           process_month(month_data)
         end
 
@@ -45,14 +45,26 @@ module Points
         # Only months 2+ months old with unarchived points
         safe_cutoff = Date.current.beginning_of_month - SAFE_ARCHIVE_LAG
 
-        Point.select(
-          'user_id',
-          'EXTRACT(YEAR FROM to_timestamp(timestamp))::int as year',
-          'EXTRACT(MONTH FROM to_timestamp(timestamp))::int as month',
-          'COUNT(*) as unarchived_count'
-        ).where(raw_data_archived: false)
-         .where('to_timestamp(timestamp) < ?', safe_cutoff)
-         .group('user_id, EXTRACT(YEAR FROM to_timestamp(timestamp)), EXTRACT(MONTH FROM to_timestamp(timestamp))')
+        # Use raw SQL to avoid GROUP BY issues with ActiveRecord
+        # Use AT TIME ZONE 'UTC' to ensure consistent timezone handling
+        sql = <<-SQL.squish
+          SELECT user_id,
+                 EXTRACT(YEAR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC'))::int as year,
+                 EXTRACT(MONTH FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC'))::int as month,
+                 COUNT(*) as unarchived_count
+          FROM points
+          WHERE raw_data_archived = false
+            AND raw_data IS NOT NULL
+            AND raw_data != '{}'
+            AND to_timestamp(timestamp) < ?
+          GROUP BY user_id,
+                   EXTRACT(YEAR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC')),
+                   EXTRACT(MONTH FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC'))
+        SQL
+
+        ActiveRecord::Base.connection.exec_query(
+          ActiveRecord::Base.sanitize_sql_array([sql, safe_cutoff])
+        )
       end
 
       def process_month(month_data)
@@ -63,12 +75,14 @@ module Points
         lock_key = "archive_points:#{user_id}:#{year}:#{month}"
 
         # Advisory lock prevents duplicate processing
-        ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
+        # Returns false if lock couldn't be acquired (already locked)
+        lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
           archive_month(user_id, year, month)
           @stats[:processed] += 1
+          true
         end
-      rescue ActiveRecord::AdvisoryLockError
-        Rails.logger.info("Skipping #{lock_key} - already locked")
+
+        Rails.logger.info("Skipping #{lock_key} - already locked") unless lock_acquired
       rescue StandardError => e
         Rails.logger.error("Archive failed for #{user_id}/#{year}/#{month}: #{e.message}")
         Sentry.capture_exception(e) if defined?(Sentry)
@@ -76,45 +90,59 @@ module Points
       end
 
       def archive_month(user_id, year, month)
-        # Calculate timestamp range for the month
-        start_of_month = Time.new(year, month, 1).to_i
-        end_of_month = (Time.new(year, month, 1) + 1.month).to_i
-
-        # Find unarchived points for this month
-        points = Point.where(
-          user_id: user_id,
-          raw_data_archived: false
-        ).where(timestamp: start_of_month...end_of_month)
-         .where.not(raw_data: nil)  # Skip already-NULLed points
-
+        points = find_archivable_points(user_id, year, month)
         return if points.empty?
 
         point_ids = points.pluck(:id)
+        log_archival_start(user_id, year, month, point_ids.count)
 
-        Rails.logger.info("Archiving #{point_ids.count} points for user #{user_id}, #{year}-#{format('%02d', month)}")
-
-        # Create archive chunk
         archive = create_archive_chunk(user_id, year, month, points, point_ids)
+        mark_points_as_archived(point_ids, archive.id)
+        update_stats(point_ids.count)
+        log_archival_success(archive)
+      end
 
-        # Atomically mark points and NULL raw_data
+      def find_archivable_points(user_id, year, month)
+        timestamp_range = month_timestamp_range(year, month)
+
+        Point.where(user_id: user_id, raw_data_archived: false)
+             .where(timestamp: timestamp_range)
+             .where.not(raw_data: nil)
+      end
+
+      def month_timestamp_range(year, month)
+        start_of_month = Time.utc(year, month, 1).to_i
+        end_of_month = (Time.utc(year, month, 1) + 1.month).to_i
+        start_of_month...end_of_month
+      end
+
+      def mark_points_as_archived(point_ids, archive_id)
         Point.transaction do
           Point.where(id: point_ids).update_all(
             raw_data_archived: true,
-            raw_data_archive_id: archive.id,
-            raw_data: nil  # Reclaim space!
+            raw_data_archive_id: archive_id,
+            raw_data: nil
           )
         end
+      end
 
-        @stats[:archived] += point_ids.count
+      def update_stats(archived_count)
+        @stats[:archived] += archived_count
+      end
 
+      def log_archival_start(user_id, year, month, count)
+        Rails.logger.info("Archiving #{count} points for user #{user_id}, #{year}-#{format('%02d', month)}")
+      end
+
+      def log_archival_success(archive)
         Rails.logger.info("✓ Archived chunk #{archive.chunk_number} (#{archive.size_mb} MB)")
       end
 
       def create_archive_chunk(user_id, year, month, points, point_ids)
         # Determine chunk number (append-only)
         chunk_number = Points::RawDataArchive
-          .where(user_id: user_id, year: year, month: month)
-          .maximum(:chunk_number).to_i + 1
+                       .where(user_id: user_id, year: year, month: month)
+                       .maximum(:chunk_number).to_i + 1
 
         # Compress points data
         compressed_data = Points::RawData::ChunkCompressor.new(points).compress

@@ -389,9 +389,6 @@ module Archivable
     fetch_archived_raw_data
   end
 
-  # Alias for convenience (optional)
-  alias_method :archived_raw_data, :raw_data_with_archive
-
   # Restore archived data back to database column
   def restore_raw_data!(value)
     update!(

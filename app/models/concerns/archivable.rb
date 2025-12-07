@@ -4,16 +4,13 @@ module Archivable
   extend ActiveSupport::Concern
 
   included do
-    # Associations
     belongs_to :raw_data_archive,
-      class_name: 'Points::RawDataArchive',
-      foreign_key: :raw_data_archive_id,
-      optional: true
+               class_name: 'Points::RawDataArchive',
+               optional: true
 
-    # Scopes
     scope :archived, -> { where(raw_data_archived: true) }
     scope :not_archived, -> { where(raw_data_archived: false) }
-    scope :with_archived_raw_data, -> {
+    scope :with_archived_raw_data, lambda {
       includes(raw_data_archive: { file_attachment: :blob })
     }
   end
@@ -21,15 +18,10 @@ module Archivable
   # Main method: Get raw_data with fallback to archive
   # Use this instead of point.raw_data when you need archived data
   def raw_data_with_archive
-    # If raw_data is present in DB, use it
     return raw_data if raw_data.present? || !raw_data_archived?
 
-    # Otherwise fetch from archive
     fetch_archived_raw_data
   end
-
-  # Alias for convenience (optional)
-  alias_method :archived_raw_data, :raw_data_with_archive
 
   # Restore archived data back to database column
   def restore_raw_data!(value)
@@ -40,11 +32,6 @@ module Archivable
     )
   end
 
-  # Cache key for long-term archive caching
-  def archive_cache_key
-    "raw_data:archive:#{self.class.name.underscore}:#{id}"
-  end
-
   private
 
   def fetch_archived_raw_data
@@ -52,10 +39,7 @@ module Archivable
     cached = check_temporary_restore_cache
     return cached if cached
 
-    # Check long-term cache (1 day TTL)
-    Rails.cache.fetch(archive_cache_key, expires_in: 1.day) do
-      fetch_from_archive_file
-    end
+    fetch_from_archive_file
   rescue StandardError => e
     handle_archive_fetch_error(e)
   end
@@ -90,10 +74,7 @@ module Archivable
   end
 
   def handle_archive_fetch_error(error)
-    Rails.logger.error(
-      "Failed to fetch archived raw_data for #{self.class.name} #{id}: #{error.message}"
-    )
-    Sentry.capture_exception(error) if defined?(Sentry)
+    ExceptionReporter.call(error, "Failed to fetch archived raw_data for Point ID #{id}")
 
     {} # Graceful degradation
   end

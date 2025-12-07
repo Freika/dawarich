@@ -11,9 +11,7 @@ module Points
         Rails.logger.info("Restoring #{archives.count} archives to database...")
 
         Point.transaction do
-          archives.each do |archive|
-            restore_archive_to_db(archive)
-          end
+          archives.each { restore_archive_to_db(_1) }
         end
 
         Rails.logger.info("✓ Restored #{archives.sum(:point_count)} points")
@@ -37,10 +35,11 @@ module Points
       end
 
       def restore_all_for_user(user_id)
-        archives = Points::RawDataArchive.where(user_id: user_id)
-                                       .select(:year, :month)
-                                       .distinct
-                                       .order(:year, :month)
+        archives =
+          Points::RawDataArchive.where(user_id: user_id)
+                                .select(:year, :month)
+                                .distinct
+                                .order(:year, :month)
 
         Rails.logger.info("Restoring #{archives.count} months for user #{user_id}...")
 
@@ -48,7 +47,7 @@ module Points
           restore_to_database(user_id, archive.year, archive.month)
         end
 
-        Rails.logger.info("✓ Complete user restore finished")
+        Rails.logger.info('✓ Complete user restore finished')
       end
 
       private

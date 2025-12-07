@@ -49,5 +49,9 @@ class DawarichSettings
         family: family_feature_enabled?
       }
     end
+
+    def archive_raw_data_enabled?
+      @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
+    end
   end
 end
