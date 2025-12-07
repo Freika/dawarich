@@ -22,7 +22,7 @@ RSpec.describe Points::RawData::ChunkCompressor do
     it 'returns compressed gzip data' do
       result = compressor.compress
       expect(result).to be_a(String)
-      expect(result.encoding).to eq(Encoding::ASCII_8BIT)
+      expect(result.encoding.name).to eq('ASCII-8BIT')
     end
 
     it 'compresses points as JSONL format' do
@@ -59,8 +59,12 @@ RSpec.describe Points::RawData::ChunkCompressor do
     end
 
     it 'processes points in batches' do
-      # Create many points to test batch processing
-      many_points = create_list(:point, 2500, user: user, raw_data: { lon: 13.4, lat: 52.5 })
+      # Create many points to test batch processing with unique timestamps
+      many_points = []
+      base_time = Time.new(2024, 6, 15).to_i
+      2500.times do |i|
+        many_points << create(:point, user: user, timestamp: base_time + i, raw_data: { lon: 13.4, lat: 52.5 })
+      end
       large_compressor = described_class.new(Point.where(id: many_points.map(&:id)))
 
       compressed = large_compressor.compress

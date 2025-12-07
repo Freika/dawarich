@@ -14,6 +14,7 @@ gem 'bootsnap', require: false
 gem 'chartkick'
 gem 'data_migrate'
 gem 'devise'
+gem 'foreman'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
 gem 'gpx'
 gem 'groupdate'
@@ -49,14 +50,13 @@ gem 'sentry-ruby'
 gem 'sidekiq', '>= 8.0.5'
 gem 'sidekiq-cron', '>= 2.3.1'
 gem 'sidekiq-limit_fetch'
-gem 'with_advisory_lock'
 gem 'sprockets-rails'
 gem 'stackprof'
 gem 'stimulus-rails'
 gem 'tailwindcss-rails', '= 3.3.2'
 gem 'turbo-rails', '>= 2.0.17'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
-gem 'foreman'
+gem 'with_advisory_lock'
 
 group :development, :test, :staging do
   gem 'brakeman', require: false

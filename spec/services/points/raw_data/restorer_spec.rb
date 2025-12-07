@@ -12,21 +12,33 @@ RSpec.describe Points::RawData::Restorer do
   end
 
   describe '#restore_to_database' do
-    let(:archive) { create(:points_raw_data_archive, user: user, year: 2024, month: 6) }
     let!(:archived_points) do
-      points = create_list(:point, 3, user: user, timestamp: Time.new(2024, 6, 15).to_i,
-                                       raw_data: nil, raw_data_archived: true, raw_data_archive: archive)
+      create_list(:point, 3, user: user, timestamp: Time.new(2024, 6, 15).to_i,
+                             raw_data: nil, raw_data_archived: true)
+    end
 
-      # Mock archive file with actual point data
-      compressed_data = gzip_points_data(points.map do |p|
+    let(:archive) do
+      # Create archive with actual point data
+      compressed_data = gzip_points_data(archived_points.map do |p|
         { id: p.id, raw_data: { lon: 13.4, lat: 52.5 } }
       end)
-      allow(archive.file.blob).to receive(:download).and_return(compressed_data)
 
-      points
+      arc = build(:points_raw_data_archive, user: user, year: 2024, month: 6)
+      arc.file.attach(
+        io: StringIO.new(compressed_data),
+        filename: arc.filename,
+        content_type: 'application/gzip'
+      )
+      arc.save!
+
+      # Associate points with archive
+      archived_points.each { |p| p.update!(raw_data_archive: arc) }
+
+      arc
     end
 
     it 'restores raw_data to database' do
+      archive # Ensure archive is created before restore
       restorer.restore_to_database(user.id, 2024, 6)
 
       archived_points.each(&:reload)
@@ -36,6 +48,7 @@ RSpec.describe Points::RawData::Restorer do
     end
 
     it 'clears archive flags' do
+      archive # Ensure archive is created before restore
       restorer.restore_to_database(user.id, 2024, 6)
 
       archived_points.each(&:reload)
@@ -52,20 +65,32 @@ RSpec.describe Points::RawData::Restorer do
     end
 
     context 'with multiple chunks' do
-      let!(:archive2) { create(:points_raw_data_archive, user: user, year: 2024, month: 6, chunk_number: 2) }
       let!(:more_points) do
-        points = create_list(:point, 2, user: user, timestamp: Time.new(2024, 6, 20).to_i,
-                                         raw_data: nil, raw_data_archived: true, raw_data_archive: archive2)
+        create_list(:point, 2, user: user, timestamp: Time.new(2024, 6, 20).to_i,
+                               raw_data: nil, raw_data_archived: true)
+      end
 
-        compressed_data = gzip_points_data(points.map do |p|
+      let!(:archive2) do
+        compressed_data = gzip_points_data(more_points.map do |p|
           { id: p.id, raw_data: { lon: 14.0, lat: 53.0 } }
         end)
-        allow(archive2.file.blob).to receive(:download).and_return(compressed_data)
 
-        points
+        arc = build(:points_raw_data_archive, user: user, year: 2024, month: 6, chunk_number: 2)
+        arc.file.attach(
+          io: StringIO.new(compressed_data),
+          filename: arc.filename,
+          content_type: 'application/gzip'
+        )
+        arc.save!
+
+        more_points.each { |p| p.update!(raw_data_archive: arc) }
+
+        arc
       end
 
       it 'restores from all chunks' do
+        archive # Ensure first archive is created
+        archive2 # Ensure second archive is created
         restorer.restore_to_database(user.id, 2024, 6)
 
         (archived_points + more_points).each(&:reload)
@@ -76,20 +101,31 @@ RSpec.describe Points::RawData::Restorer do
   end
 
   describe '#restore_to_memory' do
-    let(:archive) { create(:points_raw_data_archive, user: user, year: 2024, month: 6) }
     let!(:archived_points) do
-      points = create_list(:point, 2, user: user, timestamp: Time.new(2024, 6, 15).to_i,
-                                       raw_data: nil, raw_data_archived: true, raw_data_archive: archive)
+      create_list(:point, 2, user: user, timestamp: Time.new(2024, 6, 15).to_i,
+                             raw_data: nil, raw_data_archived: true)
+    end
 
-      compressed_data = gzip_points_data(points.map do |p|
+    let(:archive) do
+      compressed_data = gzip_points_data(archived_points.map do |p|
         { id: p.id, raw_data: { lon: 13.4, lat: 52.5 } }
       end)
-      allow(archive.file.blob).to receive(:download).and_return(compressed_data)
 
-      points
+      arc = build(:points_raw_data_archive, user: user, year: 2024, month: 6)
+      arc.file.attach(
+        io: StringIO.new(compressed_data),
+        filename: arc.filename,
+        content_type: 'application/gzip'
+      )
+      arc.save!
+
+      archived_points.each { |p| p.update!(raw_data_archive: arc) }
+
+      arc
     end
 
     it 'loads data into cache' do
+      archive # Ensure archive is created before restore
       restorer.restore_to_memory(user.id, 2024, 6)
 
       archived_points.each do |point|
@@ -100,6 +136,7 @@ RSpec.describe Points::RawData::Restorer do
     end
 
     it 'does not modify database' do
+      archive # Ensure archive is created before restore
       restorer.restore_to_memory(user.id, 2024, 6)
 
       archived_points.each(&:reload)
@@ -110,6 +147,7 @@ RSpec.describe Points::RawData::Restorer do
     end
 
     it 'sets cache expiration to 1 hour' do
+      archive # Ensure archive is created before restore
       restorer.restore_to_memory(user.id, 2024, 6)
 
       cache_key = "raw_data:temp:#{user.id}:2024:6:#{archived_points.first.id}"
@@ -120,25 +158,44 @@ RSpec.describe Points::RawData::Restorer do
   end
 
   describe '#restore_all_for_user' do
-    let!(:june_archive) { create(:points_raw_data_archive, user: user, year: 2024, month: 6) }
-    let!(:july_archive) { create(:points_raw_data_archive, user: user, year: 2024, month: 7) }
-
     let!(:june_points) do
-      points = create_list(:point, 2, user: user, timestamp: Time.new(2024, 6, 15).to_i,
-                                       raw_data: nil, raw_data_archived: true, raw_data_archive: june_archive)
-
-      compressed_data = gzip_points_data(points.map { |p| { id: p.id, raw_data: { month: 'june' } } })
-      allow(june_archive.file.blob).to receive(:download).and_return(compressed_data)
-      points
+      create_list(:point, 2, user: user, timestamp: Time.new(2024, 6, 15).to_i,
+                             raw_data: nil, raw_data_archived: true)
     end
 
     let!(:july_points) do
-      points = create_list(:point, 2, user: user, timestamp: Time.new(2024, 7, 15).to_i,
-                                       raw_data: nil, raw_data_archived: true, raw_data_archive: july_archive)
+      create_list(:point, 2, user: user, timestamp: Time.new(2024, 7, 15).to_i,
+                             raw_data: nil, raw_data_archived: true)
+    end
 
-      compressed_data = gzip_points_data(points.map { |p| { id: p.id, raw_data: { month: 'july' } } })
-      allow(july_archive.file.blob).to receive(:download).and_return(compressed_data)
-      points
+    let!(:june_archive) do
+      compressed_data = gzip_points_data(june_points.map { |p| { id: p.id, raw_data: { month: 'june' } } })
+
+      arc = build(:points_raw_data_archive, user: user, year: 2024, month: 6)
+      arc.file.attach(
+        io: StringIO.new(compressed_data),
+        filename: arc.filename,
+        content_type: 'application/gzip'
+      )
+      arc.save!
+
+      june_points.each { |p| p.update!(raw_data_archive: arc) }
+      arc
+    end
+
+    let!(:july_archive) do
+      compressed_data = gzip_points_data(july_points.map { |p| { id: p.id, raw_data: { month: 'july' } } })
+
+      arc = build(:points_raw_data_archive, user: user, year: 2024, month: 7)
+      arc.file.attach(
+        io: StringIO.new(compressed_data),
+        filename: arc.filename,
+        content_type: 'application/gzip'
+      )
+      arc.save!
+
+      july_points.each { |p| p.update!(raw_data_archive: arc) }
+      arc
     end
 
     it 'restores all months for user' do

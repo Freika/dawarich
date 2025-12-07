@@ -18,7 +18,7 @@ module Points
         end
 
         gz.close
-        io.string  # Returns compressed bytes
+        io.string.force_encoding(Encoding::ASCII_8BIT)  # Returns compressed bytes in binary encoding
       end
     end
   end
