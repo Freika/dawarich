@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Cities visited during a trip are now being calculated correctly. #547
+- Points on the map are now show time in user's timezone. #580
 
 
 # [0.36.2] - 2025-12-06

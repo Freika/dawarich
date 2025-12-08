@@ -10,7 +10,8 @@ export default class extends BaseController {
     uuid: String,
     dataBounds: Object,
     hexagonsAvailable: Boolean,
-    selfHosted: String
+    selfHosted: String,
+    timezone: String
   };
 
   connect() {
@@ -247,10 +248,11 @@ export default class extends BaseController {
   }
 
   buildPopupContent(props) {
-    const startDate = props.earliest_point ? new Date(props.earliest_point).toLocaleDateString() : 'N/A';
-    const endDate = props.latest_point ? new Date(props.latest_point).toLocaleDateString() : 'N/A';
-    const startTime = props.earliest_point ? new Date(props.earliest_point).toLocaleTimeString() : '';
-    const endTime = props.latest_point ? new Date(props.latest_point).toLocaleTimeString() : '';
+    const timezone = this.timezoneValue || 'UTC';
+    const startDate = props.earliest_point ? new Date(props.earliest_point).toLocaleDateString('en-US', { timeZone: timezone }) : 'N/A';
+    const endDate = props.latest_point ? new Date(props.latest_point).toLocaleDateString('en-US', { timeZone: timezone }) : 'N/A';
+    const startTime = props.earliest_point ? new Date(props.earliest_point).toLocaleTimeString('en-US', { timeZone: timezone }) : '';
+    const endTime = props.latest_point ? new Date(props.latest_point).toLocaleTimeString('en-US', { timeZone: timezone }) : '';
 
     return `
       <div style="font-size: 12px; line-height: 1.6; max-width: 300px;">

@@ -22,7 +22,7 @@
         data-path="<%= trip.path.to_json %>"
         data-started_at="<%= trip.started_at %>"
         data-ended_at="<%= trip.ended_at %>"
-        data-timezone="<%= Rails.configuration.time_zone %>">
+        data-timezone="<%= current_user.timezone %>">
       </div>
     </div>
 
