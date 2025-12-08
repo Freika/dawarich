@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Cities visited during a trip are now being calculated correctly. #547 #641
 - Points on the map are now show time in user's timezone. #580
-- Date range inputs now handle pre-epoch dates gracefully by clamping to valid PostgreSQL integer range (1970-2038), preventing database errors when users enter dates like year 1000.
+- Date range inputs now handle pre-epoch dates gracefully by clamping to valid PostgreSQL integer range. #685
 
 
 # [0.36.2] - 2025-12-06
