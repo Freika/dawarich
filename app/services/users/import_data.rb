@@ -95,36 +95,13 @@ class Users::ImportData
 
         FileUtils.mkdir_p(File.dirname(extraction_path))
 
-        # Extract with proper error handling and cleanup
-        extract_entry_safely(entry, extraction_path)
-      end
-    end
-  end
-
-  def extract_entry_safely(entry, extraction_path)
-    # Extract with error handling and cleanup on failure
-    begin
-      entry.get_input_stream do |input|
-        File.open(extraction_path, 'wb') do |output|
-          bytes_copied = IO.copy_stream(input, output)
-
-          # Verify extracted size matches expected size
-          if bytes_copied != entry.size
-            raise "Size mismatch for #{entry.name}: expected #{entry.size} bytes, got #{bytes_copied} bytes"
+        # Manual extraction to bypass size validation for large files
+        entry.get_input_stream do |input|
+          File.open(extraction_path, 'wb') do |output|
+            IO.copy_stream(input, output)
           end
         end
       end
-
-      Rails.logger.debug "Successfully extracted #{entry.name} (#{entry.size} bytes)"
-    rescue StandardError => e
-      # Clean up partial file on error
-      FileUtils.rm_f(extraction_path) if File.exist?(extraction_path)
-
-      Rails.logger.error "Failed to extract #{entry.name}: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-
-      # Re-raise to stop the import process
-      raise "Extraction failed for #{entry.name}: #{e.message}"
     end
   end
 
@@ -148,9 +125,7 @@ class Users::ImportData
     Rails.logger.info "Starting data import for user: #{user.email}"
 
     json_path = @import_directory.join('data.json')
-    unless File.exist?(json_path)
-      raise StandardError, 'Data file not found in archive: data.json'
-    end
+    raise StandardError, 'Data file not found in archive: data.json' unless File.exist?(json_path)
 
     initialize_stream_state
 
@@ -241,10 +216,10 @@ class Users::ImportData
 
     @places_batch << place_data
 
-    if @places_batch.size >= STREAM_BATCH_SIZE
-      import_places_batch(@places_batch)
-      @places_batch.clear
-    end
+    return unless @places_batch.size >= STREAM_BATCH_SIZE
+
+    import_places_batch(@places_batch)
+    @places_batch.clear
   end
 
   def flush_places_batch
@@ -342,14 +317,16 @@ class Users::ImportData
 
   def import_imports(imports_data)
     Rails.logger.debug "Importing #{imports_data&.size || 0} imports"
-    imports_created, files_restored = Users::ImportData::Imports.new(user, imports_data, @import_directory.join('files')).call
+    imports_created, files_restored = Users::ImportData::Imports.new(user, imports_data,
+                                                                     @import_directory.join('files')).call
     @import_stats[:imports_created] += imports_created.to_i
     @import_stats[:files_restored] += files_restored.to_i
   end
 
   def import_exports(exports_data)
     Rails.logger.debug "Importing #{exports_data&.size || 0} exports"
-    exports_created, files_restored = Users::ImportData::Exports.new(user, exports_data, @import_directory.join('files')).call
+    exports_created, files_restored = Users::ImportData::Exports.new(user, exports_data,
+                                                                     @import_directory.join('files')).call
     @import_stats[:exports_created] += exports_created.to_i
     @import_stats[:files_restored] += files_restored.to_i
   end
@@ -418,11 +395,11 @@ class Users::ImportData
     expected_counts.each do |entity, expected_count|
       actual_count = @import_stats[:"#{entity}_created"] || 0
 
-      if actual_count < expected_count
-        discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{expected_count - actual_count} missing)"
-        discrepancies << discrepancy
-        Rails.logger.warn "Import discrepancy - #{discrepancy}"
-      end
+      next unless actual_count < expected_count
+
+      discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{expected_count - actual_count} missing)"
+      discrepancies << discrepancy
+      Rails.logger.warn "Import discrepancy - #{discrepancy}"
     end
 
     if discrepancies.any?
