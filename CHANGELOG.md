@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Cities visited during a trip are now being calculated correctly. #547 #641
-- Points on the map are now show time in user's timezone. #580
+- Points on the map are now show time in user's timezone. #580 #1035
 - Date range inputs now handle pre-epoch dates gracefully by clamping to valid PostgreSQL integer range. #685
 - Redis client now also being configured so that it could connect via unix socket. #1970
 
