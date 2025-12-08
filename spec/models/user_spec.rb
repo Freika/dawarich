@@ -341,14 +341,16 @@ RSpec.describe User, type: :model do
 
   describe '.from_omniauth' do
     let(:auth_hash) do
-      OmniAuth::AuthHash.new({
-                               provider: 'github',
-        uid: '123545',
-        info: {
-          email: email,
-          name: 'Test User'
+      OmniAuth::AuthHash.new(
+        {
+          provider: 'github',
+          uid: '123545',
+          info: {
+            email: email,
+            name: 'Test User'
+          }
         }
-                             })
+      )
     end
 
     context 'when user exists with the same email' do
@@ -394,14 +396,16 @@ RSpec.describe User, type: :model do
     context 'when OAuth provider is Google' do
       let(:email) { 'google@example.com' }
       let(:auth_hash) do
-        OmniAuth::AuthHash.new({
-                                 provider: 'google_oauth2',
-          uid: '123545',
-          info: {
-            email: email,
-            name: 'Google User'
+        OmniAuth::AuthHash.new(
+          {
+            provider: 'google_oauth2',
+            uid: '123545',
+            info: {
+              email: email,
+              name: 'Google User'
+            }
           }
-                               })
+        )
       end
 
       it 'creates a user from Google OAuth data' do
