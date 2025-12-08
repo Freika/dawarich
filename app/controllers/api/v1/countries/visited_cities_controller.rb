@@ -9,6 +9,7 @@ class Api::V1::Countries::VisitedCitiesController < ApiController
 
     points = current_api_user
              .points
+             .without_raw_data
              .where(timestamp: start_at..end_at)
 
     render json: { data: CountriesAndCities.new(points).call }
