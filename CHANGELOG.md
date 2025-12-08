@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Setting `ARCHIVE_RAW_DATA` env var to true will enable monthly raw data archiving for all users. It will look for points older than 2 months with `raw_data` column not empty and create a zip archive containing raw data files for each month. After successful archiving, raw data will be removed from the database to save space. Monthly archiving job is being run every day at 2:00 AM. Default env var value is false.
 
+## Fixed
+
+- Cities visited during a trip are now being calculated correctly. #547
+
 
 # [0.36.2] - 2025-12-06
 
