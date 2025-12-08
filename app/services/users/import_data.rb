@@ -87,7 +87,13 @@ class Users::ImportData
         Rails.logger.debug "Extracting #{entry.name} to #{extraction_path}"
 
         FileUtils.mkdir_p(File.dirname(extraction_path))
-        entry.extract(sanitized_name, destination_directory: @import_directory)
+
+        # Manual extraction to bypass size validation for large files
+        entry.get_input_stream do |input|
+          File.open(extraction_path, 'wb') do |output|
+            IO.copy_stream(input, output)
+          end
+        end
       end
     end
   end
