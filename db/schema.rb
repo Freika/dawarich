@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_06_000004) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_08_210410) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -226,8 +226,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_000004) do
     t.string "country_name"
     t.boolean "raw_data_archived", default: false, null: false
     t.bigint "raw_data_archive_id"
-    t.integer "timestamp_year"
-    t.integer "timestamp_month"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -251,7 +249,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_000004) do
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "reverse_geocoded_at"], name: "index_points_on_user_id_and_reverse_geocoded_at", where: "(reverse_geocoded_at IS NOT NULL)"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
-    t.index ["user_id", "timestamp_year", "timestamp_month", "raw_data_archived"], name: "index_points_on_user_time_archived"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
@@ -288,6 +285,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_000004) do
     t.index ["h3_hex_ids"], name: "index_stats_on_h3_hex_ids", where: "((h3_hex_ids IS NOT NULL) AND (h3_hex_ids <> '{}'::jsonb))", using: :gin
     t.index ["month"], name: "index_stats_on_month"
     t.index ["sharing_uuid"], name: "index_stats_on_sharing_uuid", unique: true
+    t.index ["user_id", "year", "month"], name: "index_stats_on_user_id_year_month", unique: true
     t.index ["user_id"], name: "index_stats_on_user_id"
     t.index ["year"], name: "index_stats_on_year"
   end
@@ -374,6 +372,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_06_000004) do
     t.string "utm_term"
     t.string "utm_content"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
