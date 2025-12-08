@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
 class Api::V1::PointsController < ApiController
+  include SafeTimestampParser
+
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
   before_action :validate_points_limit, only: %i[create]
 
   def index
-    start_at = params[:start_at]&.to_datetime&.to_i
-    end_at   = params[:end_at]&.to_datetime&.to_i || Time.zone.now.to_i
+    start_at = params[:start_at].present? ? safe_timestamp(params[:start_at]) : nil
+    end_at   = params[:end_at].present? ? safe_timestamp(params[:end_at]) : Time.zone.now.to_i
     order    = params[:order] || 'desc'
 
     points = current_api_user
