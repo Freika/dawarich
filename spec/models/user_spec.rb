@@ -199,8 +199,8 @@ RSpec.describe User, type: :model do
     describe '#total_distance' do
       subject { user.total_distance }
 
-      let!(:stat1) { create(:stat, user:, distance: 10_000) }
-      let!(:stat2) { create(:stat, user:, distance: 20_000) }
+      let!(:stat1) { create(:stat, user:, year: 2020, month: 10, distance: 10_000) }
+      let!(:stat2) { create(:stat, user:, year: 2020, month: 11, distance: 20_000) }
 
       it 'returns sum of distances' do
         expect(subject).to eq(30) # 30 km
@@ -342,13 +342,13 @@ RSpec.describe User, type: :model do
   describe '.from_omniauth' do
     let(:auth_hash) do
       OmniAuth::AuthHash.new({
-        provider: 'github',
+                               provider: 'github',
         uid: '123545',
         info: {
           email: email,
           name: 'Test User'
         }
-      })
+                             })
     end
 
     context 'when user exists with the same email' do
@@ -395,13 +395,13 @@ RSpec.describe User, type: :model do
       let(:email) { 'google@example.com' }
       let(:auth_hash) do
         OmniAuth::AuthHash.new({
-          provider: 'google_oauth2',
+                                 provider: 'google_oauth2',
           uid: '123545',
           info: {
             email: email,
             name: 'Google User'
           }
-        })
+                               })
       end
 
       it 'creates a user from Google OAuth data' do

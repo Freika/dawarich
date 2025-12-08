@@ -3,7 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe SafeTimestampParser, type: :controller do
-  controller(ApplicationController) do
+  include ActiveSupport::Testing::TimeHelpers
+
+  controller(ActionController::Base) do
     include SafeTimestampParser
 
     def index
@@ -66,7 +68,7 @@ RSpec.describe SafeTimestampParser, type: :controller do
 
     context 'with invalid date strings' do
       it 'returns current time for unparseable date' do
-        freeze_time do
+        travel_to Time.zone.parse('2023-06-15 12:00:00') do
           get :index, params: { date: 'not-a-date' }
           expected = Time.zone.now.to_i
           expect(response.body).to eq(expected.to_s)
@@ -74,7 +76,7 @@ RSpec.describe SafeTimestampParser, type: :controller do
       end
 
       it 'returns current time for empty string' do
-        freeze_time do
+        travel_to Time.zone.parse('2023-06-15 12:00:00') do
           get :index, params: { date: '' }
           expected = Time.zone.now.to_i
           expect(response.body).to eq(expected.to_s)
