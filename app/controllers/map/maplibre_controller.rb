@@ -1,5 +1,7 @@
 module Map
   class MaplibreController < ApplicationController
+    include SafeTimestampParser
+
     before_action :authenticate_user!
     layout 'map'
 
@@ -11,13 +13,13 @@ module Map
     private
 
     def start_at
-      return Time.zone.parse(params[:start_at]).to_i if params[:start_at].present?
+      return safe_timestamp(params[:start_at]) if params[:start_at].present?
 
       Time.zone.today.beginning_of_day.to_i
     end
 
     def end_at
-      return Time.zone.parse(params[:end_at]).to_i if params[:end_at].present?
+      return safe_timestamp(params[:end_at]) if params[:end_at].present?
 
       Time.zone.today.end_of_day.to_i
     end

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class PointsController < ApplicationController
+  include SafeTimestampParser
+
   before_action :authenticate_user!
 
   def index
@@ -40,13 +42,13 @@ class PointsController < ApplicationController
   def start_at
     return 1.month.ago.beginning_of_day.to_i if params[:start_at].nil?
 
-    Time.zone.parse(params[:start_at]).to_i
+    safe_timestamp(params[:start_at])
   end
 
   def end_at
     return Time.zone.today.end_of_day.to_i if params[:end_at].nil?
 
-    Time.zone.parse(params[:end_at]).to_i
+    safe_timestamp(params[:end_at])
   end
 
   def points
