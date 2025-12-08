@@ -2220,6 +2220,7 @@ export default class extends BaseController {
       return;
     }
 
+    const timezone = this.timezone || 'UTC';
     const html = citiesData.map(country => `
       <div class="mb-4" style="min-width: min-content;">
         <h4 class="font-bold text-md">${country.country}</h4>
@@ -2228,7 +2229,7 @@ export default class extends BaseController {
             <li class="text-sm whitespace-nowrap">
               ${city.city}
               <span class="text-gray-500">
-                (${new Date(city.timestamp * 1000).toLocaleDateString()})
+                (${new Date(city.timestamp * 1000).toLocaleDateString('en-US', { timeZone: timezone })})
               </span>
             </li>
           `).join('')}

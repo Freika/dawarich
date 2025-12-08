@@ -26,7 +26,8 @@ export default class extends Controller {
   static values = {
     apiKey: String,
     startDate: String,
-    endDate: String
+    endDate: String,
+    timezone: String
   }
 
   static targets = [

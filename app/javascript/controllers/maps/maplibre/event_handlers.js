@@ -18,7 +18,7 @@ export class EventHandlers {
 
     const content = `
       <div class="space-y-2">
-        <div><span class="font-semibold">Time:</span> ${formatTimestamp(properties.timestamp)}</div>
+        <div><span class="font-semibold">Time:</span> ${formatTimestamp(properties.timestamp, this.controller.timezoneValue)}</div>
         ${properties.battery ? `<div><span class="font-semibold">Battery:</span> ${properties.battery}%</div>` : ''}
         ${properties.altitude ? `<div><span class="font-semibold">Altitude:</span> ${Math.round(properties.altitude)}m</div>` : ''}
         ${properties.velocity ? `<div><span class="font-semibold">Speed:</span> ${Math.round(properties.velocity)} km/h</div>` : ''}
@@ -35,8 +35,8 @@ export class EventHandlers {
     const feature = e.features[0]
     const properties = feature.properties
 
-    const startTime = formatTimestamp(properties.started_at)
-    const endTime = formatTimestamp(properties.ended_at)
+    const startTime = formatTimestamp(properties.started_at, this.controller.timezoneValue)
+    const endTime = formatTimestamp(properties.ended_at, this.controller.timezoneValue)
     const durationHours = Math.round(properties.duration / 3600)
     const durationDisplay = durationHours >= 1 ? `${durationHours}h` : `${Math.round(properties.duration / 60)}m`
 
@@ -70,7 +70,7 @@ export class EventHandlers {
     const content = `
       <div class="space-y-2">
         ${properties.photo_url ? `<img src="${properties.photo_url}" alt="Photo" class="w-full rounded-lg mb-2" />` : ''}
-        ${properties.taken_at ? `<div><span class="font-semibold">Taken:</span> ${formatTimestamp(properties.taken_at)}</div>` : ''}
+        ${properties.taken_at ? `<div><span class="font-semibold">Taken:</span> ${formatTimestamp(properties.taken_at, this.controller.timezoneValue)}</div>` : ''}
       </div>
     `
 
