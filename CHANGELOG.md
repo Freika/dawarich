@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
-- Cities visited during a trip are now being calculated correctly. #547 #641
-- Points on the map are now show time in user's timezone. #580 #1035
+- Cities visited during a trip are now being calculated correctly. #547 #641 #1686 #1976
+- Points on the map are now show time in user's timezone. #580 #1035 #1682
 - Date range inputs now handle pre-epoch dates gracefully by clamping to valid PostgreSQL integer range. #685
 - Redis client now also being configured so that it could connect via unix socket. #1970
+- Importing KML files now creates points with correct timestamps. #1988
+- Importing KMZ files now works correctly.
 
 
 # [0.36.2] - 2025-12-06
