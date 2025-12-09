@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rexml/document'
+require 'zip'
 
 class Kml::Importer
   include Imports::Broadcaster
@@ -15,7 +16,7 @@ class Kml::Importer
   end
 
   def call
-    file_content = load_file_content
+    file_content = load_kml_content
     doc = REXML::Document.new(file_content)
 
     points_data = []
@@ -42,8 +43,54 @@ class Kml::Importer
 
   private
 
+  def load_kml_content
+    # Read content in binary mode for ZIP detection
+    content = if file_path && File.exist?(file_path)
+                File.binread(file_path)
+              else
+                downloader_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+                # Convert StringIO to String if needed
+                downloader_content.is_a?(StringIO) ? downloader_content.read : downloader_content
+              end
+
+    # Ensure we have a binary string
+    content.force_encoding('BINARY') if content.respond_to?(:force_encoding)
+
+    # Check if this is a KMZ file (ZIP archive) by checking for ZIP signature
+    # ZIP files start with "PK" (0x50 0x4B)
+    if content[0..1] == 'PK'
+      extract_kml_from_kmz(content)
+    else
+      content
+    end
+  end
+
+  def extract_kml_from_kmz(kmz_content)
+    # KMZ files are ZIP archives containing a KML file (usually doc.kml)
+    # We need to extract the KML content from the ZIP
+    kml_content = nil
+
+    Zip::InputStream.open(StringIO.new(kmz_content)) do |io|
+      while (entry = io.get_next_entry)
+        if entry.name.downcase.end_with?('.kml')
+          kml_content = io.read
+          break
+        end
+      end
+    end
+
+    raise 'No KML file found in KMZ archive' unless kml_content
+
+    kml_content
+  rescue Zip::Error => e
+    raise "Failed to extract KML from KMZ: #{e.message}"
+  end
+
   def parse_placemark(placemark)
     points = []
+
+    return points unless has_explicit_timestamp?(placemark)
+
     timestamp = extract_timestamp(placemark)
 
     # Handle Point geometry
@@ -74,7 +121,6 @@ class Kml::Importer
   end
 
   def parse_gx_track(track)
-    # Google Earth Track extension with coordinated when/coord pairs
     points = []
 
     timestamps = []
@@ -89,28 +135,26 @@ class Kml::Importer
 
     # Match timestamps with coordinates
     [timestamps.size, coordinates.size].min.times do |i|
-      begin
-        time = Time.parse(timestamps[i]).to_i
-        coord_parts = coordinates[i].split(/\s+/)
-        next if coord_parts.size < 2
+      time = Time.parse(timestamps[i]).to_i
+      coord_parts = coordinates[i].split(/\s+/)
+      next if coord_parts.size < 2
 
-        lng, lat, alt = coord_parts.map(&:to_f)
+      lng, lat, alt = coord_parts.map(&:to_f)
 
-        points << {
-          lonlat: "POINT(#{lng} #{lat})",
-          altitude: alt&.to_i || 0,
-          timestamp: time,
-          import_id: import.id,
-          velocity: 0.0,
-          raw_data: { source: 'gx_track', index: i },
-          user_id: user_id,
-          created_at: Time.current,
-          updated_at: Time.current
-        }
-      rescue StandardError => e
-        Rails.logger.warn("Failed to parse gx:Track point at index #{i}: #{e.message}")
-        next
-      end
+      points << {
+        lonlat: "POINT(#{lng} #{lat})",
+        altitude: alt&.to_i || 0,
+        timestamp: time,
+        import_id: import.id,
+        velocity: 0.0,
+        raw_data: { source: 'gx_track', index: i },
+        user_id: user_id,
+        created_at: Time.current,
+        updated_at: Time.current
+      }
+    rescue StandardError => e
+      Rails.logger.warn("Failed to parse gx:Track point at index #{i}: #{e.message}")
+      next
     end
 
     points
@@ -133,6 +177,12 @@ class Kml::Importer
     end.compact
   end
 
+  def has_explicit_timestamp?(placemark)
+    REXML::XPath.first(placemark, './/TimeStamp/when') ||
+      REXML::XPath.first(placemark, './/TimeSpan/begin') ||
+      REXML::XPath.first(placemark, './/TimeSpan/end')
+  end
+
   def extract_timestamp(placemark)
     # Try TimeStamp first
     timestamp_node = REXML::XPath.first(placemark, './/TimeStamp/when')
@@ -146,11 +196,11 @@ class Kml::Importer
     timespan_end = REXML::XPath.first(placemark, './/TimeSpan/end')
     return Time.parse(timespan_end.text).to_i if timespan_end
 
-    # Default to import creation time if no timestamp found
-    import.created_at.to_i
+    # No timestamp found - this should not happen if has_explicit_timestamp? was checked
+    raise 'No timestamp found in placemark'
   rescue StandardError => e
-    Rails.logger.warn("Failed to parse timestamp: #{e.message}")
-    import.created_at.to_i
+    Rails.logger.error("Failed to parse timestamp: #{e.message}")
+    raise e
   end
 
   def build_point(coord, timestamp, placemark)
