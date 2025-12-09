@@ -34,7 +34,7 @@ export default class extends BaseController {
 
             const statusCell = row.querySelector('[data-status-display]');
             if (statusCell && data.import.status) {
-              statusCell.innerHTML = this.renderStatusBadge(data.import.status);
+              statusCell.textContent = data.import.status;
             }
           }
         }
@@ -46,33 +46,5 @@ export default class extends BaseController {
     if (this.channel) {
       this.channel.unsubscribe();
     }
-  }
-
-  renderStatusBadge(status) {
-    const statusLower = status.toLowerCase();
-
-    switch(statusLower) {
-      case 'completed':
-        return `<span class="badge badge-success badge-sm gap-1">
-                  <span class="text-xs">✓</span>
-                  <span>Completed</span>
-                </span>`;
-      case 'processing':
-        return `<span class="badge badge-warning badge-sm gap-1">
-                  <span class="loading loading-spinner loading-xs"></span>
-                  <span>Processing</span>
-                </span>`;
-      case 'failed':
-        return `<span class="badge badge-error badge-sm gap-1">
-                  <span class="text-xs">✕</span>
-                  <span>Failed</span>
-                </span>`;
-      default:
-        return `<span class="badge badge-sm">${this.capitalize(status)}</span>`;
-    }
-  }
-
-  capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
   }
 }
