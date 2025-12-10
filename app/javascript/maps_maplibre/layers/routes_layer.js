@@ -31,7 +31,13 @@ export class RoutesLayer extends BaseLayer {
           'line-cap': 'round'
         },
         paint: {
-          'line-color': '#f97316',  // Solid orange color
+          // Use color from feature properties if available, otherwise default blue
+          'line-color': [
+            'case',
+            ['has', 'color'],
+            ['get', 'color'],
+            '#0000ff'  // Default blue color (matching v1)
+          ],
           'line-width': 3,
           'line-opacity': 0.8
         }

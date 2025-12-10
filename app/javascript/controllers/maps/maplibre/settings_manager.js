@@ -22,12 +22,17 @@ export class SettingsController {
   }
 
   /**
-   * Load settings (sync from backend and localStorage)
+   * Load settings (sync from backend)
    */
   async loadSettings() {
     this.settings = await SettingsManager.sync()
     this.controller.settings = this.settings
-    console.log('[Maps V2] Settings loaded:', this.settings)
+
+    // Update dataLoader with new settings
+    if (this.controller.dataLoader) {
+      this.controller.dataLoader.updateSettings(this.settings)
+    }
+
     return this.settings
   }
 
@@ -134,8 +139,6 @@ export class SettingsController {
     if (speedColoredRoutesToggle) {
       speedColoredRoutesToggle.checked = this.settings.speedColoredRoutes || false
     }
-
-    console.log('[Maps V2] UI controls synced with settings')
   }
 
   /**
@@ -154,7 +157,6 @@ export class SettingsController {
 
     // Reload layers after style change
     this.map.once('style.load', () => {
-      console.log('Style loaded, reloading map data')
       this.controller.loadMapData()
     })
   }
@@ -203,9 +205,15 @@ export class SettingsController {
     // Apply settings to current map
     await this.applySettingsToMap(settings)
 
-    // Save to backend and localStorage
+    // Save to backend
     for (const [key, value] of Object.entries(settings)) {
       await SettingsManager.updateSetting(key, value)
+    }
+
+    // Update controller settings and dataLoader
+    this.controller.settings = { ...this.controller.settings, ...settings }
+    if (this.controller.dataLoader) {
+      this.controller.dataLoader.updateSettings(this.controller.settings)
     }
 
     Toast.success('Settings updated successfully')

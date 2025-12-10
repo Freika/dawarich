@@ -1,21 +1,20 @@
 /**
  * Settings manager for persisting user preferences
- * Supports both localStorage (fallback) and backend API (primary)
+ * Loads settings from backend API only (no localStorage)
  */
-
-const STORAGE_KEY = 'dawarich-maps-maplibre-settings'
 
 const DEFAULT_SETTINGS = {
   mapStyle: 'light',
   enabledMapLayers: ['Points', 'Routes'], // Compatible with v1 map
-  // Advanced settings
-  routeOpacity: 1.0,
-  fogOfWarRadius: 1000,
+  // Advanced settings (matching v1 naming)
+  routeOpacity: 0.6,
+  fogOfWarRadius: 100,
   fogOfWarThreshold: 1,
-  metersBetweenRoutes: 500,
+  metersBetweenRoutes: 1000,
   minutesBetweenRoutes: 60,
   pointsRenderingMode: 'raw',
-  speedColoredRoutes: false
+  speedColoredRoutes: false,
+  speedColorScale: '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300'
 }
 
 // Mapping between v2 layer names and v1 layer names in enabled_map_layers array
@@ -34,7 +33,15 @@ const LAYER_NAME_MAP = {
 // Mapping between frontend settings and backend API keys
 const BACKEND_SETTINGS_MAP = {
   mapStyle: 'maps_maplibre_style',
-  enabledMapLayers: 'enabled_map_layers'
+  enabledMapLayers: 'enabled_map_layers',
+  routeOpacity: 'route_opacity',
+  fogOfWarRadius: 'fog_of_war_meters',
+  fogOfWarThreshold: 'fog_of_war_threshold',
+  metersBetweenRoutes: 'meters_between_routes',
+  minutesBetweenRoutes: 'minutes_between_routes',
+  pointsRenderingMode: 'points_rendering_mode',
+  speedColoredRoutes: 'speed_colored_routes',
+  speedColorScale: 'speed_color_scale'
 }
 
 export class SettingsManager {
@@ -51,9 +58,8 @@ export class SettingsManager {
   }
 
   /**
-   * Get all settings (localStorage first, then merge with defaults)
+   * Get all settings from cache or defaults
    * Converts enabled_map_layers array to individual boolean flags
-   * Uses cached settings if available to avoid race conditions
    * @returns {Object} Settings object
    */
   static getSettings() {
@@ -62,21 +68,11 @@ export class SettingsManager {
       return { ...this.cachedSettings }
     }
 
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      const settings = stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS
+    // Convert enabled_map_layers array to individual boolean flags
+    const expandedSettings = this._expandLayerSettings(DEFAULT_SETTINGS)
+    this.cachedSettings = expandedSettings
 
-      // Convert enabled_map_layers array to individual boolean flags
-      const expandedSettings = this._expandLayerSettings(settings)
-
-      // Cache the settings
-      this.cachedSettings = expandedSettings
-
-      return { ...expandedSettings }
-    } catch (error) {
-      console.error('Failed to load settings:', error)
-      return DEFAULT_SETTINGS
-    }
+    return { ...expandedSettings }
   }
 
   /**
@@ -141,14 +137,31 @@ export class SettingsManager {
       const frontendSettings = {}
       Object.entries(BACKEND_SETTINGS_MAP).forEach(([frontendKey, backendKey]) => {
         if (backendKey in backendSettings) {
-          frontendSettings[frontendKey] = backendSettings[backendKey]
+          let value = backendSettings[backendKey]
+
+          // Convert backend values to correct types
+          if (frontendKey === 'routeOpacity') {
+            value = parseFloat(value) || DEFAULT_SETTINGS.routeOpacity
+          } else if (frontendKey === 'fogOfWarRadius') {
+            value = parseInt(value) || DEFAULT_SETTINGS.fogOfWarRadius
+          } else if (frontendKey === 'fogOfWarThreshold') {
+            value = parseInt(value) || DEFAULT_SETTINGS.fogOfWarThreshold
+          } else if (frontendKey === 'metersBetweenRoutes') {
+            value = parseInt(value) || DEFAULT_SETTINGS.metersBetweenRoutes
+          } else if (frontendKey === 'minutesBetweenRoutes') {
+            value = parseInt(value) || DEFAULT_SETTINGS.minutesBetweenRoutes
+          } else if (frontendKey === 'speedColoredRoutes') {
+            value = value === true || value === 'true'
+          }
+
+          frontendSettings[frontendKey] = value
         }
       })
 
-      // Merge with defaults, but prioritize backend's enabled_map_layers completely
+      // Merge with defaults
       const mergedSettings = { ...DEFAULT_SETTINGS, ...frontendSettings }
 
-      // If backend has enabled_map_layers, use it as-is (don't merge with defaults)
+      // If backend has enabled_map_layers, use it as-is
       if (backendSettings.enabled_map_layers) {
         mergedSettings.enabledMapLayers = backendSettings.enabled_map_layers
       }
@@ -156,8 +169,8 @@ export class SettingsManager {
       // Convert enabled_map_layers array to individual boolean flags
       const expandedSettings = this._expandLayerSettings(mergedSettings)
 
-      // Save to localStorage and cache
-      this.saveToLocalStorage(expandedSettings)
+      // Cache the settings
+      this.cachedSettings = expandedSettings
 
       return expandedSettings
     } catch (error) {
@@ -167,18 +180,11 @@ export class SettingsManager {
   }
 
   /**
-   * Save all settings to localStorage and update cache
+   * Update cache with new settings
    * @param {Object} settings - Settings object
    */
-  static saveToLocalStorage(settings) {
-    try {
-      // Update cache first
-      this.cachedSettings = { ...settings }
-      // Then save to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-    } catch (error) {
-      console.error('Failed to save settings to localStorage:', error)
-    }
+  static updateCache(settings) {
+    this.cachedSettings = { ...settings }
   }
 
   /**
@@ -203,7 +209,19 @@ export class SettingsManager {
           // Use the collapsed array
           backendSettings[backendKey] = enabledMapLayers
         } else if (frontendKey in settings) {
-          backendSettings[backendKey] = settings[frontendKey]
+          let value = settings[frontendKey]
+
+          // Convert frontend values to backend format
+          if (frontendKey === 'routeOpacity') {
+            value = parseFloat(value).toString()
+          } else if (frontendKey === 'fogOfWarRadius' || frontendKey === 'fogOfWarThreshold' ||
+                     frontendKey === 'metersBetweenRoutes' || frontendKey === 'minutesBetweenRoutes') {
+            value = parseInt(value).toString()
+          } else if (frontendKey === 'speedColoredRoutes') {
+            value = Boolean(value)
+          }
+
+          backendSettings[backendKey] = value
         }
       })
 
@@ -220,7 +238,6 @@ export class SettingsManager {
         throw new Error(`Failed to save settings: ${response.status}`)
       }
 
-      console.log('[Settings] Saved to backend successfully:', backendSettings)
       return true
     } catch (error) {
       console.error('[Settings] Failed to save to backend:', error)
@@ -238,7 +255,7 @@ export class SettingsManager {
   }
 
   /**
-   * Update a specific setting (saves to both localStorage and backend)
+   * Update a specific setting and save to backend
    * @param {string} key - Setting key
    * @param {*} value - New value
    */
@@ -253,28 +270,23 @@ export class SettingsManager {
       settings.enabledMapLayers = this._collapseLayerSettings(settings)
     }
 
-    // Save to localStorage immediately
-    this.saveToLocalStorage(settings)
+    // Update cache immediately
+    this.updateCache(settings)
 
-    // Save to backend (non-blocking)
-    this.saveToBackend(settings).catch(error => {
-      console.warn('[Settings] Backend save failed, but localStorage updated:', error)
-    })
+    // Save to backend
+    await this.saveToBackend(settings)
   }
 
   /**
    * Reset to defaults
    */
-  static resetToDefaults() {
+  static async resetToDefaults() {
     try {
-      localStorage.removeItem(STORAGE_KEY)
       this.cachedSettings = null // Clear cache
 
-      // Also reset on backend
+      // Reset on backend
       if (this.apiKey) {
-        this.saveToBackend(DEFAULT_SETTINGS).catch(error => {
-          console.warn('[Settings] Failed to reset backend settings:', error)
-        })
+        await this.saveToBackend(DEFAULT_SETTINGS)
       }
     } catch (error) {
       console.error('Failed to reset settings:', error)
@@ -282,9 +294,9 @@ export class SettingsManager {
   }
 
   /**
-   * Sync settings: load from backend and merge with localStorage
+   * Sync settings: load from backend
    * Call this on app initialization
-   * @returns {Promise<Object>} Merged settings
+   * @returns {Promise<Object>} Settings from backend
    */
   static async sync() {
     const backendSettings = await this.loadFromBackend()
