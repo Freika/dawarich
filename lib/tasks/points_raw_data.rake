@@ -95,12 +95,20 @@ namespace :points do
       puts ''
 
       total_archives = Points::RawDataArchive.count
+      verified_archives = Points::RawDataArchive.where.not(verified_at: nil).count
+      unverified_archives = total_archives - verified_archives
+
       total_points = Point.count
       archived_points = Point.where(raw_data_archived: true).count
+      cleared_points = Point.where(raw_data_archived: true, raw_data: {}).count
+      archived_not_cleared = archived_points - cleared_points
+
       percentage = total_points.positive? ? (archived_points.to_f / total_points * 100).round(2) : 0
 
-      puts "Archives: #{total_archives}"
+      puts "Archives: #{total_archives} (#{verified_archives} verified, #{unverified_archives} unverified)"
       puts "Points archived: #{archived_points} / #{total_points} (#{percentage}%)"
+      puts "Points cleared: #{cleared_points}"
+      puts "Archived but not cleared: #{archived_not_cleared}"
       puts ''
 
       # Storage size via ActiveStorage
@@ -133,87 +141,88 @@ namespace :points do
       puts ''
     end
 
-    desc 'Verify archive integrity for a month'
+    desc 'Verify archive integrity (all unverified archives, or specific month with args)'
     task :verify, [:user_id, :year, :month] => :environment do |_t, args|
-      validate_args!(args)
+      verifier = Points::RawData::Verifier.new
 
-      user_id = args[:user_id].to_i
-      year = args[:year].to_i
-      month = args[:month].to_i
+      if args[:user_id] && args[:year] && args[:month]
+        # Verify specific month
+        user_id = args[:user_id].to_i
+        year = args[:year].to_i
+        month = args[:month].to_i
 
-      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      puts '  Verifying Archives'
-      puts "  User: #{user_id} | Month: #{year}-#{format('%02d', month)}"
-      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      puts ''
+        puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        puts '  Verifying Archives'
+        puts "  User: #{user_id} | Month: #{year}-#{format('%02d', month)}"
+        puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        puts ''
 
-      archives = Points::RawDataArchive.for_month(user_id, year, month)
-
-      if archives.empty?
-        puts 'No archives found.'
-        exit
-      end
-
-      all_ok = true
-
-      archives.each do |archive|
-        print "Chunk #{archive.chunk_number}: "
-
-        # Check file attached
-        unless archive.file.attached?
-          puts '✗ ERROR - File not attached!'
-          all_ok = false
-          next
-        end
-
-        # Download and count
-        begin
-          compressed = archive.file.blob.download
-          io = StringIO.new(compressed)
-          gz = Zlib::GzipReader.new(io)
-
-          actual_count = 0
-          gz.each_line { actual_count += 1 }
-          gz.close
-
-          if actual_count == archive.point_count
-            puts "✓ OK (#{actual_count} points, #{archive.size_mb} MB)"
-          else
-            puts "✗ MISMATCH - Expected #{archive.point_count}, found #{actual_count}"
-            all_ok = false
-          end
-        rescue StandardError => e
-          puts "✗ ERROR - #{e.message}"
-          all_ok = false
-        end
-      end
-
-      puts ''
-      if all_ok
-        puts '✓ All archives verified successfully!'
+        verifier.verify_month(user_id, year, month)
       else
-        puts '✗ Some archives have issues. Please investigate.'
+        # Verify all unverified archives
+        puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        puts '  Verifying All Unverified Archives'
+        puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        puts ''
+
+        stats = verifier.call
+
+        puts ''
+        puts "Verified: #{stats[:verified]}"
+        puts "Failed: #{stats[:failed]}"
       end
+
+      puts ''
+      puts '✓ Verification complete!'
     end
 
-    desc 'Run initial archival for old data (safe to re-run)'
-    task initial_archive: :environment do
+    desc 'Clear raw_data for verified archives (all verified, or specific month with args)'
+    task :clear_verified, [:user_id, :year, :month] => :environment do |_t, args|
+      clearer = Points::RawData::Clearer.new
+
+      if args[:user_id] && args[:year] && args[:month]
+        # Clear specific month
+        user_id = args[:user_id].to_i
+        year = args[:year].to_i
+        month = args[:month].to_i
+
+        puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        puts '  Clearing Verified Archives'
+        puts "  User: #{user_id} | Month: #{year}-#{format('%02d', month)}"
+        puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        puts ''
+
+        clearer.clear_month(user_id, year, month)
+      else
+        # Clear all verified archives
+        puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        puts '  Clearing All Verified Archives'
+        puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        puts ''
+
+        stats = clearer.call
+
+        puts ''
+        puts "Points cleared: #{stats[:cleared]}"
+      end
+
+      puts ''
+      puts '✓ Clearing complete!'
+      puts ''
+      puts 'Run VACUUM ANALYZE points; to reclaim space and update statistics.'
+    end
+
+    desc 'Archive raw_data for old data (2+ months old, does NOT clear yet)'
+    task archive: :environment do
       puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      puts '  Initial Archival (2+ months old data)'
+      puts '  Archiving Raw Data (2+ months old data)'
       puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
       puts ''
       puts 'This will archive points.raw_data for months 2+ months old.'
+      puts 'Raw data will NOT be cleared yet - use verify and clear_verified tasks.'
       puts 'This is safe to run multiple times (idempotent).'
       puts ''
-      print 'Continue? (y/N): '
 
-      response = $stdin.gets.chomp.downcase
-      unless response == 'y'
-        puts 'Cancelled.'
-        exit
-      end
-
-      puts ''
       stats = Points::RawData::Archiver.new.call
 
       puts ''
@@ -229,10 +238,53 @@ namespace :points do
       return unless stats[:archived].positive?
 
       puts 'Next steps:'
-      puts '1. Verify a sample: rake points:raw_data:verify[user_id,year,month]'
-      puts '2. Check stats: rake points:raw_data:status'
-      puts '3. (Optional) Reclaim space: VACUUM FULL points; (during maintenance)'
+      puts '1. Verify archives: rake points:raw_data:verify'
+      puts '2. Clear verified data: rake points:raw_data:clear_verified'
+      puts '3. Check stats: rake points:raw_data:status'
     end
+
+    desc 'Full workflow: archive + verify + clear (for automated use)'
+    task archive_full: :environment do
+      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      puts '  Full Archive Workflow'
+      puts '  (Archive → Verify → Clear)'
+      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      puts ''
+
+      # Step 1: Archive
+      puts '▸ Step 1/3: Archiving...'
+      archiver_stats = Points::RawData::Archiver.new.call
+      puts "  ✓ Archived #{archiver_stats[:archived]} points"
+      puts ''
+
+      # Step 2: Verify
+      puts '▸ Step 2/3: Verifying...'
+      verifier_stats = Points::RawData::Verifier.new.call
+      puts "  ✓ Verified #{verifier_stats[:verified]} archives"
+      if verifier_stats[:failed].positive?
+        puts "  ✗ Failed to verify #{verifier_stats[:failed]} archives"
+        puts ''
+        puts '⚠ Some archives failed verification. Data NOT cleared for safety.'
+        puts 'Please investigate failed archives before running clear_verified.'
+        exit 1
+      end
+      puts ''
+
+      # Step 3: Clear
+      puts '▸ Step 3/3: Clearing verified data...'
+      clearer_stats = Points::RawData::Clearer.new.call
+      puts "  ✓ Cleared #{clearer_stats[:cleared]} points"
+      puts ''
+
+      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      puts '  ✓ Full Archive Workflow Complete!'
+      puts '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      puts ''
+      puts 'Run VACUUM ANALYZE points; to reclaim space.'
+    end
+
+    # Alias for backward compatibility
+    task initial_archive: :archive
   end
 end
 
