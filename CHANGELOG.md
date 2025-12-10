@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Redis client now also being configured so that it could connect via unix socket. #1970
 - Importing KML files now creates points with correct timestamps. #1988
 - Importing KMZ files now works correctly.
+- Map settings are now being respected in map v2. #2012
 
 
 # [0.36.2] - 2025-12-06
