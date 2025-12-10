@@ -69,6 +69,24 @@ RSpec.describe Points::RawData::Verifier do
         verifier.verify_specific_archive(archive.id)
       end.not_to change { archive.reload.verified_at }
     end
+
+    it 'detects raw_data mismatch between archive and database' do
+      # Modify raw_data in database after archiving
+      points.first.update_column(:raw_data, { lon: 999.0, lat: 999.0 })
+
+      expect do
+        verifier.verify_specific_archive(archive.id)
+      end.not_to change { archive.reload.verified_at }
+    end
+
+    it 'verifies raw_data matches between archive and database' do
+      # Ensure data hasn't changed
+      expect(points.first.raw_data).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to be_present
+    end
   end
 
   describe '#verify_month' do

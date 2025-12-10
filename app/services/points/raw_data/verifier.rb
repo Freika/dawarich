@@ -87,12 +87,14 @@ module Points
           end
         end
 
-        # 5. Verify file can be decompressed and is valid JSONL
+        # 5. Verify file can be decompressed and is valid JSONL, extract data
         begin
-          point_ids = decompress_and_extract_point_ids(compressed_content)
+          archived_data = decompress_and_extract_data(compressed_content)
         rescue StandardError => e
           return { success: false, error: "Decompression/parsing failed: #{e.message}" }
         end
+
+        point_ids = archived_data.keys
 
         # 6. Verify point count matches
         if point_ids.count != archive.point_count
@@ -117,21 +119,58 @@ module Points
           }
         end
 
+        # 9. Verify archived raw_data matches current database raw_data
+        verification_result = verify_raw_data_matches(archived_data)
+        return verification_result unless verification_result[:success]
+
         { success: true }
       end
 
-      def decompress_and_extract_point_ids(compressed_content)
+      def decompress_and_extract_data(compressed_content)
         io = StringIO.new(compressed_content)
         gz = Zlib::GzipReader.new(io)
-        point_ids = []
+        archived_data = {}
 
         gz.each_line do |line|
           data = JSON.parse(line)
-          point_ids << data['id']
+          archived_data[data['id']] = data['raw_data']
         end
 
         gz.close
-        point_ids
+        archived_data
+      end
+
+      def verify_raw_data_matches(archived_data)
+        # Sample verification: check random points to ensure archived data matches database
+        # For performance, we'll verify a sample rather than all points
+        sample_size = [archived_data.size, 100].min
+        point_ids_to_check = archived_data.keys.sample(sample_size)
+
+        mismatches = []
+
+        Point.where(id: point_ids_to_check).find_each do |point|
+          archived_raw_data = archived_data[point.id]
+          current_raw_data = point.raw_data
+
+          # Compare the raw_data (both should be hashes)
+          if archived_raw_data != current_raw_data
+            mismatches << {
+              point_id: point.id,
+              archived: archived_raw_data,
+              current: current_raw_data
+            }
+          end
+        end
+
+        if mismatches.any?
+          return {
+            success: false,
+            error: "Raw data mismatch detected in #{mismatches.count} point(s). " \
+                   "First mismatch: Point #{mismatches.first[:point_id]}"
+          }
+        end
+
+        { success: true }
       end
 
       def calculate_checksum(point_ids)
