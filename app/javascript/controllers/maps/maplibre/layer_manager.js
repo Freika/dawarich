@@ -247,7 +247,9 @@ export class LayerManager {
   _addPointsLayer(pointsGeoJSON) {
     if (!this.layers.pointsLayer) {
       this.layers.pointsLayer = new PointsLayer(this.map, {
-        visible: this.settings.pointsVisible !== false // Default true unless explicitly false
+        visible: this.settings.pointsVisible !== false, // Default true unless explicitly false
+        apiClient: this.api,
+        layerManager: this
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {

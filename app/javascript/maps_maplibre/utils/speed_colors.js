@@ -102,7 +102,7 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
  */
 export function getSpeedColor(speedKmh, useSpeedColors, speedColorScale) {
   if (!useSpeedColors) {
-    return '#f97316' // Default orange color
+    return '#0000ff' // Default blue color (matching v1)
   }
 
   let colorStops

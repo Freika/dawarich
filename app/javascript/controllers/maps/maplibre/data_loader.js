@@ -7,9 +7,17 @@ import { performanceMonitor } from 'maps_maplibre/utils/performance_monitor'
  * Handles loading and transforming data from API
  */
 export class DataLoader {
-  constructor(api, apiKey) {
+  constructor(api, apiKey, settings = {}) {
     this.api = api
     this.apiKey = apiKey
+    this.settings = settings
+  }
+
+  /**
+   * Update settings (called when user changes settings)
+   */
+  updateSettings(settings) {
+    this.settings = settings
   }
 
   /**
@@ -30,7 +38,10 @@ export class DataLoader {
     // Transform points to GeoJSON
     performanceMonitor.mark('transform-geojson')
     data.pointsGeoJSON = pointsToGeoJSON(data.points)
-    data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points)
+    data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
+      distanceThresholdMeters: this.settings.metersBetweenRoutes || 1000,
+      timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60
+    })
     performanceMonitor.measure('transform-geojson')
 
     // Fetch visits
