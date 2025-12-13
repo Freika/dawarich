@@ -1,4 +1,5 @@
 import { BaseLayer } from './base_layer'
+import { Toast } from 'maps_maplibre/components/toast'
 
 /**
  * Points layer for displaying individual location points
@@ -150,7 +151,7 @@ export class PointsLayer extends BaseLayer {
           source.setData(data)
         }
       }
-      alert('Failed to update point position. Please try again.')
+      Toast.error('Failed to update point position. Please try again.')
     }
 
     this.draggedFeature = null
