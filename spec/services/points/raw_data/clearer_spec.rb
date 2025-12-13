@@ -143,7 +143,10 @@ RSpec.describe Points::RawData::Clearer do
 
     it 'is idempotent (safe to run multiple times)' do
       first_result = clearer.call
-      second_result = clearer.call
+
+      # Use a new instance for second call
+      new_clearer = Points::RawData::Clearer.new
+      second_result = new_clearer.call
 
       expect(first_result[:cleared]).to eq(5)
       expect(second_result[:cleared]).to eq(0) # Already cleared

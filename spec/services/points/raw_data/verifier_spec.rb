@@ -62,20 +62,26 @@ RSpec.describe Points::RawData::Verifier do
     end
 
     it 'detects deleted points' do
-      # Delete one point from database
+      # Force archive creation first
+      archive_id = archive.id
+
+      # Then delete one point from database
       points.first.destroy
 
       expect do
-        verifier.verify_specific_archive(archive.id)
+        verifier.verify_specific_archive(archive_id)
       end.not_to change { archive.reload.verified_at }
     end
 
     it 'detects raw_data mismatch between archive and database' do
-      # Modify raw_data in database after archiving
+      # Force archive creation first
+      archive_id = archive.id
+
+      # Then modify raw_data in database after archiving
       points.first.update_column(:raw_data, { lon: 999.0, lat: 999.0 })
 
       expect do
-        verifier.verify_specific_archive(archive.id)
+        verifier.verify_specific_archive(archive_id)
       end.not_to change { archive.reload.verified_at }
     end
 
@@ -149,8 +155,9 @@ RSpec.describe Points::RawData::Verifier do
       # Verify once
       verifier.call
 
-      # Try to verify again
-      result = verifier.call
+      # Try to verify again with a new verifier instance
+      new_verifier = Points::RawData::Verifier.new
+      result = new_verifier.call
 
       expect(result[:verified]).to eq(0)
       expect(result[:failed]).to eq(0)

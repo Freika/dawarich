@@ -51,7 +51,7 @@ RSpec.describe Points::RawData::Archiver do
       it 'keeps raw_data intact (does not clear yet)' do
         archiver.call
         Point.where(user: user).find_each do |point|
-          expect(point.raw_data).to eq({ lon: 13.4, lat: 52.5 })
+          expect(point.raw_data).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
         end
       end
 

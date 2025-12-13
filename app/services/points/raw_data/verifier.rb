@@ -141,14 +141,19 @@ module Points
       end
 
       def verify_raw_data_matches(archived_data)
-        # Sample verification: check random points to ensure archived data matches database
-        # For performance, we'll verify a sample rather than all points
-        sample_size = [archived_data.size, 100].min
-        point_ids_to_check = archived_data.keys.sample(sample_size)
+        # For small archives, verify all points. For large archives, sample up to 100 points.
+        # Always verify all if 100 or fewer points for maximum accuracy
+        if archived_data.size <= 100
+          point_ids_to_check = archived_data.keys
+        else
+          point_ids_to_check = archived_data.keys.sample(100)
+        end
 
         mismatches = []
+        found_points = 0
 
         Point.where(id: point_ids_to_check).find_each do |point|
+          found_points += 1
           archived_raw_data = archived_data[point.id]
           current_raw_data = point.raw_data
 
@@ -160,6 +165,14 @@ module Points
               current: current_raw_data
             }
           end
+        end
+
+        # Check if we found all the points we were looking for
+        if found_points != point_ids_to_check.size
+          return {
+            success: false,
+            error: "Missing points during data verification: expected #{point_ids_to_check.size}, found #{found_points}"
+          }
         end
 
         if mismatches.any?
