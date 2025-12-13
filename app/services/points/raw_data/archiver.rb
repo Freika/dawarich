@@ -120,8 +120,7 @@ module Points
         Point.transaction do
           Point.where(id: point_ids).update_all(
             raw_data_archived: true,
-            raw_data_archive_id: archive_id,
-            raw_data: {}
+            raw_data_archive_id: archive_id
           )
         end
       end
