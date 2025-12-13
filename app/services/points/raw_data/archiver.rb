@@ -108,6 +108,7 @@ module Points
         Point.where(user_id: user_id, raw_data_archived: false)
              .where(timestamp: timestamp_range)
              .where.not(raw_data: nil)
+             .where.not(raw_data: '{}')
       end
 
       def month_timestamp_range(year, month)
