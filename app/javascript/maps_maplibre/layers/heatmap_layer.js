@@ -9,7 +9,6 @@ export class HeatmapLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: 'heatmap', ...options })
     this.radius = 20  // Fixed radius
-    this.weight = options.weight || 1
     this.intensity = 1  // Fixed intensity
     this.opacity = options.opacity || 0.6
   }
@@ -31,14 +30,8 @@ export class HeatmapLayer extends BaseLayer {
         type: 'heatmap',
         source: this.sourceId,
         paint: {
-          // Increase weight as diameter increases
-          'heatmap-weight': [
-            'interpolate',
-            ['linear'],
-            ['get', 'weight'],
-            0, 0,
-            6, 1
-          ],
+          // Fixed weight for each point
+          'heatmap-weight': 1,
 
           // Increase intensity as zoom increases
           'heatmap-intensity': [
