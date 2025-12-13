@@ -173,7 +173,7 @@ export class RoutesManager {
         timestamp: f.properties.timestamp
       })) || []
 
-      const distanceThresholdMeters = this.settings.metersBetweenRoutes || 500
+      const distanceThresholdMeters = this.settings.metersBetweenRoutes || 1000
       const timeThresholdMinutes = this.settings.minutesBetweenRoutes || 60
 
       const { calculateSpeed, getSpeedColor } = await import('maps_maplibre/utils/speed_colors')

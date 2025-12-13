@@ -12,6 +12,13 @@ export class PointsLayer extends BaseLayer {
     this.isDragging = false
     this.draggedFeature = null
     this.canvas = null
+
+    // Bind event handlers once and store references for proper cleanup
+    this._onMouseEnter = this.onMouseEnter.bind(this)
+    this._onMouseLeave = this.onMouseLeave.bind(this)
+    this._onMouseDown = this.onMouseDown.bind(this)
+    this._onMouseMove = this.onMouseMove.bind(this)
+    this._onMouseUp = this.onMouseUp.bind(this)
   }
 
   getSourceConfig() {
@@ -51,11 +58,11 @@ export class PointsLayer extends BaseLayer {
     this.canvas = this.map.getCanvasContainer()
 
     // Change cursor to pointer when hovering over points
-    this.map.on('mouseenter', this.id, this.onMouseEnter.bind(this))
-    this.map.on('mouseleave', this.id, this.onMouseLeave.bind(this))
+    this.map.on('mouseenter', this.id, this._onMouseEnter)
+    this.map.on('mouseleave', this.id, this._onMouseLeave)
 
     // Handle drag events
-    this.map.on('mousedown', this.id, this.onMouseDown.bind(this))
+    this.map.on('mousedown', this.id, this._onMouseDown)
   }
 
   /**
@@ -66,9 +73,9 @@ export class PointsLayer extends BaseLayer {
 
     this.draggingEnabled = false
 
-    this.map.off('mouseenter', this.id, this.onMouseEnter.bind(this))
-    this.map.off('mouseleave', this.id, this.onMouseLeave.bind(this))
-    this.map.off('mousedown', this.id, this.onMouseDown.bind(this))
+    this.map.off('mouseenter', this.id, this._onMouseEnter)
+    this.map.off('mouseleave', this.id, this._onMouseLeave)
+    this.map.off('mousedown', this.id, this._onMouseDown)
   }
 
   onMouseEnter() {
@@ -91,8 +98,8 @@ export class PointsLayer extends BaseLayer {
     this.canvas.style.cursor = 'grabbing'
 
     // Bind mouse move and up events
-    this.map.on('mousemove', this.onMouseMove.bind(this))
-    this.map.once('mouseup', this.onMouseUp.bind(this))
+    this.map.on('mousemove', this._onMouseMove)
+    this.map.once('mouseup', this._onMouseUp)
   }
 
   onMouseMove(e) {
@@ -123,7 +130,7 @@ export class PointsLayer extends BaseLayer {
     // Clean up drag state
     this.isDragging = false
     this.canvas.style.cursor = ''
-    this.map.off('mousemove', this.onMouseMove.bind(this))
+    this.map.off('mousemove', this._onMouseMove)
 
     // Update the point on the backend
     try {
