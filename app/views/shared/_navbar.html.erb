@@ -131,30 +131,44 @@
           </div>
         <% end %>
 
-        <div class="dropdown dropdown-end dropdown-bottom dropdown-hover"
-          data-controller="notifications"
-          data-notifications-user-id-value="<%= current_user.id %>">
-          <div tabindex="0" role="button" class='btn btn-sm btn-ghost hover:btn-ghost p-2'>
-            <%= icon 'bell' %>
-            <% if @unread_notifications.present? %>
-              <span class="badge badge-xs badge-primary absolute top-0 right-0" data-notifications-target="badge">
-                <%= @unread_notifications.size %>
-              </span>
-            <% end %>
-          </div>
-          <ul tabindex="0" class="dropdown-content z-[5000] menu p-2 shadow-lg bg-base-100 rounded-box min-w-52" data-notifications-target="list">
-            <li><%= link_to 'See all', notifications_path %></li>
-            <% @unread_notifications.first(10).each do |notification| %>
-              <div class="divider p-0 m-0"></div>
-              <li class='notification-item'>
-                <%= link_to notification do %>
-                  <%= notification.title %>
-                  <div class="badge badge-xs justify-self-end badge-<%= notification.kind %>"></div>
-                <% end %>
-              </li>
-            <% end %>
-          </ul>
-        </div>
+        <li data-controller="notifications"
+            data-notifications-user-id-value="<%= current_user.id %>">
+          <details>
+            <summary class="relative">
+              <%= icon 'bell' %>
+              <% if @unread_notifications.present? %>
+                <span class="badge badge-xs badge-primary absolute top-0 right-0" data-notifications-target="badge">
+                  <%= @unread_notifications.size %>
+                </span>
+              <% end %>
+            </summary>
+            <ul class="p-2 bg-base-100 rounded-t-none z-10 min-w-52" data-notifications-target="list">
+              <li><%= link_to 'See all', notifications_path %></li>
+              <% @unread_notifications.first(10).each do |notification| %>
+                <div class="divider p-0 m-0"></div>
+                <li class='notification-item'>
+                  <%= link_to notification do %>
+                    <%= notification.title %>
+                    <div class="badge badge-xs justify-self-end badge-<%= notification.kind %>"></div>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><%= icon 'message-circle-question-mark' %></summary>
+            <ul class="p-2 bg-base-100 rounded-box shadow-md z-10 w-52">
+              <li><p>Need help? Ping us! <%= icon 'arrow-big-down' %></p></li>
+              <li><%= link_to 'X (Twitter)', 'https://x.com/freymakesstuff', target: '_blank', rel: 'noopener noreferrer' %></li>
+              <li><%= link_to 'Mastodon', 'https://mastodon.social/@dawarich', target: '_blank', rel: 'noopener noreferrer' %></li>
+              <li><%= link_to 'Email', 'mailto:hi@dawarich.app' %></li>
+              <li><%= link_to 'Forum', 'https://discourse.dawarich.app', target: '_blank', rel: 'noopener noreferrer' %></li>
+              <li><%= link_to 'Discord', 'https://discord.gg/pHsBjpt5J8', target: '_blank', rel: 'noopener noreferrer' %></li>
+            </ul>
+          </details>
+        </li>
         <li>
           <details>
             <summary>
