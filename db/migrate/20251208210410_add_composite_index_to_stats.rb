@@ -13,6 +13,7 @@ class AddCompositeIndexToStats < ActiveRecord::Migration[8.0]
     add_index :stats, %i[user_id year month],
               name: 'index_stats_on_user_id_year_month',
               unique: true,
-              algorithm: :concurrently
+              algorithm: :concurrently,
+              if_not_exists: true
   end
 end
