@@ -60,17 +60,19 @@ module Archivable
     io = StringIO.new(compressed_content)
     gz = Zlib::GzipReader.new(io)
 
-    result = nil
-    gz.each_line do |line|
-      data = JSON.parse(line)
-      if data['id'] == id
-        result = data['raw_data']
-        break
+    begin
+      result = nil
+      gz.each_line do |line|
+        data = JSON.parse(line)
+        if data['id'] == id
+          result = data['raw_data']
+          break
+        end
       end
+      result || {}
+    ensure
+      gz.close
     end
-
-    gz.close
-    result || {}
   end
 
   def handle_archive_fetch_error(error)
