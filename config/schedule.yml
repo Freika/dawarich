@@ -49,8 +49,3 @@ nightly_family_invitations_cleanup_job:
   cron: "30 2 * * *" # every day at 02:30
   class: "Family::Invitations::CleanupJob"
   queue: family
-
-# raw_data_archival_job:
-#   cron: "0 2 1 * *"  # Monthly on the 1st at 2 AM
-#   class: "Points::RawData::ArchiveJob"
-#   queue: archival
