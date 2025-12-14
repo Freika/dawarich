@@ -3,13 +3,10 @@ import { BaseLayer } from './base_layer'
 /**
  * Heatmap layer showing point density
  * Uses MapLibre's native heatmap for performance
- * Fixed radius: 20 pixels
  */
 export class HeatmapLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: 'heatmap', ...options })
-    this.radius = 20  // Fixed radius
-    this.intensity = 1  // Fixed intensity
     this.opacity = options.opacity || 0.6
   }
 
@@ -30,47 +27,52 @@ export class HeatmapLayer extends BaseLayer {
         type: 'heatmap',
         source: this.sourceId,
         paint: {
-          // Fixed weight for each point
+          // Fixed weight
           'heatmap-weight': 1,
 
-          // Increase intensity as zoom increases
+          // low intensity to view major clustors
           'heatmap-intensity': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            0, this.intensity,
-            9, this.intensity * 3
+            0, 0.01,
+            10, 0.1,
+            15, 0.3
           ],
 
-          // Color ramp from blue to red
+          // Color ramp
           'heatmap-color': [
             'interpolate',
             ['linear'],
             ['heatmap-density'],
-            0, 'rgba(33,102,172,0)',
-            0.2, 'rgb(103,169,207)',
-            0.4, 'rgb(209,229,240)',
-            0.6, 'rgb(253,219,199)',
-            0.8, 'rgb(239,138,98)',
+            0, 'rgba(0,0,0,0)',
+            0.6, 'rgba(0,0,0,0)',
+            0.65, 'rgba(33,102,172,0.4)',
+            0.7, 'rgb(103,169,207)',
+            0.8, 'rgb(209,229,240)',
+            0.9, 'rgb(253,219,199)',
+            0.95, 'rgb(239,138,98)',
             1, 'rgb(178,24,43)'
           ],
 
-          // Fixed radius adjusted by zoom level
+          // Radius in pixels, exponential growth
           'heatmap-radius': [
             'interpolate',
-            ['linear'],
+            ['exponential', 2],
             ['zoom'],
-            0, this.radius,
-            9, this.radius * 3
+            10, 3,
+            15, 5,
+            20, 160
           ],
 
-          // Transition from heatmap to circle layer by zoom level
+          // Visible when zoomed in, fades when zoomed out
           'heatmap-opacity': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            7, this.opacity,
-            9, 0
+            0, 0.3,
+            10, this.opacity,
+            15, this.opacity
           ]
         }
       }
