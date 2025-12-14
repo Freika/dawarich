@@ -26,7 +26,8 @@ export default class extends Controller {
   static values = {
     apiKey: String,
     startDate: String,
-    endDate: String
+    endDate: String,
+    timezone: String
   }
 
   static targets = [
@@ -92,7 +93,7 @@ export default class extends Controller {
 
     // Initialize managers
     this.layerManager = new LayerManager(this.map, this.settings, this.api)
-    this.dataLoader = new DataLoader(this.api, this.apiKeyValue)
+    this.dataLoader = new DataLoader(this.api, this.apiKeyValue, this.settings)
     this.eventHandlers = new EventHandlers(this.map, this)
     this.filterManager = new FilterManager(this.dataLoader)
     this.mapDataManager = new MapDataManager(this)

@@ -26,8 +26,8 @@ RSpec.describe StatsSerializer do
     end
 
     context 'when the user has stats' do
-      let!(:stats_in_2020) { create_list(:stat, 12, year: 2020, user:) }
-      let!(:stats_in_2021) { create_list(:stat, 12, year: 2021, user:) }
+      let!(:stats_in_2020) { (1..12).map { |month| create(:stat, year: 2020, month:, user:) } }
+      let!(:stats_in_2021) { (1..12).map { |month| create(:stat, year: 2021, month:, user:) } }
       let!(:points_in_2020) do
         (1..85).map do |i|
           create(:point, :with_geodata,
@@ -63,17 +63,17 @@ RSpec.describe StatsSerializer do
               "totalCitiesVisited": 1,
               "monthlyDistanceKm": {
                 "january": 1,
-                "february": 0,
-                "march": 0,
-                "april": 0,
-                "may": 0,
-                "june": 0,
-                "july": 0,
-                "august": 0,
-                "september": 0,
-                "october": 0,
-                "november": 0,
-                "december": 0
+                "february": 1,
+                "march": 1,
+                "april": 1,
+                "may": 1,
+                "june": 1,
+                "july": 1,
+                "august": 1,
+                "september": 1,
+                "october": 1,
+                "november": 1,
+                "december": 1
               }
             },
             {
@@ -83,17 +83,17 @@ RSpec.describe StatsSerializer do
               "totalCitiesVisited": 1,
               "monthlyDistanceKm": {
                 "january": 1,
-                "february": 0,
-                "march": 0,
-                "april": 0,
-                "may": 0,
-                "june": 0,
-                "july": 0,
-                "august": 0,
-                "september": 0,
-                "october": 0,
-                "november": 0,
-                "december": 0
+                "february": 1,
+                "march": 1,
+                "april": 1,
+                "may": 1,
+                "june": 1,
+                "july": 1,
+                "august": 1,
+                "september": 1,
+                "october": 1,
+                "november": 1,
+                "december": 1
               }
             }
           ]

@@ -25,6 +25,7 @@ require 'oj'
 class Users::ImportData
   STREAM_BATCH_SIZE = 5000
   STREAMED_SECTIONS = %w[places visits points].freeze
+  MAX_ENTRY_SIZE = 10.gigabytes # Maximum size for a single file in the archive
 
   def initialize(user, archive_path)
     @user = user
@@ -86,9 +87,44 @@ class Users::ImportData
 
         Rails.logger.debug "Extracting #{entry.name} to #{extraction_path}"
 
+        # Validate entry size before extraction
+        if entry.size > MAX_ENTRY_SIZE
+          Rails.logger.error "Skipping oversized entry: #{entry.name} (#{entry.size} bytes exceeds #{MAX_ENTRY_SIZE} bytes)"
+          raise "Archive entry #{entry.name} exceeds maximum allowed size"
+        end
+
         FileUtils.mkdir_p(File.dirname(extraction_path))
-        entry.extract(sanitized_name, destination_directory: @import_directory)
+
+        # Extract with proper error handling and cleanup
+        extract_entry_safely(entry, extraction_path)
       end
+    end
+  end
+
+  def extract_entry_safely(entry, extraction_path)
+    # Extract with error handling and cleanup on failure
+    begin
+      entry.get_input_stream do |input|
+        File.open(extraction_path, 'wb') do |output|
+          bytes_copied = IO.copy_stream(input, output)
+
+          # Verify extracted size matches expected size
+          if bytes_copied != entry.size
+            raise "Size mismatch for #{entry.name}: expected #{entry.size} bytes, got #{bytes_copied} bytes"
+          end
+        end
+      end
+
+      Rails.logger.debug "Successfully extracted #{entry.name} (#{entry.size} bytes)"
+    rescue StandardError => e
+      # Clean up partial file on error
+      FileUtils.rm_f(extraction_path) if File.exist?(extraction_path)
+
+      Rails.logger.error "Failed to extract #{entry.name}: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+
+      # Re-raise to stop the import process
+      raise "Extraction failed for #{entry.name}: #{e.message}"
     end
   end
 

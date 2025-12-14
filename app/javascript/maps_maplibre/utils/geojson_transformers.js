@@ -28,9 +28,10 @@ export function pointsToGeoJSON(points) {
 /**
  * Format timestamp for display
  * @param {number|string} timestamp - Unix timestamp (seconds) or ISO 8601 string
+ * @param {string} timezone - IANA timezone string (e.g., 'Europe/Berlin')
  * @returns {string} Formatted date/time
  */
-export function formatTimestamp(timestamp) {
+export function formatTimestamp(timestamp, timezone = 'UTC') {
   // Handle different timestamp formats
   let date
   if (typeof timestamp === 'string') {
@@ -49,6 +50,7 @@ export function formatTimestamp(timestamp) {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: timezone
   })
 }

@@ -124,8 +124,16 @@ test.describe('Routes Layer', () => {
 
       expect(routeLayerInfo).toBeTruthy()
       expect(routeLayerInfo.exists).toBe(true)
-      expect(routeLayerInfo.isArray).toBe(false)
-      expect(routeLayerInfo.value).toBe('#f97316')
+
+      // Route color is now a MapLibre expression that supports dynamic colors
+      // Format: ['case', ['has', 'color'], ['get', 'color'], '#0000ff']
+      if (routeLayerInfo.isArray) {
+        // It's a MapLibre expression, check the default color (last element)
+        expect(routeLayerInfo.value[routeLayerInfo.value.length - 1]).toBe('#0000ff')
+      } else {
+        // Solid color (fallback)
+        expect(routeLayerInfo.value).toBe('#0000ff')
+      }
     })
   })
 

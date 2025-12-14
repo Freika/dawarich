@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_01_192510) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_10_193532) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -224,6 +224,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_192510) do
     t.bigint "country_id"
     t.bigint "track_id"
     t.string "country_name"
+    t.boolean "raw_data_archived", default: false, null: false
+    t.bigint "raw_data_archive_id"
     t.index ["altitude"], name: "index_points_on_altitude"
     t.index ["battery"], name: "index_points_on_battery"
     t.index ["battery_status"], name: "index_points_on_battery_status"
@@ -238,6 +240,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_192510) do
     t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
+    t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
+    t.index ["raw_data_archived"], name: "index_points_on_archived_true", where: "(raw_data_archived = true)"
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
@@ -247,6 +251,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_192510) do
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
+  end
+
+  create_table "points_raw_data_archives", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "year", null: false
+    t.integer "month", null: false
+    t.integer "chunk_number", default: 1, null: false
+    t.integer "point_count", null: false
+    t.string "point_ids_checksum", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "archived_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "verified_at"
+    t.index ["archived_at"], name: "index_points_raw_data_archives_on_archived_at"
+    t.index ["user_id", "year", "month"], name: "index_points_raw_data_archives_on_user_id_and_year_and_month"
+    t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
   end
 
   create_table "stats", force: :cascade do |t|
@@ -265,6 +286,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_192510) do
     t.index ["h3_hex_ids"], name: "index_stats_on_h3_hex_ids", where: "((h3_hex_ids IS NOT NULL) AND (h3_hex_ids <> '{}'::jsonb))", using: :gin
     t.index ["month"], name: "index_stats_on_month"
     t.index ["sharing_uuid"], name: "index_stats_on_sharing_uuid", unique: true
+    t.index ["user_id", "year", "month"], name: "index_stats_on_user_id_year_month", unique: true
     t.index ["user_id"], name: "index_stats_on_user_id"
     t.index ["year"], name: "index_stats_on_year"
   end
@@ -351,6 +373,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_192510) do
     t.string "utm_term"
     t.string "utm_content"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
@@ -384,8 +407,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_192510) do
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
+  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :nullify
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
+  add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
   add_foreign_key "tags", "users"

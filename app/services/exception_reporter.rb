@@ -2,10 +2,14 @@
 
 class ExceptionReporter
   def self.call(exception, human_message = 'Exception reported')
-    return unless DawarichSettings.self_hosted?
+    return if DawarichSettings.self_hosted?
 
-    Rails.logger.error "#{human_message}: #{exception.message}"
-
-    Sentry.capture_exception(exception)
+    if exception.is_a?(Exception)
+      Rails.logger.error "#{human_message}: #{exception.message}"
+      Sentry.capture_exception(exception)
+    else
+      Rails.logger.error "#{exception}: #{human_message}"
+      Sentry.capture_message("#{exception}: #{human_message}")
+    end
   end
 end

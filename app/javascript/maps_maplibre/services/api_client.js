@@ -18,7 +18,8 @@ export class ApiClient {
       start_at,
       end_at,
       page: page.toString(),
-      per_page: per_page.toString()
+      per_page: per_page.toString(),
+      slim: 'true'
     })
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {

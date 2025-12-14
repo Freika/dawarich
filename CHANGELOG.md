@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.36.3] - 2025-12-14
+
+## Added
+
+- Setting `ARCHIVE_RAW_DATA` env var to true will enable monthly raw data archiving for all users. It will look for points older than 2 months with `raw_data` column not empty and create a zip archive containing raw data files for each month. After successful archiving, raw data will be removed from the database to save space. Monthly archiving job is being run every day at 2:00 AM. Default env var value is false.
+- In map v2, user can now move points when Points layer is enabled. #2024
+- In map v2, routes are now being rendered using same logic as in map v1, route-length-wise. #2026
+
+## Fixed
+
+- Cities visited during a trip are now being calculated correctly. #547 #641 #1686 #1976
+- Points on the map are now show time in user's timezone. #580 #1035 #1682
+- Date range inputs now handle pre-epoch dates gracefully by clamping to valid PostgreSQL integer range. #685
+- Redis client now also being configured so that it could connect via unix socket. #1970
+- Importing KML files now creates points with correct timestamps. #1988
+- Importing KMZ files now works correctly.
+- Map settings are now being respected in map v2. #2012
+
 
 # [0.36.2] - 2025-12-06
 
