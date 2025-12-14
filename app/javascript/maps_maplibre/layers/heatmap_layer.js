@@ -30,7 +30,7 @@ export class HeatmapLayer extends BaseLayer {
           // Fixed weight
           'heatmap-weight': 1,
 
-          // low intensity to view major clustors
+          // low intensity to view major clusters
           'heatmap-intensity': [
             'interpolate',
             ['linear'],
