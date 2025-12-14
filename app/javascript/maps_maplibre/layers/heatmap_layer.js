@@ -46,7 +46,7 @@ export class HeatmapLayer extends BaseLayer {
             ['linear'],
             ['heatmap-density'],
             0, 'rgba(0,0,0,0)',
-            0.6, 'rgba(0,0,0,0)',
+            0.4, 'rgba(0,0,0,0)',
             0.65, 'rgba(33,102,172,0.4)',
             0.7, 'rgb(103,169,207)',
             0.8, 'rgb(209,229,240)',
@@ -60,8 +60,8 @@ export class HeatmapLayer extends BaseLayer {
             'interpolate',
             ['exponential', 2],
             ['zoom'],
-            10, 3,
-            15, 5,
+            10, 5,
+            15, 10,
             20, 160
           ],
 
