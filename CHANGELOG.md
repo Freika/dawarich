@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Fixed a bug preventing the app to start if a composite index on stats table already exists. #2034
+- New compiled assets will override old ones on app start to prevent serving stale assets.
 
 # [0.36.3] - 2025-12-14
 
