@@ -43,6 +43,9 @@ export class MapDataManager {
         showLoading ? onProgress : null
       )
 
+      // Store points in dataLoader for timeline access
+      this.dataLoader.allPoints = data.points
+
       // Store visits for filtering
       this.filterManager.setAllVisits(data.visits)
 
@@ -52,6 +55,11 @@ export class MapDataManager {
       // Fit bounds if requested
       if (fitBounds && data.points.length > 0) {
         this._fitMapToBounds(data.pointsGeoJSON)
+      }
+
+      // Update timeline with new data
+      if (this.controller.updateTimelineData) {
+        this.controller.updateTimelineData()
       }
 
       // Show success message

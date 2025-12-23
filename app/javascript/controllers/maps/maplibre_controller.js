@@ -17,6 +17,8 @@ import { AreaSelectionManager } from './maplibre/area_selection_manager'
 import { VisitsManager } from './maplibre/visits_manager'
 import { PlacesManager } from './maplibre/places_manager'
 import { RoutesManager } from './maplibre/routes_manager'
+import { pointsToGeoJSON } from 'maps_maplibre/utils/geojson_transformers'
+import { RoutesLayer } from 'maps_maplibre/layers/routes_layer'
 
 /**
  * Main map controller for Maps V2
@@ -73,7 +75,10 @@ export default class extends Controller {
     'infoDisplay',
     'infoTitle',
     'infoContent',
-    'infoActions'
+    'infoActions',
+    // Timeline
+    'timeline',
+    'timelineToggleButton'
   ]
 
   async connect() {
@@ -122,6 +127,10 @@ export default class extends Controller {
 
     this.boundHandleAreaCreated = this.handleAreaCreated.bind(this)
     this.cleanup.addEventListener(document, 'area:created', this.boundHandleAreaCreated)
+
+    // Listen for timeline events
+    this.boundHandleTimelineChange = this.handleTimelineChange.bind(this)
+    this.cleanup.addEventListener(document, 'timeline:timeChanged', this.boundHandleTimelineChange)
 
     // Format initial dates
     this.startDateValue = DateManager.formatDateForAPI(new Date(this.startDateValue))
@@ -225,6 +234,88 @@ export default class extends Controller {
   toggleSettings() {
     if (this.hasSettingsPanelTarget) {
       this.settingsPanelTarget.classList.toggle('open')
+    }
+  }
+
+  /**
+   * Toggle timeline panel
+   */
+  toggleTimeline() {
+    if (this.hasTimelineTarget) {
+      this.timelineTarget.classList.toggle('hidden')
+
+      // If showing timeline, update it with current data
+      if (!this.timelineTarget.classList.contains('hidden')) {
+        this.updateTimelineData()
+      }
+    }
+  }
+
+  /**
+   * Update timeline with current map data
+   */
+  updateTimelineData() {
+    if (!this.hasTimelineTarget || !this.dataLoader) return
+
+    const points = this.dataLoader.allPoints || []
+    const startTimestamp = this.parseTimestamp(this.startDateValue)
+    const endTimestamp = this.parseTimestamp(this.endDateValue)
+
+    // Dispatch event to timeline controller
+    const event = new CustomEvent('timeline:updateData', {
+      detail: {
+        points: points,
+        startTimestamp: startTimestamp,
+        endTimestamp: endTimestamp
+      }
+    })
+    document.dispatchEvent(event)
+  }
+
+  /**
+   * Parse date string to Unix timestamp
+   */
+  parseTimestamp(dateString) {
+    return Math.floor(new Date(dateString).getTime() / 1000)
+  }
+
+  /**
+   * Handle timeline time change event
+   * Filters points and routes based on selected time
+   */
+  handleTimelineChange(event) {
+    const { currentTimestamp, startTimestamp, endTimestamp } = event.detail
+
+    if (!this.dataLoader?.allPoints || this.dataLoader.allPoints.length === 0) {
+      return
+    }
+
+    // Filter points up to current timestamp
+    const filteredPoints = this.dataLoader.allPoints.filter(point => {
+      return point.timestamp <= currentTimestamp
+    })
+
+    // Convert filtered points to GeoJSON
+    const filteredPointsGeoJSON = pointsToGeoJSON(filteredPoints)
+
+    // Generate routes from filtered points
+    const filteredRoutesGeoJSON = RoutesLayer.pointsToRoutes(filteredPoints, {
+      distanceThresholdMeters: this.settings.metersBetweenRoutes || 1000,
+      timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60
+    })
+
+    // Update layers
+    if (this.layerManager) {
+      const pointsLayer = this.layerManager.layers.get('points')
+      const routesLayer = this.layerManager.layers.get('routes')
+
+      if (pointsLayer) {
+        pointsLayer.update(filteredPointsGeoJSON)
+      }
+
+      if (routesLayer) {
+        routesLayer.update(filteredRoutesGeoJSON)
+      }
     }
   }
 

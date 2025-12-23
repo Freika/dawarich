@@ -1,0 +1,125 @@
+<!-- Timeline component - positioned at bottom of map -->
+<div class="timeline-container absolute bottom-0 left-0 right-0 z-10 bg-base-300 border-t border-base-content/10 hidden"
+     data-controller="maps--timeline"
+     data-maps--maplibre-target="timeline"
+     data-maps--timeline-start-timestamp-value="0"
+     data-maps--timeline-end-timestamp-value="0"
+     data-maps--timeline-current-start-value="0"
+     data-maps--timeline-current-end-value="0"
+     style="height: 200px;">
+
+  <!-- Timeline header with controls -->
+  <div class="timeline-header flex items-center justify-between px-4 py-2 border-b border-base-content/10">
+    <!-- Left side: Graph type selector -->
+    <div class="flex items-center gap-3">
+      <label class="label cursor-pointer gap-2">
+        <span class="label-text text-xs font-medium">Graph:</span>
+        <select class="select select-xs select-bordered"
+                data-maps--timeline-target="graphTypeSelect"
+                data-action="change->maps--timeline#changeGraphType">
+          <option value="speed">Speed</option>
+          <option value="battery">Battery</option>
+          <option value="elevation">Elevation</option>
+        </select>
+      </label>
+    </div>
+
+    <!-- Center: Current time display -->
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-medium text-base-content/60">Current:</span>
+      <span class="text-sm font-bold text-primary" data-maps--timeline-target="currentTime">--</span>
+    </div>
+
+    <!-- Right side: Play/pause button -->
+    <div class="flex items-center gap-3">
+      <button class="btn btn-sm btn-circle btn-primary"
+              data-maps--timeline-target="playButton"
+              data-action="click->maps--timeline#togglePlayback"
+              title="Play/Pause timeline animation">
+        <!-- Play icon (default) -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+        </svg>
+      </button>
+
+      <!-- Close timeline button -->
+      <button class="btn btn-sm btn-circle btn-ghost"
+              data-action="click->maps--maplibre#toggleTimeline"
+              title="Hide timeline">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Canvas for graph visualization -->
+  <div class="timeline-graph relative" style="height: 120px;">
+    <canvas data-maps--timeline-target="canvas"
+            class="w-full h-full"></canvas>
+  </div>
+
+  <!-- Timeline slider -->
+  <div class="timeline-slider px-4 py-3">
+    <div class="flex items-center gap-3">
+      <!-- Start date label -->
+      <span class="text-xs text-base-content/60 whitespace-nowrap"
+            data-maps--timeline-target="startLabel">--</span>
+
+      <!-- Range slider -->
+      <input type="range"
+             min="0"
+             max="100"
+             value="0"
+             step="0.1"
+             class="range range-primary range-xs flex-1"
+             data-maps--timeline-target="slider"
+             data-action="input->maps--timeline#updateTimeFromSlider" />
+
+      <!-- End date label -->
+      <span class="text-xs text-base-content/60 whitespace-nowrap"
+            data-maps--timeline-target="endLabel">--</span>
+    </div>
+
+    <!-- Timeline markers -->
+    <div class="flex justify-between text-xs text-base-content/40 mt-1 px-2">
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+      <span>|</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .timeline-container {
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .timeline-graph canvas {
+    display: block;
+  }
+
+  /* Ensure timeline doesn't interfere with map controls */
+  .timeline-container {
+    pointer-events: auto;
+  }
+
+  /* Hidden state for timeline */
+  .timeline-container.hidden {
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .timeline-container:not(.hidden) {
+    transform: translateY(0);
+    transition: transform 0.3s ease-in-out;
+  }
+</style>

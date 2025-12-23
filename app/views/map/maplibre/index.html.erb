@@ -21,12 +21,22 @@
   </div>
 
   <!-- Settings button (top-left corner) -->
-  <div class="absolute top-4 left-4 z-10">
+  <div class="absolute top-4 left-4 z-10 flex gap-2">
     <button data-action="click->maps--maplibre#toggleSettings"
             class="btn btn-sm btn-primary"
             title="Open map settings">
       <%= icon 'square-pen' %>
       <span class="ml-1">Settings</span>
+    </button>
+
+    <button data-action="click->maps--maplibre#toggleTimeline"
+            data-maps--maplibre-target="timelineToggleButton"
+            class="btn btn-sm btn-primary"
+            title="Toggle timeline">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+      </svg>
+      <span class="ml-1">Timeline</span>
     </button>
   </div>
 
@@ -47,4 +57,7 @@
 
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>
+
+  <!-- Timeline component -->
+  <%= render 'map/maplibre/timeline' %>
 </div>
