@@ -72,6 +72,11 @@ namespace :demo do
     created_areas = create_areas(user, 10)
     puts "✅ Created #{created_areas} areas"
 
+    # 6. Create family with members
+    puts "\n👨‍👩‍👧‍👦 Creating demo family..."
+    family_members = create_family_with_members(user)
+    puts "✅ Created family with #{family_members.count} members"
+
     puts "\n" + "=" * 60
     puts "🎉 Demo data generation complete!"
     puts "=" * 60
@@ -82,9 +87,14 @@ namespace :demo do
     puts "   Suggested Visits: #{user.visits.suggested.count}"
     puts "   Confirmed Visits: #{user.visits.confirmed.count}"
     puts "   Areas: #{user.areas.count}"
+    puts "   Family Members: #{family_members.count}"
     puts "\n🔐 Login credentials:"
     puts "   Email: demo@dawarich.app"
     puts "   Password: password"
+    puts "\n👨‍👩‍👧‍👦 Family member credentials:"
+    family_members.each_with_index do |member, index|
+      puts "   Member #{index + 1}: #{member.email} / password"
+    end
   end
 
   def create_visits(user, count, status)
@@ -209,5 +219,99 @@ namespace :demo do
     c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
     rm * c # Distance in meters
+  end
+
+  def create_family_with_members(owner)
+    # Create or find family
+    family = Family.find_or_initialize_by(creator: owner)
+
+    if family.new_record?
+      family.name = "Demo Family"
+      family.save!
+      puts "   Created family: #{family.name}"
+    else
+      puts "   ℹ️  Family already exists: #{family.name}"
+    end
+
+    # Create or find owner membership
+    owner_membership = Family::Membership.find_or_create_by!(
+      family: family,
+      user: owner,
+      role: :owner
+    )
+
+    # Create 3 family members with location data
+    member_emails = [
+      'family.member1@dawarich.app',
+      'family.member2@dawarich.app',
+      'family.member3@dawarich.app'
+    ]
+
+    family_members = []
+
+    # Get some sample points from the owner's data to create realistic locations
+    sample_points = Point.where(user_id: owner.id).order('RANDOM()').limit(10)
+
+    member_emails.each_with_index do |email, index|
+      # Create or find family member user
+      member = User.find_or_initialize_by(email: email)
+
+      if member.new_record?
+        member.password = 'password'
+        member.password_confirmation = 'password'
+        member.save!
+        member.update!(status: :active, active_until: 1000.years.from_now)
+        puts "   Created family member: #{member.email}"
+      else
+        puts "   ℹ️  Family member already exists: #{member.email}"
+      end
+
+      # Add member to family
+      Family::Membership.find_or_create_by!(
+        family: family,
+        user: member,
+        role: :member
+      )
+
+      # Enable location sharing for this member (permanent)
+      member.update_family_location_sharing!(true, duration: 'permanent')
+
+      # Create some points for this family member near owner's locations
+      if sample_points.any?
+        # Get a different sample point for each member
+        base_point = sample_points[index % sample_points.length]
+
+        # Create 3-5 recent points for this member within 1km of base location
+        points_count = rand(3..5)
+
+        points_count.times do |point_index|
+          # Add random offset (within ~1km)
+          lat_offset = (rand(-0.01..0.01) * 100) / 100.0
+          lon_offset = (rand(-0.01..0.01) * 100) / 100.0
+
+          # Create point with recent timestamp (last 24 hours)
+          timestamp = (Time.current - rand(0..24).hours).to_i
+
+          Point.create!(
+            user: member,
+            latitude: base_point.lat + lat_offset,
+            longitude: base_point.lon + lon_offset,
+            timestamp: timestamp,
+            altitude: base_point.altitude || 0,
+            velocity: rand(0..50),
+            battery: rand(20..100),
+            battery_status: ['charging', 'not_charging', 'full'].sample,
+            tracker_id: "demo_tracker_#{member.id}",
+            import_id: nil
+          )
+        end
+
+        puts "   Created #{points_count} location points for #{member.email}"
+      end
+
+      family_members << member
+    end
+
+    family_members
   end
 end

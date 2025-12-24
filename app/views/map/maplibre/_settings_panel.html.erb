@@ -317,6 +317,30 @@
             <p class="text-sm text-base-content/60 ml-14">Show scratched countries</p>
           </div>
 
+          <div class="divider"></div>
+
+          <!-- Family Members Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="familyToggle"
+                     data-action="change->maps--maplibre#toggleFamily" />
+              <span class="label-text font-medium">Family Members</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show family member locations</p>
+          </div>
+
+          <!-- Family Members List (conditionally shown) -->
+          <div class="ml-14 space-y-2" data-maps--maplibre-target="familyMembersList" style="display: none;">
+            <div class="text-xs text-base-content/60 mb-2">
+              Click to center on member
+            </div>
+            <div data-maps--maplibre-target="familyMembersContainer" class="space-y-1">
+              <!-- Family members will be dynamically inserted here -->
+            </div>
+          </div>
+
         </div>
       </div>
 
