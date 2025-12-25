@@ -111,12 +111,11 @@ With the above commands entered, the configuration below should work properly.
 	<Proxy *>
 		Require all granted
 	</Proxy>
-
-	Header always set X-Real-IP %{REMOTE_ADDR}s
-	Header always set X-Forwarded-For %{REMOTE_ADDR}s
-	Header always set X-Forwarded-Proto https
-	Header always set X-Forwarded-Server %{SERVER_NAME}s
-	Header always set Host %{HTTP_HOST}s
+    RequestHeader set X-Real-IP %{REMOTE_ADDR}s
+    RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s
+    RequestHeader set X-Forwarded-Proto https
+    RequestHeader set X-Forwarded-Server %{SERVER_NAME}s
+    RequestHeader set Host %{HTTP_HOST}s
 
 	SetOutputFilter BROTLI
 	AddOutputFilterByType BROTLI_COMPRESS text/css text/plain text/xml text/javascript application/javascript application/json application/manifest+json application/vnd.api+json application/xml application/xhtml+xml application/rss+xml application/atom+xml application/vnd.ms-fontobject application/x-font-ttf application/x-font-opentype application/x-font-truetype image/svg+xml image/x-icon image/vnd.microsoft.icon font/ttf font/eot font/otf font/opentype
