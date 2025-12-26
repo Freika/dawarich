@@ -244,8 +244,8 @@ export class SettingsController {
         if (settings.fogOfWarRadius) {
           fogLayer.clearRadius = settings.fogOfWarRadius
         }
-        // Redraw fog layer
-        if (fogLayer.visible) {
+        // Redraw fog layer if it has data and is visible
+        if (fogLayer.visible && fogLayer.data) {
           await fogLayer.update(fogLayer.data)
         }
       }

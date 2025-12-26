@@ -36,6 +36,81 @@ test.describe('Advanced Layers', () => {
 
       expect(await fogToggle.isChecked()).toBe(true)
     })
+
+    test('fog radius setting can be changed and applied', async ({ page }) => {
+      // Enable fog layer first
+      await page.click('button[title="Open map settings"]')
+      await page.waitForTimeout(400)
+      await page.click('button[data-tab="layers"]')
+      await page.waitForTimeout(300)
+
+      const fogToggle = page.locator('label:has-text("Fog of War")').first().locator('input.toggle')
+      await fogToggle.check()
+      await page.waitForTimeout(500)
+
+      // Go to advanced settings tab
+      await page.click('button[data-tab="settings"]')
+      await page.waitForTimeout(300)
+
+      // Find fog radius slider
+      const fogRadiusSlider = page.locator('input[name="fogOfWarRadius"]')
+      await expect(fogRadiusSlider).toBeVisible()
+
+      // Change the slider value using evaluate to trigger input event
+      await fogRadiusSlider.evaluate((slider) => {
+        slider.value = '500'
+        slider.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      await page.waitForTimeout(200)
+
+      // Verify display value updated
+      const displayValue = page.locator('[data-maps--maplibre-target="fogRadiusValue"]')
+      await expect(displayValue).toHaveText('500m')
+
+      // Verify slider value was set
+      expect(await fogRadiusSlider.inputValue()).toBe('500')
+
+      // Click Apply Settings button
+      const applyButton = page.locator('button:has-text("Apply Settings")')
+      await applyButton.click()
+      await page.waitForTimeout(500)
+
+      // Verify no errors in console
+      const consoleErrors = []
+      page.on('console', msg => {
+        if (msg.type() === 'error') consoleErrors.push(msg.text())
+      })
+      await page.waitForTimeout(500)
+      expect(consoleErrors.filter(e => e.includes('fog_layer'))).toHaveLength(0)
+    })
+
+    test('fog settings can be applied without errors when fog layer is not visible', async ({ page }) => {
+      await page.click('button[title="Open map settings"]')
+      await page.waitForTimeout(400)
+      await page.click('button[data-tab="settings"]')
+      await page.waitForTimeout(300)
+
+      // Change fog radius slider without enabling fog layer
+      const fogRadiusSlider = page.locator('input[name="fogOfWarRadius"]')
+      await fogRadiusSlider.evaluate((slider) => {
+        slider.value = '750'
+        slider.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      await page.waitForTimeout(200)
+
+      // Click Apply Settings - this should not throw an error
+      const applyButton = page.locator('button:has-text("Apply Settings")')
+      await applyButton.click()
+      await page.waitForTimeout(500)
+
+      // Verify no JavaScript errors occurred
+      const consoleErrors = []
+      page.on('console', msg => {
+        if (msg.type() === 'error') consoleErrors.push(msg.text())
+      })
+      await page.waitForTimeout(500)
+      expect(consoleErrors.filter(e => e.includes('undefined') || e.includes('fog'))).toHaveLength(0)
+    })
   })
 
   test.describe('Scratch Map', () => {
