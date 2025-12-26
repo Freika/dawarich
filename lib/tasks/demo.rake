@@ -3,17 +3,17 @@
 namespace :demo do
   desc 'Seed demo data: user, points from GeoJSON, visits, and areas'
   task :seed_data, [:geojson_path] => :environment do |_t, args|
-    geojson_path = args[:geojson_path] || Rails.root.join('tmp', 'demo_data.geojson').to_s
+    geojson_path = args[:geojson_path] || Rails.root.join('tmp/demo_data.geojson').to_s
 
     unless File.exist?(geojson_path)
       puts "Error: GeoJSON file not found at #{geojson_path}"
-      puts "Usage: rake demo:seed_data[path/to/file.geojson]"
-      puts "Or place file at tmp/demo_data.geojson"
+      puts 'Usage: rake demo:seed_data[path/to/file.geojson]'
+      puts 'Or place file at tmp/demo_data.geojson'
       exit 1
     end
 
-    puts "🚀 Starting demo data generation..."
-    puts "=" * 60
+    puts '🚀 Starting demo data generation...'
+    puts '=' * 60
 
     # 1. Create demo user
     puts "\n📝 Creating demo user..."
@@ -25,7 +25,7 @@ namespace :demo do
       user.save!
       user.update!(status: :active, active_until: 1000.years.from_now)
       puts "✅ User created: #{user.email}"
-      puts "   Password: password"
+      puts '   Password: password'
       puts "   API Key: #{user.api_key}"
     else
       puts "ℹ️  User already exists: #{user.email}"
@@ -53,7 +53,7 @@ namespace :demo do
     points_count = Point.where(user_id: user.id).count
 
     if points_count.zero?
-      puts "❌ No points found after import. Cannot create visits and areas."
+      puts '❌ No points found after import. Cannot create visits and areas.'
       exit 1
     end
 
@@ -77,9 +77,9 @@ namespace :demo do
     family_members = create_family_with_members(user)
     puts "✅ Created family with #{family_members.count} members"
 
-    puts "\n" + "=" * 60
-    puts "🎉 Demo data generation complete!"
-    puts "=" * 60
+    puts "\n" + '=' * 60
+    puts '🎉 Demo data generation complete!'
+    puts '=' * 60
     puts "\n📊 Summary:"
     puts "   User: #{user.email}"
     puts "   Points: #{Point.where(user_id: user.id).count}"
@@ -89,8 +89,8 @@ namespace :demo do
     puts "   Areas: #{user.areas.count}"
     puts "   Family Members: #{family_members.count}"
     puts "\n🔐 Login credentials:"
-    puts "   Email: demo@dawarich.app"
-    puts "   Password: password"
+    puts '   Email: demo@dawarich.app'
+    puts '   Password: password'
     puts "\n👨‍👩‍👧‍👦 Family member credentials:"
     family_members.each_with_index do |member, index|
       puts "   Member #{index + 1}: #{member.email} / password"
@@ -152,11 +152,11 @@ namespace :demo do
 
       # Find nearby points within 100 meters and associate them
       nearby_points = Point.where(user_id: user.id)
-        .where.not(id: point.id)
-        .where.not(id: used_point_ids)
-        .where('timestamp BETWEEN ? AND ?', started_at.to_i, ended_at.to_i)
-        .select { |p| distance_between(point, p) < 100 }
-        .first(10)
+                           .where.not(id: point.id)
+                           .where.not(id: used_point_ids)
+                           .where('timestamp BETWEEN ? AND ?', started_at.to_i, ended_at.to_i)
+                           .select { |p| distance_between(point, p) < 100 }
+                           .first(10)
 
       nearby_points.each do |nearby_point|
         nearby_point.update!(visit: visit)
@@ -164,10 +164,10 @@ namespace :demo do
       end
 
       created_count += 1
-      print "." if (index + 1) % 10 == 0
+      print '.' if (index + 1) % 10 == 0
     end
 
-    puts "" if created_count > 0
+    puts '' if created_count > 0
     created_count
   end
 
@@ -202,8 +202,10 @@ namespace :demo do
 
   def distance_between(point1, point2)
     # Haversine formula to calculate distance in meters
-    lat1, lon1 = point1.lat, point1.lon
-    lat2, lon2 = point2.lat, point2.lon
+    lat1 = point1.lat
+    lon1 = point1.lon
+    lat2 = point2.lat
+    lon2 = point2.lon
 
     rad_per_deg = Math::PI / 180
     rkm = 6371 # Earth radius in kilometers
@@ -226,7 +228,7 @@ namespace :demo do
     family = Family.find_or_initialize_by(creator: owner)
 
     if family.new_record?
-      family.name = "Demo Family"
+      family.name = 'Demo Family'
       family.save!
       puts "   Created family: #{family.name}"
     else
@@ -289,18 +291,23 @@ namespace :demo do
           lat_offset = (rand(-0.01..0.01) * 100) / 100.0
           lon_offset = (rand(-0.01..0.01) * 100) / 100.0
 
+          # Calculate new coordinates
+          lat = base_point.lat + lat_offset
+          lon = base_point.lon + lon_offset
+
           # Create point with recent timestamp (last 24 hours)
           timestamp = (Time.current - rand(0..24).hours).to_i
 
           Point.create!(
             user: member,
-            latitude: base_point.lat + lat_offset,
-            longitude: base_point.lon + lon_offset,
+            latitude: lat,
+            longitude: lon,
+            lonlat: "POINT(#{lon} #{lat})",
             timestamp: timestamp,
             altitude: base_point.altitude || 0,
             velocity: rand(0..50),
             battery: rand(20..100),
-            battery_status: ['charging', 'not_charging', 'full'].sample,
+            battery_status: %w[charging connected_not_charging full].sample,
             tracker_id: "demo_tracker_#{member.id}",
             import_id: nil
           )
