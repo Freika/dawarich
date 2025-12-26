@@ -357,4 +357,28 @@ export class RoutesManager {
 
     SettingsManager.updateSetting('pointsVisible', visible)
   }
+
+  /**
+   * Toggle family members layer
+   */
+  async toggleFamily(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting('familyEnabled', enabled)
+
+    const familyLayer = this.layerManager.getLayer('family')
+    if (familyLayer) {
+      if (enabled) {
+        familyLayer.show()
+        // Load family members data
+        await this.controller.loadFamilyMembers()
+      } else {
+        familyLayer.hide()
+      }
+    }
+
+    // Show/hide the family members list
+    if (this.controller.hasFamilyMembersListTarget) {
+      this.controller.familyMembersListTarget.style.display = enabled ? 'block' : 'none'
+    }
+  }
 }

@@ -148,4 +148,63 @@ export class FamilyLayer extends BaseLayer {
       features: filtered
     })
   }
+
+  /**
+   * Load all family members from API
+   * @param {Object} locations - Array of family member locations
+   */
+  loadMembers(locations) {
+    if (!Array.isArray(locations)) {
+      console.warn('[FamilyLayer] Invalid locations data:', locations)
+      return
+    }
+
+    const features = locations.map(location => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [location.longitude, location.latitude]
+      },
+      properties: {
+        id: location.user_id,
+        name: location.email || 'Unknown',
+        email: location.email,
+        color: location.color || this.getMemberColor(location.user_id),
+        lastUpdate: Date.now(),
+        battery: location.battery,
+        batteryStatus: location.battery_status,
+        updatedAt: location.updated_at
+      }
+    }))
+
+    this.update({
+      type: 'FeatureCollection',
+      features
+    })
+  }
+
+  /**
+   * Center map on specific family member
+   * @param {string} memberId - ID of the member to center on
+   */
+  centerOnMember(memberId) {
+    const features = this.data?.features || []
+    const member = features.find(f => f.properties.id === memberId)
+
+    if (member && this.map) {
+      this.map.flyTo({
+        center: member.geometry.coordinates,
+        zoom: 15,
+        duration: 1500
+      })
+    }
+  }
+
+  /**
+   * Get all current family members
+   * @returns {Array} Array of member features
+   */
+  getMembers() {
+    return this.data?.features || []
+  }
 }
