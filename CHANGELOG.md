@@ -4,17 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.36.4] - Unreleased
+# [0.36.5] - Unreleased
+
+## Changed
+
+- Deleting an import will now be processed in the background to prevent request timeouts for large imports.
+
+## Fixed
+
+- Deleting an import will no longer result in negative points count for the user.
+
+
+# [0.36.4] - 2025-12-26
 
 ## Fixed
 
 - Fixed a bug preventing the app to start if a composite index on stats table already exists. #2034
 - New compiled assets will override old ones on app start to prevent serving stale assets.
-- Deleting an import will no longer result in negative points count for the user.
 
-## Changed
-
-- Deleting an import will now be processed in the background to prevent request timeouts for large imports.
 
 # [0.36.3] - 2025-12-14
 

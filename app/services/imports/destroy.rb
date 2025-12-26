@@ -12,8 +12,6 @@ class Imports::Destroy
     points_count = @import.points_count
 
     ActiveRecord::Base.transaction do
-      # Use destroy_all instead of delete_all to trigger counter_cache callbacks
-      # This ensures users.points_count is properly decremented
       @import.points.destroy_all
       @import.destroy!
     end
