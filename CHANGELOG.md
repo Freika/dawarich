@@ -15,8 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Deleting an import will no longer result in negative points count for the user.
 - Updating stats. #2022
 - Validate trip start date to be earlier than end date. #2057
-- Fog of war radius slider in map v2 settings is now being respected correctly.
-- Applying changes in map v2 settings now works correctly.
+- Fog of war radius slider in map v2 settings is now being respected correctly. #2041
+- Applying changes in map v2 settings now works correctly. #2041
 
 
 # [0.36.4] - 2025-12-26
