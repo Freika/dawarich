@@ -12,9 +12,11 @@ export class FogLayer {
     this.ctx = null
     this.clearRadius = options.clearRadius || 1000 // meters
     this.points = []
+    this.data = null // Store original data for updates
   }
 
   add(data) {
+    this.data = data // Store for later updates
     this.points = data.features || []
     this.createCanvas()
     if (this.visible) {
@@ -24,6 +26,7 @@ export class FogLayer {
   }
 
   update(data) {
+    this.data = data // Store for later updates
     this.points = data.features || []
     this.render()
   }
@@ -78,6 +81,7 @@ export class FogLayer {
 
     // Clear circles around visited points
     this.ctx.globalCompositeOperation = 'destination-out'
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 1)' // Fully opaque to completely clear fog
 
     this.points.forEach(feature => {
       const coords = feature.geometry.coordinates
