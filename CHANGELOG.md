@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Deleting an import will no longer result in negative points count for the user.
 - Updating stats. #2022
+- Validate trip start date to be earlier than end date. #2057
 
 
 # [0.36.4] - 2025-12-26
