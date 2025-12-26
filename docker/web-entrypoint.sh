@@ -35,10 +35,10 @@ export DATABASE_NAME
 rm -f $APP_PATH/tmp/pids/server.pid
 
 # Sync static assets from image to volume
-# This ensures new files (like maps_maplibre styles) are copied to the persistent volume
+# This ensures new and updated files are copied to the persistent volume
 if [ -d "/tmp/public_assets" ]; then
-  echo "📦 Syncing new static assets to public volume..."
-  cp -rn /tmp/public_assets/* $APP_PATH/public/ 2>/dev/null || true
+  echo "📦 Syncing static assets to public volume..."
+  cp -ru /tmp/public_assets/* $APP_PATH/public/ 2>/dev/null || true
   echo "✅ Static assets synced!"
 fi
 

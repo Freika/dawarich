@@ -58,11 +58,15 @@ export default class extends Controller {
     'placesToggle',
     'fogToggle',
     'scratchToggle',
+    'familyToggle',
     // Speed-colored routes
     'routesOptions',
     'speedColoredToggle',
     'speedColorScaleContainer',
     'speedColorScaleInput',
+    // Family members
+    'familyMembersList',
+    'familyMembersContainer',
     // Area selection
     'selectAreaButton',
     'selectionActions',
@@ -347,6 +351,103 @@ export default class extends Controller {
   toggleSpeedColoredRoutes(event) { return this.routesManager.toggleSpeedColoredRoutes(event) }
   openSpeedColorEditor() { return this.routesManager.openSpeedColorEditor() }
   handleSpeedColorSave(event) { return this.routesManager.handleSpeedColorSave(event) }
+  toggleFamily(event) { return this.routesManager.toggleFamily(event) }
+
+  // Family Members methods
+  async loadFamilyMembers() {
+    try {
+      const response = await fetch(`/api/v1/families/locations?api_key=${this.apiKeyValue}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          console.warn('[Maps V2] Family feature not enabled or user not in family')
+          Toast.info('Family feature not available')
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const locations = data.locations || []
+
+      // Update family layer with locations
+      const familyLayer = this.layerManager.getLayer('family')
+      if (familyLayer) {
+        familyLayer.loadMembers(locations)
+      }
+
+      // Render family members list
+      this.renderFamilyMembersList(locations)
+
+      Toast.success(`Loaded ${locations.length} family member(s)`)
+    } catch (error) {
+      console.error('[Maps V2] Failed to load family members:', error)
+      Toast.error('Failed to load family members')
+    }
+  }
+
+  renderFamilyMembersList(locations) {
+    if (!this.hasFamilyMembersContainerTarget) return
+
+    const container = this.familyMembersContainerTarget
+
+    if (locations.length === 0) {
+      container.innerHTML = '<p class="text-xs text-base-content/60">No family members sharing location</p>'
+      return
+    }
+
+    container.innerHTML = locations.map(location => {
+      const emailInitial = location.email?.charAt(0)?.toUpperCase() || '?'
+      const color = this.getFamilyMemberColor(location.user_id)
+      const lastSeen = new Date(location.updated_at).toLocaleString('en-US', {
+        timeZone: this.timezoneValue || 'UTC',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      })
+
+      return `
+        <div class="flex items-center gap-2 p-2 hover:bg-base-200 rounded-lg cursor-pointer transition-colors"
+             data-action="click->maps--maplibre#centerOnFamilyMember"
+             data-member-id="${location.user_id}">
+          <div style="background-color: ${color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">
+            ${emailInitial}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">${location.email || 'Unknown'}</div>
+            <div class="text-xs text-base-content/60">${lastSeen}</div>
+          </div>
+        </div>
+      `
+    }).join('')
+  }
+
+  getFamilyMemberColor(userId) {
+    const colors = [
+      '#3b82f6', '#10b981', '#f59e0b',
+      '#ef4444', '#8b5cf6', '#ec4899'
+    ]
+    // Use user ID to get consistent color
+    const hash = userId.toString().split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    return colors[hash % colors.length]
+  }
+
+  centerOnFamilyMember(event) {
+    const memberId = event.currentTarget.dataset.memberId
+    if (!memberId) return
+
+    const familyLayer = this.layerManager.getLayer('family')
+    if (familyLayer) {
+      familyLayer.centerOnMember(parseInt(memberId))
+      Toast.success('Centered on family member')
+    }
+  }
 
   // Info Display methods
   showInfo(title, content, actions = []) {

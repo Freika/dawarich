@@ -53,6 +53,7 @@ export class SettingsController {
       placesToggle: 'placesEnabled',
       fogToggle: 'fogEnabled',
       scratchToggle: 'scratchEnabled',
+      familyToggle: 'familyEnabled',
       speedColoredToggle: 'speedColoredRoutesEnabled'
     }
 
@@ -71,6 +72,11 @@ export class SettingsController {
     // Show/hide places filters based on initial toggle state
     if (controller.hasPlacesToggleTarget && controller.hasPlacesFiltersTarget) {
       controller.placesFiltersTarget.style.display = controller.placesToggleTarget.checked ? 'block' : 'none'
+    }
+
+    // Show/hide family members list based on initial toggle state
+    if (controller.hasFamilyToggleTarget && controller.hasFamilyMembersListTarget) {
+      controller.familyMembersListTarget.style.display = controller.familyToggleTarget.checked ? 'block' : 'none'
     }
 
     // Sync route opacity slider
