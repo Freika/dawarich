@@ -25,6 +25,7 @@ require 'oj'
 class Users::ImportData
   STREAM_BATCH_SIZE = 5000
   STREAMED_SECTIONS = %w[places visits points].freeze
+  MAX_ENTRY_SIZE = 10.gigabytes # Maximum size for a single file in the archive
 
   def initialize(user, archive_path)
     @user = user
@@ -86,8 +87,20 @@ class Users::ImportData
 
         Rails.logger.debug "Extracting #{entry.name} to #{extraction_path}"
 
+        # Validate entry size before extraction
+        if entry.size > MAX_ENTRY_SIZE
+          Rails.logger.error "Skipping oversized entry: #{entry.name} (#{entry.size} bytes exceeds #{MAX_ENTRY_SIZE} bytes)"
+          raise "Archive entry #{entry.name} exceeds maximum allowed size"
+        end
+
         FileUtils.mkdir_p(File.dirname(extraction_path))
-        entry.extract(sanitized_name, destination_directory: @import_directory)
+
+        # Manual extraction to bypass size validation for large files
+        entry.get_input_stream do |input|
+          File.open(extraction_path, 'wb') do |output|
+            IO.copy_stream(input, output)
+          end
+        end
       end
     end
   end
@@ -112,9 +125,7 @@ class Users::ImportData
     Rails.logger.info "Starting data import for user: #{user.email}"
 
     json_path = @import_directory.join('data.json')
-    unless File.exist?(json_path)
-      raise StandardError, 'Data file not found in archive: data.json'
-    end
+    raise StandardError, 'Data file not found in archive: data.json' unless File.exist?(json_path)
 
     initialize_stream_state
 
@@ -205,10 +216,10 @@ class Users::ImportData
 
     @places_batch << place_data
 
-    if @places_batch.size >= STREAM_BATCH_SIZE
-      import_places_batch(@places_batch)
-      @places_batch.clear
-    end
+    return unless @places_batch.size >= STREAM_BATCH_SIZE
+
+    import_places_batch(@places_batch)
+    @places_batch.clear
   end
 
   def flush_places_batch
@@ -306,14 +317,16 @@ class Users::ImportData
 
   def import_imports(imports_data)
     Rails.logger.debug "Importing #{imports_data&.size || 0} imports"
-    imports_created, files_restored = Users::ImportData::Imports.new(user, imports_data, @import_directory.join('files')).call
+    imports_created, files_restored = Users::ImportData::Imports.new(user, imports_data,
+                                                                     @import_directory.join('files')).call
     @import_stats[:imports_created] += imports_created.to_i
     @import_stats[:files_restored] += files_restored.to_i
   end
 
   def import_exports(exports_data)
     Rails.logger.debug "Importing #{exports_data&.size || 0} exports"
-    exports_created, files_restored = Users::ImportData::Exports.new(user, exports_data, @import_directory.join('files')).call
+    exports_created, files_restored = Users::ImportData::Exports.new(user, exports_data,
+                                                                     @import_directory.join('files')).call
     @import_stats[:exports_created] += exports_created.to_i
     @import_stats[:files_restored] += files_restored.to_i
   end
@@ -382,11 +395,11 @@ class Users::ImportData
     expected_counts.each do |entity, expected_count|
       actual_count = @import_stats[:"#{entity}_created"] || 0
 
-      if actual_count < expected_count
-        discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{expected_count - actual_count} missing)"
-        discrepancies << discrepancy
-        Rails.logger.warn "Import discrepancy - #{discrepancy}"
-      end
+      next unless actual_count < expected_count
+
+      discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{expected_count - actual_count} missing)"
+      discrepancies << discrepancy
+      Rails.logger.warn "Import discrepancy - #{discrepancy}"
     end
 
     if discrepancies.any?

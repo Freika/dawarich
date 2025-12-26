@@ -1,17 +1,36 @@
 # frozen_string_literal: true
 
 class Api::V1::PointsController < ApiController
+  include SafeTimestampParser
+
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
   before_action :validate_points_limit, only: %i[create]
 
   def index
-    start_at = params[:start_at]&.to_datetime&.to_i
-    end_at   = params[:end_at]&.to_datetime&.to_i || Time.zone.now.to_i
+    start_at = params[:start_at].present? ? safe_timestamp(params[:start_at]) : nil
+    end_at   = params[:end_at].present? ? safe_timestamp(params[:end_at]) : Time.zone.now.to_i
     order    = params[:order] || 'desc'
 
     points = current_api_user
              .points
              .where(timestamp: start_at..end_at)
+
+    # Filter by geographic bounds if provided
+    if params[:min_longitude].present? && params[:max_longitude].present? &&
+       params[:min_latitude].present? && params[:max_latitude].present?
+      min_lng = params[:min_longitude].to_f
+      max_lng = params[:max_longitude].to_f
+      min_lat = params[:min_latitude].to_f
+      max_lat = params[:max_latitude].to_f
+
+      # Use PostGIS to filter points within bounding box
+      points = points.where(
+        'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
+        min_lng, max_lng, min_lat, max_lat
+      )
+    end
+
+    points = points
              .order(timestamp: order)
              .page(params[:page])
              .per(params[:per_page] || 100)

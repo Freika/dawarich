@@ -66,8 +66,7 @@ class Stats::CalculateMonth
       .points
       .without_raw_data
       .where(timestamp: start_timestamp..end_timestamp)
-      .select(:city, :country_name)
-      .distinct
+      .select(:city, :country_name, :timestamp)
 
     CountriesAndCities.new(toponym_points).call
   end

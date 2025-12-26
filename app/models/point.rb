@@ -3,6 +3,7 @@
 class Point < ApplicationRecord
   include Nearable
   include Distanceable
+  include Archivable
 
   belongs_to :import, optional: true, counter_cache: true
   belongs_to :visit, optional: true
