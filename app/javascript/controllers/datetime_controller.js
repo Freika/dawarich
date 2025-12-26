@@ -11,9 +11,57 @@ export default class extends BaseController {
   connect() {
     console.log("Datetime controller connected")
     this.debounceTimer = null;
+
+    // Add validation listeners
+    if (this.hasStartedAtTarget && this.hasEndedAtTarget) {
+      // Validate on change to set validation state
+      this.startedAtTarget.addEventListener('change', () => this.validateDates())
+      this.endedAtTarget.addEventListener('change', () => this.validateDates())
+
+      // Validate on blur to set validation state
+      this.startedAtTarget.addEventListener('blur', () => this.validateDates())
+      this.endedAtTarget.addEventListener('blur', () => this.validateDates())
+
+      // Add form submit validation
+      const form = this.element.closest('form')
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          if (!this.validateDates()) {
+            e.preventDefault()
+            this.endedAtTarget.reportValidity()
+          }
+        })
+      }
+    }
   }
 
-  async updateCoordinates(event) {
+  validateDates(showPopup = false) {
+    const startDate = new Date(this.startedAtTarget.value)
+    const endDate = new Date(this.endedAtTarget.value)
+
+    // Clear any existing custom validity
+    this.startedAtTarget.setCustomValidity('')
+    this.endedAtTarget.setCustomValidity('')
+
+    // Check if both dates are valid
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return true
+    }
+
+    // Validate that start date is before end date
+    if (startDate >= endDate) {
+      const errorMessage = 'Start date must be earlier than end date'
+      this.endedAtTarget.setCustomValidity(errorMessage)
+      if (showPopup) {
+        this.endedAtTarget.reportValidity()
+      }
+      return false
+    }
+
+    return true
+  }
+
+  async updateCoordinates() {
     // Clear any existing timeout
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
@@ -24,6 +72,11 @@ export default class extends BaseController {
       const startedAt = this.startedAtTarget.value
       const endedAt = this.endedAtTarget.value
       const apiKey = this.apiKeyTarget.value
+
+      // Validate dates before making API call (don't show popup, already shown on change)
+      if (!this.validateDates(false)) {
+        return
+      }
 
       if (startedAt && endedAt) {
         try {
