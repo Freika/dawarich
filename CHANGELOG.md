@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
-- Fixed a bug preventing the app to start if a composite index on stats table already exists. #2034
+- Fixed a bug preventing the app to start if a composite index on stats table already exists. #2034 #2051 #2046
 - New compiled assets will override old ones on app start to prevent serving stale assets.
+- Number of points in stats should no longer go negative when points are deleted. #2054
+- Disable Family::Invitations::CleanupJob no invitations are in the database. #2043
 
 # [0.36.3] - 2025-12-14
 
