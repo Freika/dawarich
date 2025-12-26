@@ -4,7 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.36.4] - Unreleased
+# [0.36.5] - Unreleased
+
+## Changed
+
+- Deleting an import will now be processed in the background to prevent request timeouts for large imports.
+
+## Fixed
+
+- Deleting an import will no longer result in negative points count for the user.
+
+
+# [0.36.4] - 2025-12-26
 
 ## Fixed
 
@@ -13,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Number of points in stats should no longer go negative when points are deleted. #2054
 - Disable Family::Invitations::CleanupJob no invitations are in the database. #2043
 - User can now enable family layer in Maps v2 and center on family members by clicking their emails. #2036
+
 
 # [0.36.3] - 2025-12-14
 
