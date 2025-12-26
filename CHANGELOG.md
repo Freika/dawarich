@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - New compiled assets will override old ones on app start to prevent serving stale assets.
 - Number of points in stats should no longer go negative when points are deleted. #2054
 - Disable Family::Invitations::CleanupJob no invitations are in the database. #2043
+- User can now enable family layer in Maps v2 and center on family members by clicking their emails. #2036
 
 # [0.36.3] - 2025-12-14
 
