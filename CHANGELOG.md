@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Deleting an import will no longer result in negative points count for the user.
+- Updating stats. #2022
 
 
 # [0.36.4] - 2025-12-26
