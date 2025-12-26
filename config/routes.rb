@@ -110,7 +110,15 @@ Rails.application.routes.draw do
 
   resources :metrics, only: [:index]
 
-  get 'map', to: 'map#index'
+  # Map namespace with versioning
+  namespace :map do
+    get '/v1', to: 'leaflet#index', as: :v1
+    get '/v2', to: 'maplibre#index', as: :v2
+  end
+
+  # Backward compatibility redirects
+  get '/map', to: 'map/leaflet#index'
+  get '/maps/v2', to: redirect('/map/v2')
 
   namespace :api do
     namespace :v1 do
@@ -120,7 +128,7 @@ Rails.application.routes.draw do
       get   'settings', to: 'settings#index'
       get   'users/me', to: 'users#me'
 
-      resources :areas,     only: %i[index create update destroy]
+      resources :areas,     only: %i[index show create update destroy]
       resources :places,    only: %i[index show create update destroy] do
         collection do
           get 'nearby'
@@ -131,12 +139,12 @@ Rails.application.routes.draw do
           get 'suggestions'
         end
       end
-      resources :points,    only: %i[index create update destroy] do
+      resources :points, only: %i[index create update destroy] do
         collection do
           delete :bulk_destroy
         end
       end
-      resources :visits,    only: %i[index create update destroy] do
+      resources :visits, only: %i[index show create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
         collection do
           post 'merge', to: 'visits#merge'

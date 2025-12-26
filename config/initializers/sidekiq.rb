@@ -24,7 +24,7 @@ Sidekiq.configure_server do |config|
 end
 
 Sidekiq.configure_client do |config|
-  config.redis = { url: "#{ENV['REDIS_URL']}/#{ENV.fetch('RAILS_JOB_QUEUE_DB', 1)}" }
+  config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
 end
 
 Sidekiq::Queue['reverse_geocoding'].limit = 1 if Sidekiq.server? && DawarichSettings.photon_uses_komoot_io?

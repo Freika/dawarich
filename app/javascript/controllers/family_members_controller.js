@@ -7,7 +7,8 @@ export default class extends Controller {
 
   static values = {
     features: Object,
-    userTheme: String
+    userTheme: String,
+    timezone: String
   }
 
   connect() {
@@ -106,7 +107,8 @@ export default class extends Controller {
       });
 
       // Format timestamp for display
-      const lastSeen = new Date(location.updated_at).toLocaleString();
+      const timezone = this.timezoneValue || 'UTC';
+      const lastSeen = new Date(location.updated_at).toLocaleString('en-US', { timeZone: timezone });
 
       // Create small tooltip that shows automatically
       const tooltipContent = this.createTooltipContent(lastSeen, location.battery);
@@ -176,7 +178,8 @@ export default class extends Controller {
       existingMarker.setIcon(newIcon);
 
       // Update tooltip content
-      const lastSeen = new Date(locationData.updated_at).toLocaleString();
+      const timezone = this.timezoneValue || 'UTC';
+      const lastSeen = new Date(locationData.updated_at).toLocaleString('en-US', { timeZone: timezone });
       const tooltipContent = this.createTooltipContent(lastSeen, locationData.battery);
       existingMarker.setTooltipContent(tooltipContent);
 
@@ -214,7 +217,8 @@ export default class extends Controller {
       })
     });
 
-    const lastSeen = new Date(location.updated_at).toLocaleString();
+    const timezone = this.timezoneValue || 'UTC';
+    const lastSeen = new Date(location.updated_at).toLocaleString('en-US', { timeZone: timezone });
 
     const tooltipContent = this.createTooltipContent(lastSeen, location.battery);
     familyMarker.bindTooltip(tooltipContent, {

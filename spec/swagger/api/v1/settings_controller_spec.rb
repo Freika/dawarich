@@ -137,27 +137,42 @@ describe 'Settings API', type: :request do
                        description: 'Route opacity percentage (0-100)'
                      },
                      meters_between_routes: {
-                       type: :number,
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
                        example: 500,
                        description: 'Minimum distance between routes in meters'
                      },
                      minutes_between_routes: {
-                       type: :number,
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
                        example: 30,
                        description: 'Minimum time between routes in minutes'
                      },
                      fog_of_war_meters: {
-                       type: :number,
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
                        example: 50,
                        description: 'Fog of war radius in meters'
                      },
                      time_threshold_minutes: {
-                       type: :number,
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
                        example: 30,
                        description: 'Time threshold for grouping points in minutes'
                      },
                      merge_threshold_minutes: {
-                       type: :number,
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
                        example: 15,
                        description: 'Threshold for merging nearby points in minutes'
                      },
@@ -182,32 +197,51 @@ describe 'Settings API', type: :request do
                        description: 'Whether live map updates are enabled'
                      },
                      immich_url: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'https://immich.example.com',
                        description: 'Immich server URL for photo integration'
                      },
                      immich_api_key: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'your-immich-api-key',
                        description: 'API key for Immich photo service'
                      },
                      photoprism_url: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'https://photoprism.example.com',
                        description: 'PhotoPrism server URL for photo integration'
                      },
                      photoprism_api_key: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'your-photoprism-api-key',
                        description: 'API key for PhotoPrism photo service'
                      },
                      speed_color_scale: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'viridis',
                        description: 'Color scale for speed-colored routes'
                      },
                      fog_of_war_threshold: {
-                       type: :number,
+                       oneOf: [
+                         { type: :number },
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 100,
                        description: 'Fog of war threshold value'
                      }

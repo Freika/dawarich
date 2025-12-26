@@ -5,7 +5,7 @@ class Api::V1::SettingsController < ApiController
 
   def index
     render json: {
-      settings: current_api_user.safe_settings,
+      settings: current_api_user.safe_settings.config,
       status: 'success'
     }, status: :ok
   end
@@ -14,7 +14,7 @@ class Api::V1::SettingsController < ApiController
     settings_params.each { |key, value| current_api_user.settings[key] = value }
 
     if current_api_user.save
-      render json: { message: 'Settings updated', settings: current_api_user.settings, status: 'success' },
+      render json: { message: 'Settings updated', settings: current_api_user.safe_settings.config, status: 'success' },
              status: :ok
     else
       render json: { message: 'Something went wrong', errors: current_api_user.errors.full_messages },
@@ -31,6 +31,7 @@ class Api::V1::SettingsController < ApiController
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,
       :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
       :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold,
+      :maps_v2_style, :maps_maplibre_style,
       enabled_map_layers: []
     )
   end

@@ -525,10 +525,10 @@ GEM
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 4.0)
       websocket (~> 1.0)
-    sentry-rails (6.0.0)
+    sentry-rails (6.1.1)
       railties (>= 5.2.0)
-      sentry-ruby (~> 6.0.0)
-    sentry-ruby (6.0.0)
+      sentry-ruby (~> 6.1.1)
+    sentry-ruby (6.1.1)
       bigdecimal
       concurrent-ruby (~> 1.0, >= 1.0.2)
     shoulda-matchers (6.5.0)
@@ -620,6 +620,9 @@ GEM
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    with_advisory_lock (7.0.2)
+      activerecord (>= 7.2)
+      zeitwerk (>= 2.7)
     xpath (3.2.0)
       nokogiri (~> 1.8)
     zeitwerk (2.7.3)
@@ -703,6 +706,7 @@ DEPENDENCIES
   turbo-rails (>= 2.0.17)
   tzinfo-data
   webmock
+  with_advisory_lock
 
 RUBY VERSION
    ruby 3.4.6p54

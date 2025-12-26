@@ -24,6 +24,6 @@ class Settings::MapsController < ApplicationController
   private
 
   def settings_params
-    params.require(:maps).permit(:name, :url, :distance_unit)
+    params.require(:maps).permit(:name, :url, :distance_unit, :preferred_version)
   end
 end

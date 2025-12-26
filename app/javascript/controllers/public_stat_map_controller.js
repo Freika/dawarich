@@ -10,7 +10,8 @@ export default class extends BaseController {
     uuid: String,
     dataBounds: Object,
     hexagonsAvailable: Boolean,
-    selfHosted: String
+    selfHosted: String,
+    timezone: String
   };
 
   connect() {
@@ -72,9 +73,7 @@ export default class extends BaseController {
   }
 
   async loadHexagons() {
-    console.log('🎯 loadHexagons started - checking overlay state');
     const initialLoadingElement = document.getElementById('map-loading');
-    console.log('📊 Initial overlay display:', initialLoadingElement?.style.display || 'default');
 
     try {
       // Use server-provided data bounds
@@ -94,9 +93,6 @@ export default class extends BaseController {
           // Fallback timeout in case moveend doesn't fire
           setTimeout(resolve, 1000);
         });
-        console.log('✅ Map fitBounds complete - checking overlay state');
-        const afterFitBoundsElement = document.getElementById('map-loading');
-        console.log('📊 After fitBounds overlay display:', afterFitBoundsElement?.style.display || 'default');
       }
 
       // Load hexagons only if they are pre-calculated and data exists
@@ -138,7 +134,6 @@ export default class extends BaseController {
       loadingElement.style.display = 'flex';
       loadingElement.style.visibility = 'visible';
       loadingElement.style.zIndex = '9999';
-      console.log('👁️ Loading overlay ENSURED visible - should be visible now');
     }
 
     // Disable map interaction during loading
@@ -187,7 +182,6 @@ export default class extends BaseController {
       }
 
       const geojsonData = await response.json();
-      console.log(`✅ Loaded ${geojsonData.features?.length || 0} hexagons`);
 
       // Add hexagons directly to map as a static layer
       if (geojsonData.features && geojsonData.features.length > 0) {
@@ -210,7 +204,6 @@ export default class extends BaseController {
       const loadingElement = document.getElementById('map-loading');
       if (loadingElement) {
         loadingElement.style.display = 'none';
-        console.log('🚫 Loading overlay hidden - hexagons are fully loaded');
       }
     }
   }
@@ -255,10 +248,11 @@ export default class extends BaseController {
   }
 
   buildPopupContent(props) {
-    const startDate = props.earliest_point ? new Date(props.earliest_point).toLocaleDateString() : 'N/A';
-    const endDate = props.latest_point ? new Date(props.latest_point).toLocaleDateString() : 'N/A';
-    const startTime = props.earliest_point ? new Date(props.earliest_point).toLocaleTimeString() : '';
-    const endTime = props.latest_point ? new Date(props.latest_point).toLocaleTimeString() : '';
+    const timezone = this.timezoneValue || 'UTC';
+    const startDate = props.earliest_point ? new Date(props.earliest_point).toLocaleDateString('en-US', { timeZone: timezone }) : 'N/A';
+    const endDate = props.latest_point ? new Date(props.latest_point).toLocaleDateString('en-US', { timeZone: timezone }) : 'N/A';
+    const startTime = props.earliest_point ? new Date(props.earliest_point).toLocaleTimeString('en-US', { timeZone: timezone }) : '';
+    const endTime = props.latest_point ? new Date(props.latest_point).toLocaleTimeString('en-US', { timeZone: timezone }) : '';
 
     return `
       <div style="font-size: 12px; line-height: 1.6; max-width: 300px;">
