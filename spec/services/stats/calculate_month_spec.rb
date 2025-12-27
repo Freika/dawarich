@@ -214,7 +214,6 @@ RSpec.describe Stats::CalculateMonth do
         end
 
         it 'does not invalidate caches when there are no points' do
-          # Create a new user without points
           new_user = create(:user)
           service = described_class.new(new_user.id, year, month)
 
