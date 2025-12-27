@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_27_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -78,6 +78,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
   end
 
   create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
+  end
+
+  create_table "digests", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "year", null: false
+    t.integer "period_type", default: 0, null: false
+    t.integer "distance", default: 0, null: false
+    t.jsonb "toponyms", default: {}
+    t.jsonb "monthly_distances", default: {}
+    t.jsonb "time_spent_by_location", default: {}
+    t.jsonb "first_time_visits", default: {}
+    t.jsonb "year_over_year", default: {}
+    t.jsonb "all_time_stats", default: {}
+    t.jsonb "sharing_settings", default: {}
+    t.uuid "sharing_uuid"
+    t.datetime "sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["period_type"], name: "index_digests_on_period_type"
+    t.index ["sharing_uuid"], name: "index_digests_on_sharing_uuid", unique: true
+    t.index ["user_id", "year", "period_type"], name: "index_digests_on_user_id_and_year_and_period_type", unique: true
+    t.index ["user_id"], name: "index_digests_on_user_id"
+    t.index ["year"], name: "index_digests_on_year"
   end
 
   create_table "exports", force: :cascade do |t|
@@ -400,6 +423,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
+  add_foreign_key "digests", "users"
   add_foreign_key "families", "users", column: "creator_id"
   add_foreign_key "family_invitations", "families"
   add_foreign_key "family_invitations", "users", column: "invited_by_id"

@@ -1,6 +1,13 @@
 <% content_for :title, 'Statistics' %>
 
 <div class="w-full my-5">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Statistics</h1>
+    <%= link_to yearly_digests_path, class: 'btn btn-outline btn-sm' do %>
+      <%= icon 'earth' %> Year-End Digests
+    <% end %>
+  </div>
+
   <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 relative">
     <div class="stat text-center">
       <div class="stat-value text-primary">

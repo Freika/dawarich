@@ -1,0 +1,41 @@
+<%= @digest.year %> Year in Review
+====================================
+
+Hi <%= @user.email %>,
+
+Here's your year in review!
+
+DISTANCE TRAVELED
+<%= distance_with_unit(@digest.distance, @distance_unit) %>
+<%= distance_comparison_text(@digest.distance) %>
+<% if @digest.yoy_distance_change %>
+<%= yoy_change_text(@digest.yoy_distance_change) %> compared to <%= @digest.previous_year %>
+<% end %>
+
+COUNTRIES VISITED: <%= @digest.countries_count %>
+<% if @digest.first_time_countries.any? %>
+First time in: <%= @digest.first_time_countries.join(', ') %>
+<% end %>
+
+CITIES EXPLORED: <%= @digest.cities_count %>
+<% if @digest.first_time_cities.any? %>
+First time in: <%= @digest.first_time_cities.take(5).join(', ') %><% if @digest.first_time_cities.count > 5 %> and <%= @digest.first_time_cities.count - 5 %> more<% end %>
+<% end %>
+
+<% if @digest.top_countries_by_time.any? %>
+WHERE YOU SPENT THE MOST TIME
+<% @digest.top_countries_by_time.take(3).each do |country| %>
+- <%= country['name'] %>: <%= format_time_spent(country['minutes']) %>
+<% end %>
+<% end %>
+
+ALL-TIME STATS
+- <%= @digest.total_countries_all_time %> countries visited
+- <%= @digest.total_cities_all_time %> cities explored
+- <%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %> traveled
+
+--
+Powered by Dawarich
+https://dawarich.app
+
+Manage your email preferences: <%= settings_url(host: ENV.fetch('DOMAIN', 'localhost')) %>

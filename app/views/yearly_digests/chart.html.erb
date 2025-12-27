@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: white;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #chart-container {
+      width: 560px;
+      height: 280px;
+    }
+  </style>
+</head>
+<body>
+  <div id="chart-container">
+    <canvas id="monthlyChart"></canvas>
+  </div>
+  <script>
+    const ctx = document.getElementById('monthlyChart').getContext('2d');
+    const rawData = <%= @monthly_distances.to_json.html_safe %>;
+
+    // Convert to km and ensure all 12 months are present
+    const monthlyData = [];
+    for (let i = 1; i <= 12; i++) {
+      const meters = rawData[i.toString()] || 0;
+      monthlyData.push((meters / 1000).toFixed(1));
+    }
+
+    const monthColors = [
+      '#397bb5', '#5A4E9D', '#3B945E', '#7BC96F',
+      '#FFD54F', '#FFA94D', '#FF6B6B', '#FF8C42',
+      '#C97E4F', '#8B4513', '#5A2E2E', '#265d7d'
+    ];
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        datasets: [{
+          label: 'Distance (<%= @distance_unit %>)',
+          data: monthlyData,
+          backgroundColor: monthColors,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: 'Your Year, Month by Month',
+            font: { size: 16, weight: 'bold' }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: '<%= @distance_unit %>'
+            }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<div class="container mx-auto px-4 py-8">
+  <!-- Header -->
+  <div class="hero bg-gradient-to-br from-blue-600 to-purple-700 text-white rounded-lg shadow-lg mb-8">
+    <div class="hero-content text-center py-12">
+      <div class="max-w-lg">
+        <h1 class="text-4xl font-bold"><%= @digest.year %> Year in Review</h1>
+        <p class="py-4">A journey, by the numbers</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Distance Card -->
+  <div class="stats shadow mx-auto mb-8 w-full">
+    <div class="stat place-items-center text-center">
+      <div class="stat-title">Distance traveled</div>
+      <div class="stat-value"><%= distance_with_unit(@digest.distance, @distance_unit) %></div>
+      <div class="stat-desc"><%= distance_comparison_text(@digest.distance) %></div>
+    </div>
+
+    <div class="stat place-items-center text-center">
+      <div class="stat-title">Countries visited</div>
+      <div class="stat-value text-secondary"><%= @digest.countries_count %></div>
+      <% if @digest.first_time_countries.any? %>
+        <div class="stat-desc text-success"><%= @digest.first_time_countries.count %> first time</div>
+      <% end %>
+    </div>
+
+    <div class="stat place-items-center text-center">
+      <div class="stat-title">Cities explored</div>
+      <div class="stat-value text-accent"><%= @digest.cities_count %></div>
+      <% if @digest.first_time_cities.any? %>
+        <div class="stat-desc text-success"><%= @digest.first_time_cities.count %> first time</div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- First Time Visits -->
+  <% if @digest.first_time_countries.any? || @digest.first_time_cities.any? %>
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <h2 class="card-title">
+          <%= icon 'star' %> First Time Visits
+        </h2>
+
+        <% if @digest.first_time_countries.any? %>
+          <div class="mb-4">
+            <h3 class="font-semibold mb-2">New Countries</h3>
+            <div class="flex flex-wrap gap-2">
+              <% @digest.first_time_countries.each do |country| %>
+                <span class="badge badge-success badge-lg"><%= country %></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <% if @digest.first_time_cities.any? %>
+          <div>
+            <h3 class="font-semibold mb-2">New Cities</h3>
+            <div class="flex flex-wrap gap-2">
+              <% @digest.first_time_cities.take(5).each do |city| %>
+                <span class="badge badge-outline"><%= city %></span>
+              <% end %>
+              <% if @digest.first_time_cities.count > 5 %>
+                <span class="badge badge-ghost">+<%= @digest.first_time_cities.count - 5 %> more</span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Monthly Distance Chart -->
+  <% if @digest.monthly_distances.present? %>
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <h2 class="card-title">
+          <%= icon 'activity' %> Year by Month
+        </h2>
+        <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
+          <%= column_chart(
+            @digest.monthly_distances.sort.map { |month, distance_meters|
+              [Date::ABBR_MONTHNAMES[month.to_i], YearlyDigest.convert_distance(distance_meters, @distance_unit).round]
+            },
+            height: '200px',
+            suffix: " #{@distance_unit}",
+            xtitle: 'Month',
+            ytitle: 'Distance',
+            colors: [
+              '#397bb5', '#5A4E9D', '#3B945E',
+              '#7BC96F', '#FFD54F', '#FFA94D',
+              '#FF6B6B', '#FF8C42', '#C97E4F',
+              '#8B4513', '#5A2E2E', '#265d7d'
+            ]
+          ) %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Top Countries by Time Spent -->
+  <% if @digest.top_countries_by_time.any? %>
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <h2 class="card-title">
+          <%= icon 'map-pin' %> Where They Spent the Most Time
+        </h2>
+        <ul class="space-y-2">
+          <% @digest.top_countries_by_time.take(3).each do |country| %>
+            <li class="flex justify-between items-center p-3 bg-base-200 rounded-lg">
+              <span class="font-semibold"><%= country['name'] %></span>
+              <span class="text-gray-600"><%= format_time_spent(country['minutes']) %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Countries & Cities -->
+  <div class="card bg-base-100 shadow-xl mb-8">
+    <div class="card-body">
+      <h2 class="card-title">
+        <%= icon 'earth' %> Countries & Cities
+      </h2>
+      <div class="space-y-4">
+        <% @digest.toponyms&.each_with_index do |country, index| %>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold"><%= country['country'] %></span>
+              <span class="text-sm"><%= country['cities']&.length || 0 %> cities</span>
+            </div>
+            <progress class="progress progress-primary w-full" value="<%= 100 - (index * 15) %>" max="100"></progress>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="flex flex-wrap gap-2">
+        <span class="text-sm font-medium">Cities visited:</span>
+        <% @digest.toponyms&.each do |country| %>
+          <% country['cities']&.take(5)&.each do |city| %>
+            <div class="badge badge-outline"><%= city['city'] %></div>
+          <% end %>
+          <% if country['cities']&.length.to_i > 5 %>
+            <div class="badge badge-ghost">+<%= country['cities'].length - 5 %> more</div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- All-Time Stats -->
+  <div class="card bg-slate-800 text-white shadow-xl mb-8">
+    <div class="card-body">
+      <h2 class="card-title text-white">
+        <%= icon 'trophy' %> All-Time Stats
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div class="stat">
+          <div class="stat-title text-gray-400">Countries visited</div>
+          <div class="stat-value text-white"><%= @digest.total_countries_all_time %></div>
+        </div>
+        <div class="stat">
+          <div class="stat-title text-gray-400">Cities explored</div>
+          <div class="stat-value text-white"><%= @digest.total_cities_all_time %></div>
+        </div>
+        <div class="stat">
+          <div class="stat-title text-gray-400">Total distance</div>
+          <div class="stat-value text-white"><%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="text-center py-8">
+    <div class="text-sm text-gray-500">
+      Powered by <a href="https://dawarich.app" class="link link-primary" target="_blank">Dawarich</a>, your personal memories mapper.
+    </div>
+  </div>
+</div>

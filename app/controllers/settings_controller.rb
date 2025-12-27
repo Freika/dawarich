@@ -35,7 +35,7 @@ class SettingsController < ApplicationController
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :immich_url, :immich_api_key, :photoprism_url, :photoprism_api_key,
-      :visits_suggestions_enabled
+      :visits_suggestions_enabled, :digest_emails_enabled
     )
   end
 end
