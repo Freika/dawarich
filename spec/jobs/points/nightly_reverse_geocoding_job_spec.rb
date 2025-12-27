@@ -7,7 +7,6 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
     let(:user) { create(:user) }
 
     before do
-      # Clear any existing jobs and points to ensure test isolation
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
       Point.delete_all
     end
@@ -126,11 +125,14 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         end
 
         it 'does not invalidate caches multiple times for the same user' do
-          # user has 2 points, but cache should only be invalidated once
           cache_service = instance_double(Cache::InvalidateUserCaches)
 
           allow(Cache::InvalidateUserCaches).to receive(:new).with(user.id).and_return(cache_service)
-          allow(Cache::InvalidateUserCaches).to receive(:new).with(user2.id).and_return(instance_double(Cache::InvalidateUserCaches, call: nil))
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user2.id).and_return(
+            instance_double(
+              Cache::InvalidateUserCaches, call: nil
+            )
+          )
           allow(cache_service).to receive(:call)
 
           described_class.perform_now

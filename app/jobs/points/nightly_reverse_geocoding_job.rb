@@ -13,7 +13,6 @@ class Points::NightlyReverseGeocodingJob < ApplicationJob
       processed_user_ids.add(point.user_id)
     end
 
-    # Invalidate caches for all users who had points reverse geocoded
     processed_user_ids.each do |user_id|
       Cache::InvalidateUserCaches.new(user_id).call
     end

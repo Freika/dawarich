@@ -8,20 +8,17 @@ RSpec.describe Cache::InvalidateUserCaches do
 
   describe '#call' do
     it 'invalidates all user-related caches' do
-      # Pre-populate the caches
-      Rails.cache.write("dawarich/user_#{user.id}_countries_visited", ['USA', 'Canada'])
+      Rails.cache.write("dawarich/user_#{user.id}_countries_visited", %w[USA Canada])
       Rails.cache.write("dawarich/user_#{user.id}_cities_visited", ['New York', 'Toronto'])
       Rails.cache.write("dawarich/user_#{user.id}_points_geocoded_stats", { geocoded: 100, without_data: 10 })
 
-      # Verify caches are populated
-      expect(Rails.cache.read("dawarich/user_#{user.id}_countries_visited")).to eq(['USA', 'Canada'])
+      expect(Rails.cache.read("dawarich/user_#{user.id}_countries_visited")).to eq(%w[USA Canada])
       expect(Rails.cache.read("dawarich/user_#{user.id}_cities_visited")).to eq(['New York', 'Toronto'])
-      expect(Rails.cache.read("dawarich/user_#{user.id}_points_geocoded_stats")).to eq({ geocoded: 100, without_data: 10 })
+      expect(Rails.cache.read("dawarich/user_#{user.id}_points_geocoded_stats")).to eq({ geocoded: 100,
+without_data: 10 })
 
-      # Invalidate caches
       service.call
 
-      # Verify caches are cleared
       expect(Rails.cache.read("dawarich/user_#{user.id}_countries_visited")).to be_nil
       expect(Rails.cache.read("dawarich/user_#{user.id}_cities_visited")).to be_nil
       expect(Rails.cache.read("dawarich/user_#{user.id}_points_geocoded_stats")).to be_nil
@@ -30,7 +27,7 @@ RSpec.describe Cache::InvalidateUserCaches do
 
   describe '#invalidate_countries_visited' do
     it 'deletes the countries_visited cache' do
-      Rails.cache.write("dawarich/user_#{user.id}_countries_visited", ['USA', 'Canada'])
+      Rails.cache.write("dawarich/user_#{user.id}_countries_visited", %w[USA Canada])
 
       service.invalidate_countries_visited
 

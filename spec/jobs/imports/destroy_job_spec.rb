@@ -15,7 +15,6 @@ RSpec.describe Imports::DestroyJob, type: :job do
 
     context 'when import exists' do
       before do
-        # Create some points for the import
         create_list(:point, 3, user: user, import: import)
       end
 
@@ -113,7 +112,6 @@ RSpec.describe Imports::DestroyJob, type: :job do
 
         described_class.perform_now(non_existent_id)
 
-        # Early return at line 8 doesn't log, only rescue block does
         expect(Rails.logger).not_to have_received(:warn)
       end
     end
@@ -158,7 +156,9 @@ RSpec.describe Imports::DestroyJob, type: :job do
 
       it 'has already set status to deleting before service is called' do
         expect do
-          described_class.perform_now(import.id) rescue StandardError
+          described_class.perform_now(import.id)
+        rescue StandardError
+          StandardError
         end.to change { import.reload.status }.to('deleting')
       end
     end
