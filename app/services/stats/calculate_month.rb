@@ -26,7 +26,7 @@ class Stats::CalculateMonth
   def start_timestamp = DateTime.new(year, month, 1).to_i
 
   def end_timestamp
-    DateTime.new(year, month, -1).to_i # -1 returns last day of month
+    DateTime.new(year, month, -1).to_i
   end
 
   def update_month_stats(year, month)
@@ -42,6 +42,8 @@ class Stats::CalculateMonth
       )
 
       stat.save!
+
+      Cache::InvalidateUserCaches.new(user.id).call
     end
   end
 

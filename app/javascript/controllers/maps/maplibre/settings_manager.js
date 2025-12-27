@@ -59,7 +59,8 @@ export class SettingsController {
 
     Object.entries(toggleMap).forEach(([targetName, settingKey]) => {
       const target = `${targetName}Target`
-      if (controller[target]) {
+      const hasTarget = `has${targetName.charAt(0).toUpperCase()}${targetName.slice(1)}Target`
+      if (controller[hasTarget]) {
         controller[target].checked = this.settings[settingKey]
       }
     })
@@ -75,7 +76,7 @@ export class SettingsController {
     }
 
     // Show/hide family members list based on initial toggle state
-    if (controller.hasFamilyToggleTarget && controller.hasFamilyMembersListTarget) {
+    if (controller.hasFamilyToggleTarget && controller.hasFamilyMembersListTarget && controller.familyToggleTarget) {
       controller.familyMembersListTarget.style.display = controller.familyToggleTarget.checked ? 'block' : 'none'
     }
 

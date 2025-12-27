@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Validate trip start date to be earlier than end date. #2057
 - Fog of war radius slider in map v2 settings is now being respected correctly. #2041
 - Applying changes in map v2 settings now works correctly. #2041
+- Invalidate stats cache on recalculation and other operations that change stats data.
 
 
 # [0.36.4] - 2025-12-26
