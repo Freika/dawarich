@@ -57,12 +57,17 @@ RSpec.describe Users::Digests::CalculateYear do
         expect(calculate_digest.distance).to eq(125_000)
       end
 
-      it 'aggregates countries' do
-        expect(calculate_digest.toponyms['countries']).to contain_exactly('France', 'Germany')
-      end
+      it 'aggregates countries with their cities' do
+        toponyms = calculate_digest.toponyms
 
-      it 'aggregates cities' do
-        expect(calculate_digest.toponyms['cities']).to contain_exactly('Berlin', 'Munich', 'Paris')
+        countries = toponyms.map { |t| t['country'] }
+        expect(countries).to contain_exactly('France', 'Germany')
+
+        germany = toponyms.find { |t| t['country'] == 'Germany' }
+        expect(germany['cities'].map { |c| c['city'] }).to contain_exactly('Berlin', 'Munich')
+
+        france = toponyms.find { |t| t['country'] == 'France' }
+        expect(france['cities'].map { |c| c['city'] }).to contain_exactly('Paris')
       end
 
       it 'builds monthly distances' do

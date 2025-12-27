@@ -40,8 +40,7 @@ module Users
       end
 
       def aggregate_toponyms
-        countries = []
-        cities = []
+        country_cities = Hash.new { |h, k| h[k] = Set.new }
 
         monthly_stats.each do |stat|
           toponyms = stat.toponyms
@@ -50,20 +49,27 @@ module Users
           toponyms.each do |toponym|
             next unless toponym.is_a?(Hash)
 
-            countries << toponym['country'] if toponym['country'].present?
+            country = toponym['country']
+            next unless country.present?
 
-            next unless toponym['cities'].is_a?(Array)
-
-            toponym['cities'].each do |city|
-              cities << city['city'] if city.is_a?(Hash) && city['city'].present?
+            if toponym['cities'].is_a?(Array)
+              toponym['cities'].each do |city|
+                city_name = city['city'] if city.is_a?(Hash)
+                country_cities[country].add(city_name) if city_name.present?
+              end
+            else
+              # Ensure country appears even if no cities
+              country_cities[country]
             end
           end
         end
 
-        {
-          'countries' => countries.uniq.compact.sort,
-          'cities' => cities.uniq.compact.sort
-        }
+        country_cities.sort_by { |country, _| country }.map do |country, cities|
+          {
+            'country' => country,
+            'cities' => cities.to_a.sort.map { |city| { 'city' => city } }
+          }
+        end
       end
 
       def build_monthly_distances

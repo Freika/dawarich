@@ -56,8 +56,8 @@ module Users
           toponyms = stat.toponyms
           next [] unless toponyms.is_a?(Array)
 
-          toponyms.filter_map { |t| t['country'] if t.is_a?(Hash) }
-        end.uniq.compact
+          toponyms.filter_map { |t| t['country'] if t.is_a?(Hash) && t['country'].present? }
+        end.uniq
       end
 
       def extract_cities(stats)
@@ -68,9 +68,9 @@ module Users
           toponyms.flat_map do |t|
             next [] unless t.is_a?(Hash) && t['cities'].is_a?(Array)
 
-            t['cities'].filter_map { |c| c['city'] if c.is_a?(Hash) }
+            t['cities'].filter_map { |c| c['city'] if c.is_a?(Hash) && c['city'].present? }
           end
-        end.uniq.compact
+        end.uniq
       end
     end
   end

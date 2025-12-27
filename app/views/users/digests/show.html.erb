@@ -1,6 +1,6 @@
 <% content_for :title, "#{@digest.year} Year in Review" %>
 
-<div class="w-full my-5">
+<div class="max-w-xl mx-auto my-5">
   <!-- Header -->
   <div class="hero bg-gradient-to-br from-blue-600 to-purple-700 text-white rounded-lg shadow-lg mb-8">
     <div class="hero-content text-center py-12 relative w-full">
@@ -17,7 +17,7 @@
 
   <!-- Distance Card -->
   <div class="card bg-base-200 shadow-xl mb-8">
-    <div class="card-body">
+    <div class="card-body text-center items-center">
       <div class="stat-title flex items-center gap-2">
         <%= icon 'map' %> Distance Traveled
       </div>
@@ -40,11 +40,9 @@
         <%= icon 'globe' %> Countries
       </div>
       <div class="stat-value text-secondary"><%= @digest.countries_count %></div>
-      <% if @digest.first_time_countries.any? %>
-        <div class="stat-desc text-success font-medium">
-          <%= icon 'star' %> <%= @digest.first_time_countries.count %> first time
-        </div>
-      <% end %>
+      <div class="stat-desc font-medium flex items-center gap-1 <%= @digest.first_time_countries.any? ? 'text-success' : 'invisible' %>">
+        <%= icon 'star' %> <%= @digest.first_time_countries.any? ? "#{@digest.first_time_countries.count} first time" : '0 first time' %>
+      </div>
     </div>
 
     <div class="stat place-items-center">
@@ -52,18 +50,16 @@
         <%= icon 'building' %> Cities
       </div>
       <div class="stat-value text-accent"><%= @digest.cities_count %></div>
-      <% if @digest.first_time_cities.any? %>
-        <div class="stat-desc text-success font-medium">
-          <%= icon 'star' %> <%= @digest.first_time_cities.count %> first time
-        </div>
-      <% end %>
+      <div class="stat-desc font-medium flex items-center gap-1 <%= @digest.first_time_cities.any? ? 'text-success' : 'invisible' %>">
+        <%= icon 'star' %> <%= @digest.first_time_cities.any? ? "#{@digest.first_time_cities.count} first time" : '0 first time' %>
+      </div>
     </div>
   </div>
 
   <!-- First Time Visits -->
   <% if @digest.first_time_countries.any? || @digest.first_time_cities.any? %>
     <div class="card bg-base-200 shadow-xl mb-8">
-      <div class="card-body">
+      <div class="card-body text-center items-center">
         <h2 class="card-title">
           <%= icon 'star' %> First Time Visits
         </h2>
@@ -71,7 +67,7 @@
         <% if @digest.first_time_countries.any? %>
           <div class="mb-4">
             <h3 class="font-semibold mb-2">New Countries</h3>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2 justify-center">
               <% @digest.first_time_countries.each do |country| %>
                 <span class="badge badge-success badge-lg"><%= country %></span>
               <% end %>
@@ -82,7 +78,7 @@
         <% if @digest.first_time_cities.any? %>
           <div>
             <h3 class="font-semibold mb-2">New Cities</h3>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2 justify-center">
               <% @digest.first_time_cities.take(10).each do |city| %>
                 <span class="badge badge-outline"><%= city %></span>
               <% end %>
@@ -99,7 +95,7 @@
   <!-- Monthly Distance Chart -->
   <% if @digest.monthly_distances.present? %>
     <div class="card bg-base-200 shadow-xl mb-8">
-      <div class="card-body">
+      <div class="card-body text-center items-center">
         <h2 class="card-title">
           <%= icon 'activity' %> Your Year, Month by Month
         </h2>
@@ -127,11 +123,11 @@
   <!-- Top Countries by Time Spent -->
   <% if @digest.top_countries_by_time.any? %>
     <div class="card bg-base-200 shadow-xl mb-8">
-      <div class="card-body">
+      <div class="card-body text-center items-center">
         <h2 class="card-title">
           <%= icon 'map-pin' %> Where You Spent the Most Time
         </h2>
-        <div class="space-y-4">
+        <div class="space-y-4 w-full">
           <% @digest.top_countries_by_time.take(5).each_with_index do |country, index| %>
             <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg">
               <div class="flex items-center gap-3">
@@ -150,11 +146,11 @@
 
   <!-- All Countries & Cities -->
   <div class="card bg-base-200 shadow-xl mb-8">
-    <div class="card-body">
+    <div class="card-body text-center items-center">
       <h2 class="card-title">
         <%= icon 'earth' %> Countries & Cities
       </h2>
-      <div class="space-y-4">
+      <div class="space-y-4 w-full">
         <% if @digest.toponyms.present? %>
           <% max_cities = @digest.toponyms.map { |country| country['cities']&.length || 0 }.max %>
           <% progress_colors = ['progress-primary', 'progress-secondary', 'progress-accent', 'progress-info', 'progress-success', 'progress-warning'] %>
@@ -183,23 +179,23 @@
 
   <!-- All-Time Stats Footer -->
   <div class="card bg-slate-800 text-white shadow-xl mb-8">
-    <div class="card-body">
+    <div class="card-body text-center items-center">
       <h2 class="card-title text-white">
         <%= icon 'trophy' %> All-Time Stats
       </h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <div class="stat">
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <div class="stat place-items-center">
           <div class="stat-title text-gray-400">Countries visited</div>
           <div class="stat-value text-white"><%= @digest.total_countries_all_time %></div>
         </div>
-        <div class="stat">
+        <div class="stat place-items-center">
           <div class="stat-title text-gray-400">Cities explored</div>
           <div class="stat-value text-white"><%= @digest.total_cities_all_time %></div>
         </div>
-        <div class="stat">
-          <div class="stat-title text-gray-400">Total distance</div>
-          <div class="stat-value text-white"><%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %></div>
-        </div>
+      </div>
+      <div class="stat place-items-center mt-2">
+        <div class="stat-title text-gray-400">Total distance</div>
+        <div class="stat-value text-white"><%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %></div>
       </div>
     </div>
   </div>

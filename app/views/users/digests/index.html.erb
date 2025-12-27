@@ -1,6 +1,6 @@
 <% content_for :title, 'Year-End Digests' %>
 
-<div class="w-full my-5">
+<div class="max-w-xl mx-auto my-5">
   <div class="flex justify-between items-center mb-6">
     <h1 class="text-3xl font-bold flex items-center gap-2">
       <%= icon 'earth' %> Year-End Digests
@@ -9,7 +9,7 @@
     <% if @available_years.any? && current_user.active? %>
       <div class="dropdown dropdown-end">
         <label tabindex="0" class="btn btn-primary">
-          <%= icon 'plus' %> Generate Digest
+          <%= icon 'calendar-plus-2' %> Generate Digest
         </label>
         <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
           <% @available_years.each do |year| %>

@@ -8,7 +8,7 @@ class CreateDigests < ActiveRecord::Migration[8.0]
       t.integer :period_type, null: false, default: 0 # enum: monthly: 0, yearly: 1
 
       # Aggregated data
-      t.integer :distance, null: false, default: 0 # Total distance in meters
+      t.bigint :distance, null: false, default: 0 # Total distance in meters
       t.jsonb :toponyms, default: {}               # Countries/cities data
       t.jsonb :monthly_distances, default: {}      # {1: meters, 2: meters, ...}
       t.jsonb :time_spent_by_location, default: {} # Top locations by time
