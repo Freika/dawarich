@@ -43,7 +43,9 @@
             <%= options_for_select([
                   ['1 hour', '1h'],
                   ['12 hours', '12h'],
-                  ['24 hours', '24h']
+                  ['24 hours', '24h'],
+                  ['1 week', '1w'],
+                  ['1 month', '1m']
                 ], @stat&.sharing_settings&.dig('expiration') || '1h') %>
           </select>
         </div>

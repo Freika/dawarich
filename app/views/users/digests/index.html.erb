@@ -27,8 +27,9 @@
   <% if @digests.empty? %>
     <div class="card bg-base-200 shadow-xl">
       <div class="card-body text-center py-12">
-        <div class="text-6xl mb-4"><%= icon 'earth' %></div>
-        <h2 class="text-xl font-semibold mb-2">No Year-End Digests Yet</h2>
+        <h2 class="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
+          <%= icon 'earth' %>No Year-End Digests Yet
+        </h2>
         <p class="text-gray-500 mb-4">
           Year-end digests are automatically generated on January 1st each year.
           <% if @available_years.any? && current_user.active? %>

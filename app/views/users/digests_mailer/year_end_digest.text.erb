@@ -1,9 +1,7 @@
 <%= @digest.year %> Year in Review
 ====================================
 
-Hi <%= @user.email %>,
-
-Here's your year in review!
+Hi, this is Evgenii from Dawarich! Pretty wild journey last year, huh? Let's take a look back at all the places you explored in <%= @digest.year %>.
 
 DISTANCE TRAVELED
 <%= distance_with_unit(@digest.distance, @distance_unit) %>
@@ -33,6 +31,8 @@ ALL-TIME STATS
 - <%= @digest.total_countries_all_time %> countries visited
 - <%= @digest.total_cities_all_time %> cities explored
 - <%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %> traveled
+
+Keep exploring, keep discovering. Here's to even more adventures in <%= @digest.year + 1 %>!
 
 --
 Powered by Dawarich

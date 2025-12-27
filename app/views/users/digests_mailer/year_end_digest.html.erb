@@ -167,6 +167,12 @@
   </div>
 
   <div class="content">
+    <p>
+      Hi, this is Evgenii from Dawarich! Pretty wild journey last yeah, huh? Let's take a look back at all the places you explored in <strong><%= @digest.year %></strong>.
+    </p>
+  </div>
+
+  <div class="content">
     <!-- Distance Traveled -->
     <div class="stat-card">
       <div class="stat-label">Distance Traveled</div>
@@ -274,6 +280,12 @@
         <span class="value"><%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %></span>
       </div>
     </div>
+  </div>
+
+  <div class="content">
+    <p>
+      You can open your digest for sharing on its page on Dawarich: <a href="<%= users_digest_url(year: @digest.year) %>"><%= users_digest_url(year: @digest.year) %></a>
+    </p>
   </div>
 
   <div class="footer">

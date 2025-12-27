@@ -71,9 +71,9 @@ RSpec.describe Users::Digests::CalculateYear do
       end
 
       it 'builds monthly distances' do
-        expect(calculate_digest.monthly_distances['1']).to eq(50_000)
-        expect(calculate_digest.monthly_distances['2']).to eq(75_000)
-        expect(calculate_digest.monthly_distances['3']).to eq(0) # Missing month
+        expect(calculate_digest.monthly_distances['1']).to eq('50000')
+        expect(calculate_digest.monthly_distances['2']).to eq('75000')
+        expect(calculate_digest.monthly_distances['3']).to eq('0') # Missing month
       end
 
       it 'calculates time spent by location' do
@@ -86,7 +86,7 @@ RSpec.describe Users::Digests::CalculateYear do
       end
 
       it 'calculates all time stats' do
-        expect(calculate_digest.all_time_stats['total_distance']).to eq(125_000)
+        expect(calculate_digest.all_time_stats['total_distance']).to eq('125000')
       end
 
       context 'when digest already exists' do

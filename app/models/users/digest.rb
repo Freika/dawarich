@@ -46,12 +46,14 @@ class Users::Digest < ApplicationRecord
   end
 
   def enable_sharing!(expiration: '24h')
-    expiration = '24h' unless %w[1h 12h 24h].include?(expiration)
+    expiration = '24h' unless %w[1h 12h 24h 1w 1m].include?(expiration)
 
     expires_at = case expiration
                  when '1h' then 1.hour.from_now
                  when '12h' then 12.hours.from_now
                  when '24h' then 24.hours.from_now
+                 when '1w' then 1.week.from_now
+                 when '1m' then 1.month.from_now
                  end
 
     update!(
@@ -127,7 +129,7 @@ class Users::Digest < ApplicationRecord
   end
 
   def total_distance_all_time
-    all_time_stats['total_distance'] || 0
+    (all_time_stats['total_distance'] || 0).to_i
   end
 
   def distance_km

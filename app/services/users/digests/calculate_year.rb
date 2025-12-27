@@ -76,12 +76,12 @@ module Users
         result = {}
 
         monthly_stats.each do |stat|
-          result[stat.month.to_s] = stat.distance
+          result[stat.month.to_s] = stat.distance.to_s
         end
 
         # Fill in missing months with 0
         (1..12).each do |month|
-          result[month.to_s] ||= 0
+          result[month.to_s] ||= '0'
         end
 
         result
@@ -131,7 +131,7 @@ module Users
         {
           'total_countries' => user.countries_visited.count,
           'total_cities' => user.cities_visited.count,
-          'total_distance' => user.stats.sum(:distance)
+          'total_distance' => user.stats.sum(:distance).to_s
         }
       end
     end
