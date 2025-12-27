@@ -10,15 +10,13 @@ class Users::Digest < ApplicationRecord
 
   belongs_to :user
 
-  validates :year, presence: true
-  validates :period_type, presence: true
+  validates :year, :period_type, presence: true
   validates :year, uniqueness: { scope: %i[user_id period_type] }
 
   before_create :generate_sharing_uuid
 
   enum :period_type, { monthly: 0, yearly: 1 }
 
-  # Sharing methods (following Stat model pattern)
   def sharing_enabled?
     sharing_settings.try(:[], 'enabled') == true
   end
@@ -76,8 +74,6 @@ class Users::Digest < ApplicationRecord
     )
   end
 
-  # Helper methods for accessing digest data
-  # toponyms is an array like: [{'country' => 'Germany', 'cities' => [{'city' => 'Berlin'}]}]
   def countries_count
     return 0 unless toponyms.is_a?(Array)
 

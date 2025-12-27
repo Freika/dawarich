@@ -23,8 +23,8 @@ class Users::Digests::EmailSendingJob < ApplicationJob
 
   def should_send_email?(user, digest)
     return false unless user.safe_settings.digest_emails_enabled?
-    return false unless digest.present?
-    return false if digest.sent_at.present? # Already sent
+    return false if digest.blank?
+    return false if digest.sent_at.present?
 
     true
   end

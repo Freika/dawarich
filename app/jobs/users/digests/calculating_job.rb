@@ -21,6 +21,6 @@ class Users::Digests::CalculatingJob < ApplicationJob
       content: "#{error.message}, stacktrace: #{error.backtrace.join("\n")}"
     ).call
   rescue ActiveRecord::RecordNotFound
-    # User was deleted, nothing to notify
+    nil
   end
 end

@@ -2,9 +2,6 @@
 
 module Users
   module DigestsHelper
-    EARTH_CIRCUMFERENCE_KM = 40_075
-    MOON_DISTANCE_KM = 384_400
-
     def distance_with_unit(distance_meters, unit)
       value = Users::Digest.convert_distance(distance_meters, unit).round
       "#{number_with_delimiter(value)} #{unit}"
@@ -13,11 +10,11 @@ module Users
     def distance_comparison_text(distance_meters)
       distance_km = distance_meters.to_f / 1000
 
-      if distance_km >= MOON_DISTANCE_KM
-        percentage = ((distance_km / MOON_DISTANCE_KM) * 100).round(1)
+      if distance_km >= Users::Digest::MOON_DISTANCE_KM
+        percentage = ((distance_km / Users::Digest::MOON_DISTANCE_KM) * 100).round(1)
         "That's #{percentage}% of the distance to the Moon!"
       else
-        percentage = ((distance_km / EARTH_CIRCUMFERENCE_KM) * 100).round(1)
+        percentage = ((distance_km / Users::Digest::EARTH_CIRCUMFERENCE_KM) * 100).round(1)
         "That's #{percentage}% of Earth's circumference!"
       end
     end
