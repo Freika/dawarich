@@ -52,5 +52,5 @@ nightly_family_invitations_cleanup_job:
 
 year_end_digest_job:
   cron: "0 0 1 1 *" # January 1st at 00:00
-  class: "YearlyDigests::YearEndSchedulingJob"
+  class: "Users::Digests::YearEndSchedulingJob"
   queue: digests
