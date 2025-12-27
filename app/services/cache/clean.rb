@@ -36,8 +36,8 @@ class Cache::Clean
 
     def delete_countries_cities_cache
       User.find_each do |user|
-        Rails.cache.delete("dawarich/user_#{user.id}_countries")
-        Rails.cache.delete("dawarich/user_#{user.id}_cities")
+        Rails.cache.delete("dawarich/user_#{user.id}_countries_visited")
+        Rails.cache.delete("dawarich/user_#{user.id}_cities_visited")
       end
     end
   end

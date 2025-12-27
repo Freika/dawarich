@@ -223,9 +223,10 @@ RSpec.describe 'Imports', type: :request do
       it 'deletes the import' do
         expect do
           delete import_path(import)
-        end.to change(user.imports, :count).by(-1)
+        end.to have_enqueued_job(Imports::DestroyJob).with(import.id)
 
         expect(response).to redirect_to(imports_path)
+        expect(import.reload).to be_deleting
       end
     end
   end

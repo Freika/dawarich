@@ -17,7 +17,7 @@ class Import < ApplicationRecord
   validate :file_size_within_limit, if: -> { user.trial? }
   validate :import_count_within_limit, if: -> { user.trial? }
 
-  enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
+  enum :status, { created: 0, processing: 1, completed: 2, failed: 3, deleting: 4 }
 
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,

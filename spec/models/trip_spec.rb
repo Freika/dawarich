@@ -7,6 +7,33 @@ RSpec.describe Trip, type: :model do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:started_at) }
     it { is_expected.to validate_presence_of(:ended_at) }
+
+    context 'date range validation' do
+      let(:user) { create(:user) }
+
+      it 'is valid when started_at is before ended_at' do
+        trip = build(:trip, user: user, started_at: 1.day.ago, ended_at: Time.current)
+        expect(trip).to be_valid
+      end
+
+      it 'is invalid when started_at is after ended_at' do
+        trip = build(:trip, user: user, started_at: Time.current, ended_at: 1.day.ago)
+        expect(trip).not_to be_valid
+        expect(trip.errors[:ended_at]).to include('must be after start date')
+      end
+
+      it 'is invalid when started_at equals ended_at' do
+        time = Time.current
+        trip = build(:trip, user: user, started_at: time, ended_at: time)
+        expect(trip).not_to be_valid
+        expect(trip.errors[:ended_at]).to include('must be after start date')
+      end
+
+      it 'is valid when both dates are blank during initialization' do
+        trip = Trip.new(user: user, name: 'Test Trip')
+        expect(trip.errors[:ended_at]).to be_empty
+      end
+    end
   end
 
   describe 'associations' do

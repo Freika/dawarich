@@ -9,6 +9,7 @@ class Trip < ApplicationRecord
   belongs_to :user
 
   validates :name, :started_at, :ended_at, presence: true
+  validate :started_at_before_ended_at
 
   after_create :enqueue_calculation_jobs
   after_update :enqueue_calculation_jobs, if: -> { saved_change_to_started_at? || saved_change_to_ended_at? }
@@ -46,5 +47,12 @@ class Trip < ApplicationRecord
     # this is ridiculous, but I couldn't find my way around frontend
     # to show all photos in the same height
     vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
+  end
+
+  def started_at_before_ended_at
+    return if started_at.blank? || ended_at.blank?
+    return unless started_at >= ended_at
+
+    errors.add(:ended_at, 'must be after start date')
   end
 end

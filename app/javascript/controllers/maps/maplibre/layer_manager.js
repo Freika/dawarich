@@ -270,7 +270,7 @@ export class LayerManager {
     // Always create fog layer for backward compatibility
     if (!this.layers.fogLayer) {
       this.layers.fogLayer = new FogLayer(this.map, {
-        clearRadius: 1000,
+        clearRadius: this.settings.fogOfWarRadius || 1000,
         visible: this.settings.fogEnabled || false
       })
       this.layers.fogLayer.add(pointsGeoJSON)

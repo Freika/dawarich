@@ -62,6 +62,39 @@ RSpec.describe Stats::HexagonCalculator do
         expect(total_points).to eq(2)
       end
 
+      context 'when there are too many hexagons' do
+        let(:h3_resolution) { 15 } # Very high resolution to trigger MAX_HEXAGONS
+
+        before do
+          # Stub to simulate too many hexagons on first call, then acceptable on second
+          allow_any_instance_of(described_class).to receive(:calculate_h3_indexes).and_call_original
+          call_count = 0
+          allow_any_instance_of(described_class).to receive(:calculate_h3_indexes) do |instance, points, resolution|
+            call_count += 1
+            if call_count == 1
+              # First call: return too many hexagons
+              Hash.new.tap do |hash|
+                (described_class::MAX_HEXAGONS + 1).times do |i|
+                  hash[i.to_s(16)] = [1, timestamp1, timestamp1]
+                end
+              end
+            else
+              # Second call with lower resolution: return acceptable amount
+              { '8c2a1072b3f1fff' => [2, timestamp1, timestamp2] }
+            end
+          end
+        end
+
+        it 'recursively reduces resolution when too many hexagons are generated' do
+          result = calculate_hexagons
+
+          expect(result).to be_an(Array)
+          expect(result).not_to be_empty
+          # Should have successfully reduced the hexagon count
+          expect(result.size).to be < described_class::MAX_HEXAGONS
+        end
+      end
+
       context 'when H3 raises an error' do
         before do
           allow(H3).to receive(:from_geo_coordinates).and_raise(StandardError, 'H3 error')
