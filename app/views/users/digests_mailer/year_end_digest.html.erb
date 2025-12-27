@@ -208,10 +208,34 @@
     </div>
 
     <!-- Monthly Distance Chart -->
-    <% if @chart_image_name %>
+    <% if @digest.monthly_distances.present? %>
       <div class="chart-container">
         <h3 style="margin: 0 0 16px 0; color: #1e293b;">Your Year, Month by Month</h3>
-        <%= image_tag attachments[@chart_image_name].url, alt: 'Monthly Distance Chart' %>
+        <% max_distance = @digest.monthly_distances.values.map(&:to_i).max %>
+        <% max_distance = 1 if max_distance.zero? %>
+        <% chart_height = 120 %>
+        <% bar_colors = ['#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'] %>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+          <!-- Bars row -->
+          <tr>
+            <% (1..12).each do |month| %>
+              <% distance = @digest.monthly_distances[month.to_s].to_i %>
+              <% bar_height = (distance.to_f / max_distance * chart_height).round %>
+              <% bar_height = 3 if bar_height < 3 && distance > 0 %>
+              <td style="vertical-align: bottom; text-align: center; padding: 0 2px;">
+                <div style="background: <%= bar_colors[month - 1] %>; width: 100%; height: <%= bar_height %>px; border-radius: 3px 3px 0 0; min-height: 3px;"></div>
+              </td>
+            <% end %>
+          </tr>
+          <!-- Labels row -->
+          <tr>
+            <% (1..12).each do |month| %>
+              <td style="text-align: center; padding-top: 6px; font-size: 11px; color: #64748b;">
+                <%= Date::ABBR_MONTHNAMES[month][0..0] %>
+              </td>
+            <% end %>
+          </tr>
+        </table>
       </div>
     <% end %>
 
@@ -222,7 +246,7 @@
         <ul class="location-list">
           <% @digest.top_countries_by_time.take(3).each do |country| %>
             <li>
-              <span><%= country['name'] %></span>
+              <span><%= country_flag(country['name']) %> <%= country['name'] %></span>
               <span><%= format_time_spent(country['minutes']) %></span>
             </li>
           <% end %>

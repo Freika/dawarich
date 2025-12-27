@@ -2,6 +2,7 @@
 
 class Users::DigestsController < ApplicationController
   helper Users::DigestsHelper
+  helper CountryFlagHelper
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: [:create]

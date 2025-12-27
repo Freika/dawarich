@@ -134,7 +134,10 @@
                 <span class="badge badge-lg <%= ['badge-primary', 'badge-secondary', 'badge-accent', 'badge-info', 'badge-success'][index] %>">
                   <%= index + 1 %>
                 </span>
-                <span class="font-semibold"><%= country['name'] %></span>
+                <span class="font-semibold">
+                  <span class="mr-1"><%= country_flag(country['name']) %></span>
+                  <%= country['name'] %>
+                </span>
               </div>
               <span class="text-gray-600"><%= format_time_spent(country['minutes']) %></span>
             </div>
@@ -162,7 +165,10 @@
 
             <div class="space-y-2">
               <div class="flex justify-between items-center">
-                <span class="font-semibold"><%= country['country'] %></span>
+                <span class="font-semibold">
+                  <span class="mr-1"><%= country_flag(country['country']) %></span>
+                  <%= country['country'] %>
+                </span>
                 <span class="text-sm">
                   <%= pluralize(cities_count, 'city') %>
                 </span>

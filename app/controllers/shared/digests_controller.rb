@@ -2,6 +2,7 @@
 
 class Shared::DigestsController < ApplicationController
   helper Users::DigestsHelper
+  helper CountryFlagHelper
 
   before_action :authenticate_user!, except: [:show]
   before_action :authenticate_active_user!, only: [:update]

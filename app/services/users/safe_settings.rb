@@ -141,7 +141,9 @@ class Users::SafeSettings
     settings['maps_maplibre_style']
   end
 
-  def digest_emails_enabled?
+  def digest_emails_enabled
     settings['digest_emails_enabled'] != false
   end
+
+  alias digest_emails_enabled? digest_emails_enabled
 end

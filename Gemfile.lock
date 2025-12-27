@@ -204,8 +204,6 @@ GEM
       rake
     groupdate (6.7.0)
       activesupport (>= 7.1)
-    grover (1.2.4)
-      nokogiri (~> 1)
     h3 (3.7.4)
       ffi (~> 1.9)
       rgeo-geojson (~> 2.1)
@@ -659,7 +657,6 @@ DEPENDENCIES
   geocoder!
   gpx
   groupdate
-  grover
   h3 (~> 3.7)
   httparty
   importmap-rails

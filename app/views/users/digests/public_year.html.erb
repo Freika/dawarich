@@ -108,7 +108,10 @@
         <ul class="space-y-2 w-full">
           <% @digest.top_countries_by_time.take(3).each do |country| %>
             <li class="flex justify-between items-center p-3 bg-base-200 rounded-lg">
-              <span class="font-semibold"><%= country['name'] %></span>
+              <span class="font-semibold">
+                <span class="mr-1"><%= country_flag(country['name']) %></span>
+                <%= country['name'] %>
+              </span>
               <span class="text-gray-600"><%= format_time_spent(country['minutes']) %></span>
             </li>
           <% end %>
@@ -127,7 +130,10 @@
         <% @digest.toponyms&.each_with_index do |country, index| %>
           <div class="space-y-2">
             <div class="flex justify-between items-center">
-              <span class="font-semibold"><%= country['country'] %></span>
+              <span class="font-semibold">
+                <span class="mr-1"><%= country_flag(country['country']) %></span>
+                <%= country['country'] %>
+              </span>
               <span class="text-sm"><%= country['cities']&.length || 0 %> cities</span>
             </div>
             <progress class="progress progress-primary w-full" value="<%= 100 - (index * 15) %>" max="100"></progress>
