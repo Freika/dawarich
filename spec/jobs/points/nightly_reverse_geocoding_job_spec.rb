@@ -62,18 +62,22 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
 
       context 'with points needing reverse geocoding' do
+        let(:user2) { create(:user) }
         let!(:point_without_geocoding1) do
           create(:point, user: user, reverse_geocoded_at: nil)
         end
         let!(:point_without_geocoding2) do
           create(:point, user: user, reverse_geocoded_at: nil)
         end
+        let!(:point_without_geocoding3) do
+          create(:point, user: user2, reverse_geocoded_at: nil)
+        end
         let!(:geocoded_point) do
           create(:point, user: user, reverse_geocoded_at: 1.day.ago)
         end
 
         it 'processes all points that need reverse geocoding' do
-          expect { described_class.perform_now }.to have_enqueued_job(ReverseGeocodingJob).exactly(2).times
+          expect { described_class.perform_now }.to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
         end
 
         it 'enqueues jobs with correct parameters' do
@@ -82,6 +86,8 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
             .with('Point', point_without_geocoding1.id)
             .and have_enqueued_job(ReverseGeocodingJob)
             .with('Point', point_without_geocoding2.id)
+            .and have_enqueued_job(ReverseGeocodingJob)
+            .with('Point', point_without_geocoding3.id)
         end
 
         it 'uses find_each with correct batch size' do
@@ -92,6 +98,44 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
           described_class.perform_now
 
           expect(relation_mock).to have_received(:find_each).with(batch_size: 1000)
+        end
+
+        it 'invalidates caches for all affected users' do
+          allow(Cache::InvalidateUserCaches).to receive(:new).and_call_original
+
+          described_class.perform_now
+
+          # Verify that cache invalidation service was instantiated for both users
+          expect(Cache::InvalidateUserCaches).to have_received(:new).with(user.id)
+          expect(Cache::InvalidateUserCaches).to have_received(:new).with(user2.id)
+        end
+
+        it 'invalidates caches for the correct users' do
+          cache_service1 = instance_double(Cache::InvalidateUserCaches)
+          cache_service2 = instance_double(Cache::InvalidateUserCaches)
+
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user.id).and_return(cache_service1)
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user2.id).and_return(cache_service2)
+          allow(cache_service1).to receive(:call)
+          allow(cache_service2).to receive(:call)
+
+          described_class.perform_now
+
+          expect(cache_service1).to have_received(:call)
+          expect(cache_service2).to have_received(:call)
+        end
+
+        it 'does not invalidate caches multiple times for the same user' do
+          # user has 2 points, but cache should only be invalidated once
+          cache_service = instance_double(Cache::InvalidateUserCaches)
+
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user.id).and_return(cache_service)
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user2.id).and_return(instance_double(Cache::InvalidateUserCaches, call: nil))
+          allow(cache_service).to receive(:call)
+
+          described_class.perform_now
+
+          expect(cache_service).to have_received(:call).once
         end
       end
     end

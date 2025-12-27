@@ -201,6 +201,29 @@ RSpec.describe Stats::CalculateMonth do
           end
         end
       end
+
+      context 'when invalidating caches' do
+        it 'invalidates user caches after updating stats' do
+          # Use existing points from the parent context
+          cache_service = instance_double(Cache::InvalidateUserCaches)
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user.id).and_return(cache_service)
+          allow(cache_service).to receive(:call)
+
+          calculate_stats
+
+          expect(cache_service).to have_received(:call)
+        end
+
+        it 'does not invalidate caches when there are no points' do
+          # Create a new user without points
+          new_user = create(:user)
+          service = described_class.new(new_user.id, year, month)
+
+          expect(Cache::InvalidateUserCaches).not_to receive(:new)
+
+          service.call
+        end
+      end
     end
   end
 end

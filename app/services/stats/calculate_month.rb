@@ -42,6 +42,9 @@ class Stats::CalculateMonth
       )
 
       stat.save!
+
+      # Invalidate user caches after stats calculation since they may have changed
+      Cache::InvalidateUserCaches.new(user.id).call
     end
   end
 
