@@ -20,8 +20,9 @@ class Users::SafeSettings
     'photoprism_api_key' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
-    'enabled_map_layers' => ['Routes', 'Heatmap'],
-    'maps_maplibre_style' => 'light'
+    'enabled_map_layers' => %w[Routes Heatmap],
+    'maps_maplibre_style' => 'light',
+    'digest_emails_enabled' => true
   }.freeze
 
   def initialize(settings = {})
@@ -138,5 +139,12 @@ class Users::SafeSettings
 
   def maps_maplibre_style
     settings['maps_maplibre_style']
+  end
+
+  def digest_emails_enabled?
+    value = settings['digest_emails_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
   end
 end

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [0.36.5] - Unreleased
 
+## Added
+
+- In the beginning of the year users will receive a year-end digest email with stats about their tracking activity during the past year. Users can opt out of receiving these emails in User Settings -> Notifications. Emails won't be sent if no email is configured in the SMTP settings or if user has no points tracked during the year.
+
 ## Changed
 
 - Deleting an import will now be processed in the background to prevent request timeouts for large imports.

@@ -98,6 +98,17 @@ Rails.application.routes.draw do
         as: :sharing_stats,
         constraints: { year: /\d{4}/, month: /\d{1,2}/ }
 
+  # User digests routes (yearly/monthly digest reports)
+  scope module: 'users' do
+    resources :digests, only: %i[index create], param: :year, as: :users_digests
+    get 'digests/:year', to: 'digests#show', as: :users_digest, constraints: { year: /\d{4}/ }
+  end
+  get 'shared/digest/:uuid', to: 'shared/digests#show', as: :shared_users_digest
+  patch 'digests/:year/sharing',
+        to: 'shared/digests#update',
+        as: :sharing_users_digest,
+        constraints: { year: /\d{4}/ }
+
   root to: 'home#index'
 
   get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
