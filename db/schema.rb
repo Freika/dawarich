@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_28_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -78,6 +78,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
   end
 
   create_table "data_migrations", primary_key: "version", id: :string, force: :cascade do |t|
+  end
+
+  create_table "digests", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "year", null: false
+    t.integer "period_type", default: 0, null: false
+    t.bigint "distance", default: 0, null: false
+    t.jsonb "toponyms", default: {}
+    t.jsonb "monthly_distances", default: {}
+    t.jsonb "time_spent_by_location", default: {}
+    t.jsonb "first_time_visits", default: {}
+    t.jsonb "year_over_year", default: {}
+    t.jsonb "all_time_stats", default: {}
+    t.jsonb "sharing_settings", default: {}
+    t.uuid "sharing_uuid"
+    t.datetime "sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["period_type"], name: "index_digests_on_period_type"
+    t.index ["sharing_uuid"], name: "index_digests_on_sharing_uuid", unique: true
+    t.index ["user_id", "year", "period_type"], name: "index_digests_on_user_id_and_year_and_period_type", unique: true
+    t.index ["user_id"], name: "index_digests_on_user_id"
+    t.index ["year"], name: "index_digests_on_year"
   end
 
   create_table "exports", force: :cascade do |t|
@@ -226,18 +249,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
     t.string "country_name"
     t.boolean "raw_data_archived", default: false, null: false
     t.bigint "raw_data_archive_id"
-    t.index ["altitude"], name: "index_points_on_altitude"
-    t.index ["battery"], name: "index_points_on_battery"
-    t.index ["battery_status"], name: "index_points_on_battery_status"
-    t.index ["city"], name: "index_points_on_city"
-    t.index ["connection"], name: "index_points_on_connection"
-    t.index ["country"], name: "index_points_on_country"
     t.index ["country_id"], name: "index_points_on_country_id"
-    t.index ["country_name"], name: "index_points_on_country_name"
-    t.index ["external_track_id"], name: "index_points_on_external_track_id"
-    t.index ["geodata"], name: "index_points_on_geodata", using: :gin
     t.index ["import_id"], name: "index_points_on_import_id"
-    t.index ["latitude", "longitude"], name: "index_points_on_latitude_and_longitude"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
@@ -245,10 +258,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
     t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
-    t.index ["trigger"], name: "index_points_on_trigger"
+    t.index ["user_id", "city"], name: "idx_points_user_city"
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "reverse_geocoded_at"], name: "index_points_on_user_id_and_reverse_geocoded_at", where: "(reverse_geocoded_at IS NOT NULL)"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
+    t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
     t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
     t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
@@ -373,9 +387,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
+    t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["status"], name: "index_users_on_status"
   end
 
   add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false
@@ -400,6 +416,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_26_170919) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
+  add_foreign_key "digests", "users"
   add_foreign_key "families", "users", column: "creator_id"
   add_foreign_key "family_invitations", "families"
   add_foreign_key "family_invitations", "users", column: "invited_by_id"

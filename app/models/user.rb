@@ -73,7 +73,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def total_reverse_geocoded_points
-    points.where.not(reverse_geocoded_at: nil).count
+    StatsQuery.new(self).points_stats[:geocoded]
   end
 
   def total_reverse_geocoded_points_without_data
