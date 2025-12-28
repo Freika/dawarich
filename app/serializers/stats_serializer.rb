@@ -27,7 +27,7 @@ class StatsSerializer
   end
 
   def reverse_geocoded_points
-    user.points.reverse_geocoded.count
+    StatsQuery.new(user).points_stats[:geocoded]
   end
 
   def yearly_stats
