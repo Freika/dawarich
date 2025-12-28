@@ -46,7 +46,7 @@ if Tag.none?
     { name: 'Home', color: '#FF5733', icon: '🏡' },
     { name: 'Work', color: '#33FF57', icon: '💼' },
     { name: 'Favorite', color: '#3357FF', icon: '⭐' },
-    { name: 'Travel Plans', color: '#F1C40F', icon: '🗺️' },
+    { name: 'Travel Plans', color: '#F1C40F', icon: '🗺️' }
   ]
 
   User.find_each do |user|

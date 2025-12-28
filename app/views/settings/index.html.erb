@@ -69,6 +69,27 @@
             </div>
           </div>
 
+          <div>
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+              <%= icon 'mail', class: "text-primary mr-2" %> Email Preferences
+            </h2>
+            <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-4">
+                  <%= f.check_box :digest_emails_enabled,
+                                  checked: current_user.safe_settings.digest_emails_enabled?,
+                                  class: "toggle toggle-primary" %>
+                  <div>
+                    <span class="label-text font-medium">Year-End Digest Emails</span>
+                    <p class="text-sm text-base-content/70 mt-1">
+                      Receive an annual summary email on January 1st with your year in review
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
             <div>
               <h2 class="text-2xl font-bold mb-4 flex items-center">

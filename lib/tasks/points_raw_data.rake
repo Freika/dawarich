@@ -3,7 +3,7 @@
 namespace :points do
   namespace :raw_data do
     desc 'Restore raw_data from archive to database for a specific month'
-    task :restore, [:user_id, :year, :month] => :environment do |_t, args|
+    task :restore, %i[user_id year month] => :environment do |_t, args|
       validate_args!(args)
 
       user_id = args[:user_id].to_i
@@ -27,7 +27,7 @@ namespace :points do
     end
 
     desc 'Restore raw_data to memory/cache temporarily (for data migrations)'
-    task :restore_temporary, [:user_id, :year, :month] => :environment do |_t, args|
+    task :restore_temporary, %i[user_id year month] => :environment do |_t, args|
       validate_args!(args)
 
       user_id = args[:user_id].to_i
@@ -69,9 +69,9 @@ namespace :points do
       puts ''
 
       archives = Points::RawDataArchive.where(user_id: user_id)
-                                     .select(:year, :month)
-                                     .distinct
-                                     .order(:year, :month)
+                                       .select(:year, :month)
+                                       .distinct
+                                       .order(:year, :month)
 
       puts "Found #{archives.count} months to restore"
       puts ''
@@ -113,9 +113,9 @@ namespace :points do
 
       # Storage size via ActiveStorage
       total_blob_size = ActiveStorage::Blob
-        .joins('INNER JOIN active_storage_attachments ON active_storage_attachments.blob_id = active_storage_blobs.id')
-        .where("active_storage_attachments.record_type = 'Points::RawDataArchive'")
-        .sum(:byte_size)
+                        .joins('INNER JOIN active_storage_attachments ON active_storage_attachments.blob_id = active_storage_blobs.id')
+                        .where("active_storage_attachments.record_type = 'Points::RawDataArchive'")
+                        .sum(:byte_size)
 
       puts "Storage used: #{ActiveSupport::NumberHelper.number_to_human_size(total_blob_size)}"
       puts ''
@@ -130,10 +130,10 @@ namespace :points do
       puts '─────────────────────────────────────────────────'
 
       Points::RawDataArchive.group(:user_id)
-                          .select('user_id, COUNT(*) as archive_count, SUM(point_count) as total_points')
-                          .order('archive_count DESC')
-                          .limit(10)
-                          .each_with_index do |stat, idx|
+                            .select('user_id, COUNT(*) as archive_count, SUM(point_count) as total_points')
+                            .order('archive_count DESC')
+                            .limit(10)
+                            .each_with_index do |stat, idx|
         user = User.find(stat.user_id)
         puts "#{idx + 1}. #{user.email.ljust(30)} #{stat.archive_count.to_s.rjust(3)} archives, #{stat.total_points.to_s.rjust(8)} points"
       end
@@ -142,7 +142,7 @@ namespace :points do
     end
 
     desc 'Verify archive integrity (all unverified archives, or specific month with args)'
-    task :verify, [:user_id, :year, :month] => :environment do |_t, args|
+    task :verify, %i[user_id year month] => :environment do |_t, args|
       verifier = Points::RawData::Verifier.new
 
       if args[:user_id] && args[:year] && args[:month]
@@ -177,7 +177,7 @@ namespace :points do
     end
 
     desc 'Clear raw_data for verified archives (all verified, or specific month with args)'
-    task :clear_verified, [:user_id, :year, :month] => :environment do |_t, args|
+    task :clear_verified, %i[user_id year month] => :environment do |_t, args|
       clearer = Points::RawData::Clearer.new
 
       if args[:user_id] && args[:year] && args[:month]
