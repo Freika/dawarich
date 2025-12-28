@@ -26,6 +26,7 @@ Rails.application.routes.draw do
   } do
     mount Sidekiq::Web => '/sidekiq'
   end
+  mount RailsPulse::Engine => '/rails_pulse'
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq
   match '/sidekiq' => redirect { |_, request|
