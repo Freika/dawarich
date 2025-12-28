@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Changed
 
+- Added and removed some indexes to improve the app performance based on the production usage data.
+
+## Changed
+
 - Deleting an import will now be processed in the background to prevent request timeouts for large imports.
 
 ## Fixed
