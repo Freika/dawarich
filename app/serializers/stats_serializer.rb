@@ -27,7 +27,6 @@ class StatsSerializer
   end
 
   def reverse_geocoded_points
-    # Use cached count from StatsQuery instead of direct COUNT query
     StatsQuery.new(user).points_stats[:geocoded]
   end
 

@@ -9,9 +9,6 @@ class CountriesAndCities
   end
 
   def call
-    # Use attribute access directly to avoid N+1 on country association
-    # when country_name column is nil and Point#country_name method
-    # falls back to country&.name
     points
       .reject { |point| point[:country_name].nil? || point[:city].nil? }
       .group_by { |point| point[:country_name] }

@@ -73,7 +73,6 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def total_reverse_geocoded_points
-    # Use cached count from StatsQuery instead of direct COUNT query
     StatsQuery.new(self).points_stats[:geocoded]
   end
 
