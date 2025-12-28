@@ -7,7 +7,7 @@ class ExportsController < ApplicationController
   before_action :set_export, only: %i[destroy]
 
   def index
-    @exports = current_user.exports.order(created_at: :desc).page(params[:page])
+    @exports = current_user.exports.with_attached_file.order(created_at: :desc).page(params[:page])
   end
 
   def create

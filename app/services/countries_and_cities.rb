@@ -9,9 +9,12 @@ class CountriesAndCities
   end
 
   def call
+    # Use attribute access directly to avoid N+1 on country association
+    # when country_name column is nil and Point#country_name method
+    # falls back to country&.name
     points
-      .reject { |point| point.country_name.nil? || point.city.nil? }
-      .group_by(&:country_name)
+      .reject { |point| point[:country_name].nil? || point[:city].nil? }
+      .group_by { |point| point[:country_name] }
       .transform_values { |country_points| process_country_points(country_points) }
       .map { |country, cities| CountryData.new(country: country, cities: cities) }
   end
@@ -22,7 +25,7 @@ class CountriesAndCities
 
   def process_country_points(country_points)
     country_points
-      .group_by(&:city)
+      .group_by { |point| point[:city] }
       .transform_values { |city_points| create_city_data_if_valid(city_points) }
       .values
       .compact
@@ -31,7 +34,7 @@ class CountriesAndCities
   def create_city_data_if_valid(city_points)
     timestamps = city_points.pluck(:timestamp)
     duration = calculate_duration_in_minutes(timestamps)
-    city = city_points.first.city
+    city = city_points.first[:city]
     points_count = city_points.size
 
     build_city_data(city, points_count, timestamps, duration)

@@ -138,8 +138,24 @@ class ReverseGeocoding::Places::FetchData
       Place.insert_all(place_attributes)
     end
 
-    # Individual updates for existing places
-    places_to_update.each(&:save!) if places_to_update.any?
+    # Batch update existing places to avoid N+1
+    if places_to_update.any?
+      update_attributes = places_to_update.map do |place|
+        {
+          id: place.id,
+          name: place.name,
+          latitude: place.latitude,
+          longitude: place.longitude,
+          lonlat: place.lonlat,
+          city: place.city,
+          country: place.country,
+          geodata: place.geodata,
+          source: place.source,
+          updated_at: Time.current
+        }
+      end
+      Place.upsert_all(update_attributes, unique_by: :id)
+    end
   end
 
   def build_point_coordinates(coordinates)
