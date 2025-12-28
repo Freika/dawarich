@@ -77,7 +77,7 @@
               <div class="form-control">
                 <label class="label cursor-pointer justify-start gap-4">
                   <%= f.check_box :digest_emails_enabled,
-                                  checked: current_user.safe_settings.digest_emails_enabled,
+                                  checked: current_user.safe_settings.digest_emails_enabled?,
                                   class: "toggle toggle-primary" %>
                   <div>
                     <span class="label-text font-medium">Year-End Digest Emails</span>
