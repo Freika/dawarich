@@ -16,7 +16,7 @@ class CreatePointsRawDataArchives < ActiveRecord::Migration[8.0]
     end
 
     add_index :points_raw_data_archives, :user_id
-    add_index :points_raw_data_archives, [:user_id, :year, :month]
+    add_index :points_raw_data_archives, %i[user_id year month]
     add_index :points_raw_data_archives, :archived_at
     add_foreign_key :points_raw_data_archives, :users, validate: false
   end

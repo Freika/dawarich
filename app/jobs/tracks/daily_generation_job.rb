@@ -21,7 +21,7 @@ class Tracks::DailyGenerationJob < ApplicationJob
 
   def perform
     User.active_or_trial.find_each do |user|
-      next if user.points_count.zero?
+      next if user.points_count&.zero?
 
       process_user_daily_tracks(user)
     rescue StandardError => e

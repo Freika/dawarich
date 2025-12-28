@@ -9,7 +9,7 @@ class Imports::Destroy
   end
 
   def call
-    points_count = @import.points_count
+    points_count = @import.points_count.to_i
 
     ActiveRecord::Base.transaction do
       @import.points.destroy_all
