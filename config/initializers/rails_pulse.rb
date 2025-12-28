@@ -139,14 +139,14 @@ RailsPulse.configure do |config|
   config.authentication_enabled = true
 
   # Where to redirect unauthorized users
-  # config.authentication_redirect_path = "/"
+  config.authentication_redirect_path = '/'
 
   # Custom authentication method - choose one of the examples below:
 
   # Example 1: Devise with admin role check
-  config.authentication_method = proc {
-    redirect_to main_app.root_path, alert: 'Access denied' unless user_signed_in? && current_user.admin?
-  }
+  # config.authentication_method = proc {
+  #   redirect_to main_app.root_path, alert: 'Access denied' unless user_signed_in? && current_user.admin?
+  # }
 
   # Example 2: Custom session-based authentication
   # config.authentication_method = proc {
@@ -161,11 +161,11 @@ RailsPulse.configure do |config|
   # }
 
   # Example 4: Basic HTTP authentication
-  # config.authentication_method = proc {
-  #   authenticate_or_request_with_http_basic do |username, password|
-  #     username == ENV['RAILS_PULSE_USERNAME'] && password == ENV['RAILS_PULSE_PASSWORD']
-  #   end
-  # }
+  config.authentication_method = proc {
+    authenticate_or_request_with_http_basic do |username, password|
+      username == ENV['RAILS_PULSE_USERNAME'] && password == ENV['RAILS_PULSE_PASSWORD']
+    end
+  }
 
   # Example 5: Custom authorization check
   # config.authentication_method = proc {
