@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.37.1] - 2025-12-30
+
+## Fixed
+
+- The db migration preventing the app from starting.
+- Raw data archive verifier now allows having points deleted from the db after archiving.
+
 # [0.37.0] - 2025-12-30
 
 ## Added
