@@ -219,9 +219,7 @@ class Users::ImportData::Points
     country_key = [country_info['name'], country_info['iso_a2'], country_info['iso_a3']]
     country = countries_lookup[country_key]
 
-    if country.nil? && country_info['name'].present?
-      country = countries_lookup[country_info['name']]
-    end
+    country = countries_lookup[country_info['name']] if country.nil? && country_info['name'].present?
 
     if country
       attributes['country_id'] = country.id
@@ -254,12 +252,12 @@ class Users::ImportData::Points
   end
 
   def ensure_lonlat_field(attributes, point_data)
-    if attributes['lonlat'].blank? && point_data['longitude'].present? && point_data['latitude'].present?
-      longitude = point_data['longitude'].to_f
-      latitude = point_data['latitude'].to_f
-      attributes['lonlat'] = "POINT(#{longitude} #{latitude})"
-      logger.debug "Reconstructed lonlat: #{attributes['lonlat']}"
-    end
+    return unless attributes['lonlat'].blank? && point_data['longitude'].present? && point_data['latitude'].present?
+
+    longitude = point_data['longitude'].to_f
+    latitude = point_data['latitude'].to_f
+    attributes['lonlat'] = "POINT(#{longitude} #{latitude})"
+    logger.debug "Reconstructed lonlat: #{attributes['lonlat']}"
   end
 
   def normalize_timestamp_for_lookup(timestamp)
