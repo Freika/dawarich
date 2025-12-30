@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 namespace :webmanifest do
-  desc "Generate site.webmanifest in public directory with correct asset paths"
-  task :generate => :environment do
+  desc 'Generate site.webmanifest in public directory with correct asset paths'
+  task generate: :environment do
     require 'erb'
 
     # Make sure assets are compiled first by loading the manifest
@@ -12,28 +14,28 @@ namespace :webmanifest do
 
     # Generate the manifest content
     manifest_content = {
-      "name": "Dawarich",
-      "short_name": "Dawarich",
+      "name": 'Dawarich',
+      "short_name": 'Dawarich',
       "icons": [
         {
           "src": icon_192_path,
-          "sizes": "192x192",
-          "type": "image/png"
+          "sizes": '192x192',
+          "type": 'image/png'
         },
         {
           "src": icon_512_path,
-          "sizes": "512x512",
-          "type": "image/png"
+          "sizes": '512x512',
+          "type": 'image/png'
         }
       ],
-      "theme_color": "#ffffff",
-      "background_color": "#ffffff",
-      "display": "standalone"
+      "theme_color": '#ffffff',
+      "background_color": '#ffffff',
+      "display": 'standalone'
     }.to_json
 
     # Write to public/site.webmanifest
     File.write(Rails.root.join('public/site.webmanifest'), manifest_content)
-    puts "Generated public/site.webmanifest with correct asset paths"
+    puts 'Generated public/site.webmanifest with correct asset paths'
   end
 end
 

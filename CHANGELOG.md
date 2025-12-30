@@ -4,7 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.36.4] - Unreleased
+# [0.37.0] - 2025-12-30
+
+## Added
+
+- In the beginning of the year users will receive a year-end digest email with stats about their tracking activity during the past year. Users can opt out of receiving these emails in User Settings -> Notifications. Emails won't be sent if no email is configured in the SMTP settings or if user has no points tracked during the year.
+
+## Changed
+
+- Added and removed some indexes to improve the app performance based on the production usage data.
+
+## Changed
+
+- Deleting an import will now be processed in the background to prevent request timeouts for large imports.
+
+## Fixed
+
+- Deleting an import will no longer result in negative points count for the user.
+- Updating stats. #2022
+- Validate trip start date to be earlier than end date. #2057
+- Fog of war radius slider in map v2 settings is now being respected correctly. #2041
+- Applying changes in map v2 settings now works correctly. #2041
+- Invalidate stats cache on recalculation and other operations that change stats data.
+
+
+# [0.36.4] - 2025-12-26
 
 ## Fixed
 
@@ -13,6 +37,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Number of points in stats should no longer go negative when points are deleted. #2054
 - Disable Family::Invitations::CleanupJob no invitations are in the database. #2043
 - User can now enable family layer in Maps v2 and center on family members by clicking their emails. #2036
+
 
 # [0.36.3] - 2025-12-14
 

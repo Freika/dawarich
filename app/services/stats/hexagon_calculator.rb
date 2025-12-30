@@ -53,8 +53,8 @@ class Stats::HexagonCalculator
         # Try with lower resolution (larger hexagons)
         lower_resolution = [h3_resolution - 2, 0].max
         Rails.logger.info "Recalculating with lower H3 resolution: #{lower_resolution}"
-        # Create a new instance with lower resolution for recursion
-        return self.class.new(user.id, year, month).calculate_hexagons(lower_resolution)
+        # Recursively call with lower resolution
+        return calculate_hexagons(lower_resolution)
       end
 
       Rails.logger.info "Generated #{h3_hash.size} H3 hexagons at resolution #{h3_resolution} for user #{user.id}"

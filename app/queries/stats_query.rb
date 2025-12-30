@@ -11,7 +11,7 @@ class StatsQuery
     end
 
     {
-      total: user.points_count,
+      total: user.points_count.to_i,
       geocoded: cached_stats[:geocoded],
       without_data: cached_stats[:without_data]
     }

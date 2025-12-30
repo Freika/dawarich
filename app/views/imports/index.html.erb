@@ -72,10 +72,15 @@
                 <td data-status-display><%= import.status %></td>
                 <td><%= human_datetime(import.created_at) %></td>
                 <td class="whitespace-nowrap">
-                  <% if import.file.present? %>
-                    <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-outline btn-sm btn-info", download: import.name %>
+                  <% if import.deleting? %>
+                    <span class="loading loading-spinner loading-sm"></span>
+                    <span class="text-sm text-gray-500">Deleting...</span>
+                  <% else %>
+                    <% if import.file.present? %>
+                      <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-outline btn-sm btn-info", download: import.name %>
+                    <% end %>
+                    <%= link_to 'Delete', import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-outline btn-sm btn-error" %>
                   <% end %>
-                  <%= link_to 'Delete', import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-outline btn-sm btn-error" %>
                 </td>
               </tr>
             <% end %>

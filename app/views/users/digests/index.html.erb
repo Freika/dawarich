@@ -1,0 +1,92 @@
+<% content_for :title, 'Year-End Digests' %>
+
+<div class="max-w-screen-2xl mx-auto my-5 px-4">
+  <div class="flex justify-between items-center mb-6 gap-8">
+    <h1 class="text-3xl font-bold flex items-center gap-2">
+      <%= icon 'earth' %> Year-End Digests
+    </h1>
+
+    <% if @available_years.any? && current_user.active? %>
+      <div class="dropdown dropdown-end">
+        <label tabindex="0" class="btn btn-primary">
+          <%= icon 'calendar-plus-2' %> Generate Digest
+        </label>
+        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+          <% @available_years.each do |year| %>
+            <li>
+              <%= link_to year, users_digests_path(year: year),
+                          data: { turbo_method: :post },
+                          class: 'text-base' %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @digests.empty? %>
+    <div class="card bg-base-200 shadow-xl">
+      <div class="card-body text-center py-12">
+        <h2 class="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
+          <%= icon 'earth' %>No Year-End Digests Yet
+        </h2>
+        <p class="text-gray-500 mb-4">
+          Year-end digests are automatically generated on January 1st each year.
+          <% if @available_years.any? && current_user.active? %>
+            <br>Or you can manually generate one for a previous year.
+          <% end %>
+        </p>
+      </div>
+    </div>
+  <% else %>
+    <div class="grid grid-cols-1 gap-6">
+      <% @digests.each do |digest| %>
+        <div class="card bg-base-200 shadow-xl hover:shadow-2xl transition-shadow">
+          <div class="card-body">
+            <h2 class="card-title text-2xl justify-between">
+              <%= link_to digest.year, users_digest_path(year: digest.year), class: 'hover:text-primary' %>
+              <% if digest.sharing_enabled? %>
+                <span class="badge badge-success badge-sm">Shared</span>
+              <% end %>
+            </h2>
+
+            <div class="stats stats-vertical shadow bg-base-100 mt-4 text-center">
+              <div class="stat">
+                <div class="stat-title">Distance</div>
+                <div class="stat-value text-primary text-lg">
+                  <%= distance_with_unit(digest.distance, current_user.safe_settings.distance_unit) %>
+                </div>
+              </div>
+
+              <div class="stat">
+                <div class="stat-value text-secondary text-lg"><%= digest.countries_count %></div>
+                <div class="stat-title">Countries</div>
+                <% if digest.first_time_countries.any? %>
+                  <div class="stat-desc text-success flex items-center gap-1 justify-center">
+                    <%= icon 'star' %> <%= digest.first_time_countries.count %> new
+                  </div>
+                <% end %>
+              </div>
+
+              <div class="stat">
+                <div class="stat-value text-accent text-lg"><%= digest.cities_count %></div>
+                <div class="stat-title">Cities</div>
+                <% if digest.first_time_cities.any? %>
+                  <div class="stat-desc text-success flex items-center gap-1 justify-center">
+                    <%= icon 'star' %> <%= digest.first_time_cities.count %> new
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="card-actions justify-end mt-4">
+              <%= link_to users_digest_path(year: digest.year), class: 'btn btn-primary btn-sm' do %>
+                View Details
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

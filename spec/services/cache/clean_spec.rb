@@ -12,10 +12,10 @@ RSpec.describe Cache::Clean do
     let(:user_2_years_tracked_key) { "dawarich/user_#{user2.id}_years_tracked" }
     let(:user_1_points_geocoded_stats_key) { "dawarich/user_#{user1.id}_points_geocoded_stats" }
     let(:user_2_points_geocoded_stats_key) { "dawarich/user_#{user2.id}_points_geocoded_stats" }
-    let(:user_1_countries_key) { "dawarich/user_#{user1.id}_countries" }
-    let(:user_2_countries_key) { "dawarich/user_#{user2.id}_countries" }
-    let(:user_1_cities_key) { "dawarich/user_#{user1.id}_cities" }
-    let(:user_2_cities_key) { "dawarich/user_#{user2.id}_cities" }
+    let(:user_1_countries_key) { "dawarich/user_#{user1.id}_countries_visited" }
+    let(:user_2_countries_key) { "dawarich/user_#{user2.id}_countries_visited" }
+    let(:user_1_cities_key) { "dawarich/user_#{user1.id}_cities_visited" }
+    let(:user_2_cities_key) { "dawarich/user_#{user2.id}_cities_visited" }
 
     before do
       # Set up cache entries that should be cleaned

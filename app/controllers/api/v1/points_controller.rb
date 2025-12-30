@@ -13,6 +13,7 @@ class Api::V1::PointsController < ApiController
 
     points = current_api_user
              .points
+             .without_raw_data
              .where(timestamp: start_at..end_at)
 
     # Filter by geographic bounds if provided

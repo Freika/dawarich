@@ -14,6 +14,7 @@ class ImportsController < ApplicationController
   def index
     @imports = policy_scope(Import)
                .select(:id, :name, :source, :created_at, :processed, :status)
+               .with_attached_file
                .order(created_at: :desc)
                .page(params[:page])
   end
@@ -78,9 +79,13 @@ class ImportsController < ApplicationController
   end
 
   def destroy
-    Imports::Destroy.new(current_user, @import).call
+    @import.deleting!
+    Imports::DestroyJob.perform_later(@import.id)
 
-    redirect_to imports_url, notice: 'Import was successfully destroyed.', status: :see_other
+    respond_to do |format|
+      format.html { redirect_to imports_url, notice: 'Import is being deleted.', status: :see_other }
+      format.turbo_stream
+    end
   end
 
   private

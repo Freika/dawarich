@@ -21,6 +21,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
   has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
+  has_many :digests, class_name: 'Users::Digest', dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
@@ -73,7 +74,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def total_reverse_geocoded_points
-    points.where.not(reverse_geocoded_at: nil).count
+    StatsQuery.new(self).points_stats[:geocoded]
   end
 
   def total_reverse_geocoded_points_without_data

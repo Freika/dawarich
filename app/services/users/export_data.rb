@@ -323,7 +323,7 @@ class Users::ExportData
       trips: user.trips.count,
       stats: user.stats.count,
       notifications: user.notifications.count,
-      points: user.points_count,
+      points: user.points_count.to_i,
       visits: user.visits.count,
       places: user.visited_places.count
     }
