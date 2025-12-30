@@ -27,15 +27,19 @@ class AddCompositeIndexToStats < ActiveRecord::Migration[8.0]
     deleted_count = 0
     loop do
       batch_deleted = execute(<<-SQL.squish).cmd_tuples
-        DELETE FROM stats s1
-        WHERE EXISTS (
-          SELECT 1 FROM stats s2
-          WHERE s2.user_id = s1.user_id
-            AND s2.year = s1.year
-            AND s2.month = s1.month
-            AND s2.id > s1.id
+        DELETE FROM stats
+        WHERE id IN (
+          SELECT s1.id
+          FROM stats s1
+          WHERE EXISTS (
+            SELECT 1 FROM stats s2
+            WHERE s2.user_id = s1.user_id
+              AND s2.year = s1.year
+              AND s2.month = s1.month
+              AND s2.id > s1.id
+          )
+          LIMIT #{BATCH_SIZE}
         )
-        LIMIT #{BATCH_SIZE}
       SQL
 
       break if batch_deleted.zero?
