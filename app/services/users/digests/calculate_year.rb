@@ -88,35 +88,86 @@ module Users
       end
 
       def calculate_time_spent
-        country_time = Hash.new(0)
+        {
+          'countries' => calculate_country_time_spent,
+          'cities' => calculate_city_time_spent
+        }
+      end
+
+      def calculate_country_time_spent
+        country_days = build_country_days_map
+
+        # Convert days to minutes (days * 24 * 60) and return top 10
+        country_days
+          .transform_values { |days| days.size * 24 * 60 }
+          .sort_by { |_, minutes| -minutes }
+          .first(10)
+          .map { |name, minutes| { 'name' => name, 'minutes' => minutes } }
+      end
+
+      def build_country_days_map
+        year_points = fetch_year_points_with_country
+        country_days = Hash.new { |h, k| h[k] = Set.new }
+
+        year_points.each do |point|
+          date = Time.zone.at(point.timestamp).to_date
+          country_days[point.country_name].add(date)
+        end
+
+        country_days
+      end
+
+      def fetch_year_points_with_country
+        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        end_of_year = start_of_year.end_of_year
+
+        user.points
+            .without_raw_data
+            .where('timestamp >= ? AND timestamp <= ?', start_of_year.to_i, end_of_year.to_i)
+            .where.not(country_name: [nil, ''])
+            .select(:country_name, :timestamp)
+      end
+
+      def calculate_city_time_spent
+        city_time = aggregate_city_time_from_monthly_stats
+
+        city_time
+          .sort_by { |_, minutes| -minutes }
+          .first(10)
+          .map { |name, minutes| { 'name' => name, 'minutes' => minutes } }
+      end
+
+      def aggregate_city_time_from_monthly_stats
         city_time = Hash.new(0)
 
         monthly_stats.each do |stat|
-          toponyms = stat.toponyms
-          next unless toponyms.is_a?(Array)
-
-          toponyms.each do |toponym|
-            next unless toponym.is_a?(Hash)
-
-            country = toponym['country']
-            next unless toponym['cities'].is_a?(Array)
-
-            toponym['cities'].each do |city|
-              next unless city.is_a?(Hash)
-
-              stayed_for = city['stayed_for'].to_i
-              city_name = city['city']
-
-              country_time[country] += stayed_for if country.present?
-              city_time[city_name] += stayed_for if city_name.present?
-            end
-          end
+          process_stat_toponyms(stat, city_time)
         end
 
-        {
-          'countries' => country_time.sort_by { |_, v| -v }.first(10).map { |name, minutes| { 'name' => name, 'minutes' => minutes } },
-          'cities' => city_time.sort_by { |_, v| -v }.first(10).map { |name, minutes| { 'name' => name, 'minutes' => minutes } }
-        }
+        city_time
+      end
+
+      def process_stat_toponyms(stat, city_time)
+        toponyms = stat.toponyms
+        return unless toponyms.is_a?(Array)
+
+        toponyms.each do |toponym|
+          process_toponym_cities(toponym, city_time)
+        end
+      end
+
+      def process_toponym_cities(toponym, city_time)
+        return unless toponym.is_a?(Hash)
+        return unless toponym['cities'].is_a?(Array)
+
+        toponym['cities'].each do |city|
+          next unless city.is_a?(Hash)
+
+          stayed_for = city['stayed_for'].to_i
+          city_name = city['city']
+
+          city_time[city_name] += stayed_for if city_name.present?
+        end
       end
 
       def calculate_first_time_visits
