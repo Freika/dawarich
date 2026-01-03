@@ -110,18 +110,24 @@ module Points
           return { success: false, error: 'Point IDs checksum mismatch' }
         end
 
-        # 8. Verify all points still exist in database
+        # 8. Check which points still exist in database (informational only)
         existing_count = Point.where(id: point_ids).count
         if existing_count != point_ids.count
-          return {
-            success: false,
-            error: "Missing points in database: expected #{point_ids.count}, found #{existing_count}"
-          }
+          Rails.logger.info(
+            "Archive #{archive.id}: #{point_ids.count - existing_count} points no longer in database " \
+            "(#{existing_count}/#{point_ids.count} remaining). This is OK if user deleted their data."
+          )
         end
 
-        # 9. Verify archived raw_data matches current database raw_data
-        verification_result = verify_raw_data_matches(archived_data)
-        return verification_result unless verification_result[:success]
+        # 9. Verify archived raw_data matches current database raw_data (only for existing points)
+        if existing_count.positive?
+          verification_result = verify_raw_data_matches(archived_data)
+          return verification_result unless verification_result[:success]
+        else
+          Rails.logger.info(
+            "Archive #{archive.id}: Skipping raw_data verification - no points remain in database"
+          )
+        end
 
         { success: true }
       end
@@ -149,11 +155,18 @@ module Points
           point_ids_to_check = archived_data.keys.sample(100)
         end
 
-        mismatches = []
-        found_points = 0
+        # Filter to only check points that still exist in the database
+        existing_point_ids = Point.where(id: point_ids_to_check).pluck(:id)
+        
+        if existing_point_ids.empty?
+          # No points remain to verify, but that's OK
+          Rails.logger.info("No points remaining to verify raw_data matches")
+          return { success: true }
+        end
 
-        Point.where(id: point_ids_to_check).find_each do |point|
-          found_points += 1
+        mismatches = []
+
+        Point.where(id: existing_point_ids).find_each do |point|
           archived_raw_data = archived_data[point.id]
           current_raw_data = point.raw_data
 
@@ -165,14 +178,6 @@ module Points
               current: current_raw_data
             }
           end
-        end
-
-        # Check if we found all the points we were looking for
-        if found_points != point_ids_to_check.size
-          return {
-            success: false,
-            error: "Missing points during data verification: expected #{point_ids_to_check.size}, found #{found_points}"
-          }
         end
 
         if mismatches.any?

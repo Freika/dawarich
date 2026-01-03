@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_28_163703) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_03_114630) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -260,6 +260,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_28_163703) do
     t.index ["track_id"], name: "index_points_on_track_id"
     t.index ["user_id", "city"], name: "idx_points_user_city"
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
+    t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
     t.index ["user_id", "reverse_geocoded_at"], name: "index_points_on_user_id_and_reverse_geocoded_at", where: "(reverse_geocoded_at IS NOT NULL)"
     t.index ["user_id", "timestamp", "track_id"], name: "idx_points_track_generation"
     t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
