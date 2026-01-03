@@ -77,16 +77,76 @@ RSpec.describe Users::Digests::CalculateYear do
       end
 
       it 'calculates time spent by location' do
+        # Create points to enable country time calculation based on unique days
+        jan_1 = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i
+        jan_2 = Time.zone.local(2024, 1, 2, 10, 0, 0).to_i
+        feb_1 = Time.zone.local(2024, 2, 1, 10, 0, 0).to_i
+
+        create(:point, user: user, timestamp: jan_1, country_name: 'Germany', city: 'Berlin')
+        create(:point, user: user, timestamp: jan_2, country_name: 'Germany', city: 'Munich')
+        create(:point, user: user, timestamp: feb_1, country_name: 'France', city: 'Paris')
+
         countries = calculate_digest.time_spent_by_location['countries']
         cities = calculate_digest.time_spent_by_location['cities']
 
-        expect(countries.first['name']).to eq('Germany')
-        expect(countries.first['minutes']).to eq(720) # 480 + 240
+        # Countries: based on unique days (2 days in Germany, 1 day in France)
+        germany_country = countries.find { |c| c['name'] == 'Germany' }
+        expect(germany_country['minutes']).to eq(2 * 24 * 60) # 2 days = 2880 minutes
+
+        # Cities: based on stayed_for from monthly stats (sum across months)
         expect(cities.first['name']).to eq('Berlin')
+        expect(cities.first['minutes']).to eq(480)
       end
 
       it 'calculates all time stats' do
         expect(calculate_digest.all_time_stats['total_distance']).to eq('125000')
+      end
+
+      context 'when user visits same country across multiple months' do
+        it 'does not double-count days' do
+          # Create a user who was in Germany for 10 days in March and 10 days in July
+          # If we summed the stayed_for values from cities, we might get inflated numbers
+          # The fix counts unique days to prevent exceeding 365 days per year
+          mar_start = Time.zone.local(2024, 3, 1, 10, 0, 0).to_i
+          jul_start = Time.zone.local(2024, 7, 1, 10, 0, 0).to_i
+
+          # Create 10 days of points in March
+          10.times do |i|
+            timestamp = mar_start + (i * 24 * 60 * 60)
+            create(:point, user: user, timestamp: timestamp, country_name: 'Germany', city: 'Berlin')
+          end
+
+          # Create 10 days of points in July
+          10.times do |i|
+            timestamp = jul_start + (i * 24 * 60 * 60)
+            create(:point, user: user, timestamp: timestamp, country_name: 'Germany', city: 'Munich')
+          end
+
+          # Create the monthly stats (simulating what would be created by the stats calculation)
+          create(:stat, user: user, year: 2024, month: 3, distance: 10_000, toponyms: [
+            { 'country' => 'Germany', 'cities' => [
+              { 'city' => 'Berlin', 'stayed_for' => 14_400 } # 10 days in minutes
+            ] }
+          ])
+
+          create(:stat, user: user, year: 2024, month: 7, distance: 15_000, toponyms: [
+            { 'country' => 'Germany', 'cities' => [
+              { 'city' => 'Munich', 'stayed_for' => 14_400 } # 10 days in minutes
+            ] }
+          ])
+
+          digest = calculate_digest
+          countries = digest.time_spent_by_location['countries']
+          germany = countries.find { |c| c['name'] == 'Germany' }
+
+          # Should be 20 days total (10 unique days in Mar + 10 unique days in Jul)
+          expected_minutes = 20 * 24 * 60 # 28,800 minutes
+          expect(germany['minutes']).to eq(expected_minutes)
+
+          # Verify this is less than 365 days (the bug would cause inflated numbers)
+          total_days = germany['minutes'] / (24 * 60)
+          expect(total_days).to be <= 365
+        end
       end
 
       context 'when digest already exists' do
