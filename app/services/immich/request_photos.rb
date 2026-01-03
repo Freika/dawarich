@@ -31,7 +31,10 @@ class Immich::RequestPhotos
     while page <= max_pages
       response = JSON.parse(
         HTTParty.post(
-          immich_api_base_url, headers: headers, body: request_body(page)
+          immich_api_base_url,
+          headers: headers,
+          body: request_body(page),
+          timeout: 10
         ).body
       )
       Rails.logger.debug('==== IMMICH RESPONSE ====')
@@ -46,6 +49,9 @@ class Immich::RequestPhotos
     end
 
     data.flatten
+  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout => e
+    Rails.logger.error("Immich photo fetch failed: #{e.message}")
+    []
   end
 
   def headers

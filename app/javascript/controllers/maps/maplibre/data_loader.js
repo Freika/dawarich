@@ -56,22 +56,36 @@ export class DataLoader {
     }
     data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
 
-    // Fetch photos
-    try {
-      console.log('[Photos] Fetching photos from:', startDate, 'to', endDate)
-      data.photos = await this.api.fetchPhotos({
-        start_at: startDate,
-        end_at: endDate
-      })
-      console.log('[Photos] Fetched photos:', data.photos.length, 'photos')
-      console.log('[Photos] Sample photo:', data.photos[0])
-    } catch (error) {
-      console.error('[Photos] Failed to fetch photos:', error)
+    // Fetch photos - only if photos layer is enabled and integration is configured
+    // Skip API call if photos are disabled to avoid blocking on failed integrations
+    if (this.settings.photosEnabled) {
+      try {
+        console.log('[Photos] Fetching photos from:', startDate, 'to', endDate)
+        // Use Promise.race to enforce a client-side timeout
+        const photosPromise = this.api.fetchPhotos({
+          start_at: startDate,
+          end_at: endDate
+        })
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Photo fetch timeout')), 15000) // 15 second timeout
+        )
+
+        data.photos = await Promise.race([photosPromise, timeoutPromise])
+        console.log('[Photos] Fetched photos:', data.photos.length, 'photos')
+        console.log('[Photos] Sample photo:', data.photos[0])
+      } catch (error) {
+        console.warn('[Photos] Failed to fetch photos (non-blocking):', error.message)
+        data.photos = []
+      }
+    } else {
+      console.log('[Photos] Photos layer disabled, skipping fetch')
       data.photos = []
     }
     data.photosGeoJSON = this.photosToGeoJSON(data.photos)
     console.log('[Photos] Converted to GeoJSON:', data.photosGeoJSON.features.length, 'features')
-    console.log('[Photos] Sample feature:', data.photosGeoJSON.features[0])
+    if (data.photosGeoJSON.features.length > 0) {
+      console.log('[Photos] Sample feature:', data.photosGeoJSON.features[0])
+    }
 
     // Fetch areas
     try {

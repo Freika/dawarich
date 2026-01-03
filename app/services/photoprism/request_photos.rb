@@ -43,13 +43,17 @@ class Photoprism::RequestPhotos
     end
 
     data.flatten
+  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout => e
+    Rails.logger.error("Photoprism photo fetch failed: #{e.message}")
+    []
   end
 
   def fetch_page(offset)
     response = HTTParty.get(
       photoprism_api_base_url,
       headers: headers,
-      query: request_params(offset)
+      query: request_params(offset),
+      timeout: 10
     )
 
     if response.code != 200
