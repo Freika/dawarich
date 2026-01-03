@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Time spent in a country and city is now calculated correctly for the year-end digest email. #2104
 
+
 # [0.37.1] - 2025-12-30
 
 ## Fixed
