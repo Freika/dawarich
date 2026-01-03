@@ -122,6 +122,7 @@ module Users
         end_of_year = start_of_year.end_of_year
 
         user.points
+            .without_raw_data
             .where('timestamp >= ? AND timestamp <= ?', start_of_year.to_i, end_of_year.to_i)
             .where.not(country_name: [nil, ''])
             .select(:country_name, :timestamp)
