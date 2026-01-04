@@ -7,7 +7,9 @@ class Api::V1::Owntracks::PointsController < ApiController
   def create
     Owntracks::PointCreatingJob.perform_later(point_params, current_api_user.id)
 
-    render json: {}, status: :ok
+    family_locations = OwnTracks::FamilyLocationsFormatter.new(current_api_user).call
+
+    render json: family_locations, status: :ok
   end
 
   private

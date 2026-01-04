@@ -90,4 +90,37 @@ class OwnTracks::Params
   def valid_point?
     params[:lon].present? && params[:lat].present? && params[:tst].present?
   end
+
+  # Reverse conversion methods: from internal format to Owntracks format
+  class << self
+    def battery_status_to_numeric(battery_status)
+      case battery_status
+      when 'unknown' then 0
+      when 'unplugged' then 1
+      when 'charging' then 2
+      when 'full' then 3
+      else 0
+      end
+    end
+
+    def connection_to_string(connection)
+      case connection
+      when 'mobile' then 'm'
+      when 'wifi' then 'w'
+      when 'offline' then 'o'
+      else nil
+      end
+    end
+
+    def velocity_to_kmh(velocity)
+      return nil if velocity.blank?
+
+      # Try to parse as float
+      velocity_float = velocity.to_f
+      return nil if velocity_float.zero?
+
+      # Reference: https://owntracks.org/booklet/tech/json/
+      (velocity_float * 3.6).round.to_i
+    end
+  end
 end
