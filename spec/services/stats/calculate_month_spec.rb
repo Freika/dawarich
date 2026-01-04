@@ -155,8 +155,12 @@ RSpec.describe Stats::CalculateMonth do
         context 'when user visited multiple cities with mixed durations' do
           let!(:mixed_points) do
             [
-              # Berlin: 70 minutes (should be included)
+              # Berlin: 70 minutes with continuous presence (should be included)
+              # Points every 35 minutes: 0, 35, 70 = 70 min total
               create(:point, user:, import:, timestamp: timestamp_base,
+                     city: 'Berlin', country_name: 'Germany',
+                     lonlat: 'POINT(13.404954 52.520008)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 35.minutes,
                      city: 'Berlin', country_name: 'Germany',
                      lonlat: 'POINT(13.404954 52.520008)'),
               create(:point, user:, import:, timestamp: timestamp_base + 70.minutes,
@@ -171,8 +175,15 @@ RSpec.describe Stats::CalculateMonth do
                      city: 'Prague', country_name: 'Czech Republic',
                      lonlat: 'POINT(14.4378 50.0755)'),
 
-              # Vienna: 90 minutes (should be included)
+              # Vienna: 90 minutes with continuous presence (should be included)
+              # Points every 30 minutes: 150, 180, 210, 240 = 90 min total
               create(:point, user:, import:, timestamp: timestamp_base + 150.minutes,
+                     city: 'Vienna', country_name: 'Austria',
+                     lonlat: 'POINT(16.3738 48.2082)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 180.minutes,
+                     city: 'Vienna', country_name: 'Austria',
+                     lonlat: 'POINT(16.3738 48.2082)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 210.minutes,
                      city: 'Vienna', country_name: 'Austria',
                      lonlat: 'POINT(16.3738 48.2082)'),
               create(:point, user:, import:, timestamp: timestamp_base + 240.minutes,

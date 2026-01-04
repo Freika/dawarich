@@ -48,7 +48,7 @@ class Users::DigestsController < ApplicationController
     tracked_years = current_user.stats.select(:year).distinct.pluck(:year)
     existing_digests = current_user.digests.yearly.pluck(:year)
 
-    (tracked_years - existing_digests).sort.reverse
+    (tracked_years - existing_digests - [Time.current.year]).sort.reverse
   end
 
   def valid_year?(year)
