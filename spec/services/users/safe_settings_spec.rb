@@ -31,7 +31,8 @@ RSpec.describe Users::SafeSettings do
             speed_color_scale: nil,
             fog_of_war_threshold: nil,
             enabled_map_layers: %w[Routes Heatmap],
-            maps_maplibre_style: 'light'
+            maps_maplibre_style: 'light',
+            globe_projection: false
           }
         )
       end
@@ -82,7 +83,8 @@ RSpec.describe Users::SafeSettings do
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
-            'digest_emails_enabled' => true
+            'digest_emails_enabled' => true,
+            'globe_projection' => false
           }
         )
       end
@@ -110,7 +112,8 @@ RSpec.describe Users::SafeSettings do
             speed_color_scale: nil,
             fog_of_war_threshold: nil,
             enabled_map_layers: %w[Points Routes Areas Photos],
-            maps_maplibre_style: 'light'
+            maps_maplibre_style: 'light',
+            globe_projection: false
           }
         )
       end

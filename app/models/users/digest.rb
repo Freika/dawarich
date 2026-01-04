@@ -162,6 +162,9 @@ class Users::Digest < ApplicationRecord
   end
 
   def total_tracked_minutes
-    top_countries_by_time.sum { |country| country['minutes'].to_i }
+    # Use total_country_minutes if available (new digests),
+    # fall back to summing top_countries_by_time (existing digests)
+    time_spent_by_location['total_country_minutes'] ||
+      top_countries_by_time.sum { |country| country['minutes'].to_i }
   end
 end

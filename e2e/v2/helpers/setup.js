@@ -3,6 +3,33 @@
  */
 
 /**
+ * Disable globe projection setting via API
+ * This ensures consistent map rendering for E2E tests
+ * @param {Page} page - Playwright page object
+ */
+export async function disableGlobeProjection(page) {
+  // Get API key from the page (requires being logged in)
+  const apiKey = await page.evaluate(() => {
+    const metaTag = document.querySelector('meta[name="api-key"]');
+    return metaTag?.content;
+  });
+
+  if (apiKey) {
+    await page.request.patch('/api/v1/settings', {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      data: {
+        settings: {
+          globe_projection: false
+        }
+      }
+    });
+  }
+}
+
+/**
  * Navigate to Maps V2 page
  * @param {Page} page - Playwright page object
  */

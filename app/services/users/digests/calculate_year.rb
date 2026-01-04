@@ -90,15 +90,16 @@ module Users
       end
 
       def calculate_time_spent
+        country_minutes = calculate_actual_country_minutes
+
         {
-          'countries' => calculate_country_time_spent,
-          'cities' => calculate_city_time_spent
+          'countries' => format_top_countries(country_minutes),
+          'cities' => calculate_city_time_spent,
+          'total_country_minutes' => country_minutes.values.sum
         }
       end
 
-      def calculate_country_time_spent
-        country_minutes = calculate_actual_country_minutes
-
+      def format_top_countries(country_minutes)
         country_minutes
           .sort_by { |_, minutes| -minutes }
           .first(10)
