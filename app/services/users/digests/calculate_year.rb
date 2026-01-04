@@ -216,8 +216,8 @@ module Users
 
       def calculate_all_time_stats
         {
-          'total_countries' => user.countries_visited.count,
-          'total_cities' => user.cities_visited.count,
+          'total_countries' => user.countries_visited_uncached.size,
+          'total_cities' => user.cities_visited_uncached.size,
           'total_distance' => user.stats.sum(:distance).to_s
         }
       end

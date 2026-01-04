@@ -45,18 +45,13 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
 
   def countries_visited
     Rails.cache.fetch("dawarich/user_#{id}_countries_visited", expires_in: 1.day) do
-      points
-        .without_raw_data
-        .where.not(country_name: [nil, ''])
-        .distinct
-        .pluck(:country_name)
-        .compact
+      countries_visited_uncached
     end
   end
 
   def cities_visited
     Rails.cache.fetch("dawarich/user_#{id}_cities_visited", expires_in: 1.day) do
-      points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+      cities_visited_uncached
     end
   end
 
@@ -139,17 +134,47 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     Time.zone.name
   end
 
+  # Aggregate countries from all stats' toponyms
+  # This is more accurate than raw point queries as it uses processed data
   def countries_visited_uncached
-    points
-      .without_raw_data
-      .where.not(country_name: [nil, ''])
-      .distinct
-      .pluck(:country_name)
-      .compact
+    countries = Set.new
+
+    stats.find_each do |stat|
+      toponyms = stat.toponyms
+      next unless toponyms.is_a?(Array)
+
+      toponyms.each do |toponym|
+        next unless toponym.is_a?(Hash)
+
+        countries.add(toponym['country']) if toponym['country'].present?
+      end
+    end
+
+    countries.to_a.sort
   end
 
+  # Aggregate cities from all stats' toponyms
+  # This respects MIN_MINUTES_SPENT_IN_CITY since toponyms are already filtered
   def cities_visited_uncached
-    points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+    cities = Set.new
+
+    stats.find_each do |stat|
+      toponyms = stat.toponyms
+      next unless toponyms.is_a?(Array)
+
+      toponyms.each do |toponym|
+        next unless toponym.is_a?(Hash)
+        next unless toponym['cities'].is_a?(Array)
+
+        toponym['cities'].each do |city|
+          next unless city.is_a?(Hash)
+
+          cities.add(city['city']) if city['city'].present?
+        end
+      end
+    end
+
+    cities.to_a.sort
   end
 
   def home_place_coordinates

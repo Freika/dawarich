@@ -163,12 +163,16 @@ RSpec.describe User, type: :model do
     describe '#countries_visited' do
       subject { user.countries_visited }
 
-      let!(:point1) { create(:point, user:, country_name: 'Germany') }
-      let!(:point2) { create(:point, user:, country_name: 'France') }
-      let!(:point3) { create(:point, user:, country_name: nil) }
-      let!(:point4) { create(:point, user:, country_name: '') }
+      let!(:stat) do
+        create(:stat, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin', 'stayed_for' => 120 }] },
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 90 }] },
+                 { 'country' => nil, 'cities' => [] },
+                 { 'country' => '', 'cities' => [] }
+               ])
+      end
 
-      it 'returns array of countries' do
+      it 'returns array of countries from stats toponyms' do
         expect(subject).to include('Germany', 'France')
         expect(subject.count).to eq(2)
       end
@@ -181,12 +185,18 @@ RSpec.describe User, type: :model do
     describe '#cities_visited' do
       subject { user.cities_visited }
 
-      let!(:point1) { create(:point, user:, city: 'Berlin') }
-      let!(:point2) { create(:point, user:, city: 'Paris') }
-      let!(:point3) { create(:point, user:, city: nil) }
-      let!(:point4) { create(:point, user:, city: '') }
+      let!(:stat) do
+        create(:stat, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [
+                   { 'city' => 'Berlin', 'stayed_for' => 120 },
+                   { 'city' => nil, 'stayed_for' => 60 },
+                   { 'city' => '', 'stayed_for' => 60 }
+                 ] },
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 90 }] }
+               ])
+      end
 
-      it 'returns array of cities' do
+      it 'returns array of cities from stats toponyms' do
         expect(subject).to include('Berlin', 'Paris')
         expect(subject.count).to eq(2)
       end
@@ -210,11 +220,15 @@ RSpec.describe User, type: :model do
     describe '#total_countries' do
       subject { user.total_countries }
 
-      let!(:point1) { create(:point, user:, country_name: 'Germany') }
-      let!(:point2) { create(:point, user:, country_name: 'France') }
-      let!(:point3) { create(:point, user:, country_name: nil) }
+      let!(:stat) do
+        create(:stat, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [] },
+                 { 'country' => 'France', 'cities' => [] },
+                 { 'country' => nil, 'cities' => [] }
+               ])
+      end
 
-      it 'returns number of countries' do
+      it 'returns number of countries from stats toponyms' do
         expect(subject).to eq(2)
       end
     end
@@ -222,11 +236,17 @@ RSpec.describe User, type: :model do
     describe '#total_cities' do
       subject { user.total_cities }
 
-      let!(:point1) { create(:point, user:, city: 'Berlin') }
-      let!(:point2) { create(:point, user:, city: 'Paris') }
-      let!(:point3) { create(:point, user:, city: nil) }
+      let!(:stat) do
+        create(:stat, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [
+                   { 'city' => 'Berlin', 'stayed_for' => 120 },
+                   { 'city' => 'Paris', 'stayed_for' => 90 },
+                   { 'city' => nil, 'stayed_for' => 60 }
+                 ] }
+               ])
+      end
 
-      it 'returns number of cities' do
+      it 'returns number of cities from stats toponyms' do
         expect(subject).to eq(2)
       end
     end
