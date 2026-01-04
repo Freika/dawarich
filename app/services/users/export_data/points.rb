@@ -35,7 +35,7 @@ class Users::ExportData::Points
 
     output_file.write('[')
 
-    user.points.find_in_batches(batch_size: BATCH_SIZE).with_index do |batch, batch_index|
+    user.points.find_in_batches(batch_size: BATCH_SIZE).with_index do |batch, _batch_index|
       batch_sql = build_batch_query(batch.map(&:id))
       result = ActiveRecord::Base.connection.exec_query(batch_sql, 'Points Export Batch')
 
@@ -188,13 +188,13 @@ class Users::ExportData::Points
       }
     end
 
-    if row['visit_name']
-      point_hash['visit_reference'] = {
-        'name' => row['visit_name'],
-        'started_at' => row['visit_started_at'],
-        'ended_at' => row['visit_ended_at']
-      }
-    end
+    return unless row['visit_name']
+
+    point_hash['visit_reference'] = {
+      'name' => row['visit_name'],
+      'started_at' => row['visit_started_at'],
+      'ended_at' => row['visit_ended_at']
+    }
   end
 
   def log_progress(processed, total)

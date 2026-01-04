@@ -27,6 +27,14 @@ RSpec.describe '/digests', type: :request do
         expect(response.status).to eq(302)
       end
     end
+
+    describe 'DELETE /destroy' do
+      it 'redirects to the sign in page' do
+        delete users_digest_url(year: 2024)
+
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
   end
 
   context 'when user is signed in' do
@@ -135,6 +143,41 @@ RSpec.describe '/digests', type: :request do
           expect(response).to redirect_to(root_path)
           expect(flash[:notice]).to eq('Your account is not active.')
         end
+      end
+    end
+
+    describe 'DELETE /destroy' do
+      let!(:digest) { create(:users_digest, user:, year: 2024) }
+
+      it 'deletes the digest' do
+        expect do
+          delete users_digest_url(year: 2024)
+        end.to change(Users::Digest, :count).by(-1)
+      end
+
+      it 'redirects with success notice' do
+        delete users_digest_url(year: 2024)
+
+        expect(response).to redirect_to(users_digests_path)
+        expect(flash[:notice]).to eq('Year-end digest for 2024 has been deleted')
+      end
+
+      it 'returns not found for non-existent digest' do
+        delete users_digest_url(year: 2020)
+
+        expect(response).to redirect_to(users_digests_path)
+        expect(flash[:alert]).to eq('Digest not found')
+      end
+
+      it 'cannot delete another user digest' do
+        other_user = create(:user)
+        other_digest = create(:users_digest, user: other_user, year: 2023)
+
+        delete users_digest_url(year: 2023)
+
+        expect(response).to redirect_to(users_digests_path)
+        expect(flash[:alert]).to eq('Digest not found')
+        expect(other_digest.reload).to be_present
       end
     end
   end

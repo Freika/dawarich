@@ -91,6 +91,11 @@ export class SettingsController {
       mapStyleSelect.value = this.settings.mapStyle || 'light'
     }
 
+    // Sync globe projection toggle
+    if (controller.hasGlobeToggleTarget) {
+      controller.globeToggleTarget.checked = this.settings.globeProjection || false
+    }
+
     // Sync fog of war settings
     const fogRadiusInput = controller.element.querySelector('input[name="fogOfWarRadius"]')
     if (fogRadiusInput) {
@@ -174,6 +179,22 @@ export class SettingsController {
   resetSettings() {
     if (confirm('Reset all settings to defaults? This will reload the page.')) {
       SettingsManager.resetToDefaults()
+      window.location.reload()
+    }
+  }
+
+  /**
+   * Toggle globe projection
+   * Requires page reload to apply since projection is set at map initialization
+   */
+  async toggleGlobe(event) {
+    const enabled = event.target.checked
+    await SettingsManager.updateSetting('globeProjection', enabled)
+
+    Toast.info('Globe view will be applied after page reload')
+
+    // Prompt user to reload
+    if (confirm('Globe view requires a page reload to take effect. Reload now?')) {
       window.location.reload()
     }
   }

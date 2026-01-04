@@ -250,13 +250,24 @@
       <div class="stat-card">
         <div class="stat-label">Where You Spent the Most Time</div>
         <ul class="location-list">
-          <% @digest.top_countries_by_time.take(3).each do |country| %>
+          <% @digest.top_countries_by_time.take(5).each do |country| %>
             <li>
               <span><%= country_flag(country['name']) %> <%= country['name'] %></span>
               <span><%= format_time_spent(country['minutes']) %></span>
             </li>
           <% end %>
+          <% if @digest.untracked_days > 0 %>
+            <li style="border-top: 2px dashed #e2e8f0; padding-top: 12px; margin-top: 4px;">
+              <span style="color: #94a3b8; font-style: italic;">No tracking data</span>
+              <span style="color: #94a3b8;"><%= pluralize(@digest.untracked_days.round, 'day') %></span>
+            </li>
+          <% end %>
         </ul>
+        <% if @digest.untracked_days > 0 %>
+          <p style="color: #64748b; font-size: 13px; margin-top: 12px;">
+            💡 Track more in <%= @digest.year + 1 %> to see a fuller picture of your travels!
+          </p>
+        <% end %>
       </div>
     <% end %>
 

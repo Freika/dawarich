@@ -14,7 +14,8 @@ const DEFAULT_SETTINGS = {
   minutesBetweenRoutes: 60,
   pointsRenderingMode: 'raw',
   speedColoredRoutes: false,
-  speedColorScale: '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300'
+  speedColorScale: '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
+  globeProjection: false
 }
 
 // Mapping between v2 layer names and v1 layer names in enabled_map_layers array
@@ -41,7 +42,8 @@ const BACKEND_SETTINGS_MAP = {
   minutesBetweenRoutes: 'minutes_between_routes',
   pointsRenderingMode: 'points_rendering_mode',
   speedColoredRoutes: 'speed_colored_routes',
-  speedColorScale: 'speed_color_scale'
+  speedColorScale: 'speed_color_scale',
+  globeProjection: 'globe_projection'
 }
 
 export class SettingsManager {
@@ -152,6 +154,8 @@ export class SettingsManager {
             value = parseInt(value) || DEFAULT_SETTINGS.minutesBetweenRoutes
           } else if (frontendKey === 'speedColoredRoutes') {
             value = value === true || value === 'true'
+          } else if (frontendKey === 'globeProjection') {
+            value = value === true || value === 'true'
           }
 
           frontendSettings[frontendKey] = value
@@ -218,6 +222,8 @@ export class SettingsManager {
                      frontendKey === 'metersBetweenRoutes' || frontendKey === 'minutesBetweenRoutes') {
             value = parseInt(value).toString()
           } else if (frontendKey === 'speedColoredRoutes') {
+            value = Boolean(value)
+          } else if (frontendKey === 'globeProjection') {
             value = Boolean(value)
           }
 

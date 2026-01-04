@@ -16,17 +16,35 @@ export class MapInitializer {
       mapStyle = 'streets',
       center = [0, 0],
       zoom = 2,
-      showControls = true
+      showControls = true,
+      globeProjection = false
     } = settings
 
     const style = await getMapStyle(mapStyle)
 
-    const map = new maplibregl.Map({
+    const mapOptions = {
       container,
       style,
       center,
       zoom
-    })
+    }
+
+    const map = new maplibregl.Map(mapOptions)
+
+    // Set globe projection after map loads
+    if (globeProjection === true || globeProjection === 'true') {
+      map.on('load', () => {
+        map.setProjection({ type: 'globe' })
+
+        // Add atmosphere effect
+        map.setSky({
+          'atmosphere-blend': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 1, 5, 1, 7, 0
+          ]
+        })
+      })
+    }
 
     if (showControls) {
       map.addControl(new maplibregl.NavigationControl(), 'top-right')

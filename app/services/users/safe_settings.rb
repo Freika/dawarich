@@ -22,7 +22,8 @@ class Users::SafeSettings
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Routes Heatmap],
     'maps_maplibre_style' => 'light',
-    'digest_emails_enabled' => true
+    'digest_emails_enabled' => true,
+    'globe_projection' => false
   }.freeze
 
   def initialize(settings = {})
@@ -52,7 +53,8 @@ class Users::SafeSettings
       speed_color_scale: speed_color_scale,
       fog_of_war_threshold: fog_of_war_threshold,
       enabled_map_layers: enabled_map_layers,
-      maps_maplibre_style: maps_maplibre_style
+      maps_maplibre_style: maps_maplibre_style,
+      globe_projection: globe_projection
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -139,6 +141,10 @@ class Users::SafeSettings
 
   def maps_maplibre_style
     settings['maps_maplibre_style']
+  end
+
+  def globe_projection
+    ActiveModel::Type::Boolean.new.cast(settings['globe_projection'])
   end
 
   def digest_emails_enabled?

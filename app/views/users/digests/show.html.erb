@@ -101,7 +101,7 @@
         </h2>
         <div class="w-full h-64 bg-base-100 rounded-lg p-4">
           <%= column_chart(
-            @digest.monthly_distances.sort.map { |month, distance_meters|
+            @digest.monthly_distances.sort_by { |month, _| month.to_i }.map { |month, distance_meters|
               [Date::ABBR_MONTHNAMES[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
             },
             height: '250px',
@@ -142,6 +142,19 @@
               <span class="text-gray-600"><%= format_time_spent(country['minutes']) %></span>
             </div>
           <% end %>
+
+          <% if @digest.untracked_days > 0 %>
+            <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg border-2 border-dashed border-gray-200">
+              <div class="flex items-center gap-3">
+                <span class="badge badge-lg badge-ghost">?</span>
+                <span class="text-gray-500 italic">No tracking data</span>
+              </div>
+              <span class="text-gray-500"><%= pluralize(@digest.untracked_days.round, 'day') %></span>
+            </div>
+            <p class="text-sm text-gray-500 mt-2 flex items-center justify-center gap-2">
+              <%= icon 'lightbulb' %> Track more in <%= @digest.year + 1 %> to see a fuller picture of your travels!
+            </p>
+          <% end %>
         </div>
       </div>
     </div>
@@ -155,14 +168,7 @@
       </h2>
       <div class="space-y-4 w-full">
         <% if @digest.toponyms.present? %>
-          <% max_cities = @digest.toponyms.map { |country| country['cities']&.length || 0 }.max %>
-          <% progress_colors = ['progress-primary', 'progress-secondary', 'progress-accent', 'progress-info', 'progress-success', 'progress-warning'] %>
-
           <% @digest.toponyms.each_with_index do |country, index| %>
-            <% cities_count = country['cities']&.length || 0 %>
-            <% progress_value = max_cities&.positive? ? (cities_count.to_f / max_cities * 100).round : 0 %>
-            <% color_class = progress_colors[index % progress_colors.length] %>
-
             <div class="space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-semibold">
@@ -170,10 +176,10 @@
                   <%= country['country'] %>
                 </span>
                 <span class="text-sm">
-                  <%= pluralize(cities_count, 'city') %>
+                  <%= pluralize(country['cities']&.length || 0, 'city') %>
                 </span>
               </div>
-              <progress class="progress <%= color_class %> w-full" value="<%= progress_value %>" max="100"></progress>
+              <progress class="progress <%= progress_color_for_index(index) %> w-full" value="<%= city_progress_value(country['cities']&.length || 0, max_cities_count(@digest.toponyms)) %>" max="100"></progress>
             </div>
           <% end %>
         <% else %>
@@ -214,6 +220,12 @@
     <button class="btn btn-outline" onclick="sharing_modal.showModal()">
       <%= icon 'share' %> Share
     </button>
+    <%= button_to users_digest_path(year: @digest.year),
+                  method: :delete,
+                  class: 'btn btn-outline btn-error',
+                  data: { turbo_confirm: "Are you sure you want to delete the #{@digest.year} digest? This cannot be undone." } do %>
+      <%= icon 'trash-2' %> Delete
+    <% end %>
   </div>
 </div>
 

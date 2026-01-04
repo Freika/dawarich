@@ -79,7 +79,7 @@
         </h2>
         <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
           <%= column_chart(
-            @digest.monthly_distances.sort.map { |month, distance_meters|
+            @digest.monthly_distances.sort_by { |month, _| month.to_i }.map { |month, distance_meters|
               [Date::ABBR_MONTHNAMES[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
             },
             height: '200px',

@@ -79,6 +79,58 @@ RSpec.describe CountriesAndCities do
           )
         end
       end
+
+      context 'when points have a gap larger than threshold (passing through)' do
+        let(:points) do
+          [
+            # User in Berlin at 9:00, leaves, returns at 11:00
+            create(:point, city: 'Berlin', country: 'Germany', timestamp:),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 15.minutes),
+            # 105-minute gap here (user left the city)
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 120.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 130.minutes)
+          ]
+        end
+
+        it 'only counts time between consecutive points within threshold' do
+          # Old logic would count 130 minutes (span from first to last)
+          # New logic counts: 15 min (0->15) + 10 min (120->130) = 25 minutes
+          # Since 25 < 60, Berlin should be filtered out
+          expect(countries_and_cities).to eq(
+            [
+              CountriesAndCities::CountryData.new(
+                country: 'Germany',
+                cities: []
+              )
+            ]
+          )
+        end
+      end
+
+      context 'when points span a long time but have continuous presence' do
+        let(:points) do
+          # Points every 30 minutes for 2.5 hours = continuous presence
+          (0..5).map do |i|
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + (i * 30).minutes)
+          end
+        end
+
+        it 'counts the full duration when all intervals are within threshold' do
+          # 5 intervals of 30 minutes each = 150 minutes total
+          expect(countries_and_cities).to eq(
+            [
+              CountriesAndCities::CountryData.new(
+                country: 'Germany',
+                cities: [
+                  CountriesAndCities::CityData.new(
+                    city: 'Berlin', points: 6, timestamp: (timestamp + 150.minutes).to_i, stayed_for: 150
+                  )
+                ]
+              )
+            ]
+          )
+        end
+      end
     end
   end
 end

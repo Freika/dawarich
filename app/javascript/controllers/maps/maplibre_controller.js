@@ -64,6 +64,8 @@ export default class extends Controller {
     'speedColoredToggle',
     'speedColorScaleContainer',
     'speedColorScaleInput',
+    // Globe projection
+    'globeToggle',
     // Family members
     'familyMembersList',
     'familyMembersContainer',
@@ -147,7 +149,8 @@ export default class extends Controller {
    */
   async initializeMap() {
     this.map = await MapInitializer.initialize(this.containerTarget, {
-      mapStyle: this.settings.mapStyle
+      mapStyle: this.settings.mapStyle,
+      globeProjection: this.settings.globeProjection
     })
   }
 
@@ -243,6 +246,7 @@ export default class extends Controller {
   updateFogThresholdDisplay(event) { return this.settingsController.updateFogThresholdDisplay(event) }
   updateMetersBetweenDisplay(event) { return this.settingsController.updateMetersBetweenDisplay(event) }
   updateMinutesBetweenDisplay(event) { return this.settingsController.updateMinutesBetweenDisplay(event) }
+  toggleGlobe(event) { return this.settingsController.toggleGlobe(event) }
 
   // Area Selection Manager methods
   startSelectArea() { return this.areaSelectionManager.startSelectArea() }

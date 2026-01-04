@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.37.2] - 2026-01-04
+
+## Fixed
+
+- Months are now correctly ordered (Jan-Dec) in the year-end digest chart instead of being sorted alphabetically.
+- Time spent in a country and city is now calculated correctly for the year-end digest email. #2104
+- Updated Trix to fix a XSS vulnerability. #2102
+- Map v2 UI no longer blocks when Immich/Photoprism integration has a bad URL or is unreachable. Added 10-second timeout to photo API requests and improved error handling to prevent UI freezing during initial load. #2085
+- In Map v2 settings, you can now enable map to be rendered as a globe.
+
 # [0.37.1] - 2025-12-30
 
 ## Fixed
