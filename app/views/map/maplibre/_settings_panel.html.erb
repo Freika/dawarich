@@ -365,6 +365,19 @@
             </select>
           </div>
 
+          <!-- Globe Projection -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="globeProjection"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="globeToggle"
+                     data-action="change->maps--maplibre#toggleGlobe" />
+              <span class="label-text font-medium">Globe View</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Render map as a 3D globe (requires page reload)</p>
+          </div>
+
           <div class="divider"></div>
 
           <!-- Route Opacity -->
