@@ -168,14 +168,7 @@
       </h2>
       <div class="space-y-4 w-full">
         <% if @digest.toponyms.present? %>
-          <% max_cities = @digest.toponyms.map { |country| country['cities']&.length || 0 }.max %>
-          <% progress_colors = ['progress-primary', 'progress-secondary', 'progress-accent', 'progress-info', 'progress-success', 'progress-warning'] %>
-
           <% @digest.toponyms.each_with_index do |country, index| %>
-            <% cities_count = country['cities']&.length || 0 %>
-            <% progress_value = max_cities&.positive? ? (cities_count.to_f / max_cities * 100).round : 0 %>
-            <% color_class = progress_colors[index % progress_colors.length] %>
-
             <div class="space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-semibold">
@@ -183,10 +176,10 @@
                   <%= country['country'] %>
                 </span>
                 <span class="text-sm">
-                  <%= pluralize(cities_count, 'city') %>
+                  <%= pluralize(country['cities']&.length || 0, 'city') %>
                 </span>
               </div>
-              <progress class="progress <%= color_class %> w-full" value="<%= progress_value %>" max="100"></progress>
+              <progress class="progress <%= progress_color_for_index(index) %> w-full" value="<%= city_progress_value(country['cities']&.length || 0, max_cities_count(@digest.toponyms)) %>" max="100"></progress>
             </div>
           <% end %>
         <% else %>

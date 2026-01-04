@@ -2,6 +2,27 @@
 
 module Users
   module DigestsHelper
+    PROGRESS_COLORS = %w[
+      progress-primary progress-secondary progress-accent
+      progress-info progress-success progress-warning
+    ].freeze
+
+    def progress_color_for_index(index)
+      PROGRESS_COLORS[index % PROGRESS_COLORS.length]
+    end
+
+    def city_progress_value(city_count, max_cities)
+      return 0 unless max_cities&.positive?
+
+      (city_count.to_f / max_cities * 100).round
+    end
+
+    def max_cities_count(toponyms)
+      return 0 if toponyms.blank?
+
+      toponyms.map { |country| country['cities']&.length || 0 }.max
+    end
+
     def distance_with_unit(distance_meters, unit)
       value = Users::Digest.convert_distance(distance_meters, unit).round
       "#{number_with_delimiter(value)} #{unit}"

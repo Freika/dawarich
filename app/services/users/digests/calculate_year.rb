@@ -66,7 +66,7 @@ module Users
           end
         end
 
-        country_cities.sort_by { |country, _| country }.map do |country, cities|
+        country_cities.sort_by { |_country, cities| -cities.size }.map do |country, cities|
           {
             'country' => country,
             'cities' => cities.to_a.sort.map { |city| { 'city' => city } }
