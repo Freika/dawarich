@@ -42,7 +42,8 @@ class Api::UserSerializer
       photoprism_url: user.safe_settings.photoprism_url,
       visits_suggestions_enabled: user.safe_settings.visits_suggestions_enabled?,
       speed_color_scale: user.safe_settings.speed_color_scale,
-      fog_of_war_threshold: user.safe_settings.fog_of_war_threshold
+      fog_of_war_threshold: user.safe_settings.fog_of_war_threshold,
+      globe_projection: user.safe_settings.globe_projection
     }
   end
 
