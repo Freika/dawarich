@@ -3,7 +3,7 @@
 module Users
   module Digests
     class CalculateYear
-      MAX_COUNTRY_GAP_SECONDS = 60 * 60 # 60 minutes
+      MINUTES_PER_DAY = 1440
 
       def initialize(user_id, year)
         @user = ::User.find(user_id)
@@ -106,20 +106,49 @@ module Users
       end
 
       def calculate_actual_country_minutes
-        points = fetch_year_points_with_country_ordered
+        points_by_date = group_points_by_date
         country_minutes = Hash.new(0)
 
-        points.each_cons(2) do |point_a, point_b|
-          next if point_a.country_name != point_b.country_name
+        points_by_date.each do |_date, day_points|
+          countries_on_day = day_points.map(&:country_name).uniq
 
-          gap_seconds = point_b.timestamp - point_a.timestamp
-          next if gap_seconds > MAX_COUNTRY_GAP_SECONDS
-          next if gap_seconds <= 0
-
-          country_minutes[point_a.country_name] += (gap_seconds / 60)
+          if countries_on_day.size == 1
+            # Single country day - assign full day
+            country_minutes[countries_on_day.first] += MINUTES_PER_DAY
+          else
+            # Multi-country day - calculate proportional time
+            calculate_proportional_time(day_points, country_minutes)
+          end
         end
 
         country_minutes
+      end
+
+      def group_points_by_date
+        points = fetch_year_points_with_country_ordered
+
+        points.group_by do |point|
+          Time.zone.at(point.timestamp).to_date
+        end
+      end
+
+      def calculate_proportional_time(day_points, country_minutes)
+        country_spans = Hash.new(0)
+        points_by_country = day_points.group_by(&:country_name)
+
+        points_by_country.each do |country, country_points|
+          timestamps = country_points.map(&:timestamp)
+          span_seconds = timestamps.max - timestamps.min
+          # Minimum 60 seconds (1 min) for single-point countries
+          country_spans[country] = [span_seconds, 60].max
+        end
+
+        total_spans = country_spans.values.sum.to_f
+
+        country_spans.each do |country, span|
+          proportional_minutes = (span / total_spans * MINUTES_PER_DAY).round
+          country_minutes[country] += proportional_minutes
+        end
       end
 
       def fetch_year_points_with_country_ordered

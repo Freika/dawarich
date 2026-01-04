@@ -76,11 +76,13 @@ RSpec.describe Users::Digests::CalculateYear do
         expect(calculate_digest.monthly_distances['3']).to eq('0') # Missing month
       end
 
-      it 'calculates time spent by location using actual minutes between consecutive points' do
-        # Create points with specific gaps to test actual minute calculation
+      it 'calculates time spent by location using hybrid day-based approach' do
+        # Create points to test hybrid calculation
+        # Jan 1: single country day (Germany) -> full 1440 minutes
         jan_1_10am = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i
-        jan_1_11am = Time.zone.local(2024, 1, 1, 11, 0, 0).to_i  # 60 min later
-        jan_1_12pm = Time.zone.local(2024, 1, 1, 12, 0, 0).to_i  # 60 min later
+        jan_1_11am = Time.zone.local(2024, 1, 1, 11, 0, 0).to_i
+        jan_1_12pm = Time.zone.local(2024, 1, 1, 12, 0, 0).to_i
+        # Feb 1: single country day (France) -> full 1440 minutes
         feb_1_10am = Time.zone.local(2024, 2, 1, 10, 0, 0).to_i
 
         create(:point, user: user, timestamp: jan_1_10am, country_name: 'Germany', city: 'Berlin')
@@ -91,13 +93,13 @@ RSpec.describe Users::Digests::CalculateYear do
         countries = calculate_digest.time_spent_by_location['countries']
         cities = calculate_digest.time_spent_by_location['cities']
 
-        # Germany: 60 min (10am->11am) + 60 min (11am->12pm) = 120 minutes
+        # Germany: 1 full day = 1440 minutes
         germany_country = countries.find { |c| c['name'] == 'Germany' }
-        expect(germany_country['minutes']).to eq(120)
+        expect(germany_country['minutes']).to eq(1440)
 
-        # France: only 1 point, so 0 minutes (no consecutive pair)
+        # France: 1 full day = 1440 minutes
         france_country = countries.find { |c| c['name'] == 'France' }
-        expect(france_country).to be_nil # No time counted for single point
+        expect(france_country['minutes']).to eq(1440)
 
         # Cities: based on stayed_for from monthly stats (sum across months)
         expect(cities.first['name']).to eq('Berlin')
@@ -109,12 +111,12 @@ RSpec.describe Users::Digests::CalculateYear do
       end
 
       context 'when user visits same country across multiple months' do
-        it 'calculates actual minutes from consecutive point pairs' do
+        it 'counts each day as a full day for single-country days' do
           # Create hourly points across multiple days in March and July
           mar_start = Time.zone.local(2024, 3, 1, 10, 0, 0).to_i
           jul_start = Time.zone.local(2024, 7, 1, 10, 0, 0).to_i
 
-          # Create 3 days of hourly points in March (3 points per day = 2 gaps of 60 min each)
+          # Create 3 days of hourly points in March
           3.times do |day|
             3.times do |hour|
               timestamp = mar_start + (day * 24 * 60 * 60) + (hour * 60 * 60)
@@ -130,7 +132,7 @@ RSpec.describe Users::Digests::CalculateYear do
             end
           end
 
-          # Create the monthly stats (simulating what would be created by the stats calculation)
+          # Create the monthly stats
           create(:stat, user: user, year: 2024, month: 3, distance: 10_000, toponyms: [
             { 'country' => 'Germany', 'cities' => [
               { 'city' => 'Berlin', 'stayed_for' => 14_400 }
@@ -147,22 +149,21 @@ RSpec.describe Users::Digests::CalculateYear do
           countries = digest.time_spent_by_location['countries']
           germany = countries.find { |c| c['name'] == 'Germany' }
 
-          # Each day: 2 gaps of 60 minutes = 120 minutes
-          # 6 days total (3 in March + 3 in July) = 720 minutes
-          # But gaps between days are > 60 min threshold, so not counted
-          expect(germany['minutes']).to eq(6 * 2 * 60)
+          # Each single-country day = 1440 minutes
+          # 6 days total (3 in March + 3 in July) = 6 * 1440 = 8640 minutes
+          expect(germany['minutes']).to eq(6 * 1440)
 
-          # Total should be much less than 365 days
-          total_hours = germany['minutes'] / 60.0
-          expect(total_hours).to eq(12) # 12 hours of tracked time
+          # Total should equal exactly 6 days
+          total_days = germany['minutes'] / 1440.0
+          expect(total_days).to eq(6)
         end
       end
 
-      context 'when there are large gaps between points' do
-        it 'does not count time during gaps exceeding 60 minute threshold' do
+      context 'when there are large gaps between points on same day' do
+        it 'still counts the full day for single-country day' do
           point_1 = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i
-          point_2 = Time.zone.local(2024, 1, 1, 12, 0, 0).to_i  # 2 hours later (> 1 hour threshold)
-          point_3 = Time.zone.local(2024, 1, 1, 13, 0, 0).to_i  # 1 hour after point_2
+          point_2 = Time.zone.local(2024, 1, 1, 12, 0, 0).to_i  # 2 hours later
+          point_3 = Time.zone.local(2024, 1, 1, 18, 0, 0).to_i  # 6 hours later
 
           create(:point, user: user, timestamp: point_1, country_name: 'Germany')
           create(:point, user: user, timestamp: point_2, country_name: 'Germany')
@@ -171,14 +172,15 @@ RSpec.describe Users::Digests::CalculateYear do
           digest = calculate_digest
           germany = digest.time_spent_by_location['countries'].find { |c| c['name'] == 'Germany' }
 
-          # Only point_2 -> point_3 gap (60 min) should be counted
-          # point_1 -> point_2 gap (120 min) exceeds threshold
-          expect(germany['minutes']).to eq(60)
+          # Hybrid approach: single-country day = full 1440 minutes
+          # regardless of gaps between points
+          expect(germany['minutes']).to eq(1440)
         end
       end
 
-      context 'when transitioning between countries' do
-        it 'does not count transition time' do
+      context 'when transitioning between countries on same day' do
+        it 'calculates proportional time based on time spans' do
+          # Multi-country day: Germany 10:00-10:30, France 11:00-11:30
           point_1 = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i
           point_2 = Time.zone.local(2024, 1, 1, 10, 30, 0).to_i  # In Germany
           point_3 = Time.zone.local(2024, 1, 1, 11, 0, 0).to_i   # Now in France
@@ -195,15 +197,22 @@ RSpec.describe Users::Digests::CalculateYear do
           germany = countries.find { |c| c['name'] == 'Germany' }
           france = countries.find { |c| c['name'] == 'France' }
 
-          expect(germany['minutes']).to eq(30)  # point_1 -> point_2
-          expect(france['minutes']).to eq(30)   # point_3 -> point_4
-          # Transition time (point_2 -> point_3) is NOT counted
+          # Germany span: 10:30 - 10:00 = 30 min = 1800 seconds
+          # France span: 11:30 - 11:00 = 30 min = 1800 seconds
+          # Total spans = 3600 seconds
+          # Each country gets 50% of 1440 = 720 minutes
+          expect(germany['minutes']).to eq(720)
+          expect(france['minutes']).to eq(720)
+          # Total = 1440 (exactly one day)
+          expect(germany['minutes'] + france['minutes']).to eq(1440)
         end
       end
 
       context 'when visiting multiple countries on same day' do
-        it 'does not exceed the actual time in the day' do
+        it 'calculates proportional time and never exceeds one day total' do
           # This tests the fix for the original bug: border crossing should not count double
+          # France: 8am-9am (1 hour span = 3600 seconds)
+          # Germany: 10am-11am (1 hour span = 3600 seconds)
           jan_1_8am = Time.zone.local(2024, 1, 1, 8, 0, 0).to_i
           jan_1_9am = Time.zone.local(2024, 1, 1, 9, 0, 0).to_i
           jan_1_10am = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i  # Border crossing
@@ -220,12 +229,13 @@ RSpec.describe Users::Digests::CalculateYear do
           france = countries.find { |c| c['name'] == 'France' }
           germany = countries.find { |c| c['name'] == 'Germany' }
 
-          # France: 60 min (8am->9am)
-          # Germany: 60 min (10am->11am)
-          # Total: 120 min (2 hours) - NOT 2 days (2880 min) as the bug would have caused
-          expect(france['minutes']).to eq(60)
-          expect(germany['minutes']).to eq(60)
-          expect(france['minutes'] + germany['minutes']).to eq(120)
+          # France span: 3600 seconds, Germany span: 3600 seconds
+          # Total spans: 7200 seconds
+          # Each gets 50% of 1440 = 720 minutes
+          expect(france['minutes']).to eq(720)
+          expect(germany['minutes']).to eq(720)
+          # Total = 1440 (exactly one day) - NOT 2 days as the bug would have caused
+          expect(france['minutes'] + germany['minutes']).to eq(1440)
         end
       end
 
