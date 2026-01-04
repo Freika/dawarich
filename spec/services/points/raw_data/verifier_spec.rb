@@ -61,16 +61,18 @@ RSpec.describe Points::RawData::Verifier do
       end.not_to change { archive.reload.verified_at }
     end
 
-    it 'detects deleted points' do
+    it 'still verifies successfully when points are deleted from database' do
       # Force archive creation first
       archive_id = archive.id
 
       # Then delete one point from database
       points.first.destroy
 
+      # Verification should still succeed - deleted points are acceptable
+      # (users should be able to delete their data without failing archive verification)
       expect do
         verifier.verify_specific_archive(archive_id)
-      end.not_to change { archive.reload.verified_at }
+      end.to change { archive.reload.verified_at }.from(nil)
     end
 
     it 'detects raw_data mismatch between archive and database' do

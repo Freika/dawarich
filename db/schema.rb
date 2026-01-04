@@ -522,6 +522,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_03_114630) do
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
+  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", name: "fk_rails_points_raw_data_archives", on_delete: :nullify, validate: false
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :nullify
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
