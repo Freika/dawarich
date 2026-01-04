@@ -142,6 +142,19 @@
               <span class="text-gray-600"><%= format_time_spent(country['minutes']) %></span>
             </div>
           <% end %>
+
+          <% if @digest.untracked_days > 0 %>
+            <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg border-2 border-dashed border-gray-200">
+              <div class="flex items-center gap-3">
+                <span class="badge badge-lg badge-ghost">?</span>
+                <span class="text-gray-500 italic">No tracking data</span>
+              </div>
+              <span class="text-gray-500"><%= pluralize(@digest.untracked_days.round, 'day') %></span>
+            </div>
+            <p class="text-sm text-gray-500 mt-2 flex items-center justify-center gap-2">
+              <%= icon 'lightbulb' %> Track more in <%= @digest.year + 1 %> to see a fuller picture of your travels!
+            </p>
+          <% end %>
         </div>
       </div>
     </div>
@@ -214,6 +227,12 @@
     <button class="btn btn-outline" onclick="sharing_modal.showModal()">
       <%= icon 'share' %> Share
     </button>
+    <%= button_to users_digest_path(year: @digest.year),
+                  method: :delete,
+                  class: 'btn btn-outline btn-error',
+                  data: { turbo_confirm: "Are you sure you want to delete the #{@digest.year} digest? This cannot be undone." } do %>
+      <%= icon 'trash-2' %> Delete
+    <% end %>
   </div>
 </div>
 

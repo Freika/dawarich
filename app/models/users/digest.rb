@@ -132,6 +132,19 @@ class Users::Digest < ApplicationRecord
     (all_time_stats['total_distance'] || 0).to_i
   end
 
+  def total_tracked_minutes
+    top_countries_by_time.sum { |country| country['minutes'].to_i }
+  end
+
+  def total_tracked_days
+    (total_tracked_minutes / 1440.0).round(1)
+  end
+
+  def untracked_days
+    days_in_year = Date.leap?(year) ? 366 : 365
+    [days_in_year - total_tracked_days, 0].max.round(1)
+  end
+
   def distance_km
     distance.to_f / 1000
   end

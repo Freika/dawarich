@@ -3,6 +3,8 @@
 module Users
   module Digests
     class CalculateYear
+      MAX_COUNTRY_GAP_SECONDS = 60 * 60 # 60 minutes
+
       def initialize(user_id, year)
         @user = ::User.find(user_id)
         @year = year.to_i
@@ -50,7 +52,7 @@ module Users
             next unless toponym.is_a?(Hash)
 
             country = toponym['country']
-            next unless country.present?
+            next if country.blank?
 
             if toponym['cities'].is_a?(Array)
               toponym['cities'].each do |city|
@@ -95,29 +97,32 @@ module Users
       end
 
       def calculate_country_time_spent
-        country_days = build_country_days_map
+        country_minutes = calculate_actual_country_minutes
 
-        # Convert days to minutes (days * 24 * 60) and return top 10
-        country_days
-          .transform_values { |days| days.size * 24 * 60 }
+        country_minutes
           .sort_by { |_, minutes| -minutes }
           .first(10)
           .map { |name, minutes| { 'name' => name, 'minutes' => minutes } }
       end
 
-      def build_country_days_map
-        year_points = fetch_year_points_with_country
-        country_days = Hash.new { |h, k| h[k] = Set.new }
+      def calculate_actual_country_minutes
+        points = fetch_year_points_with_country_ordered
+        country_minutes = Hash.new(0)
 
-        year_points.each do |point|
-          date = Time.zone.at(point.timestamp).to_date
-          country_days[point.country_name].add(date)
+        points.each_cons(2) do |point_a, point_b|
+          next if point_a.country_name != point_b.country_name
+
+          gap_seconds = point_b.timestamp - point_a.timestamp
+          next if gap_seconds > MAX_COUNTRY_GAP_SECONDS
+          next if gap_seconds <= 0
+
+          country_minutes[point_a.country_name] += (gap_seconds / 60)
         end
 
-        country_days
+        country_minutes
       end
 
-      def fetch_year_points_with_country
+      def fetch_year_points_with_country_ordered
         start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
 
@@ -126,6 +131,7 @@ module Users
             .where('timestamp >= ? AND timestamp <= ?', start_of_year.to_i, end_of_year.to_i)
             .where.not(country_name: [nil, ''])
             .select(:country_name, :timestamp)
+            .order(timestamp: :asc)
       end
 
       def calculate_city_time_spent

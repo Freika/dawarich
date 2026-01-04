@@ -101,8 +101,8 @@ Rails.application.routes.draw do
 
   # User digests routes (yearly/monthly digest reports)
   scope module: 'users' do
-    resources :digests, only: %i[index create], param: :year, as: :users_digests
-    get 'digests/:year', to: 'digests#show', as: :users_digest, constraints: { year: /\d{4}/ }
+    resources :digests, only: %i[index create show destroy], param: :year, as: :users_digests,
+                        constraints: { year: /\d{4}/ }
   end
   get 'shared/digest/:uuid', to: 'shared/digests#show', as: :shared_users_digest
   patch 'digests/:year/sharing',

@@ -6,7 +6,7 @@ class Users::DigestsController < ApplicationController
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: [:create]
-  before_action :set_digest, only: [:show]
+  before_action :set_digest, only: %i[show destroy]
 
   def index
     @digests = current_user.digests.yearly.order(year: :desc)
@@ -28,6 +28,12 @@ class Users::DigestsController < ApplicationController
     else
       redirect_to users_digests_path, alert: 'Invalid year selected', status: :see_other
     end
+  end
+
+  def destroy
+    year = @digest.year
+    @digest.destroy!
+    redirect_to users_digests_path, notice: "Year-end digest for #{year} has been deleted", status: :see_other
   end
 
   private
