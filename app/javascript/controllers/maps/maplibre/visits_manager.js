@@ -65,8 +65,6 @@ export class VisitsManager {
    * Start create visit mode
    */
   startCreateVisit() {
-    console.log('[Maps V2] Starting create visit mode')
-
     if (this.controller.hasSettingsPanelTarget && this.controller.settingsPanelTarget.classList.contains('open')) {
       this.controller.toggleSettings()
     }
@@ -87,12 +85,9 @@ export class VisitsManager {
    * Open visit creation modal
    */
   openVisitCreationModal(lat, lng) {
-    console.log('[Maps V2] Opening visit creation modal', { lat, lng })
-
     const modalElement = document.querySelector('[data-controller="visit-creation-v2"]')
 
     if (!modalElement) {
-      console.error('[Maps V2] Visit creation modal not found')
       Toast.error('Visit creation modal not available')
       return
     }
@@ -105,7 +100,6 @@ export class VisitsManager {
     if (controller) {
       controller.open(lat, lng, this.controller)
     } else {
-      console.error('[Maps V2] Visit creation controller not found')
       Toast.error('Visit creation controller not available')
     }
   }
@@ -114,8 +108,6 @@ export class VisitsManager {
    * Handle visit creation event - reload visits and update layer
    */
   async handleVisitCreated(event) {
-    console.log('[Maps V2] Visit created, reloading visits...', event.detail)
-
     try {
       const visits = await this.api.fetchVisits({
         start_at: this.controller.startDateValue,
@@ -132,7 +124,6 @@ export class VisitsManager {
       const visitsLayer = this.layerManager.getLayer('visits')
       if (visitsLayer) {
         visitsLayer.update(visitsGeoJSON)
-        console.log('[Maps V2] Visits layer updated successfully')
       } else {
         console.warn('[Maps V2] Visits layer not found, cannot update')
       }
@@ -145,9 +136,6 @@ export class VisitsManager {
    * Handle visit update event - reload visits and update layer
    */
   async handleVisitUpdated(event) {
-    console.log('[Maps V2] Visit updated, reloading visits...', event.detail)
-
-    // Reuse the same logic as creation
     await this.handleVisitCreated(event)
   }
 }

@@ -23,8 +23,6 @@ export class AreaSelectionManager {
    * Start area selection mode
    */
   async startSelectArea() {
-    console.log('[Maps V2] Starting area selection mode')
-
     // Initialize selection layer if not exists
     if (!this.selectionLayer) {
       this.selectionLayer = new SelectionLayer(this.map, {
@@ -36,8 +34,6 @@ export class AreaSelectionManager {
         type: 'FeatureCollection',
         features: []
       })
-
-      console.log('[Maps V2] Selection layer initialized')
     }
 
     // Initialize selected points layer if not exists
@@ -50,8 +46,6 @@ export class AreaSelectionManager {
         type: 'FeatureCollection',
         features: []
       })
-
-      console.log('[Maps V2] Selected points layer initialized')
     }
 
     // Enable selection mode
@@ -76,8 +70,6 @@ export class AreaSelectionManager {
    * Handle area selection completion
    */
   async handleAreaSelected(bounds) {
-    console.log('[Maps V2] Area selected:', bounds)
-
     try {
       Toast.info('Fetching data in selected area...')
 
@@ -298,7 +290,6 @@ export class AreaSelectionManager {
       Toast.success('Visit declined')
       await this.refreshSelectedVisits()
     } catch (error) {
-      console.error('[Maps V2] Failed to decline visit:', error)
       Toast.error('Failed to decline visit')
     }
   }
@@ -327,7 +318,6 @@ export class AreaSelectionManager {
       this.replaceVisitsWithMerged(visitIds, mergedVisit)
       this.updateBulkActions()
     } catch (error) {
-      console.error('[Maps V2] Failed to merge visits:', error)
       Toast.error('Failed to merge visits')
     }
   }
@@ -346,7 +336,6 @@ export class AreaSelectionManager {
       this.selectedVisitIds.clear()
       await this.refreshSelectedVisits()
     } catch (error) {
-      console.error('[Maps V2] Failed to confirm visits:', error)
       Toast.error('Failed to confirm visits')
     }
   }
@@ -451,8 +440,6 @@ export class AreaSelectionManager {
    * Cancel area selection
    */
   cancelAreaSelection() {
-    console.log('[Maps V2] Cancelling area selection')
-
     if (this.selectionLayer) {
       this.selectionLayer.disableSelectionMode()
       this.selectionLayer.clearSelection()
@@ -515,13 +502,9 @@ export class AreaSelectionManager {
 
     if (!confirmed) return
 
-    console.log('[Maps V2] Deleting', pointIds.length, 'points')
-
     try {
       Toast.info('Deleting points...')
       const result = await this.api.bulkDeletePoints(pointIds)
-
-      console.log('[Maps V2] Deleted', result.count, 'points')
 
       this.cancelAreaSelection()
 
