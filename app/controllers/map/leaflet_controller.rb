@@ -41,7 +41,7 @@ class Map::LeafletController < ApplicationController
   end
 
   def calculate_distance
-    return 0 if @points.count < 2
+    return 0 if @points.count(:id) < 2
 
     # Use PostGIS window function for efficient distance calculation
     # This is O(1) database operation vs O(n) Ruby iteration
