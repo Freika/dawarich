@@ -13,7 +13,7 @@ module Visits
 
     def call
       Visit
-        .includes(:place)
+        .includes(:place, :area)
         .where(user:)
         .joins(:place)
         .where(

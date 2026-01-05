@@ -41,19 +41,31 @@ class Map::LeafletController < ApplicationController
   end
 
   def calculate_distance
-    return 0 if @coordinates.size < 2
+    return 0 if @points.count < 2
 
-    total_distance = 0
+    # Use PostGIS window function for efficient distance calculation
+    # This is O(1) database operation vs O(n) Ruby iteration
+    sql = <<~SQL.squish
+      SELECT COALESCE(SUM(distance_m) / 1000.0, 0) as total_km FROM (
+        SELECT ST_Distance(
+          lonlat::geography,
+          LAG(lonlat::geography) OVER (ORDER BY timestamp)
+        ) as distance_m
+        FROM points
+        WHERE user_id = :user_id
+          AND timestamp >= :start_at
+          AND timestamp <= :end_at
+      ) distances
+    SQL
 
-    @coordinates.each_cons(2) do
-      distance_km = Geocoder::Calculations.distance_between(
-        [_1[0], _1[1]], [_2[0], _2[1]], units: :km
-      )
+    result = Point.connection.select_value(
+      ActiveRecord::Base.sanitize_sql_array([
+        sql,
+        { user_id: current_user.id, start_at: start_at, end_at: end_at }
+      ])
+    )
 
-      total_distance += distance_km
-    end
-
-    total_distance.round
+    result&.to_f&.round || 0
   end
 
   def parsed_start_at

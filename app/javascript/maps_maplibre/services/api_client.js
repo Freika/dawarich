@@ -73,10 +73,17 @@ export class ApiClient {
   }
 
   /**
-   * Fetch visits for date range
+   * Fetch visits for date range (paginated)
+   * @param {Object} options - { start_at, end_at, page, per_page }
+   * @returns {Promise<Object>} { visits, currentPage, totalPages }
    */
-  async fetchVisits({ start_at, end_at }) {
-    const params = new URLSearchParams({ start_at, end_at })
+  async fetchVisitsPage({ start_at, end_at, page = 1, per_page = 500 }) {
+    const params = new URLSearchParams({
+      start_at,
+      end_at,
+      page: page.toString(),
+      per_page: per_page.toString()
+    })
 
     const response = await fetch(`${this.baseURL}/visits?${params}`, {
       headers: this.getHeaders()
@@ -86,20 +93,63 @@ export class ApiClient {
       throw new Error(`Failed to fetch visits: ${response.statusText}`)
     }
 
-    return response.json()
+    const visits = await response.json()
+
+    return {
+      visits,
+      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
+      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1')
+    }
   }
 
   /**
-   * Fetch places optionally filtered by tags
+   * Fetch all visits for date range (handles pagination)
+   * @param {Object} options - { start_at, end_at, onProgress }
+   * @returns {Promise<Array>} All visits
    */
-  async fetchPlaces({ tag_ids = [] } = {}) {
-    const params = new URLSearchParams()
+  async fetchVisits({ start_at, end_at, onProgress = null }) {
+    const allVisits = []
+    let page = 1
+    let totalPages = 1
+
+    do {
+      const { visits, currentPage, totalPages: total } =
+        await this.fetchVisitsPage({ start_at, end_at, page, per_page: 500 })
+
+      allVisits.push(...visits)
+      totalPages = total
+      page++
+
+      if (onProgress) {
+        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
+        onProgress({
+          loaded: allVisits.length,
+          currentPage,
+          totalPages,
+          progress
+        })
+      }
+    } while (page <= totalPages)
+
+    return allVisits
+  }
+
+  /**
+   * Fetch places (paginated)
+   * @param {Object} options - { tag_ids, page, per_page }
+   * @returns {Promise<Object>} { places, currentPage, totalPages }
+   */
+  async fetchPlacesPage({ tag_ids = [], page = 1, per_page = 500 } = {}) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      per_page: per_page.toString()
+    })
 
     if (tag_ids && tag_ids.length > 0) {
       tag_ids.forEach(id => params.append('tag_ids[]', id))
     }
 
-    const url = `${this.baseURL}/places${params.toString() ? '?' + params.toString() : ''}`
+    const url = `${this.baseURL}/places?${params.toString()}`
 
     const response = await fetch(url, {
       headers: this.getHeaders()
@@ -109,7 +159,45 @@ export class ApiClient {
       throw new Error(`Failed to fetch places: ${response.statusText}`)
     }
 
-    return response.json()
+    const places = await response.json()
+
+    return {
+      places,
+      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
+      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1')
+    }
+  }
+
+  /**
+   * Fetch all places optionally filtered by tags (handles pagination)
+   * @param {Object} options - { tag_ids, onProgress }
+   * @returns {Promise<Array>} All places
+   */
+  async fetchPlaces({ tag_ids = [], onProgress = null } = {}) {
+    const allPlaces = []
+    let page = 1
+    let totalPages = 1
+
+    do {
+      const { places, currentPage, totalPages: total } =
+        await this.fetchPlacesPage({ tag_ids, page, per_page: 500 })
+
+      allPlaces.push(...places)
+      totalPages = total
+      page++
+
+      if (onProgress) {
+        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
+        onProgress({
+          loaded: allPlaces.length,
+          currentPage,
+          totalPages,
+          progress
+        })
+      }
+    } while (page <= totalPages)
+
+    return allPlaces
   }
 
   /**
