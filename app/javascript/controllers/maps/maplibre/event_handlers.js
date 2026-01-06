@@ -142,8 +142,8 @@ export class EventHandlers {
     if (!routesLayer) return
 
     // Get the full feature from source (not the clipped tile version)
-    const fullFeature = this._getFullRouteFeature(clickedFeature.properties)
-    if (!fullFeature) return
+    // Fallback to clipped feature if full feature not found
+    const fullFeature = this._getFullRouteFeature(clickedFeature.properties) || clickedFeature
 
     // If a route is selected and we're hovering over a different route, show both
     if (this.selectedRouteFeature) {
@@ -200,7 +200,23 @@ export class EventHandlers {
     if (!source) return null
 
     // Get the source data (GeoJSON FeatureCollection)
-    const sourceData = source._data || routesLayer.data
+    // Try multiple ways to access the data
+    let sourceData = null
+
+    // Method 1: Internal _data property (most common)
+    if (source._data) {
+      sourceData = source._data
+    }
+    // Method 2: Serialize and deserialize (fallback)
+    else if (source.serialize) {
+      const serialized = source.serialize()
+      sourceData = serialized.data
+    }
+    // Method 3: Use cached data from layer
+    else if (routesLayer.data) {
+      sourceData = routesLayer.data
+    }
+
     if (!sourceData || !sourceData.features) return null
 
     // Find the matching feature by properties
@@ -290,8 +306,8 @@ export class EventHandlers {
     const properties = clickedFeature.properties
 
     // Get the full feature from source (not the clipped tile version)
-    const fullFeature = this._getFullRouteFeature(properties)
-    if (!fullFeature) return
+    // Fallback to clipped feature if full feature not found
+    const fullFeature = this._getFullRouteFeature(properties) || clickedFeature
 
     // Store selected route (use full feature)
     this.selectedRouteFeature = fullFeature
