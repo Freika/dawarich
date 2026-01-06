@@ -135,20 +135,24 @@ export class EventHandlers {
    * Handle route hover
    */
   handleRouteHover(e) {
-    const feature = e.features[0]
-    if (!feature) return
+    const clickedFeature = e.features[0]
+    if (!clickedFeature) return
 
     const routesLayer = this.controller.layerManager.getLayer('routes')
     if (!routesLayer) return
 
+    // Get the full feature from source (not the clipped tile version)
+    const fullFeature = this._getFullRouteFeature(clickedFeature.properties)
+    if (!fullFeature) return
+
     // If a route is selected and we're hovering over a different route, show both
     if (this.selectedRouteFeature) {
       // Check if we're hovering over the same route that's selected
-      const isSameRoute = this._areFeaturesSame(this.selectedRouteFeature, feature)
+      const isSameRoute = this._areFeaturesSame(this.selectedRouteFeature, fullFeature)
 
       if (!isSameRoute) {
         // Show both selected and hovered routes
-        const features = [this.selectedRouteFeature, feature]
+        const features = [this.selectedRouteFeature, fullFeature]
         routesLayer.setHoverRoute({
           type: 'FeatureCollection',
           features: features
@@ -158,9 +162,9 @@ export class EventHandlers {
       }
     } else {
       // No selection, just show hovered route
-      routesLayer.setHoverRoute(feature)
+      routesLayer.setHoverRoute(fullFeature)
       // Create markers for hovered route
-      this._createRouteMarkers(feature)
+      this._createRouteMarkers(fullFeature)
     }
   }
 
@@ -181,6 +185,31 @@ export class EventHandlers {
       routesLayer.setHoverRoute(null)
       this._clearRouteMarkers()
     }
+  }
+
+  /**
+   * Get full route feature from source data (not clipped tile version)
+   * MapLibre returns clipped geometries from queryRenderedFeatures()
+   * We need the full geometry from the source for proper highlighting
+   */
+  _getFullRouteFeature(properties) {
+    const routesLayer = this.controller.layerManager.getLayer('routes')
+    if (!routesLayer) return null
+
+    const source = this.map.getSource(routesLayer.sourceId)
+    if (!source) return null
+
+    // Get the source data (GeoJSON FeatureCollection)
+    const sourceData = source._data || routesLayer.data
+    if (!sourceData || !sourceData.features) return null
+
+    // Find the matching feature by properties
+    return sourceData.features.find(feature => {
+      const props = feature.properties
+      return props.startTime === properties.startTime &&
+             props.endTime === properties.endTime &&
+             props.pointCount === properties.pointCount
+    })
   }
 
   /**
@@ -257,20 +286,24 @@ export class EventHandlers {
    * Handle route click
    */
   handleRouteClick(e) {
-    const feature = e.features[0]
-    const properties = feature.properties
+    const clickedFeature = e.features[0]
+    const properties = clickedFeature.properties
 
-    // Store selected route
-    this.selectedRouteFeature = feature
+    // Get the full feature from source (not the clipped tile version)
+    const fullFeature = this._getFullRouteFeature(properties)
+    if (!fullFeature) return
+
+    // Store selected route (use full feature)
+    this.selectedRouteFeature = fullFeature
 
     // Update hover layer to show selected route
     const routesLayer = this.controller.layerManager.getLayer('routes')
     if (routesLayer) {
-      routesLayer.setHoverRoute(feature)
+      routesLayer.setHoverRoute(fullFeature)
     }
 
     // Create markers for selected route
-    this._createRouteMarkers(feature)
+    this._createRouteMarkers(fullFeature)
 
     // Calculate duration
     const durationSeconds = properties.endTime - properties.startTime
