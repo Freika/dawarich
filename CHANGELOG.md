@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.37.3] - Unreleased
+
+## Fixed
+
+- Routes are now being drawn the very same way on Map V2 as in Map V1. #2132 #2086
+
+## Changed
+
+- Map V2 points loading is significantly sped up.
+- Points size on Map V2 was reduced to prevent overlapping.
+
 # [0.37.2] - 2026-01-04
 
 ## Fixed

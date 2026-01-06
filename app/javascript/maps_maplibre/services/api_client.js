@@ -19,7 +19,8 @@ export class ApiClient {
       end_at,
       page: page.toString(),
       per_page: per_page.toString(),
-      slim: 'true'
+      slim: 'true',
+      order: 'asc'
     })
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
@@ -40,36 +41,69 @@ export class ApiClient {
   }
 
   /**
-   * Fetch all points for date range (handles pagination)
-   * @param {Object} options - { start_at, end_at, onProgress }
+   * Fetch all points for date range (handles pagination with parallel requests)
+   * @param {Object} options - { start_at, end_at, onProgress, maxConcurrent }
    * @returns {Promise<Array>} All points
    */
-  async fetchAllPoints({ start_at, end_at, onProgress = null }) {
-    const allPoints = []
-    let page = 1
-    let totalPages = 1
+  async fetchAllPoints({ start_at, end_at, onProgress = null, maxConcurrent = 3 }) {
+    // First fetch to get total pages
+    const firstPage = await this.fetchPoints({ start_at, end_at, page: 1, per_page: 1000 })
+    const totalPages = firstPage.totalPages
 
-    do {
-      const { points, currentPage, totalPages: total } =
-        await this.fetchPoints({ start_at, end_at, page, per_page: 1000 })
-
-      allPoints.push(...points)
-      totalPages = total
-      page++
-
+    // If only one page, return immediately
+    if (totalPages === 1) {
       if (onProgress) {
-        // Avoid division by zero - if no pages, progress is 100%
-        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
         onProgress({
-          loaded: allPoints.length,
-          currentPage,
+          loaded: firstPage.points.length,
+          currentPage: 1,
+          totalPages: 1,
+          progress: 1.0
+        })
+      }
+      return firstPage.points
+    }
+
+    // Initialize results array with first page
+    const pageResults = [{ page: 1, points: firstPage.points }]
+    let completedPages = 1
+
+    // Create array of remaining page numbers
+    const remainingPages = Array.from(
+      { length: totalPages - 1 },
+      (_, i) => i + 2
+    )
+
+    // Process pages in batches of maxConcurrent
+    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
+      const batch = remainingPages.slice(i, i + maxConcurrent)
+
+      // Fetch batch in parallel
+      const batchPromises = batch.map(page =>
+        this.fetchPoints({ start_at, end_at, page, per_page: 1000 })
+          .then(result => ({ page, points: result.points }))
+      )
+
+      const batchResults = await Promise.all(batchPromises)
+      pageResults.push(...batchResults)
+      completedPages += batchResults.length
+
+      // Call progress callback after each batch
+      if (onProgress) {
+        const progress = totalPages > 0 ? completedPages / totalPages : 1.0
+        onProgress({
+          loaded: pageResults.reduce((sum, r) => sum + r.points.length, 0),
+          currentPage: completedPages,
           totalPages,
           progress
         })
       }
-    } while (page <= totalPages)
+    }
 
-    return allPoints
+    // Sort by page number to ensure correct order
+    pageResults.sort((a, b) => a.page - b.page)
+
+    // Flatten into single array
+    return pageResults.flatMap(r => r.points)
   }
 
   /**

@@ -69,6 +69,11 @@ export class LayerManager {
     this.map.on('click', 'areas-outline', handlers.handleAreaClick)
     this.map.on('click', 'areas-labels', handlers.handleAreaClick)
 
+    // Route handlers
+    this.map.on('click', 'routes', handlers.handleRouteClick)
+    this.map.on('mouseenter', 'routes', handlers.handleRouteHover)
+    this.map.on('mouseleave', 'routes', handlers.handleRouteMouseLeave)
+
     // Cursor change on hover
     this.map.on('mouseenter', 'points', () => {
       this.map.getCanvas().style.cursor = 'pointer'
@@ -94,6 +99,13 @@ export class LayerManager {
     this.map.on('mouseleave', 'places', () => {
       this.map.getCanvas().style.cursor = ''
     })
+    // Route cursor handlers
+    this.map.on('mouseenter', 'routes', () => {
+      this.map.getCanvas().style.cursor = 'pointer'
+    })
+    this.map.on('mouseleave', 'routes', () => {
+      this.map.getCanvas().style.cursor = ''
+    })
     // Areas hover handlers for all sub-layers
     const areaLayers = ['areas-fill', 'areas-outline', 'areas-labels']
     areaLayers.forEach(layerId => {
@@ -105,6 +117,14 @@ export class LayerManager {
         this.map.on('mouseleave', layerId, () => {
           this.map.getCanvas().style.cursor = ''
         })
+      }
+    })
+
+    // Map-level click to deselect routes
+    this.map.on('click', (e) => {
+      const routeFeatures = this.map.queryRenderedFeatures(e.point, { layers: ['routes'] })
+      if (routeFeatures.length === 0) {
+        handlers.clearRouteSelection()
       }
     })
   }

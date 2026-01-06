@@ -39,7 +39,7 @@ export class DataLoader {
     performanceMonitor.mark('transform-geojson')
     data.pointsGeoJSON = pointsToGeoJSON(data.points)
     data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
-      distanceThresholdMeters: this.settings.metersBetweenRoutes || 1000,
+      distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
       timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60
     })
     performanceMonitor.measure('transform-geojson')

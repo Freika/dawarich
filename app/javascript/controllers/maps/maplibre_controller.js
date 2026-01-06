@@ -79,7 +79,16 @@ export default class extends Controller {
     'infoDisplay',
     'infoTitle',
     'infoContent',
-    'infoActions'
+    'infoActions',
+    // Route info template
+    'routeInfoTemplate',
+    'routeStartTime',
+    'routeEndTime',
+    'routeDuration',
+    'routeDistance',
+    'routeSpeed',
+    'routeSpeedContainer',
+    'routePoints'
   ]
 
   async connect() {
@@ -467,9 +476,46 @@ export default class extends Controller {
     this.switchToToolsTab()
   }
 
+  showRouteInfo(routeData) {
+    if (!this.hasRouteInfoTemplateTarget) return
+
+    // Clone the template
+    const template = this.routeInfoTemplateTarget.content.cloneNode(true)
+
+    // Populate the template with data
+    const fragment = document.createDocumentFragment()
+    fragment.appendChild(template)
+
+    fragment.querySelector('[data-maps--maplibre-target="routeStartTime"]').textContent = routeData.startTime
+    fragment.querySelector('[data-maps--maplibre-target="routeEndTime"]').textContent = routeData.endTime
+    fragment.querySelector('[data-maps--maplibre-target="routeDuration"]').textContent = routeData.duration
+    fragment.querySelector('[data-maps--maplibre-target="routeDistance"]').textContent = routeData.distance
+    fragment.querySelector('[data-maps--maplibre-target="routePoints"]').textContent = routeData.pointCount
+
+    // Handle optional speed field
+    const speedContainer = fragment.querySelector('[data-maps--maplibre-target="routeSpeedContainer"]')
+    if (routeData.speed) {
+      fragment.querySelector('[data-maps--maplibre-target="routeSpeed"]').textContent = routeData.speed
+      speedContainer.style.display = ''
+    } else {
+      speedContainer.style.display = 'none'
+    }
+
+    // Convert fragment to HTML string for showInfo
+    const div = document.createElement('div')
+    div.appendChild(fragment)
+
+    this.showInfo('Route Information', div.innerHTML)
+  }
+
   closeInfo() {
     if (!this.hasInfoDisplayTarget) return
     this.infoDisplayTarget.classList.add('hidden')
+
+    // Clear route selection when info panel is closed
+    if (this.eventHandlers) {
+      this.eventHandlers.clearRouteSelection()
+    }
   }
 
   /**

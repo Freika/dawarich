@@ -238,6 +238,47 @@ bundle exec bundle-audit             # Dependency security
    - Respect expiration settings and disable sharing when expired
    - Only expose minimal necessary data in public sharing contexts
 
+### Route Drawing Implementation (Critical)
+
+⚠️ **IMPORTANT: Unit Mismatch in Route Splitting Logic**
+
+Both Map v1 (Leaflet) and Map v2 (MapLibre) contain an **intentional unit mismatch** in route drawing that must be preserved for consistency:
+
+**The Issue**:
+- `haversineDistance()` function returns distance in **kilometers** (e.g., 0.5 km)
+- Route splitting threshold is stored and compared as **meters** (e.g., 500)
+- The code compares them directly: `0.5 > 500` = always **FALSE**
+
+**Result**:
+- The distance threshold (`meters_between_routes` setting) is **effectively disabled**
+- Routes only split on **time gaps** (default: 60 minutes between points)
+- This creates longer, more continuous routes that users expect
+
+**Code Locations**:
+- **Map v1**: `app/javascript/maps/polylines.js:390`
+  - Uses `haversineDistance()` from `maps/helpers.js` (returns km)
+  - Compares to `distanceThresholdMeters` variable (value in meters)
+
+- **Map v2**: `app/javascript/maps_maplibre/layers/routes_layer.js:82-104`
+  - Has built-in `haversineDistance()` method (returns km)
+  - Intentionally skips `/1000` conversion to replicate v1 behavior
+  - Comment explains this is matching v1's unit mismatch
+
+**Critical Rules**:
+1. ❌ **DO NOT "fix" the unit mismatch** - this would break user expectations
+2. ✅ **Keep both versions synchronized** - they must behave identically
+3. ✅ **Document any changes** - route drawing changes affect all users
+4. ⚠️ If you ever fix this bug:
+   - You MUST update both v1 and v2 simultaneously
+   - You MUST migrate user settings (multiply existing values by 1000 or divide by 1000 depending on direction)
+   - You MUST communicate the breaking change to users
+
+**Additional Route Drawing Details**:
+- **Time threshold**: 60 minutes (default) - actually functional
+- **Distance threshold**: 500 meters (default) - currently non-functional due to unit bug
+- **Sorting**: Map v2 sorts points by timestamp client-side; v1 relies on backend ASC order
+- **API ordering**: Map v2 must request `order: 'asc'` to match v1's chronological data flow
+
 ## Contributing
 
 - **Main Branch**: `master`
