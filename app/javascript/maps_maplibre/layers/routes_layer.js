@@ -87,7 +87,24 @@ export class RoutesLayer extends BaseLayer {
           'line-opacity': 1.0
         }
       }
+      // Note: routes-hit layer is added separately in LayerManager after points layer
+      // for better interactivity (see _addRoutesHitLayer method)
     ]
+  }
+
+  /**
+   * Override setVisibility to also control routes-hit layer
+   * @param {boolean} visible - Show/hide layer
+   */
+  setVisibility(visible) {
+    // Call parent to handle main routes and routes-hover layers
+    super.setVisibility(visible)
+
+    // Also control routes-hit layer if it exists
+    if (this.map.getLayer('routes-hit')) {
+      const visibility = visible ? 'visible' : 'none'
+      this.map.setLayoutProperty('routes-hit', 'visibility', visibility)
+    }
   }
 
   /**
@@ -114,7 +131,7 @@ export class RoutesLayer extends BaseLayer {
   }
 
   /**
-   * Override remove() to clean up hover source
+   * Override remove() to clean up hover source and hit layer
    */
   remove() {
     // Remove layers
@@ -123,6 +140,11 @@ export class RoutesLayer extends BaseLayer {
         this.map.removeLayer(layerId)
       }
     })
+
+    // Remove routes-hit layer if it exists
+    if (this.map.getLayer('routes-hit')) {
+      this.map.removeLayer('routes-hit')
+    }
 
     // Remove main source
     if (this.map.getSource(this.sourceId)) {

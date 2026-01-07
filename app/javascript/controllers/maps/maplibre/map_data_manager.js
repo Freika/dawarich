@@ -90,6 +90,7 @@ export class MapDataManager {
         data.placesGeoJSON
       )
 
+      // Setup event handlers after layers are added
       this.layerManager.setupLayerEventHandlers({
         handlePointClick: this.eventHandlers.handlePointClick.bind(this.eventHandlers),
         handleVisitClick: this.eventHandlers.handleVisitClick.bind(this.eventHandlers),
@@ -103,13 +104,17 @@ export class MapDataManager {
       })
     }
 
-    if (this.map.loaded()) {
-      await addAllLayers()
-    } else {
-      this.map.once('load', async () => {
-        await addAllLayers()
-      })
-    }
+    // Always use Promise-based approach for consistent timing
+    await new Promise((resolve) => {
+      if (this.map.loaded()) {
+        addAllLayers().then(resolve)
+      } else {
+        this.map.once('load', async () => {
+          await addAllLayers()
+          resolve()
+        })
+      }
+    })
   }
 
   /**

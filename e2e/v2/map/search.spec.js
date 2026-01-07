@@ -224,9 +224,11 @@ test.describe('Location Search', () => {
         await visitItem.click()
         await page.waitForTimeout(500)
 
-        // Modal should appear
+        // Modal should appear - wait for modal to be created and checkbox to be checked
         const modal = page.locator('#create-visit-modal')
-        await expect(modal).toBeVisible()
+        await modal.waitFor({ state: 'attached' })
+        const modalToggle = page.locator('#create-visit-modal-toggle')
+        await expect(modalToggle).toBeChecked()
 
         // Modal should have form fields
         await expect(modal.locator('input[name="name"]')).toBeVisible()
@@ -267,8 +269,11 @@ test.describe('Location Search', () => {
         await visitItem.click()
         await page.waitForTimeout(500)
 
+        // Modal should appear - wait for modal to be created and checkbox to be checked
         const modal = page.locator('#create-visit-modal')
-        await expect(modal).toBeVisible()
+        await modal.waitFor({ state: 'attached' })
+        const modalToggle = page.locator('#create-visit-modal-toggle')
+        await expect(modalToggle).toBeChecked()
 
         // Name should be prefilled
         const nameInput = modal.locator('input[name="name"]')

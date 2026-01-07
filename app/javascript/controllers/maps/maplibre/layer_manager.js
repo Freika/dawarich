@@ -21,6 +21,7 @@ export class LayerManager {
     this.settings = settings
     this.api = api
     this.layers = {}
+    this.eventHandlersSetup = false
   }
 
   /**
@@ -30,7 +31,7 @@ export class LayerManager {
     performanceMonitor.mark('add-layers')
 
     // Layer order matters - layers added first render below layers added later
-    // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes -> visits -> places -> photos -> family -> points -> recent-point (top) -> fog (canvas overlay)
+    // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes (visual) -> visits -> places -> photos -> family -> points -> routes-hit (interaction) -> recent-point (top) -> fog (canvas overlay)
 
     await this._addScratchLayer(pointsGeoJSON)
     this._addHeatmapLayer(pointsGeoJSON)
@@ -49,6 +50,7 @@ export class LayerManager {
 
     this._addFamilyLayer()
     this._addPointsLayer(pointsGeoJSON)
+    this._addRoutesHitLayer()  // Add hit target layer after points for better interactivity
     this._addRecentPointLayer()
     this._addFogLayer(pointsGeoJSON)
 
@@ -57,8 +59,13 @@ export class LayerManager {
 
   /**
    * Setup event handlers for layer interactions
+   * Only sets up handlers once to prevent duplicates
    */
   setupLayerEventHandlers(handlers) {
+    if (this.eventHandlersSetup) {
+      return
+    }
+
     // Click handlers
     this.map.on('click', 'points', handlers.handlePointClick)
     this.map.on('click', 'visits', handlers.handleVisitClick)
@@ -69,10 +76,10 @@ export class LayerManager {
     this.map.on('click', 'areas-outline', handlers.handleAreaClick)
     this.map.on('click', 'areas-labels', handlers.handleAreaClick)
 
-    // Route handlers
-    this.map.on('click', 'routes', handlers.handleRouteClick)
-    this.map.on('mouseenter', 'routes', handlers.handleRouteHover)
-    this.map.on('mouseleave', 'routes', handlers.handleRouteMouseLeave)
+    // Route handlers - use routes-hit layer for better interactivity
+    this.map.on('click', 'routes-hit', handlers.handleRouteClick)
+    this.map.on('mouseenter', 'routes-hit', handlers.handleRouteHover)
+    this.map.on('mouseleave', 'routes-hit', handlers.handleRouteMouseLeave)
 
     // Cursor change on hover
     this.map.on('mouseenter', 'points', () => {
@@ -99,11 +106,11 @@ export class LayerManager {
     this.map.on('mouseleave', 'places', () => {
       this.map.getCanvas().style.cursor = ''
     })
-    // Route cursor handlers
-    this.map.on('mouseenter', 'routes', () => {
+    // Route cursor handlers - use routes-hit layer
+    this.map.on('mouseenter', 'routes-hit', () => {
       this.map.getCanvas().style.cursor = 'pointer'
     })
-    this.map.on('mouseleave', 'routes', () => {
+    this.map.on('mouseleave', 'routes-hit', () => {
       this.map.getCanvas().style.cursor = ''
     })
     // Areas hover handlers for all sub-layers
@@ -122,11 +129,13 @@ export class LayerManager {
 
     // Map-level click to deselect routes
     this.map.on('click', (e) => {
-      const routeFeatures = this.map.queryRenderedFeatures(e.point, { layers: ['routes'] })
+      const routeFeatures = this.map.queryRenderedFeatures(e.point, { layers: ['routes-hit'] })
       if (routeFeatures.length === 0) {
         handlers.clearRouteSelection()
       }
     })
+
+    this.eventHandlersSetup = true
   }
 
   /**
@@ -152,6 +161,7 @@ export class LayerManager {
    */
   clearLayerReferences() {
     this.layers = {}
+    this.eventHandlersSetup = false
   }
 
   // Private methods for individual layer management
@@ -214,6 +224,32 @@ export class LayerManager {
       this.layers.routesLayer.add(routesGeoJSON)
     } else {
       this.layers.routesLayer.update(routesGeoJSON)
+    }
+  }
+
+  _addRoutesHitLayer() {
+    // Add invisible hit target layer for routes after points layer
+    // This ensures route interactions work even when points are on top
+    if (!this.map.getLayer('routes-hit') && this.map.getSource('routes-source')) {
+      this.map.addLayer({
+        id: 'routes-hit',
+        type: 'line',
+        source: 'routes-source',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': 'transparent',
+          'line-width': 20,  // Much wider for easier clicking/hovering
+          'line-opacity': 0
+        }
+      })
+      // Match visibility with routes layer
+      const routesLayer = this.layers.routesLayer
+      if (routesLayer && !routesLayer.visible) {
+        this.map.setLayoutProperty('routes-hit', 'visibility', 'none')
+      }
     }
   }
 
