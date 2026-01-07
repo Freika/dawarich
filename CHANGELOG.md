@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.37.3] - Unreleased
+
+## Fixed
+
+- Routes are now being drawn the very same way on Map V2 as in Map V1. #2132 #2086
+
+## Changed
+
+- Map V2 points loading is significantly sped up.
+- Points size on Map V2 was reduced to prevent overlapping.
+
 # [0.37.2] - 2026-01-04
 
 ## Fixed
@@ -12,6 +23,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Time spent in a country and city is now calculated correctly for the year-end digest email. #2104
 - Updated Trix to fix a XSS vulnerability. #2102
 - Map v2 UI no longer blocks when Immich/Photoprism integration has a bad URL or is unreachable. Added 10-second timeout to photo API requests and improved error handling to prevent UI freezing during initial load. #2085
+
+## Added
 - In Map v2 settings, you can now enable map to be rendered as a globe.
 
 # [0.37.1] - 2025-12-30

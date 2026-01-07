@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS = {
   routeOpacity: 0.6,
   fogOfWarRadius: 100,
   fogOfWarThreshold: 1,
-  metersBetweenRoutes: 1000,
+  metersBetweenRoutes: 500,
   minutesBetweenRoutes: 60,
   pointsRenderingMode: 'raw',
   speedColoredRoutes: false,

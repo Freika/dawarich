@@ -9,6 +9,7 @@ class Cache::Clean
       delete_years_tracked_cache
       delete_points_geocoded_stats_cache
       delete_countries_cities_cache
+      delete_total_distance_cache
       Rails.logger.info('Cache cleaned')
     end
 
@@ -38,6 +39,12 @@ class Cache::Clean
       User.find_each do |user|
         Rails.cache.delete("dawarich/user_#{user.id}_countries_visited")
         Rails.cache.delete("dawarich/user_#{user.id}_cities_visited")
+      end
+    end
+
+    def delete_total_distance_cache
+      User.find_each do |user|
+        Rails.cache.delete("dawarich/user_#{user.id}_total_distance")
       end
     end
   end

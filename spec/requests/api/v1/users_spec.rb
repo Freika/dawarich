@@ -27,7 +27,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
         speed_colored_routes points_rendering_mode minutes_between_routes
         time_threshold_minutes merge_threshold_minutes live_map_enabled
         route_opacity immich_url photoprism_url visits_suggestions_enabled
-        speed_color_scale fog_of_war_threshold
+        speed_color_scale fog_of_war_threshold globe_projection
       ])
     end
   end

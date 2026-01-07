@@ -19,7 +19,8 @@ export class ApiClient {
       end_at,
       page: page.toString(),
       per_page: per_page.toString(),
-      slim: 'true'
+      slim: 'true',
+      order: 'asc'
     })
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
@@ -40,43 +41,83 @@ export class ApiClient {
   }
 
   /**
-   * Fetch all points for date range (handles pagination)
-   * @param {Object} options - { start_at, end_at, onProgress }
+   * Fetch all points for date range (handles pagination with parallel requests)
+   * @param {Object} options - { start_at, end_at, onProgress, maxConcurrent }
    * @returns {Promise<Array>} All points
    */
-  async fetchAllPoints({ start_at, end_at, onProgress = null }) {
-    const allPoints = []
-    let page = 1
-    let totalPages = 1
+  async fetchAllPoints({ start_at, end_at, onProgress = null, maxConcurrent = 3 }) {
+    // First fetch to get total pages
+    const firstPage = await this.fetchPoints({ start_at, end_at, page: 1, per_page: 1000 })
+    const totalPages = firstPage.totalPages
 
-    do {
-      const { points, currentPage, totalPages: total } =
-        await this.fetchPoints({ start_at, end_at, page, per_page: 1000 })
-
-      allPoints.push(...points)
-      totalPages = total
-      page++
-
+    // If only one page, return immediately
+    if (totalPages === 1) {
       if (onProgress) {
-        // Avoid division by zero - if no pages, progress is 100%
-        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
         onProgress({
-          loaded: allPoints.length,
-          currentPage,
+          loaded: firstPage.points.length,
+          currentPage: 1,
+          totalPages: 1,
+          progress: 1.0
+        })
+      }
+      return firstPage.points
+    }
+
+    // Initialize results array with first page
+    const pageResults = [{ page: 1, points: firstPage.points }]
+    let completedPages = 1
+
+    // Create array of remaining page numbers
+    const remainingPages = Array.from(
+      { length: totalPages - 1 },
+      (_, i) => i + 2
+    )
+
+    // Process pages in batches of maxConcurrent
+    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
+      const batch = remainingPages.slice(i, i + maxConcurrent)
+
+      // Fetch batch in parallel
+      const batchPromises = batch.map(page =>
+        this.fetchPoints({ start_at, end_at, page, per_page: 1000 })
+          .then(result => ({ page, points: result.points }))
+      )
+
+      const batchResults = await Promise.all(batchPromises)
+      pageResults.push(...batchResults)
+      completedPages += batchResults.length
+
+      // Call progress callback after each batch
+      if (onProgress) {
+        const progress = totalPages > 0 ? completedPages / totalPages : 1.0
+        onProgress({
+          loaded: pageResults.reduce((sum, r) => sum + r.points.length, 0),
+          currentPage: completedPages,
           totalPages,
           progress
         })
       }
-    } while (page <= totalPages)
+    }
 
-    return allPoints
+    // Sort by page number to ensure correct order
+    pageResults.sort((a, b) => a.page - b.page)
+
+    // Flatten into single array
+    return pageResults.flatMap(r => r.points)
   }
 
   /**
-   * Fetch visits for date range
+   * Fetch visits for date range (paginated)
+   * @param {Object} options - { start_at, end_at, page, per_page }
+   * @returns {Promise<Object>} { visits, currentPage, totalPages }
    */
-  async fetchVisits({ start_at, end_at }) {
-    const params = new URLSearchParams({ start_at, end_at })
+  async fetchVisitsPage({ start_at, end_at, page = 1, per_page = 500 }) {
+    const params = new URLSearchParams({
+      start_at,
+      end_at,
+      page: page.toString(),
+      per_page: per_page.toString()
+    })
 
     const response = await fetch(`${this.baseURL}/visits?${params}`, {
       headers: this.getHeaders()
@@ -86,20 +127,63 @@ export class ApiClient {
       throw new Error(`Failed to fetch visits: ${response.statusText}`)
     }
 
-    return response.json()
+    const visits = await response.json()
+
+    return {
+      visits,
+      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
+      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1')
+    }
   }
 
   /**
-   * Fetch places optionally filtered by tags
+   * Fetch all visits for date range (handles pagination)
+   * @param {Object} options - { start_at, end_at, onProgress }
+   * @returns {Promise<Array>} All visits
    */
-  async fetchPlaces({ tag_ids = [] } = {}) {
-    const params = new URLSearchParams()
+  async fetchVisits({ start_at, end_at, onProgress = null }) {
+    const allVisits = []
+    let page = 1
+    let totalPages = 1
+
+    do {
+      const { visits, currentPage, totalPages: total } =
+        await this.fetchVisitsPage({ start_at, end_at, page, per_page: 500 })
+
+      allVisits.push(...visits)
+      totalPages = total
+      page++
+
+      if (onProgress) {
+        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
+        onProgress({
+          loaded: allVisits.length,
+          currentPage,
+          totalPages,
+          progress
+        })
+      }
+    } while (page <= totalPages)
+
+    return allVisits
+  }
+
+  /**
+   * Fetch places (paginated)
+   * @param {Object} options - { tag_ids, page, per_page }
+   * @returns {Promise<Object>} { places, currentPage, totalPages }
+   */
+  async fetchPlacesPage({ tag_ids = [], page = 1, per_page = 500 } = {}) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      per_page: per_page.toString()
+    })
 
     if (tag_ids && tag_ids.length > 0) {
       tag_ids.forEach(id => params.append('tag_ids[]', id))
     }
 
-    const url = `${this.baseURL}/places${params.toString() ? '?' + params.toString() : ''}`
+    const url = `${this.baseURL}/places?${params.toString()}`
 
     const response = await fetch(url, {
       headers: this.getHeaders()
@@ -109,7 +193,45 @@ export class ApiClient {
       throw new Error(`Failed to fetch places: ${response.statusText}`)
     }
 
-    return response.json()
+    const places = await response.json()
+
+    return {
+      places,
+      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
+      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1')
+    }
+  }
+
+  /**
+   * Fetch all places optionally filtered by tags (handles pagination)
+   * @param {Object} options - { tag_ids, onProgress }
+   * @returns {Promise<Array>} All places
+   */
+  async fetchPlaces({ tag_ids = [], onProgress = null } = {}) {
+    const allPlaces = []
+    let page = 1
+    let totalPages = 1
+
+    do {
+      const { places, currentPage, totalPages: total } =
+        await this.fetchPlacesPage({ tag_ids, page, per_page: 500 })
+
+      allPlaces.push(...places)
+      totalPages = total
+      page++
+
+      if (onProgress) {
+        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
+        onProgress({
+          loaded: allPlaces.length,
+          currentPage,
+          totalPages,
+          progress
+        })
+      }
+    } while (page <= totalPages)
+
+    return allPlaces
   }
 
   /**
