@@ -59,3 +59,8 @@ rails_pulse_clean_up_job:
   cron: "0 1 * * *" # every day at 01:00
   class: "RailsPulse::CleanupJob"
   queue: default
+
+raw_data_archive_verification_job:
+  cron: "0 3 * * *" # every day at 03:00
+  class: "Points::RawData::VerifyJob"
+  queue: archival

@@ -199,4 +199,157 @@ RSpec.describe Points::RawData::Archiver do
       expect(result[:failed]).to eq(0)
     end
   end
+
+  describe 'count validation (P0 implementation)' do
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('true')
+    end
+
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+    let!(:test_points) do
+      create_list(:point, 5, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+    end
+
+    it 'validates compression count matches expected count' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      expect(archive.point_count).to eq(5)
+      expect(archive.metadata['expected_count']).to eq(5)
+      expect(archive.metadata['actual_count']).to eq(5)
+    end
+
+    it 'stores both expected and actual counts in metadata' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      expect(archive.metadata).to have_key('expected_count')
+      expect(archive.metadata).to have_key('actual_count')
+      expect(archive.metadata['expected_count']).to eq(archive.metadata['actual_count'])
+    end
+
+    it 'raises error when compression count mismatch occurs' do
+      # Create proper gzip compressed data with only 3 points instead of 5
+      io = StringIO.new
+      gz = Zlib::GzipWriter.new(io)
+      3.times do |i|
+        gz.puts({ id: i, raw_data: { test: 'data' } }.to_json)
+      end
+      gz.close
+      fake_compressed_data = io.string.force_encoding(Encoding::ASCII_8BIT)
+
+      # Mock ChunkCompressor to return mismatched count
+      fake_compressor = instance_double(Points::RawData::ChunkCompressor)
+      allow(Points::RawData::ChunkCompressor).to receive(:new).and_return(fake_compressor)
+      allow(fake_compressor).to receive(:compress).and_return(
+        { data: fake_compressed_data, count: 3 }  # Returning 3 instead of 5
+      )
+
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to raise_error(StandardError, /Archive count mismatch/)
+    end
+
+    it 'does not mark points as archived if count mismatch detected' do
+      # Create proper gzip compressed data with only 3 points instead of 5
+      io = StringIO.new
+      gz = Zlib::GzipWriter.new(io)
+      3.times do |i|
+        gz.puts({ id: i, raw_data: { test: 'data' } }.to_json)
+      end
+      gz.close
+      fake_compressed_data = io.string.force_encoding(Encoding::ASCII_8BIT)
+
+      # Mock ChunkCompressor to return mismatched count
+      fake_compressor = instance_double(Points::RawData::ChunkCompressor)
+      allow(Points::RawData::ChunkCompressor).to receive(:new).and_return(fake_compressor)
+      allow(fake_compressor).to receive(:compress).and_return(
+        { data: fake_compressed_data, count: 3 }
+      )
+
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to raise_error(StandardError)
+
+      # Verify points are NOT marked as archived
+      test_points.each(&:reload)
+      expect(test_points.none?(&:raw_data_archived)).to be true
+    end
+  end
+
+  describe 'immediate verification (P0 implementation)' do
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('true')
+    end
+
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+    let!(:test_points) do
+      create_list(:point, 3, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+    end
+
+    it 'runs immediate verification after archiving' do
+      # Spy on the verify_archive_immediately method
+      allow(archiver).to receive(:verify_archive_immediately).and_call_original
+
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      expect(archiver).to have_received(:verify_archive_immediately)
+    end
+
+    it 'rolls back archive if immediate verification fails' do
+      # Mock verification to fail
+      allow(archiver).to receive(:verify_archive_immediately).and_return(
+        { success: false, error: 'Test verification failure' }
+      )
+
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to raise_error(StandardError, /Archive verification failed/)
+
+      # Verify archive was destroyed
+      expect(Points::RawDataArchive.count).to eq(0)
+
+      # Verify points are NOT marked as archived
+      test_points.each(&:reload)
+      expect(test_points.none?(&:raw_data_archived)).to be true
+    end
+
+    it 'completes successfully when immediate verification passes' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      # Verify archive was created
+      expect(Points::RawDataArchive.count).to eq(1)
+
+      # Verify points ARE marked as archived
+      test_points.each(&:reload)
+      expect(test_points.all?(&:raw_data_archived)).to be true
+    end
+
+    it 'validates point IDs checksum during immediate verification' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      expect(archive.point_ids_checksum).to be_present
+
+      # Decompress and verify the archived point IDs match
+      compressed_content = archive.file.blob.download
+      io = StringIO.new(compressed_content)
+      gz = Zlib::GzipReader.new(io)
+      archived_point_ids = []
+
+      gz.each_line do |line|
+        data = JSON.parse(line)
+        archived_point_ids << data['id']
+      end
+      gz.close
+
+      expect(archived_point_ids.sort).to eq(test_points.map(&:id).sort)
+    end
+  end
 end

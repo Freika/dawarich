@@ -97,6 +97,15 @@ module Points
         log_archival_start(user_id, year, month, point_ids.count)
 
         archive = create_archive_chunk(user_id, year, month, points, point_ids)
+
+        # Immediate verification before marking points as archived
+        verification_result = verify_archive_immediately(archive, point_ids)
+        unless verification_result[:success]
+          Rails.logger.error("Immediate verification failed: #{verification_result[:error]}")
+          archive.destroy  # Cleanup failed archive
+          raise StandardError, "Archive verification failed: #{verification_result[:error]}"
+        end
+
         mark_points_as_archived(point_ids, archive.id)
         update_stats(point_ids.count)
         log_archival_success(archive)
@@ -144,8 +153,22 @@ module Points
                        .where(user_id: user_id, year: year, month: month)
                        .maximum(:chunk_number).to_i + 1
 
-        # Compress points data
-        compressed_data = Points::RawData::ChunkCompressor.new(points).compress
+        # Compress points data and get count
+        compression_result = Points::RawData::ChunkCompressor.new(points).compress
+        compressed_data = compression_result[:data]
+        actual_count = compression_result[:count]
+
+        # Validate count: critical data integrity check
+        expected_count = point_ids.count
+        if actual_count != expected_count
+          error_msg = "Archive count mismatch for user #{user_id} #{year}-#{format('%02d', month)}: " \
+                      "expected #{expected_count} points, but only #{actual_count} were compressed"
+          Rails.logger.error(error_msg)
+          ExceptionReporter.call(StandardError.new(error_msg), error_msg)
+          raise StandardError, error_msg
+        end
+
+        Rails.logger.info("✓ Compression validated: #{actual_count}/#{expected_count} points")
 
         # Create archive record
         archive = Points::RawDataArchive.create!(
@@ -153,13 +176,15 @@ module Points
           year: year,
           month: month,
           chunk_number: chunk_number,
-          point_count: point_ids.count,
+          point_count: actual_count,  # Use actual count, not assumed
           point_ids_checksum: calculate_checksum(point_ids),
           archived_at: Time.current,
           metadata: {
             format_version: 1,
             compression: 'gzip',
-            archived_by: 'Points::RawData::Archiver'
+            archived_by: 'Points::RawData::Archiver',
+            expected_count: expected_count,
+            actual_count: actual_count
           }
         )
 
@@ -178,6 +203,62 @@ module Points
 
       def calculate_checksum(point_ids)
         Digest::SHA256.hexdigest(point_ids.sort.join(','))
+      end
+
+      def verify_archive_immediately(archive, expected_point_ids)
+        # Lightweight verification immediately after archiving
+        # Ensures archive is valid before marking points as archived
+
+        # 1. Verify file is attached
+        unless archive.file.attached?
+          return { success: false, error: 'File not attached' }
+        end
+
+        # 2. Verify file can be downloaded
+        begin
+          compressed_content = archive.file.blob.download
+        rescue StandardError => e
+          return { success: false, error: "File download failed: #{e.message}" }
+        end
+
+        # 3. Verify file size is reasonable
+        if compressed_content.bytesize.zero?
+          return { success: false, error: 'File is empty' }
+        end
+
+        # 4. Verify file can be decompressed and parse JSONL
+        begin
+          io = StringIO.new(compressed_content)
+          gz = Zlib::GzipReader.new(io)
+          archived_point_ids = []
+
+          gz.each_line do |line|
+            data = JSON.parse(line)
+            archived_point_ids << data['id']
+          end
+
+          gz.close
+        rescue StandardError => e
+          return { success: false, error: "Decompression/parsing failed: #{e.message}" }
+        end
+
+        # 5. Verify point count matches
+        if archived_point_ids.count != expected_point_ids.count
+          return {
+            success: false,
+            error: "Point count mismatch in archive: expected #{expected_point_ids.count}, found #{archived_point_ids.count}"
+          }
+        end
+
+        # 6. Verify point IDs checksum matches
+        archived_checksum = calculate_checksum(archived_point_ids)
+        expected_checksum = calculate_checksum(expected_point_ids)
+        if archived_checksum != expected_checksum
+          return { success: false, error: 'Point IDs checksum mismatch in archive' }
+        end
+
+        Rails.logger.info("✓ Immediate verification passed for archive #{archive.id}")
+        { success: true }
       end
     end
   end
