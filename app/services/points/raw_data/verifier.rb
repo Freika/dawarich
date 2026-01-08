@@ -40,6 +40,7 @@ module Points
 
       def verify_archive(archive)
         Rails.logger.info("Verifying archive #{archive.id} (#{archive.month_display}, chunk #{archive.chunk_number})...")
+        start_time = Time.current
 
         verification_result = perform_verification(archive)
 
@@ -47,6 +48,16 @@ module Points
           archive.update!(verified_at: Time.current)
           @stats[:verified] += 1
           Rails.logger.info("✓ Archive #{archive.id} verified successfully")
+
+          # Report successful verification operation
+          Metrics::Archives::Operation.new(
+            operation: 'verify',
+            status: 'success',
+            user_id: archive.user_id
+          ).call
+
+          # Report verification duration
+          report_verification_metric(start_time, 'success')
         else
           @stats[:failed] += 1
           Rails.logger.error("✗ Archive #{archive.id} verification failed: #{verification_result[:error]}")
@@ -54,11 +65,32 @@ module Points
             StandardError.new(verification_result[:error]),
             "Archive verification failed for archive #{archive.id}"
           )
+
+          # Report failed verification operation
+          Metrics::Archives::Operation.new(
+            operation: 'verify',
+            status: 'failure',
+            user_id: archive.user_id
+          ).call
+
+          # Report verification duration with check name
+          check_name = extract_check_name_from_error(verification_result[:error])
+          report_verification_metric(start_time, 'failure', check_name)
         end
       rescue StandardError => e
         @stats[:failed] += 1
         ExceptionReporter.call(e, "Failed to verify archive #{archive.id}")
         Rails.logger.error("✗ Archive #{archive.id} verification error: #{e.message}")
+
+        # Report failed verification operation
+        Metrics::Archives::Operation.new(
+          operation: 'verify',
+          status: 'failure',
+          user_id: archive.user_id
+        ).call
+
+        # Report verification duration
+        report_verification_metric(start_time, 'failure', 'exception')
       end
 
       def perform_verification(archive)
@@ -193,6 +225,39 @@ module Points
 
       def calculate_checksum(point_ids)
         Digest::SHA256.hexdigest(point_ids.sort.join(','))
+      end
+
+      def report_verification_metric(start_time, status, check_name = nil)
+        duration = Time.current - start_time
+
+        Metrics::Archives::Verification.new(
+          duration_seconds: duration,
+          status: status,
+          check_name: check_name
+        ).call
+      end
+
+      def extract_check_name_from_error(error_message)
+        case error_message
+        when /File not attached/i
+          'file_not_attached'
+        when /File download failed/i
+          'download_failed'
+        when /File is empty/i
+          'empty_file'
+        when /MD5 checksum mismatch/i
+          'md5_checksum_mismatch'
+        when /Decompression\/parsing failed/i
+          'decompression_failed'
+        when /Point count mismatch/i
+          'count_mismatch'
+        when /Point IDs checksum mismatch/i
+          'checksum_mismatch'
+        when /Raw data mismatch/i
+          'raw_data_mismatch'
+        else
+          'unknown'
+        end
       end
     end
   end

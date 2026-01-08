@@ -79,6 +79,14 @@ module Points
         lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
           archive_month(user_id, year, month)
           @stats[:processed] += 1
+
+          # Report successful archive operation
+          Metrics::Archives::Operation.new(
+            operation: 'archive',
+            status: 'success',
+            user_id: user_id
+          ).call
+
           true
         end
 
@@ -87,6 +95,13 @@ module Points
         ExceptionReporter.call(e, "Failed to archive points for user #{user_id}, #{year}-#{month}")
 
         @stats[:failed] += 1
+
+        # Report failed archive operation
+        Metrics::Archives::Operation.new(
+          operation: 'archive',
+          status: 'failure',
+          user_id: user_id
+        ).call
       end
 
       def archive_month(user_id, year, month)
@@ -109,6 +124,12 @@ module Points
         mark_points_as_archived(point_ids, archive.id)
         update_stats(point_ids.count)
         log_archival_success(archive)
+
+        # Report points archived
+        Metrics::Archives::PointsArchived.new(
+          count: point_ids.count,
+          operation: 'added'
+        ).call
       end
 
       def find_archivable_points(user_id, year, month)
@@ -161,6 +182,15 @@ module Points
         # Validate count: critical data integrity check
         expected_count = point_ids.count
         if actual_count != expected_count
+          # Report count mismatch to metrics
+          Metrics::Archives::CountMismatch.new(
+            user_id: user_id,
+            year: year,
+            month: month,
+            expected: expected_count,
+            actual: actual_count
+          ).call
+
           error_msg = "Archive count mismatch for user #{user_id} #{year}-#{format('%02d', month)}: " \
                       "expected #{expected_count} points, but only #{actual_count} were compressed"
           Rails.logger.error(error_msg)
@@ -198,6 +228,21 @@ module Points
           key: "raw_data_archives/#{user_id}/#{year}/#{format('%02d', month)}/#{format('%03d', chunk_number)}.jsonl.gz"
         )
 
+        # Report archive size
+        if archive.file.attached?
+          Metrics::Archives::Size.new(
+            size_bytes: archive.file.blob.byte_size
+          ).call
+
+          # Report compression ratio (estimate original size from JSON)
+          # Rough estimate: each point as JSON ~100-200 bytes
+          estimated_original_size = actual_count * 150
+          Metrics::Archives::CompressionRatio.new(
+            original_size: estimated_original_size,
+            compressed_size: archive.file.blob.byte_size
+          ).call
+        end
+
         archive
       end
 
@@ -208,9 +253,11 @@ module Points
       def verify_archive_immediately(archive, expected_point_ids)
         # Lightweight verification immediately after archiving
         # Ensures archive is valid before marking points as archived
+        start_time = Time.current
 
         # 1. Verify file is attached
         unless archive.file.attached?
+          report_verification_metric(start_time, 'failure', 'file_not_attached')
           return { success: false, error: 'File not attached' }
         end
 
@@ -218,11 +265,13 @@ module Points
         begin
           compressed_content = archive.file.blob.download
         rescue StandardError => e
+          report_verification_metric(start_time, 'failure', 'download_failed')
           return { success: false, error: "File download failed: #{e.message}" }
         end
 
         # 3. Verify file size is reasonable
         if compressed_content.bytesize.zero?
+          report_verification_metric(start_time, 'failure', 'empty_file')
           return { success: false, error: 'File is empty' }
         end
 
@@ -239,11 +288,13 @@ module Points
 
           gz.close
         rescue StandardError => e
+          report_verification_metric(start_time, 'failure', 'decompression_failed')
           return { success: false, error: "Decompression/parsing failed: #{e.message}" }
         end
 
         # 5. Verify point count matches
         if archived_point_ids.count != expected_point_ids.count
+          report_verification_metric(start_time, 'failure', 'count_mismatch')
           return {
             success: false,
             error: "Point count mismatch in archive: expected #{expected_point_ids.count}, found #{archived_point_ids.count}"
@@ -254,11 +305,23 @@ module Points
         archived_checksum = calculate_checksum(archived_point_ids)
         expected_checksum = calculate_checksum(expected_point_ids)
         if archived_checksum != expected_checksum
+          report_verification_metric(start_time, 'failure', 'checksum_mismatch')
           return { success: false, error: 'Point IDs checksum mismatch in archive' }
         end
 
         Rails.logger.info("✓ Immediate verification passed for archive #{archive.id}")
+        report_verification_metric(start_time, 'success')
         { success: true }
+      end
+
+      def report_verification_metric(start_time, status, check_name = nil)
+        duration = Time.current - start_time
+
+        Metrics::Archives::Verification.new(
+          duration_seconds: duration,
+          status: status,
+          check_name: check_name
+        ).call
       end
     end
   end
