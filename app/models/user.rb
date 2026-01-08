@@ -3,6 +3,7 @@
 class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   include UserFamily
   include Omniauthable
+  include SoftDeletable
 
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
@@ -36,32 +37,8 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   attribute :points_count, :integer, default: 0
 
   scope :active_or_trial, -> { where(status: %i[active trial]) }
-  scope :active_accounts, -> { where(deleted_at: nil) }
-  scope :deleted_accounts, -> { where.not(deleted_at: nil) }
 
   enum :status, { inactive: 0, active: 1, trial: 2 }
-
-  # Soft-delete methods
-  def deleted?
-    deleted_at.present?
-  end
-
-  def mark_as_deleted!
-    update!(deleted_at: Time.current)
-  end
-
-  def destroy
-    mark_as_deleted!
-  end
-
-  # Devise authentication overrides
-  def active_for_authentication?
-    super && !deleted?
-  end
-
-  def inactive_message
-    deleted? ? :deleted : super
-  end
 
   def safe_settings
     Users::SafeSettings.new(settings)

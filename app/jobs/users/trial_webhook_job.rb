@@ -6,6 +6,9 @@ class Users::TrialWebhookJob < ApplicationJob
   def perform(user_id)
     user = User.find(user_id)
 
+    # Skip webhook for soft-deleted users
+    return if user.deleted?
+
     payload = {
       user_id: user.id,
       email: user.email,

@@ -48,7 +48,7 @@ class Settings::UsersController < ApplicationController
                   notice: 'User deletion has been initiated. The account will be fully removed shortly.'
     rescue ActiveRecord::RecordInvalid
       redirect_to settings_users_url,
-                  alert: 'Cannot delete account while being a family owner with other members.',
+                  alert: 'Cannot delete account while being owner of a family which has other members.',
                   status: :unprocessable_content
     end
   end

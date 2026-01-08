@@ -3,15 +3,12 @@
 class Users::DestroyJob < ApplicationJob
   queue_as :default
 
-  sidekiq_options retry: false  # No retry for destructive operations
+  sidekiq_options retry: false
 
   def perform(user_id)
     user = User.deleted_accounts.find_by(id: user_id)
 
-    unless user
-      Rails.logger.warn "User #{user_id} not found or not marked for deletion, skipping"
-      return
-    end
+    return unless user
 
     Rails.logger.info "Starting hard deletion for user #{user.id} (#{user.email})"
 
@@ -21,8 +18,6 @@ class Users::DestroyJob < ApplicationJob
   rescue ActiveRecord::RecordNotFound
     Rails.logger.warn "User #{user_id} not found, may have already been deleted"
   rescue StandardError => e
-    Rails.logger.error "Failed to delete user #{user_id}: #{e.message}"
     ExceptionReporter.call(e, "User deletion failed for user_id #{user_id}")
-    # Don't raise - leave user in deleted state for manual cleanup
   end
 end

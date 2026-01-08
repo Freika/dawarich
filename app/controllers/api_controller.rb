@@ -29,11 +29,13 @@ class ApiController < ApplicationController
   def authenticate_active_api_user!
     if current_api_user.nil?
       render json: { error: 'User account is not active or has been deleted' }, status: :unauthorized
+
       return false
     end
 
-    unless current_api_user.active_until&.future?
+    if current_api_user.active_until&.past?
       render json: { error: 'User subscription is not active' }, status: :unauthorized
+
       return false
     end
 

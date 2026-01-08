@@ -74,10 +74,10 @@ class ApplicationController < ActionController::Base
   private
 
   def sign_out_deleted_users
-    if current_user&.deleted?
-      sign_out current_user
-      redirect_to root_path, alert: 'Your account has been deleted.'
-    end
+    return unless current_user&.deleted?
+
+    sign_out current_user
+    redirect_to root_path, alert: 'Your account has been deleted.'
   end
 
   def set_self_hosted_status

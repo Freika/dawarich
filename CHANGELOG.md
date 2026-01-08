@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map V2 points loading is significantly sped up.
 - Points size on Map V2 was reduced to prevent overlapping.
+- User deletion now being done in the background to prevent request timeouts for users with large amount of data.
 
 # [0.37.2] - 2026-01-04
 

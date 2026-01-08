@@ -13,9 +13,27 @@ class Users::Destroy
 
     cancel_scheduled_jobs
 
-    # Hard delete with transaction - all associations cascade via dependent: :destroy
     ActiveRecord::Base.transaction do
-      user.destroy!
+      # Delete associated records first (dependent: :destroy associations)
+      user.points.delete_all
+      user.imports.delete_all
+      user.stats.delete_all
+      user.exports.delete_all
+      user.notifications.delete_all
+      user.areas.delete_all
+      user.visits.delete_all
+      user.places.delete_all
+      user.tags.delete_all
+      user.trips.delete_all
+      user.tracks.delete_all
+      user.raw_data_archives.delete_all
+      user.digests.delete_all
+      user.sent_family_invitations.delete_all if user.respond_to?(:sent_family_invitations)
+      user.family_membership&.delete
+      user.created_family&.delete
+
+      # Hard delete the user (bypasses soft-delete, skips callbacks)
+      user.delete
     end
 
     Rails.logger.info "User #{user_id} (#{user_email}) and all associated data deleted"
