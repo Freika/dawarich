@@ -10,6 +10,7 @@ module UserFamily
     has_many :sent_family_invitations, class_name: 'Family::Invitation', foreign_key: 'invited_by_id',
              inverse_of: :invited_by, dependent: :destroy
 
+    validate :cannot_delete_with_family_members, if: :deleted_at_changed?
     before_destroy :check_family_ownership
   end
 
@@ -106,6 +107,13 @@ module UserFamily
   end
 
   private
+
+  def cannot_delete_with_family_members
+    return unless deleted_at.present? && deleted_at_changed?
+    return if can_delete_account?
+
+    errors.add(:base, 'Cannot delete account while being a family owner with other members')
+  end
 
   def check_family_ownership
     return if can_delete_account?

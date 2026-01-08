@@ -26,6 +26,25 @@ class Users::RegistrationsController < Devise::RegistrationsController
     end
   end
 
+  def destroy
+    begin
+      resource.mark_as_deleted!
+
+      # Sign out immediately
+      Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
+
+      # Enqueue background job
+      Users::DestroyJob.perform_later(resource.id)
+
+      set_flash_message! :notice, :destroyed
+      yield resource if block_given?
+      respond_with_navigational(resource) { redirect_to after_sign_out_path_for(resource_name) }
+    rescue ActiveRecord::RecordInvalid
+      set_flash_message! :alert, :cannot_delete
+      redirect_to edit_user_registration_path, status: :unprocessable_content
+    end
+  end
+
   protected
 
   def after_sign_up_path_for(resource)

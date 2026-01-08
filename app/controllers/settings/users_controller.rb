@@ -40,10 +40,16 @@ class Settings::UsersController < ApplicationController
   def destroy
     @user = User.find(params[:id])
 
-    if @user.destroy
-      redirect_to settings_url, notice: 'User was successfully deleted.'
-    else
-      redirect_to settings_url, notice: 'User could not be deleted.', status: :unprocessable_content
+    begin
+      @user.mark_as_deleted!
+      Users::DestroyJob.perform_later(@user.id)
+
+      redirect_to settings_users_url,
+                  notice: 'User deletion has been initiated. The account will be fully removed shortly.'
+    rescue ActiveRecord::RecordInvalid
+      redirect_to settings_users_url,
+                  alert: 'Cannot delete account while being a family owner with other members.',
+                  status: :unprocessable_content
     end
   end
 

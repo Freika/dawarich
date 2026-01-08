@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
+  before_action :sign_out_deleted_users
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   protected
@@ -71,6 +72,13 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def sign_out_deleted_users
+    if current_user&.deleted?
+      sign_out current_user
+      redirect_to root_path, alert: 'Your account has been deleted.'
+    end
+  end
 
   def set_self_hosted_status
     @self_hosted = DawarichSettings.self_hosted?
