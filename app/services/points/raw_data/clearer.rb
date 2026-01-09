@@ -74,9 +74,27 @@ module Points
         cleared_count = clear_points_in_batches(point_ids)
         @stats[:cleared] += cleared_count
         Rails.logger.info("✓ Cleared #{cleared_count} points for archive #{archive.id}")
+
+        # Report successful clear operation
+        Metrics::Archives::Operation.new(
+          operation: 'clear',
+          status: 'success'
+        ).call
+
+        # Report points removed (cleared from database)
+        Metrics::Archives::PointsArchived.new(
+          count: cleared_count,
+          operation: 'removed'
+        ).call
       rescue StandardError => e
         ExceptionReporter.call(e, "Failed to clear points for archive #{archive.id}")
         Rails.logger.error("✗ Failed to clear archive #{archive.id}: #{e.message}")
+
+        # Report failed clear operation
+        Metrics::Archives::Operation.new(
+          operation: 'clear',
+          status: 'failure'
+        ).call
       end
 
       def clear_points_in_batches(point_ids)
