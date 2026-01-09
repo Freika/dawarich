@@ -3,11 +3,9 @@
 class Metrics::Archives::Operation
   OPERATIONS = %w[archive verify clear restore].freeze
 
-  def initialize(operation:, status:, user_id: nil, points_count: 0)
+  def initialize(operation:, status:)
     @operation = operation
-    @status = status  # 'success' or 'failure'
-    @user_id = user_id
-    @points_count = points_count
+    @status = status # 'success' or 'failure'
   end
 
   def call

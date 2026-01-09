@@ -52,8 +52,7 @@ module Points
           # Report successful verification operation
           Metrics::Archives::Operation.new(
             operation: 'verify',
-            status: 'success',
-            user_id: archive.user_id
+            status: 'success'
           ).call
 
           # Report verification duration
@@ -69,8 +68,7 @@ module Points
           # Report failed verification operation
           Metrics::Archives::Operation.new(
             operation: 'verify',
-            status: 'failure',
-            user_id: archive.user_id
+            status: 'failure'
           ).call
 
           # Report verification duration with check name
@@ -85,8 +83,7 @@ module Points
         # Report failed verification operation
         Metrics::Archives::Operation.new(
           operation: 'verify',
-          status: 'failure',
-          user_id: archive.user_id
+          status: 'failure'
         ).call
 
         # Report verification duration

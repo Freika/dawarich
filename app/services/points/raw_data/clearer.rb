@@ -78,9 +78,7 @@ module Points
         # Report successful clear operation
         Metrics::Archives::Operation.new(
           operation: 'clear',
-          status: 'success',
-          user_id: archive.user_id,
-          points_count: cleared_count
+          status: 'success'
         ).call
 
         # Report points removed (cleared from database)
@@ -95,8 +93,7 @@ module Points
         # Report failed clear operation
         Metrics::Archives::Operation.new(
           operation: 'clear',
-          status: 'failure',
-          user_id: archive.user_id
+          status: 'failure'
         ).call
       end
 

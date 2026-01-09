@@ -21,9 +21,7 @@ module Points
           # Report successful restore operation
           Metrics::Archives::Operation.new(
             operation: 'restore',
-            status: 'success',
-            user_id: user_id,
-            points_count: total_points
+            status: 'success'
           ).call
 
           # Report points restored (removed from archived state)
@@ -35,8 +33,7 @@ module Points
           # Report failed restore operation
           Metrics::Archives::Operation.new(
             operation: 'restore',
-            status: 'failure',
-            user_id: user_id
+            status: 'failure'
           ).call
 
           raise

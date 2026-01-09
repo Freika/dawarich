@@ -26,13 +26,10 @@ module Points
       end
 
       def archive_specific_month(user_id, year, month)
-        month_data = {
-          'user_id' => user_id,
-          'year' => year,
-          'month' => month
-        }
-
-        process_month(month_data)
+        # Direct call without error handling - allows errors to propagate
+        # This is intended for use in tests and manual operations where
+        # we want to know immediately if something went wrong
+        archive_month(user_id, year, month)
       end
 
       private
@@ -83,8 +80,7 @@ module Points
           # Report successful archive operation
           Metrics::Archives::Operation.new(
             operation: 'archive',
-            status: 'success',
-            user_id: user_id
+            status: 'success'
           ).call
 
           true
@@ -99,8 +95,7 @@ module Points
         # Report failed archive operation
         Metrics::Archives::Operation.new(
           operation: 'archive',
-          status: 'failure',
-          user_id: user_id
+          status: 'failure'
         ).call
       end
 
@@ -117,7 +112,7 @@ module Points
         verification_result = verify_archive_immediately(archive, point_ids)
         unless verification_result[:success]
           Rails.logger.error("Immediate verification failed: #{verification_result[:error]}")
-          archive.destroy  # Cleanup failed archive
+          archive.destroy # Cleanup failed archive
           raise StandardError, "Archive verification failed: #{verification_result[:error]}"
         end
 
@@ -206,7 +201,7 @@ module Points
           year: year,
           month: month,
           chunk_number: chunk_number,
-          point_count: actual_count,  # Use actual count, not assumed
+          point_count: actual_count, # Use actual count, not assumed
           point_ids_checksum: calculate_checksum(point_ids),
           archived_at: Time.current,
           metadata: {

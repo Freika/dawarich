@@ -5,9 +5,8 @@ require 'prometheus_exporter/client'
 
 RSpec.describe Metrics::Archives::Operation do
   describe '#call' do
-    subject(:operation) { described_class.new(operation: operation_type, status: status, user_id: user_id).call }
+    subject(:operation) { described_class.new(operation: operation_type, status: status).call }
 
-    let(:user_id) { 123 }
     let(:operation_type) { 'archive' }
     let(:status) { 'success' }
     let(:prometheus_client) { instance_double(PrometheusExporter::Client) }
