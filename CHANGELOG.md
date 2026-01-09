@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixed
 
 - Routes are now being drawn the very same way on Map V2 as in Map V1. #2132 #2086
+- RailsPulse performance monitoring is now disabled for self-hosted instances. It fixes poor performance on Synology. #2139
 
 ## Changed
 
