@@ -17,6 +17,10 @@ class Users::DestroyJob < ApplicationJob
     Rails.logger.info "Successfully deleted user #{user_id}"
   rescue ActiveRecord::RecordNotFound
     Rails.logger.warn "User #{user_id} not found, may have already been deleted"
+  rescue ActiveRecord::RecordInvalid => e
+    # User cannot be deleted (e.g., owns a family with members)
+    Rails.logger.error "User deletion blocked for user_id #{user_id}: #{e.message}"
+    ExceptionReporter.call(e, "User deletion blocked for user_id #{user_id}")
   rescue StandardError => e
     ExceptionReporter.call(e, "User deletion failed for user_id #{user_id}")
   end
