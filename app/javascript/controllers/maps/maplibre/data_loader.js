@@ -111,7 +111,6 @@ export class DataLoader {
         start_at: startDate,
         end_at: endDate
       })
-      console.log('[Tracks] Fetched tracks:', data.tracksGeoJSON.features.length, 'tracks')
     } catch (error) {
       console.warn('[Tracks] Failed to fetch tracks (non-blocking):', error.message)
       data.tracksGeoJSON = { type: 'FeatureCollection', features: [] }
