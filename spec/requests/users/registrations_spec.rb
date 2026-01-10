@@ -417,6 +417,113 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
   end
 
+  describe 'Account Deletion' do
+    let(:user) { create(:user, password: 'password123') }
+
+    before { sign_in user }
+
+    context 'when user deletes their own account' do
+      it 'soft deletes the user' do
+        expect {
+          delete user_registration_path
+        }.not_to change(User, :count)
+
+        expect(user.reload.deleted?).to be true
+      end
+
+      it 'enqueues a background deletion job' do
+        expect {
+          delete user_registration_path
+        }.to have_enqueued_job(Users::DestroyJob).with(user.id)
+      end
+
+      it 'signs out the user' do
+        delete user_registration_path
+
+        expect(controller.current_user).to be_nil
+      end
+
+      it 'redirects with success message' do
+        delete user_registration_path
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account has been scheduled for deletion. Goodbye!')
+      end
+
+      it 'immediately marks user as deleted' do
+        delete user_registration_path
+
+        expect(user.reload.deleted_at).to be_present
+      end
+    end
+
+    context 'when user is a family owner with members' do
+      let(:family) { create(:family, creator: user) }
+      let(:member) { create(:user) }
+
+      before do
+        create(:family_membership, user: user, family: family, role: :owner)
+        create(:family_membership, user: member, family: family, role: :member)
+      end
+
+      it 'does not delete the account' do
+        expect {
+          delete user_registration_path
+        }.not_to change { user.reload.deleted_at }
+      end
+
+      it 'redirects with error message' do
+        delete user_registration_path
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response).to redirect_to(edit_user_registration_path)
+        expect(flash[:alert]).to eq('Cannot delete your account while you own a family with other members.')
+      end
+
+      it 'does not sign out the user' do
+        delete user_registration_path
+
+        expect(controller.current_user).to eq(user)
+      end
+
+      it 'does not enqueue deletion job' do
+        expect {
+          delete user_registration_path
+        }.not_to have_enqueued_job(Users::DestroyJob)
+      end
+    end
+
+    context 'concurrent deletion attempts' do
+      it 'handles multiple deletion requests gracefully' do
+        # First deletion
+        delete user_registration_path
+        expect(user.reload.deleted?).to be true
+
+        # User is now signed out, try to delete again (should be unauthorized)
+        delete user_registration_path
+
+        # Should redirect to sign in
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+
+    context 'when user can delete (family owner with no other members)' do
+      let(:family) { create(:family, creator: user) }
+
+      before do
+        create(:family_membership, user: user, family: family, role: :owner)
+      end
+
+      it 'allows deletion' do
+        expect {
+          delete user_registration_path
+        }.not_to change(User, :count)
+
+        expect(user.reload.deleted?).to be true
+      end
+    end
+  end
+
   describe 'UTM Parameter Tracking' do
     let(:utm_params) do
       {

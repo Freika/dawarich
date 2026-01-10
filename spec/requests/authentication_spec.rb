@@ -160,6 +160,72 @@ RSpec.describe 'Authentication', type: :request do
     end
   end
 
+  describe 'Deleted User Authentication' do
+    context 'when user is soft-deleted' do
+      before do
+        user.mark_as_deleted!
+      end
+
+      it 'prevents sign in for deleted users' do
+        post user_session_path, params: {
+          user: { email: user.email, password: 'password123' }
+        }
+
+        expect(response).not_to be_redirect
+        expect(flash[:alert]).to include('deleted')
+      end
+
+      it 'signs out already signed-in deleted users' do
+        # Sign in first (before deletion)
+        user.update!(deleted_at: nil)
+        sign_in user
+
+        # Mark as deleted
+        user.mark_as_deleted!
+
+        # Try to access a protected page
+        get map_path
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('Your account has been deleted.')
+      end
+
+      it 'prevents API access for deleted users' do
+        get api_v1_points_url(api_key: user.api_key)
+
+        expect(response).to have_http_status(:unauthorized)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('User account is not active or has been deleted')
+      end
+    end
+
+    context 'when user is hard-deleted' do
+      it 'prevents sign in for non-existent users' do
+        user_email = user.email
+        user.delete
+
+        post user_session_path, params: {
+          user: { email: user_email, password: 'password123' }
+        }
+
+        expect(response).not_to be_redirect
+      end
+
+      it 'prevents API access for hard-deleted users' do
+        api_key = user.api_key
+        user.delete
+
+        get api_v1_points_url(api_key: api_key)
+
+        expect(response).to have_http_status(:unauthorized)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('User account is not active or has been deleted')
+      end
+    end
+  end
+
   describe 'Family Invitation with Authentication' do
     let(:family) { create(:family, creator: user) }
     let!(:membership) { create(:family_membership, user: user, family: family, role: :owner) }

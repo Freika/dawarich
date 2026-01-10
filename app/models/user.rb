@@ -3,6 +3,7 @@
 class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   include UserFamily
   include Omniauthable
+  include SoftDeletable
 
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
