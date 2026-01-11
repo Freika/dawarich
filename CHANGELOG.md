@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Map V2 points loading is significantly sped up.
 - Points size on Map V2 was reduced to prevent overlapping.
+- Points sent from Owntracks and Overland are now being created synchronously to instantly reflect success or failure of point creation.
 
 # [0.37.2] - 2026-01-04
 
