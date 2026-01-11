@@ -5,7 +5,7 @@ class Api::V1::Owntracks::PointsController < ApiController
   before_action :validate_points_limit, only: %i[create]
 
   def create
-    Owntracks::PointCreatingJob.perform_later(point_params, current_api_user.id)
+    OwnTracks::PointCreator.new(point_params, current_api_user.id).call
 
     render json: {}, status: :ok
   end
