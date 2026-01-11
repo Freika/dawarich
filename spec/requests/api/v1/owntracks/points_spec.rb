@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Api::V1::OwnTracks::Points', type: :request do
+RSpec.describe 'Api::V1::Owntracks::Points', type: :request do
   describe 'POST /api/v1/owntracks/points' do
     let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
     let(:json) { OwnTracks::RecParser.new(File.read(file_path)).call }
