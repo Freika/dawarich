@@ -26,10 +26,10 @@ RSpec.describe 'Api::V1::Overland::Batches', type: :request do
         expect(response).to have_http_status(:created)
       end
 
-      it 'enqueues a job' do
+      it 'creates points immediately' do
         expect do
           post "/api/v1/overland/batches?api_key=#{user.api_key}", params: params
-        end.to have_enqueued_job(Overland::BatchCreatingJob)
+        end.to change(Point, :count).by(1)
       end
 
       context 'when user is inactive' do

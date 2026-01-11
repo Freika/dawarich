@@ -4,32 +4,31 @@ require 'rails_helper'
 
 RSpec.describe 'Api::V1::Owntracks::Points', type: :request do
   describe 'POST /api/v1/owntracks/points' do
-    context 'with valid params' do
-      let(:params) do
-        { lat: 1.0, lon: 1.0, tid: 'test', tst: Time.current.to_i, topic: 'iPhone 12 pro' }
+    let(:file_path) { 'spec/fixtures/files/owntracks/2024-03.rec' }
+    let(:json) { OwnTracks::RecParser.new(File.read(file_path)).call }
+    let(:point_params) { json.first }
+
+    context 'with invalid api key' do
+      it 'returns http unauthorized' do
+        post '/api/v1/owntracks/points', params: point_params
+
+        expect(response).to have_http_status(:unauthorized)
       end
+    end
+
+    context 'with valid api key' do
       let(:user) { create(:user) }
 
-      context 'with invalid api key' do
-        it 'returns http unauthorized' do
-          post api_v1_owntracks_points_path, params: params
+      it 'returns ok' do
+        post "/api/v1/owntracks/points?api_key=#{user.api_key}", params: point_params
 
-          expect(response).to have_http_status(:unauthorized)
-        end
+        expect(response).to have_http_status(:ok)
       end
 
-      context 'with valid api key' do
-        it 'returns http success' do
-          post api_v1_owntracks_points_path(api_key: user.api_key), params: params
-
-          expect(response).to have_http_status(:success)
-        end
-
-        it 'enqueues a job' do
-          expect do
-            post api_v1_owntracks_points_path(api_key: user.api_key), params: params
-          end.to have_enqueued_job(Owntracks::PointCreatingJob)
-        end
+      it 'creates a point immediately' do
+        expect do
+          post "/api/v1/owntracks/points?api_key=#{user.api_key}", params: point_params
+        end.to change(Point, :count).by(1)
       end
 
       context 'when user is inactive' do
@@ -38,7 +37,7 @@ RSpec.describe 'Api::V1::Owntracks::Points', type: :request do
         end
 
         it 'returns http unauthorized' do
-          post api_v1_owntracks_points_path(api_key: user.api_key), params: params
+          post "/api/v1/owntracks/points?api_key=#{user.api_key}", params: point_params
 
           expect(response).to have_http_status(:unauthorized)
         end

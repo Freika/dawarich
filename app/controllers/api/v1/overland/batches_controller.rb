@@ -5,7 +5,7 @@ class Api::V1::Overland::BatchesController < ApiController
   before_action :validate_points_limit, only: %i[create]
 
   def create
-    Overland::BatchCreatingJob.perform_later(batch_params, current_api_user.id)
+    Overland::PointsCreator.new(batch_params, current_api_user.id).call
 
     render json: { result: 'ok' }, status: :created
   end
