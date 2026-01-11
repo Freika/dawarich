@@ -131,6 +131,13 @@ export class RouteSegmenter {
     const coordinates = this.unwrapCoordinates(segment)
     const totalDistance = this.calculateSegmentDistance(segment)
 
+    const startTime = segment[0].timestamp
+    const endTime = segment[segment.length - 1].timestamp
+
+    // Generate a stable, unique route ID based on start/end times
+    // This ensures the same route always has the same ID across re-renders
+    const routeId = `route-${startTime}-${endTime}`
+
     return {
       type: 'Feature',
       geometry: {
@@ -138,9 +145,10 @@ export class RouteSegmenter {
         coordinates
       },
       properties: {
+        id: routeId,
         pointCount: segment.length,
-        startTime: segment[0].timestamp,
-        endTime: segment[segment.length - 1].timestamp,
+        startTime: startTime,
+        endTime: endTime,
         distance: totalDistance
       }
     }

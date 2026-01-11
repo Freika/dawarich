@@ -220,6 +220,17 @@ export class EventHandlers {
     if (!sourceData || !sourceData.features) return null
 
     // Find the matching feature by properties
+    // First try to match by unique ID (most reliable)
+    if (properties.id) {
+      const featureById = sourceData.features.find(f => f.properties.id === properties.id)
+      if (featureById) return featureById
+    }
+    if (properties.routeId) {
+      const featureByRouteId = sourceData.features.find(f => f.properties.routeId === properties.routeId)
+      if (featureByRouteId) return featureByRouteId
+    }
+
+    // Fall back to matching by start/end times and point count
     return sourceData.features.find(feature => {
       const props = feature.properties
       return props.startTime === properties.startTime &&
@@ -234,10 +245,18 @@ export class EventHandlers {
   _areFeaturesSame(feature1, feature2) {
     if (!feature1 || !feature2) return false
 
-    // Compare by start/end times and point count (unique enough for routes)
     const props1 = feature1.properties
     const props2 = feature2.properties
 
+    // First check for unique route identifier (most reliable)
+    if (props1.id && props2.id) {
+      return props1.id === props2.id
+    }
+    if (props1.routeId && props2.routeId) {
+      return props1.routeId === props2.routeId
+    }
+
+    // Fall back to comparing start/end times and point count
     return props1.startTime === props2.startTime &&
            props1.endTime === props2.endTime &&
            props1.pointCount === props2.pointCount
