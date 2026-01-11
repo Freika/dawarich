@@ -72,7 +72,12 @@ namespace :demo do
     created_areas = create_areas(user, 10)
     puts "✅ Created #{created_areas} areas"
 
-    # 6. Create family with members
+    # 6. Create tracks
+    puts "\n🛤️  Creating 20 tracks..."
+    created_tracks = create_tracks(user, 20)
+    puts "✅ Created #{created_tracks} tracks"
+
+    # 7. Create family with members
     puts "\n👨‍👩‍👧‍👦 Creating demo family..."
     family_members = create_family_with_members(user)
     puts "✅ Created family with #{family_members.count} members"
@@ -87,6 +92,7 @@ namespace :demo do
     puts "   Suggested Visits: #{user.visits.suggested.count}"
     puts "   Confirmed Visits: #{user.visits.confirmed.count}"
     puts "   Areas: #{user.areas.count}"
+    puts "   Tracks: #{user.tracks.count}"
     puts "   Family Members: #{family_members.count}"
     puts "\n🔐 Login credentials:"
     puts '   Email: demo@dawarich.app'
@@ -320,5 +326,106 @@ namespace :demo do
     end
 
     family_members
+  end
+
+  def create_tracks(user, count)
+    # Get points that aren't already assigned to tracks
+    available_points = Point.where(user_id: user.id, track_id: nil)
+                            .order(:timestamp)
+
+    if available_points.count < 10
+      puts "   ⚠️  Not enough untracked points to create tracks"
+      return 0
+    end
+
+    created_count = 0
+    points_per_track = [available_points.count / count, 10].max
+
+    count.times do |index|
+      # Get a segment of consecutive points
+      offset = index * points_per_track
+      track_points = available_points.offset(offset).limit(points_per_track).to_a
+
+      break if track_points.length < 2
+
+      # Sort by timestamp to ensure proper ordering
+      track_points = track_points.sort_by(&:timestamp)
+
+      # Build LineString from points
+      coordinates = track_points.map { |p| [p.lon, p.lat] }
+      linestring_wkt = "LINESTRING(#{coordinates.map { |lon, lat| "#{lon} #{lat}" }.join(', ')})"
+
+      # Calculate track metadata
+      start_at = Time.zone.at(track_points.first.timestamp)
+      end_at = Time.zone.at(track_points.last.timestamp)
+      duration = (end_at - start_at).to_i
+
+      # Calculate total distance
+      total_distance = 0
+      track_points.each_cons(2) do |p1, p2|
+        total_distance += haversine_distance(p1.lat, p1.lon, p2.lat, p2.lon)
+      end
+
+      # Calculate average speed (m/s)
+      avg_speed = duration > 0 ? (total_distance / duration.to_f) : 0
+
+      # Calculate elevation data
+      elevations = track_points.map(&:altitude).compact
+      elevation_gain = 0
+      elevation_loss = 0
+      elevation_max = elevations.any? ? elevations.max : 0
+      elevation_min = elevations.any? ? elevations.min : 0
+
+      if elevations.length > 1
+        elevations.each_cons(2) do |alt1, alt2|
+          diff = alt2 - alt1
+          if diff > 0
+            elevation_gain += diff
+          else
+            elevation_loss += diff.abs
+          end
+        end
+      end
+
+      # Create the track
+      track = user.tracks.create!(
+        start_at: start_at,
+        end_at: end_at,
+        distance: total_distance,
+        avg_speed: avg_speed,
+        duration: duration,
+        elevation_gain: elevation_gain,
+        elevation_loss: elevation_loss,
+        elevation_max: elevation_max,
+        elevation_min: elevation_min,
+        original_path: linestring_wkt
+      )
+
+      # Associate points with the track
+      track_points.each { |p| p.update_column(:track_id, track.id) }
+
+      created_count += 1
+      print '.' if (index + 1) % 5 == 0
+    end
+
+    puts '' if created_count > 0
+    created_count
+  end
+
+  def haversine_distance(lat1, lon1, lat2, lon2)
+    # Haversine formula to calculate distance in meters
+    rad_per_deg = Math::PI / 180
+    rm = 6371000 # Earth radius in meters
+
+    dlat_rad = (lat2 - lat1) * rad_per_deg
+    dlon_rad = (lon2 - lon1) * rad_per_deg
+
+    lat1_rad = lat1 * rad_per_deg
+    lat2_rad = lat2 * rad_per_deg
+
+    a = Math.sin(dlat_rad / 2)**2 + Math.cos(lat1_rad) * Math.cos(lat2_rad) * Math.sin(dlon_rad / 2)**2
+    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    rm * c # Distance in meters
   end
 end

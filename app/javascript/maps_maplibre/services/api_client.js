@@ -290,10 +290,22 @@ export class ApiClient {
   }
 
   /**
-   * Fetch tracks
+   * Fetch tracks for a single page
+   * @param {Object} options - { start_at, end_at, page, per_page }
+   * @returns {Promise<Object>} { features, currentPage, totalPages, totalCount }
    */
-  async fetchTracks() {
-    const response = await fetch(`${this.baseURL}/tracks`, {
+  async fetchTracksPage({ start_at, end_at, page = 1, per_page = 100 }) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      per_page: per_page.toString()
+    })
+
+    if (start_at) params.append('start_at', start_at)
+    if (end_at) params.append('end_at', end_at)
+
+    const url = `${this.baseURL}/tracks?${params.toString()}`
+
+    const response = await fetch(url, {
       headers: this.getHeaders()
     })
 
@@ -301,7 +313,48 @@ export class ApiClient {
       throw new Error(`Failed to fetch tracks: ${response.statusText}`)
     }
 
-    return response.json()
+    const geojson = await response.json()
+
+    return {
+      features: geojson.features,
+      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
+      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1'),
+      totalCount: parseInt(response.headers.get('X-Total-Count') || '0')
+    }
+  }
+
+  /**
+   * Fetch all tracks (handles pagination automatically)
+   * @param {Object} options - { start_at, end_at, onProgress }
+   * @returns {Promise<Object>} GeoJSON FeatureCollection
+   */
+  async fetchTracks({ start_at, end_at, onProgress } = {}) {
+    let allFeatures = []
+    let currentPage = 1
+    let totalPages = 1
+
+    while (currentPage <= totalPages) {
+      const { features, totalPages: tp } = await this.fetchTracksPage({
+        start_at,
+        end_at,
+        page: currentPage,
+        per_page: 100
+      })
+
+      allFeatures = allFeatures.concat(features)
+      totalPages = tp
+
+      if (onProgress) {
+        onProgress(currentPage, totalPages)
+      }
+
+      currentPage++
+    }
+
+    return {
+      type: 'FeatureCollection',
+      features: allFeatures
+    }
   }
 
   /**

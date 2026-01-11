@@ -105,10 +105,16 @@ export class DataLoader {
     }
     data.placesGeoJSON = this.placesToGeoJSON(data.places)
 
-    // Tracks - DISABLED: Backend API not yet implemented
-    // TODO: Re-enable when /api/v1/tracks endpoint is created
-    data.tracks = []
-    data.tracksGeoJSON = this.tracksToGeoJSON(data.tracks)
+    // Fetch tracks
+    try {
+      data.tracksGeoJSON = await this.api.fetchTracks({
+        start_at: startDate,
+        end_at: endDate
+      })
+    } catch (error) {
+      console.warn('[Tracks] Failed to fetch tracks (non-blocking):', error.message)
+      data.tracksGeoJSON = { type: 'FeatureCollection', features: [] }
+    }
 
     return data
   }

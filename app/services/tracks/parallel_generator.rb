@@ -58,7 +58,8 @@ class Tracks::ParallelGenerator
       end_at: end_at&.iso8601,
       user_settings: {
         time_threshold_minutes: time_threshold_minutes,
-        distance_threshold_meters: distance_threshold_meters
+        distance_threshold_meters: distance_threshold_meters,
+        distance_threshold_behavior: 'ignored_for_frontend_parity'
       }
     }
 
