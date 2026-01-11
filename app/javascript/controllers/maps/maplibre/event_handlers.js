@@ -1,4 +1,6 @@
 import { formatTimestamp } from 'maps_maplibre/utils/geojson_transformers'
+import { formatDistance, formatSpeed, minutesToDaysHoursMinutes } from 'maps/helpers'
+import maplibregl from 'maplibre-gl'
 
 /**
  * Handles map interaction events (clicks, info display)
@@ -7,6 +9,8 @@ export class EventHandlers {
   constructor(map, controller) {
     this.map = map
     this.controller = controller
+    this.selectedRouteFeature = null
+    this.routeMarkers = [] // Store start/end markers for routes
   }
 
   /**
@@ -125,5 +129,262 @@ export class EventHandlers {
     }] : []
 
     this.controller.showInfo(properties.name || 'Area', content, actions)
+  }
+
+  /**
+   * Handle route hover
+   */
+  handleRouteHover(e) {
+    const clickedFeature = e.features[0]
+    if (!clickedFeature) return
+
+    const routesLayer = this.controller.layerManager.getLayer('routes')
+    if (!routesLayer) return
+
+    // Get the full feature from source (not the clipped tile version)
+    // Fallback to clipped feature if full feature not found
+    const fullFeature = this._getFullRouteFeature(clickedFeature.properties) || clickedFeature
+
+    // If a route is selected and we're hovering over a different route, show both
+    if (this.selectedRouteFeature) {
+      // Check if we're hovering over the same route that's selected
+      const isSameRoute = this._areFeaturesSame(this.selectedRouteFeature, fullFeature)
+
+      if (!isSameRoute) {
+        // Show both selected and hovered routes
+        const features = [this.selectedRouteFeature, fullFeature]
+        routesLayer.setHoverRoute({
+          type: 'FeatureCollection',
+          features: features
+        })
+        // Create markers for both routes
+        this._createRouteMarkers(features)
+      }
+    } else {
+      // No selection, just show hovered route
+      routesLayer.setHoverRoute(fullFeature)
+      // Create markers for hovered route
+      this._createRouteMarkers(fullFeature)
+    }
+  }
+
+  /**
+   * Handle route mouse leave
+   */
+  handleRouteMouseLeave(e) {
+    const routesLayer = this.controller.layerManager.getLayer('routes')
+    if (!routesLayer) return
+
+    // If a route is selected, keep showing only the selected route
+    if (this.selectedRouteFeature) {
+      routesLayer.setHoverRoute(this.selectedRouteFeature)
+      // Keep markers for selected route only
+      this._createRouteMarkers(this.selectedRouteFeature)
+    } else {
+      // No selection, clear hover and markers
+      routesLayer.setHoverRoute(null)
+      this._clearRouteMarkers()
+    }
+  }
+
+  /**
+   * Get full route feature from source data (not clipped tile version)
+   * MapLibre returns clipped geometries from queryRenderedFeatures()
+   * We need the full geometry from the source for proper highlighting
+   */
+  _getFullRouteFeature(properties) {
+    const routesLayer = this.controller.layerManager.getLayer('routes')
+    if (!routesLayer) return null
+
+    const source = this.map.getSource(routesLayer.sourceId)
+    if (!source) return null
+
+    // Get the source data (GeoJSON FeatureCollection)
+    // Try multiple ways to access the data
+    let sourceData = null
+
+    // Method 1: Internal _data property (most common)
+    if (source._data) {
+      sourceData = source._data
+    }
+    // Method 2: Serialize and deserialize (fallback)
+    else if (source.serialize) {
+      const serialized = source.serialize()
+      sourceData = serialized.data
+    }
+    // Method 3: Use cached data from layer
+    else if (routesLayer.data) {
+      sourceData = routesLayer.data
+    }
+
+    if (!sourceData || !sourceData.features) return null
+
+    // Find the matching feature by properties
+    // First try to match by unique ID (most reliable)
+    if (properties.id) {
+      const featureById = sourceData.features.find(f => f.properties.id === properties.id)
+      if (featureById) return featureById
+    }
+    if (properties.routeId) {
+      const featureByRouteId = sourceData.features.find(f => f.properties.routeId === properties.routeId)
+      if (featureByRouteId) return featureByRouteId
+    }
+
+    // Fall back to matching by start/end times and point count
+    return sourceData.features.find(feature => {
+      const props = feature.properties
+      return props.startTime === properties.startTime &&
+             props.endTime === properties.endTime &&
+             props.pointCount === properties.pointCount
+    })
+  }
+
+  /**
+   * Compare two features to see if they represent the same route
+   */
+  _areFeaturesSame(feature1, feature2) {
+    if (!feature1 || !feature2) return false
+
+    const props1 = feature1.properties
+    const props2 = feature2.properties
+
+    // First check for unique route identifier (most reliable)
+    if (props1.id && props2.id) {
+      return props1.id === props2.id
+    }
+    if (props1.routeId && props2.routeId) {
+      return props1.routeId === props2.routeId
+    }
+
+    // Fall back to comparing start/end times and point count
+    return props1.startTime === props2.startTime &&
+           props1.endTime === props2.endTime &&
+           props1.pointCount === props2.pointCount
+  }
+
+  /**
+   * Create start/end markers for route(s)
+   * @param {Array|Object} features - Single feature or array of features
+   */
+  _createRouteMarkers(features) {
+    // Clear existing markers first
+    this._clearRouteMarkers()
+
+    // Ensure we have an array
+    const featureArray = Array.isArray(features) ? features : [features]
+
+    featureArray.forEach(feature => {
+      if (!feature || !feature.geometry || feature.geometry.type !== 'LineString') return
+
+      const coords = feature.geometry.coordinates
+      if (coords.length < 2) return
+
+      // Start marker (🚥)
+      const startCoord = coords[0]
+      const startMarker = this._createEmojiMarker('🚥')
+      startMarker.setLngLat(startCoord).addTo(this.map)
+      this.routeMarkers.push(startMarker)
+
+      // End marker (🏁)
+      const endCoord = coords[coords.length - 1]
+      const endMarker = this._createEmojiMarker('🏁')
+      endMarker.setLngLat(endCoord).addTo(this.map)
+      this.routeMarkers.push(endMarker)
+    })
+  }
+
+  /**
+   * Create an emoji marker
+   * @param {String} emoji - The emoji to display
+   * @returns {maplibregl.Marker}
+   */
+  _createEmojiMarker(emoji) {
+    const el = document.createElement('div')
+    el.className = 'route-emoji-marker'
+    el.textContent = emoji
+    el.style.fontSize = '24px'
+    el.style.cursor = 'pointer'
+    el.style.userSelect = 'none'
+
+    return new maplibregl.Marker({ element: el, anchor: 'center' })
+  }
+
+  /**
+   * Clear all route markers
+   */
+  _clearRouteMarkers() {
+    this.routeMarkers.forEach(marker => marker.remove())
+    this.routeMarkers = []
+  }
+
+  /**
+   * Handle route click
+   */
+  handleRouteClick(e) {
+    const clickedFeature = e.features[0]
+    const properties = clickedFeature.properties
+
+    // Get the full feature from source (not the clipped tile version)
+    // Fallback to clipped feature if full feature not found
+    const fullFeature = this._getFullRouteFeature(properties) || clickedFeature
+
+    // Store selected route (use full feature)
+    this.selectedRouteFeature = fullFeature
+
+    // Update hover layer to show selected route
+    const routesLayer = this.controller.layerManager.getLayer('routes')
+    if (routesLayer) {
+      routesLayer.setHoverRoute(fullFeature)
+    }
+
+    // Create markers for selected route
+    this._createRouteMarkers(fullFeature)
+
+    // Calculate duration
+    const durationSeconds = properties.endTime - properties.startTime
+    const durationMinutes = Math.floor(durationSeconds / 60)
+    const durationFormatted = minutesToDaysHoursMinutes(durationMinutes)
+
+    // Calculate average speed
+    let avgSpeed = properties.speed
+    if (!avgSpeed && properties.distance > 0 && durationSeconds > 0) {
+      avgSpeed = (properties.distance / durationSeconds) * 3600 // km/h
+    }
+
+    // Get user preferences
+    const distanceUnit = this.controller.settings.distance_unit || 'km'
+
+    // Prepare route data object
+    const routeData = {
+      startTime: formatTimestamp(properties.startTime, this.controller.timezoneValue),
+      endTime: formatTimestamp(properties.endTime, this.controller.timezoneValue),
+      duration: durationFormatted,
+      distance: formatDistance(properties.distance, distanceUnit),
+      speed: avgSpeed ? formatSpeed(avgSpeed, distanceUnit) : null,
+      pointCount: properties.pointCount
+    }
+
+    // Call controller method to display route info
+    this.controller.showRouteInfo(routeData)
+  }
+
+  /**
+   * Clear route selection
+   */
+  clearRouteSelection() {
+    if (!this.selectedRouteFeature) return
+
+    this.selectedRouteFeature = null
+
+    const routesLayer = this.controller.layerManager.getLayer('routes')
+    if (routesLayer) {
+      routesLayer.setHoverRoute(null)
+    }
+
+    // Clear markers
+    this._clearRouteMarkers()
+
+    // Close info panel
+    this.controller.closeInfo()
   }
 }

@@ -231,19 +231,13 @@ test.describe('Points Layer', () => {
                routesSource?._data?.features?.length > 0
       }, { timeout: 15000 })
 
-      // Ensure points layer is visible
-      await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
-        const app = window.Stimulus || window.Application
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const pointsLayer = controller?.layerManager?.layers?.pointsLayer
-        if (pointsLayer) {
-          const visibility = controller.map.getLayoutProperty('points', 'visibility')
-          if (visibility === 'none') {
-            pointsLayer.show()
-          }
-        }
-      })
+      // Ensure points layer is visible by clicking the checkbox
+      const pointsCheckbox = page.locator('[data-maps--maplibre-target="pointsToggle"]')
+      const isChecked = await pointsCheckbox.isChecked()
+      if (!isChecked) {
+        await pointsCheckbox.click()
+        await page.waitForTimeout(500)
+      }
 
       await page.waitForTimeout(2000)
 
@@ -363,19 +357,13 @@ test.describe('Points Layer', () => {
         return source?._data?.features?.length > 0
       }, { timeout: 15000 })
 
-      // Ensure points layer is visible
-      await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
-        const app = window.Stimulus || window.Application
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const pointsLayer = controller?.layerManager?.layers?.pointsLayer
-        if (pointsLayer) {
-          const visibility = controller.map.getLayoutProperty('points', 'visibility')
-          if (visibility === 'none') {
-            pointsLayer.show()
-          }
-        }
-      })
+      // Ensure points layer is visible by clicking the checkbox
+      const pointsCheckbox = page.locator('[data-maps--maplibre-target="pointsToggle"]')
+      const isChecked = await pointsCheckbox.isChecked()
+      if (!isChecked) {
+        await pointsCheckbox.click()
+        await page.waitForTimeout(500)
+      }
 
       await page.waitForTimeout(2000)
 

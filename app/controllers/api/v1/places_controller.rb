@@ -16,11 +16,11 @@ module Api
           include_untagged = tag_ids.include?('untagged')
 
           if numeric_tag_ids.any? && include_untagged
-            # Both tagged and untagged: return union (OR logic)
-            tagged = current_api_user.places.includes(:tags, :visits).with_tags(numeric_tag_ids)
-            untagged = current_api_user.places.includes(:tags, :visits).without_tags
-            @places = Place.from("(#{tagged.to_sql} UNION #{untagged.to_sql}) AS places")
-                           .includes(:tags, :visits)
+            # Both tagged and untagged: use OR logic to preserve eager loading
+            tagged_ids = current_api_user.places.with_tags(numeric_tag_ids).pluck(:id)
+            untagged_ids = current_api_user.places.without_tags.pluck(:id)
+            combined_ids = (tagged_ids + untagged_ids).uniq
+            @places = current_api_user.places.includes(:tags, :visits).where(id: combined_ids)
           elsif numeric_tag_ids.any?
             # Only tagged places with ANY of the selected tags (OR logic)
             @places = @places.with_tags(numeric_tag_ids)
@@ -28,6 +28,29 @@ module Api
             # Only untagged places
             @places = @places.without_tags
           end
+        end
+
+        # Support pagination (defaults to page 1 with all results if no page param)
+        page = params[:page].presence || 1
+        per_page = [params[:per_page]&.to_i || 100, 500].min
+
+        # Apply pagination only if page param is explicitly provided
+        if params[:page].present?
+          @places = @places.page(page).per(per_page)
+        end
+
+        # Always set pagination headers for consistency
+        if @places.respond_to?(:current_page)
+          # Paginated collection
+          response.set_header('X-Current-Page', @places.current_page.to_s)
+          response.set_header('X-Total-Pages', @places.total_pages.to_s)
+          response.set_header('X-Total-Count', @places.total_count.to_s)
+        else
+          # Non-paginated collection - treat as single page with all results
+          total = @places.count
+          response.set_header('X-Current-Page', '1')
+          response.set_header('X-Total-Pages', '1')
+          response.set_header('X-Total-Count', total.to_s)
         end
 
         render json: @places.map { |place| serialize_place(place) }
@@ -120,7 +143,7 @@ module Api
           note: place.note,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
-          visits_count: place.visits.count,
+          visits_count: place.visits.size,
           created_at: place.created_at,
           tags: place.tags.map do |tag|
             {

@@ -14,6 +14,7 @@ class Cache::InvalidateUserCaches
     invalidate_countries_visited
     invalidate_cities_visited
     invalidate_points_geocoded_stats
+    invalidate_total_distance
   end
 
   def invalidate_countries_visited
@@ -26,6 +27,10 @@ class Cache::InvalidateUserCaches
 
   def invalidate_points_geocoded_stats
     Rails.cache.delete("dawarich/user_#{user_id}_points_geocoded_stats")
+  end
+
+  def invalidate_total_distance
+    Rails.cache.delete("dawarich/user_#{user_id}_total_distance")
   end
 
   private

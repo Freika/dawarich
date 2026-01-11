@@ -275,3 +275,96 @@ export async function getRoutesSourceData(page) {
     };
   });
 }
+
+/**
+ * Wait for settings panel to be visible
+ * @param {Page} page - Playwright page object
+ * @param {number} timeout - Timeout in milliseconds (default: 5000)
+ */
+export async function waitForSettingsPanel(page, timeout = 5000) {
+  await page.waitForSelector('[data-maps--maplibre-target="settingsPanel"]', {
+    state: 'visible',
+    timeout
+  });
+}
+
+/**
+ * Wait for a specific tab to be active in settings panel
+ * @param {Page} page - Playwright page object
+ * @param {string} tabName - Tab name (e.g., 'layers', 'settings')
+ * @param {number} timeout - Timeout in milliseconds (default: 5000)
+ */
+export async function waitForActiveTab(page, tabName, timeout = 5000) {
+  await page.waitForFunction(
+    (name) => {
+      const tab = document.querySelector(`button[data-tab="${name}"]`);
+      return tab?.getAttribute('aria-selected') === 'true';
+    },
+    tabName,
+    { timeout }
+  );
+}
+
+/**
+ * Open settings panel and switch to a specific tab
+ * @param {Page} page - Playwright page object
+ * @param {string} tabName - Tab name (e.g., 'layers', 'settings')
+ */
+export async function openSettingsTab(page, tabName) {
+  // Open settings panel
+  const settingsButton = page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first();
+  await settingsButton.click();
+  await waitForSettingsPanel(page);
+
+  // Click the desired tab
+  const tabButton = page.locator(`button[data-tab="${tabName}"]`);
+  await tabButton.click();
+  await waitForActiveTab(page, tabName);
+}
+
+/**
+ * Wait for a layer to exist on the map
+ * @param {Page} page - Playwright page object
+ * @param {string} layerId - Layer ID to wait for
+ * @param {number} timeout - Timeout in milliseconds (default: 10000)
+ */
+export async function waitForLayer(page, layerId, timeout = 10000) {
+  await page.waitForFunction(
+    (id) => {
+      const element = document.querySelector('[data-controller*="maps--maplibre"]');
+      if (!element) return false;
+      const app = window.Stimulus || window.Application;
+      if (!app) return false;
+      const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
+      return controller?.map?.getLayer(id) !== undefined;
+    },
+    layerId,
+    { timeout }
+  );
+}
+
+/**
+ * Wait for layer visibility to change
+ * @param {Page} page - Playwright page object
+ * @param {string} layerId - Layer ID
+ * @param {boolean} expectedVisibility - Expected visibility state (true for visible, false for hidden)
+ * @param {number} timeout - Timeout in milliseconds (default: 5000)
+ */
+export async function waitForLayerVisibility(page, layerId, expectedVisibility, timeout = 5000) {
+  await page.waitForFunction(
+    ({ id, visible }) => {
+      const element = document.querySelector('[data-controller*="maps--maplibre"]');
+      if (!element) return false;
+      const app = window.Stimulus || window.Application;
+      if (!app) return false;
+      const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
+      if (!controller?.map) return false;
+
+      const visibility = controller.map.getLayoutProperty(id, 'visibility');
+      const isVisible = visibility === 'visible' || visibility === undefined;
+      return isVisible === visible;
+    },
+    { id: layerId, visible: expectedVisibility },
+    { timeout }
+  );
+}

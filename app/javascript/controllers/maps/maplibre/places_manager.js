@@ -216,8 +216,6 @@ export class PlacesManager {
    * Start create place mode
    */
   startCreatePlace() {
-    console.log('[Maps V2] Starting create place mode')
-
     if (this.controller.hasSettingsPanelTarget && this.controller.settingsPanelTarget.classList.contains('open')) {
       this.controller.toggleSettings()
     }
@@ -242,16 +240,12 @@ export class PlacesManager {
    * Handle place creation event - reload places and update layer
    */
   async handlePlaceCreated(event) {
-    console.log('[Maps V2] Place created, reloading places...', event.detail)
-
     try {
       const selectedTags = this.getSelectedPlaceTags()
 
       const places = await this.api.fetchPlaces({
         tag_ids: selectedTags
       })
-
-      console.log('[Maps V2] Fetched places:', places.length)
 
       const placesGeoJSON = this.dataLoader.placesToGeoJSON(places)
 
@@ -260,7 +254,6 @@ export class PlacesManager {
       const placesLayer = this.layerManager.getLayer('places')
       if (placesLayer) {
         placesLayer.update(placesGeoJSON)
-        console.log('[Maps V2] Places layer updated successfully')
       } else {
         console.warn('[Maps V2] Places layer not found, cannot update')
       }
@@ -273,9 +266,6 @@ export class PlacesManager {
    * Handle place update event - reload places and update layer
    */
   async handlePlaceUpdated(event) {
-    console.log('[Maps V2] Place updated, reloading places...', event.detail)
-
-    // Reuse the same logic as creation
     await this.handlePlaceCreated(event)
   }
 }

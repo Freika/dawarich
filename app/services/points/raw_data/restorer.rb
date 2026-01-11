@@ -9,12 +9,32 @@ module Points
         raise "No archives found for user #{user_id}, #{year}-#{month}" if archives.empty?
 
         Rails.logger.info("Restoring #{archives.count} archives to database...")
+        total_points = archives.sum(:point_count)
 
-        Point.transaction do
-          archives.each { restore_archive_to_db(_1) }
+        begin
+          Point.transaction do
+            archives.each { restore_archive_to_db(_1) }
+          end
+
+          Rails.logger.info("✓ Restored #{total_points} points")
+
+          Metrics::Archives::Operation.new(
+            operation: 'restore',
+            status: 'success'
+          ).call
+
+          Metrics::Archives::PointsArchived.new(
+            count: total_points,
+            operation: 'removed'
+          ).call
+        rescue StandardError => e
+          Metrics::Archives::Operation.new(
+            operation: 'restore',
+            status: 'failure'
+          ).call
+
+          raise
         end
-
-        Rails.logger.info("✓ Restored #{archives.sum(:point_count)} points")
       end
 
       def restore_to_memory(user_id, year, month)
@@ -86,10 +106,8 @@ module Points
       end
 
       def download_and_decompress(archive)
-        # Download via ActiveStorage
         compressed_content = archive.file.blob.download
 
-        # Decompress
         io = StringIO.new(compressed_content)
         gz = Zlib::GzipReader.new(io)
         content = gz.read

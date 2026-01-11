@@ -50,11 +50,13 @@ class Stats::CalculateMonth
   def points
     return @points if defined?(@points)
 
+    # Select all needed columns to avoid duplicate queries
+    # Used for both distance calculation and toponyms extraction
     @points = user
               .points
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:lonlat, :timestamp)
+              .select(:lonlat, :timestamp, :city, :country_name)
               .order(timestamp: :asc)
   end
 
@@ -63,14 +65,7 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    toponym_points =
-      user
-      .points
-      .without_raw_data
-      .where(timestamp: start_timestamp..end_timestamp)
-      .select(:city, :country_name, :timestamp)
-
-    CountriesAndCities.new(toponym_points).call
+    CountriesAndCities.new(points).call
   end
 
   def create_stats_update_failed_notification(user, error)

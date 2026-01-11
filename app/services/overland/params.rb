@@ -4,16 +4,18 @@ class Overland::Params
   attr_reader :data, :points
 
   def initialize(json)
-    @data = json.with_indifferent_access
-    @points = @data[:locations]
+    @data = normalize(json)
+    @points = Array.wrap(@data[:locations])
   end
 
   def call
+    return [] if points.blank?
+
     points.map do |point|
       next if point[:geometry].nil? || point.dig(:properties, :timestamp).nil?
 
       {
-        lonlat: "POINT(#{point[:geometry][:coordinates][0]} #{point[:geometry][:coordinates][1]})",
+        lonlat:             lonlat(point),
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
         timestamp:          DateTime.parse(point[:properties][:timestamp]),
@@ -34,5 +36,27 @@ class Overland::Params
     value = (level.to_f * 100).to_i
 
     value.positive? ? value : nil
+  end
+
+  def lonlat(point)
+    coordinates = point.dig(:geometry, :coordinates)
+    return if coordinates.blank?
+
+    "POINT(#{coordinates[0]} #{coordinates[1]})"
+  end
+
+  def normalize(json)
+    payload = case json
+              when ActionController::Parameters
+                json.to_unsafe_h
+              when Hash
+                json
+              when Array
+                { locations: json }
+              else
+                json.respond_to?(:to_h) ? json.to_h : {}
+              end
+
+    payload.with_indifferent_access
   end
 end

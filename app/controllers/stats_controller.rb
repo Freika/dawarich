@@ -80,8 +80,12 @@ class StatsController < ApplicationController
   end
 
   def build_stats
-    current_user.stats.group_by(&:year).transform_values do |stats|
-      stats.sort_by(&:updated_at).reverse
-    end.sort.reverse
+    columns = %i[id year month distance updated_at user_id]
+    columns << :toponyms if DawarichSettings.reverse_geocoding_enabled?
+
+    current_user.stats
+                .select(columns)
+                .order(year: :desc, updated_at: :desc)
+                .group_by(&:year)
   end
 end

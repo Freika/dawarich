@@ -6,14 +6,7 @@ class Users::MailerSendingJob < ApplicationJob
   def perform(user_id, email_type, **options)
     user = User.find(user_id)
 
-    if should_skip_email?(user, email_type)
-      ExceptionReporter.call(
-        'Users::MailerSendingJob',
-        "Skipping #{email_type} email for user ID #{user_id} - #{skip_reason(user, email_type)}"
-      )
-
-      return
-    end
+    return if should_skip_email?(user, email_type)
 
     params = { user: user }.merge(options)
 
@@ -35,17 +28,6 @@ class Users::MailerSendingJob < ApplicationJob
       user.active? || !user.trial?
     else
       false
-    end
-  end
-
-  def skip_reason(user, email_type)
-    case email_type.to_s
-    when 'trial_expires_soon', 'trial_expired'
-      'user is already subscribed'
-    when 'post_trial_reminder_early', 'post_trial_reminder_late'
-      user.active? ? 'user is subscribed' : 'user is not in trial state'
-    else
-      'unknown reason'
     end
   end
 end

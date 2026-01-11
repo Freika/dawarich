@@ -53,9 +53,11 @@ class Api::V1::PointsController < ApiController
   def update
     point = current_api_user.points.find(params[:id])
 
-    point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
-
-    render json: point_serializer.new(point).call
+    if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+      render json: point_serializer.new(point.reload).call
+    else
+      render json: { error: point.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
   end
 
   def destroy

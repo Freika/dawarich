@@ -193,6 +193,8 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :tracks, only: [:index]
+
       namespace :maps do
         resources :tile_usage, only: [:create]
         resources :hexagons, only: [:index] do

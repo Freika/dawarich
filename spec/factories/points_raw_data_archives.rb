@@ -9,7 +9,14 @@ FactoryBot.define do
     point_count { 100 }
     point_ids_checksum { Digest::SHA256.hexdigest('1,2,3') }
     archived_at { Time.current }
-    metadata { { format_version: 1, compression: 'gzip' } }
+    metadata do
+      {
+        format_version: 1,
+        compression: 'gzip',
+        expected_count: point_count,
+        actual_count: point_count
+      }
+    end
 
     after(:build) do |archive|
       # Attach a test file

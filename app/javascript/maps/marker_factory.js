@@ -28,7 +28,7 @@ const MARKER_DATA_INDICES = {
  * @param {number} size - Icon size in pixels (default: 8)
  * @returns {L.DivIcon} Leaflet divIcon instance
  */
-export function createStandardIcon(color = 'blue', size = 8) {
+export function createStandardIcon(color = 'blue', size = 4) {
   return L.divIcon({
     className: 'custom-div-icon',
     html: `<div style='background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%;'></div>`,

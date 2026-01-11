@@ -278,7 +278,7 @@
           <div class="divider"></div>
 
           <!-- Tracks Layer -->
-          <%# <div class="form-control">
+          <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
               <input type="checkbox"
                      class="toggle toggle-primary"
@@ -286,10 +286,10 @@
                      data-action="change->maps--maplibre#toggleTracks" />
               <span class="label-text font-medium">Tracks</span>
             </label>
-            <p class="text-sm text-base-content/60 ml-14">Show saved tracks</p>
-          </div> %>
+            <p class="text-sm text-base-content/60 ml-14">Show backend-calculated tracks in red</p>
+          </div>
 
-          <%# <div class="divider"></div> %>
+          <div class="divider"></div>
 
           <!-- Fog of War Layer -->
           <div class="form-control">
@@ -619,6 +619,36 @@
               </div>
             </div>
           </div>
+
+          <!-- Hidden template for route info display -->
+          <template data-maps--maplibre-target="routeInfoTemplate">
+            <div class="space-y-2">
+              <div>
+                <span class="font-semibold">Start:</span>
+                <span data-maps--maplibre-target="routeStartTime"></span>
+              </div>
+              <div>
+                <span class="font-semibold">End:</span>
+                <span data-maps--maplibre-target="routeEndTime"></span>
+              </div>
+              <div>
+                <span class="font-semibold">Duration:</span>
+                <span data-maps--maplibre-target="routeDuration"></span>
+              </div>
+              <div>
+                <span class="font-semibold">Distance:</span>
+                <span data-maps--maplibre-target="routeDistance"></span>
+              </div>
+              <div data-maps--maplibre-target="routeSpeedContainer">
+                <span class="font-semibold">Avg Speed:</span>
+                <span data-maps--maplibre-target="routeSpeed"></span>
+              </div>
+              <div>
+                <span class="font-semibold">Points:</span>
+                <span data-maps--maplibre-target="routePoints"></span>
+              </div>
+            </div>
+          </template>
 
           <!-- Selection Actions (shown after area is selected) -->
           <div class="hidden mt-4 space-y-2" data-maps--maplibre-target="selectionActions">

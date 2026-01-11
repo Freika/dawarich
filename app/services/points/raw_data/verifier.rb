@@ -25,7 +25,7 @@ module Points
 
       def verify_month(user_id, year, month)
         archives = Points::RawDataArchive.for_month(user_id, year, month)
-                                        .where(verified_at: nil)
+                                         .where(verified_at: nil)
 
         Rails.logger.info("Verifying #{archives.count} archives for #{year}-#{format('%02d', month)}...")
 
@@ -40,6 +40,7 @@ module Points
 
       def verify_archive(archive)
         Rails.logger.info("Verifying archive #{archive.id} (#{archive.month_display}, chunk #{archive.chunk_number})...")
+        start_time = Time.current
 
         verification_result = perform_verification(archive)
 
@@ -47,6 +48,13 @@ module Points
           archive.update!(verified_at: Time.current)
           @stats[:verified] += 1
           Rails.logger.info("✓ Archive #{archive.id} verified successfully")
+
+          Metrics::Archives::Operation.new(
+            operation: 'verify',
+            status: 'success'
+          ).call
+
+          report_verification_metric(start_time, 'success')
         else
           @stats[:failed] += 1
           Rails.logger.error("✗ Archive #{archive.id} verification failed: #{verification_result[:error]}")
@@ -54,40 +62,44 @@ module Points
             StandardError.new(verification_result[:error]),
             "Archive verification failed for archive #{archive.id}"
           )
+
+          Metrics::Archives::Operation.new(
+            operation: 'verify',
+            status: 'failure'
+          ).call
+
+          check_name = extract_check_name_from_error(verification_result[:error])
+          report_verification_metric(start_time, 'failure', check_name)
         end
       rescue StandardError => e
         @stats[:failed] += 1
         ExceptionReporter.call(e, "Failed to verify archive #{archive.id}")
         Rails.logger.error("✗ Archive #{archive.id} verification error: #{e.message}")
+
+        Metrics::Archives::Operation.new(
+          operation: 'verify',
+          status: 'failure'
+        ).call
+
+        report_verification_metric(start_time, 'failure', 'exception')
       end
 
       def perform_verification(archive)
-        # 1. Verify file exists and is attached
-        unless archive.file.attached?
-          return { success: false, error: 'File not attached' }
-        end
+        return { success: false, error: 'File not attached' } unless archive.file.attached?
 
-        # 2. Verify file can be downloaded
         begin
           compressed_content = archive.file.blob.download
         rescue StandardError => e
           return { success: false, error: "File download failed: #{e.message}" }
         end
 
-        # 3. Verify file size is reasonable
-        if compressed_content.bytesize.zero?
-          return { success: false, error: 'File is empty' }
-        end
+        return { success: false, error: 'File is empty' } if compressed_content.bytesize.zero?
 
-        # 4. Verify MD5 checksum (if blob has checksum)
         if archive.file.blob.checksum.present?
           calculated_checksum = Digest::MD5.base64digest(compressed_content)
-          if calculated_checksum != archive.file.blob.checksum
-            return { success: false, error: 'MD5 checksum mismatch' }
-          end
+          return { success: false, error: 'MD5 checksum mismatch' } if calculated_checksum != archive.file.blob.checksum
         end
 
-        # 5. Verify file can be decompressed and is valid JSONL, extract data
         begin
           archived_data = decompress_and_extract_data(compressed_content)
         rescue StandardError => e
@@ -96,7 +108,6 @@ module Points
 
         point_ids = archived_data.keys
 
-        # 6. Verify point count matches
         if point_ids.count != archive.point_count
           return {
             success: false,
@@ -104,13 +115,11 @@ module Points
           }
         end
 
-        # 7. Verify point IDs checksum matches
         calculated_checksum = calculate_checksum(point_ids)
         if calculated_checksum != archive.point_ids_checksum
           return { success: false, error: 'Point IDs checksum mismatch' }
         end
 
-        # 8. Check which points still exist in database (informational only)
         existing_count = Point.where(id: point_ids).count
         if existing_count != point_ids.count
           Rails.logger.info(
@@ -119,7 +128,6 @@ module Points
           )
         end
 
-        # 9. Verify archived raw_data matches current database raw_data (only for existing points)
         if existing_count.positive?
           verification_result = verify_raw_data_matches(archived_data)
           return verification_result unless verification_result[:success]
@@ -149,18 +157,17 @@ module Points
       def verify_raw_data_matches(archived_data)
         # For small archives, verify all points. For large archives, sample up to 100 points.
         # Always verify all if 100 or fewer points for maximum accuracy
-        if archived_data.size <= 100
-          point_ids_to_check = archived_data.keys
-        else
-          point_ids_to_check = archived_data.keys.sample(100)
-        end
+        point_ids_to_check = if archived_data.size <= 100
+                               archived_data.keys
+                             else
+                               archived_data.keys.sample(100)
+                             end
 
         # Filter to only check points that still exist in the database
         existing_point_ids = Point.where(id: point_ids_to_check).pluck(:id)
-        
+
         if existing_point_ids.empty?
-          # No points remain to verify, but that's OK
-          Rails.logger.info("No points remaining to verify raw_data matches")
+          Rails.logger.info('No points remaining to verify raw_data matches')
           return { success: true }
         end
 
@@ -193,6 +200,39 @@ module Points
 
       def calculate_checksum(point_ids)
         Digest::SHA256.hexdigest(point_ids.sort.join(','))
+      end
+
+      def report_verification_metric(start_time, status, check_name = nil)
+        duration = Time.current - start_time
+
+        Metrics::Archives::Verification.new(
+          duration_seconds: duration,
+          status: status,
+          check_name: check_name
+        ).call
+      end
+
+      def extract_check_name_from_error(error_message)
+        case error_message
+        when /File not attached/i
+          'file_not_attached'
+        when /File download failed/i
+          'download_failed'
+        when /File is empty/i
+          'empty_file'
+        when /MD5 checksum mismatch/i
+          'md5_checksum_mismatch'
+        when %r{Decompression/parsing failed}i
+          'decompression_failed'
+        when /Point count mismatch/i
+          'count_mismatch'
+        when /Point IDs checksum mismatch/i
+          'checksum_mismatch'
+        when /Raw data mismatch/i
+          'raw_data_mismatch'
+        else
+          'unknown'
+        end
       end
     end
   end

@@ -79,7 +79,16 @@ export default class extends Controller {
     'infoDisplay',
     'infoTitle',
     'infoContent',
-    'infoActions'
+    'infoActions',
+    // Route info template
+    'routeInfoTemplate',
+    'routeStartTime',
+    'routeEndTime',
+    'routeDuration',
+    'routeDistance',
+    'routeSpeed',
+    'routeSpeedContainer',
+    'routePoints'
   ]
 
   async connect() {
@@ -132,7 +141,6 @@ export default class extends Controller {
     // Format initial dates
     this.startDateValue = DateManager.formatDateForAPI(new Date(this.startDateValue))
     this.endDateValue = DateManager.formatDateForAPI(new Date(this.endDateValue))
-    console.log('[Maps V2] Initial dates:', this.startDateValue, 'to', this.endDateValue)
 
     this.loadMapData()
   }
@@ -172,8 +180,6 @@ export default class extends Controller {
 
     this.searchManager = new SearchManager(this.map, this.apiKeyValue)
     this.searchManager.initialize(this.searchInputTarget, this.searchResultsTarget)
-
-    console.log('[Maps V2] Search manager initialized')
   }
 
   /**
@@ -198,7 +204,6 @@ export default class extends Controller {
     this.startDateValue = startDate
     this.endDateValue = endDate
 
-    console.log('[Maps V2] Date range changed:', this.startDateValue, 'to', this.endDateValue)
     this.loadMapData()
   }
 
@@ -267,8 +272,6 @@ export default class extends Controller {
 
   // Area creation
   startCreateArea() {
-    console.log('[Maps V2] Starting create area mode')
-
     if (this.hasSettingsPanelTarget && this.settingsPanelTarget.classList.contains('open')) {
       this.toggleSettings()
     }
@@ -280,37 +283,26 @@ export default class extends Controller {
     )
 
     if (drawerController) {
-      console.log('[Maps V2] Area drawer controller found, starting drawing with map:', this.map)
       drawerController.startDrawing(this.map)
     } else {
-      console.error('[Maps V2] Area drawer controller not found')
       Toast.error('Area drawer controller not available')
     }
   }
 
   async handleAreaCreated(event) {
-    console.log('[Maps V2] Area created:', event.detail.area)
-
     try {
       // Fetch all areas from API
       const areas = await this.api.fetchAreas()
-      console.log('[Maps V2] Fetched areas:', areas.length)
 
       // Convert to GeoJSON
       const areasGeoJSON = this.dataLoader.areasToGeoJSON(areas)
-      console.log('[Maps V2] Converted to GeoJSON:', areasGeoJSON.features.length, 'features')
-      if (areasGeoJSON.features.length > 0) {
-        console.log('[Maps V2] First area GeoJSON:', JSON.stringify(areasGeoJSON.features[0], null, 2))
-      }
 
       // Get or create the areas layer
       let areasLayer = this.layerManager.getLayer('areas')
-      console.log('[Maps V2] Areas layer exists?', !!areasLayer, 'visible?', areasLayer?.visible)
 
       if (areasLayer) {
         // Update existing layer
         areasLayer.update(areasGeoJSON)
-        console.log('[Maps V2] Areas layer updated')
       } else {
         // Create the layer if it doesn't exist yet
         console.log('[Maps V2] Creating areas layer')
@@ -322,7 +314,6 @@ export default class extends Controller {
       // Enable the layer if it wasn't already
       if (areasLayer) {
         if (!areasLayer.visible) {
-          console.log('[Maps V2] Showing areas layer')
           areasLayer.show()
           this.settings.layers.areas = true
           this.settingsController.saveSetting('layers.areas', true)
@@ -338,7 +329,6 @@ export default class extends Controller {
 
       Toast.success('Area created successfully!')
     } catch (error) {
-      console.error('[Maps V2] Failed to reload areas:', error)
       Toast.error('Failed to reload areas')
     }
   }
@@ -369,7 +359,6 @@ export default class extends Controller {
 
       if (!response.ok) {
         if (response.status === 403) {
-          console.warn('[Maps V2] Family feature not enabled or user not in family')
           Toast.info('Family feature not available')
           return
         }
@@ -487,9 +476,46 @@ export default class extends Controller {
     this.switchToToolsTab()
   }
 
+  showRouteInfo(routeData) {
+    if (!this.hasRouteInfoTemplateTarget) return
+
+    // Clone the template
+    const template = this.routeInfoTemplateTarget.content.cloneNode(true)
+
+    // Populate the template with data
+    const fragment = document.createDocumentFragment()
+    fragment.appendChild(template)
+
+    fragment.querySelector('[data-maps--maplibre-target="routeStartTime"]').textContent = routeData.startTime
+    fragment.querySelector('[data-maps--maplibre-target="routeEndTime"]').textContent = routeData.endTime
+    fragment.querySelector('[data-maps--maplibre-target="routeDuration"]').textContent = routeData.duration
+    fragment.querySelector('[data-maps--maplibre-target="routeDistance"]').textContent = routeData.distance
+    fragment.querySelector('[data-maps--maplibre-target="routePoints"]').textContent = routeData.pointCount
+
+    // Handle optional speed field
+    const speedContainer = fragment.querySelector('[data-maps--maplibre-target="routeSpeedContainer"]')
+    if (routeData.speed) {
+      fragment.querySelector('[data-maps--maplibre-target="routeSpeed"]').textContent = routeData.speed
+      speedContainer.style.display = ''
+    } else {
+      speedContainer.style.display = 'none'
+    }
+
+    // Convert fragment to HTML string for showInfo
+    const div = document.createElement('div')
+    div.appendChild(fragment)
+
+    this.showInfo('Route Information', div.innerHTML)
+  }
+
   closeInfo() {
     if (!this.hasInfoDisplayTarget) return
     this.infoDisplayTarget.classList.add('hidden')
+
+    // Clear route selection when info panel is closed
+    if (this.eventHandlers) {
+      this.eventHandlers.clearRouteSelection()
+    }
   }
 
   /**
@@ -500,7 +526,6 @@ export default class extends Controller {
     const id = button.dataset.id
     const entityType = button.dataset.entityType
 
-    console.log('[Maps V2] Opening edit for', entityType, id)
 
     switch (entityType) {
       case 'visit':
@@ -521,8 +546,6 @@ export default class extends Controller {
     const button = event.currentTarget
     const id = button.dataset.id
     const entityType = button.dataset.entityType
-
-    console.log('[Maps V2] Deleting', entityType, id)
 
     switch (entityType) {
       case 'area':
@@ -559,7 +582,6 @@ export default class extends Controller {
       })
       document.dispatchEvent(event)
     } catch (error) {
-      console.error('[Maps V2] Failed to load visit:', error)
       Toast.error('Failed to load visit details')
     }
   }
@@ -596,7 +618,6 @@ export default class extends Controller {
 
       Toast.success('Area deleted successfully')
     } catch (error) {
-      console.error('[Maps V2] Failed to delete area:', error)
       Toast.error('Failed to delete area')
     }
   }
@@ -627,7 +648,6 @@ export default class extends Controller {
       })
       document.dispatchEvent(event)
     } catch (error) {
-      console.error('[Maps V2] Failed to load place:', error)
       Toast.error('Failed to load place details')
     }
   }
