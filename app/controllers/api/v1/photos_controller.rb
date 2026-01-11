@@ -20,9 +20,16 @@ class Api::V1::PhotosController < ApiController
   private
 
   def fetch_cached_thumbnail(source)
-    Rails.cache.fetch("photo_thumbnail_#{params[:id]}", expires_in: 1.day) do
-      Photos::Thumbnail.new(current_api_user, source, params[:id]).call
+    cached = Rails.cache.read("photo_thumbnail_#{params[:id]}")
+    return cached if cached
+
+    response = Photos::Thumbnail.new(current_api_user, source, params[:id]).call
+
+    if response.success?
+      Rails.cache.write("photo_thumbnail_#{params[:id]}", response, expires_in: 1.day)
     end
+
+    response
   end
 
   def handle_thumbnail_response(response)
