@@ -80,14 +80,12 @@ class StatsController < ApplicationController
   end
 
   def build_stats
-    # Select only needed columns - avoid loading large JSONB fields
-    # daily_distance and h3_hex_ids are never needed on index page
-    columns = [:id, :year, :month, :distance, :updated_at, :user_id]
+    columns = %i[id year month distance updated_at user_id]
     columns << :toponyms if DawarichSettings.reverse_geocoding_enabled?
 
     current_user.stats
-      .select(columns)
-      .order(year: :desc, updated_at: :desc)
-      .group_by(&:year)
+                .select(columns)
+                .order(year: :desc, updated_at: :desc)
+                .group_by(&:year)
   end
 end

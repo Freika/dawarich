@@ -32,6 +32,7 @@ export class LayerManager {
 
     // Layer order matters - layers added first render below layers added later
     // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes (visual) -> visits -> places -> photos -> family -> points -> routes-hit (interaction) -> recent-point (top) -> fog (canvas overlay)
+    // Note: routes-hit is above points visually but points dragging takes precedence via event ordering
 
     await this._addScratchLayer(pointsGeoJSON)
     this._addHeatmapLayer(pointsGeoJSON)
@@ -50,7 +51,7 @@ export class LayerManager {
 
     this._addFamilyLayer()
     this._addPointsLayer(pointsGeoJSON)
-    this._addRoutesHitLayer()  // Add hit target layer after points for better interactivity
+    this._addRoutesHitLayer()  // Add hit target layer after points, will be on top visually
     this._addRecentPointLayer()
     this._addFogLayer(pointsGeoJSON)
 
@@ -228,8 +229,8 @@ export class LayerManager {
   }
 
   _addRoutesHitLayer() {
-    // Add invisible hit target layer for routes after points layer
-    // This ensures route interactions work even when points are on top
+    // Add invisible hit target layer for routes
+    // Use beforeId to place it BELOW points layer so points remain draggable on top
     if (!this.map.getLayer('routes-hit') && this.map.getSource('routes-source')) {
       this.map.addLayer({
         id: 'routes-hit',
@@ -244,7 +245,7 @@ export class LayerManager {
           'line-width': 20,  // Much wider for easier clicking/hovering
           'line-opacity': 0
         }
-      })
+      }, 'points')  // Add before 'points' layer so points are on top for interaction
       // Match visibility with routes layer
       const routesLayer = this.layers.routesLayer
       if (routesLayer && !routesLayer.visible) {

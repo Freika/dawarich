@@ -30,14 +30,27 @@ module Api
           end
         end
 
-        # Support optional pagination (backward compatible - returns all if no page param)
-        if params[:page].present?
-          per_page = [params[:per_page]&.to_i || 100, 500].min
-          @places = @places.page(params[:page]).per(per_page)
+        # Support pagination (defaults to page 1 with all results if no page param)
+        page = params[:page].presence || 1
+        per_page = [params[:per_page]&.to_i || 100, 500].min
 
+        # Apply pagination only if page param is explicitly provided
+        if params[:page].present?
+          @places = @places.page(page).per(per_page)
+        end
+
+        # Always set pagination headers for consistency
+        if @places.respond_to?(:current_page)
+          # Paginated collection
           response.set_header('X-Current-Page', @places.current_page.to_s)
           response.set_header('X-Total-Pages', @places.total_pages.to_s)
           response.set_header('X-Total-Count', @places.total_count.to_s)
+        else
+          # Non-paginated collection - treat as single page with all results
+          total = @places.count
+          response.set_header('X-Current-Page', '1')
+          response.set_header('X-Total-Pages', '1')
+          response.set_header('X-Total-Count', total.to_s)
         end
 
         render json: @places.map { |place| serialize_place(place) }

@@ -23,7 +23,7 @@ module Points
       def clear_specific_archive(archive_id)
         archive = Points::RawDataArchive.find(archive_id)
 
-        unless archive.verified_at.present?
+        if archive.verified_at.blank?
           Rails.logger.warn("Archive #{archive_id} not verified, skipping clear")
           return { cleared: 0, skipped: 0 }
         end
@@ -33,7 +33,7 @@ module Points
 
       def clear_month(user_id, year, month)
         archives = Points::RawDataArchive.for_month(user_id, year, month)
-                                        .where.not(verified_at: nil)
+                                         .where.not(verified_at: nil)
 
         Rails.logger.info("Clearing #{archives.count} verified archives for #{year}-#{format('%02d', month)}...")
 
@@ -75,13 +75,11 @@ module Points
         @stats[:cleared] += cleared_count
         Rails.logger.info("✓ Cleared #{cleared_count} points for archive #{archive.id}")
 
-        # Report successful clear operation
         Metrics::Archives::Operation.new(
           operation: 'clear',
           status: 'success'
         ).call
 
-        # Report points removed (cleared from database)
         Metrics::Archives::PointsArchived.new(
           count: cleared_count,
           operation: 'removed'
@@ -90,7 +88,6 @@ module Points
         ExceptionReporter.call(e, "Failed to clear points for archive #{archive.id}")
         Rails.logger.error("✗ Failed to clear archive #{archive.id}: #{e.message}")
 
-        # Report failed clear operation
         Metrics::Archives::Operation.new(
           operation: 'clear',
           status: 'failure'

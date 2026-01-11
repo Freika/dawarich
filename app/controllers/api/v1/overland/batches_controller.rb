@@ -8,6 +8,10 @@ class Api::V1::Overland::BatchesController < ApiController
     Overland::PointsCreator.new(batch_params, current_api_user.id).call
 
     render json: { result: 'ok' }, status: :created
+  rescue StandardError => e
+    Sentry.capture_exception(e) if defined?(Sentry)
+
+    render json: { error: 'Batch creation failed' }, status: :internal_server_error
   end
 
   private

@@ -65,7 +65,6 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    # Reuse already-loaded points instead of making a duplicate query
     CountriesAndCities.new(points).call
   end
 

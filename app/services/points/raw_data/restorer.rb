@@ -18,19 +18,16 @@ module Points
 
           Rails.logger.info("✓ Restored #{total_points} points")
 
-          # Report successful restore operation
           Metrics::Archives::Operation.new(
             operation: 'restore',
             status: 'success'
           ).call
 
-          # Report points restored (removed from archived state)
           Metrics::Archives::PointsArchived.new(
             count: total_points,
             operation: 'removed'
           ).call
         rescue StandardError => e
-          # Report failed restore operation
           Metrics::Archives::Operation.new(
             operation: 'restore',
             status: 'failure'
@@ -109,10 +106,8 @@ module Points
       end
 
       def download_and_decompress(archive)
-        # Download via ActiveStorage
         compressed_content = archive.file.blob.download
 
-        # Decompress
         io = StringIO.new(compressed_content)
         gz = Zlib::GzipReader.new(io)
         content = gz.read
