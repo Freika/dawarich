@@ -7,7 +7,7 @@
   <div class="card bg-base-200 shadow-xl">
     <%= form_for :settings, url: settings_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
       <div class="card-body">
-        <div class="space-y-8 animate-fade-in">
+        <div class="space-y-8 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 animate-fade-in">
           <div>
             <h2 class="text-2xl font-bold mb-4 flex items-center">
               <%= icon 'camera', class: 'mr-2 text-primary' %> Immich Integration
@@ -100,7 +100,7 @@
           </div>
 
           <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
-            <div>
+            <div class="lg:col-span-2">
               <h2 class="text-2xl font-bold mb-4 flex items-center">
                 <%= icon 'link', class: "text-primary mr-1" %> Connected Accounts
               </h2>
