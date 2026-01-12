@@ -30,11 +30,33 @@
                 <div class="relative">
                   <%= f.password_field :immich_api_key, value: current_user.safe_settings.immich_api_key, class: "input input-bordered w-full pr-10", placeholder: 'xxxxxxxxxxxxxx' %>
                 </div>
-                <span class="label-text-alt mt-1">Found in your Immich admin panel under API settings</span>
+                <span class="label-text-alt mt-1">Found in your Immich admin panel under API settings. Required permissions: <code class="text-xs">asset.read</code> and <code class="text-xs">asset.view</code>.</span>
               </div>
-              <%# <div class="flex justify-end">
-                <button class="btn btn-sm btn-outline">Test Connection</button>
-              </div> %>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <%= f.check_box :immich_skip_ssl_verification,
+                      checked: current_user.safe_settings.immich_skip_ssl_verification,
+                      class: "toggle toggle-warning",
+                      onchange: "document.getElementById('immich-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+                  <span class="label-text">Skip SSL certificate verification (self-signed certificates)</span>
+                </label>
+                <div id="immich-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.immich_skip_ssl_verification %>">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>
+                    <strong>Security Warning:</strong> Disabling SSL verification makes your connection vulnerable to man-in-the-middle attacks.
+                    Only enable this for self-signed certificates you trust on your local network.
+                  </span>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <%= button_tag 'Refresh photo cache',
+                  name: 'refresh_photos_cache',
+                  value: '1',
+                  class: 'btn btn-sm btn-outline' %>
+                <span class="label-text-alt">Clears cached photo metadata and thumbnails for all integrations.</span>
+              </div>
             </div>
           </div>
           <div>
@@ -63,30 +85,27 @@
                 </div>
                 <span class="label-text-alt mt-1">Found in your Photoprism settings under Library</span>
               </div>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <%= f.check_box :photoprism_skip_ssl_verification,
+                      checked: current_user.safe_settings.photoprism_skip_ssl_verification,
+                      class: "toggle toggle-warning",
+                      onchange: "document.getElementById('photoprism-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+                  <span class="label-text">Skip SSL certificate verification (self-signed certificates)</span>
+                </label>
+                <div id="photoprism-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.photoprism_skip_ssl_verification %>">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>
+                    <strong>Security Warning:</strong> Disabling SSL verification makes your connection vulnerable to man-in-the-middle attacks.
+                    Only enable this for self-signed certificates you trust on your local network.
+                  </span>
+                </div>
+              </div>
               <%# <div class="flex justify-end">
                 <button class="btn btn-sm btn-outline">Test Connection</button>
               </div> %>
-            </div>
-          </div>
-
-          <div>
-            <h2 class="text-2xl font-bold mb-4 flex items-center">
-              <%= icon 'mail', class: "text-primary mr-2" %> Email Preferences
-            </h2>
-            <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-              <div class="form-control">
-                <label class="label cursor-pointer justify-start gap-4">
-                  <%= f.check_box :digest_emails_enabled,
-                                  checked: current_user.safe_settings.digest_emails_enabled?,
-                                  class: "toggle toggle-primary" %>
-                  <div>
-                    <span class="label-text font-medium">Year-End Digest Emails</span>
-                    <p class="text-sm text-base-content/70 mt-1">
-                      Receive an annual summary email on January 1st with your year in review
-                    </p>
-                  </div>
-                </label>
-              </div>
             </div>
           </div>
 
@@ -105,7 +124,7 @@
           <% end %>
         </div>
         <div class="card-actions justify-end mt-6">
-          <%= f.submit "Save changes", class: "btn btn-primary" %>
+          <%= f.submit "Save & Test Connection", class: "btn btn-primary" %>
         </div>
       </div>
     <% end %>
