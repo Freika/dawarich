@@ -34,11 +34,13 @@ class Immich::RequestPhotos
     while page <= max_pages
       response = HTTParty.post(
         immich_api_base_url,
-        http_options_with_ssl(@user, :immich, {
-                                headers: headers,
-                                body: request_body(page),
-                                timeout: 10
-                              })
+        http_options_with_ssl(
+          @user, :immich, {
+            headers: headers,
+            body: request_body(page),
+            timeout: 10
+          }
+        )
       )
 
       result = Immich::ResponseValidator.validate_and_parse(response)

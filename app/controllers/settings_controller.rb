@@ -22,7 +22,7 @@ class SettingsController < ApplicationController
     alerts = []
 
     if params[:refresh_photos_cache].present?
-      Photos::CacheCleaner.call(current_user)
+      Photos::CacheCleaner.new(current_user).call
       notices << 'Photo cache refreshed'
     end
 
