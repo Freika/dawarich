@@ -110,8 +110,8 @@ class Users::ImportData::Notifications
 
   def normalize_timestamp(timestamp)
     case timestamp
-    when String then Time.parse(timestamp).to_i
-    when Time, DateTime then timestamp.to_i
+    when String then Time.parse(timestamp).utc.to_i
+    when Time, DateTime then timestamp.utc.to_i
     else
       timestamp.to_s
     end
