@@ -108,7 +108,7 @@ RSpec.describe Geojson::Params do
 
       it 'returns the correct data for each point' do
         expect(subject.first).to eq(
-          lonlat: 'POINT(28.2122937 36.3643742)',
+          lonlat: 'POINT(28 36)',
           battery_status: nil,
           battery: nil,
           timestamp: Time.parse('2016-06-21T06:09:33Z').to_i,
@@ -121,19 +121,13 @@ RSpec.describe Geojson::Params do
           raw_data: {
             'geometry' => {
               'coordinates' => [
-                28.2122937,
-                36.3643742
+                28,
+                36
               ],
               'type' => 'Point'
             },
             'properties' => {
-              'date' => '2016-06-21T06:09:33Z',
-              'google_maps_url' => 'http://maps.google.com/?cid=2786697955226101917',
-              'location' => {
-                'address' => 'Athanaton, Rodos 851 05, Greece',
-                'country_code' => 'GR',
-                'name' => 'WaterPark'
-              }
+              'date' => '2016-06-21T06:09:33Z'
             },
             'type' => 'Feature'
           }

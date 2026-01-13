@@ -80,9 +80,19 @@ class Geojson::Params
   end
 
   def timestamp(feature)
-    return feature[3].to_i if feature.is_a?(Array)
+    if feature.is_a?(Array)
+      return parse_array_timestamp(feature[3]) if feature[3].present?
+
+      return nil
+    end
 
     numeric_timestamp(feature) || parse_string_timestamp(feature)
+  end
+
+  def parse_array_timestamp(value)
+    return value.to_i if value.is_a?(Numeric)
+
+    Time.zone.parse(value.to_s).utc.to_i if value.present?
   end
 
   def numeric_timestamp(feature)
