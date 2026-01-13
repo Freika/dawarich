@@ -11,6 +11,8 @@ RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no
     wget \
     build-essential \
     postgresql-client \
+    libpq-dev \
+    libgeos-dev libgeos++-dev \
     imagemagick \
     tzdata \
     nodejs \
