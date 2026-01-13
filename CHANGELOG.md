@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trip photo grids now update immediately after photos are imported, instead of showing cached/stale results for up to 24 hours. #627 #988
 - Immich API responses are now validated for content-type and JSON format before parsing, providing clear diagnostic error messages when the API returns unexpected responses. #698
 - Response validator logs truncated response bodies (max 1000 chars) when JSON parsing fails, improving debugging capabilities.
+- GeoJSON formatted points now have correct timestamp parsed from raw_data['properties']['date'] field.
+- Reduce number of iterations during cache cleaning to improve performance.
 
 ## Changed
 
