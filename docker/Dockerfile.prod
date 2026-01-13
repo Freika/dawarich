@@ -10,19 +10,12 @@ ENV RAILS_ENV=production
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
     build-essential \
-    git \
     postgresql-client \
-    libpq-dev \
-    libxml2-dev \
-    libxslt-dev \
-    libyaml-dev \
-    libgeos-dev libgeos++-dev \
     imagemagick \
     tzdata \
     nodejs \
     yarn \
-    less \
-    libjemalloc2 libjemalloc-dev \
+    libjemalloc2 \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
