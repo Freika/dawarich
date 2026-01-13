@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.37.4] - Unreleased
+
+## Fixed
+
+- GeoJSON formatted points now have correct timestamp parsed from raw_data['properties']['date'] field.
+- Reduce number of iterations during cache cleaning to improve performance.
+
 # [0.37.3] - Unreleased
 
 ## Fixed
