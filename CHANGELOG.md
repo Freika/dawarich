@@ -6,12 +6,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [0.37.4] - Unreleased
 
+## Added
+
+- SSL certificate verification can now be disabled for Immich and Photoprism integrations to support self-signed certificates. A prominent security warning is displayed when this option is enabled. #1645
+
 ## Fixed
 
+- Photo timestamps from Immich are now correctly parsed as UTC, fixing the double timezone offset bug where times were displayed incorrectly. #1752
+- Trip photo grids now update immediately after photos are imported, instead of showing cached/stale results for up to 24 hours. #627 #988
+- Immich API responses are now validated for content-type and JSON format before parsing, providing clear diagnostic error messages when the API returns unexpected responses. #698
+- Response validator logs truncated response bodies (max 1000 chars) when JSON parsing fails, improving debugging capabilities.
 - GeoJSON formatted points now have correct timestamp parsed from raw_data['properties']['date'] field.
 - Reduce number of iterations during cache cleaning to improve performance.
 
-# [0.37.3] - Unreleased
+## Changed
+
+- Map V2 is now the default map version for new users. Existing users will keep using Map V1 unless they change it in the settings.
+- Email preferences moved to dedicated "Emails" tab in user settings for better organization.
+
+# [0.37.3] - 2026-01-11
 
 ## Fixed
 

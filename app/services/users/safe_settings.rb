@@ -16,8 +16,10 @@ class Users::SafeSettings
     'route_opacity' => 60,
     'immich_url' => nil,
     'immich_api_key' => nil,
+    'immich_skip_ssl_verification' => false,
     'photoprism_url' => nil,
     'photoprism_api_key' => nil,
+    'photoprism_skip_ssl_verification' => false,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Routes Heatmap],
@@ -113,6 +115,14 @@ class Users::SafeSettings
 
   def photoprism_api_key
     settings['photoprism_api_key']
+  end
+
+  def immich_skip_ssl_verification
+    settings['immich_skip_ssl_verification']
+  end
+
+  def photoprism_skip_ssl_verification
+    settings['photoprism_skip_ssl_verification']
   end
 
   def maps

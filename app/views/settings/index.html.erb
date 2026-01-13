@@ -7,13 +7,10 @@
   <div class="card bg-base-200 shadow-xl">
     <%= form_for :settings, url: settings_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
       <div class="card-body">
-        <div class="space-y-8 animate-fade-in">
+        <div class="space-y-8 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 animate-fade-in">
           <div>
             <h2 class="text-2xl font-bold mb-4 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera mr-2 text-primary">
-                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
-                <circle cx="12" cy="13" r="3"></circle>
-              </svg>Immich Integration
+              <%= icon 'camera', class: 'mr-2 text-primary' %> Immich Integration
             </h2>
             <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
               <div class="form-control w-full">
@@ -30,19 +27,36 @@
                 <div class="relative">
                   <%= f.password_field :immich_api_key, value: current_user.safe_settings.immich_api_key, class: "input input-bordered w-full pr-10", placeholder: 'xxxxxxxxxxxxxx' %>
                 </div>
-                <span class="label-text-alt mt-1">Found in your Immich admin panel under API settings</span>
+                <span class="label-text-alt mt-1">Found in your Immich admin panel under API settings. Required permissions: <code class="text-xs">asset.read</code> and <code class="text-xs">asset.view</code>.</span>
               </div>
-              <%# <div class="flex justify-end">
-                <button class="btn btn-sm btn-outline">Test Connection</button>
-              </div> %>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <%= f.check_box :immich_skip_ssl_verification,
+                      checked: current_user.safe_settings.immich_skip_ssl_verification,
+                      class: "toggle toggle-warning",
+                      onchange: "document.getElementById('immich-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+                  <span class="label-text">Skip SSL certificate verification (self-signed certificates)</span>
+                </label>
+                <div id="immich-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.immich_skip_ssl_verification %>">
+                  <%= icon 'triangle-alert'%>
+                  <span>
+                    <strong>Security Warning:</strong> Disabling SSL verification makes your connection vulnerable to man-in-the-middle attacks.
+                    Only enable this for self-signed certificates you trust on your local network.
+                  </span>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <%= button_tag 'Refresh photo cache',
+                  name: 'refresh_photos_cache',
+                  value: '1',
+                  class: 'btn btn-sm btn-outline' %>
+                <span class="label-text-alt">Clears cached photo metadata and thumbnails for all integrations.</span>
+              </div>
             </div>
           </div>
           <div>
             <h2 class="text-2xl font-bold mb-4 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera mr-2 text-primary">
-                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
-                <circle cx="12" cy="13" r="3"></circle>
-              </svg>Photoprism Integration
+              <%= icon 'camera', class: 'mr-2 text-primary' %> Photoprism Integration
             </h2>
             <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
               <div class="form-control w-full">
@@ -63,35 +77,30 @@
                 </div>
                 <span class="label-text-alt mt-1">Found in your Photoprism settings under Library</span>
               </div>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <%= f.check_box :photoprism_skip_ssl_verification,
+                      checked: current_user.safe_settings.photoprism_skip_ssl_verification,
+                      class: "toggle toggle-warning",
+                      onchange: "document.getElementById('photoprism-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+                  <span class="label-text">Skip SSL certificate verification (self-signed certificates)</span>
+                </label>
+                <div id="photoprism-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.photoprism_skip_ssl_verification %>">
+                  <%= icon 'triangle-alert'%>
+                  <span>
+                    <strong>Security Warning:</strong> Disabling SSL verification makes your connection vulnerable to man-in-the-middle attacks.
+                    Only enable this for self-signed certificates you trust on your local network.
+                  </span>
+                </div>
+              </div>
               <%# <div class="flex justify-end">
                 <button class="btn btn-sm btn-outline">Test Connection</button>
               </div> %>
             </div>
           </div>
 
-          <div>
-            <h2 class="text-2xl font-bold mb-4 flex items-center">
-              <%= icon 'mail', class: "text-primary mr-2" %> Email Preferences
-            </h2>
-            <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-              <div class="form-control">
-                <label class="label cursor-pointer justify-start gap-4">
-                  <%= f.check_box :digest_emails_enabled,
-                                  checked: current_user.safe_settings.digest_emails_enabled?,
-                                  class: "toggle toggle-primary" %>
-                  <div>
-                    <span class="label-text font-medium">Year-End Digest Emails</span>
-                    <p class="text-sm text-base-content/70 mt-1">
-                      Receive an annual summary email on January 1st with your year in review
-                    </p>
-                  </div>
-                </label>
-              </div>
-            </div>
-          </div>
-
           <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
-            <div>
+            <div class="lg:col-span-2">
               <h2 class="text-2xl font-bold mb-4 flex items-center">
                 <%= icon 'link', class: "text-primary mr-1" %> Connected Accounts
               </h2>
@@ -105,7 +114,7 @@
           <% end %>
         </div>
         <div class="card-actions justify-end mt-6">
-          <%= f.submit "Save changes", class: "btn btn-primary" %>
+          <%= f.submit "Save & Test Connection", class: "btn btn-primary" %>
         </div>
       </div>
     <% end %>
