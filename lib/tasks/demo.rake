@@ -26,10 +26,17 @@ namespace :demo do
       user.update!(status: :active, active_until: 1000.years.from_now)
       puts "✅ User created: #{user.email}"
       puts '   Password: password'
-      puts "   API Key: #{user.api_key}"
     else
       puts "ℹ️  User already exists: #{user.email}"
     end
+
+    # Set specific API key and enable live mode for e2e testing
+    user.update!(
+      api_key: 'demo_api_key_001',
+      settings: (user.settings || {}).merge('live_map_enabled' => true)
+    )
+    puts "   API Key: #{user.api_key}"
+    puts '   Live Mode: enabled'
 
     # 2. Import GeoJSON data
     puts "\n📍 Importing GeoJSON data from #{geojson_path}..."
@@ -99,7 +106,7 @@ namespace :demo do
     puts '   Password: password'
     puts "\n👨‍👩‍👧‍👦 Family member credentials:"
     family_members.each_with_index do |member, index|
-      puts "   Member #{index + 1}: #{member.email} / password"
+      puts "   Member #{index + 1}: #{member.email} / password / API Key: #{member.api_key}"
     end
   end
 
@@ -229,6 +236,13 @@ namespace :demo do
     rm * c # Distance in meters
   end
 
+  # Specific API keys for e2e testing
+  FAMILY_API_KEYS = %w[
+    family_member_1_api_key
+    family_member_2_api_key
+    family_member_3_api_key
+  ].freeze
+
   def create_family_with_members(owner)
     # Create or find family
     family = Family.find_or_initialize_by(creator: owner)
@@ -273,6 +287,9 @@ namespace :demo do
       else
         puts "   ℹ️  Family member already exists: #{member.email}"
       end
+
+      # Set specific API key for e2e testing
+      member.update!(api_key: FAMILY_API_KEYS[index])
 
       # Add member to family
       Family::Membership.find_or_create_by!(

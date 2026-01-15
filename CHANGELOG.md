@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Response validator logs truncated response bodies (max 1000 chars) when JSON parsing fails, improving debugging capabilities.
 - GeoJSON formatted points now have correct timestamp parsed from raw_data['properties']['date'] field.
 - Reduce number of iterations during cache cleaning to improve performance.
+- Version in the navbar is now correct. #2154
 
 ## Changed
 
@@ -28,13 +29,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Fixed
 
-- Routes are now being drawn the very same way on Map V2 as in Map V1. #2132 #2086
-- RailsPulse performance monitoring is now disabled for self-hosted instances. It fixes poor performance on Synology. #2139
+- Routes are now being drawn the very same way on Map V2 as in Map V1. #2132 #2086 #2121
+- RailsPulse performance monitoring is now disabled for self-hosted instances. It fixes poor performance on Synology. #2139 #2096
 
 ## Changed
 
 - Map V2 points loading is significantly sped up.
-- Points size on Map V2 was reduced to prevent overlapping.
+- Points size on Map V2 was reduced to prevent overlapping. #2122
 - Points sent from Owntracks and Overland are now being created synchronously to instantly reflect success or failure of point creation.
 
 # [0.37.2] - 2026-01-04
