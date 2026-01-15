@@ -46,6 +46,9 @@ Rails.application.routes.draw do
 
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
+
+    resources :emails, only: %i[index]
+    patch 'emails', to: 'emails#update'
   end
 
   patch 'settings', to: 'settings#update'

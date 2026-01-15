@@ -21,7 +21,7 @@ RSpec.describe Geojson::Params do
         lonlat: 'POINT(0.1 0.1)',
         battery_status: nil,
         battery: nil,
-        timestamp: Time.zone.at(1_609_459_201),
+        timestamp: 1_609_459_201,
         altitude: 1,
         velocity: 1.5,
         tracker_id: nil,
@@ -96,6 +96,38 @@ RSpec.describe Geojson::Params do
               'speed' => 1.2,
               'time' => '2024-11-03T16:30:11.331+07:00',
               'time_long' => 1_730_626_211_331
+            },
+            'type' => 'Feature'
+          }
+        )
+      end
+    end
+
+    context 'when the json is exported from Google Takeout' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/geojson/google_takeout_example.json') }
+
+      it 'returns the correct data for each point' do
+        expect(subject.first).to eq(
+          lonlat: 'POINT(28 36)',
+          battery_status: nil,
+          battery: nil,
+          timestamp: Time.parse('2016-06-21T06:09:33Z').to_i,
+          altitude: nil,
+          velocity: 0.0,
+          tracker_id: nil,
+          ssid: nil,
+          accuracy: nil,
+          vertical_accuracy: nil,
+          raw_data: {
+            'geometry' => {
+              'coordinates' => [
+                28,
+                36
+              ],
+              'type' => 'Point'
+            },
+            'properties' => {
+              'date' => '2016-06-21T06:09:33Z'
             },
             'type' => 'Feature'
           }

@@ -5,6 +5,8 @@
 # release of Photoprism.
 
 class Photoprism::RequestPhotos
+  include SslConfigurable
+
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
@@ -51,9 +53,13 @@ class Photoprism::RequestPhotos
   def fetch_page(offset)
     response = HTTParty.get(
       photoprism_api_base_url,
-      headers: headers,
-      query: request_params(offset),
-      timeout: 10
+      http_options_with_ssl(
+        @user, :photoprism, {
+          headers: headers,
+          query: request_params(offset),
+          timeout: 10
+        }
+      )
     )
 
     if response.code != 200
@@ -93,6 +99,7 @@ class Photoprism::RequestPhotos
     data.flatten.select do |photo|
       taken_at = DateTime.parse(photo['TakenAtLocal'])
       end_date ||= Time.current
+
       taken_at.between?(start_date.to_datetime, end_date.to_datetime)
     end
   end

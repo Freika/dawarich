@@ -24,13 +24,14 @@ RSpec.describe Photos::Thumbnail do
       before do
         allow(user).to receive(:settings).and_return(
           'immich_url' => base_url,
-          'immich_api_key' => api_key
+          'immich_api_key' => api_key,
+          'immich_skip_ssl_verification' => false
         )
       end
 
       it 'fetches thumbnail with correct parameters' do
         expect(HTTParty).to receive(:get)
-          .with(expected_url, headers: expected_headers)
+          .with(expected_url, hash_including(headers: expected_headers, verify: true))
           .and_return('thumbnail_data')
 
         expect(subject).to eq('thumbnail_data')
@@ -50,7 +51,8 @@ RSpec.describe Photos::Thumbnail do
 
       before do
         allow(user).to receive(:settings).and_return(
-          'photoprism_url' => base_url
+          'photoprism_url' => base_url,
+          'photoprism_skip_ssl_verification' => false
         )
         allow(Rails.cache).to receive(:read)
           .with("#{Photoprism::CachePreviewToken::TOKEN_CACHE_KEY}_#{user.id}")
@@ -59,7 +61,7 @@ RSpec.describe Photos::Thumbnail do
 
       it 'fetches thumbnail with correct parameters' do
         expect(HTTParty).to receive(:get)
-          .with(expected_url, headers: expected_headers)
+          .with(expected_url, hash_including(headers: expected_headers, verify: true))
           .and_return('thumbnail_data')
 
         expect(subject).to eq('thumbnail_data')

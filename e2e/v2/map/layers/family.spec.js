@@ -1,8 +1,26 @@
 import { test, expect } from '@playwright/test'
 import { closeOnboardingModal } from '../../../helpers/navigation.js'
 import { navigateToMapsV2, waitForMapLibre, waitForLoadingComplete, getMapCenter } from '../../helpers/setup.js'
+import { API_KEYS, TEST_LOCATIONS } from '../../helpers/constants.js'
+import { sendOwnTracksPoint } from '../../helpers/api.js'
 
 test.describe('Family Members Layer', () => {
+  // Create family member location data before all tests
+  test.beforeAll(async ({ request }) => {
+    const timestamp = Math.floor(Date.now() / 1000)
+
+    // Send location points for all family members
+    const familyMembers = [
+      { apiKey: API_KEYS.FAMILY_MEMBER_1, lat: TEST_LOCATIONS.BERLIN_CENTER.lat, lon: TEST_LOCATIONS.BERLIN_CENTER.lon },
+      { apiKey: API_KEYS.FAMILY_MEMBER_2, lat: TEST_LOCATIONS.BERLIN_NORTH.lat, lon: TEST_LOCATIONS.BERLIN_NORTH.lon },
+      { apiKey: API_KEYS.FAMILY_MEMBER_3, lat: TEST_LOCATIONS.BERLIN_SOUTH.lat, lon: TEST_LOCATIONS.BERLIN_SOUTH.lon }
+    ]
+
+    for (const member of familyMembers) {
+      await sendOwnTracksPoint(request, member.apiKey, member.lat, member.lon, timestamp)
+    }
+  })
+
   test.beforeEach(async ({ page }) => {
     await navigateToMapsV2(page)
     await closeOnboardingModal(page)
@@ -107,26 +125,6 @@ test.describe('Family Members Layer', () => {
     })
 
     test('family members list shows members when data exists', async ({ page }) => {
-      // Skip if no family members exist
-      const hasFamilyMembers = await page.evaluate(async () => {
-        const apiKey = document.querySelector('[data-maps--maplibre-api-key-value]')?.dataset.mapsMaplibreApiKeyValue
-        if (!apiKey) return false
-
-        try {
-          const response = await fetch(`/api/v1/families/locations?api_key=${apiKey}`)
-          if (!response.ok) return false
-          const data = await response.json()
-          return data.locations && data.locations.length > 0
-        } catch (error) {
-          return false
-        }
-      })
-
-      if (!hasFamilyMembers) {
-        test.skip()
-        return
-      }
-
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
       await page.click('button[data-tab="layers"]')
@@ -147,26 +145,6 @@ test.describe('Family Members Layer', () => {
     })
 
     test('family member item displays email and timestamp', async ({ page }) => {
-      // Skip if no family members exist
-      const hasFamilyMembers = await page.evaluate(async () => {
-        const apiKey = document.querySelector('[data-maps--maplibre-api-key-value]')?.dataset.mapsMaplibreApiKeyValue
-        if (!apiKey) return false
-
-        try {
-          const response = await fetch(`/api/v1/families/locations?api_key=${apiKey}`)
-          if (!response.ok) return false
-          const data = await response.json()
-          return data.locations && data.locations.length > 0
-        } catch (error) {
-          return false
-        }
-      })
-
-      if (!hasFamilyMembers) {
-        test.skip()
-        return
-      }
-
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
       await page.click('button[data-tab="layers"]')
@@ -191,26 +169,6 @@ test.describe('Family Members Layer', () => {
 
   test.describe('Center on Member', () => {
     test('clicking family member centers map on their location', async ({ page }) => {
-      // Skip if no family members exist
-      const hasFamilyMembers = await page.evaluate(async () => {
-        const apiKey = document.querySelector('[data-maps--maplibre-api-key-value]')?.dataset.mapsMaplibreApiKeyValue
-        if (!apiKey) return false
-
-        try {
-          const response = await fetch(`/api/v1/families/locations?api_key=${apiKey}`)
-          if (!response.ok) return false
-          const data = await response.json()
-          return data.locations && data.locations.length > 0
-        } catch (error) {
-          return false
-        }
-      })
-
-      if (!hasFamilyMembers) {
-        test.skip()
-        return
-      }
-
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
       await page.click('button[data-tab="layers"]')
@@ -240,26 +198,6 @@ test.describe('Family Members Layer', () => {
     })
 
     test('shows success toast when centering on member', async ({ page }) => {
-      // Skip if no family members exist
-      const hasFamilyMembers = await page.evaluate(async () => {
-        const apiKey = document.querySelector('[data-maps--maplibre-api-key-value]')?.dataset.mapsMaplibreApiKeyValue
-        if (!apiKey) return false
-
-        try {
-          const response = await fetch(`/api/v1/families/locations?api_key=${apiKey}`)
-          if (!response.ok) return false
-          const data = await response.json()
-          return data.locations && data.locations.length > 0
-        } catch (error) {
-          return false
-        }
-      })
-
-      if (!hasFamilyMembers) {
-        test.skip()
-        return
-      }
-
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(400)
       await page.click('button[data-tab="layers"]')

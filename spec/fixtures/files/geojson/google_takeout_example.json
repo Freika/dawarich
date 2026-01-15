@@ -1,0 +1,15 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28, 36]
+      },
+      "properties": {
+        "date": "2016-06-21T06:09:33Z"
+      }
+    }
+  ]
+}

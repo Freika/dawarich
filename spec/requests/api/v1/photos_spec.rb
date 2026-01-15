@@ -37,10 +37,13 @@ RSpec.describe 'Api::V1::Photos', type: :request do
       end
 
       context 'when the request is successful' do
+        let(:start_date) { '2024-01-01' }
+        let(:end_date) { '2024-01-02' }
+
         before do
           allow_any_instance_of(Photos::Search).to receive(:call).and_return(photo_data)
 
-          get '/api/v1/photos', params: { api_key: user.api_key }
+          get '/api/v1/photos', params: { api_key: user.api_key, start_date: start_date, end_date: end_date }
         end
 
         it 'returns http success' do
@@ -49,6 +52,23 @@ RSpec.describe 'Api::V1::Photos', type: :request do
 
         it 'returns photos data as JSON' do
           expect(JSON.parse(response.body)).to eq(photo_data)
+        end
+      end
+
+      context 'when cache is empty' do
+        let(:start_date) { '2024-01-01' }
+        let(:end_date) { '2024-01-02' }
+
+        before do
+          allow_any_instance_of(Photos::Search).to receive(:call).and_return(photo_data)
+          allow(Rails.cache).to receive(:read).and_return(nil)
+        end
+
+        it 'writes cached photos with 30 minute ttl' do
+          cache_key = "photos_#{user.id}_#{start_date}_#{end_date}"
+          expect(Rails.cache).to receive(:write).with(cache_key, photo_data, expires_in: 30.minutes)
+
+          get '/api/v1/photos', params: { api_key: user.api_key, start_date: start_date, end_date: end_date }
         end
       end
     end

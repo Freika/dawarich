@@ -192,7 +192,7 @@ class Kml::Importer
   end
 
   def build_gx_track_point(timestamp_str, coord_str, index)
-    time = Time.parse(timestamp_str).to_i
+    time = Time.parse(timestamp_str).utc.to_i
     coord_parts = coord_str.split(/\s+/)
     return nil if coord_parts.size < 2
 
@@ -239,7 +239,7 @@ class Kml::Importer
     node = find_timestamp_node(placemark)
     raise 'No timestamp found in placemark' unless node
 
-    Time.parse(node.text).to_i
+    Time.parse(node.text).utc.to_i
   rescue StandardError => e
     Rails.logger.error("Failed to parse timestamp: #{e.message}")
     raise e
