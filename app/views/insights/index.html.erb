@@ -1,0 +1,1056 @@
+<% content_for :title, 'Insights' %>
+
+<div class="w-full my-5">
+  <!-- Header -->
+  <div class="mb-6">
+    <div class="flex items-center gap-2 mb-1">
+      <%= icon 'compass', class: 'w-8 h-8 text-primary' %>
+      <h1 class="text-3xl font-bold">Insights</h1>
+    </div>
+    <p class="text-base-content/60 mb-4">Your personal movement analytics and travel patterns</p>
+    <div class="flex gap-2">
+      <% if @available_years.any? %>
+        <div class="dropdown">
+          <label tabindex="0" class="btn btn-sm btn-outline">
+            <%= @display_label %>
+            <%= icon 'chevron-down', class: 'w-4 h-4 ml-1' %>
+          </label>
+          <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-52">
+            <li>
+              <%= link_to "All Time", insights_path(year: 'all'), class: @all_time ? 'active' : '' %>
+            </li>
+            <li class="menu-title"><span class='p-2'>By Year</span></li>
+            <% @available_years.each do |year| %>
+              <li>
+                <%= link_to "#{year} Overview", insights_path(year: year), class: (!@all_time && year == @selected_year) ? 'active' : '' %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+      <% if @countries_count.positive? %>
+        <span class="badge badge-outline gap-1">
+          <%= icon 'globe', class: 'w-3 h-3' %>
+          <%= pluralize(@countries_count, 'Country') %>
+        </span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @year_stats.any? %>
+    <!-- Top Stats Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <!-- Total Distance -->
+      <div class="card bg-base-200">
+        <div class="card-body p-4">
+          <div class="flex justify-between items-start">
+            <div class="flex items-center gap-2 text-base-content/60 text-sm">
+              <%= icon 'chart-bar', class: 'w-4 h-4' %>
+              TOTAL DISTANCE
+            </div>
+            <% if @distance_change && @distance_change != 0 %>
+              <span class="badge badge-<%= @distance_change.positive? ? 'success' : 'warning' %> badge-sm">
+                <%= @distance_change.positive? ? '+' : '' %><%= @distance_change %>%
+              </span>
+            <% end %>
+          </div>
+          <div class="text-3xl font-bold mt-2"><%= number_with_delimiter(@total_distance) %> <%= current_user.safe_settings.distance_unit %></div>
+          <div class="text-base-content/50 text-sm">
+            <% if @all_time %>
+              All tracked history
+            <% elsif @prev_total_distance && @prev_total_distance.positive? %>
+              vs <%= number_with_delimiter(@prev_total_distance) %> <%= current_user.safe_settings.distance_unit %> in <%= @previous_year %>
+            <% else %>
+              This year
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Countries -->
+      <div class="card bg-base-200">
+        <div class="card-body p-4">
+          <div class="flex justify-between items-start">
+            <div class="flex items-center gap-2 text-base-content/60 text-sm">
+              <%= icon 'globe', class: 'w-4 h-4' %>
+              COUNTRIES
+            </div>
+            <% if @countries_change && @countries_change != 0 %>
+              <span class="badge badge-<%= @countries_change.positive? ? 'success' : 'warning' %> badge-sm">
+                <%= @countries_change.positive? ? '+' : '' %><%= @countries_change %>
+              </span>
+            <% end %>
+          </div>
+          <div class="text-3xl font-bold mt-2"><%= @countries_count %></div>
+          <div class="text-base-content/50 text-sm">
+            <% if @all_time %>
+              All tracked history
+            <% elsif @prev_countries_count && @countries_change && @countries_change.positive? %>
+              <%= @countries_change %> new vs <%= @previous_year %>
+            <% elsif @prev_countries_count %>
+              vs <%= @prev_countries_count %> in <%= @previous_year %>
+            <% else %>
+              This year
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cities -->
+      <div class="card bg-base-200">
+        <div class="card-body p-4">
+          <div class="flex justify-between items-start">
+            <div class="flex items-center gap-2 text-base-content/60 text-sm">
+              <%= icon 'building', class: 'w-4 h-4' %>
+              CITIES
+            </div>
+            <% if @cities_change && @cities_change != 0 %>
+              <span class="badge badge-<%= @cities_change.positive? ? 'success' : 'warning' %> badge-sm">
+                <%= @cities_change.positive? ? '+' : '' %><%= @cities_change %>%
+              </span>
+            <% end %>
+          </div>
+          <div class="text-3xl font-bold mt-2"><%= @cities_count %></div>
+          <div class="text-base-content/50 text-sm">
+            <% if @all_time %>
+              All tracked history
+            <% elsif @prev_cities_count && @prev_cities_count.positive? %>
+              vs <%= @prev_cities_count %> in <%= @previous_year %>
+            <% else %>
+              This year
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Days Traveling -->
+      <div class="card bg-base-200">
+        <div class="card-body p-4">
+          <div class="flex justify-between items-start">
+            <div class="flex items-center gap-2 text-base-content/60 text-sm">
+              <%= icon 'calendar', class: 'w-4 h-4' %>
+              DAYS TRAVELING
+            </div>
+            <% if @days_change && @days_change != 0 %>
+              <span class="badge badge-<%= @days_change.positive? ? 'success' : 'warning' %> badge-sm">
+                <%= @days_change.positive? ? '+' : '' %><%= @days_change %>%
+              </span>
+            <% end %>
+          </div>
+          <div class="text-3xl font-bold mt-2"><%= @days_traveling %></div>
+          <div class="text-base-content/50 text-sm">
+            <% if @all_time %>
+              All tracked history
+            <% elsif @prev_days_traveling && @prev_days_traveling.positive? %>
+              vs <%= @prev_days_traveling %> in <%= @previous_year %>
+            <% else %>
+              Active days this year
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="alert alert-info mb-6">
+      <%= icon 'info', class: 'w-5 h-5' %>
+      <span>No stats data available<%= @all_time ? '' : " for #{@selected_year}" %>. Stats are calculated from your tracked points.</span>
+    </div>
+  <% end %>
+
+  <!-- Two Column Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Left Column -->
+    <div class="space-y-6">
+      <!-- Year Comparison Card -->
+      <% if @previous_year_stats.any? %>
+        <div class="card bg-base-200">
+          <div class="card-body p-5">
+            <h2 class="card-title text-lg flex items-center gap-2">
+              <%= icon 'git-compare', class: 'w-5 h-5 text-primary' %>
+              Your Journey: <%= @previous_year %> vs <%= @selected_year %>
+            </h2>
+
+            <%
+              # Calculate progress bar values
+              distance_max = [@total_distance, @prev_total_distance].max
+              prev_distance_pct = distance_max.positive? ? (@prev_total_distance.to_f / distance_max * 100).round : 0
+              curr_distance_pct = distance_max.positive? ? (@total_distance.to_f / distance_max * 100).round : 0
+
+              countries_max = [@countries_count, @prev_countries_count].max
+              prev_countries_pct = countries_max.positive? ? (@prev_countries_count.to_f / countries_max * 100).round : 0
+              curr_countries_pct = countries_max.positive? ? (@countries_count.to_f / countries_max * 100).round : 0
+
+              days_max = [@days_traveling, @prev_days_traveling].max
+              prev_days_pct = days_max.positive? ? (@prev_days_traveling.to_f / days_max * 100).round : 0
+              curr_days_pct = days_max.positive? ? (@days_traveling.to_f / days_max * 100).round : 0
+
+              distance_diff = @total_distance - @prev_total_distance
+              days_diff = @days_traveling - @prev_days_traveling
+            %>
+
+            <!-- Distance -->
+            <div class="mt-4">
+              <div class="flex justify-between text-sm mb-1">
+                <span class="font-medium">DISTANCE</span>
+                <% if @distance_change != 0 %>
+                  <span class="text-<%= @distance_change.positive? ? 'success' : 'warning' %>">
+                    <%= distance_diff.positive? ? '+' : '' %><%= number_with_delimiter(distance_diff) %> <%= current_user.safe_settings.distance_unit %>
+                    (<%= @distance_change.positive? ? '+' : '' %><%= @distance_change %>%)
+                  </span>
+                <% end %>
+              </div>
+              <div class="flex items-center gap-2 text-sm mb-1">
+                <span class="w-10 text-base-content/60"><%= @previous_year %></span>
+                <progress class="progress progress-primary flex-1 h-3" value="<%= prev_distance_pct %>" max="100"></progress>
+                <span class="w-24 text-right"><%= number_with_delimiter(@prev_total_distance) %> <%= current_user.safe_settings.distance_unit %></span>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-10 text-base-content/60"><%= @selected_year %></span>
+                <progress class="progress progress-primary flex-1 h-3" value="<%= curr_distance_pct %>" max="100"></progress>
+                <span class="w-24 text-right"><%= number_with_delimiter(@total_distance) %> <%= current_user.safe_settings.distance_unit %></span>
+              </div>
+            </div>
+
+            <!-- Countries -->
+            <div class="mt-4">
+              <div class="flex justify-between text-sm mb-1">
+                <span class="font-medium">COUNTRIES</span>
+                <% if @countries_change != 0 %>
+                  <span class="text-<%= @countries_change.positive? ? 'success' : 'warning' %>">
+                    <%= @countries_change.positive? ? '+' : '' %><%= @countries_change %>
+                  </span>
+                <% end %>
+              </div>
+              <div class="flex items-center gap-2 text-sm mb-1">
+                <span class="w-10 text-base-content/60"><%= @previous_year %></span>
+                <progress class="progress progress-secondary flex-1 h-3" value="<%= prev_countries_pct %>" max="100"></progress>
+                <span class="w-24 text-right"><%= @prev_countries_count %></span>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-10 text-base-content/60"><%= @selected_year %></span>
+                <progress class="progress progress-secondary flex-1 h-3" value="<%= curr_countries_pct %>" max="100"></progress>
+                <span class="w-24 text-right"><%= @countries_count %></span>
+              </div>
+            </div>
+
+            <!-- Days Traveling -->
+            <div class="mt-4">
+              <div class="flex justify-between text-sm mb-1">
+                <span class="font-medium">DAYS TRAVELING</span>
+                <% if @days_change != 0 %>
+                  <span class="text-<%= @days_change.positive? ? 'success' : 'warning' %>">
+                    <%= days_diff.positive? ? '+' : '' %><%= days_diff %> days
+                    (<%= @days_change.positive? ? '+' : '' %><%= @days_change %>%)
+                  </span>
+                <% end %>
+              </div>
+              <div class="flex items-center gap-2 text-sm mb-1">
+                <span class="w-10 text-base-content/60"><%= @previous_year %></span>
+                <progress class="progress progress-accent flex-1 h-3" value="<%= prev_days_pct %>" max="100"></progress>
+                <span class="w-24 text-right"><%= @prev_days_traveling %> days</span>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-10 text-base-content/60"><%= @selected_year %></span>
+                <progress class="progress progress-accent flex-1 h-3" value="<%= curr_days_pct %>" max="100"></progress>
+                <span class="w-24 text-right"><%= @days_traveling %> days</span>
+              </div>
+            </div>
+
+            <!-- Bottom Stats -->
+            <% if @biggest_month || @prev_biggest_month %>
+              <div class="mt-4 pt-4 border-t border-base-300">
+                <div class="text-sm font-medium text-base-content/60 mb-2">BIGGEST MONTH</div>
+                <% if @prev_biggest_month %>
+                  <div class="text-sm"><%= @previous_year %>: <span class="text-primary"><%= @prev_biggest_month[:month] %></span> (<%= number_with_delimiter(@prev_biggest_month[:distance]) %> <%= current_user.safe_settings.distance_unit %>)</div>
+                <% end %>
+                <% if @biggest_month %>
+                  <div class="text-sm"><%= @selected_year %>: <span class="text-primary"><%= @biggest_month[:month] %></span> (<%= number_with_delimiter(@biggest_month[:distance]) %> <%= current_user.safe_settings.distance_unit %>)</div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Activity Breakdown Card -->
+      <div class="card bg-base-200">
+        <div class="card-body p-5">
+          <h2 class="card-title text-lg flex items-center gap-2">
+            <%= icon 'activity', class: 'w-5 h-5 text-primary' %>
+            Activity Breakdown
+          </h2>
+
+          <div class="space-y-3 mt-3">
+            <!-- Driving -->
+            <div class="flex items-center gap-3">
+              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'car', class: 'w-4 h-4' %></div>
+              <span class="w-20 text-sm">Driving</span>
+              <progress class="progress progress-info flex-1 h-2" value="42" max="100"></progress>
+              <span class="w-16 text-right text-sm text-base-content/60">2h 15m</span>
+              <span class="w-10 text-right text-sm font-medium">42%</span>
+            </div>
+
+            <!-- Walking -->
+            <div class="flex items-center gap-3">
+              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'footprints', class: 'w-4 h-4' %></div>
+              <span class="w-20 text-sm">Walking</span>
+              <progress class="progress progress-info flex-1 h-2" value="28" max="100"></progress>
+              <span class="w-16 text-right text-sm text-base-content/60">1h 29m</span>
+              <span class="w-10 text-right text-sm font-medium">28%</span>
+            </div>
+
+            <!-- Stationary -->
+            <div class="flex items-center gap-3">
+              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'user', class: 'w-4 h-4' %></div>
+              <span class="w-20 text-sm">Stationary</span>
+              <progress class="progress progress-info flex-1 h-2" value="12" max="100"></progress>
+              <span class="w-16 text-right text-sm text-base-content/60">38m</span>
+              <span class="w-10 text-right text-sm font-medium">12%</span>
+            </div>
+
+            <!-- Cycling -->
+            <div class="flex items-center gap-3">
+              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'bike', class: 'w-4 h-4' %></div>
+              <span class="w-20 text-sm">Cycling</span>
+              <progress class="progress progress-info flex-1 h-2" value="8" max="100"></progress>
+              <span class="w-16 text-right text-sm text-base-content/60">25m</span>
+              <span class="w-10 text-right text-sm font-medium">8%</span>
+            </div>
+
+            <!-- Flying -->
+            <div class="flex items-center gap-3">
+              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'plane', class: 'w-4 h-4' %></div>
+              <span class="w-20 text-sm">Flying</span>
+              <progress class="progress progress-info flex-1 h-2" value="5" max="100"></progress>
+              <span class="w-16 text-right text-sm text-base-content/60">16m</span>
+              <span class="w-10 text-right text-sm font-medium">5%</span>
+            </div>
+
+            <!-- Train -->
+            <div class="flex items-center gap-3">
+              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'train-front', class: 'w-4 h-4' %></div>
+              <span class="w-20 text-sm">Train</span>
+              <progress class="progress progress-info flex-1 h-2" value="5" max="100"></progress>
+              <span class="w-16 text-right text-sm text-base-content/60">15m</span>
+              <span class="w-10 text-right text-sm font-medium">5%</span>
+            </div>
+          </div>
+
+          <!-- Carbon Footprint -->
+          <div class="mt-4 pt-4 border-t border-base-300">
+            <div class="flex items-center gap-2 mb-2">
+              <%= icon 'leaf', class: 'w-4 h-4 text-success' %>
+              <span class="font-medium">Carbon Footprint</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-2xl font-bold">127 kg</span>
+              <span class="text-sm text-base-content/60">CO2e this month</span>
+            </div>
+            <div class="text-sm text-base-content/60 mt-1">= 1,570 km by car</div>
+            <div class="text-sm text-success">Train would be 32 kg (75% less)</div>
+          </div>
+
+          <!-- Trip Timeline -->
+          <div class="mt-4 pt-4 border-t border-base-300">
+            <div class="text-sm font-medium text-base-content/60 mb-2">TRIP TO MUNICH</div>
+            <div class="space-y-1 text-sm">
+              <div class="flex gap-2">
+                <span class="text-info"><%= icon 'car', class: 'w-4 h-4 inline' %></span>
+                <span class="text-base-content/60">06:30-08:45</span>
+                <span>Berlin &rarr; Leipzig &rarr; Nuremberg</span>
+              </div>
+              <div class="flex gap-2">
+                <span class="text-info"><%= icon 'footprints', class: 'w-4 h-4 inline' %></span>
+                <span class="text-base-content/60">09:00-09:45</span>
+                <span>Check-in, explore</span>
+              </div>
+              <div class="flex gap-2">
+                <span class="text-info"><%= icon 'utensils', class: 'w-4 h-4 inline' %></span>
+                <span class="text-base-content/60">10:00-18:00</span>
+                <span>Meetings, lunch</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location Clusters Card -->
+      <div class="card bg-base-200">
+        <div class="card-body p-5">
+          <h2 class="card-title text-lg flex items-center gap-2">
+            <%= icon 'map-pin', class: 'w-5 h-5 text-primary' %>
+            Location Clusters
+          </h2>
+
+          <!-- Berlin Metro -->
+          <div class="mt-3 p-3 bg-base-300 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-info rounded-full"></span>
+                <span class="font-medium">Berlin Metro Area</span>
+              </div>
+              <span class="badge badge-info badge-sm">97% confidence</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div class="text-xl font-bold">189</div>
+                <div class="text-xs text-base-content/60">days</div>
+              </div>
+              <div>
+                <div class="text-xl font-bold">847</div>
+                <div class="text-xs text-base-content/60">visits</div>
+              </div>
+              <div>
+                <div class="text-xl font-bold">4,230</div>
+                <div class="text-xs text-base-content/60">km</div>
+              </div>
+            </div>
+            <div class="text-xs text-base-content/60 mt-2">327 overnight stays &bull; 23:00-06:00 activity &bull; Weekend concentration</div>
+          </div>
+
+          <!-- Paris Metro -->
+          <div class="mt-3 p-3 bg-base-300 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-2 h-2 bg-secondary rounded-full"></span>
+              <span class="font-medium">Paris Metro Area</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div class="text-xl font-bold">23</div>
+                <div class="text-xs text-base-content/60">days</div>
+              </div>
+              <div>
+                <div class="text-xl font-bold">98</div>
+                <div class="text-xs text-base-content/60">visits</div>
+              </div>
+              <div>
+                <div class="text-xl font-bold">1,450</div>
+                <div class="text-xs text-base-content/60">km</div>
+              </div>
+            </div>
+            <div class="text-xs text-base-content/60 mt-2">5 extended stays &bull; Business + leisure mix</div>
+          </div>
+
+          <!-- Home & Work Detection -->
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <div class="flex items-center gap-1 text-sm font-medium text-base-content/60 mb-1">
+                <%= icon 'house', class: 'w-4 h-4' %>
+                HOME DETECTION
+              </div>
+              <div class="text-sm">
+                Likely home: <span class="text-info">Berlin, Germany</span>
+                <span class="badge badge-xs">87%</span>
+              </div>
+              <ul class="text-xs text-base-content/60 mt-1 space-y-0.5">
+                <li>&bull; 327 overnight stays</li>
+                <li>&bull; 23:00-06:00 activity pattern</li>
+                <li>&bull; Weekend concentration</li>
+              </ul>
+            </div>
+            <div>
+              <div class="flex items-center gap-1 text-sm font-medium text-base-content/60 mb-1">
+                <%= icon 'briefcase', class: 'w-4 h-4' %>
+                WORK DETECTION
+              </div>
+              <div class="text-sm">
+                Likely work: <span class="text-info">Berlin, Germany</span>
+                <span class="badge badge-xs">92%</span>
+              </div>
+              <ul class="text-xs text-base-content/60 mt-1 space-y-0.5">
+                <li>&bull; 198 visits, Mon-Fri</li>
+                <li>&bull; 09:00-18:00 pattern</li>
+                <li>&bull; 45 min avg commute</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Exploration Score -->
+          <div class="mt-4 pt-4 border-t border-base-300">
+            <div class="text-sm font-medium mb-2">EXPLORATION SCORE</div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-24">Berlin core</span>
+                <progress class="progress progress-success flex-1 h-2" value="100" max="100"></progress>
+                <span class="w-12 text-right">100%</span>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-24">50km radius</span>
+                <progress class="progress progress-warning flex-1 h-2" value="67" max="100"></progress>
+                <span class="w-12 text-right">67%</span>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-24">200km radius</span>
+                <progress class="progress progress-error flex-1 h-2" value="23" max="100"></progress>
+                <span class="w-12 text-right">23%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Nearby Unexplored -->
+          <div class="mt-4 pt-4 border-t border-base-300">
+            <div class="text-sm font-medium mb-2">NEARBY UNEXPLORED (within 50km)</div>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span><span class="inline-block w-2 h-2 bg-base-content/30 rounded-full mr-2"></span>Potsdam <span class="text-base-content/60">24km</span></span>
+                <span class="text-error">Never visited</span>
+              </div>
+              <div class="flex justify-between">
+                <span><span class="inline-block w-2 h-2 bg-base-content/30 rounded-full mr-2"></span>Brandenburg Havel <span class="text-base-content/60">55km</span></span>
+                <span class="text-error">Never visited</span>
+              </div>
+              <div class="flex justify-between">
+                <span><span class="inline-block w-2 h-2 bg-base-content/30 rounded-full mr-2"></span>Werder <span class="text-base-content/60">38km</span></span>
+                <span class="text-warning">1 visit only</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="space-y-6">
+      <!-- Monthly Digest Card -->
+      <% if @monthly_digest.present? %>
+        <div class="card bg-base-200">
+          <div class="card-body p-5">
+            <div class="flex justify-between items-center">
+              <h2 class="card-title text-lg flex items-center gap-2">
+                <%= icon 'calendar', class: 'w-5 h-5 text-primary' %>
+                <%= monthly_digest_title(@monthly_digest) %>
+              </h2>
+              <div class="join">
+                <% prev_link = previous_month_link(@selected_year, @selected_month, @available_months) %>
+                <% if prev_link %>
+                  <%= link_to prev_link, class: 'join-item btn btn-xs btn-ghost' do %>
+                    <%= icon 'chevron-left', class: 'w-4 h-4' %>
+                  <% end %>
+                <% else %>
+                  <button class="join-item btn btn-xs btn-ghost btn-disabled"><%= icon 'chevron-left', class: 'w-4 h-4' %></button>
+                <% end %>
+
+                <div class="dropdown dropdown-end">
+                  <label tabindex="0" class="join-item btn btn-xs btn-ghost">
+                    <%= @monthly_digest.month_name %>
+                    <%= icon 'chevron-down', class: 'w-3 h-3 ml-1' %>
+                  </label>
+                  <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-40">
+                    <% @available_months.each do |m| %>
+                      <li>
+                        <%= link_to Date::MONTHNAMES[m], insights_path(year: @selected_year, month: m),
+                            class: m == @selected_month ? 'active' : '' %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+
+                <% next_link = next_month_link(@selected_year, @selected_month, @available_months) %>
+                <% if next_link %>
+                  <%= link_to next_link, class: 'join-item btn btn-xs btn-ghost' do %>
+                    <%= icon 'chevron-right', class: 'w-4 h-4' %>
+                  <% end %>
+                <% else %>
+                  <button class="join-item btn btn-xs btn-ghost btn-disabled"><%= icon 'chevron-right', class: 'w-4 h-4' %></button>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="grid grid-cols-4 gap-2 mt-4">
+              <div class="text-center">
+                <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
+                  <%= icon 'route', class: 'w-3 h-3' %>
+                </div>
+                <div class="font-bold"><%= monthly_digest_distance(@monthly_digest, current_user) %></div>
+                <div class="text-xs text-base-content/60">Total Distance</div>
+              </div>
+              <div class="text-center">
+                <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
+                  <%= icon 'calendar', class: 'w-3 h-3' %>
+                </div>
+                <div class="font-bold"><%= monthly_digest_active_days(@monthly_digest) %></div>
+                <div class="text-xs text-base-content/60">Active Days</div>
+              </div>
+              <div class="text-center">
+                <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
+                  <%= icon 'globe', class: 'w-3 h-3' %>
+                </div>
+                <div class="font-bold"><%= @monthly_digest.countries_count %></div>
+                <div class="text-xs text-base-content/60">Countries</div>
+              </div>
+              <div class="text-center">
+                <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
+                  <%= icon 'building', class: 'w-3 h-3' %>
+                </div>
+                <div class="font-bold"><%= @monthly_digest.cities_count %></div>
+                <div class="text-xs text-base-content/60">Cities</div>
+              </div>
+            </div>
+
+            <!-- Weekly Pattern -->
+            <div class="mt-4">
+              <div class="text-sm font-medium mb-2">WEEKLY PATTERN</div>
+              <div class="h-32">
+                <%= column_chart(
+                  weekly_pattern_chart_data(@monthly_digest, current_user),
+                  height: '120px',
+                  suffix: " #{current_user.safe_settings.distance_unit}",
+                  colors: ['#3abff8'],
+                  library: {
+                    plugins: {
+                      legend: { display: false }
+                    },
+                    scales: {
+                      x: {
+                        grid: { display: false }
+                      },
+                      y: {
+                        grid: { color: 'rgba(0,0,0,0.1)' },
+                        ticks: { display: false }
+                      }
+                    }
+                  }
+                ) %>
+              </div>
+            </div>
+
+            <!-- Top Locations & First Visits -->
+            <div class="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <div class="text-sm font-medium mb-2">TOP LOCATIONS</div>
+                <div class="space-y-1 text-sm">
+                  <% top_locations = top_locations_from_digest(@monthly_digest) %>
+                  <% if top_locations.any? %>
+                    <% top_locations.each_with_index do |location, idx| %>
+                      <div class="flex justify-between">
+                        <span><%= idx + 1 %>. <%= location[:name] %></span>
+                        <span class="text-info"><%= format_location_time(location[:minutes]) %></span>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="text-base-content/50">No location data</div>
+                  <% end %>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-1 text-sm font-medium mb-2">
+                  <%= icon 'flag', class: 'w-4 h-4 text-success' %>
+                  FIRST VISITS
+                </div>
+                <div class="space-y-1 text-sm">
+                  <% first_visits = first_time_visits_from_digest(@monthly_digest) %>
+                  <% if first_visits[:countries].any? || first_visits[:cities].any? %>
+                    <% first_visits[:countries].first(2).each do |country| %>
+                      <div class="flex justify-between">
+                        <span class="text-success"><%= country %></span>
+                        <span class="badge badge-success badge-xs">Country</span>
+                      </div>
+                    <% end %>
+                    <% first_visits[:cities].first(3 - first_visits[:countries].first(2).size).each do |city| %>
+                      <div class="flex justify-between">
+                        <span class="text-success"><%= city %></span>
+                        <span class="badge badge-info badge-xs">City</span>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="text-base-content/50">No new places this month</div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <!-- Month over Month comparison -->
+            <% if @monthly_digest.mom_distance_change.present? %>
+              <div class="mt-4 pt-4 border-t border-base-300">
+                <div class="text-sm font-medium text-base-content/60 mb-2">VS PREVIOUS MONTH</div>
+                <div class="flex gap-4 text-sm">
+                  <% mom_change = @monthly_digest.mom_distance_change %>
+                  <div class="flex items-center gap-1">
+                    <span class="badge badge-<%= mom_change.positive? ? 'success' : 'warning' %> badge-sm">
+                      <%= mom_change.positive? ? '+' : '' %><%= mom_change %>%
+                    </span>
+                    <span class="text-base-content/60">distance</span>
+                  </div>
+                  <% if @monthly_digest.mom_countries_change.present? && @monthly_digest.mom_countries_change != 0 %>
+                    <div class="flex items-center gap-1">
+                      <span class="badge badge-<%= @monthly_digest.mom_countries_change.positive? ? 'success' : 'warning' %> badge-sm">
+                        <%= @monthly_digest.mom_countries_change.positive? ? '+' : '' %><%= @monthly_digest.mom_countries_change %>
+                      </span>
+                      <span class="text-base-content/60">countries</span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% elsif @available_months.any? %>
+        <div class="card bg-base-200">
+          <div class="card-body p-5">
+            <h2 class="card-title text-lg flex items-center gap-2">
+              <%= icon 'calendar', class: 'w-5 h-5 text-primary' %>
+              Monthly Digest
+            </h2>
+            <p class="text-base-content/60">Select a month to view its digest:</p>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <% @available_months.each do |m| %>
+                <%= link_to Date::MONTHNAMES[m], insights_path(year: @selected_year, month: m), class: 'btn btn-sm btn-outline' %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- When Do You Travel Card -->
+      <div class="card bg-base-200">
+        <div class="card-body p-5">
+          <h2 class="card-title text-lg flex items-center gap-2">
+            <%= icon 'clock', class: 'w-5 h-5 text-primary' %>
+            When Do You Travel?
+          </h2>
+
+          <!-- Time of Day Distribution -->
+          <div class="mt-3">
+            <div class="text-sm font-medium mb-2">TIME OF DAY DISTRIBUTION</div>
+            <div class="space-y-1">
+              <% time_labels = { 'night' => '00-06', 'morning' => '06-12', 'afternoon' => '12-18', 'evening' => '18-24' } %>
+              <% %w[night morning afternoon evening].each do |period| %>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="w-12 text-base-content/60"><%= time_labels[period] %></span>
+                  <progress class="progress progress-info flex-1 h-2"
+                            value="<%= @time_of_day[period] || 0 %>" max="100"></progress>
+                  <span class="w-8 text-right text-base-content/60"><%= @time_of_day[period] || 0 %>%</span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Day of Week + Seasonality -->
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <div class="text-sm font-medium mb-2">DAY OF WEEK</div>
+              <div class="flex gap-1">
+                <% days = %w[Mon Tue Wed Thu Fri Sat Sun] %>
+                <% max_distance = @day_of_week.max.to_f %>
+                <% @day_of_week.each_with_index do |distance, idx| %>
+                  <% opacity = max_distance.positive? ? (0.4 + (distance / max_distance) * 0.6).round(2) : 0.4 %>
+                  <div class="flex-1 bg-info rounded text-center py-1" style="opacity: <%= opacity %>">
+                    <div class="text-xs font-medium"><%= days[idx] %></div>
+                    <div class="text-xs"><%= number_to_human(distance / 1000.0, precision: 0, significant: false, units: { unit: '', thousand: 'k', million: 'M' }) %></div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+            <div>
+              <div class="text-sm font-medium mb-2">SEASONALITY</div>
+              <div class="space-y-1 text-sm">
+                <% season_colors = { 'winter' => 'info', 'spring' => 'success', 'summer' => 'warning', 'fall' => 'error' } %>
+                <% %w[winter spring summer fall].each do |season| %>
+                  <div class="flex items-center gap-2">
+                    <span class="w-14 capitalize"><%= season.capitalize %></span>
+                    <progress class="progress progress-<%= season_colors[season] %> flex-1 h-2"
+                              value="<%= @seasonality[season] || 0 %>" max="100"></progress>
+                    <span class="w-10 text-right text-base-content/60"><%= @seasonality[season] || 0 %>%</span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insight Callout -->
+      <div class="alert bg-warning/20 border border-warning/30">
+        <div>
+          <%= icon 'lightbulb', class: 'w-5 h-5 text-warning' %>
+          <div>
+            <h3 class="font-bold text-warning">Insight</h3>
+            <div class="text-sm">Most of your travel happens on weekends during summer months. Consider planning your next adventure for a Saturday morning!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Your Travel Story Card -->
+      <div class="card bg-base-200">
+        <div class="card-body p-5">
+          <h2 class="card-title text-lg flex items-center gap-2">
+            <%= icon 'book-open', class: 'w-5 h-5 text-primary' %>
+            Your Travel Story
+          </h2>
+          <div class="text-sm text-base-content/60">Summer 2024</div>
+
+          <!-- Trip Summary -->
+          <div class="flex items-center gap-4 mt-3 p-2 bg-base-300 rounded-lg text-sm">
+            <div class="flex items-center gap-1">
+              <%= icon 'calendar', class: 'w-4 h-4 text-info' %>
+              <span>June 15 - July 20</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <%= icon 'clock', class: 'w-4 h-4' %>
+              <span class="font-medium">35 Days</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <%= icon 'route', class: 'w-4 h-4' %>
+              <span class="font-medium">4,230 km</span>
+            </div>
+          </div>
+
+          <!-- Story Title -->
+          <div class="text-xl font-bold mt-4 text-info">"The Great European Road Trip"</div>
+
+          <!-- Story Content -->
+          <div class="mt-3 text-sm space-y-3">
+            <p>You started in <span class="text-info font-medium">Berlin</span>, your home base. After a week of work, you headed south through <span class="text-info font-medium">Dresden</span> and <span class="text-info font-medium">Prague</span>, spending 3 days exploring the city of a hundred spires.</p>
+            <p>The journey continued through <span class="text-info font-medium">Vienna</span>, where you spent a weekend before crossing into Italy. You drove through the Alps, stopping at <span class="text-info font-medium">Lake Como</span> for two nights of swimming and pasta.</p>
+            <p><span class="text-info font-medium">Rome</span> welcomed you for 5 days of ancient history, then you traced the coast south to <span class="text-info font-medium">Amalfi</span>, with stops in Naples and Positano.</p>
+          </div>
+
+          <!-- Journey Timeline -->
+          <div class="mt-4 pt-4 border-t border-base-300">
+            <div class="text-sm font-medium mb-3">JOURNEY TIMELINE</div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-warning rounded-full"></span>
+                <span class="font-medium">Berlin</span>
+                <span class="text-base-content/60">DE</span>
+                <span class="flex-1 text-right text-base-content/60">Home base</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+                <span>Dresden</span>
+                <span class="text-base-content/60">DE</span>
+                <span class="flex-1 text-right text-base-content/60">Overnight</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-success rounded-full"></span>
+                <span>Prague</span>
+                <span class="text-base-content/60">CZ</span>
+                <%= icon 'star', class: 'w-3 h-3 text-warning' %>
+                <span class="flex-1 text-right text-base-content/60">3 days exploring</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+                <span>Vienna</span>
+                <span class="text-base-content/60">AT</span>
+                <span class="flex-1 text-right text-base-content/60">Weekend stay</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+                <span>Lake Como</span>
+                <span class="text-base-content/60">IT</span>
+                <%= icon 'star', class: 'w-3 h-3 text-warning' %>
+                <span class="flex-1 text-right text-base-content/60">Swimming & pasta</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-success rounded-full"></span>
+                <span>Rome</span>
+                <span class="text-base-content/60">IT</span>
+                <%= icon 'star', class: 'w-3 h-3 text-warning' %>
+                <span class="flex-1 text-right text-base-content/60">5 days of history</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+                <span>Amalfi Coast</span>
+                <span class="text-base-content/60">IT</span>
+                <%= icon 'star', class: 'w-3 h-3 text-warning' %>
+                <span class="flex-1 text-right text-base-content/60">Positano, Naples</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+                <span>Florence</span>
+                <span class="text-base-content/60">IT</span>
+                <span class="flex-1 text-right text-base-content/60">Art & coffee</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+                <span>Milan</span>
+                <span class="text-base-content/60">IT</span>
+                <span class="flex-1 text-right text-base-content/60">Fashion district</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+                <span>Munich</span>
+                <span class="text-base-content/60">DE</span>
+                <span class="flex-1 text-right text-base-content/60">Beer gardens</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-3 h-3 bg-warning rounded-full"></span>
+                <span class="font-medium">Berlin</span>
+                <span class="text-base-content/60">DE</span>
+                <span class="flex-1 text-right text-base-content/60">Back home</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Highlights -->
+          <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-base-300 text-center">
+            <div>
+              <div class="text-2xl font-bold text-info">4</div>
+              <div class="text-xs text-base-content/60">New countries</div>
+              <div class="text-xs text-info">CZ, AT, IT, FR</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-info">890 km</div>
+              <div class="text-xs text-base-content/60">Longest drive</div>
+              <div class="text-xs text-info">Rome → Amalfi</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-info">12</div>
+              <div class="text-xs text-base-content/60">Favorites marked</div>
+              <div class="text-xs text-info">places</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Width Movement & Wellness Section -->
+  <div class="card bg-base-200 mb-6">
+    <div class="card-body p-5">
+      <h2 class="card-title text-lg flex items-center gap-2 mb-4">
+        <%= icon 'heart', class: 'w-5 h-5 text-error' %>
+        Movement & Wellness
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Left Side -->
+        <div class="space-y-4">
+          <!-- Active Time -->
+          <div>
+            <div class="text-sm font-medium mb-2">ACTIVE TIME</div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                  <%= icon 'footprints', class: 'w-4 h-4 text-base-content/70' %>
+                  <span>Walking</span>
+                  <span class="text-xs text-base-content/60">(avg 1.6h/day active days)</span>
+                </div>
+                <span class="font-medium">47h total</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                  <%= icon 'bike', class: 'w-4 h-4 text-base-content/70' %>
+                  <span>Cycling</span>
+                  <span class="text-xs text-base-content/60">(avg 24min/day active days)</span>
+                </div>
+                <span class="font-medium">12h total</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                  <%= icon 'car', class: 'w-4 h-4 text-base-content/70' %>
+                  <span>Driving</span>
+                  <span class="text-xs text-base-content/60">(avg 3h/day active days)</span>
+                </div>
+                <span class="font-medium">89h total</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sleep Patterns -->
+          <div class="pt-4 border-t border-base-300">
+            <div class="flex items-center gap-2 text-sm font-medium mb-2">
+              <%= icon 'moon', class: 'w-4 h-4 text-info' %>
+              SLEEP PATTERNS (AT HOME)
+            </div>
+            <div class="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div class="text-xl font-bold">19:42</div>
+                <div class="text-xs text-base-content/60">Avg arrival</div>
+              </div>
+              <div>
+                <div class="text-xl font-bold">08:15</div>
+                <div class="text-xs text-base-content/60">Avg departure</div>
+              </div>
+              <div>
+                <div class="text-xl font-bold text-info">7.2h</div>
+                <div class="text-xs text-base-content/60">Sleep duration</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side -->
+        <div class="space-y-4">
+          <!-- Locations & Outdoor Time -->
+          <div>
+            <div class="text-sm font-medium mb-2">LOCATIONS & OUTDOOR TIME</div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                  <%= icon 'trees', class: 'w-4 h-4 text-success' %>
+                  <span>Parks visited</span>
+                </div>
+                <span class="font-medium text-success">34</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                  <%= icon 'trees', class: 'w-4 h-4 text-success' %>
+                  <span>Green space time</span>
+                </div>
+                <span class="font-medium text-success">23h</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                  <%= icon 'droplets', class: 'w-4 h-4 text-info' %>
+                  <span>Near water</span>
+                </div>
+                <span class="font-medium text-info">18h</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sedentary vs Active -->
+          <div class="pt-4 border-t border-base-300">
+            <div class="text-sm font-medium mb-2">SEDENTARY VS ACTIVE</div>
+            <div class="space-y-1 text-sm">
+              <div class="flex justify-between">
+                <span>In transport</span>
+                <span>156h</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Stationary</span>
+                <span>234h</span>
+              </div>
+              <div class="flex justify-between text-success">
+                <span>Active movement</span>
+                <span>59h</span>
+              </div>
+              <div class="flex justify-between pt-1 border-t border-base-300 text-base-content/60">
+                <span>Ratio: 1:4 active vs sedentary</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div class="mt-4 pt-4 border-t border-base-300">
+        <div class="flex items-center gap-2 text-sm font-medium mb-2">
+          <%= icon 'lightbulb', class: 'w-4 h-4 text-warning' %>
+          TIPS
+        </div>
+        <div class="space-y-1 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="text-warning">&bull;</span>
+            Your commute is 35min avg - consider cycling
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-success">&bull;</span>
+            You've been to 12 parks this month!
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-info">&bull;</span>
+            Weekend activity is 2x higher than weekday
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="text-center text-sm text-base-content/50 py-4">
+    Geodata Insights &bull; Powered by your location history
+  </div>
+</div>

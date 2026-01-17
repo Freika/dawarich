@@ -22,7 +22,8 @@ module Users
           time_spent_by_location: calculate_time_spent,
           first_time_visits: calculate_first_time_visits,
           year_over_year: calculate_yoy_comparison,
-          all_time_stats: calculate_all_time_stats
+          all_time_stats: calculate_all_time_stats,
+          travel_patterns: calculate_travel_patterns
         )
 
         digest.save!
@@ -219,6 +220,13 @@ module Users
           'total_countries' => user.countries_visited_uncached.size,
           'total_cities' => user.cities_visited_uncached.size,
           'total_distance' => user.stats.sum(:distance).to_s
+        }
+      end
+
+      def calculate_travel_patterns
+        {
+          'time_of_day' => Stats::TimeOfDayQuery.new(user, year, nil, user.timezone).call,
+          'seasonality' => SeasonalityCalculator.new(user, year).call
         }
       end
     end

@@ -512,9 +512,14 @@ export default class extends Controller {
     if (!this.hasInfoDisplayTarget) return
     this.infoDisplayTarget.classList.add('hidden')
 
-    // Clear route selection when info panel is closed
+    // Clear the appropriate selection when info panel is closed
+    // Only one type can be selected at a time
     if (this.eventHandlers) {
-      this.eventHandlers.clearRouteSelection()
+      if (this.eventHandlers.selectedTrackFeature) {
+        this.eventHandlers.clearTrackSelection()
+      } else if (this.eventHandlers.selectedRouteFeature) {
+        this.eventHandlers.clearRouteSelection()
+      }
     }
   }
 
