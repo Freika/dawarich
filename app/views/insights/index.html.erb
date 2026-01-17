@@ -281,59 +281,48 @@
           </h2>
 
           <div class="space-y-3 mt-3">
-            <!-- Driving -->
-            <div class="flex items-center gap-3">
-              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'car', class: 'w-4 h-4' %></div>
-              <span class="w-20 text-sm">Driving</span>
-              <progress class="progress progress-info flex-1 h-2" value="42" max="100"></progress>
-              <span class="w-16 text-right text-sm text-base-content/60">2h 15m</span>
-              <span class="w-10 text-right text-sm font-medium">42%</span>
-            </div>
+            <%
+              activity_config = {
+                'driving' => { icon: 'car', label: 'Driving' },
+                'walking' => { icon: 'footprints', label: 'Walking' },
+                'stationary' => { icon: 'user', label: 'Stationary' },
+                'cycling' => { icon: 'bike', label: 'Cycling' },
+                'flying' => { icon: 'plane', label: 'Flying' },
+                'train' => { icon: 'train-front', label: 'Train' },
+                'running' => { icon: 'line-squiggle', label: 'Running' },
+                'bus' => { icon: 'bus', label: 'Bus' },
+                'boat' => { icon: 'ship', label: 'Boat' },
+                'motorcycle' => { icon: 'bike', label: 'Motorcycle' }
+              }
 
-            <!-- Walking -->
-            <div class="flex items-center gap-3">
-              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'footprints', class: 'w-4 h-4' %></div>
-              <span class="w-20 text-sm">Walking</span>
-              <progress class="progress progress-info flex-1 h-2" value="28" max="100"></progress>
-              <span class="w-16 text-right text-sm text-base-content/60">1h 29m</span>
-              <span class="w-10 text-right text-sm font-medium">28%</span>
-            </div>
+              sorted_activities = @activity_breakdown
+                .reject { |mode, _| mode == 'unknown' }
+                .sort_by { |_, data| -data['percentage'].to_i }
+            %>
 
-            <!-- Stationary -->
-            <div class="flex items-center gap-3">
-              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'user', class: 'w-4 h-4' %></div>
-              <span class="w-20 text-sm">Stationary</span>
-              <progress class="progress progress-info flex-1 h-2" value="12" max="100"></progress>
-              <span class="w-16 text-right text-sm text-base-content/60">38m</span>
-              <span class="w-10 text-right text-sm font-medium">12%</span>
-            </div>
-
-            <!-- Cycling -->
-            <div class="flex items-center gap-3">
-              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'bike', class: 'w-4 h-4' %></div>
-              <span class="w-20 text-sm">Cycling</span>
-              <progress class="progress progress-info flex-1 h-2" value="8" max="100"></progress>
-              <span class="w-16 text-right text-sm text-base-content/60">25m</span>
-              <span class="w-10 text-right text-sm font-medium">8%</span>
-            </div>
-
-            <!-- Flying -->
-            <div class="flex items-center gap-3">
-              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'plane', class: 'w-4 h-4' %></div>
-              <span class="w-20 text-sm">Flying</span>
-              <progress class="progress progress-info flex-1 h-2" value="5" max="100"></progress>
-              <span class="w-16 text-right text-sm text-base-content/60">16m</span>
-              <span class="w-10 text-right text-sm font-medium">5%</span>
-            </div>
-
-            <!-- Train -->
-            <div class="flex items-center gap-3">
-              <div class="w-6 flex justify-center text-base-content/70"><%= icon 'train-front', class: 'w-4 h-4' %></div>
-              <span class="w-20 text-sm">Train</span>
-              <progress class="progress progress-info flex-1 h-2" value="5" max="100"></progress>
-              <span class="w-16 text-right text-sm text-base-content/60">15m</span>
-              <span class="w-10 text-right text-sm font-medium">5%</span>
-            </div>
+            <% if sorted_activities.empty? %>
+              <div class="text-sm text-base-content/60 text-center py-4">
+                No activity data available for this period
+              </div>
+            <% else %>
+              <% sorted_activities.each do |mode, data| %>
+                <% config = activity_config[mode] || { icon: 'circle', label: mode.humanize } %>
+                <div class="flex items-center gap-3">
+                  <div class="w-6 flex justify-center text-base-content/70">
+                    <%= icon config[:icon], class: 'w-4 h-4' %>
+                  </div>
+                  <span class="w-20 text-sm"><%= config[:label] %></span>
+                  <progress class="progress progress-info flex-1 h-2"
+                            value="<%= data['percentage'] %>" max="100"></progress>
+                  <span class="w-16 text-right text-sm text-base-content/60">
+                    <%= format_duration_short(data['duration']) %>
+                  </span>
+                  <span class="w-10 text-right text-sm font-medium">
+                    <%= data['percentage'] %>%
+                  </span>
+                </div>
+              <% end %>
+            <% end %>
           </div>
 
           <!-- Carbon Footprint -->

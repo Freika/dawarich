@@ -59,6 +59,12 @@ class InsightsController < ApplicationController
     yearly_digest = current_user.digests.yearly.find_by(year: @selected_year)
     @seasonality = yearly_digest&.seasonality.presence ||
                    Users::Digests::SeasonalityCalculator.new(current_user, @selected_year).call
+
+    # Activity breakdown from digest (or calculate on-demand)
+    @activity_breakdown = @monthly_digest&.activity_breakdown.presence ||
+                          Users::Digests::ActivityBreakdownCalculator.new(
+                            current_user, @selected_year, @selected_month
+                          ).call
   end
 
   def user_timezone

@@ -190,6 +190,10 @@ class Users::Digest < ApplicationRecord
     weekly_pattern
   end
 
+  def activity_breakdown
+    travel_patterns['activity_breakdown'] || {}
+  end
+
   def previous_month_value
     year_over_year['previous_month'] if monthly?
   end

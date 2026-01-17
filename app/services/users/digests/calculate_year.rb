@@ -226,7 +226,8 @@ module Users
       def calculate_travel_patterns
         {
           'time_of_day' => Stats::TimeOfDayQuery.new(user, year, nil, user.timezone).call,
-          'seasonality' => SeasonalityCalculator.new(user, year).call
+          'seasonality' => SeasonalityCalculator.new(user, year).call,
+          'activity_breakdown' => ActivityBreakdownCalculator.new(user, year, nil).call
         }
       end
     end

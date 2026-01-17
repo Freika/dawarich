@@ -166,7 +166,8 @@ module Users
 
       def calculate_travel_patterns
         {
-          'time_of_day' => Stats::TimeOfDayQuery.new(user, year, month, user.timezone).call
+          'time_of_day' => Stats::TimeOfDayQuery.new(user, year, month, user.timezone).call,
+          'activity_breakdown' => ActivityBreakdownCalculator.new(user, year, month).call
         }
       end
     end

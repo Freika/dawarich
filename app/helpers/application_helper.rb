@@ -149,4 +149,18 @@ module ApplicationHelper
     preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
     preferred_version == 'v1' ? map_v1_path : map_v2_path
   end
+
+  def format_duration_short(seconds)
+    return '0m' if seconds.nil? || seconds.to_i.zero?
+
+    seconds = seconds.to_i
+    hours = seconds / 3600
+    minutes = (seconds % 3600) / 60
+
+    if hours.positive?
+      "#{hours}h #{minutes}m"
+    else
+      "#{minutes}m"
+    end
+  end
 end
