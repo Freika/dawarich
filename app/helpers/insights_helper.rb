@@ -129,7 +129,87 @@ module InsightsHelper
     }
   end
 
+  def generate_travel_insight(time_of_day, day_of_week, seasonality)
+    insights = []
+
+    # Analyze time of day preference
+    if time_of_day.present? && time_of_day.values.any?(&:positive?)
+      peak_time = time_of_day.max_by { |_, v| v.to_i }
+      time_labels = {
+        'morning' => 'in the morning (6am-12pm)',
+        'afternoon' => 'in the afternoon (12pm-6pm)',
+        'evening' => 'in the evening (6pm-12am)',
+        'night' => 'at night (12am-6am)'
+      }
+      insights << "You travel most #{time_labels[peak_time[0]]}" if peak_time[1].to_i > 30
+    end
+
+    # Analyze day of week preference
+    if day_of_week.present? && day_of_week.any?(&:positive?)
+      days = %w[Monday Tuesday Wednesday Thursday Friday Saturday Sunday]
+      weekday_total = day_of_week[0..4].sum.to_f
+      weekend_total = day_of_week[5..6].sum.to_f
+
+      # Normalize by number of days
+      weekday_avg = weekday_total / 5
+      weekend_avg = weekend_total / 2
+
+      if weekend_avg > weekday_avg * 1.3
+        peak_day_idx = day_of_week.each_with_index.max_by { |v, _| v }[1]
+        insights << "#{days[peak_day_idx]}s are your most active travel day"
+      elsif weekday_avg > weekend_avg * 1.3
+        insights << "You travel more on weekdays than weekends"
+      end
+    end
+
+    # Analyze seasonality
+    if seasonality.present? && seasonality.values.any?(&:positive?)
+      peak_season = seasonality.max_by { |_, v| v.to_i }
+      if peak_season[1].to_i > 30
+        insights << "#{peak_season[0].capitalize} is your peak travel season"
+      end
+    end
+
+    # Generate final insight message
+    return nil if insights.empty?
+
+    base_insight = insights.join('. ') + '.'
+
+    # Add a suggestion based on the data
+    suggestion = generate_travel_suggestion(time_of_day, day_of_week, seasonality)
+    suggestion ? "#{base_insight} #{suggestion}" : base_insight
+  end
+
   private
+
+  def generate_travel_suggestion(time_of_day, day_of_week, seasonality)
+    suggestions = []
+
+    # Suggest based on time of day
+    if time_of_day.present?
+      peak_time = time_of_day.max_by { |_, v| v.to_i }&.first
+      case peak_time
+      when 'morning'
+        suggestions << 'Early starts seem to work well for you!'
+      when 'evening'
+        suggestions << 'Consider a sunset drive for your next adventure.'
+      end
+    end
+
+    # Suggest based on day of week
+    if day_of_week.present? && day_of_week.any?(&:positive?)
+      weekend_total = day_of_week[5..6].sum.to_f
+      weekday_total = day_of_week[0..4].sum.to_f
+      weekend_avg = weekend_total / 2
+      weekday_avg = weekday_total / 5
+
+      if weekend_avg > weekday_avg * 1.5
+        suggestions << 'Your weekends are made for exploring!'
+      end
+    end
+
+    suggestions.sample
+  end
 
   def country_code(country_name)
     # Simple country name to code mapping for common countries

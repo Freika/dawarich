@@ -324,42 +324,6 @@
               <% end %>
             <% end %>
           </div>
-
-          <!-- Carbon Footprint -->
-          <div class="mt-4 pt-4 border-t border-base-300">
-            <div class="flex items-center gap-2 mb-2">
-              <%= icon 'leaf', class: 'w-4 h-4 text-success' %>
-              <span class="font-medium">Carbon Footprint</span>
-            </div>
-            <div class="flex items-baseline gap-2">
-              <span class="text-2xl font-bold">127 kg</span>
-              <span class="text-sm text-base-content/60">CO2e this month</span>
-            </div>
-            <div class="text-sm text-base-content/60 mt-1">= 1,570 km by car</div>
-            <div class="text-sm text-success">Train would be 32 kg (75% less)</div>
-          </div>
-
-          <!-- Trip Timeline -->
-          <div class="mt-4 pt-4 border-t border-base-300">
-            <div class="text-sm font-medium text-base-content/60 mb-2">TRIP TO MUNICH</div>
-            <div class="space-y-1 text-sm">
-              <div class="flex gap-2">
-                <span class="text-info"><%= icon 'car', class: 'w-4 h-4 inline' %></span>
-                <span class="text-base-content/60">06:30-08:45</span>
-                <span>Berlin &rarr; Leipzig &rarr; Nuremberg</span>
-              </div>
-              <div class="flex gap-2">
-                <span class="text-info"><%= icon 'footprints', class: 'w-4 h-4 inline' %></span>
-                <span class="text-base-content/60">09:00-09:45</span>
-                <span>Check-in, explore</span>
-              </div>
-              <div class="flex gap-2">
-                <span class="text-info"><%= icon 'utensils', class: 'w-4 h-4 inline' %></span>
-                <span class="text-base-content/60">10:00-18:00</span>
-                <span>Meetings, lunch</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -724,7 +688,7 @@
                 <% max_distance = @day_of_week.max.to_f %>
                 <% @day_of_week.each_with_index do |distance, idx| %>
                   <% opacity = max_distance.positive? ? (0.4 + (distance / max_distance) * 0.6).round(2) : 0.4 %>
-                  <div class="flex-1 bg-info rounded text-center py-1" style="opacity: <%= opacity %>">
+                  <div class="flex-1 bg-info text-info-content rounded text-center py-1" style="opacity: <%= opacity %>">
                     <div class="text-xs font-medium"><%= days[idx] %></div>
                     <div class="text-xs"><%= number_to_human(distance / 1000.0, precision: 0, significant: false, units: { unit: '', thousand: 'k', million: 'M' }) %></div>
                   </div>
@@ -750,15 +714,18 @@
       </div>
 
       <!-- Insight Callout -->
-      <div class="alert bg-warning/20 border border-warning/30">
-        <div>
-          <%= icon 'lightbulb', class: 'w-5 h-5 text-warning' %>
-          <div>
-            <h3 class="font-bold text-warning">Insight</h3>
-            <div class="text-sm">Most of your travel happens on weekends during summer months. Consider planning your next adventure for a Saturday morning!</div>
+      <% insight_text = generate_travel_insight(@time_of_day, @day_of_week, @seasonality) %>
+      <% if insight_text.present? %>
+        <div class="alert bg-warning/20 border border-warning/30">
+          <div class="flex items-start gap-3">
+            <%= icon 'lightbulb', class: 'w-5 h-5 text-warning' %>
+            <div>
+              <h3 class="font-bold text-warning">Insight</h3>
+              <div class="text-sm"><%= insight_text %></div>
+            </div>
           </div>
         </div>
-      </div>
+      <% end %>
 
       <!-- Your Travel Story Card -->
       <div class="card bg-base-200">
