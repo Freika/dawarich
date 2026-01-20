@@ -1,0 +1,227 @@
+# frozen_string_literal: true
+
+module InsightsHelper
+  def monthly_digest_title(digest)
+    return 'Monthly Digest' unless digest
+
+    "#{digest.month_name} #{digest.year} Digest"
+  end
+
+  def monthly_digest_distance(digest, user)
+    return '0' unless digest
+
+    distance_unit = user.safe_settings.distance_unit
+    value = Stat.convert_distance(digest.distance, distance_unit).round
+    "#{number_with_delimiter(value)} #{distance_unit}"
+  end
+
+  def monthly_digest_active_days(digest)
+    return '0/0' unless digest
+
+    "#{digest.active_days_count}/#{digest.days_in_month}"
+  end
+
+  def previous_month_link(year, month, available_months)
+    prev_month = month - 1
+    prev_year = year
+
+    if prev_month.zero?
+      prev_month = 12
+      prev_year = year - 1
+    end
+
+    # Check if previous month exists in available months (same year only for simplicity)
+    # or if we're crossing years, we'd need to check previous year's data
+    return unless month > 1 && available_months.include?(prev_month)
+
+    insights_path(year: prev_year, month: prev_month)
+  end
+
+  def next_month_link(year, month, available_months)
+    next_month = month + 1
+    next_year = year
+
+    if next_month > 12
+      next_month = 1
+      next_year = year + 1
+    end
+
+    # Check if next month exists in available months
+    return unless month < 12 && available_months.include?(next_month)
+
+    insights_path(year: next_year, month: next_month)
+  end
+
+  def weekly_pattern_heights(digest)
+    return Array.new(7, 0) unless digest
+
+    pattern = digest.weekly_pattern
+    return Array.new(7, 0) unless pattern.is_a?(Array) && pattern.any?
+
+    max_value = pattern.max.to_f
+    return Array.new(7, 0) if max_value.zero?
+
+    pattern.map { |v| ((v.to_f / max_value) * 100).round }
+  end
+
+  def weekly_pattern_chart_data(digest, user)
+    day_names = %w[Mon Tue Wed Thu Fri Sat Sun]
+    return day_names.map { |day| [day, 0] } unless digest
+
+    pattern = digest.weekly_pattern
+    return day_names.map { |day| [day, 0] } unless pattern.is_a?(Array) && pattern.size == 7
+
+    distance_unit = user.safe_settings.distance_unit
+    day_names.each_with_index.map do |day, idx|
+      distance_meters = pattern[idx] || 0
+      converted = Stat.convert_distance(distance_meters, distance_unit).round
+      [day, converted]
+    end
+  end
+
+  def top_locations_from_digest(digest, limit = 3)
+    return [] unless digest
+
+    toponyms = digest.toponyms
+    return [] unless toponyms.is_a?(Array)
+
+    locations = []
+    toponyms.each do |toponym|
+      next unless toponym.is_a?(Hash)
+
+      country = toponym['country']
+      cities = toponym['cities']
+
+      next unless cities.is_a?(Array) && cities.any?
+
+      cities.each do |city|
+        next unless city.is_a?(Hash)
+
+        city_name = city['city']
+        stayed_for = city['stayed_for'].to_i
+        locations << {
+          name: "#{city_name}, #{country_code(country)}",
+          minutes: stayed_for
+        }
+      end
+    end
+
+    # Sort by minutes and take top N
+    locations.sort_by { |l| -l[:minutes] }.first(limit)
+  end
+
+  def format_location_time(minutes)
+    days = minutes / 1440
+    return "#{days} days" if days >= 1
+
+    hours = minutes / 60
+    return "#{hours} hours" if hours >= 1
+
+    "#{minutes} min"
+  end
+
+  def first_time_visits_from_digest(digest)
+    return { countries: [], cities: [] } unless digest
+
+    {
+      countries: digest.first_time_countries || [],
+      cities: digest.first_time_cities || []
+    }
+  end
+
+  def generate_travel_insight(time_of_day, day_of_week, seasonality)
+    insights = []
+
+    # Analyze time of day preference
+    if time_of_day.present? && time_of_day.values.any?(&:positive?)
+      peak_time = time_of_day.max_by { |_, v| v.to_i }
+      time_labels = {
+        'morning' => 'in the morning (6am-12pm)',
+        'afternoon' => 'in the afternoon (12pm-6pm)',
+        'evening' => 'in the evening (6pm-12am)',
+        'night' => 'at night (12am-6am)'
+      }
+      insights << "You travel most #{time_labels[peak_time[0]]}" if peak_time[1].to_i > 30
+    end
+
+    # Analyze day of week preference
+    if day_of_week.present? && day_of_week.any?(&:positive?)
+      days = %w[Monday Tuesday Wednesday Thursday Friday Saturday Sunday]
+      weekday_total = day_of_week[0..4].sum.to_f
+      weekend_total = day_of_week[5..6].sum.to_f
+
+      # Normalize by number of days
+      weekday_avg = weekday_total / 5
+      weekend_avg = weekend_total / 2
+
+      if weekend_avg > weekday_avg * 1.3
+        peak_day_idx = day_of_week.each_with_index.max_by { |v, _| v }[1]
+        insights << "#{days[peak_day_idx]}s are your most active travel day"
+      elsif weekday_avg > weekend_avg * 1.3
+        insights << "You travel more on weekdays than weekends"
+      end
+    end
+
+    # Analyze seasonality
+    if seasonality.present? && seasonality.values.any?(&:positive?)
+      peak_season = seasonality.max_by { |_, v| v.to_i }
+      if peak_season[1].to_i > 30
+        insights << "#{peak_season[0].capitalize} is your peak travel season"
+      end
+    end
+
+    # Generate final insight message
+    return nil if insights.empty?
+
+    base_insight = insights.join('. ') + '.'
+
+    # Add a suggestion based on the data
+    suggestion = generate_travel_suggestion(time_of_day, day_of_week, seasonality)
+    suggestion ? "#{base_insight} #{suggestion}" : base_insight
+  end
+
+  private
+
+  def generate_travel_suggestion(time_of_day, day_of_week, seasonality)
+    suggestions = []
+
+    # Suggest based on time of day
+    if time_of_day.present?
+      peak_time = time_of_day.max_by { |_, v| v.to_i }&.first
+      case peak_time
+      when 'morning'
+        suggestions << 'Early starts seem to work well for you!'
+      when 'evening'
+        suggestions << 'Consider a sunset drive for your next adventure.'
+      end
+    end
+
+    # Suggest based on day of week
+    if day_of_week.present? && day_of_week.any?(&:positive?)
+      weekend_total = day_of_week[5..6].sum.to_f
+      weekday_total = day_of_week[0..4].sum.to_f
+      weekend_avg = weekend_total / 2
+      weekday_avg = weekday_total / 5
+
+      if weekend_avg > weekday_avg * 1.5
+        suggestions << 'Your weekends are made for exploring!'
+      end
+    end
+
+    suggestions.sample
+  end
+
+  def country_code(country_name)
+    # Simple country name to code mapping for common countries
+    codes = {
+      'Germany' => 'DE', 'France' => 'FR', 'Italy' => 'IT', 'Spain' => 'ES',
+      'United Kingdom' => 'UK', 'Netherlands' => 'NL', 'Belgium' => 'BE',
+      'Austria' => 'AT', 'Switzerland' => 'CH', 'Poland' => 'PL',
+      'Czech Republic' => 'CZ', 'Sweden' => 'SE', 'Denmark' => 'DK',
+      'Norway' => 'NO', 'Finland' => 'FI', 'Portugal' => 'PT',
+      'United States' => 'US', 'Canada' => 'CA', 'Japan' => 'JP',
+      'Australia' => 'AU', 'New Zealand' => 'NZ'
+    }
+    codes[country_name] || country_name&.first(2)&.upcase || '??'
+  end
+end
