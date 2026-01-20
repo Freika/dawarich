@@ -732,9 +732,6 @@ export default class extends BaseController {
         if (this.scratchLayerManager) {
           this.scratchLayerManager.remove();
         }
-      } else if (event.name === 'Fog of War') {
-        // Fog canvas will be automatically removed by the layer's onRemove method
-        // Keep the fogOverlay reference - it will be reused when re-enabled
       }
     });
 
