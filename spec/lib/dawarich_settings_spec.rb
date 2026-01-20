@@ -97,4 +97,55 @@ RSpec.describe DawarichSettings do
       end
     end
   end
+
+  describe '.oidc_enabled?' do
+    # Allow the real implementation to be called in these tests
+    before do
+      allow(described_class).to receive(:oidc_enabled?).and_call_original
+    end
+
+    context 'when self-hosted and OIDC providers include openid_connect' do
+      before do
+        stub_const('SELF_HOSTED', true)
+        stub_const('OMNIAUTH_PROVIDERS', %i[openid_connect])
+      end
+
+      it 'returns true' do
+        expect(described_class.oidc_enabled?).to be true
+      end
+    end
+
+    context 'when self-hosted but OIDC providers do not include openid_connect' do
+      before do
+        stub_const('SELF_HOSTED', true)
+        stub_const('OMNIAUTH_PROVIDERS', [])
+      end
+
+      it 'returns false' do
+        expect(described_class.oidc_enabled?).to be false
+      end
+    end
+
+    context 'when not self-hosted' do
+      before do
+        stub_const('SELF_HOSTED', false)
+        stub_const('OMNIAUTH_PROVIDERS', %i[openid_connect])
+      end
+
+      it 'returns false' do
+        expect(described_class.oidc_enabled?).to be false
+      end
+    end
+
+    context 'when not self-hosted with github/google providers (cloud mode)' do
+      before do
+        stub_const('SELF_HOSTED', false)
+        stub_const('OMNIAUTH_PROVIDERS', %i[github google_oauth2])
+      end
+
+      it 'returns false (OAuth in cloud is supplementary, not OIDC-only)' do
+        expect(described_class.oidc_enabled?).to be false
+      end
+    end
+  end
 end

@@ -77,6 +77,60 @@ RSpec.describe ApplicationHelper, type: :helper do
     end
   end
 
+  describe '#email_password_login_enabled?' do
+    context 'when OIDC is not enabled' do
+      before do
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+      end
+
+      it 'returns true regardless of ALLOW_EMAIL_PASSWORD_REGISTRATION' do
+        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+
+        expect(helper.email_password_login_enabled?).to be true
+      end
+    end
+
+    context 'in cloud mode with OAuth providers (GitHub/Google)' do
+      before do
+        # Cloud mode: self_hosted? is false, so oidc_enabled? returns false
+        # even if there are OAuth providers configured
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+      end
+
+      it 'always returns true (OAuth is supplementary to email/password)' do
+        stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+
+        expect(helper.email_password_login_enabled?).to be true
+      end
+    end
+
+    context 'when OIDC is enabled' do
+      before do
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(true)
+      end
+
+      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is true' do
+        before do
+          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+        end
+
+        it 'returns true' do
+          expect(helper.email_password_login_enabled?).to be true
+        end
+      end
+
+      context 'when ALLOW_EMAIL_PASSWORD_REGISTRATION is false' do
+        before do
+          stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', false)
+        end
+
+        it 'returns false (OIDC-only mode)' do
+          expect(helper.email_password_login_enabled?).to be false
+        end
+      end
+    end
+  end
+
   describe '#preferred_map_path' do
     context 'when user is not signed in' do
       before do

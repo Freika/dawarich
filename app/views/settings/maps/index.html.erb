@@ -113,24 +113,6 @@
               </div>
             </div>
           </div>
-          <div class="bg-base-100 p-5 mt-5 rounded-lg shadow-sm">
-            <h3 class="font-semibold mb-4">Tile Usage (Last 7 Days)</h3>
-            <div class="h-[250px]">
-              <%= line_chart(
-                @tile_usage,
-                height: '200px',
-                xtitle: 'Days',
-                ytitle: 'Tiles',
-                suffix: ' tiles loaded'
-              ) %>
-            </div>
-            <div class="mt-4 text-sm text-base-content/70">
-              <p>Total usage this week: <span class="font-semibold"><%= @tile_usage.sum { |_, count| count } %> tiles</span>
-              </p>
-              <!--p>Monthly quota: <span class="font-semibold">100,000 tiles</span-->
-              </p>
-            </div>
-          </div>
         </div>
         <div class="card-actions justify-end mt-6">
           <%= f.submit 'Save changes', class: "btn btn-primary", data: { map_preview_target: "saveButton" } %>

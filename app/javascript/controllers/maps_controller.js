@@ -43,7 +43,6 @@ import { PrivacyZoneManager } from "../maps/privacy_zones";
 
 import "leaflet-draw";
 import { initializeFogCanvas, drawFogCanvas, createFogOverlay } from "../maps/fog_of_war";
-import { TileMonitor } from "../maps/tile_monitor";
 import BaseController from "./base_controller";
 import { createAllMapLayers } from "../maps/layers";
 import { applyThemeToControl, applyThemeToButton, applyThemeToPanel } from "../maps/theme_utils";
@@ -255,9 +254,6 @@ export default class extends BaseController {
     // Expose maps controller globally for family integration
     window.mapsController = this;
 
-    // Initialize tile monitor
-    this.tileMonitor = new TileMonitor(this.map, this.apiKey);
-
     this.addEventListeners();
     this.setupSubscription();
     this.setupTracksSubscription();
@@ -304,9 +300,6 @@ export default class extends BaseController {
 
     if (this.tracksSubscription) {
       this.tracksSubscription.unsubscribe();
-    }
-    if (this.tileMonitor) {
-      this.tileMonitor.destroy();
     }
     if (this.visitsManager) {
       this.visitsManager.destroy();
@@ -699,11 +692,9 @@ export default class extends BaseController {
           this.scratchLayerManager.addToMap();
         }
       } else if (event.name === 'Fog of War') {
-        // Enable fog of war when layer is added
-        this.fogOverlay = event.layer;
-        if (this.markers && this.markers.length > 0) {
-          this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
-        }
+        // Fog of war layer re-enabled, redraw the fog
+        // Note: this.fogOverlay already holds the correct reference from initialization
+        this.updateFog(this.markers || [], this.clearFogRadius, this.fogLineThreshold);
       }
 
       // Manage pane visibility when layers are manually toggled
@@ -743,7 +734,7 @@ export default class extends BaseController {
         }
       } else if (event.name === 'Fog of War') {
         // Fog canvas will be automatically removed by the layer's onRemove method
-        this.fogOverlay = null;
+        // Keep the fogOverlay reference - it will be reused when re-enabled
       }
     });
 

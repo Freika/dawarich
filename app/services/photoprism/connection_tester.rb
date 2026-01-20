@@ -14,7 +14,7 @@ class Photoprism::ConnectionTester
     return { success: false, error: 'Photoprism API key is missing' } if api_key.blank?
 
     test_connection
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout => e
+  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
     { success: false, error: "Photoprism connection failed: #{e.message}" }
   end
 
@@ -24,10 +24,10 @@ class Photoprism::ConnectionTester
     response = HTTParty.get(
       "#{url}/api/v1/photos",
       http_options_with_ssl({
-        headers: { 'Authorization' => "Bearer #{api_key}", 'accept' => 'application/json' },
+                              headers: { 'Authorization' => "Bearer #{api_key}", 'accept' => 'application/json' },
         query: { count: 1, public: true },
         timeout: 10
-      })
+                            })
     )
 
     return { success: true, message: 'Photoprism connection verified' } if response.success?

@@ -44,6 +44,15 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def check_registration_allowed
     return unless self_hosted_mode?
+
+    # When OIDC is enabled and email/password registration is disabled,
+    # block all email/password registration including family invitations
+    if oidc_only_mode?
+      redirect_to root_path,
+                  alert: 'Email/password registration is disabled. Please use OIDC to sign in.'
+      return
+    end
+
     return if valid_invitation_token?
     return if email_password_registration_allowed?
 
@@ -58,10 +67,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def self_hosted_mode?
-    env_value = ENV['SELF_HOSTED']
-    return ActiveModel::Type::Boolean.new.cast(env_value) unless env_value.nil?
-
-    false
+    DawarichSettings.self_hosted?
   end
 
   def valid_invitation_token?
@@ -100,5 +106,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def email_password_registration_allowed?
     ALLOW_EMAIL_PASSWORD_REGISTRATION
+  end
+
+  def oidc_only_mode?
+    DawarichSettings.oidc_enabled? && !email_password_registration_allowed?
   end
 end
