@@ -17,9 +17,9 @@ export function getTrackColor() {
   return trackColorPalette.default;
 }
 
-export function createTrackPopupContent(track, distanceUnit) {
-  const startTime = formatDate(track.start_at, 'UTC');
-  const endTime = formatDate(track.end_at, 'UTC');
+export function createTrackPopupContent(track, distanceUnit, timezone = 'UTC') {
+  const startTime = formatDate(track.start_at, timezone);
+  const endTime = formatDate(track.end_at, timezone);
   const duration = track.duration || 0;
   const durationFormatted = minutesToDaysHoursMinutes(Math.round(duration / 60));
 
@@ -88,7 +88,7 @@ export function addTrackInteractions(trackGroup, map, track, userSettings, dista
     startMarker.addTo(map);
     endMarker.addTo(map);
 
-    const popupContent = createTrackPopupContent(track, distanceUnit);
+    const popupContent = createTrackPopupContent(track, distanceUnit, userSettings.timezone);
 
     if (hoverPopup) {
       map.closePopup(hoverPopup);
@@ -145,7 +145,7 @@ export function addTrackInteractions(trackGroup, map, track, userSettings, dista
       endMarker.addTo(map);
 
       // Show persistent popup
-      const popupContent = createTrackPopupContent(track, distanceUnit);
+      const popupContent = createTrackPopupContent(track, distanceUnit, userSettings.timezone);
 
       L.popup()
         .setLatLng(e.latlng)

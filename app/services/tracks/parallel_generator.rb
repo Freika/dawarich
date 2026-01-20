@@ -120,8 +120,16 @@ class Tracks::ParallelGenerator
   end
 
   def daily_time_range
-    day = start_at&.to_date || Date.current
-    day.beginning_of_day.to_i..day.end_of_day.to_i
+    timezone = user.timezone
+    day = if start_at.is_a?(Date)
+            start_at
+          elsif start_at
+            start_at.to_time.in_time_zone(timezone).to_date
+          else
+            TimezoneHelper.today_in_timezone(timezone)
+          end
+    start_ts, end_ts = TimezoneHelper.day_bounds(day, timezone)
+    start_ts..end_ts
   end
 
   def distance_threshold_meters

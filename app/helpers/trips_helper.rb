@@ -1,26 +1,31 @@
 # frozen_string_literal: true
 
 module TripsHelper
-  def immich_search_url(base_url, start_date, end_date)
+  def immich_search_url(base_url, start_date, end_date, timezone: nil)
+    tz = timezone ? ActiveSupport::TimeZone[timezone] : Time.zone
+    start_dt = start_date.in_time_zone(tz).to_date
+    end_dt = end_date.in_time_zone(tz).to_date
     query = {
-      takenAfter: "#{start_date.to_date}T00:00:00.000Z",
-      takenBefore: "#{end_date.to_date}T23:59:59.999Z"
+      takenAfter: "#{start_dt}T00:00:00.000Z",
+      takenBefore: "#{end_dt}T23:59:59.999Z"
     }
 
     encoded_query = URI.encode_www_form_component(query.to_json)
     "#{base_url}/search?query=#{encoded_query}"
   end
 
-  def photoprism_search_url(base_url, start_date, _end_date)
-    "#{base_url}/library/browse?view=cards&year=#{start_date.year}&month=#{start_date.month}&order=newest&public=true&quality=3"
+  def photoprism_search_url(base_url, start_date, _end_date, timezone: nil)
+    tz = timezone ? ActiveSupport::TimeZone[timezone] : Time.zone
+    start_dt = start_date.in_time_zone(tz)
+    "#{base_url}/library/browse?view=cards&year=#{start_dt.year}&month=#{start_dt.month}&order=newest&public=true&quality=3"
   end
 
-  def photo_search_url(source, settings, start_date, end_date)
+  def photo_search_url(source, settings, start_date, end_date, timezone: nil)
     case source
     when 'immich'
-      immich_search_url(settings['immich_url'], start_date, end_date)
+      immich_search_url(settings['immich_url'], start_date, end_date, timezone:)
     when 'photoprism'
-      photoprism_search_url(settings['photoprism_url'], start_date, end_date)
+      photoprism_search_url(settings['photoprism_url'], start_date, end_date, timezone:)
     end
   end
 

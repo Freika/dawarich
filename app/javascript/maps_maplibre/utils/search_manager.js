@@ -6,7 +6,7 @@
 import { LocationSearchService } from '../services/location_search_service.js'
 
 export class SearchManager {
-  constructor(map, apiKey) {
+  constructor(map, apiKey, timezone = 'UTC') {
     this.map = map
     this.service = new LocationSearchService(apiKey)
     this.searchInput = null
@@ -15,6 +15,7 @@ export class SearchManager {
     this.debounceDelay = 300 // ms
     this.currentMarker = null
     this.currentVisitsData = null // Store visits data for click handling
+    this.timezone = timezone
   }
 
   /**
@@ -667,7 +668,7 @@ export class SearchManager {
    */
   formatDateShort(dateString) {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: this.timezone })
   }
 
   /**
@@ -682,7 +683,8 @@ export class SearchManager {
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: this.timezone
     })
   }
 

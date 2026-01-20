@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - SSL certificate verification can now be disabled for Immich and Photoprism integrations to support self-signed certificates. A prominent security warning is displayed when this option is enabled. #1645
+- User can now select timezone in the User Settings. Default timezone is being automatically inferred from the browser. #1824
+
+
+# [1.0.0] - 2026-01-20
+
+The 1.0.0 release. Same as in 0.37.3, but with updated version number. We're aiming to provide more stable releases going forward.
+
+All the issues that are currently open in Github will be addressed in the upcoming releases.
+
+
+# [0.37.3] - 2026-01-11
 
 ## Fixed
 
@@ -19,6 +30,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - GeoJSON formatted points now have correct timestamp parsed from raw_data['properties']['date'] field.
 - Reduce number of iterations during cache cleaning to improve performance.
 - Version in the navbar is now correct. #2154
+- Time on points page now reflects user selected timezone. #1737
 
 ## Changed
 

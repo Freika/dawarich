@@ -38,22 +38,27 @@ class Tracks::TimeChunker
   private
 
   def determine_time_range
+    timezone = user.timezone
+    current_time = Time.current.in_time_zone(timezone)
+
     case
     when start_at && end_at
-      [start_at.to_time, end_at.to_time]
+      [start_at.to_time.in_time_zone(timezone), end_at.to_time.in_time_zone(timezone)]
     when start_at
-      [start_at.to_time, Time.current]
+      [start_at.to_time.in_time_zone(timezone), current_time]
     when end_at
       first_point_time = user.points.minimum(:timestamp)
       return nil unless first_point_time
-      [Time.at(first_point_time), end_at.to_time]
+
+      [Time.at(first_point_time).in_time_zone(timezone), end_at.to_time.in_time_zone(timezone)]
     else
       # Get full range from user's points
       first_point_time = user.points.minimum(:timestamp)
       last_point_time = user.points.maximum(:timestamp)
 
       return nil unless first_point_time && last_point_time
-      [Time.at(first_point_time), Time.at(last_point_time)]
+
+      [Time.at(first_point_time).in_time_zone(timezone), Time.at(last_point_time).in_time_zone(timezone)]
     end
   end
 

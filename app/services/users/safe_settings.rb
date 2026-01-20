@@ -25,7 +25,8 @@ class Users::SafeSettings
     'enabled_map_layers' => %w[Routes Heatmap],
     'maps_maplibre_style' => 'light',
     'digest_emails_enabled' => true,
-    'globe_projection' => false
+    'globe_projection' => false,
+    'timezone' => nil
   }.freeze
 
   def initialize(settings = {})
@@ -56,7 +57,8 @@ class Users::SafeSettings
       fog_of_war_threshold: fog_of_war_threshold,
       enabled_map_layers: enabled_map_layers,
       maps_maplibre_style: maps_maplibre_style,
-      globe_projection: globe_projection
+      globe_projection: globe_projection,
+      timezone: timezone
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -162,5 +164,9 @@ class Users::SafeSettings
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def timezone
+    settings['timezone']
   end
 end

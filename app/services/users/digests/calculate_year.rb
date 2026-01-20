@@ -22,7 +22,8 @@ module Users
           time_spent_by_location: calculate_time_spent,
           first_time_visits: calculate_first_time_visits,
           year_over_year: calculate_yoy_comparison,
-          all_time_stats: calculate_all_time_stats
+          all_time_stats: calculate_all_time_stats,
+          travel_patterns: calculate_travel_patterns
         )
 
         digest.save!
@@ -129,7 +130,7 @@ module Users
         points = fetch_year_points_with_country_ordered
 
         points.group_by do |point|
-          Time.zone.at(point.timestamp).to_date
+          TimezoneHelper.timestamp_to_date(point.timestamp, user_timezone)
         end
       end
 
@@ -153,15 +154,18 @@ module Users
       end
 
       def fetch_year_points_with_country_ordered
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
-        end_of_year = start_of_year.end_of_year
+        start_timestamp, end_timestamp = TimezoneHelper.year_bounds(year, user_timezone)
 
         user.points
             .without_raw_data
-            .where('timestamp >= ? AND timestamp <= ?', start_of_year.to_i, end_of_year.to_i)
+            .where('timestamp >= ? AND timestamp <= ?', start_timestamp, end_timestamp)
             .where.not(country_name: [nil, ''])
             .select(:country_name, :timestamp)
             .order(timestamp: :asc)
+      end
+
+      def user_timezone
+        user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
       end
 
       def calculate_city_time_spent
@@ -219,6 +223,14 @@ module Users
           'total_countries' => user.countries_visited_uncached.size,
           'total_cities' => user.cities_visited_uncached.size,
           'total_distance' => user.stats.sum(:distance).to_s
+        }
+      end
+
+      def calculate_travel_patterns
+        {
+          'time_of_day' => Stats::TimeOfDayQuery.new(user, year, nil, user.timezone).call,
+          'seasonality' => SeasonalityCalculator.new(user, year).call,
+          'activity_breakdown' => ActivityBreakdownCalculator.new(user, year, nil).call
         }
       end
     end

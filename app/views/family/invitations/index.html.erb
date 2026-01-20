@@ -19,11 +19,11 @@
                 <div class="font-medium text-base-content"><%= invitation.email %></div>
                 <div class="text-sm text-base-content opacity-60">
                   <%= t('family_invitations.index.invited_on', default: 'Invited') %>
-                  <%= invitation.created_at.strftime('%B %d, %Y') %>
+                  <%= invitation.created_at.in_time_zone(current_user.timezone).strftime('%B %d, %Y') %>
                 </div>
                 <div class="text-xs text-base-content opacity-50">
                   <%= t('family_invitations.index.expires_on', default: 'Expires') %>
-                  <%= invitation.expires_at.strftime('%B %d, %Y at %I:%M %p') %>
+                  <%= invitation.expires_at.in_time_zone(current_user.timezone).strftime('%B %d, %Y at %I:%M %p') %>
                 </div>
               </div>
 

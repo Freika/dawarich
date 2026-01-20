@@ -54,6 +54,12 @@ class Api::V1::PointsController < ApiController
     point = current_api_user.points.find(params[:id])
 
     if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+      # Trigger async track recalculation if point belongs to a track
+      if point.track_id.present?
+        Rails.logger.info "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
+        Tracks::RecalculateJob.perform_later(point.track_id)
+      end
+
       render json: point_serializer.new(point.reload).call
     else
       render json: { error: point.errors.full_messages.join(', ') }, status: :unprocessable_entity
