@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.37.3] - Unreleased
+# [1.0.0] - 2026-01-20
+
+The 1.0.0 release. Same as in 0.37.3, but with updated version number. We're aiming to provide more stable releases going forward.
+
+All the issues that are currently open in Github will be addressed in the upcoming releases.
+
+# [0.37.3] - 2026-01-11
 
 ## Fixed
 
