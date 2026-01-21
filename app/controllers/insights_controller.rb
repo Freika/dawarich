@@ -8,6 +8,20 @@ class InsightsController < ApplicationController
     @selected_year = params[:year] || @available_years.first&.to_s || Time.current.year.to_s
     @all_time = @selected_year == 'all'
 
+    load_year_stats
+    load_year_totals
+    load_comparison_data if @previous_year_stats&.any?
+
+    if @all_time
+      set_default_travel_patterns
+    else
+      load_monthly_data
+    end
+  end
+
+  private
+
+  def load_year_stats
     if @all_time
       @year_stats = current_user.stats.order(year: :desc, month: :desc)
       @previous_year_stats = Stat.none
@@ -19,14 +33,41 @@ class InsightsController < ApplicationController
       @previous_year_stats = current_user.stats.where(year: @previous_year).order(:month)
       @display_label = "#{@selected_year} Overview"
     end
-
-    calculate_year_totals
-    calculate_comparison_data if @previous_year_stats.any?
-    load_monthly_digest unless @all_time
-    load_travel_patterns unless @all_time
   end
 
-  private
+  def load_year_totals
+    @year_totals = Insights::YearTotalsCalculator.new(@year_stats, distance_unit: distance_unit).call
+
+    @total_distance = @year_totals.total_distance
+    @countries_count = @year_totals.countries_count
+    @cities_count = @year_totals.cities_count
+    @countries_list = @year_totals.countries_list
+    @days_traveling = @year_totals.days_traveling
+    @biggest_month = @year_totals.biggest_month
+  end
+
+  def load_comparison_data
+    comparison = Insights::YearComparisonCalculator.new(
+      @year_totals,
+      @previous_year_stats,
+      distance_unit: distance_unit
+    ).call
+
+    @prev_total_distance = comparison.prev_total_distance
+    @prev_countries_count = comparison.prev_countries_count
+    @prev_cities_count = comparison.prev_cities_count
+    @prev_days_traveling = comparison.prev_days_traveling
+    @prev_biggest_month = comparison.prev_biggest_month
+    @distance_change = comparison.distance_change
+    @countries_change = comparison.countries_change
+    @cities_change = comparison.cities_change
+    @days_change = comparison.days_change
+  end
+
+  def load_monthly_data
+    load_monthly_digest
+    load_travel_patterns
+  end
 
   def load_monthly_digest
     @selected_month = determine_selected_month
@@ -39,7 +80,6 @@ class InsightsController < ApplicationController
                                   .monthly
                                   .find_by(year: @selected_year, month: @selected_month)
 
-    # Calculate on-demand if not exists
     return unless @monthly_digest.nil? && @available_months.include?(@selected_month)
 
     @monthly_digest = Users::Digests::CalculateMonth
@@ -48,27 +88,17 @@ class InsightsController < ApplicationController
   end
 
   def load_travel_patterns
-    # Time of day from monthly digest (or calculate on-demand)
-    @time_of_day = @monthly_digest&.time_of_day_distribution.presence ||
-                   Stats::TimeOfDayQuery.new(current_user, @selected_year, @selected_month, user_timezone).call
+    patterns = Insights::TravelPatternsLoader.new(
+      current_user,
+      @selected_year,
+      @selected_month,
+      monthly_digest: @monthly_digest
+    ).call
 
-    # Day of week from monthly digest
-    @day_of_week = @monthly_digest&.weekly_pattern.presence || Array.new(7, 0)
-
-    # Seasonality from yearly digest (or calculate on-demand)
-    yearly_digest = current_user.digests.yearly.find_by(year: @selected_year)
-    @seasonality = yearly_digest&.seasonality.presence ||
-                   Users::Digests::SeasonalityCalculator.new(current_user, @selected_year).call
-
-    # Activity breakdown from digest (or calculate on-demand)
-    @activity_breakdown = @monthly_digest&.activity_breakdown.presence ||
-                          Users::Digests::ActivityBreakdownCalculator.new(
-                            current_user, @selected_year, @selected_month
-                          ).call
-  end
-
-  def user_timezone
-    current_user.timezone
+    @time_of_day = patterns.time_of_day
+    @day_of_week = patterns.day_of_week
+    @seasonality = patterns.seasonality
+    @activity_breakdown = patterns.activity_breakdown
   end
 
   def determine_selected_month
@@ -81,103 +111,12 @@ class InsightsController < ApplicationController
     end
   end
 
-  def calculate_year_totals
-    # Total distance for the year
-    total_distance_meters = @year_stats.sum(:distance)
-    @total_distance = Stat.convert_distance(total_distance_meters, distance_unit).round
-
-    # Countries and cities from toponyms
-    countries = Set.new
-    cities = Set.new
-
-    @year_stats.each do |stat|
-      next unless stat.toponyms.is_a?(Array)
-
-      stat.toponyms.each do |toponym|
-        next unless toponym.is_a?(Hash)
-
-        countries.add(toponym['country']) if toponym['country'].present?
-
-        next unless toponym['cities'].is_a?(Array)
-
-        toponym['cities'].each do |city|
-          cities.add(city['city']) if city.is_a?(Hash) && city['city'].present?
-        end
-      end
-    end
-
-    @countries_count = countries.size
-    @cities_count = cities.size
-    @countries_list = countries.to_a.sort
-
-    # Days traveling (active days with distance > 0)
-    @days_traveling = @year_stats.sum do |stat|
-      stat.daily_distance.count { |_day, distance| distance.to_i.positive? }
-    end
-
-    # Biggest month
-    @biggest_month = find_biggest_month(@year_stats)
-  end
-
-  def find_biggest_month(stats)
-    return nil if stats.empty?
-
-    max_stat = stats.max_by(&:distance)
-    return nil unless max_stat&.distance&.positive?
-
-    {
-      month: Date::MONTHNAMES[max_stat.month],
-      distance: Stat.convert_distance(max_stat.distance, distance_unit).round
-    }
-  end
-
-  def calculate_comparison_data
-    # Previous year totals
-    prev_distance_meters = @previous_year_stats.sum(:distance)
-    @prev_total_distance = Stat.convert_distance(prev_distance_meters, distance_unit).round
-
-    # Previous year countries and cities
-    prev_countries = Set.new
-    prev_cities = Set.new
-
-    @previous_year_stats.each do |stat|
-      next unless stat.toponyms.is_a?(Array)
-
-      stat.toponyms.each do |toponym|
-        next unless toponym.is_a?(Hash)
-
-        prev_countries.add(toponym['country']) if toponym['country'].present?
-
-        next unless toponym['cities'].is_a?(Array)
-
-        toponym['cities'].each do |city|
-          prev_cities.add(city['city']) if city.is_a?(Hash) && city['city'].present?
-        end
-      end
-    end
-
-    @prev_countries_count = prev_countries.size
-    @prev_cities_count = prev_cities.size
-
-    # Previous year days traveling
-    @prev_days_traveling = @previous_year_stats.sum do |stat|
-      stat.daily_distance.count { |_day, distance| distance.to_i.positive? }
-    end
-
-    # Previous year biggest month
-    @prev_biggest_month = find_biggest_month(@previous_year_stats)
-
-    # Calculate percentage changes
-    @distance_change = calculate_change(@total_distance, @prev_total_distance)
-    @countries_change = @countries_count - @prev_countries_count
-    @cities_change = calculate_change(@cities_count, @prev_cities_count)
-    @days_change = calculate_change(@days_traveling, @prev_days_traveling)
-  end
-
-  def calculate_change(current, previous)
-    return 0 if previous.zero?
-
-    ((current - previous).to_f / previous * 100).round
+  def set_default_travel_patterns
+    @available_months = []
+    @time_of_day = {}
+    @day_of_week = Array.new(7, 0)
+    @seasonality = {}
+    @activity_breakdown = {}
   end
 
   def distance_unit

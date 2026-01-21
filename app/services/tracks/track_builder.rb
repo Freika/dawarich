@@ -74,7 +74,6 @@ module Tracks::TrackBuilder
     if track.save
       Point.where(id: points.map(&:id)).update_all(track_id: track.id)
 
-      # Detect transportation modes and create segments
       detect_and_create_segments(track, points)
 
       track
@@ -145,7 +144,6 @@ module Tracks::TrackBuilder
     }
   end
 
-  # Detects transportation modes from points and creates TrackSegment records
   def detect_and_create_segments(track, points)
     detector = TransportationModes::Detector.new(track, points)
     segment_data = detector.call
@@ -167,18 +165,14 @@ module Tracks::TrackBuilder
       )
     end.compact
 
-    # Set dominant mode based on segment with longest duration
     update_dominant_mode(track, segments)
   rescue StandardError => e
     Rails.logger.error "Failed to detect transportation modes for track #{track.id}: #{e.message}"
-    # Don't fail the track creation if mode detection fails
   end
 
-  # Updates the track's dominant_mode based on segment durations
   def update_dominant_mode(track, segments)
     return if segments.empty?
 
-    # Find segment with longest duration
     dominant_segment = segments.max_by { |s| s.duration || 0 }
     return unless dominant_segment
 

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module InsightsHelper
+  include CountryFlagHelper
+
   def monthly_digest_title(digest)
     return 'Monthly Digest' unless digest
 
@@ -22,34 +24,21 @@ module InsightsHelper
   end
 
   def previous_month_link(year, month, available_months)
-    prev_month = month - 1
-    prev_year = year
-
-    if prev_month.zero?
-      prev_month = 12
-      prev_year = year - 1
-    end
+    prev_date = Date.new(year, month, 1).prev_month
 
     # Check if previous month exists in available months (same year only for simplicity)
-    # or if we're crossing years, we'd need to check previous year's data
-    return unless month > 1 && available_months.include?(prev_month)
+    return unless month > 1 && available_months.include?(prev_date.month)
 
-    insights_path(year: prev_year, month: prev_month)
+    insights_path(year: prev_date.year, month: prev_date.month)
   end
 
   def next_month_link(year, month, available_months)
-    next_month = month + 1
-    next_year = year
+    next_date = Date.new(year, month, 1).next_month
 
-    if next_month > 12
-      next_month = 1
-      next_year = year + 1
-    end
+    # Check if next month exists in available months (same year only for simplicity)
+    return unless month < 12 && available_months.include?(next_date.month)
 
-    # Check if next month exists in available months
-    return unless month < 12 && available_months.include?(next_month)
-
-    insights_path(year: next_year, month: next_month)
+    insights_path(year: next_date.year, month: next_date.month)
   end
 
   def weekly_pattern_heights(digest)
@@ -111,13 +100,19 @@ module InsightsHelper
   end
 
   def format_location_time(minutes)
-    days = minutes / 1440
-    return "#{days} days" if days >= 1
+    return '0 min' if minutes.nil? || minutes.to_i.zero?
 
-    hours = minutes / 60
-    return "#{hours} hours" if hours >= 1
+    duration = ActiveSupport::Duration.build(minutes.to_i * 60)
+    parts = duration.parts
 
-    "#{minutes} min"
+    days = parts[:days] || 0
+    hours = parts[:hours] || 0
+    mins = parts[:minutes] || 0
+
+    return "#{days} #{'day'.pluralize(days)}" if days >= 1
+    return "#{hours} #{'hour'.pluralize(hours)}" if hours >= 1
+
+    "#{mins} min"
   end
 
   def first_time_visits_from_digest(digest)
@@ -212,16 +207,6 @@ module InsightsHelper
   end
 
   def country_code(country_name)
-    # Simple country name to code mapping for common countries
-    codes = {
-      'Germany' => 'DE', 'France' => 'FR', 'Italy' => 'IT', 'Spain' => 'ES',
-      'United Kingdom' => 'UK', 'Netherlands' => 'NL', 'Belgium' => 'BE',
-      'Austria' => 'AT', 'Switzerland' => 'CH', 'Poland' => 'PL',
-      'Czech Republic' => 'CZ', 'Sweden' => 'SE', 'Denmark' => 'DK',
-      'Norway' => 'NO', 'Finland' => 'FI', 'Portugal' => 'PT',
-      'United States' => 'US', 'Canada' => 'CA', 'Japan' => 'JP',
-      'Australia' => 'AU', 'New Zealand' => 'NZ'
-    }
-    codes[country_name] || country_name&.first(2)&.upcase || '??'
+    country_to_code(country_name) || country_name&.first(2)&.upcase || '??'
   end
 end

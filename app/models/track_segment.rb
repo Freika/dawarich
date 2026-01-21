@@ -3,21 +3,7 @@
 class TrackSegment < ApplicationRecord
   belongs_to :track
 
-  # Transportation modes enum - ordered by typical speed range
-  # Values match the insights UI expectations
-  enum :transportation_mode, {
-    unknown: 0,
-    stationary: 1,
-    walking: 2,
-    running: 3,
-    cycling: 4,
-    driving: 5,
-    bus: 6,
-    train: 7,
-    flying: 8,
-    boat: 9,
-    motorcycle: 10
-  }
+  enum :transportation_mode, Track::TRANSPORTATION_MODES
 
   # Confidence levels for the detection
   enum :confidence, {

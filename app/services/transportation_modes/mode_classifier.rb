@@ -44,17 +44,14 @@ module TransportationModes
       @duration = duration || 0
     end
 
-    # Returns the most likely transportation mode
     def classify
       return :stationary if stationary?
       return :flying if likely_flying?
       return :train if likely_train?
 
-      # For medium-speed ranges, use acceleration to disambiguate
       classify_medium_speed_mode
     end
 
-    # Returns confidence level (:low, :medium, :high)
     def confidence
       return :high if clear_classification?
       return :low if ambiguous_speed_range?
@@ -71,7 +68,6 @@ module TransportationModes
     end
 
     def likely_flying?
-      # Flying has very distinct speed characteristics
       avg_speed >= 150 && max_speed >= 200
     end
 

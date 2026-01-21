@@ -153,10 +153,12 @@ module ApplicationHelper
   def format_duration_short(seconds)
     return '0m' if seconds.nil? || seconds.to_i.zero?
 
-    seconds = seconds.to_i
-    days = seconds / 86_400
-    hours = (seconds % 86_400) / 3600
-    minutes = (seconds % 3600) / 60
+    duration = ActiveSupport::Duration.build(seconds.to_i)
+    parts = duration.parts
+
+    days = parts[:days] || 0
+    hours = parts[:hours] || 0
+    minutes = parts[:minutes] || 0
 
     if days.positive?
       hours.positive? ? "#{days}d #{hours}h" : "#{days}d"

@@ -4,13 +4,7 @@ class Track < ApplicationRecord
   include Calculateable
   include DistanceConvertible
 
-  belongs_to :user
-  has_many :points, dependent: :nullify
-  has_many :track_segments, dependent: :destroy
-
-  # Dominant transportation mode for the track (mode with longest duration)
-  # Must match TrackSegment.transportation_modes enum values
-  enum :dominant_mode, {
+  TRANSPORTATION_MODES = {
     unknown: 0,
     stationary: 1,
     walking: 2,
@@ -22,7 +16,13 @@ class Track < ApplicationRecord
     flying: 8,
     boat: 9,
     motorcycle: 10
-  }, prefix: true
+  }.freeze
+
+  belongs_to :user
+  has_many :points, dependent: :nullify
+  has_many :track_segments, dependent: :destroy
+
+  enum :dominant_mode, TRANSPORTATION_MODES, prefix: true
 
   validates :start_at, :end_at, :original_path, presence: true
   validates :distance, :avg_speed, :duration, numericality: { greater_than_or_equal_to: 0 }
@@ -34,7 +34,6 @@ class Track < ApplicationRecord
   after_update :broadcast_track_updated
   after_destroy :broadcast_track_destroyed
 
-  # Scopes for filtering by transportation mode
   scope :by_mode, ->(mode) { where(dominant_mode: mode) }
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
   scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
@@ -159,12 +158,10 @@ class Track < ApplicationRecord
     pg_array_string.gsub(/[{}]/, '').split(',').map(&:to_i)
   end
 
-  # Returns activity breakdown for this track as a hash of mode => duration (seconds)
   def activity_breakdown
     track_segments.group(:transportation_mode).sum(:duration)
   end
 
-  # Calculates and updates the dominant mode based on track segments
   def update_dominant_mode!
     breakdown = activity_breakdown
     return update_column(:dominant_mode, :unknown) if breakdown.empty?
@@ -173,7 +170,6 @@ class Track < ApplicationRecord
     update_column(:dominant_mode, dominant || :unknown)
   end
 
-  # Broadcast updated track as GeoJSON for map layer updates
   def broadcast_geojson_updated
     Rails.logger.info "[Track#broadcast_geojson_updated] Broadcasting track #{id} to user #{user_id}"
     geojson_feature = Tracks::GeojsonSerializer.new(self).call[:features].first
@@ -203,9 +199,11 @@ class Track < ApplicationRecord
   end
 
   def broadcast_track_update(action)
-    TracksChannel.broadcast_to(user, {
-                                 action: action,
-      track: TrackSerializer.new(self).call
-                               })
+    TracksChannel.broadcast_to(
+      user, {
+        action: action,
+        track: TrackSerializer.new(self).call
+      }
+    )
   end
 end
