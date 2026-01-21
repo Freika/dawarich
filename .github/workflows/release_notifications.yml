@@ -99,15 +99,13 @@ jobs:
           RELEASE_URL: ${{ steps.version.outputs.url }}
           SUMMARY: ${{ steps.summary.outputs.summary }}
         run: |
-          # Build status message without leading whitespace
-          STATUS="🚀 Dawarich $VERSION is out!
-
-This release: $SUMMARY
-
-📦 docker pull freikin/dawarich:$VERSION
-📋 Changelog: $RELEASE_URL
-
-#Dawarich #SelfHosted #LocationTracking #Privacy #OpenSource"
+          # Build status message using printf for proper newlines
+          STATUS=$(printf '%s\n\n%s\n\n%s\n%s\n\n%s' \
+            "🚀 Dawarich $VERSION is out!" \
+            "This release: $SUMMARY" \
+            "📦 docker pull freikin/dawarich:$VERSION" \
+            "📋 Changelog: $RELEASE_URL" \
+            "#Dawarich #SelfHosted #LocationTracking #Privacy #OpenSource")
 
           curl -X POST \
                -H "Authorization: Bearer $MASTODON_ACCESS_TOKEN" \
