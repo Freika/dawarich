@@ -1,0 +1,115 @@
+name: Release Notifications
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      test_version:
+        description: 'Version to test (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    # Only notify for stable releases, not RCs or prereleases (always run for manual dispatch)
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.release.prerelease }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.test_version }}" >> $GITHUB_OUTPUT
+            echo "url=https://github.com/${{ github.repository }}/releases/tag/${{ inputs.test_version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "url=${{ github.event.release.html_url }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract changelog for version
+        id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.tag }}
+        run: |
+          # Remove 'v' prefix if present for matching changelog headers
+          VERSION_NUM="${VERSION#v}"
+
+          # Extract section between this version and the next version header
+          # The changelog format is: # [version] - date
+          NOTES=$(sed -n "/^# \[$VERSION_NUM\]/,/^# \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
+
+          # Store in output (handle multiline)
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate summary
+        id: summary
+        env:
+          NOTES: ${{ steps.changelog.outputs.notes }}
+        run: |
+          # Count items in each section by looking for "## Section" followed by "- " lines
+          ADDED=$(echo "$NOTES" | awk '/^## Added/,/^## [A-Z]/{if(/^- /)count++}END{print count+0}')
+          FIXED=$(echo "$NOTES" | awk '/^## Fixed/,/^## [A-Z]/{if(/^- /)count++}END{print count+0}')
+          CHANGED=$(echo "$NOTES" | awk '/^## Changed/,/^## [A-Z]/{if(/^- /)count++}END{print count+0}')
+          REMOVED=$(echo "$NOTES" | awk '/^## Removed/,/^## [A-Z]/{if(/^- /)count++}END{print count+0}')
+
+          # Build summary line
+          PARTS=""
+          [ "$ADDED" -gt 0 ] && PARTS="$ADDED new feature$([ "$ADDED" -gt 1 ] && echo 's')"
+          [ "$FIXED" -gt 0 ] && PARTS="${PARTS:+$PARTS, }$FIXED fix$([ "$FIXED" -gt 1 ] && echo 'es')"
+          [ "$CHANGED" -gt 0 ] && PARTS="${PARTS:+$PARTS, }$CHANGED improvement$([ "$CHANGED" -gt 1 ] && echo 's')"
+          [ "$REMOVED" -gt 0 ] && PARTS="${PARTS:+$PARTS, }$REMOVED removal$([ "$REMOVED" -gt 1 ] && echo 's')"
+
+          # Default if nothing found
+          [ -z "$PARTS" ] && PARTS="various updates"
+
+          echo "summary=$PARTS" >> $GITHUB_OUTPUT
+
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ steps.version.outputs.tag }}
+          RELEASE_URL: ${{ steps.version.outputs.url }}
+          SUMMARY: ${{ steps.summary.outputs.summary }}
+        run: |
+          # Discord embed with summary
+          curl -H "Content-Type: application/json" \
+               -d "{
+                 \"embeds\": [{
+                   \"title\": \"🚀 Dawarich $VERSION Released!\",
+                   \"url\": \"$RELEASE_URL\",
+                   \"color\": 5814783,
+                   \"description\": \"A new version of Dawarich is available!\\n\\n**This release:** $SUMMARY\\n\\n[📋 View full changelog]($RELEASE_URL)\",
+                   \"footer\": {
+                     \"text\": \"docker pull freikin/dawarich:$VERSION\"
+                   }
+                 }]
+               }" \
+               "$DISCORD_WEBHOOK"
+
+      - name: Post to Mastodon
+        env:
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          VERSION: ${{ steps.version.outputs.tag }}
+          RELEASE_URL: ${{ steps.version.outputs.url }}
+          SUMMARY: ${{ steps.summary.outputs.summary }}
+        run: |
+          # Build status message without leading whitespace
+          STATUS="🚀 Dawarich $VERSION is out!
+
+This release: $SUMMARY
+
+📦 docker pull freikin/dawarich:$VERSION
+📋 Changelog: $RELEASE_URL
+
+#Dawarich #SelfHosted #LocationTracking #Privacy #OpenSource"
+
+          curl -X POST \
+               -H "Authorization: Bearer $MASTODON_ACCESS_TOKEN" \
+               -F "status=$STATUS" \
+               "https://mastodon.social/api/v1/statuses"
