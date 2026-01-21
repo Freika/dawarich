@@ -13,6 +13,7 @@ class AddMonthToDigests < ActiveRecord::Migration[8.0]
     add_index :digests, %i[user_id year month period_type],
               unique: true,
               name: 'index_digests_on_user_year_month_period_type',
-              algorithm: :concurrently
+              algorithm: :concurrently,
+              if_not_exists: true
   end
 end

@@ -41,18 +41,6 @@ module InsightsHelper
     insights_path(year: next_date.year, month: next_date.month)
   end
 
-  def weekly_pattern_heights(digest)
-    return Array.new(7, 0) unless digest
-
-    pattern = digest.weekly_pattern
-    return Array.new(7, 0) unless pattern.is_a?(Array) && pattern.any?
-
-    max_value = pattern.max.to_f
-    return Array.new(7, 0) if max_value.zero?
-
-    pattern.map { |v| ((v.to_f / max_value) * 100).round }
-  end
-
   def weekly_pattern_chart_data(digest, user)
     day_names = %w[Mon Tue Wed Thu Fri Sat Sun]
     return day_names.map { |day| [day, 0] } unless digest

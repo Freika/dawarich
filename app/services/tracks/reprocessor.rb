@@ -9,7 +9,6 @@ module Tracks
       @track = track
     end
 
-    # Reprocess all tracks associated with an import
     def reprocess_for_import
       return 0 unless @import
 
@@ -30,7 +29,6 @@ module Tracks
       count
     end
 
-    # Reprocess a single track
     def reprocess_single
       return false unless @track
 
@@ -38,7 +36,6 @@ module Tracks
       true
     end
 
-    # Class method for convenience
     def self.reprocess(track)
       new(track: track).reprocess_single
     end
@@ -49,10 +46,8 @@ module Tracks
       points = track.points.order(:timestamp).to_a
       return if points.size < 2
 
-      # Clear existing segments
       track.track_segments.destroy_all
 
-      # Re-detect transportation modes and create segments
       detector = TransportationModes::Detector.new(track, points)
       segment_data = detector.call
 
@@ -88,7 +83,7 @@ module Tracks
       dominant_segment = segments.max_by { |s| s.duration || 0 }
       return unless dominant_segment
 
-      track.update_column(:dominant_mode, dominant_segment.transportation_mode)
+      track.update(dominant_mode: dominant_segment.transportation_mode)
     end
   end
 end

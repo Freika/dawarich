@@ -64,69 +64,6 @@ RSpec.describe TrackSegment, type: :model do
     end
   end
 
-  describe 'scopes' do
-    let(:track) { create(:track) }
-    let!(:walking_segment) { create(:track_segment, :walking, track: track) }
-    let!(:driving_segment) { create(:track_segment, track: track) }
-    let!(:train_segment) { create(:track_segment, :train, track: track) }
-    let!(:cycling_segment) { create(:track_segment, :cycling, track: track) }
-
-    describe '.motorized' do
-      it 'returns only motorized transportation modes' do
-        expect(TrackSegment.motorized).to include(driving_segment, train_segment)
-        expect(TrackSegment.motorized).not_to include(walking_segment, cycling_segment)
-      end
-    end
-
-    describe '.non_motorized' do
-      it 'returns only non-motorized transportation modes' do
-        expect(TrackSegment.non_motorized).to include(walking_segment, cycling_segment)
-        expect(TrackSegment.non_motorized).not_to include(driving_segment, train_segment)
-      end
-    end
-
-    describe '.active' do
-      it 'returns active transportation modes (walking, running, cycling)' do
-        expect(TrackSegment.active).to include(walking_segment, cycling_segment)
-        expect(TrackSegment.active).not_to include(driving_segment, train_segment)
-      end
-    end
-  end
-
-  describe '#formatted_duration' do
-    context 'when duration is nil' do
-      let(:segment) { build(:track_segment, duration: nil) }
-
-      it 'returns nil' do
-        expect(segment.formatted_duration).to be_nil
-      end
-    end
-
-    context 'when duration is less than an hour' do
-      let(:segment) { build(:track_segment, duration: 1800) } # 30 minutes
-
-      it 'returns minutes only' do
-        expect(segment.formatted_duration).to eq('30m')
-      end
-    end
-
-    context 'when duration is more than an hour' do
-      let(:segment) { build(:track_segment, duration: 5400) } # 1 hour 30 minutes
-
-      it 'returns hours and minutes' do
-        expect(segment.formatted_duration).to eq('1h 30m')
-      end
-    end
-
-    context 'when duration is exactly on the hour' do
-      let(:segment) { build(:track_segment, duration: 7200) } # 2 hours
-
-      it 'returns hours and zero minutes' do
-        expect(segment.formatted_duration).to eq('2h 0m')
-      end
-    end
-  end
-
   describe 'factory' do
     it 'has a valid default factory' do
       expect(build(:track_segment)).to be_valid

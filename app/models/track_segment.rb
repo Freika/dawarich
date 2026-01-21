@@ -19,25 +19,6 @@ class TrackSegment < ApplicationRecord
   validates :avg_speed, :max_speed, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validate :end_index_greater_than_or_equal_to_start_index
 
-  # Scopes for querying by mode type
-  scope :motorized, -> { where(transportation_mode: %i[driving bus train motorcycle boat]) }
-  scope :non_motorized, -> { where(transportation_mode: %i[walking running cycling]) }
-  scope :active, -> { where(transportation_mode: %i[walking running cycling]) }
-
-  # Returns duration in a human-readable format
-  def formatted_duration
-    return nil unless duration
-
-    hours = duration / 3600
-    minutes = (duration % 3600) / 60
-
-    if hours > 0
-      "#{hours}h #{minutes}m"
-    else
-      "#{minutes}m"
-    end
-  end
-
   private
 
   def end_index_greater_than_or_equal_to_start_index

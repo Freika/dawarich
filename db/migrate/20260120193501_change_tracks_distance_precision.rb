@@ -10,10 +10,10 @@ class ChangeTracksDistancePrecision < ActiveRecord::Migration[8.0]
   def up
     # Change distance from decimal(8,2) to bigint to support tracks longer than 1000km
     # Distance is stored in meters, so bigint can handle tracks up to ~9 million km
-    safety_assured { change_column :tracks, :distance, :bigint }
+    change_column :tracks, :distance, :bigint
   end
 
   def down
-    safety_assured { change_column :tracks, :distance, :decimal, precision: 8, scale: 2 }
+    change_column :tracks, :distance, :decimal, precision: 8, scale: 2
   end
 end

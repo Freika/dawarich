@@ -128,15 +128,7 @@ module TransportationModes
     def parse_timestamp_value(ts)
       return nil unless ts
 
-      if ts.is_a?(String) && ts.include?('T')
-        DateTime.parse(ts).to_i
-      elsif ts.to_s.length > 10
-        ts.to_i / 1000 # milliseconds
-      else
-        ts.to_i
-      end
-    rescue ArgumentError
-      nil
+      Timestamps.parse_timestamp(ts)
     end
   end
 end
