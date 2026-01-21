@@ -2,7 +2,7 @@
 
 class CreateTrackSegments < ActiveRecord::Migration[8.0]
   def change
-    create_table :track_segments do |t|
+    create_table :track_segments, if_not_exists: true do |t|
       t.references :track, null: false, foreign_key: true, index: true
       t.integer :transportation_mode, null: false, default: 0
       t.integer :start_index, null: false
@@ -18,7 +18,7 @@ class CreateTrackSegments < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :track_segments, :transportation_mode
-    add_index :track_segments, %i[track_id transportation_mode]
+    add_index :track_segments, :transportation_mode, if_not_exists: true
+    add_index :track_segments, %i[track_id transportation_mode], if_not_exists: true
   end
 end
