@@ -1,0 +1,189 @@
+<% if @monthly_digest.present? %>
+  <div class="card bg-base-200">
+    <div class="card-body p-5">
+      <div class="flex justify-between items-center">
+        <h2 class="card-title text-lg flex items-center gap-2">
+          <%= icon 'calendar', class: 'w-5 h-5 text-primary' %>
+          <%= monthly_digest_title(@monthly_digest) %>
+        </h2>
+        <div class="join">
+          <% prev_link = previous_month_link(@selected_year, @selected_month, @available_months) %>
+          <% if prev_link %>
+            <%= link_to prev_link, class: 'join-item btn btn-xs btn-ghost' do %>
+              <%= icon 'chevron-left', class: 'w-4 h-4' %>
+            <% end %>
+          <% else %>
+            <button class="join-item btn btn-xs btn-ghost btn-disabled"><%= icon 'chevron-left', class: 'w-4 h-4' %></button>
+          <% end %>
+
+          <div class="dropdown dropdown-end">
+            <label tabindex="0" class="join-item btn btn-xs btn-ghost">
+              <%= @monthly_digest.month_name %>
+              <%= icon 'chevron-down', class: 'w-3 h-3 ml-1' %>
+            </label>
+            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-40">
+              <% @available_months.each do |m| %>
+                <li>
+                  <%= link_to Date::MONTHNAMES[m], insights_path(year: @selected_year, month: m),
+                      class: m == @selected_month ? 'active' : '' %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+
+          <% next_link = next_month_link(@selected_year, @selected_month, @available_months) %>
+          <% if next_link %>
+            <%= link_to next_link, class: 'join-item btn btn-xs btn-ghost' do %>
+              <%= icon 'chevron-right', class: 'w-4 h-4' %>
+            <% end %>
+          <% else %>
+            <button class="join-item btn btn-xs btn-ghost btn-disabled"><%= icon 'chevron-right', class: 'w-4 h-4' %></button>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="grid grid-cols-4 gap-2 mt-4">
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
+            <%= icon 'route', class: 'w-3 h-3' %>
+          </div>
+          <div class="font-bold"><%= monthly_digest_distance(@monthly_digest, current_user) %></div>
+          <div class="text-xs text-base-content/60">Total Distance</div>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
+            <%= icon 'calendar', class: 'w-3 h-3' %>
+          </div>
+          <div class="font-bold"><%= monthly_digest_active_days(@monthly_digest) %></div>
+          <div class="text-xs text-base-content/60">Active Days</div>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
+            <%= icon 'globe', class: 'w-3 h-3' %>
+          </div>
+          <div class="font-bold"><%= @monthly_digest.countries_count %></div>
+          <div class="text-xs text-base-content/60">Countries</div>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
+            <%= icon 'building', class: 'w-3 h-3' %>
+          </div>
+          <div class="font-bold"><%= @monthly_digest.cities_count %></div>
+          <div class="text-xs text-base-content/60">Cities</div>
+        </div>
+      </div>
+
+      <!-- Weekly Pattern -->
+      <div class="mt-4">
+        <div class="text-sm font-medium mb-2">WEEKLY PATTERN</div>
+        <div class="h-32">
+          <%= column_chart(
+            weekly_pattern_chart_data(@monthly_digest, current_user),
+            height: '120px',
+            suffix: " #{current_user.safe_settings.distance_unit}",
+            colors: ['#3abff8'],
+            library: {
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                x: {
+                  grid: { display: false }
+                },
+                y: {
+                  grid: { color: 'rgba(0,0,0,0.1)' },
+                  ticks: { display: false }
+                }
+              }
+            }
+          ) %>
+        </div>
+      </div>
+
+      <!-- Top Locations & First Visits -->
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <div>
+          <div class="text-sm font-medium mb-2">TOP LOCATIONS</div>
+          <div class="space-y-1 text-sm">
+            <% top_locations = top_locations_from_digest(@monthly_digest) %>
+            <% if top_locations.any? %>
+              <% top_locations.each_with_index do |location, idx| %>
+                <div class="flex justify-between">
+                  <span><%= idx + 1 %>. <%= location[:name] %></span>
+                  <span class="text-info"><%= format_location_time(location[:minutes]) %></span>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="text-base-content/50">No location data</div>
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-1 text-sm font-medium mb-2">
+            <%= icon 'flag', class: 'w-4 h-4 text-success' %>
+            FIRST VISITS
+          </div>
+          <div class="space-y-1 text-sm">
+            <% first_visits = first_time_visits_from_digest(@monthly_digest) %>
+            <% if first_visits[:countries].any? || first_visits[:cities].any? %>
+              <% first_visits[:countries].first(2).each do |country| %>
+                <div class="flex justify-between">
+                  <span class="text-success"><%= country %></span>
+                  <span class="badge badge-success badge-xs">Country</span>
+                </div>
+              <% end %>
+              <% first_visits[:cities].first(3 - first_visits[:countries].first(2).size).each do |city| %>
+                <div class="flex justify-between">
+                  <span class="text-success"><%= city %></span>
+                  <span class="badge badge-info badge-xs">City</span>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="text-base-content/50">No new places this month</div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Month over Month comparison -->
+      <% if @monthly_digest.mom_distance_change.present? %>
+        <div class="mt-4 pt-4 border-t border-base-300">
+          <div class="text-sm font-medium text-base-content/60 mb-2">VS PREVIOUS MONTH</div>
+          <div class="flex gap-4 text-sm">
+            <% mom_change = @monthly_digest.mom_distance_change %>
+            <div class="flex items-center gap-1">
+              <span class="badge badge-<%= mom_change.positive? ? 'success' : 'warning' %> badge-sm">
+                <%= mom_change.positive? ? '+' : '' %><%= mom_change %>%
+              </span>
+              <span class="text-base-content/60">distance</span>
+            </div>
+            <% if @monthly_digest.mom_countries_change.present? && @monthly_digest.mom_countries_change != 0 %>
+              <div class="flex items-center gap-1">
+                <span class="badge badge-<%= @monthly_digest.mom_countries_change.positive? ? 'success' : 'warning' %> badge-sm">
+                  <%= @monthly_digest.mom_countries_change.positive? ? '+' : '' %><%= @monthly_digest.mom_countries_change %>
+                </span>
+                <span class="text-base-content/60">countries</span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% elsif @available_months.any? %>
+  <div class="card bg-base-200">
+    <div class="card-body p-5">
+      <h2 class="card-title text-lg flex items-center gap-2">
+        <%= icon 'calendar', class: 'w-5 h-5 text-primary' %>
+        Monthly Digest
+      </h2>
+      <p class="text-base-content/60">Select a month to view its digest:</p>
+      <div class="flex flex-wrap gap-2 mt-2">
+        <% @available_months.each do |m| %>
+          <%= link_to Date::MONTHNAMES[m], insights_path(year: @selected_year, month: m), class: 'btn btn-sm btn-outline' %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

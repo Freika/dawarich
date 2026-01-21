@@ -42,7 +42,7 @@ module Insights
     attr_reader :current_totals, :previous_year_stats, :distance_unit
 
     def calculate_change(current, previous)
-      return 0 if previous.zero?
+      return 0 if previous.nil? || previous.zero?
 
       ((current - previous).to_f / previous * 100).round
     end

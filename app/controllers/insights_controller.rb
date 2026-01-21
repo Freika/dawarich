@@ -4,6 +4,8 @@ class InsightsController < ApplicationController
   before_action :authenticate_user!
 
   def index
+    authorize :insights, :index?
+
     @available_years = current_user.stats.distinct.pluck(:year).sort.reverse
     @selected_year = params[:year] || @available_years.first&.to_s || Time.current.year.to_s
     @all_time = @selected_year == 'all'

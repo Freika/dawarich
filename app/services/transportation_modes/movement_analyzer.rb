@@ -83,34 +83,34 @@ module TransportationModes
         begin
           p1.distance_to(p2, :m)
         rescue StandardError
-          haversine_distance(p1, p2)
+          geocoder_distance(p1, p2)
         end
       else
-        haversine_distance(p1, p2)
+        geocoder_distance(p1, p2)
       end
     end
 
-    def haversine_distance(p1, p2)
-      lat1_deg = p1.latitude || extract_lat(p1)
-      lat2_deg = p2.latitude || extract_lat(p2)
-      lon1_deg = p1.longitude || extract_lon(p1)
-      lon2_deg = p2.longitude || extract_lon(p2)
+    def geocoder_distance(p1, p2)
+      lat1 = p1.latitude || extract_lat(p1)
+      lat2 = p2.latitude || extract_lat(p2)
+      lon1 = p1.longitude || extract_lon(p1)
+      lon2 = p2.longitude || extract_lon(p2)
 
       # Return 0 if any coordinate is missing
-      return 0 if lat1_deg.nil? || lat2_deg.nil? || lon1_deg.nil? || lon2_deg.nil?
+      return 0 if lat1.nil? || lat2.nil? || lon1.nil? || lon2.nil?
 
-      lat1 = to_radians(lat1_deg)
-      lat2 = to_radians(lat2_deg)
-      lon1 = to_radians(lon1_deg)
-      lon2 = to_radians(lon2_deg)
+      # Use Geocoder's distance calculation (returns km, convert to meters)
+      distance_km = Geocoder::Calculations.distance_between(
+        [lat1, lon1],
+        [lat2, lon2],
+        units: :km
+      )
 
-      dlat = lat2 - lat1
-      dlon = lon2 - lon1
+      return 0 unless distance_km.finite?
 
-      a = Math.sin(dlat / 2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlon / 2)**2
-      c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-      6_371_000 * c # Earth radius in meters
+      distance_km * 1000
+    rescue StandardError
+      0
     end
 
     def extract_lat(point)
@@ -141,10 +141,6 @@ module TransportationModes
       end
     rescue StandardError
       nil
-    end
-
-    def to_radians(degrees)
-      degrees.to_f * Math::PI / 180
     end
 
     def get_speed(_p1, p2, distance, time_diff)

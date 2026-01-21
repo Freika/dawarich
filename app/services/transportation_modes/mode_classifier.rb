@@ -37,6 +37,22 @@ module TransportationModes
       flying: { typical: 0.2, max: 2.0 }        # Smooth except takeoff/landing
     }.freeze
 
+    # Classification thresholds for disambiguation
+    CLASSIFICATION_THRESHOLDS = {
+      # Acceleration thresholds for distinguishing modes (m/s²)
+      running_vs_cycling_accel: 0.25,       # Above this suggests running
+      cycling_vs_driving_accel: 0.4,        # Above this suggests driving
+      motorcycle_accel: 0.6,                # Above this suggests motorcycle
+      train_accel: 0.2,                     # Below this suggests train
+      bus_accel_range: { min: 0.2, max: 0.4 }, # Range for bus detection
+
+      # Speed boundaries for mode transitions (km/h)
+      cycling_max_likely: 35,               # Above this, likely driving not cycling
+      train_min: 80,                        # Minimum speed to consider train
+      high_speed_boundary: 130,             # Very high speeds: train or autobahn
+      flying_threshold: 200                 # Above this, likely flying
+    }.freeze
+
     def initialize(avg_speed_kmh:, max_speed_kmh: nil, avg_acceleration: nil, duration: nil)
       @avg_speed = avg_speed_kmh || 0
       @max_speed = max_speed_kmh || @avg_speed
@@ -68,52 +84,60 @@ module TransportationModes
     end
 
     def likely_flying?
-      avg_speed >= 150 && max_speed >= 200
+      avg_speed >= SPEED_THRESHOLDS[:flying][:min] && max_speed >= CLASSIFICATION_THRESHOLDS[:flying_threshold]
     end
 
     def likely_train?
       # Train: high speed with very smooth acceleration
       # Require higher minimum speed to avoid confusion with highway driving
-      return false unless avg_speed >= 80 && avg_speed <= 350
+      return false unless avg_speed >= CLASSIFICATION_THRESHOLDS[:train_min] &&
+                          avg_speed <= SPEED_THRESHOLDS[:train][:max]
 
       # Trains have remarkably consistent speed and low acceleration
-      avg_acceleration < 0.2 && speed_variance_low?
+      avg_acceleration < CLASSIFICATION_THRESHOLDS[:train_accel] && speed_variance_low?
     end
 
     def classify_medium_speed_mode
+      walking_max = SPEED_THRESHOLDS[:walking][:max]
+      running_max = SPEED_THRESHOLDS[:running][:max]
+      cycling_max = SPEED_THRESHOLDS[:cycling][:max]
+
       # Walking range: 1-7 km/h
-      return :walking if avg_speed <= 7 && avg_speed > 1
+      return :walking if avg_speed <= walking_max && avg_speed > SPEED_THRESHOLDS[:walking][:min]
 
       # Running vs Cycling: 7-20 km/h
       # Running has more acceleration variability
-      if avg_speed > 7 && avg_speed <= 20
-        return :running if avg_acceleration > 0.25
-        return :cycling if avg_acceleration <= 0.25
+      if avg_speed > walking_max && avg_speed <= running_max
+        return :running if avg_acceleration > CLASSIFICATION_THRESHOLDS[:running_vs_cycling_accel]
+        return :cycling if avg_acceleration <= CLASSIFICATION_THRESHOLDS[:running_vs_cycling_accel]
       end
 
       # Cycling vs Driving: 20-45 km/h
-      if avg_speed > 20 && avg_speed <= 45
+      if avg_speed > running_max && avg_speed <= cycling_max
         # Driving typically has more stop-and-go
-        return :driving if avg_acceleration > 0.4
-        return :cycling if avg_acceleration <= 0.4 && avg_speed <= 35
+        return :driving if avg_acceleration > CLASSIFICATION_THRESHOLDS[:cycling_vs_driving_accel]
+        return :cycling if avg_acceleration <= CLASSIFICATION_THRESHOLDS[:cycling_vs_driving_accel] &&
+                           avg_speed <= CLASSIFICATION_THRESHOLDS[:cycling_max_likely]
 
         return :driving
       end
 
       # Higher speeds: likely driving, motorcycle, bus, or train
-      if avg_speed > 45 && avg_speed <= 130
+      if avg_speed > cycling_max && avg_speed <= CLASSIFICATION_THRESHOLDS[:high_speed_boundary]
         # Bus detection: relatively slow with regular stops
-        return :bus if avg_acceleration.between?(0.2, 0.4) && regular_stop_pattern?
+        bus_range = CLASSIFICATION_THRESHOLDS[:bus_accel_range]
+        return :bus if avg_acceleration.between?(bus_range[:min], bus_range[:max]) && regular_stop_pattern?
 
         # Motorcycle vs car: motorcycles can have higher acceleration
-        return :motorcycle if avg_acceleration > 0.6
+        return :motorcycle if avg_acceleration > CLASSIFICATION_THRESHOLDS[:motorcycle_accel]
 
         return :driving
       end
 
       # Very high speeds: train or driving on autobahn
-      if avg_speed > 130 && avg_speed < 200
-        return :train if avg_acceleration < 0.2
+      if avg_speed > CLASSIFICATION_THRESHOLDS[:high_speed_boundary] &&
+         avg_speed < CLASSIFICATION_THRESHOLDS[:flying_threshold]
+        return :train if avg_acceleration < CLASSIFICATION_THRESHOLDS[:train_accel]
 
         return :driving
       end
@@ -124,12 +148,14 @@ module TransportationModes
 
     def clear_classification?
       # Clear cases: very slow (stationary), very fast (flying), or moderate with consistent patterns
-      stationary? || likely_flying? || (avg_speed <= 7 && avg_speed > 1)
+      stationary? || likely_flying? ||
+        (avg_speed <= SPEED_THRESHOLDS[:walking][:max] && avg_speed > SPEED_THRESHOLDS[:walking][:min])
     end
 
     def ambiguous_speed_range?
       # Speeds where multiple modes overlap significantly
-      (avg_speed > 7 && avg_speed <= 45) || (avg_speed > 100 && avg_speed < 200)
+      (avg_speed > SPEED_THRESHOLDS[:walking][:max] && avg_speed <= SPEED_THRESHOLDS[:cycling][:max]) ||
+        (avg_speed > SPEED_THRESHOLDS[:bus][:max] && avg_speed < CLASSIFICATION_THRESHOLDS[:flying_threshold])
     end
 
     def speed_variance_low?
@@ -140,9 +166,10 @@ module TransportationModes
     end
 
     def regular_stop_pattern?
-      # Would need point-level analysis; approximate for now
-      # Buses have characteristic stop-and-go every few minutes
-      false # Placeholder - could be enhanced with point-level data
+      # Bus detection requires point-level stop analysis which is not available here.
+      # This returns false to avoid false positives - buses will be classified as driving.
+      # Future enhancement: Pass stop pattern data from MovementAnalyzer.
+      false
     end
   end
 end

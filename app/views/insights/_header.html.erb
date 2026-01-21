@@ -1,0 +1,35 @@
+<!-- Header -->
+<div class="mb-6">
+  <div class="flex items-center gap-2 mb-1">
+    <%= icon 'compass', class: 'w-8 h-8 text-primary' %>
+    <h1 class="text-3xl font-bold">Insights</h1>
+  </div>
+  <p class="text-base-content/60 mb-4">Your personal movement analytics and travel patterns</p>
+  <div class="flex gap-2">
+    <% if @available_years.any? %>
+      <div class="dropdown">
+        <label tabindex="0" class="btn btn-sm btn-outline">
+          <%= @display_label %>
+          <%= icon 'chevron-down', class: 'w-4 h-4 ml-1' %>
+        </label>
+        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-52">
+          <li>
+            <%= link_to "All Time", insights_path(year: 'all'), class: @all_time ? 'active' : '' %>
+          </li>
+          <li class="menu-title"><span class='p-2'>By Year</span></li>
+          <% @available_years.each do |year| %>
+            <li>
+              <%= link_to "#{year} Overview", insights_path(year: year), class: (!@all_time && year == @selected_year) ? 'active' : '' %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+    <% if @countries_count.positive? %>
+      <span class="badge badge-outline gap-1">
+        <%= icon 'globe', class: 'w-3 h-3' %>
+        <%= pluralize(@countries_count, 'Country') %>
+      </span>
+    <% end %>
+  </div>
+</div>

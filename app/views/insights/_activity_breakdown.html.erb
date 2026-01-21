@@ -1,0 +1,54 @@
+<!-- Activity Breakdown Card -->
+<div class="card bg-base-200">
+  <div class="card-body p-5">
+    <h2 class="card-title text-lg flex items-center gap-2">
+      <%= icon 'activity', class: 'w-5 h-5 text-primary' %>
+      Activity Breakdown
+    </h2>
+
+    <div class="space-y-3 mt-3">
+      <%
+        activity_config = {
+          'driving' => { icon: 'car', label: 'Driving' },
+          'walking' => { icon: 'footprints', label: 'Walking' },
+          'stationary' => { icon: 'user', label: 'Stationary' },
+          'cycling' => { icon: 'bike', label: 'Cycling' },
+          'flying' => { icon: 'plane', label: 'Flying' },
+          'train' => { icon: 'train-front', label: 'Train' },
+          'running' => { icon: 'line-squiggle', label: 'Running' },
+          'bus' => { icon: 'bus', label: 'Bus' },
+          'boat' => { icon: 'ship', label: 'Boat' },
+          'motorcycle' => { icon: 'bike', label: 'Motorcycle' }
+        }
+
+        sorted_activities = @activity_breakdown
+          .reject { |mode, data| mode == 'unknown' || data['duration'].to_i.zero? }
+          .sort_by { |_, data| -data['percentage'].to_i }
+      %>
+
+      <% if sorted_activities.empty? %>
+        <div class="text-sm text-base-content/60 text-center py-4">
+          No activity data available for this period
+        </div>
+      <% else %>
+        <% sorted_activities.each do |mode, data| %>
+          <% config = activity_config[mode] || { icon: 'circle', label: mode.humanize } %>
+          <div class="flex items-center gap-3">
+            <div class="w-6 flex justify-center text-base-content/70">
+              <%= icon config[:icon], class: 'w-4 h-4' %>
+            </div>
+            <span class="w-20 text-sm"><%= config[:label] %></span>
+            <progress class="progress progress-info flex-1 h-2"
+                      value="<%= data['percentage'] %>" max="100"></progress>
+            <span class="w-16 text-right text-sm text-base-content/60">
+              <%= format_duration_short(data['duration']) %>
+            </span>
+            <span class="w-10 text-right text-sm font-medium">
+              <%= data['percentage'] %>%
+            </span>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
