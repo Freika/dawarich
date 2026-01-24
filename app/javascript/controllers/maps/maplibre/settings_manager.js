@@ -14,6 +14,8 @@ export class SettingsController {
     this.controller = controller
     this.settings = controller.settings
     this.recalculationPollTimer = null
+    this.transportationSettingsDirty = false
+    this.isTransportationSettingsLocked = false
   }
 
   // Lazy getters for properties that may not be initialized yet
@@ -163,7 +165,7 @@ export class SettingsController {
   /**
    * Sync transportation mode settings with loaded values
    */
-  syncTransportationSettings() {
+  async syncTransportationSettings() {
     const controller = this.controller
     const distanceUnit = this.getDistanceUnit()
     const isMetric = distanceUnit === 'km'
@@ -303,7 +305,163 @@ export class SettingsController {
     }
 
     // Check recalculation status and update UI accordingly
-    this.checkRecalculationStatus()
+    // This will also handle locking the form if recalculation is in progress
+    await this.checkRecalculationStatus()
+
+    // Only reset dirty state if not locked (recalculation not in progress)
+    // The lock state is set by checkRecalculationStatus -> updateRecalculationUI
+    if (!this.isTransportationSettingsLocked) {
+      this.resetTransportationDirtyState()
+    }
+  }
+
+  /**
+   * Reset transportation settings dirty state
+   */
+  resetTransportationDirtyState() {
+    this.transportationSettingsDirty = false
+    this.updateTransportationApplyButton()
+  }
+
+  /**
+   * Update the apply button state based on dirty flag
+   */
+  updateTransportationApplyButton() {
+    const controller = this.controller
+
+    if (controller.hasTransportationApplyButtonTarget) {
+      controller.transportationApplyButtonTarget.disabled = !this.transportationSettingsDirty
+    }
+
+    if (controller.hasTransportationDirtyMessageTarget) {
+      if (this.transportationSettingsDirty) {
+        controller.transportationDirtyMessageTarget.textContent = 'You have unsaved changes. Click Apply to save and recalculate.'
+        controller.transportationDirtyMessageTarget.classList.add('text-warning')
+        controller.transportationDirtyMessageTarget.classList.remove('text-base-content/60')
+      } else {
+        controller.transportationDirtyMessageTarget.textContent = 'Make changes to enable the Apply button'
+        controller.transportationDirtyMessageTarget.classList.remove('text-warning')
+        controller.transportationDirtyMessageTarget.classList.add('text-base-content/60')
+      }
+    }
+  }
+
+  /**
+   * Mark transportation settings as dirty (changed but not saved)
+   */
+  markTransportationSettingsDirty() {
+    this.transportationSettingsDirty = true
+    this.updateTransportationApplyButton()
+  }
+
+  /**
+   * Apply transportation settings with confirmation
+   */
+  async applyTransportationSettings() {
+    const controller = this.controller
+
+    // Show confirmation dialog
+    const confirmed = confirm(
+      'Applying these changes will recalculate transportation modes for ALL your tracks.\n\n' +
+      'This process may take some time depending on how many tracks you have, and settings will be locked until it completes.\n\n' +
+      'Do you want to continue?'
+    )
+
+    if (!confirmed) return
+
+    // Collect all threshold values from inputs
+    await this.saveTransportationThresholds()
+  }
+
+  /**
+   * Save all transportation thresholds to backend
+   */
+  async saveTransportationThresholds() {
+    const controller = this.controller
+    const isMetric = this.getDistanceUnit() === 'km'
+
+    // Collect basic thresholds
+    const transportationThresholds = {}
+    const basicInputs = ['walkingMaxSpeed', 'cyclingMaxSpeed', 'drivingMaxSpeed', 'flyingMinSpeed']
+
+    basicInputs.forEach(name => {
+      const targetName = `${name}InputTarget`
+      const hasTarget = `has${name.charAt(0).toUpperCase()}${name.slice(1)}InputTarget`
+      if (controller[hasTarget]) {
+        const value = parseFloat(controller[targetName].value)
+        transportationThresholds[name] = this.toMetricSpeed(value, isMetric)
+      }
+    })
+
+    // Collect expert thresholds
+    const transportationExpertThresholds = {}
+
+    // Speed thresholds
+    const expertSpeedInputs = ['stationaryMaxSpeed', 'trainMinSpeed']
+    expertSpeedInputs.forEach(name => {
+      const targetName = `${name}InputTarget`
+      const hasTarget = `has${name.charAt(0).toUpperCase()}${name.slice(1)}InputTarget`
+      if (controller[hasTarget]) {
+        const value = parseFloat(controller[targetName].value)
+        transportationExpertThresholds[name] = this.toMetricSpeed(value, isMetric)
+      }
+    })
+
+    // Acceleration thresholds (no conversion)
+    const accelInputs = ['runningVsCyclingAccel', 'cyclingVsDrivingAccel']
+    accelInputs.forEach(name => {
+      const targetName = `${name}InputTarget`
+      const hasTarget = `has${name.charAt(0).toUpperCase()}${name.slice(1)}InputTarget`
+      if (controller[hasTarget]) {
+        transportationExpertThresholds[name] = parseFloat(controller[targetName].value)
+      }
+    })
+
+    // Time thresholds (no conversion)
+    const timeInputs = ['minSegmentDuration', 'timeGapThreshold']
+    timeInputs.forEach(name => {
+      const targetName = `${name}InputTarget`
+      const hasTarget = `has${name.charAt(0).toUpperCase()}${name.slice(1)}InputTarget`
+      if (controller[hasTarget]) {
+        transportationExpertThresholds[name] = parseInt(controller[targetName].value)
+      }
+    })
+
+    // Distance threshold
+    if (controller.hasMinFlightDistanceInputTarget) {
+      const value = parseFloat(controller.minFlightDistanceInputTarget.value)
+      transportationExpertThresholds.minFlightDistanceKm = this.toMetricDistance(value, isMetric)
+    }
+
+    // Update settings object
+    this.settings.transportationThresholds = transportationThresholds
+    this.settings.transportationExpertThresholds = transportationExpertThresholds
+
+    // Save to backend
+    const result = await SettingsManager.updateSetting('transportationThresholds', transportationThresholds)
+    await SettingsManager.updateSetting('transportationExpertThresholds', transportationExpertThresholds)
+
+    // Check result and update UI
+    if (result && result.status === 'locked') {
+      Toast.error('Cannot update: recalculation is already in progress')
+      // Immediately lock the UI
+      this.setTransportationSettingsLocked(true)
+      // Also start polling for status updates
+      this.startRecalculationPolling()
+      return
+    }
+
+    if (result && result.recalculation_triggered) {
+      Toast.info('Settings saved. Recalculating transportation modes for all tracks...')
+      this.resetTransportationDirtyState()
+      // Immediately lock the UI since recalculation started
+      this.setTransportationSettingsLocked(true)
+      // Start polling for status updates
+      this.startRecalculationPolling()
+    } else {
+      Toast.success('Transportation settings saved')
+      this.resetTransportationDirtyState()
+    }
   }
 
   // ===== Transportation Mode Recalculation Status =====
@@ -313,8 +471,11 @@ export class SettingsController {
    */
   async checkRecalculationStatus() {
     try {
-      const apiKey = document.querySelector('meta[name="api-key"]')?.content
-      if (!apiKey) return
+      const apiKey = this.controller.apiKeyValue
+      if (!apiKey) {
+        console.warn('[Settings] No API key available for recalculation status check')
+        return
+      }
 
       const response = await fetch('/api/v1/settings/transportation_recalculation_status', {
         headers: {
@@ -324,7 +485,7 @@ export class SettingsController {
       })
 
       if (!response.ok) {
-        console.warn('[Settings] Failed to check recalculation status')
+        console.warn('[Settings] Failed to check recalculation status:', response.status)
         return
       }
 
@@ -359,14 +520,22 @@ export class SettingsController {
           ? Math.round((status.processed_tracks / status.total_tracks) * 100)
           : 0
 
+        const processedFormatted = (status.processed_tracks || 0).toLocaleString()
+        const totalFormatted = (status.total_tracks || 0).toLocaleString()
+
+        // Create inline container for spinner and text
+        const container = document.createElement('span')
+        container.className = 'inline-flex items-center gap-2'
+
         const spinner = document.createElement('span')
         spinner.className = 'loading loading-spinner loading-xs'
 
         const text = document.createElement('span')
-        text.textContent = `Recalculating transportation modes... (${status.processed_tracks || 0}/${status.total_tracks || 0} tracks, ${progress}%)`
+        text.textContent = `Recalculating transportation modes... (${processedFormatted}/${totalFormatted} tracks, ${progress}%)`
 
-        alertEl.appendChild(spinner)
-        alertEl.appendChild(text)
+        container.appendChild(spinner)
+        container.appendChild(text)
+        alertEl.appendChild(container)
         alertEl.classList.remove('hidden', 'alert-success', 'alert-error')
         alertEl.classList.add('alert-warning')
       } else if (isCompleted) {
@@ -378,6 +547,8 @@ export class SettingsController {
         alertEl.classList.add('alert-success')
         // Auto-hide after 5 seconds
         setTimeout(() => alertEl.classList.add('hidden'), 5000)
+        // Reset dirty state so apply button shows correct message
+        this.resetTransportationDirtyState()
       } else if (isFailed) {
         const text = document.createElement('span')
         text.textContent = `Recalculation failed: ${status.error_message || 'Unknown error'}`
@@ -402,6 +573,9 @@ export class SettingsController {
    * Set transportation settings to locked or unlocked state
    */
   setTransportationSettingsLocked(locked) {
+    // Track the locked state
+    this.isTransportationSettingsLocked = locked
+
     const controller = this.controller
 
     // Get all transportation threshold inputs
@@ -416,13 +590,52 @@ export class SettingsController {
     inputTargets.forEach(targetName => {
       const hasTarget = `has${targetName.charAt(0).toUpperCase()}${targetName.slice(1)}Target`
       if (controller[hasTarget]) {
-        controller[`${targetName}Target`].disabled = locked
+        const element = controller[`${targetName}Target`]
+        element.disabled = locked
+        // Add visual styling for disabled state
+        if (locked) {
+          element.classList.add('opacity-50', 'cursor-not-allowed')
+        } else {
+          element.classList.remove('opacity-50', 'cursor-not-allowed')
+        }
       }
     })
+
+    // Also disable/enable the apply button
+    if (controller.hasTransportationApplyButtonTarget) {
+      controller.transportationApplyButtonTarget.disabled = locked
+      if (locked) {
+        controller.transportationApplyButtonTarget.classList.add('btn-disabled')
+      } else {
+        controller.transportationApplyButtonTarget.classList.remove('btn-disabled')
+      }
+    }
+
+    // Gray out the basic and expert settings containers
+    if (controller.hasTransportationBasicSettingsTarget) {
+      if (locked) {
+        controller.transportationBasicSettingsTarget.classList.add('opacity-50', 'pointer-events-none')
+      } else {
+        controller.transportationBasicSettingsTarget.classList.remove('opacity-50', 'pointer-events-none')
+      }
+    }
+
+    if (controller.hasTransportationExpertSettingsTarget) {
+      if (locked) {
+        controller.transportationExpertSettingsTarget.classList.add('opacity-50', 'pointer-events-none')
+      } else {
+        controller.transportationExpertSettingsTarget.classList.remove('opacity-50', 'pointer-events-none')
+      }
+    }
 
     // Update locked message visibility
     if (controller.hasTransportationLockedMessageTarget) {
       controller.transportationLockedMessageTarget.classList.toggle('hidden', !locked)
+    }
+
+    // Update dirty message visibility (hide when locked)
+    if (controller.hasTransportationDirtyMessageTarget) {
+      controller.transportationDirtyMessageTarget.classList.toggle('hidden', locked)
     }
   }
 
@@ -501,72 +714,6 @@ export class SettingsController {
 
     if (controller[hasTarget]) {
       controller[`${targetName}Target`].textContent = `${value} ${mapping.unit}`
-    }
-  }
-
-  /**
-   * Update a transportation threshold value
-   */
-  async updateTransportationThreshold(event) {
-    const input = event.target
-    const name = input.name
-    const value = parseFloat(input.value)
-    const isMetric = this.getDistanceUnit() === 'km'
-
-    // Determine which threshold group this belongs to
-    const basicThresholds = ['walkingMaxSpeed', 'cyclingMaxSpeed', 'drivingMaxSpeed', 'flyingMinSpeed']
-    const expertSpeedThresholds = ['stationaryMaxSpeed', 'trainMinSpeed']
-    const expertAccelThresholds = ['runningVsCyclingAccel', 'cyclingVsDrivingAccel']
-    const expertTimeThresholds = ['minSegmentDuration', 'timeGapThreshold']
-    const expertDistanceThresholds = ['minFlightDistanceKm']
-
-    let settingKey, settingValue, settingGroup
-
-    if (basicThresholds.includes(name)) {
-      settingGroup = 'transportationThresholds'
-      settingKey = name
-      settingValue = this.toMetricSpeed(value, isMetric)
-    } else if (expertSpeedThresholds.includes(name)) {
-      settingGroup = 'transportationExpertThresholds'
-      settingKey = name
-      settingValue = this.toMetricSpeed(value, isMetric)
-    } else if (expertAccelThresholds.includes(name)) {
-      settingGroup = 'transportationExpertThresholds'
-      settingKey = name
-      settingValue = value // No conversion for acceleration
-    } else if (expertTimeThresholds.includes(name)) {
-      settingGroup = 'transportationExpertThresholds'
-      settingKey = name
-      settingValue = value // No conversion for time
-    } else if (expertDistanceThresholds.includes(name)) {
-      settingGroup = 'transportationExpertThresholds'
-      settingKey = name
-      settingValue = this.toMetricDistance(value, isMetric)
-    } else {
-      console.warn('[Settings] Unknown transportation threshold:', name)
-      return
-    }
-
-    // Update the settings object
-    if (!this.settings[settingGroup]) {
-      this.settings[settingGroup] = {}
-    }
-    this.settings[settingGroup][settingKey] = settingValue
-
-    // Save to backend
-    const result = await SettingsManager.updateSetting(settingGroup, this.settings[settingGroup])
-
-    // Check if recalculation was triggered
-    if (result && result.recalculation_triggered) {
-      Toast.info('Transportation threshold updated. Recalculating all tracks...')
-      // Start polling for status
-      this.checkRecalculationStatus()
-    } else if (result && result.status === 'locked') {
-      Toast.error('Cannot update: recalculation is in progress')
-      // Refresh the UI to show locked state
-      this.checkRecalculationStatus()
-    } else {
-      Toast.success('Transportation threshold updated')
     }
   }
 

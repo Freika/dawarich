@@ -125,7 +125,10 @@ export default class extends Controller {
     'distanceUnitLabel',
     // Transportation recalculation status
     'transportationRecalculationAlert',
-    'transportationLockedMessage'
+    'transportationLockedMessage',
+    // Transportation apply button
+    'transportationApplyButton',
+    'transportationDirtyMessage'
   ]
 
   async connect() {
@@ -290,8 +293,9 @@ export default class extends Controller {
   updateMinutesBetweenDisplay(event) { return this.settingsController.updateMinutesBetweenDisplay(event) }
   toggleGlobe(event) { return this.settingsController.toggleGlobe(event) }
   toggleTransportationExpertMode(event) { return this.settingsController.toggleTransportationExpertMode(event) }
-  updateTransportationThreshold(event) { return this.settingsController.updateTransportationThreshold(event) }
   updateTransportationThresholdDisplay(event) { return this.settingsController.updateTransportationThresholdDisplay(event) }
+  markTransportationSettingsDirty(event) { return this.settingsController.markTransportationSettingsDirty(event) }
+  applyTransportationSettings(event) { return this.settingsController.applyTransportationSettings(event) }
 
   // Area Selection Manager methods
   startSelectArea() { return this.areaSelectionManager.startSelectArea() }

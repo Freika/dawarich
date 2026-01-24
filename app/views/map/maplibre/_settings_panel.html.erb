@@ -502,7 +502,7 @@
             <div class="collapse-content">
               <!-- Recalculation Status Alert -->
               <div role="alert"
-                   class="alert alert-warning text-sm gap-2 py-2 px-3 mb-4 hidden"
+                   class="text-xs text-warning bg-warning/10 rounded p-2 mb-4 hidden"
                    data-maps--maplibre-target="transportationRecalculationAlert">
                 <span class="loading loading-spinner loading-xs"></span>
                 <span>Checking status...</span>
@@ -510,11 +510,8 @@
 
               <!-- Locked Message -->
               <div role="alert"
-                   class="alert alert-info text-sm gap-2 py-2 px-3 mb-4 hidden"
+                   class="text-xs text-info bg-info/10 rounded p-2 mb-4 hidden"
                    data-maps--maplibre-target="transportationLockedMessage">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V7a4 4 0 00-8 0v4h12V7a4 4 0 00-8 0v4z"></path>
-                </svg>
                 <span>Settings are locked while recalculation is in progress.</span>
               </div>
 
@@ -552,7 +549,7 @@
                          value="7"
                          class="range range-xs"
                          data-maps--maplibre-target="walkingMaxSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>3</span>
                     <span>9</span>
@@ -574,7 +571,7 @@
                          value="45"
                          class="range range-xs"
                          data-maps--maplibre-target="cyclingMaxSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>20</span>
                     <span>45</span>
@@ -596,7 +593,7 @@
                          value="220"
                          class="range range-xs"
                          data-maps--maplibre-target="drivingMaxSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>80</span>
                     <span>190</span>
@@ -618,7 +615,7 @@
                          value="150"
                          class="range range-xs"
                          data-maps--maplibre-target="flyingMinSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>100</span>
                     <span>175</span>
@@ -645,7 +642,7 @@
                          value="1"
                          class="range range-xs"
                          data-maps--maplibre-target="stationaryMaxSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>0.5</span>
                     <span>2.5</span>
@@ -667,7 +664,7 @@
                          value="80"
                          class="range range-xs"
                          data-maps--maplibre-target="trainMinSpeedInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>50</span>
                     <span>100</span>
@@ -691,7 +688,7 @@
                          value="0.25"
                          class="range range-xs"
                          data-maps--maplibre-target="runningVsCyclingAccelInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>0.1</span>
                     <span>0.45</span>
@@ -713,7 +710,7 @@
                          value="0.4"
                          class="range range-xs"
                          data-maps--maplibre-target="cyclingVsDrivingAccelInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>0.2</span>
                     <span>0.6</span>
@@ -737,7 +734,7 @@
                          value="60"
                          class="range range-xs"
                          data-maps--maplibre-target="minSegmentDurationInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>10s</span>
                     <span>95s</span>
@@ -759,7 +756,7 @@
                          value="180"
                          class="range range-xs"
                          data-maps--maplibre-target="timeGapThresholdInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>30s</span>
                     <span>315s</span>
@@ -781,7 +778,7 @@
                          value="100"
                          class="range range-xs"
                          data-maps--maplibre-target="minFlightDistanceInput"
-                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#updateTransportationThreshold" />
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
                   <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
                     <span>20</span>
                     <span>160</span>
@@ -790,9 +787,20 @@
                 </div>
               </div>
 
-              <p class="text-xs text-base-content/60 mt-4">
-                Changes affect future statistics calculations. Recalculate stats to apply to existing data.
-              </p>
+              <!-- Apply Button -->
+              <div class="mt-4 pt-4 border-t border-base-300">
+                <button type="button"
+                        class="btn btn-primary btn-sm w-full"
+                        data-maps--maplibre-target="transportationApplyButton"
+                        data-action="click->maps--maplibre#applyTransportationSettings"
+                        disabled>
+                  Apply Settings
+                </button>
+                <p class="text-xs text-base-content/60 mt-2 text-center"
+                   data-maps--maplibre-target="transportationDirtyMessage">
+                  Make changes to enable the Apply button
+                </p>
+              </div>
             </div>
           </details>
 
