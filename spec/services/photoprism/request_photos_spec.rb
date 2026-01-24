@@ -156,6 +156,7 @@ RSpec.describe Photoprism::RequestPhotos do
         ).with(
           headers: {
             'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
             'Accept-Encoding' => 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
             'Authorization' => 'Bearer test_api_key',
             'User-Agent' => 'Ruby'
@@ -220,6 +221,7 @@ before: end_date }}"
       let(:common_headers) do
         {
           'Accept' => 'application/json',
+          'Content-Type' => 'application/json',
           'Accept-Encoding' => 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
           'Authorization' => 'Bearer test_api_key',
           'User-Agent' => 'Ruby'

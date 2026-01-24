@@ -80,7 +80,8 @@ class Photoprism::RequestPhotos
   def headers
     {
       'Authorization' => "Bearer #{photoprism_api_key}",
-      'accept' => 'application/json'
+      'accept' => 'application/json',
+      'Content-Type' => 'application/json'
     }
   end
 

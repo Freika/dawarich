@@ -36,17 +36,23 @@ class Immich::ConnectionTester
   def search_metadata
     HTTParty.post(
       "#{url}/api/search/metadata",
-      http_options_with_ssl_flag(skip_ssl_verification, {
-        headers: { 'x-api-key' => api_key, 'accept' => 'application/json' },
-        body: {
-          takenAfter: Time.current.beginning_of_day.iso8601,
+      http_options_with_ssl_flag(
+        skip_ssl_verification, {
+          headers: {
+            'x-api-key' => api_key,
+            'accept' => 'application/json',
+            'Content-Type' => 'application/json'
+          },
+          body: {
+            takenAfter: Time.current.beginning_of_day.iso8601,
           size: 1,
           page: 1,
           order: 'asc',
           withExif: true
-        },
+          },
         timeout: 10
-      })
+        }
+      )
     )
   end
   # rubocop:enable Metrics/MethodLength
@@ -55,9 +61,9 @@ class Immich::ConnectionTester
     response = HTTParty.get(
       "#{url}/api/assets/#{asset_id}/thumbnail?size=preview",
       http_options_with_ssl_flag(skip_ssl_verification, {
-        headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
+                                   headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
         timeout: 10
-      })
+                                 })
     )
 
     return { success: true, message: 'Immich connection verified' } if response.success?

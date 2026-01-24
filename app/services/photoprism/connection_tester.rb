@@ -25,11 +25,17 @@ class Photoprism::ConnectionTester
   def test_connection
     response = HTTParty.get(
       "#{url}/api/v1/photos",
-      http_options_with_ssl_flag(skip_ssl_verification, {
-        headers: { 'Authorization' => "Bearer #{api_key}", 'accept' => 'application/json' },
-        query: { count: 1, public: true },
-        timeout: 10
-      })
+      http_options_with_ssl_flag(
+        skip_ssl_verification, {
+          headers: {
+            'Authorization' => "Bearer #{api_key}",
+            'accept' => 'application/json',
+            'Content-Type' => 'application/json'
+          },
+          query: { count: 1, public: true },
+          timeout: 10
+        }
+      )
     )
 
     return { success: true, message: 'Photoprism connection verified' } if response.success?

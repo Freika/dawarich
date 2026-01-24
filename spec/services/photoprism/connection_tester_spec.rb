@@ -68,7 +68,8 @@ RSpec.describe Photoprism::ConnectionTester do
         expect(HTTParty).to receive(:get).with(
           "#{url}/api/v1/photos",
           hash_including(
-            headers: { 'Authorization' => "Bearer #{api_key}", 'accept' => 'application/json' },
+            headers: { 'Authorization' => "Bearer #{api_key}", 'accept' => 'application/json',
+'Content-Type' => 'application/json' },
             query: { count: 1, public: true },
             timeout: 10
           )
