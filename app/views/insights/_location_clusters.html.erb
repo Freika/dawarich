@@ -3,131 +3,42 @@
   <div class="card-body p-5">
     <h2 class="card-title text-lg flex items-center gap-2">
       <%= icon 'map-pin', class: 'w-5 h-5 text-primary' %>
-      Location Clusters
+      Top Visited Locations
     </h2>
 
-    <!-- Berlin Metro -->
-    <div class="mt-3 p-3 bg-base-300 rounded-lg">
-      <div class="flex justify-between items-center mb-2">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 bg-info rounded-full"></span>
-          <span class="font-medium">Berlin Metro Area</span>
-        </div>
-        <span class="badge badge-info badge-sm">97% confidence</span>
+    <% if @top_visited_locations.present? %>
+      <div class="space-y-3 mt-3">
+        <% @top_visited_locations.each_with_index do |location, index| %>
+          <div class="p-3 bg-base-300 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 bg-primary text-primary-content rounded-full flex items-center justify-center text-xs font-bold">
+                  <%= index + 1 %>
+                </span>
+                <span class="font-medium"><%= location[:name] %></span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-center">
+              <div>
+                <div class="text-xl font-bold"><%= location[:visit_count] %></div>
+                <div class="text-xs text-base-content/60"><%= 'visit'.pluralize(location[:visit_count]) %></div>
+              </div>
+              <div>
+                <div class="text-xl font-bold"><%= format_location_time(location[:total_duration]) %></div>
+                <div class="text-xs text-base-content/60">total time</div>
+              </div>
+            </div>
+          </div>
+        <% end %>
       </div>
-      <div class="grid grid-cols-3 gap-2 text-center">
-        <div>
-          <div class="text-xl font-bold">189</div>
-          <div class="text-xs text-base-content/60">days</div>
-        </div>
-        <div>
-          <div class="text-xl font-bold">847</div>
-          <div class="text-xs text-base-content/60">visits</div>
-        </div>
-        <div>
-          <div class="text-xl font-bold">4,230</div>
-          <div class="text-xs text-base-content/60">km</div>
-        </div>
-      </div>
-      <div class="text-xs text-base-content/60 mt-2">327 overnight stays &bull; 23:00-06:00 activity &bull; Weekend concentration</div>
-    </div>
-
-    <!-- Paris Metro -->
-    <div class="mt-3 p-3 bg-base-300 rounded-lg">
-      <div class="flex items-center gap-2 mb-2">
-        <span class="w-2 h-2 bg-secondary rounded-full"></span>
-        <span class="font-medium">Paris Metro Area</span>
-      </div>
-      <div class="grid grid-cols-3 gap-2 text-center">
-        <div>
-          <div class="text-xl font-bold">23</div>
-          <div class="text-xs text-base-content/60">days</div>
-        </div>
-        <div>
-          <div class="text-xl font-bold">98</div>
-          <div class="text-xs text-base-content/60">visits</div>
-        </div>
-        <div>
-          <div class="text-xl font-bold">1,450</div>
-          <div class="text-xs text-base-content/60">km</div>
+    <% else %>
+      <div class="text-center py-8 text-base-content/60">
+        <div class="flex flex-col items-center gap-2">
+          <%= icon 'map-pin', class: 'w-8 h-8 opacity-50' %>
+          <p>No visit data available for this period.</p>
+          <p class="text-sm">Confirmed visits will appear here.</p>
         </div>
       </div>
-      <div class="text-xs text-base-content/60 mt-2">5 extended stays &bull; Business + leisure mix</div>
-    </div>
-
-    <!-- Home & Work Detection -->
-    <div class="grid grid-cols-2 gap-4 mt-4">
-      <div>
-        <div class="flex items-center gap-1 text-sm font-medium text-base-content/60 mb-1">
-          <%= icon 'house', class: 'w-4 h-4' %>
-          HOME DETECTION
-        </div>
-        <div class="text-sm">
-          Likely home: <span class="text-info">Berlin, Germany</span>
-          <span class="badge badge-xs">87%</span>
-        </div>
-        <ul class="text-xs text-base-content/60 mt-1 space-y-0.5">
-          <li>&bull; 327 overnight stays</li>
-          <li>&bull; 23:00-06:00 activity pattern</li>
-          <li>&bull; Weekend concentration</li>
-        </ul>
-      </div>
-      <div>
-        <div class="flex items-center gap-1 text-sm font-medium text-base-content/60 mb-1">
-          <%= icon 'briefcase', class: 'w-4 h-4' %>
-          WORK DETECTION
-        </div>
-        <div class="text-sm">
-          Likely work: <span class="text-info">Berlin, Germany</span>
-          <span class="badge badge-xs">92%</span>
-        </div>
-        <ul class="text-xs text-base-content/60 mt-1 space-y-0.5">
-          <li>&bull; 198 visits, Mon-Fri</li>
-          <li>&bull; 09:00-18:00 pattern</li>
-          <li>&bull; 45 min avg commute</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Exploration Score -->
-    <div class="mt-4 pt-4 border-t border-base-300">
-      <div class="text-sm font-medium mb-2">EXPLORATION SCORE</div>
-      <div class="space-y-2">
-        <div class="flex items-center gap-2 text-sm">
-          <span class="w-24">Berlin core</span>
-          <progress class="progress progress-success flex-1 h-2" value="100" max="100"></progress>
-          <span class="w-12 text-right">100%</span>
-        </div>
-        <div class="flex items-center gap-2 text-sm">
-          <span class="w-24">50km radius</span>
-          <progress class="progress progress-warning flex-1 h-2" value="67" max="100"></progress>
-          <span class="w-12 text-right">67%</span>
-        </div>
-        <div class="flex items-center gap-2 text-sm">
-          <span class="w-24">200km radius</span>
-          <progress class="progress progress-error flex-1 h-2" value="23" max="100"></progress>
-          <span class="w-12 text-right">23%</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Nearby Unexplored -->
-    <div class="mt-4 pt-4 border-t border-base-300">
-      <div class="text-sm font-medium mb-2">NEARBY UNEXPLORED (within 50km)</div>
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between">
-          <span><span class="inline-block w-2 h-2 bg-base-content/30 rounded-full mr-2"></span>Potsdam <span class="text-base-content/60">24km</span></span>
-          <span class="text-error">Never visited</span>
-        </div>
-        <div class="flex justify-between">
-          <span><span class="inline-block w-2 h-2 bg-base-content/30 rounded-full mr-2"></span>Brandenburg Havel <span class="text-base-content/60">55km</span></span>
-          <span class="text-error">Never visited</span>
-        </div>
-        <div class="flex justify-between">
-          <span><span class="inline-block w-2 h-2 bg-base-content/30 rounded-full mr-2"></span>Werder <span class="text-base-content/60">38km</span></span>
-          <span class="text-warning">1 visit only</span>
-        </div>
-      </div>
-    </div>
+    <% end %>
   </div>
 </div>

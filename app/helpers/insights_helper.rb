@@ -163,6 +163,61 @@ module InsightsHelper
     suggestion ? "#{base_insight} #{suggestion}" : base_insight
   end
 
+  # Format activity breakdown duration from seconds to human-readable hours
+  def format_activity_hours(seconds)
+    return '0h' if seconds.nil? || seconds.to_i.zero?
+
+    hours = (seconds.to_i / 3600.0).round(1)
+    if hours >= 1
+      "#{hours.to_i == hours ? hours.to_i : hours}h"
+    else
+      minutes = (seconds.to_i / 60.0).round
+      "#{minutes}min"
+    end
+  end
+
+  # Calculate activity statistics from activity_breakdown hash
+  # Returns: { walking: hours, cycling: hours, driving: hours, transport: hours, active: hours, stationary: hours }
+  def activity_statistics(activity_breakdown)
+    return empty_activity_stats if activity_breakdown.blank?
+
+    stats = empty_activity_stats
+    activity_breakdown.each { |mode, data| accumulate_activity_stat(stats, mode.to_s, data['duration'].to_i) }
+    stats
+  end
+
+  def accumulate_activity_stat(stats, mode, duration)
+    case mode
+    when 'walking', 'running', 'cycling'
+      stats[mode.to_sym] = duration
+      stats[:active] += duration
+    when 'stationary'
+      stats[:stationary] = duration
+    when 'driving', 'bus', 'train', 'flying', 'boat', 'motorcycle'
+      stats[:driving] = duration if mode == 'driving'
+      stats[:transport] += duration
+    end
+  end
+
+  def empty_activity_stats
+    { walking: 0, cycling: 0, running: 0, driving: 0, transport: 0, active: 0, stationary: 0 }
+  end
+
+  # Calculate activity ratio as "1:X" format (active vs sedentary)
+  def activity_ratio(active_seconds, sedentary_seconds)
+    return 'N/A' if active_seconds.to_i.zero? || sedentary_seconds.to_i.zero?
+
+    ratio = sedentary_seconds.to_f / active_seconds
+    "1:#{ratio.round}"
+  end
+
+  # Check if activity breakdown has meaningful data
+  def activity_breakdown_present?(activity_breakdown)
+    return false if activity_breakdown.blank?
+
+    activity_breakdown.values.sum { |v| v['duration'].to_i }.positive?
+  end
+
   private
 
   def generate_travel_suggestion(time_of_day, day_of_week, seasonality)

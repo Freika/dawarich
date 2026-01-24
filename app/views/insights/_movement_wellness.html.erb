@@ -6,137 +6,106 @@
       Movement & Wellness
     </h2>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Left Side -->
-      <div class="space-y-4">
-        <!-- Active Time -->
-        <div>
-          <div class="text-sm font-medium mb-2">ACTIVE TIME</div>
-          <div class="space-y-2">
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center gap-2">
-                <%= icon 'footprints', class: 'w-4 h-4 text-base-content/70' %>
-                <span>Walking</span>
-                <span class="text-xs text-base-content/60">(avg 1.6h/day active days)</span>
-              </div>
-              <span class="font-medium">47h total</span>
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center gap-2">
-                <%= icon 'bike', class: 'w-4 h-4 text-base-content/70' %>
-                <span>Cycling</span>
-                <span class="text-xs text-base-content/60">(avg 24min/day active days)</span>
-              </div>
-              <span class="font-medium">12h total</span>
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center gap-2">
-                <%= icon 'car', class: 'w-4 h-4 text-base-content/70' %>
-                <span>Driving</span>
-                <span class="text-xs text-base-content/60">(avg 3h/day active days)</span>
-              </div>
-              <span class="font-medium">89h total</span>
+    <% if activity_breakdown_present?(@activity_breakdown) %>
+      <% stats = activity_statistics(@activity_breakdown) %>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Left Side: Active Time -->
+        <div class="space-y-4">
+          <div>
+            <div class="text-sm font-medium mb-2">ACTIVE TIME</div>
+            <div class="space-y-2">
+              <% if stats[:walking].positive? %>
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <%= icon 'footprints', class: 'w-4 h-4 text-base-content/70' %>
+                    <span>Walking</span>
+                  </div>
+                  <span class="font-medium"><%= format_activity_hours(stats[:walking]) %> total</span>
+                </div>
+              <% end %>
+
+              <% if stats[:running].positive? %>
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <%= icon 'run', class: 'w-4 h-4 text-base-content/70' %>
+                    <span>Running</span>
+                  </div>
+                  <span class="font-medium"><%= format_activity_hours(stats[:running]) %> total</span>
+                </div>
+              <% end %>
+
+              <% if stats[:cycling].positive? %>
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <%= icon 'bike', class: 'w-4 h-4 text-base-content/70' %>
+                    <span>Cycling</span>
+                  </div>
+                  <span class="font-medium"><%= format_activity_hours(stats[:cycling]) %> total</span>
+                </div>
+              <% end %>
+
+              <% if stats[:driving].positive? %>
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <%= icon 'car', class: 'w-4 h-4 text-base-content/70' %>
+                    <span>Driving</span>
+                  </div>
+                  <span class="font-medium"><%= format_activity_hours(stats[:driving]) %> total</span>
+                </div>
+              <% end %>
+
+              <% if stats[:walking].zero? && stats[:running].zero? && stats[:cycling].zero? && stats[:driving].zero? %>
+                <div class="text-sm text-base-content/60">No activity data available for this period</div>
+              <% end %>
             </div>
           </div>
         </div>
 
-        <!-- Sleep Patterns -->
-        <div class="pt-4 border-t border-base-300">
-          <div class="flex items-center gap-2 text-sm font-medium mb-2">
-            <%= icon 'moon', class: 'w-4 h-4 text-info' %>
-            SLEEP PATTERNS (AT HOME)
-          </div>
-          <div class="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div class="text-xl font-bold">19:42</div>
-              <div class="text-xs text-base-content/60">Avg arrival</div>
-            </div>
-            <div>
-              <div class="text-xl font-bold">08:15</div>
-              <div class="text-xs text-base-content/60">Avg departure</div>
-            </div>
-            <div>
-              <div class="text-xl font-bold text-info">7.2h</div>
-              <div class="text-xs text-base-content/60">Sleep duration</div>
-            </div>
-          </div>
-        </div>
-      </div>
+        <!-- Right Side: Sedentary vs Active -->
+        <div class="space-y-4">
+          <div>
+            <div class="text-sm font-medium mb-2">SEDENTARY VS ACTIVE</div>
+            <div class="space-y-1 text-sm">
+              <% if stats[:transport].positive? %>
+                <div class="flex justify-between">
+                  <span>In transport</span>
+                  <span><%= format_activity_hours(stats[:transport]) %></span>
+                </div>
+              <% end %>
 
-      <!-- Right Side -->
-      <div class="space-y-4">
-        <!-- Locations & Outdoor Time -->
-        <div>
-          <div class="text-sm font-medium mb-2">LOCATIONS & OUTDOOR TIME</div>
-          <div class="space-y-2">
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center gap-2">
-                <%= icon 'trees', class: 'w-4 h-4 text-success' %>
-                <span>Parks visited</span>
-              </div>
-              <span class="font-medium text-success">34</span>
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center gap-2">
-                <%= icon 'trees', class: 'w-4 h-4 text-success' %>
-                <span>Green space time</span>
-              </div>
-              <span class="font-medium text-success">23h</span>
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center gap-2">
-                <%= icon 'droplets', class: 'w-4 h-4 text-info' %>
-                <span>Near water</span>
-              </div>
-              <span class="font-medium text-info">18h</span>
-            </div>
-          </div>
-        </div>
+              <% if stats[:stationary].positive? %>
+                <div class="flex justify-between">
+                  <span>Stationary</span>
+                  <span><%= format_activity_hours(stats[:stationary]) %></span>
+                </div>
+              <% end %>
 
-        <!-- Sedentary vs Active -->
-        <div class="pt-4 border-t border-base-300">
-          <div class="text-sm font-medium mb-2">SEDENTARY VS ACTIVE</div>
-          <div class="space-y-1 text-sm">
-            <div class="flex justify-between">
-              <span>In transport</span>
-              <span>156h</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Stationary</span>
-              <span>234h</span>
-            </div>
-            <div class="flex justify-between text-success">
-              <span>Active movement</span>
-              <span>59h</span>
-            </div>
-            <div class="flex justify-between pt-1 border-t border-base-300 text-base-content/60">
-              <span>Ratio: 1:4 active vs sedentary</span>
+              <% if stats[:active].positive? %>
+                <div class="flex justify-between text-success">
+                  <span>Active movement</span>
+                  <span><%= format_activity_hours(stats[:active]) %></span>
+                </div>
+              <% end %>
+
+              <% sedentary = stats[:stationary] + stats[:transport] %>
+              <% if stats[:active].positive? && sedentary.positive? %>
+                <div class="flex justify-between pt-1 border-t border-base-300 text-base-content/60">
+                  <span>Ratio: <%= activity_ratio(stats[:active], sedentary) %> active vs sedentary</span>
+                </div>
+              <% end %>
             </div>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Tips -->
-    <div class="mt-4 pt-4 border-t border-base-300">
-      <div class="flex items-center gap-2 text-sm font-medium mb-2">
-        <%= icon 'lightbulb', class: 'w-4 h-4 text-warning' %>
-        TIPS
-      </div>
-      <div class="space-y-1 text-sm">
-        <div class="flex items-center gap-2">
-          <span class="text-warning">&bull;</span>
-          Your commute is 35min avg - consider cycling
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-success">&bull;</span>
-          You've been to 12 parks this month!
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-info">&bull;</span>
-          Weekend activity is 2x higher than weekday
+    <% else %>
+      <div class="text-center py-8 text-base-content/60">
+        <div class="flex flex-col items-center gap-2">
+          <%= icon 'heart', class: 'w-8 h-8 opacity-50' %>
+          <p>No movement data available for this period.</p>
+          <p class="text-sm">Track data with transportation modes will appear here.</p>
         </div>
       </div>
-    </div>
+    <% end %>
   </div>
 </div>

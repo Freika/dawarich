@@ -69,6 +69,7 @@ class InsightsController < ApplicationController
   def load_monthly_data
     load_monthly_digest
     load_travel_patterns
+    load_top_visited_locations
   end
 
   def load_monthly_digest
@@ -119,6 +120,19 @@ class InsightsController < ApplicationController
     @day_of_week = Array.new(7, 0)
     @seasonality = {}
     @activity_breakdown = {}
+    @top_visited_locations = []
+  end
+
+  def load_top_visited_locations
+    start_time = Time.zone.local(@selected_year, @selected_month, 1).beginning_of_month
+    @top_visited_locations = fetch_top_visits(start_time..start_time.end_of_month)
+  end
+
+  def fetch_top_visits(date_range)
+    current_user.visits.confirmed.where(started_at: date_range).group(:name)
+                .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
+                .order('visit_count DESC, total_duration DESC').limit(5)
+                .map { |v| { name: v.name, visit_count: v.visit_count, total_duration: v.total_duration } }
   end
 
   def distance_unit
