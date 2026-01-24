@@ -88,7 +88,44 @@ export default class extends Controller {
     'routeDistance',
     'routeSpeed',
     'routeSpeedContainer',
-    'routePoints'
+    'routePoints',
+    // Transportation mode thresholds
+    'transportationCollapseToggle',
+    'transportationExpertToggle',
+    'transportationBasicSettings',
+    'transportationExpertSettings',
+    // Transportation speed inputs
+    'walkingMaxSpeedInput',
+    'cyclingMaxSpeedInput',
+    'drivingMaxSpeedInput',
+    'flyingMinSpeedInput',
+    // Transportation speed value displays
+    'walkingMaxSpeedValue',
+    'cyclingMaxSpeedValue',
+    'drivingMaxSpeedValue',
+    'flyingMinSpeedValue',
+    // Transportation expert inputs
+    'stationaryMaxSpeedInput',
+    'trainMinSpeedInput',
+    'runningVsCyclingAccelInput',
+    'cyclingVsDrivingAccelInput',
+    'minSegmentDurationInput',
+    'timeGapThresholdInput',
+    'minFlightDistanceInput',
+    // Transportation expert value displays
+    'stationaryMaxSpeedValue',
+    'trainMinSpeedValue',
+    'runningVsCyclingAccelValue',
+    'cyclingVsDrivingAccelValue',
+    'minSegmentDurationValue',
+    'timeGapThresholdValue',
+    'minFlightDistanceValue',
+    // Transportation unit labels
+    'speedUnitLabel',
+    'distanceUnitLabel',
+    // Transportation recalculation status
+    'transportationRecalculationAlert',
+    'transportationLockedMessage'
   ]
 
   async connect() {
@@ -252,6 +289,9 @@ export default class extends Controller {
   updateMetersBetweenDisplay(event) { return this.settingsController.updateMetersBetweenDisplay(event) }
   updateMinutesBetweenDisplay(event) { return this.settingsController.updateMinutesBetweenDisplay(event) }
   toggleGlobe(event) { return this.settingsController.toggleGlobe(event) }
+  toggleTransportationExpertMode(event) { return this.settingsController.toggleTransportationExpertMode(event) }
+  updateTransportationThreshold(event) { return this.settingsController.updateTransportationThreshold(event) }
+  updateTransportationThresholdDisplay(event) { return this.settingsController.updateTransportationThresholdDisplay(event) }
 
   // Area Selection Manager methods
   startSelectArea() { return this.areaSelectionManager.startSelectArea() }

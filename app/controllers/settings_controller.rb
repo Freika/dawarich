@@ -74,7 +74,11 @@ class SettingsController < ApplicationController
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :immich_url, :immich_api_key, :immich_skip_ssl_verification,
       :photoprism_url, :photoprism_api_key, :photoprism_skip_ssl_verification,
-      :visits_suggestions_enabled
+      :visits_suggestions_enabled, :transportation_expert_mode,
+      transportation_thresholds: %i[walking_max_speed cycling_max_speed driving_max_speed flying_min_speed],
+      transportation_expert_thresholds: %i[stationary_max_speed running_vs_cycling_accel cycling_vs_driving_accel
+                                           train_min_speed min_segment_duration time_gap_threshold
+                                           min_flight_distance_km]
     )
   end
 end
