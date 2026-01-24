@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [1.0.1] - Unreleased
+# [1.0.2] - Unreleased
+
+## Added
+
+- App-level DNS cache with 5 minutes TTL to reduce DNS lookups and improve performance. #2183
+
+# [1.0.1] - 2026-01-24
 
 ## Added
 
