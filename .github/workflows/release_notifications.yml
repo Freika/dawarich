@@ -3,18 +3,15 @@ name: Release Notifications
 on:
   release:
     types: [published]
-  workflow_dispatch:
-    inputs:
-      test_version:
-        description: 'Version to test (e.g., 1.0.0)'
-        required: true
-        default: '1.0.0'
+
+permissions:
+  contents: read
 
 jobs:
   notify:
     runs-on: ubuntu-latest
-    # Only notify for stable releases, not RCs or prereleases (always run for manual dispatch)
-    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.release.prerelease }}
+    # Only notify for stable releases, not RCs or prereleases
+    if: ${{ !github.event.release.prerelease }}
 
     steps:
       - uses: actions/checkout@v4
@@ -22,13 +19,8 @@ jobs:
       - name: Set version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.test_version }}" >> $GITHUB_OUTPUT
-            echo "url=https://github.com/${{ github.repository }}/releases/tag/${{ inputs.test_version }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-            echo "url=${{ github.event.release.html_url }}" >> $GITHUB_OUTPUT
-          fi
+          echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          echo "url=${{ github.event.release.html_url }}" >> $GITHUB_OUTPUT
 
       - name: Extract changelog for version
         id: changelog
@@ -52,11 +44,11 @@ jobs:
         env:
           NOTES: ${{ steps.changelog.outputs.notes }}
         run: |
-          # Count items in each section by looking for "## Section" followed by "- " lines
-          ADDED=$(echo "$NOTES" | awk '/^## Added/,/^## [A-Z]/{if(/^- /)count++}END{print count+0}')
-          FIXED=$(echo "$NOTES" | awk '/^## Fixed/,/^## [A-Z]/{if(/^- /)count++}END{print count+0}')
-          CHANGED=$(echo "$NOTES" | awk '/^## Changed/,/^## [A-Z]/{if(/^- /)count++}END{print count+0}')
-          REMOVED=$(echo "$NOTES" | awk '/^## Removed/,/^## [A-Z]/{if(/^- /)count++}END{print count+0}')
+          # Count items in each section using stateful awk to properly track sections
+          ADDED=$(echo "$NOTES" | awk '/^## Added/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          FIXED=$(echo "$NOTES" | awk '/^## Fixed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          CHANGED=$(echo "$NOTES" | awk '/^## Changed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          REMOVED=$(echo "$NOTES" | awk '/^## Removed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
 
           # Build summary line
           PARTS=""
