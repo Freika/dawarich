@@ -1,0 +1,14 @@
+[Unit]
+Description=DaWarIch SideKiq Service
+Wants=network-online.target system-postgresql.slice redis-server.service
+After=network-online.target system-postgresql.slice redis-server.service
+
+[Service]
+Type=simple
+User=dawarich
+WorkingDirectory=/service/dawarich/dawarich
+EnvironmentFile=-/service/dawarich/dawarich/systemd/environment
+ExecStart=/service/dawarich/dawarich/docker/sidekiq-entrypoint.sh sidekiq
+
+[Install]
+WantedBy=multi-user.target
