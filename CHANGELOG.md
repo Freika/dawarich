@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - App-level DNS cache with 5 minutes TTL to reduce DNS lookups and improve performance. #2183
 
+## Fixed
+
+- Remove assets before precompilation to prevent stale assets from being served.
+
 # [1.0.1] - 2026-01-24
 
 ## Added
