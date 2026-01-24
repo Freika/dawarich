@@ -143,6 +143,14 @@ module ApplicationHelper
     ALLOW_EMAIL_PASSWORD_REGISTRATION
   end
 
+  def email_password_login_enabled?
+    # If OIDC is enabled and email/password registration is disabled,
+    # also disable email/password login (OIDC-only mode)
+    return true unless DawarichSettings.oidc_enabled?
+
+    ALLOW_EMAIL_PASSWORD_REGISTRATION
+  end
+
   def preferred_map_path
     return map_v2_path unless user_signed_in?
 

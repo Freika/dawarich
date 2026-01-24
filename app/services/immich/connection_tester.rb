@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Immich::ConnectionTester
+  include SslConfigurable
+
   attr_reader :url, :api_key, :skip_ssl_verification
 
   def initialize(url, api_key, skip_ssl_verification: false)
@@ -34,17 +36,23 @@ class Immich::ConnectionTester
   def search_metadata
     HTTParty.post(
       "#{url}/api/search/metadata",
-      http_options_with_ssl({
-        headers: { 'x-api-key' => api_key, 'accept' => 'application/json' },
-        body: {
-          takenAfter: Time.current.beginning_of_day.iso8601,
+      http_options_with_ssl_flag(
+        skip_ssl_verification, {
+          headers: {
+            'x-api-key' => api_key,
+            'accept' => 'application/json',
+            'Content-Type' => 'application/json'
+          },
+          body: {
+            takenAfter: Time.current.beginning_of_day.iso8601,
           size: 1,
           page: 1,
           order: 'asc',
           withExif: true
-        },
+          },
         timeout: 10
-      })
+        }
+      )
     )
   end
   # rubocop:enable Metrics/MethodLength
@@ -52,10 +60,10 @@ class Immich::ConnectionTester
   def test_thumbnail_access(asset_id)
     response = HTTParty.get(
       "#{url}/api/assets/#{asset_id}/thumbnail?size=preview",
-      http_options_with_ssl({
-        headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
+      http_options_with_ssl_flag(skip_ssl_verification, {
+                                   headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
         timeout: 10
-      })
+                                 })
     )
 
     return { success: true, message: 'Immich connection verified' } if response.success?
@@ -81,9 +89,5 @@ class Immich::ConnectionTester
     return false unless result[:success]
 
     result[:data]['message']&.include?('asset.view') || false
-  end
-
-  def http_options_with_ssl(base_options = {})
-    base_options.merge(verify: !skip_ssl_verification)
   end
 end

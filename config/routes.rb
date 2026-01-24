@@ -202,7 +202,6 @@ Rails.application.routes.draw do
       end
 
       namespace :maps do
-        resources :tile_usage, only: [:create]
         resources :hexagons, only: [:index] do
           collection do
             get :bounds

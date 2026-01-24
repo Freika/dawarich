@@ -11,7 +11,6 @@ export function createMapChannel(options = {}) {
   const subscriptions = {
     family: null,
     points: null,
-    notifications: null,
     tracks: null
   }
 
@@ -85,30 +84,8 @@ export function createMapChannel(options = {}) {
     console.log('[MapChannel] Live mode disabled, not subscribing to PointsChannel')
   }
 
-  // Subscribe to notifications channel
-  try {
-    subscriptions.notifications = consumer.subscriptions.create('NotificationsChannel', {
-      connected() {
-        console.log('NotificationsChannel connected')
-        callbacks.connected?.('notifications')
-      },
-
-      disconnected() {
-        console.log('NotificationsChannel disconnected')
-        callbacks.disconnected?.('notifications')
-      },
-
-      received(data) {
-        console.log('NotificationsChannel received:', data)
-        callbacks.received?.({
-          type: 'notification',
-          notification: data
-        })
-      }
-    })
-  } catch (error) {
-    console.warn('[MapChannel] Failed to subscribe to notifications channel:', error)
-  }
+  // Note: NotificationsChannel is handled by notifications_controller.js in the navbar
+  // Creating a second subscription here causes issues with ActionCable
 
   // Subscribe to tracks channel for real-time track updates
   try {

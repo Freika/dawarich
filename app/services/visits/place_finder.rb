@@ -151,6 +151,10 @@ module Visits
       end
 
       places
+    rescue StandardError => e
+      Rails.logger.error("Reverse geocoding error in PlaceFinder: #{e.message}")
+      ExceptionReporter.call(e)
+      []
     end
 
     # Step 6: Create place from API result

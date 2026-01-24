@@ -8,16 +8,25 @@
         <%= "#{human_date(trip.started_at)} – #{human_date(trip.ended_at)}, #{trip.distance_in_unit(current_user.safe_settings.distance_unit).round} #{current_user.safe_settings.distance_unit}" %>
       </p>
 
-      <div style="width: 100%; aspect-ratio: 1/1;"
-            id="map-<%= trip.id %>"
-            class="rounded-lg z-0"
-            data-controller="trip-map"
-            data-trip-map-trip-id-value="<%= trip.id %>"
-            data-trip-map-path-value="<%= trip.path.coordinates.to_json %>"
-            data-trip-map-api-key-value="<%= current_user.api_key %>"
-            data-trip-map-user-settings-value="<%= current_user.safe_settings.settings.to_json %>"
-            data-trip-map-timezone-value="<%= trip.user.timezone %>">
-      </div>
+      <% if trip.path.present? %>
+        <div style="width: 100%; aspect-ratio: 1/1;"
+              id="map-<%= trip.id %>"
+              class="rounded-lg z-0"
+              data-controller="trip-map"
+              data-trip-map-trip-id-value="<%= trip.id %>"
+              data-trip-map-path-value="<%= trip.path.coordinates.to_json %>"
+              data-trip-map-api-key-value="<%= current_user.api_key %>"
+              data-trip-map-user-settings-value="<%= current_user.safe_settings.settings.to_json %>"
+              data-trip-map-timezone-value="<%= trip.user.timezone %>">
+        </div>
+      <% else %>
+        <div style="width: 100%; aspect-ratio: 1/1;" class="flex items-center justify-center rounded-lg bg-base-300">
+          <div class="text-center">
+            <p class="text-base-content/60">Trip path is being calculated...</p>
+            <div class="loading loading-spinner loading-md mt-2"></div>
+          </div>
+        </div>
+      <% end %>
     </div>
   </div>
 <% end %>

@@ -24,8 +24,8 @@ export default class extends Controller {
     }
 
     try {
-      this.connectedChannels = new Set();
-      this.liveModeEnabled = false; // Start with live mode disabled
+      this.connectedChannels = new Set()
+      this.liveModeEnabled = this.liveModeValue
 
       // Delay channel setup to ensure ActionCable is ready
       // This prevents race condition with page initialization
@@ -165,9 +165,7 @@ export default class extends Controller {
         this.handleNotification(data.notification);
         break;
 
-      case "track_update":
-        this.handleTrackUpdate(data);
-        break;
+      // Note: notifications are handled by notifications_controller.js in the navbar
     }
   }
 
@@ -267,74 +265,7 @@ export default class extends Controller {
     }
   }
 
-  /**
-   * Handle notification
-   */
-  handleNotification(notification) {
-    Toast.info(notification.message || "New notification");
-  }
-
-  /**
-   * Handle track update (e.g., after a point is moved and track is recalculated)
-   */
-  handleTrackUpdate(data) {
-    const mapsController = this.mapsV2Controller;
-    if (!mapsController) {
-      console.warn("[Realtime Controller] Maps controller not found");
-      return;
-    }
-
-    // Only update if action is geojson_updated (our specific recalculation broadcast)
-    if (data.action !== "geojson_updated") {
-      console.log(
-        "[Realtime Controller] Ignoring track update action:",
-        data.action,
-      );
-      return;
-    }
-
-    // Check if tracks layer is enabled/visible
-    const tracksLayer = mapsController.layerManager?.getLayer("tracks");
-    if (!tracksLayer || !tracksLayer.visible) {
-      console.log(
-        "[Realtime Controller] Tracks layer not visible, skipping update",
-      );
-      return;
-    }
-
-    // Check if this track is currently selected
-    const trackId = data.track?.properties?.id;
-    const eventHandlers = mapsController.eventHandlers;
-    const isSelected =
-      eventHandlers?.selectedTrackFeature?.properties?.id === trackId;
-
-    // Update the track feature in the layer
-    if (data.track && tracksLayer.updateTrackFeature) {
-      const updatedFeature = tracksLayer.updateTrackFeature(data.track, {
-        preserveSelection: isSelected,
-      });
-
-      if (updatedFeature) {
-        console.log(
-          "[Realtime Controller] Updated track:",
-          trackId,
-          isSelected ? "(selected)" : "",
-        );
-
-        // If this track is selected, update the selected feature reference and markers
-        if (isSelected && eventHandlers) {
-          eventHandlers.selectedTrackFeature = updatedFeature;
-
-          // Update emoji markers to new positions
-          if (eventHandlers.updateTrackMarkers) {
-            eventHandlers.updateTrackMarkers(updatedFeature);
-          }
-        }
-
-        Toast.success("Track recalculated");
-      }
-    }
-  }
+  // Note: Notifications are handled by notifications_controller.js in the navbar
 
   /**
    * Update the recent point marker

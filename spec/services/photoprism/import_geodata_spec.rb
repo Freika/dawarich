@@ -143,11 +143,12 @@ RSpec.describe Photoprism::ImportGeodata do
       stub_request(:get, %r{http://photoprism\.app/api/v1/photos}).with(
         headers: {
           'Accept' => 'application/json',
+          'Content-Type' => 'application/json',
           'Accept-Encoding' => 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
           'Authorization' => 'Bearer 123456',
           'User-Agent' => 'Ruby'
         }
-      ).to_return(status: 200, body: photoprism_data, headers: {})
+      ).to_return(status: 200, body: photoprism_data, headers: { 'Content-Type' => 'application/json' })
     end
 
     it 'creates import' do
