@@ -169,7 +169,7 @@ RSpec.describe Photoprism::RequestPhotos do
         stub_request(
           :any,
           "#{user.settings['photoprism_url']}/api/v1/photos?after=#{start_date}&before=#{end_date}&count=1000&public=true&q=&quality=3&offset=1000"
-        ).to_return(status: 200, body: [].to_json)
+        ).to_return(status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' })
       end
 
       it 'returns photos within the specified date range' do
@@ -203,13 +203,11 @@ RSpec.describe Photoprism::RequestPhotos do
       end
 
       it 'logs the error' do
-        expect(Rails.logger).to \
-          receive(:error).with('Photoprism API returned 400: {"status":400,"error":"Unable to do that"}')
-        expect(Rails.logger).to \
-          receive(:debug).with(
-            "Photoprism API request params: #{{ q: '', public: true, quality: 3, after: start_date, count: 1000,
+        expect(Rails.logger).to receive(:error).with('Photoprism photo fetch failed: Request failed: 400')
+        expect(Rails.logger).to receive(:debug).with(
+          "Photoprism API request params: #{{ q: '', public: true, quality: 3, after: start_date, count: 1000,
 before: end_date }}"
-          )
+        )
 
         service.call
       end
@@ -242,7 +240,7 @@ before: end_date }}"
               quality: '3'
             }
           )
-          .to_return(status: 200, body: first_page.to_json)
+          .to_return(status: 200, body: first_page.to_json, headers: { 'Content-Type' => 'application/json' })
 
         # Second page
         stub_request(:any, "#{user.settings['photoprism_url']}/api/v1/photos")
@@ -258,7 +256,7 @@ before: end_date }}"
               offset: '1000'
             }
           )
-          .to_return(status: 200, body: second_page.to_json)
+          .to_return(status: 200, body: second_page.to_json, headers: { 'Content-Type' => 'application/json' })
 
         # Last page (empty)
         stub_request(:any, "#{user.settings['photoprism_url']}/api/v1/photos")
@@ -274,7 +272,7 @@ before: end_date }}"
               offset: '2000'
             }
           )
-          .to_return(status: 200, body: empty_page.to_json)
+          .to_return(status: 200, body: empty_page.to_json, headers: { 'Content-Type' => 'application/json' })
       end
 
       it 'fetches all pages until empty result' do

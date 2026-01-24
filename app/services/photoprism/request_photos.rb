@@ -37,6 +37,8 @@ class Photoprism::RequestPhotos
     while offset < 1_000_000
       response_data = fetch_page(offset)
 
+      # Break on nil (fetch failed), empty array, or error response
+      break if response_data.nil?
       break if response_data.blank? || (response_data.is_a?(Hash) && response_data.try(:[], 'error').present?)
 
       data << response_data
@@ -45,7 +47,7 @@ class Photoprism::RequestPhotos
     end
 
     data.flatten
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout => e
+  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
     Rails.logger.error("Photoprism photo fetch failed: #{e.message}")
     []
   end
@@ -62,14 +64,17 @@ class Photoprism::RequestPhotos
       )
     )
 
-    if response.code != 200
-      Rails.logger.error "Photoprism API returned #{response.code}: #{response.body}"
-      Rails.logger.debug "Photoprism API request params: #{request_params(offset).inspect}"
+    result = Photoprism::ResponseValidator.validate_and_parse(response)
+
+    unless result[:success]
+      Rails.logger.error("Photoprism photo fetch failed: #{result[:error]}")
+      Rails.logger.debug("Photoprism API request params: #{request_params(offset).inspect}")
+      return nil
     end
 
     cache_preview_token(response.headers)
 
-    JSON.parse(response.body)
+    result[:data]
   end
 
   def headers

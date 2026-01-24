@@ -4,11 +4,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.37.4] - Unreleased
+# [1.0.1] - Unreleased
 
 ## Added
 
 - SSL certificate verification can now be disabled for Immich and Photoprism integrations to support self-signed certificates. A prominent security warning is displayed when this option is enabled. #1645
+
+## Fixed
+
+- Photo timestamps from Immich are now correctly parsed as UTC, fixing the double timezone offset bug where times were displayed incorrectly. #1752
+- Trip photo grids now update immediately after photos are imported, instead of showing cached/stale results for up to 24 hours. #627 #988
+- Immich API responses are now validated for content-type and JSON format before parsing, providing clear diagnostic error messages when the API returns unexpected responses. #698 #1013 #1078
+- Response validator logs truncated response bodies (max 1000 chars) when JSON parsing fails, improving debugging capabilities.
+- GeoJSON formatted points now have correct timestamp parsed from `raw_data['properties']['date']` field.
+- Reduce number of iterations during cache cleaning to improve performance.
+- Version in the navbar is now correct. #2154
+- Dawarich can now be ran under a non-root user in Docker. #1159
+- Fix an error on the Trips page when trip is created but no path is yet calculated. #1426
+- Catch an error with invalid response during reverse-geocoding. #1439
+- In the Immich integration form there are now required permissions listed: `asset.read` and `asset.view`. #1730
+- A doc issue regarding suggesting new visits. #1737
+- `ALLOW_EMAIL_PASSWORD_REGISTRATION` and `OIDC_AUTO_REGISTER` env vars are now being respected correctly. #1972
+- Fog of War layer on Map V1 now properly re-appears when toggled off and on again without requiring a page refresh. #2039
+- User's `points_count` counter cache is now properly updated when creating points via OwnTracks, Overland, and generic Points API. This fixes visit suggestions not working for users using HomeAssistant or similar integrations. #2167
+
+## Changed
+
+- Map V2 is now the default map version for new users. Existing users will keep using Map V1 unless they change it in the settings.
+- Email preferences moved to dedicated "Emails" tab in user settings for better organization.
+
+## Removed
+
+- Tile Usage reporting feature and related prometheus metric have been removed due to low usage. #1876
 
 
 # [1.0.0] - 2026-01-20
@@ -17,23 +44,6 @@ The 1.0.0 release. Same as in 0.37.3, but with updated version number. We're aim
 
 All the issues that are currently open in Github will be addressed in the upcoming releases.
 
-
-# [0.37.3] - 2026-01-11
-
-## Fixed
-
-- Photo timestamps from Immich are now correctly parsed as UTC, fixing the double timezone offset bug where times were displayed incorrectly. #1752
-- Trip photo grids now update immediately after photos are imported, instead of showing cached/stale results for up to 24 hours. #627 #988
-- Immich API responses are now validated for content-type and JSON format before parsing, providing clear diagnostic error messages when the API returns unexpected responses. #698
-- Response validator logs truncated response bodies (max 1000 chars) when JSON parsing fails, improving debugging capabilities.
-- GeoJSON formatted points now have correct timestamp parsed from raw_data['properties']['date'] field.
-- Reduce number of iterations during cache cleaning to improve performance.
-- Version in the navbar is now correct. #2154
-
-## Changed
-
-- Map V2 is now the default map version for new users. Existing users will keep using Map V1 unless they change it in the settings.
-- Email preferences moved to dedicated "Emails" tab in user settings for better organization.
 
 # [0.37.3] - 2026-01-11
 

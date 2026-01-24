@@ -46,6 +46,8 @@ RSpec.configure do |config|
   config.before do
     ActiveJob::Base.queue_adapter = :test
     allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+    # Disable OIDC by default in tests to prevent OIDC-only mode from blocking tests
+    allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
   end
 
   config.before(:each, type: :system) do
@@ -62,7 +64,7 @@ RSpec.configure do |config|
 
       driven_by :selenium, using: :headless_chrome, options: {
         browser: :remote,
-        url: "http://chrome:4444/wd/hub",
+        url: 'http://chrome:4444/wd/hub',
         options: {
           args: %w[headless disable-gpu no-sandbox disable-dev-shm-usage]
         }
