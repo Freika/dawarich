@@ -4,6 +4,8 @@ module Tracks
   # Reprocesses tracks to update transportation mode segments.
   # Can reprocess tracks for a specific import or individual tracks.
   class Reprocessor
+    LARGE_TRACK_THRESHOLD = 10_000
+
     def initialize(import: nil, track: nil)
       @import = import
       @track = track
@@ -43,9 +45,15 @@ module Tracks
     private
 
     def reprocess_track(track)
-      points = track.points.order(:timestamp).to_a
-      return if points.size < 2
+      points_count = track.points.count
+      return if points_count < 2
 
+      if points_count > LARGE_TRACK_THRESHOLD
+        Rails.logger.warn "[Reprocessor] Track #{track.id} has #{points_count} points, " \
+                          "which may use significant memory during reprocessing"
+      end
+
+      points = track.points.order(:timestamp).to_a
       track.track_segments.destroy_all
 
       detector = TransportationModes::Detector.new(track, points)
