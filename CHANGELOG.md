@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `ALLOW_EMAIL_PASSWORD_REGISTRATION` and `OIDC_AUTO_REGISTER` env vars are now being respected correctly. #1972
 - Fog of War layer on Map V1 now properly re-appears when toggled off and on again without requiring a page refresh. #2039
 - User's `points_count` counter cache is now properly updated when creating points via OwnTracks, Overland, and generic Points API. This fixes visit suggestions not working for users using HomeAssistant or similar integrations. #2167
+- Removed redundant subscriptions to WS channel.
+- Live mode is working again on both map V1 and V2.
 
 ## Changed
 

@@ -25,7 +25,7 @@ export default class extends Controller {
 
     try {
       this.connectedChannels = new Set()
-      this.liveModeEnabled = false // Start with live mode disabled
+      this.liveModeEnabled = this.liveModeValue
 
       // Delay channel setup to ensure ActionCable is ready
       // This prevents race condition with page initialization
@@ -155,9 +155,7 @@ export default class extends Controller {
         this.handleFamilyLocation(data.member)
         break
 
-      case 'notification':
-        this.handleNotification(data.notification)
-        break
+      // Note: notifications are handled by notifications_controller.js in the navbar
     }
   }
 
@@ -253,12 +251,7 @@ export default class extends Controller {
     }
   }
 
-  /**
-   * Handle notification
-   */
-  handleNotification(notification) {
-    Toast.info(notification.message || 'New notification')
-  }
+  // Note: Notifications are handled by notifications_controller.js in the navbar
 
   /**
    * Update the recent point marker

@@ -41,4 +41,21 @@ RSpec.describe SslConfigurable do
       expect(result).to eq({ timeout: 10, verify: true })
     end
   end
+
+  describe '#http_options_with_ssl_flag' do
+    it 'sets verify to false when skip_ssl_verification is true' do
+      result = instance.send(:http_options_with_ssl_flag, true, { timeout: 10 })
+      expect(result).to eq({ timeout: 10, verify: false })
+    end
+
+    it 'sets verify to true when skip_ssl_verification is false' do
+      result = instance.send(:http_options_with_ssl_flag, false, { timeout: 10 })
+      expect(result).to eq({ timeout: 10, verify: true })
+    end
+
+    it 'works with empty base options' do
+      result = instance.send(:http_options_with_ssl_flag, true)
+      expect(result).to eq({ verify: false })
+    end
+  end
 end

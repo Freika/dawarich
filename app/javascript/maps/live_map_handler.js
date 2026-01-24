@@ -139,10 +139,16 @@ export class LiveMapHandler {
     this.markersArray = [];
     this.heatmapMarkers = [];
 
-    // Clear map layers
-    this.markersLayer.clearLayers();
-    this.polylinesLayer.clearLayers();
-    this.heatmapLayer.setLatLngs([]);
+    // Clear map layers (with null checks)
+    if (this.markersLayer) {
+      this.markersLayer.clearLayers();
+    }
+    if (this.polylinesLayer) {
+      this.polylinesLayer.clearLayers();
+    }
+    if (this.heatmapLayer && this.heatmapLayer._map) {
+      this.heatmapLayer.setLatLngs([]);
+    }
 
     // Clear last marker reference
     if (this.lastMarkerRef) {
@@ -189,7 +195,10 @@ export class LiveMapHandler {
       this.heatmapMarkers.shift(); // Remove oldest point
     }
 
-    this.heatmapLayer.setLatLngs(this.heatmapMarkers);
+    // Only update if heatmap layer exists and is added to the map
+    if (this.heatmapLayer && this.heatmapLayer._map) {
+      this.heatmapLayer.setLatLngs(this.heatmapMarkers);
+    }
   }
 
   /**
