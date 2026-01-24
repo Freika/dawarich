@@ -21,6 +21,10 @@ module Places
 
         place
       end
+    rescue StandardError => e
+      Rails.logger.error("Geocoding error in NameFetcher for place #{place.id}: #{e.message}")
+      ExceptionReporter.call(e)
+      nil
     end
 
     private

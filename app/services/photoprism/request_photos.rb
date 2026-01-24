@@ -5,6 +5,8 @@
 # release of Photoprism.
 
 class Photoprism::RequestPhotos
+  include SslConfigurable
+
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
@@ -35,6 +37,8 @@ class Photoprism::RequestPhotos
     while offset < 1_000_000
       response_data = fetch_page(offset)
 
+      # Break on nil (fetch failed), empty array, or error response
+      break if response_data.nil?
       break if response_data.blank? || (response_data.is_a?(Hash) && response_data.try(:[], 'error').present?)
 
       data << response_data
@@ -43,7 +47,7 @@ class Photoprism::RequestPhotos
     end
 
     data.flatten
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout => e
+  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
     Rails.logger.error("Photoprism photo fetch failed: #{e.message}")
     []
   end
@@ -51,25 +55,33 @@ class Photoprism::RequestPhotos
   def fetch_page(offset)
     response = HTTParty.get(
       photoprism_api_base_url,
-      headers: headers,
-      query: request_params(offset),
-      timeout: 10
+      http_options_with_ssl(
+        @user, :photoprism, {
+          headers: headers,
+          query: request_params(offset),
+          timeout: 10
+        }
+      )
     )
 
-    if response.code != 200
-      Rails.logger.error "Photoprism API returned #{response.code}: #{response.body}"
-      Rails.logger.debug "Photoprism API request params: #{request_params(offset).inspect}"
+    result = Photoprism::ResponseValidator.validate_and_parse(response)
+
+    unless result[:success]
+      Rails.logger.error("Photoprism photo fetch failed: #{result[:error]}")
+      Rails.logger.debug("Photoprism API request params: #{request_params(offset).inspect}")
+      return nil
     end
 
     cache_preview_token(response.headers)
 
-    JSON.parse(response.body)
+    result[:data]
   end
 
   def headers
     {
       'Authorization' => "Bearer #{photoprism_api_key}",
-      'accept' => 'application/json'
+      'accept' => 'application/json',
+      'Content-Type' => 'application/json'
     }
   end
 
@@ -93,6 +105,7 @@ class Photoprism::RequestPhotos
     data.flatten.select do |photo|
       taken_at = DateTime.parse(photo['TakenAtLocal'])
       end_date ||= Time.current
+
       taken_at.between?(start_date.to_datetime, end_date.to_datetime)
     end
   end

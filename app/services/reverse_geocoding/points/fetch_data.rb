@@ -32,5 +32,8 @@ class ReverseGeocoding::Points::FetchData
       geodata: response.data,
       reverse_geocoded_at: Time.current
     )
+  rescue StandardError => e
+    Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
+    ExceptionReporter.call(e)
   end
 end

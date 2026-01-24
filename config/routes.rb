@@ -46,6 +46,9 @@ Rails.application.routes.draw do
 
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
+
+    resources :emails, only: %i[index]
+    patch 'emails', to: 'emails#update'
   end
 
   patch 'settings', to: 'settings#update'
@@ -196,7 +199,6 @@ Rails.application.routes.draw do
       resources :tracks, only: [:index]
 
       namespace :maps do
-        resources :tile_usage, only: [:create]
         resources :hexagons, only: [:index] do
           collection do
             get :bounds

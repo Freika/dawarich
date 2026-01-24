@@ -12,7 +12,7 @@ class Immich::ImportGeodata
   def call
     immich_data = retrieve_immich_data
 
-    log_no_data and return if immich_data.empty?
+    return log_no_data if immich_data.blank?
 
     immich_data_json  = parse_immich_data(immich_data)
     file_name         = file_name(immich_data_json)
@@ -56,7 +56,7 @@ class Immich::ImportGeodata
       latitude: asset['exifInfo']['latitude'],
       longitude: asset['exifInfo']['longitude'],
       lonlat: "SRID=4326;POINT(#{asset['exifInfo']['longitude']} #{asset['exifInfo']['latitude']})",
-      timestamp: Time.zone.parse(asset['exifInfo']['dateTimeOriginal']).to_i
+      timestamp: Time.iso8601(asset['exifInfo']['dateTimeOriginal']).utc.to_i
     }
   end
 

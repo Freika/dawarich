@@ -168,5 +168,9 @@ class ReverseGeocoding::Places::FetchData
       radius: 1,
       units: :km
     )
+  rescue StandardError => e
+    Rails.logger.error("Reverse geocoding error for place #{place.id}: #{e.message}")
+    ExceptionReporter.call(e)
+    []
   end
 end

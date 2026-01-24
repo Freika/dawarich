@@ -11,9 +11,7 @@ class TripsController < ApplicationController
   end
 
   def show
-    @photo_previews = Rails.cache.fetch("trip_photos_#{@trip.id}", expires_in: 1.day) do
-      @trip.photo_previews
-    end
+    @photo_previews = @trip.photo_previews
     @photo_sources = @trip.photo_sources
 
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
