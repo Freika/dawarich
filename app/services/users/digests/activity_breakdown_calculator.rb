@@ -100,7 +100,6 @@ module Users
 
       def fetch_boundary_points(track_ids, order)
         Point
-          .without_raw_data
           .where(track_id: track_ids)
           .select('DISTINCT ON (track_id) track_id, id, lonlat, timestamp')
           .order("track_id, timestamp #{order}")
