@@ -18,8 +18,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **Location clusters**: Geographic clustering of your visited locations
 - **Transportation mode detection for tracks**: Tracks are now automatically segmented by transportation mode (walking, cycling, driving, etc.) with configurable speed thresholds in settings. Modes are recalculated when threshold settings change.
 
+## Added
 
-# [1.0.1] - Unreleased
+- App-level DNS cache with 5 minutes TTL to reduce DNS lookups and improve performance. #2183
+
+## Fixed
+
+- Remove assets before precompilation to prevent stale assets from being served.
+
+
+# [1.0.1] - 2026-01-24
 
 ## Added
 
