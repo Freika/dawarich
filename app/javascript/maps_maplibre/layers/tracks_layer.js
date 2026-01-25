@@ -198,6 +198,68 @@ export class TracksLayer extends BaseLayer {
   }
 
   /**
+   * Update a single track feature in the layer
+   * Used when a track is recalculated after point movement
+   * @param {Object} trackFeature - The updated GeoJSON feature
+   * @param {Object} options - Options for the update
+   * @param {boolean} options.preserveSelection - If true and this track is selected, re-apply selection
+   * @returns {Object|false} - The updated feature if successful, false otherwise
+   */
+  updateTrackFeature(trackFeature, options = {}) {
+    if (!trackFeature || !trackFeature.properties?.id) {
+      console.warn("[TracksLayer] Cannot update track: invalid feature");
+      return false;
+    }
+
+    const source = this.map.getSource(this.sourceId);
+    if (!source) {
+      console.warn("[TracksLayer] Cannot update track: source not found");
+      return false;
+    }
+
+    // Get current data
+    const currentData = this.data || source._data;
+    if (!currentData || !currentData.features) {
+      console.warn("[TracksLayer] Cannot update track: no data");
+      return false;
+    }
+
+    // Find and update the track
+    const trackId = trackFeature.properties.id;
+    const featureIndex = currentData.features.findIndex(
+      (f) => f.properties?.id === trackId,
+    );
+
+    if (featureIndex === -1) {
+      console.warn(`[TracksLayer] Track ${trackId} not found in layer`);
+      return false;
+    }
+
+    // Update the feature in place
+    currentData.features[featureIndex] = trackFeature;
+
+    // Update the source
+    source.setData(currentData);
+
+    // Also update our cached data reference
+    this.data = currentData;
+
+    // If this track has segments displayed, update them too
+    if (options.preserveSelection && this.map.getSource(this.segmentSourceId)) {
+      const segments = trackFeature.properties?.segments || [];
+      const parsedSegments =
+        typeof segments === "string" ? JSON.parse(segments) : segments;
+
+      if (parsedSegments.length > 0) {
+        this.showSegments(trackFeature, parsedSegments);
+      }
+    }
+
+    console.log(`[TracksLayer] Updated track ${trackId}`);
+    return trackFeature;
+  }
+
+  /**
    * Override remove to also clean up segment layer
    */
   remove() {

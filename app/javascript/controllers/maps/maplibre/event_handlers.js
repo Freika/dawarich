@@ -497,6 +497,20 @@ export class EventHandlers {
     // Convert distance from meters to km for formatDistance
     const trackDistanceKm = (properties.distance || 0) / 1000;
 
+    // Show Points toggle for editing track points
+    const showPointsToggle = `
+      <div class="form-control mt-3 pt-3 border-t border-base-300">
+        <label class="label cursor-pointer justify-start gap-3 py-1">
+          <input type="checkbox"
+                 id="track-points-toggle"
+                 class="toggle toggle-sm toggle-success"
+                 data-track-id="${properties.id}" />
+          <span class="label-text font-medium">Show Points</span>
+        </label>
+        <p class="text-xs text-base-content/60 ml-10">Enable to view and drag points to edit track</p>
+      </div>
+    `;
+
     let segmentsList = "";
     if (segments.length > 0) {
       segmentsList = `
@@ -530,6 +544,7 @@ export class EventHandlers {
         <div><span class="font-semibold">Distance:</span> ${formatDistance(trackDistanceKm, distanceUnit)}</div>
         <div><span class="font-semibold">Avg Speed:</span> ${formatSpeed(properties.avg_speed || 0, distanceUnit)}</div>
         ${properties.dominant_mode ? `<div><span class="font-semibold">Mode:</span> ${properties.dominant_mode_emoji} ${properties.dominant_mode}</div>` : ""}
+        ${showPointsToggle}
         ${segmentsList}
       </div>
     `;
@@ -538,6 +553,9 @@ export class EventHandlers {
 
     // Set up hover event listeners for segment list items after the content is rendered
     this._setupSegmentListHover(segments);
+
+    // Set up the show points toggle handler
+    this._setupTrackPointsToggle(properties.id);
   }
 
   /**
@@ -558,11 +576,98 @@ export class EventHandlers {
       tracksLayer.setSegmentLeaveCallback(null);
     }
 
+    // Clear track points layer
+    this._clearTrackPointsLayer();
+
+    // Restore main points layer opacity
+    this._setMainPointsOpacity(1.0);
+
     // Clear segment markers
     this._clearTrackMarkers();
 
     // Close info panel
     this.controller.closeInfo();
+  }
+
+  /**
+   * Set up the track points toggle handler
+   * @param {number} trackId - Track ID
+   */
+  _setupTrackPointsToggle(trackId) {
+    setTimeout(() => {
+      const toggle = document.getElementById("track-points-toggle");
+      if (!toggle) return;
+
+      toggle.addEventListener("change", async (e) => {
+        const enabled = e.target.checked;
+        await this._toggleTrackPoints(trackId, enabled);
+      });
+    }, 50);
+  }
+
+  /**
+   * Toggle track points layer visibility
+   * @param {number} trackId - Track ID
+   * @param {boolean} enabled - Whether to show or hide points
+   */
+  async _toggleTrackPoints(trackId, enabled) {
+    if (enabled) {
+      // Dim the main points layer
+      this._setMainPointsOpacity(0.3);
+
+      // Get or create track points layer
+      let trackPointsLayer =
+        this.controller.layerManager.getLayer("track-points");
+
+      if (!trackPointsLayer) {
+        // Import and create the layer dynamically
+        const { TrackPointsLayer } =
+          await import("maps_maplibre/layers/track_points_layer");
+        trackPointsLayer = new TrackPointsLayer(this.map, {
+          apiClient: this.controller.api,
+        });
+        this.controller.layerManager.registerLayer(
+          "track-points",
+          trackPointsLayer,
+        );
+      }
+
+      // Load track points
+      await trackPointsLayer.loadTrackPoints(trackId);
+    } else {
+      // Clear track points layer
+      this._clearTrackPointsLayer();
+
+      // Restore main points layer opacity
+      this._setMainPointsOpacity(1.0);
+    }
+  }
+
+  /**
+   * Clear the track points layer
+   */
+  _clearTrackPointsLayer() {
+    const trackPointsLayer =
+      this.controller.layerManager.getLayer("track-points");
+    if (trackPointsLayer) {
+      trackPointsLayer.clear();
+    }
+  }
+
+  /**
+   * Set the opacity of the main points layer
+   * @param {number} opacity - Opacity value (0-1)
+   */
+  _setMainPointsOpacity(opacity) {
+    const pointsLayer = this.controller.layerManager.getLayer("points");
+    if (pointsLayer && this.map.getLayer(pointsLayer.id)) {
+      this.map.setPaintProperty(pointsLayer.id, "circle-opacity", opacity);
+      this.map.setPaintProperty(
+        pointsLayer.id,
+        "circle-stroke-opacity",
+        opacity,
+      );
+    }
   }
 
   /**
@@ -611,7 +716,10 @@ export class EventHandlers {
       const coord = coords[coordIndex];
       if (!coord) return;
 
-      const marker = this._createEmojiMarker(segment.emoji || "❓", "track-emoji-marker");
+      const marker = this._createEmojiMarker(
+        segment.emoji || "❓",
+        "track-emoji-marker",
+      );
       marker.setLngLat(coord).addTo(this.map);
       this.trackMarkers.push(marker);
     });
@@ -632,7 +740,34 @@ export class EventHandlers {
   }
 
   /**
-   * Set up hover event listeners for segment list items in the info panel
+   * Update track segment markers when track geometry changes
+   * Called after track recalculation to move emoji markers to new positions
+   * @param {Object} feature - The updated track GeoJSON feature
+   */
+  updateTrackMarkers(feature) {
+    if (!this.selectedTrackFeature) return;
+    if (!feature || !feature.geometry || feature.geometry.type !== "LineString")
+      return;
+
+    // Parse segments from feature properties
+    let segments = [];
+    try {
+      const props = feature.properties || {};
+      segments =
+        typeof props.segments === "string"
+          ? JSON.parse(props.segments)
+          : props.segments || [];
+    } catch (err) {
+      console.warn("Failed to parse track segments for marker update:", err);
+      return;
+    }
+
+    // Recreate markers with new coordinates
+    this._createTrackSegmentMarkers(feature, segments);
+  }
+
+  /**
+   * Set up hover and click event listeners for segment list items in the info panel
    * @param {Array} segments - Array of segment data
    */
   _setupSegmentListHover(segments) {
@@ -652,8 +787,44 @@ export class EventHandlers {
           this._clearSegmentHighlight();
           this._clearSegmentListHighlight();
         });
+
+        // Add click handler to zoom to segment bounds
+        item.addEventListener("click", () => {
+          this._zoomToSegment(segments[segmentIndex]);
+        });
       });
     }, 50);
+  }
+
+  /**
+   * Zoom the map to fit a specific segment's bounds
+   * @param {Object} segment - Segment data with start_index and end_index
+   */
+  _zoomToSegment(segment) {
+    if (!this.selectedTrackFeature || !segment) return;
+
+    const coords = this.selectedTrackFeature.geometry?.coordinates;
+    if (!coords || coords.length < 2) return;
+
+    const startIdx = Math.max(0, segment.start_index || 0);
+    const endIdx = Math.min(coords.length - 1, segment.end_index || startIdx);
+
+    // Extract coordinates for this segment
+    const segmentCoords = coords.slice(startIdx, endIdx + 1);
+    if (segmentCoords.length < 1) return;
+
+    // Build bounds from segment coordinates
+    const bounds = new maplibregl.LngLatBounds();
+    segmentCoords.forEach((coord) => {
+      bounds.extend(coord);
+    });
+
+    // Fit map to segment bounds
+    this.map.fitBounds(bounds, {
+      padding: 80,
+      maxZoom: 17,
+      duration: 500,
+    });
   }
 
   /**

@@ -9,7 +9,7 @@ export class VisitCard {
    * @returns {string} HTML string
    */
   static create(visit, options = {}) {
-    const { isSelected = false, onSelect, onConfirm, onDecline, onHover } = options
+    const { isSelected = false, onSelect, onConfirm, onDecline, onHover, timezone = 'UTC' } = options
     const isSuggested = visit.status === 'suggested'
     const isConfirmed = visit.status === 'confirmed'
     const isDeclined = visit.status === 'declined'
@@ -20,14 +20,17 @@ export class VisitCard {
     const dateStr = startDate.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: timezone
     })
     const timeRange = `${startDate.toLocaleTimeString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: timezone
     })} - ${endDate.toLocaleTimeString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: timezone
     })}`
 
     // Format duration (duration is in minutes from the backend)

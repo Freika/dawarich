@@ -89,16 +89,28 @@ class Map::LeafletController < ApplicationController
 
   def start_at
     return safe_timestamp(params[:start_at]) if params[:start_at].present?
-    return Time.zone.at(points.last.timestamp).beginning_of_day.to_i if points.any?
 
-    Time.zone.today.beginning_of_day.to_i
+    if points.any?
+      point_date = TimezoneHelper.timestamp_to_date(points.last.timestamp, user_timezone)
+      return TimezoneHelper.day_bounds(point_date, user_timezone).first
+    end
+
+    TimezoneHelper.today_start_timestamp(user_timezone)
   end
 
   def end_at
     return safe_timestamp(params[:end_at]) if params[:end_at].present?
-    return Time.zone.at(points.last.timestamp).end_of_day.to_i if points.any?
 
-    Time.zone.today.end_of_day.to_i
+    if points.any?
+      point_date = TimezoneHelper.timestamp_to_date(points.last.timestamp, user_timezone)
+      return TimezoneHelper.day_bounds(point_date, user_timezone).last
+    end
+
+    TimezoneHelper.today_end_timestamp(user_timezone)
+  end
+
+  def user_timezone
+    current_user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
   end
 
   def points

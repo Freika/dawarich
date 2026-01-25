@@ -11,7 +11,7 @@
             <%= t('families.show.created_by', default: 'Created by') %>
             <%= @family.creator.email %>
             <%= t('families.show.on_date', default: 'on') %>
-            <%= @family.created_at.strftime('%B %d, %Y') %>
+            <%= @family.created_at.in_time_zone(current_user.timezone).strftime('%B %d, %Y') %>
           </p>
         </div>
 
@@ -85,7 +85,7 @@
                         </div>
                         <div class="text-xs opacity-50 mt-1">
                           <%= t('families.show.joined_on', default: 'Joined') %>
-                          <%= member.family_membership.created_at.strftime('%b %d, %Y') %>
+                          <%= member.family_membership.created_at.in_time_zone(current_user.timezone).strftime('%b %d, %Y') %>
                         </div>
                       </div>
                     </div>
@@ -181,11 +181,11 @@
                     <div class="font-medium text-base-content"><%= invitation.email %></div>
                     <div class="text-sm text-base-content opacity-60">
                       <%= t('families.show.invited_on', default: 'Invited') %>
-                      <%= invitation.created_at.strftime('%b %d, %Y') %>
+                      <%= invitation.created_at.in_time_zone(current_user.timezone).strftime('%b %d, %Y') %>
                     </div>
                     <div class="text-xs text-base-content opacity-50">
                       <%= t('families.show.expires_on', default: 'Expires') %>
-                      <%= invitation.expires_at.strftime('%b %d, %Y at %I:%M %p') %>
+                      <%= invitation.expires_at.in_time_zone(current_user.timezone).strftime('%b %d, %Y at %I:%M %p') %>
                     </div>
                   </div>
                   <% if policy(@family).manage_invitations? %>

@@ -25,7 +25,15 @@ class Users::SafeSettings
     'enabled_map_layers' => %w[Routes Heatmap],
     'maps_maplibre_style' => 'light',
     'digest_emails_enabled' => true,
-    'globe_projection' => false
+    'globe_projection' => false,
+    'timezone' => nil,
+    # Visit detection settings
+    'visit_detection_eps_meters' => 50,
+    'visit_detection_min_points' => 2,
+    'visit_detection_time_gap_minutes' => 30,
+    'visit_detection_extended_merge_hours' => 2,
+    'visit_detection_travel_threshold_meters' => 200,
+    'visit_detection_default_accuracy' => 50
   }.freeze
 
   def initialize(settings = {})
@@ -56,7 +64,8 @@ class Users::SafeSettings
       fog_of_war_threshold: fog_of_war_threshold,
       enabled_map_layers: enabled_map_layers,
       maps_maplibre_style: maps_maplibre_style,
-      globe_projection: globe_projection
+      globe_projection: globe_projection,
+      timezone: timezone
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -162,5 +171,34 @@ class Users::SafeSettings
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def timezone
+    settings['timezone']
+  end
+
+  # Visit detection settings
+  def visit_detection_eps_meters
+    settings['visit_detection_eps_meters']
+  end
+
+  def visit_detection_min_points
+    settings['visit_detection_min_points']
+  end
+
+  def visit_detection_time_gap_minutes
+    settings['visit_detection_time_gap_minutes']
+  end
+
+  def visit_detection_extended_merge_hours
+    settings['visit_detection_extended_merge_hours']
+  end
+
+  def visit_detection_travel_threshold_meters
+    settings['visit_detection_travel_threshold_meters']
+  end
+
+  def visit_detection_default_accuracy
+    settings['visit_detection_default_accuracy']
   end
 end

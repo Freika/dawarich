@@ -6,9 +6,9 @@
       <span data-visit-name="<%= visit.id %>">
         <%= render 'visits/name', visit: visit %>
       </span>,
-      <%= visit.started_at.strftime('%d.%m.%Y') %>,
-      <%= visit.started_at.strftime('%H:%M') %> -
-      <%= visit.ended_at.strftime('%H:%M') %>
+      <%= visit.started_at.in_time_zone(current_user.timezone).strftime('%d.%m.%Y') %>,
+      <%= visit.started_at.in_time_zone(current_user.timezone).strftime('%H:%M') %> -
+      <%= visit.ended_at.in_time_zone(current_user.timezone).strftime('%H:%M') %>
     </h3>
 
     <div class="flex justify-between my-5">

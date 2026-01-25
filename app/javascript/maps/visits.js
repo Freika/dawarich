@@ -11,6 +11,7 @@ export class VisitsManager {
     this.apiKey = apiKey;
     this.userTheme = userTheme;
     this.mapsController = mapsController;
+    this.timezone = mapsController?.timezone || mapsController?.userSettings?.timezone || 'UTC';
 
     // Create custom panes for different visit types
     // Leaflet default panes: tilePane=200, overlayPane=400, shadowPane=500, markerPane=600, tooltipPane=650, popupPane=700
@@ -303,7 +304,8 @@ export class VisitsManager {
       const dateStr = startDate.toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
+        timeZone: this.timezone
       });
 
       if (!dateGroups[dateStr]) {
@@ -329,7 +331,8 @@ export class VisitsManager {
         const dateStr = pointDate.toLocaleDateString(undefined, {
           year: 'numeric',
           month: 'short',
-          day: 'numeric'
+          day: 'numeric',
+          timeZone: this.timezone
         });
 
         if (!dateGroups[dateStr]) {
@@ -879,21 +882,22 @@ export class VisitsManager {
       .map(visit => {
         const startDate = new Date(visit.started_at);
         const endDate = new Date(visit.ended_at);
-        const isSameDay = startDate.toDateString() === endDate.toDateString();
+        const tzOptions = { timeZone: this.timezone };
+        const isSameDay = startDate.toLocaleDateString(undefined, tzOptions) === endDate.toLocaleDateString(undefined, tzOptions);
 
         let timeDisplay;
         if (isSameDay) {
           timeDisplay = `
-            ${startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })},
-            ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
-            ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+            ${startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: this.timezone })},
+            ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: this.timezone })} -
+            ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: this.timezone })}
           `;
         } else {
           timeDisplay = `
-            ${startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })},
-            ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })} -
-            ${endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })},
-            ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+            ${startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: this.timezone })},
+            ${startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: this.timezone })} -
+            ${endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: this.timezone })},
+            ${endDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: this.timezone })}
           `;
         }
 

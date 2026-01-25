@@ -184,6 +184,15 @@ export class LayerManager {
   }
 
   /**
+   * Register a dynamically created layer
+   * @param {string} layerName - Layer name (without 'Layer' suffix)
+   * @param {object} layerInstance - Layer instance
+   */
+  registerLayer(layerName, layerInstance) {
+    this.layers[`${layerName}Layer`] = layerInstance;
+  }
+
+  /**
    * Clear all layer references (for style changes)
    */
   clearLayerReferences() {
@@ -316,6 +325,7 @@ export class LayerManager {
     if (!this.layers.photosLayer) {
       this.layers.photosLayer = new PhotosLayer(this.map, {
         visible: this.settings.photosEnabled || false,
+        timezone: this.settings.timezone || 'UTC',
       });
       console.log("[Photos] Created new PhotosLayer instance");
       await this.layers.photosLayer.add(photosGeoJSON);

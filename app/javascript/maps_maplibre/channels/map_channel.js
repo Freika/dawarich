@@ -11,7 +11,8 @@ export function createMapChannel(options = {}) {
   const subscriptions = {
     family: null,
     points: null,
-    notifications: null
+    notifications: null,
+    tracks: null
   }
 
   console.log('[MapChannel] Creating channels with enableLiveMode:', enableLiveMode)
@@ -107,6 +108,33 @@ export function createMapChannel(options = {}) {
     })
   } catch (error) {
     console.warn('[MapChannel] Failed to subscribe to notifications channel:', error)
+  }
+
+  // Subscribe to tracks channel for real-time track updates
+  try {
+    subscriptions.tracks = consumer.subscriptions.create('TracksChannel', {
+      connected() {
+        console.log('TracksChannel connected')
+        callbacks.connected?.('tracks')
+      },
+
+      disconnected() {
+        console.log('TracksChannel disconnected')
+        callbacks.disconnected?.('tracks')
+      },
+
+      received(data) {
+        console.log('TracksChannel received:', data)
+        callbacks.received?.({
+          type: 'track_update',
+          action: data.action,
+          track: data.track,
+          track_id: data.track_id
+        })
+      }
+    })
+  } catch (error) {
+    console.warn('[MapChannel] Failed to subscribe to tracks channel:', error)
   }
 
   return {

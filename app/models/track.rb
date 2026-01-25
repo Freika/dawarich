@@ -39,9 +39,11 @@ class Track < ApplicationRecord
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
   scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
 
-  def self.last_for_day(user, day)
-    day_start = day.beginning_of_day
-    day_end = day.end_of_day
+  def self.last_for_day(user, day, timezone: nil)
+    timezone ||= user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
+    day_start_ts, day_end_ts = TimezoneHelper.day_bounds(day.to_date, timezone)
+    day_start = Time.at(day_start_ts)
+    day_end = Time.at(day_end_ts)
 
     where(user: user)
       .where(end_at: day_start..day_end)
@@ -171,6 +173,18 @@ class Track < ApplicationRecord
 
     dominant = breakdown.max_by { |_mode, duration| duration || 0 }&.first
     update_column(:dominant_mode, dominant || :unknown)
+  end
+
+  # Broadcast updated track as GeoJSON for map layer updates
+  def broadcast_geojson_updated
+    Rails.logger.info "[Track#broadcast_geojson_updated] Broadcasting track #{id} to user #{user_id}"
+    geojson_feature = Tracks::GeojsonSerializer.new(self).call[:features].first
+    Rails.logger.info "[Track#broadcast_geojson_updated] GeoJSON feature id: #{geojson_feature[:properties][:id]}"
+    TracksChannel.broadcast_to(user, {
+                                 action: 'geojson_updated',
+      track: geojson_feature
+                               })
+    Rails.logger.info "[Track#broadcast_geojson_updated] Broadcast complete for track #{id}"
   end
 
   private

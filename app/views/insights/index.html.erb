@@ -296,7 +296,7 @@
               }
 
               sorted_activities = @activity_breakdown
-                .reject { |mode, _| mode == 'unknown' }
+                .reject { |mode, data| mode == 'unknown' || data['duration'].to_i.zero? }
                 .sort_by { |_, data| -data['percentage'].to_i }
             %>
 

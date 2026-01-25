@@ -23,10 +23,16 @@ class Stats::CalculateMonth
 
   attr_reader :user, :year, :month
 
-  def start_timestamp = DateTime.new(year, month, 1).to_i
+  def start_timestamp
+    TimezoneHelper.month_bounds(year, month, user_timezone).first
+  end
 
   def end_timestamp
-    DateTime.new(year, month, -1).to_i
+    TimezoneHelper.month_bounds(year, month, user_timezone).last
+  end
+
+  def user_timezone
+    user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
   end
 
   def update_month_stats(year, month)

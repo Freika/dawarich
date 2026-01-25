@@ -36,6 +36,9 @@ Rails.application.routes.draw do
 
   resources :settings, only: :index
   namespace :settings do
+    resources :general, only: [:index]
+    patch 'general', to: 'general#update'
+
     resources :background_jobs, only: %i[index create]
     resources :users, only: %i[index create destroy edit update] do
       collection do
@@ -46,9 +49,6 @@ Rails.application.routes.draw do
 
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
-
-    resources :emails, only: %i[index]
-    patch 'emails', to: 'emails#update'
   end
 
   patch 'settings', to: 'settings#update'
@@ -197,7 +197,9 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :tracks, only: [:index]
+      resources :tracks, only: [:index] do
+        resources :points, only: [:index], controller: 'tracks/points'
+      end
 
       namespace :maps do
         resources :tile_usage, only: [:create]

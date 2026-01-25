@@ -15,13 +15,17 @@ module Map
     def start_at
       return safe_timestamp(params[:start_at]) if params[:start_at].present?
 
-      Time.zone.today.beginning_of_day.to_i
+      TimezoneHelper.today_start_timestamp(user_timezone)
     end
 
     def end_at
       return safe_timestamp(params[:end_at]) if params[:end_at].present?
 
-      Time.zone.today.end_of_day.to_i
+      TimezoneHelper.today_end_timestamp(user_timezone)
+    end
+
+    def user_timezone
+      current_user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
     end
 
     def parsed_start_at

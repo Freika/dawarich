@@ -81,7 +81,7 @@ module Users
         points = fetch_month_points_with_country_ordered
 
         points.group_by do |point|
-          Time.zone.at(point.timestamp).to_date
+          TimezoneHelper.timestamp_to_date(point.timestamp, user_timezone)
         end
       end
 
@@ -105,15 +105,18 @@ module Users
       end
 
       def fetch_month_points_with_country_ordered
-        start_of_month = Time.zone.local(year, month, 1, 0, 0, 0)
-        end_of_month = start_of_month.end_of_month
+        start_timestamp, end_timestamp = TimezoneHelper.month_bounds(year, month, user_timezone)
 
         user.points
             .without_raw_data
-            .where('timestamp >= ? AND timestamp <= ?', start_of_month.to_i, end_of_month.to_i)
+            .where('timestamp >= ? AND timestamp <= ?', start_timestamp, end_timestamp)
             .where.not(country_name: [nil, ''])
             .select(:country_name, :timestamp)
             .order(timestamp: :asc)
+      end
+
+      def user_timezone
+        user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
       end
 
       def calculate_city_time_spent
