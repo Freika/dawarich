@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [1.0.2] - Unreleased
 
+## Added
+
+- App-level DNS cache with 5 minutes TTL to reduce DNS lookups and improve performance. #2183
 - New **Insights page** with comprehensive analytics and visualizations:
   - **Activity heatmap**: GitHub-style contribution graph showing daily activity throughout the year
   - **Activity streak**: Track your current streak and longest streak of consecutive active days
@@ -18,13 +21,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **Location clusters**: Geographic clustering of your visited locations
 - **Transportation mode detection for tracks**: Tracks are now automatically segmented by transportation mode (walking, cycling, driving, etc.) with configurable speed thresholds in settings. Modes are recalculated when threshold settings change.
 
-## Added
-
-- App-level DNS cache with 5 minutes TTL to reduce DNS lookups and improve performance. #2183
-
 ## Fixed
 
-- Remove assets before precompilation to prevent stale assets from being served.
+- Remove assets before precompilation to prevent stale assets from being served. #2187
+- undefined method 'to_sym' for nil in sidekiq #2190
 
 
 # [1.0.1] - 2026-01-24

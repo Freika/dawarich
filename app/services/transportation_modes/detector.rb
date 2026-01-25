@@ -4,18 +4,35 @@ module TransportationModes
   # Main orchestrator for transportation mode detection.
   # Tries source-provided activity data first, then falls back to inference.
   #
+  # Supports user-configurable thresholds via the user_thresholds parameter.
+  #
   # Usage:
   #   detector = TransportationModes::Detector.new(track, points)
   #   segment_data = detector.call
   #   # Returns array of hashes with segment data ready for TrackSegment creation
   #
+  # Usage with user thresholds:
+  #   safe_settings = Users::SafeSettings.new(user.settings)
+  #   detector = TransportationModes::Detector.new(
+  #     track, points,
+  #     user_thresholds: safe_settings.transportation_thresholds,
+  #     user_expert_thresholds: safe_settings.transportation_expert_thresholds
+  #   )
+  #   segment_data = detector.call
+  #
   class Detector
     MIN_TRACK_DURATION_SECONDS = 30
     MIN_POINTS = 2
 
-    def initialize(track, points)
+    # @param track [Track] The track being analyzed
+    # @param points [Array<Point>] Points to analyze
+    # @param user_thresholds [Hash, nil] User-configured thresholds from SafeSettings#transportation_thresholds
+    # @param user_expert_thresholds [Hash, nil] Expert thresholds from SafeSettings#transportation_expert_thresholds
+    def initialize(track, points, user_thresholds: nil, user_expert_thresholds: nil)
       @track = track
       @points = points.sort_by(&:timestamp)
+      @user_thresholds = user_thresholds
+      @user_expert_thresholds = user_expert_thresholds
     end
 
     def call
@@ -29,7 +46,7 @@ module TransportationModes
 
     private
 
-    attr_reader :track, :points
+    attr_reader :track, :points, :user_thresholds, :user_expert_thresholds
 
     def skip_detection?
       return true if points.size < MIN_POINTS
@@ -60,7 +77,11 @@ module TransportationModes
     end
 
     def infer_segments_from_movement
-      MovementAnalyzer.new(track, points).call
+      MovementAnalyzer.new(
+        track, points,
+        user_thresholds: user_thresholds,
+        user_expert_thresholds: user_expert_thresholds
+      ).call
     end
   end
 end

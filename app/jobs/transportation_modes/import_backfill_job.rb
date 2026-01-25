@@ -6,10 +6,6 @@ module TransportationModes
   # wasn't captured during the original import.
   #
   # Supports: Google Semantic History, Google Phone Takeout, Overland, OwnTracks
-  #
-  # Usage:
-  #   TransportationModes::ImportBackfillJob.perform_later(import_id)
-  #
   class ImportBackfillJob < ApplicationJob
     queue_as :low_priority
 
@@ -24,7 +20,6 @@ module TransportationModes
 
       backfiller.call
 
-      # Reprocess affected tracks
       Tracks::Reprocessor.new(import: import).reprocess_for_import
 
       Rails.logger.info "Completed activity backfill for import #{import_id}"

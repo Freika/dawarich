@@ -76,11 +76,9 @@ module Insights
     end
 
     def normalize_daily_distance(daily_distance)
-      if daily_distance.is_a?(Array)
-        daily_distance.to_h
-      else
-        daily_distance
-      end
+      return daily_distance unless daily_distance.is_a?(Array)
+
+      daily_distance.to_h
     end
 
     def build_date(year, month, day)
@@ -172,6 +170,7 @@ module Insights
       return streak if streak.positive?
 
       check_date = reference_date - 1
+
       while active_dates_set.include?(check_date)
         streak += 1
         check_date -= 1
