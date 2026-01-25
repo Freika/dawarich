@@ -29,11 +29,13 @@
         <div class="flex gap-1">
           <% days = %w[Mon Tue Wed Thu Fri Sat Sun] %>
           <% max_distance = @day_of_week.max.to_f %>
-          <% @day_of_week.each_with_index do |distance, idx| %>
-            <% opacity = max_distance.positive? ? (0.4 + (distance / max_distance) * 0.6).round(2) : 0.4 %>
+          <% distance_unit = current_user.safe_settings.distance_unit %>
+          <% @day_of_week.each_with_index do |distance_meters, idx| %>
+            <% opacity = max_distance.positive? ? (0.4 + (distance_meters / max_distance) * 0.6).round(2) : 0.4 %>
+            <% converted_distance = Stat.convert_distance(distance_meters, distance_unit) %>
             <div class="flex-1 bg-info text-info-content rounded text-center py-1" style="opacity: <%= opacity %>">
               <div class="text-xs font-medium"><%= days[idx] %></div>
-              <div class="text-xs"><%= number_to_human(distance / 1000.0, precision: 0, significant: false, units: { unit: '', thousand: 'k', million: 'M' }) %></div>
+              <div class="text-xs"><%= number_to_human(converted_distance, precision: 0, significant: false, units: { unit: '', thousand: 'k', million: 'M' }) %></div>
             </div>
           <% end %>
         </div>

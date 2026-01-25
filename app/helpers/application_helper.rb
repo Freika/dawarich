@@ -164,7 +164,8 @@ module ApplicationHelper
     duration = ActiveSupport::Duration.build(seconds.to_i)
     parts = duration.parts
 
-    days = parts[:days] || 0
+    weeks = parts[:weeks] || 0
+    days = (parts[:days] || 0) + (weeks * 7)
     hours = parts[:hours] || 0
     minutes = parts[:minutes] || 0
 

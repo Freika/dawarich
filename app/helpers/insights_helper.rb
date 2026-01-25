@@ -175,6 +175,93 @@ module InsightsHelper
     activity_breakdown.values.sum { |v| v['duration'].to_i }.positive?
   end
 
+  # Activity heatmap helpers
+  def calculate_activity_level(distance, levels)
+    return 0 if distance.nil? || distance.to_i.zero?
+
+    distance = distance.to_i
+    return 4 if distance >= levels[:p90]
+    return 3 if distance >= levels[:p75]
+    return 2 if distance >= levels[:p50]
+    return 1 if distance >= levels[:p25]
+
+    1 # Any activity is at least level 1
+  end
+
+  def activity_level_class(level)
+    case level
+    when 0 then 'bg-base-300'
+    when 1 then 'bg-success/30'
+    when 2 then 'bg-success/50'
+    when 3 then 'bg-success/70'
+    when 4 then 'bg-success'
+    else 'bg-base-300'
+    end
+  end
+
+  def format_heatmap_distance(meters, unit)
+    return '0' if meters.nil? || meters.to_i.zero?
+
+    converted = Stat.convert_distance(meters.to_i, unit)
+    if converted < 1
+      if unit == 'mi'
+        feet = (converted * 5280).round
+        "#{feet} ft"
+      else
+        "#{meters.to_i} m"
+      end
+    else
+      "#{converted.round(1)} #{unit}"
+    end
+  end
+
+  def heatmap_week_columns(year)
+    start_date = Date.new(year, 1, 1)
+    end_date = Date.new(year, 12, 31)
+
+    # Adjust to start from the Monday of the week containing Jan 1
+    start_of_grid = start_date - (start_date.wday == 0 ? 6 : start_date.wday - 1)
+
+    # Adjust to end at the Sunday of the week containing Dec 31
+    end_of_grid = end_date + (end_date.wday == 0 ? 0 : 7 - end_date.wday)
+
+    weeks = []
+    current_week_start = start_of_grid
+
+    while current_week_start <= end_of_grid
+      weeks << current_week_start
+      current_week_start += 7
+    end
+
+    weeks
+  end
+
+  def heatmap_month_labels(weeks, year)
+    labels = []
+    current_month = nil
+
+    weeks.each_with_index do |week_start, index|
+      # Get the date that falls within the target year for this week
+      week_date = week_start
+      7.times do |i|
+        check_date = week_start + i
+        if check_date.year == year
+          week_date = check_date
+          break
+        end
+      end
+
+      next unless week_date.year == year
+
+      if week_date.month != current_month
+        current_month = week_date.month
+        labels << { index: index, name: Date::ABBR_MONTHNAMES[current_month] }
+      end
+    end
+
+    labels
+  end
+
   private
 
   def country_code(country_name)

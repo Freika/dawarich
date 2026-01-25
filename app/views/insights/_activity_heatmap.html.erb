@@ -1,0 +1,70 @@
+<% if @activity_heatmap && !@all_time %>
+  <div class="w-3/4 mb-6">
+    <div class="card bg-base-200" data-controller="activity-heatmap" data-activity-heatmap-unit-value="<%= current_user.safe_settings.distance_unit %>">
+    <div class="card-body p-4">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-4">
+        <div class="flex items-center gap-2">
+          <%= icon 'calendar', class: 'w-5 h-5 text-base-content/60' %>
+          <h3 class="text-lg font-semibold">Activity Overview</h3>
+        </div>
+        <div class="badge badge-ghost">
+          <%= @activity_heatmap.active_days %> active days
+        </div>
+      </div>
+
+      <!-- Heatmap Grid -->
+      <div class="overflow-x-auto flex justify-center">
+        <div class="min-w-fit relative">
+          <!-- Month labels -->
+          <div class="flex ml-8 mb-1">
+            <% month_labels = heatmap_month_labels(heatmap_week_columns(@selected_year), @selected_year) %>
+            <% last_index = 0 %>
+            <% month_labels.each do |label| %>
+              <div style="margin-left: <%= (label[:index] - last_index) * 14 %>px" class="text-xs text-base-content/60">
+                <%= label[:name] %>
+              </div>
+              <% last_index = label[:index] + 1 %>
+            <% end %>
+          </div>
+
+          <!-- Grid with day labels -->
+          <div class="flex">
+            <!-- Day labels -->
+            <div class="flex flex-col justify-around mr-2 text-xs text-base-content/60" style="height: 98px;">
+              <span>Mon</span>
+              <span>Wed</span>
+              <span>Fri</span>
+            </div>
+
+            <!-- Cells grid -->
+            <div class="flex gap-0.5">
+              <%= render 'activity_heatmap_cells' %>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex items-center justify-end gap-2 mt-4 text-xs text-base-content/60">
+            <span>Less</span>
+            <div class="flex gap-0.5">
+              <div class="w-3 h-3 rounded-sm bg-base-300"></div>
+              <div class="w-3 h-3 rounded-sm bg-success/30"></div>
+              <div class="w-3 h-3 rounded-sm bg-success/50"></div>
+              <div class="w-3 h-3 rounded-sm bg-success/70"></div>
+              <div class="w-3 h-3 rounded-sm bg-success"></div>
+            </div>
+            <span>More</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tooltip -->
+      <div data-activity-heatmap-target="tooltip"
+           class="hidden absolute z-50 flex-col items-center px-3 py-2 bg-base-100 border border-base-300 rounded-lg shadow-lg text-sm pointer-events-none">
+        <span data-activity-heatmap-target="tooltipDate" class="font-medium"></span>
+        <span data-activity-heatmap-target="tooltipDistance" class="text-base-content/70"></span>
+      </div>
+    </div>
+    </div>
+  </div>
+<% end %>

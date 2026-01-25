@@ -28,7 +28,7 @@
               <% if stats[:running].positive? %>
                 <div class="flex items-center justify-between text-sm">
                   <div class="flex items-center gap-2">
-                    <%= icon 'run', class: 'w-4 h-4 text-base-content/70' %>
+                    <%= icon 'footprints', class: 'w-4 h-4 text-base-content/70' %>
                     <span>Running</span>
                   </div>
                   <span class="font-medium"><%= format_activity_hours(stats[:running]) %> total</span>

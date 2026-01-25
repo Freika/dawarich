@@ -13,11 +13,13 @@ class InsightsController < ApplicationController
     load_year_stats
     load_year_totals
     load_comparison_data if @previous_year_stats&.any?
+    load_activity_heatmap
 
     if @all_time
-      set_default_travel_patterns
+      set_default_patterns
     else
-      load_monthly_data
+      load_yearly_patterns
+      load_monthly_digest
     end
   end
 
@@ -66,10 +68,83 @@ class InsightsController < ApplicationController
     @days_change = comparison.days_change
   end
 
-  def load_monthly_data
-    load_monthly_digest
-    load_travel_patterns
-    load_top_visited_locations
+  def load_activity_heatmap
+    return if @all_time
+
+    @activity_heatmap = Insights::ActivityHeatmapCalculator.new(@year_stats, @selected_year).call
+  end
+
+  def load_yearly_patterns
+    yearly_digest = fetch_or_calculate_yearly_digest
+    travel_patterns = yearly_digest&.travel_patterns || {}
+
+    @time_of_day = travel_patterns['time_of_day'] || {}
+    @day_of_week = calculate_yearly_day_of_week
+    @seasonality = travel_patterns['seasonality'] || {}
+    @activity_breakdown = travel_patterns['activity_breakdown'] || {}
+    @top_visited_locations = fetch_yearly_top_visits
+  end
+
+  def fetch_or_calculate_yearly_digest
+    cache_key = yearly_digest_cache_key
+
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      digest = current_user.digests.yearly.find_by(year: @selected_year)
+
+      if digest.nil? || digest_stale?(digest)
+        digest = Users::Digests::CalculateYear.new(current_user.id, @selected_year).call
+      end
+
+      digest
+    end
+  end
+
+  def yearly_digest_cache_key
+    latest_stat = current_user.stats.where(year: @selected_year).maximum(:updated_at)
+    latest_track = current_user.tracks
+                               .where('start_at >= ? AND start_at <= ?',
+                                      Time.zone.local(@selected_year, 1, 1),
+                                      Time.zone.local(@selected_year, 12, 31).end_of_year)
+                               .maximum(:updated_at)
+
+    max_updated = [latest_stat, latest_track].compact.max&.to_i || 0
+    "insights/yearly_digest/#{current_user.id}/#{@selected_year}/#{max_updated}"
+  end
+
+  def digest_stale?(digest)
+    # Check if essential data is missing
+    return true if digest.travel_patterns.blank?
+
+    latest_stat_update = current_user.stats.where(year: @selected_year).maximum(:updated_at)
+    return false if latest_stat_update.nil?
+
+    digest.updated_at < latest_stat_update
+  end
+
+  def calculate_yearly_day_of_week
+    monthly_digests = current_user.digests.monthly.where(year: @selected_year)
+    weekly_totals = Array.new(7, 0)
+
+    monthly_digests.each do |digest|
+      pattern = digest.weekly_pattern
+      next unless pattern.is_a?(Array) && pattern.size == 7
+
+      pattern.each_with_index do |distance, idx|
+        weekly_totals[idx] += distance.to_i
+      end
+    end
+
+    weekly_totals
+  end
+
+  def fetch_yearly_top_visits
+    start_time = Time.zone.local(@selected_year, 1, 1)
+    end_time = Time.zone.local(@selected_year, 12, 31).end_of_year
+
+    current_user.visits.confirmed.where(started_at: start_time..end_time).group(:name)
+                .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
+                .order('visit_count DESC, total_duration DESC').limit(5)
+                .map { |v| { name: v.name, visit_count: v.visit_count, total_duration: v.total_duration } }
   end
 
   def load_monthly_digest
@@ -90,20 +165,6 @@ class InsightsController < ApplicationController
                       .call
   end
 
-  def load_travel_patterns
-    patterns = Insights::TravelPatternsLoader.new(
-      current_user,
-      @selected_year,
-      @selected_month,
-      monthly_digest: @monthly_digest
-    ).call
-
-    @time_of_day = patterns.time_of_day
-    @day_of_week = patterns.day_of_week
-    @seasonality = patterns.seasonality
-    @activity_breakdown = patterns.activity_breakdown
-  end
-
   def determine_selected_month
     if params[:month].present?
       params[:month].to_i
@@ -114,25 +175,13 @@ class InsightsController < ApplicationController
     end
   end
 
-  def set_default_travel_patterns
+  def set_default_patterns
     @available_months = []
     @time_of_day = {}
     @day_of_week = Array.new(7, 0)
     @seasonality = {}
     @activity_breakdown = {}
     @top_visited_locations = []
-  end
-
-  def load_top_visited_locations
-    start_time = Time.zone.local(@selected_year, @selected_month, 1).beginning_of_month
-    @top_visited_locations = fetch_top_visits(start_time..start_time.end_of_month)
-  end
-
-  def fetch_top_visits(date_range)
-    current_user.visits.confirmed.where(started_at: date_range).group(:name)
-                .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
-                .order('visit_count DESC, total_duration DESC').limit(5)
-                .map { |v| { name: v.name, visit_count: v.visit_count, total_duration: v.total_duration } }
   end
 
   def distance_unit
