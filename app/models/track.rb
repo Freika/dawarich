@@ -4,16 +4,39 @@ class Track < ApplicationRecord
   include Calculateable
   include DistanceConvertible
 
+  TRANSPORTATION_MODES = {
+    unknown: 0,
+    stationary: 1,
+    walking: 2,
+    running: 3,
+    cycling: 4,
+    driving: 5,
+    bus: 6,
+    train: 7,
+    flying: 8,
+    boat: 9,
+    motorcycle: 10
+  }.freeze
+
   belongs_to :user
   has_many :points, dependent: :nullify
+  has_many :track_segments, dependent: :destroy
+
+  enum :dominant_mode, TRANSPORTATION_MODES, prefix: true
 
   validates :start_at, :end_at, :original_path, presence: true
   validates :distance, :avg_speed, :duration, numericality: { greater_than_or_equal_to: 0 }
 
-  after_update :recalculate_path_and_distance!, if: -> { points.exists? && (saved_change_to_start_at? || saved_change_to_end_at?) }
+  after_update :recalculate_path_and_distance!, if: lambda {
+    points.exists? && (saved_change_to_start_at? || saved_change_to_end_at?)
+  }
   after_create :broadcast_track_created
   after_update :broadcast_track_updated
   after_destroy :broadcast_track_destroyed
+
+  scope :by_mode, ->(mode) { where(dominant_mode: mode) }
+  scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
+  scope :with_detected_mode, -> { where.not(dominant_mode: :unknown) }
 
   def self.last_for_day(user, day)
     day_start = day.beginning_of_day
@@ -25,14 +48,15 @@ class Track < ApplicationRecord
       .first
   end
 
-  def self.segment_points_in_sql(user_id, start_timestamp, end_timestamp, time_threshold_minutes, distance_threshold_meters, untracked_only: false)
+  def self.segment_points_in_sql(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
+                                 distance_threshold_meters, untracked_only: false)
     time_threshold_seconds = time_threshold_minutes * 60
 
     where_clause = if untracked_only
-      "WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND track_id IS NULL"
-    else
-      "WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3"
-    end
+                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND track_id IS NULL'
+                   else
+                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3'
+                   end
 
     sql = <<~SQL
       WITH points_with_gaps AS (
@@ -102,7 +126,8 @@ class Track < ApplicationRecord
   end
 
   # Get actual Point objects for each segment with pre-calculated distances
-  def self.get_segments_with_points(user_id, start_timestamp, end_timestamp, time_threshold_minutes, distance_threshold_meters, untracked_only: false)
+  def self.get_segments_with_points(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
+                                    distance_threshold_meters, untracked_only: false)
     segments_data = segment_points_in_sql(
       user_id,
       start_timestamp,
@@ -133,6 +158,29 @@ class Track < ApplicationRecord
     pg_array_string.gsub(/[{}]/, '').split(',').map(&:to_i)
   end
 
+  def activity_breakdown
+    track_segments.group(:transportation_mode).sum(:duration)
+  end
+
+  def update_dominant_mode!
+    breakdown = activity_breakdown
+    return update_column(:dominant_mode, :unknown) if breakdown.empty?
+
+    dominant = breakdown.max_by { |_mode, duration| duration || 0 }&.first
+    update_column(:dominant_mode, dominant || :unknown)
+  end
+
+  def broadcast_geojson_updated
+    Rails.logger.info "[Track#broadcast_geojson_updated] Broadcasting track #{id} to user #{user_id}"
+    geojson_feature = Tracks::GeojsonSerializer.new(self).call[:features].first
+    Rails.logger.info "[Track#broadcast_geojson_updated] GeoJSON feature id: #{geojson_feature[:properties][:id]}"
+    TracksChannel.broadcast_to(user, {
+                                 action: 'geojson_updated',
+      track: geojson_feature
+                               })
+    Rails.logger.info "[Track#broadcast_geojson_updated] Broadcast complete for track #{id}"
+  end
+
   private
 
   def broadcast_track_created
@@ -145,15 +193,17 @@ class Track < ApplicationRecord
 
   def broadcast_track_destroyed
     TracksChannel.broadcast_to(user, {
-      action: 'destroyed',
+                                 action: 'destroyed',
       track_id: id
-    })
+                               })
   end
 
   def broadcast_track_update(action)
-    TracksChannel.broadcast_to(user, {
-      action: action,
-      track: TrackSerializer.new(self).call
-    })
+    TracksChannel.broadcast_to(
+      user, {
+        action: action,
+        track: TrackSerializer.new(self).call
+      }
+    )
   end
 end

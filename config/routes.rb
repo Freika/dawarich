@@ -88,6 +88,7 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  resources :insights, only: :index
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
   get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
@@ -141,6 +142,7 @@ Rails.application.routes.draw do
       get   'health', to: 'health#index'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index show create update destroy]
@@ -196,7 +198,9 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :tracks, only: [:index]
+      resources :tracks, only: [:index] do
+        resources :points, only: [:index], controller: 'tracks/points'
+      end
 
       namespace :maps do
         resources :hexagons, only: [:index] do

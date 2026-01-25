@@ -1,0 +1,132 @@
+<!-- Your Travel Story Card -->
+<div class="card bg-base-200">
+  <div class="card-body p-5">
+    <h2 class="card-title text-lg flex items-center gap-2">
+      <%= icon 'book-open', class: 'w-5 h-5 text-primary' %>
+      Your Travel Story
+    </h2>
+    <div class="text-sm text-base-content/60">Summer 2024</div>
+
+    <!-- Trip Summary -->
+    <div class="flex items-center gap-4 mt-3 p-2 bg-base-300 rounded-lg text-sm">
+      <div class="flex items-center gap-1">
+        <%= icon 'calendar', class: 'w-4 h-4 text-info' %>
+        <span>June 15 - July 20</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <%= icon 'clock', class: 'w-4 h-4' %>
+        <span class="font-medium">35 Days</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <%= icon 'route', class: 'w-4 h-4' %>
+        <span class="font-medium">4,230 km</span>
+      </div>
+    </div>
+
+    <!-- Story Title -->
+    <div class="text-xl font-bold mt-4 text-info">"The Great European Road Trip"</div>
+
+    <!-- Story Content -->
+    <div class="mt-3 text-sm space-y-3">
+      <p>You started in <span class="text-info font-medium">Berlin</span>, your home base. After a week of work, you headed south through <span class="text-info font-medium">Dresden</span> and <span class="text-info font-medium">Prague</span>, spending 3 days exploring the city of a hundred spires.</p>
+      <p>The journey continued through <span class="text-info font-medium">Vienna</span>, where you spent a weekend before crossing into Italy. You drove through the Alps, stopping at <span class="text-info font-medium">Lake Como</span> for two nights of swimming and pasta.</p>
+      <p><span class="text-info font-medium">Rome</span> welcomed you for 5 days of ancient history, then you traced the coast south to <span class="text-info font-medium">Amalfi</span>, with stops in Naples and Positano.</p>
+    </div>
+
+    <!-- Journey Timeline -->
+    <div class="mt-4 pt-4 border-t border-base-300">
+      <div class="text-sm font-medium mb-3">JOURNEY TIMELINE</div>
+      <div class="space-y-2">
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-warning rounded-full"></span>
+          <span class="font-medium">Berlin</span>
+          <span class="text-base-content/60">DE</span>
+          <span class="flex-1 text-right text-base-content/60">Home base</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+          <span>Dresden</span>
+          <span class="text-base-content/60">DE</span>
+          <span class="flex-1 text-right text-base-content/60">Overnight</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-success rounded-full"></span>
+          <span>Prague</span>
+          <span class="text-base-content/60">CZ</span>
+          <%= icon 'star', class: 'w-3 h-3 text-warning' %>
+          <span class="flex-1 text-right text-base-content/60">3 days exploring</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+          <span>Vienna</span>
+          <span class="text-base-content/60">AT</span>
+          <span class="flex-1 text-right text-base-content/60">Weekend stay</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+          <span>Lake Como</span>
+          <span class="text-base-content/60">IT</span>
+          <%= icon 'star', class: 'w-3 h-3 text-warning' %>
+          <span class="flex-1 text-right text-base-content/60">Swimming & pasta</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-success rounded-full"></span>
+          <span>Rome</span>
+          <span class="text-base-content/60">IT</span>
+          <%= icon 'star', class: 'w-3 h-3 text-warning' %>
+          <span class="flex-1 text-right text-base-content/60">5 days of history</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+          <span>Amalfi Coast</span>
+          <span class="text-base-content/60">IT</span>
+          <%= icon 'star', class: 'w-3 h-3 text-warning' %>
+          <span class="flex-1 text-right text-base-content/60">Positano, Naples</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+          <span>Florence</span>
+          <span class="text-base-content/60">IT</span>
+          <span class="flex-1 text-right text-base-content/60">Art & coffee</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+          <span>Milan</span>
+          <span class="text-base-content/60">IT</span>
+          <span class="flex-1 text-right text-base-content/60">Fashion district</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-base-content/30 rounded-full border border-base-content/50"></span>
+          <span>Munich</span>
+          <span class="text-base-content/60">DE</span>
+          <span class="flex-1 text-right text-base-content/60">Beer gardens</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-3 h-3 bg-warning rounded-full"></span>
+          <span class="font-medium">Berlin</span>
+          <span class="text-base-content/60">DE</span>
+          <span class="flex-1 text-right text-base-content/60">Back home</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Highlights -->
+    <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-base-300 text-center">
+      <div>
+        <div class="text-2xl font-bold text-info">4</div>
+        <div class="text-xs text-base-content/60">New countries</div>
+        <div class="text-xs text-info">CZ, AT, IT, FR</div>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-info">890 km</div>
+        <div class="text-xs text-base-content/60">Longest drive</div>
+        <div class="text-xs text-info">Rome &rarr; Amalfi</div>
+      </div>
+      <div>
+        <div class="text-2xl font-bold text-info">12</div>
+        <div class="text-xs text-base-content/60">Favorites marked</div>
+        <div class="text-xs text-info">places</div>
+      </div>
+    </div>
+  </div>
+</div>

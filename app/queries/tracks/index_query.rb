@@ -9,7 +9,7 @@ class Tracks::IndexQuery
   end
 
   def call
-    scoped = user.tracks
+    scoped = user.tracks.includes(:track_segments)
     scoped = apply_date_range(scoped)
 
     scoped

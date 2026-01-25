@@ -43,7 +43,7 @@ class Stats::CalculateMonth
 
       stat.save!
 
-      Cache::InvalidateUserCaches.new(user.id).call
+      Cache::InvalidateUserCaches.new(user.id, year: year).call
     end
   end
 
