@@ -158,5 +158,88 @@ RSpec.describe Insights::ActivityHeatmapCalculator do
         expect(result.active_days).to eq(1)
       end
     end
+
+    context 'streak calculation' do
+      context 'with consecutive days' do
+        let!(:stat) do
+          create(:stat, user: user, year: year, month: 1,
+                 daily_distance: { '1' => 5000, '2' => 6000, '3' => 7000, '4' => 8000, '5' => 9000 })
+        end
+        let(:stats) { user.stats.where(year: year) }
+
+        it 'calculates longest streak correctly' do
+          result = described_class.new(stats, year).call
+
+          expect(result.longest_streak).to eq(5)
+          expect(result.longest_streak_start).to eq(Date.new(2024, 1, 1))
+          expect(result.longest_streak_end).to eq(Date.new(2024, 1, 5))
+        end
+      end
+
+      context 'with gaps between active days' do
+        let!(:stat) do
+          create(:stat, user: user, year: year, month: 1,
+                 daily_distance: { '1' => 5000, '2' => 6000, '5' => 7000, '6' => 8000, '7' => 9000 })
+        end
+        let(:stats) { user.stats.where(year: year) }
+
+        it 'finds the longest consecutive streak' do
+          result = described_class.new(stats, year).call
+
+          expect(result.longest_streak).to eq(3)
+          expect(result.longest_streak_start).to eq(Date.new(2024, 1, 5))
+          expect(result.longest_streak_end).to eq(Date.new(2024, 1, 7))
+        end
+      end
+
+      context 'with streak spanning months' do
+        let!(:january_stat) do
+          create(:stat, user: user, year: year, month: 1,
+                 daily_distance: { '30' => 5000, '31' => 6000 })
+        end
+        let!(:february_stat) do
+          create(:stat, user: user, year: year, month: 2,
+                 daily_distance: { '1' => 7000, '2' => 8000 })
+        end
+        let(:stats) { user.stats.where(year: year) }
+
+        it 'counts streak across month boundaries' do
+          result = described_class.new(stats, year).call
+
+          expect(result.longest_streak).to eq(4)
+          expect(result.longest_streak_start).to eq(Date.new(2024, 1, 30))
+          expect(result.longest_streak_end).to eq(Date.new(2024, 2, 2))
+        end
+      end
+
+      context 'with no stats' do
+        let(:stats) { Stat.none }
+
+        it 'returns zero streaks' do
+          result = described_class.new(stats, year).call
+
+          expect(result.current_streak).to eq(0)
+          expect(result.longest_streak).to eq(0)
+          expect(result.longest_streak_start).to be_nil
+          expect(result.longest_streak_end).to be_nil
+        end
+      end
+
+      context 'with single active day' do
+        let!(:stat) do
+          create(:stat, user: user, year: year, month: 6,
+                 daily_distance: { '15' => 5000 })
+        end
+        let(:stats) { user.stats.where(year: year) }
+
+        it 'returns streak of 1' do
+          result = described_class.new(stats, year).call
+
+          expect(result.longest_streak).to eq(1)
+          expect(result.longest_streak_start).to eq(Date.new(2024, 6, 15))
+          expect(result.longest_streak_end).to eq(Date.new(2024, 6, 15))
+        end
+      end
+    end
   end
 end

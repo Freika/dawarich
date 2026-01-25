@@ -8,6 +8,10 @@ module Insights
       :max_distance,
       :active_days,
       :year,
+      :current_streak,
+      :longest_streak,
+      :longest_streak_start,
+      :longest_streak_end,
       keyword_init: true
     )
 
@@ -21,13 +25,18 @@ module Insights
 
       daily_data = aggregate_daily_distances
       distances = daily_data.values.select(&:positive?)
+      streak_data = calculate_streaks(daily_data)
 
       Result.new(
         daily_data: daily_data,
         activity_levels: calculate_activity_levels(distances),
         max_distance: distances.max || 0,
         active_days: distances.size,
-        year: @year
+        year: @year,
+        current_streak: streak_data[:current_streak],
+        longest_streak: streak_data[:longest_streak],
+        longest_streak_start: streak_data[:longest_streak_start],
+        longest_streak_end: streak_data[:longest_streak_end]
       )
     end
 
@@ -39,7 +48,11 @@ module Insights
         activity_levels: default_activity_levels,
         max_distance: 0,
         active_days: 0,
-        year: @year
+        year: @year,
+        current_streak: 0,
+        longest_streak: 0,
+        longest_streak_start: nil,
+        longest_streak_end: nil
       )
     end
 
@@ -98,6 +111,74 @@ module Insights
 
     def default_activity_levels
       { p25: 1000, p50: 5000, p75: 10_000, p90: 20_000 }
+    end
+
+    def calculate_streaks(daily_data)
+      return default_streak_data if daily_data.empty?
+
+      active_dates = daily_data.select { |_, distance| distance.positive? }.keys.map { |d| Date.parse(d) }.sort
+      return default_streak_data if active_dates.empty?
+
+      longest_streak = 0
+      longest_streak_start = nil
+      longest_streak_end = nil
+      current_streak = 0
+      current_streak_start = nil
+
+      active_dates.each_with_index do |date, index|
+        if index.zero? || date == active_dates[index - 1] + 1
+          current_streak += 1
+          current_streak_start ||= date
+        else
+          current_streak = 1
+          current_streak_start = date
+        end
+
+        next unless current_streak > longest_streak
+
+        longest_streak = current_streak
+        longest_streak_start = current_streak_start
+        longest_streak_end = date
+      end
+
+      today = Date.current
+      year_end = Date.new(@year, 12, 31)
+      reference_date = [today, year_end].min
+
+      final_current_streak = calculate_current_streak(active_dates, reference_date)
+
+      {
+        current_streak: final_current_streak,
+        longest_streak: longest_streak,
+        longest_streak_start: longest_streak_start,
+        longest_streak_end: longest_streak_end
+      }
+    end
+
+    def calculate_current_streak(active_dates, reference_date)
+      return 0 if active_dates.empty?
+
+      streak = 0
+      check_date = reference_date
+
+      while active_dates.include?(check_date)
+        streak += 1
+        check_date -= 1
+      end
+
+      return streak if streak.positive?
+
+      check_date = reference_date - 1
+      while active_dates.include?(check_date)
+        streak += 1
+        check_date -= 1
+      end
+
+      streak
+    end
+
+    def default_streak_data
+      { current_streak: 0, longest_streak: 0, longest_streak_start: nil, longest_streak_end: nil }
     end
   end
 end

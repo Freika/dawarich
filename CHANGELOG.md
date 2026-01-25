@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [1.0.2] - Unreleased
+
+- New **Insights page** with comprehensive analytics and visualizations:
+  - **Activity heatmap**: GitHub-style contribution graph showing daily activity throughout the year
+  - **Activity streak**: Track your current streak and longest streak of consecutive active days
+  - **Top visited locations**: See your most frequently visited places for the selected year
+  - **Year comparison**: Compare stats (distance, countries, cities, active days) with previous year
+  - **Activity breakdown**: Visualize your activity distribution by transportation mode
+  - **Monthly digest**: Detailed monthly statistics with travel patterns
+  - **Travel patterns**: Time-of-day and day-of-week activity distribution
+  - **Movement wellness**: Health-related insights based on your movement data
+  - **Location clusters**: Geographic clustering of your visited locations
+- **Transportation mode detection for tracks**: Tracks are now automatically segmented by transportation mode (walking, cycling, driving, etc.) with configurable speed thresholds in settings. Modes are recalculated when threshold settings change.
+
+
 # [1.0.1] - Unreleased
 
 ## Added

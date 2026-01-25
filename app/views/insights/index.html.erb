@@ -3,7 +3,12 @@
 <div class="w-full my-5">
   <%= render 'header' %>
   <%= render 'stats_row' %>
-  <%= render 'activity_heatmap' %>
+
+  <!-- Heatmap and Streak Row -->
+  <div class="flex flex-col lg:flex-row gap-6">
+    <%= render 'activity_heatmap' %>
+    <%= render 'activity_streak' %>
+  </div>
 
   <!-- Two Column Layout -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

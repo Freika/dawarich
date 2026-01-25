@@ -1,5 +1,5 @@
 <% if @activity_heatmap && !@all_time %>
-  <div class="w-3/4 mb-6">
+  <div class="w-full lg:w-3/4 mb-6">
     <div class="card bg-base-200" data-controller="activity-heatmap" data-activity-heatmap-unit-value="<%= current_user.safe_settings.distance_unit %>">
     <div class="card-body p-4">
       <!-- Header -->
