@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@hotwired/turbo-rails": "^7.3.0",
+    "@hotwired/turbo-rails": "^8.0.21",
     "@rails/actiontext": "^8.0.0",
     "daisyui": "^4.7.3",
     "leaflet": "^1.9.4",
