@@ -86,35 +86,35 @@ class InsightsController < ApplicationController
   end
 
   def fetch_or_calculate_yearly_digest
-    cache_key = yearly_digest_cache_key
+    # First check if we have a valid cached digest in the database
+    digest = current_user.digests.yearly.find_by(year: @selected_year)
+
+    # If no digest exists, calculate it
+    return calculate_and_cache_digest if digest.nil?
+
+    # Use Rails cache with digest's updated_at as cache version
+    # This avoids expensive queries to build cache key on every request
+    cache_key = "insights/yearly_digest/#{current_user.id}/#{@selected_year}/#{digest.updated_at.to_i}"
 
     Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      digest = current_user.digests.yearly.find_by(year: @selected_year)
-
-      if digest.nil? || digest_stale?(digest)
-        digest = Users::Digests::CalculateYear.new(current_user.id, @selected_year).call
+      # Double-check staleness inside cache block (in case of race conditions)
+      if digest_stale?(digest)
+        calculate_and_cache_digest
+      else
+        digest
       end
-
-      digest
     end
   end
 
-  def yearly_digest_cache_key
-    latest_stat = current_user.stats.where(year: @selected_year).maximum(:updated_at)
-    latest_track = current_user.tracks
-                               .where('start_at >= ? AND start_at <= ?',
-                                      Time.zone.local(@selected_year, 1, 1),
-                                      Time.zone.local(@selected_year, 12, 31).end_of_year)
-                               .maximum(:updated_at)
-
-    max_updated = [latest_stat, latest_track].compact.max&.to_i || 0
-    "insights/yearly_digest/#{current_user.id}/#{@selected_year}/#{max_updated}"
+  def calculate_and_cache_digest
+    Users::Digests::CalculateYear.new(current_user.id, @selected_year).call
   end
 
   def digest_stale?(digest)
     # Check if essential data is missing
     return true if digest.travel_patterns.blank?
 
+    # Check if stats have been updated since digest was last calculated
     latest_stat_update = current_user.stats.where(year: @selected_year).maximum(:updated_at)
     return false if latest_stat_update.nil?
 
@@ -122,10 +122,13 @@ class InsightsController < ApplicationController
   end
 
   def calculate_yearly_day_of_week
-    monthly_digests = current_user.digests.monthly.where(year: @selected_year)
-    weekly_totals = Array.new(7, 0)
+    # Load only required columns for weekly_pattern calculation
+    # weekly_pattern is a model method that uses monthly_distances, year, and month
+    digests = current_user.digests.monthly
+                          .where(year: @selected_year)
+                          .select(:id, :year, :month, :monthly_distances)
 
-    monthly_digests.each do |digest|
+    digests.each_with_object(Array.new(7, 0)) do |digest, weekly_totals|
       pattern = digest.weekly_pattern
       next unless pattern.is_a?(Array) && pattern.size == 7
 
@@ -133,8 +136,6 @@ class InsightsController < ApplicationController
         weekly_totals[idx] += distance.to_i
       end
     end
-
-    weekly_totals
   end
 
   def fetch_yearly_top_visits
