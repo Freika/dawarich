@@ -47,7 +47,6 @@ module Calculateable
 
   def calculate_distance_from_coordinates
     # Always calculate in meters for consistent storage
-    # Order points by timestamp to ensure correct distance calculation
     Point.total_distance(points.order(:timestamp), :m)
   end
 
@@ -57,7 +56,7 @@ module Calculateable
   end
 
   def track_model?
-    self.class.name == 'Track'
+    instance_of?(Track)
   end
 
   def save_if_changed!

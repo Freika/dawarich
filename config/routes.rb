@@ -145,6 +145,7 @@ Rails.application.routes.draw do
       get   'health', to: 'health#index'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index show create update destroy]
@@ -205,7 +206,6 @@ Rails.application.routes.draw do
       end
 
       namespace :maps do
-        resources :tile_usage, only: [:create]
         resources :hexagons, only: [:index] do
           collection do
             get :bounds

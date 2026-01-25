@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Photoprism::ConnectionTester
+  include SslConfigurable
+
   attr_reader :url, :api_key, :skip_ssl_verification
 
   def initialize(url, api_key, skip_ssl_verification: false)
@@ -14,7 +16,7 @@ class Photoprism::ConnectionTester
     return { success: false, error: 'Photoprism API key is missing' } if api_key.blank?
 
     test_connection
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout => e
+  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
     { success: false, error: "Photoprism connection failed: #{e.message}" }
   end
 
@@ -23,19 +25,21 @@ class Photoprism::ConnectionTester
   def test_connection
     response = HTTParty.get(
       "#{url}/api/v1/photos",
-      http_options_with_ssl({
-        headers: { 'Authorization' => "Bearer #{api_key}", 'accept' => 'application/json' },
-        query: { count: 1, public: true },
-        timeout: 10
-      })
+      http_options_with_ssl_flag(
+        skip_ssl_verification, {
+          headers: {
+            'Authorization' => "Bearer #{api_key}",
+            'accept' => 'application/json',
+            'Content-Type' => 'application/json'
+          },
+          query: { count: 1, public: true },
+          timeout: 10
+        }
+      )
     )
 
     return { success: true, message: 'Photoprism connection verified' } if response.success?
 
     { success: false, error: "Photoprism connection failed: #{response.code}" }
-  end
-
-  def http_options_with_ssl(base_options = {})
-    base_options.merge(verify: !skip_ssl_verification)
   end
 end

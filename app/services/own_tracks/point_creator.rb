@@ -17,7 +17,9 @@ class OwnTracks::PointCreator
     payload = parsed_params.merge(user_id:)
     return [] if payload[:timestamp].nil? || payload[:lonlat].nil?
 
-    upsert_points([payload])
+    result = upsert_points([payload])
+    User.reset_counters(user_id, :points) if result.any?
+    result
   end
 
   private

@@ -69,7 +69,8 @@ class Immich::RequestPhotos
   def headers
     {
       'x-api-key' => immich_api_key,
-      'accept' => 'application/json'
+      'accept' => 'application/json',
+      'Content-Type' => 'application/json'
     }
   end
 

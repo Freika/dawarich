@@ -75,7 +75,7 @@ RSpec.describe Immich::ConnectionTester do
         expect(HTTParty).to receive(:post).with(
           "#{url}/api/search/metadata",
           hash_including(
-            headers: { 'x-api-key' => api_key, 'accept' => 'application/json' },
+            headers: { 'x-api-key' => api_key, 'accept' => 'application/json', 'Content-Type' => 'application/json' },
             timeout: 10
           )
         )

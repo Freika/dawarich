@@ -81,7 +81,7 @@ module Users
         points = fetch_month_points_with_country_ordered
 
         points.group_by do |point|
-          TimezoneHelper.timestamp_to_date(point.timestamp, user_timezone)
+          Time.zone.at(point.timestamp).to_date
         end
       end
 

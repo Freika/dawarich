@@ -35,6 +35,16 @@ RSpec.describe '/trips', type: :request do
       get trips_url
       expect(response).to be_successful
     end
+
+    context 'when trip path is not yet calculated' do
+      let!(:trip_without_path) { create(:trip, user:, path: nil) }
+
+      it 'renders a successful response with loading state' do
+        get trips_url
+        expect(response).to be_successful
+        expect(response.body).to include('Trip path is being calculated...')
+      end
+    end
   end
 
   describe 'GET /show' do

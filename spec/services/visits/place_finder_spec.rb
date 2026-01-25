@@ -20,7 +20,9 @@ RSpec.describe Visits::PlaceFinder do
     end
 
     context 'when an existing place is found' do
-      let!(:existing_place) { create(:place, latitude: latitude, longitude: longitude, lonlat: "POINT(#{longitude} #{latitude})") }
+      let!(:existing_place) do
+        create(:place, latitude: latitude, longitude: longitude, lonlat: "POINT(#{longitude} #{latitude})")
+      end
 
       it 'returns the existing place as main_place' do
         result = subject.find_or_create_place(visit_data)
@@ -41,8 +43,7 @@ RSpec.describe Visits::PlaceFinder do
                                      name: 'Test Place',
                                      latitude: latitude + 0.0001,
                                      longitude: longitude + 0.0001,
-                                     lonlat: "POINT(#{longitude + 0.0001} #{latitude + 0.0001})"
-                                     )
+                                     lonlat: "POINT(#{longitude + 0.0001} #{latitude + 0.0001})")
 
         allow(subject).to receive(:find_existing_place).and_return(similar_named_place)
 
@@ -203,7 +204,7 @@ RSpec.describe Visits::PlaceFinder do
       end
 
       it 'may include places with the same name' do
-        dup_place = create(:place, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
+        create(:place, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
 
         allow(subject).to receive(:place_name_exists?).and_return(false)
 
@@ -239,6 +240,32 @@ RSpec.describe Visits::PlaceFinder do
         # Should create the default place
         expect(result[:main_place].name).to eq('Test Place')
         expect(result[:main_place].source).to eq('manual')
+      end
+    end
+
+    context 'when Geocoder raises a network error' do
+      before do
+        allow(Geocoder).to receive(:search).and_raise(EOFError.new('end of file reached'))
+        allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:error)
+      end
+
+      it 'handles the error gracefully and continues' do
+        result = subject.find_or_create_place(visit_data)
+
+        # Should still return a result with a default place
+        expect(result[:main_place]).to be_a(Place)
+        expect(result[:main_place].name).to eq('Test Place')
+      end
+
+      it 'logs the error' do
+        subject.find_or_create_place(visit_data)
+        expect(Rails.logger).to have_received(:error).with(/Reverse geocoding error in PlaceFinder/)
+      end
+
+      it 'reports the exception' do
+        subject.find_or_create_place(visit_data)
+        expect(ExceptionReporter).to have_received(:call)
       end
     end
   end

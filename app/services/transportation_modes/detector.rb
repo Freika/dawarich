@@ -10,11 +10,7 @@ module TransportationModes
   #   # Returns array of hashes with segment data ready for TrackSegment creation
   #
   class Detector
-    # Minimum track duration in seconds to attempt detection
-    # Very short tracks (< 30 seconds) default to unknown
-    MIN_TRACK_DURATION = 30
-
-    # Minimum number of points required for meaningful detection
+    MIN_TRACK_DURATION_SECONDS = 30
     MIN_POINTS = 2
 
     def initialize(track, points)
@@ -25,11 +21,9 @@ module TransportationModes
     def call
       return default_unknown_segment if skip_detection?
 
-      # 1. Try to extract activity data from source (Overland, Google, etc.)
       source_segments = extract_source_activity_data
       return source_segments if source_segments.present?
 
-      # 2. Fall back to movement-based inference (speed + acceleration)
       infer_segments_from_movement
     end
 
@@ -41,7 +35,7 @@ module TransportationModes
       return true if points.size < MIN_POINTS
 
       duration = points.last.timestamp - points.first.timestamp
-      duration < MIN_TRACK_DURATION
+      duration < MIN_TRACK_DURATION_SECONDS
     end
 
     def default_unknown_segment

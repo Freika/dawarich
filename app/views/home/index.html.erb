@@ -8,7 +8,7 @@
           </h1>
           <p class="py-6 text-3xl">The only location history tracker you'll ever need.</p>
 
-          <% if !DawarichSettings.self_hosted? %>
+          <% if email_password_registration_enabled? %>
             <%= link_to 'Sign up', new_user_registration_path, class: "rounded-lg py-3 px-5 my-3 bg-blue-600 text-white block font-medium" %>
             <div class="divider">or</div>
           <% end %>

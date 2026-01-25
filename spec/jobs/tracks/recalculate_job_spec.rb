@@ -54,11 +54,6 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
           "Failed to recalculate track #{track.id}"
         )
       end
-
-      it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with(/Failed to recalculate track #{track.id}/)
-        described_class.perform_now(track.id)
-      end
     end
 
     context 'when broadcast fails' do

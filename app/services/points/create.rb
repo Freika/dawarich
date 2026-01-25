@@ -27,6 +27,7 @@ class Points::Create
       created_points.concat(result)
     end
 
+    User.reset_counters(user.id, :points) if created_points.any?
     created_points
   end
 end

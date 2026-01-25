@@ -92,7 +92,7 @@ class Geojson::Params
   def parse_array_timestamp(value)
     return value.to_i if value.is_a?(Numeric)
 
-    Time.zone.parse(value.to_s).utc.to_i if value.present?
+    Time.zone.parse(value.to_s)&.utc&.to_i if value.present?
   end
 
   def numeric_timestamp(feature)

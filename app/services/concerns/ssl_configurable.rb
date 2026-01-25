@@ -11,7 +11,13 @@ module SslConfigurable
     !user.settings[setting_key]
   end
 
+  # For services that have access to a user object
   def http_options_with_ssl(user, service_type, base_options = {})
     base_options.merge(verify: ssl_verification_enabled?(user, service_type))
+  end
+
+  # For services that receive the skip_ssl_verification value directly
+  def http_options_with_ssl_flag(skip_ssl_verification, base_options = {})
+    base_options.merge(verify: !skip_ssl_verification)
   end
 end

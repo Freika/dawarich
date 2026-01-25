@@ -47,17 +47,17 @@ module Stats
 
     def start_timestamp
       if month
-        TimezoneHelper.month_bounds(year, month, timezone).first
+        Time.zone.local(year, month, 1).beginning_of_month.to_i
       else
-        TimezoneHelper.year_bounds(year, timezone).first
+        Time.zone.local(year, 1, 1).beginning_of_year.to_i
       end
     end
 
     def end_timestamp
       if month
-        TimezoneHelper.month_bounds(year, month, timezone).last
+        Time.zone.local(year, month, 1).end_of_month.to_i
       else
-        TimezoneHelper.year_bounds(year, timezone).last
+        Time.zone.local(year, 12, 31).end_of_year.to_i
       end
     end
 
