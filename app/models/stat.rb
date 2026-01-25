@@ -99,10 +99,9 @@ class Stat < ApplicationRecord
   end
 
   def calculate_data_bounds
-    start_date = Date.new(year, month, 1).beginning_of_day
-    end_date = start_date.end_of_month.end_of_day
+    start_timestamp, end_timestamp = TimezoneHelper.month_bounds(year, month, user_timezone)
 
-    points_relation = user.points.where(timestamp: start_date.to_i..end_date.to_i)
+    points_relation = user.points.where(timestamp: start_timestamp..end_timestamp)
     point_count = points_relation.count
 
     return nil if point_count.zero?
@@ -115,7 +114,7 @@ class Stat < ApplicationRecord
        AND timestamp BETWEEN $2 AND $3
        AND lonlat IS NOT NULL",
       'data_bounds_query',
-      [user.id, start_date.to_i, end_date.to_i]
+      [user.id, start_timestamp, end_timestamp]
     ).first
 
     {
@@ -138,18 +137,16 @@ class Stat < ApplicationRecord
   end
 
   def timespan
-    DateTime.new(year, month).beginning_of_month..DateTime.new(year, month).end_of_month
+    start_timestamp, end_timestamp = TimezoneHelper.month_bounds(year, month, user_timezone)
+    start_timestamp..end_timestamp
   end
 
   def calculate_daily_distances(monthly_points)
-    Stats::DailyDistanceQuery.new(monthly_points, timespan, user_timezone).call
+    date_range = TimezoneHelper.month_date_range(year, month, user_timezone)
+    Stats::DailyDistanceQuery.new(monthly_points, date_range, user_timezone).call
   end
 
   def user_timezone
-    # Future: Once user.timezone column exists, uncomment the line below
-    # user.timezone.presence || Time.zone.name
-
-    # For now, use application timezone
-    Time.zone.name
+    user.timezone.presence || Time.zone.name
   end
 end

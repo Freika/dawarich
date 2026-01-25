@@ -133,7 +133,11 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def timezone
-    Time.zone.name
+    settings['timezone'].presence || Time.zone.name
+  end
+
+  def timezone=(value)
+    self.settings = settings.merge('timezone' => value)
   end
 
   # Aggregate countries from all stats' toponyms

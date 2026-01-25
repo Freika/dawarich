@@ -84,8 +84,9 @@ class Photoprism::ImportGeodata
   end
 
   def file_name(photoprism_data_json)
-    from = Time.zone.at(photoprism_data_json.first[:timestamp]).to_date
-    to   = Time.zone.at(photoprism_data_json.last[:timestamp]).to_date
+    timezone = user.timezone
+    from = TimezoneHelper.timestamp_to_date(photoprism_data_json.first[:timestamp], timezone)
+    to = TimezoneHelper.timestamp_to_date(photoprism_data_json.last[:timestamp], timezone)
 
     "photoprism-geodata-#{user.email}-from-#{from}-to-#{to}.json"
   end

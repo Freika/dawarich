@@ -36,6 +36,9 @@ Rails.application.routes.draw do
 
   resources :settings, only: :index
   namespace :settings do
+    resources :general, only: [:index]
+    patch 'general', to: 'general#update'
+
     resources :background_jobs, only: %i[index create]
     resources :users, only: %i[index create destroy edit update] do
       collection do

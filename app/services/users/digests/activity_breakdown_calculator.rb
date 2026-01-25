@@ -124,8 +124,25 @@ module Users
         end
       end
 
-      def start_time = month ? Time.zone.local(year, month, 1).beginning_of_month : Time.zone.local(year, 1, 1)
-      def end_time = month ? Time.zone.local(year, month, 1).end_of_month : Time.zone.local(year, 12, 31).end_of_year
+      def start_time
+        if month
+          TimezoneHelper.month_start_time(year, month, user_timezone)
+        else
+          TimezoneHelper.year_start_time(year, user_timezone)
+        end
+      end
+
+      def end_time
+        if month
+          TimezoneHelper.month_end_time(year, month, user_timezone)
+        else
+          TimezoneHelper.year_end_time(year, user_timezone)
+        end
+      end
+
+      def user_timezone
+        user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
+      end
     end
   end
 end

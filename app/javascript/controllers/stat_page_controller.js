@@ -2,6 +2,7 @@ import L from "leaflet";
 import "leaflet.heat";
 import { createAllMapLayers } from "../maps/layers";
 import BaseController from "./base_controller";
+import { getMonthStartInTimezone, getMonthEndInTimezone } from "../utils/timezone";
 
 export default class extends BaseController {
   static targets = ["map", "loading", "heatmapBtn", "pointsBtn"];
@@ -15,6 +16,7 @@ export default class extends BaseController {
     this.month = parseInt(this.element.dataset.month || new Date().getMonth() + 1);
     this.apiKey = this.element.dataset.apiKey;
     this.selfHosted = this.element.dataset.selfHosted || this.selfHostedValue;
+    this.timezone = this.element.dataset.timezone || 'UTC';
 
     console.log(`Loading data for ${this.month}/${this.year} with API key: ${this.apiKey ? 'present' : 'missing'}`);
 
@@ -78,10 +80,9 @@ export default class extends BaseController {
       // Show loading
       this.showLoading(true);
 
-      // Calculate date range for the month
-      const startDate = `${this.year}-${this.month.toString().padStart(2, '0')}-01T00:00:00`;
-      const lastDay = new Date(this.year, this.month, 0).getDate();
-      const endDate = `${this.year}-${this.month.toString().padStart(2, '0')}-${lastDay}T23:59:59`;
+      // Calculate date range for the month using user's timezone
+      const startDate = getMonthStartInTimezone(this.year, this.month, this.timezone) + ':00';
+      const endDate = getMonthEndInTimezone(this.year, this.month, this.timezone) + ':59';
 
       console.log(`Fetching points from ${startDate} to ${endDate}`);
 

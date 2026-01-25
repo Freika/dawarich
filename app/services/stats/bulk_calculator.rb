@@ -4,6 +4,7 @@ module Stats
   class BulkCalculator
     def initialize(user_id)
       @user_id = user_id
+      @user = User.find(user_id)
     end
 
     def call
@@ -14,7 +15,7 @@ module Stats
 
     private
 
-    attr_reader :user_id
+    attr_reader :user_id, :user
 
     def fetch_timestamps
       last_calculated_at = Stat.where(user_id:).maximum(:updated_at)
@@ -25,9 +26,10 @@ module Stats
     end
 
     def extract_months(timestamps)
+      timezone = user.timezone
       timestamps.group_by do |timestamp|
-        time = Time.zone.at(timestamp)
-        [time.year, time.month]
+        date = TimezoneHelper.timestamp_to_date(timestamp, timezone)
+        [date.year, date.month]
       end.keys
     end
 

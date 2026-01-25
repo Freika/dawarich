@@ -147,7 +147,7 @@ export class AreaSelectionManager {
     this.selectedVisitIds = new Set()
 
     const cardsHTML = visits.map(visit =>
-      VisitCard.create(visit, { isSelected: false })
+      VisitCard.create(visit, { isSelected: false, timezone: this.controller.timezoneValue })
     ).join('')
 
     this.controller.selectedVisitsContainerTarget.innerHTML = `
@@ -397,7 +397,7 @@ export class AreaSelectionManager {
     this.selectedVisits.push(mergedVisit)
     this.selectedVisits.sort((a, b) => new Date(a.started_at) - new Date(b.started_at))
 
-    const newCardHTML = VisitCard.create(mergedVisit, { isSelected: false })
+    const newCardHTML = VisitCard.create(mergedVisit, { isSelected: false, timezone: this.controller.timezoneValue })
 
     if (insertBeforeCard) {
       insertBeforeCard.insertAdjacentHTML('beforebegin', newCardHTML)

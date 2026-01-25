@@ -46,11 +46,42 @@ RSpec.describe Stat, type: :model do
     describe '#timespan' do
       subject { stat.send(:timespan) }
 
-      let(:stat) { build(:stat, year:, month: 1) }
-      let(:expected_timespan) { DateTime.new(year, 1).beginning_of_month..DateTime.new(year, 1).end_of_month }
+      let(:stat) { build(:stat, year:, month: 1, user: user) }
 
-      it 'returns timespan' do
-        expect(subject).to eq(expected_timespan)
+      it 'returns a timestamp range for the month' do
+        expect(subject).to be_a(Range)
+        expect(subject.first).to be_a(Integer)
+        expect(subject.last).to be_a(Integer)
+        expect(subject.first).to be < subject.last
+      end
+
+      it 'covers the entire month' do
+        start_time = Time.at(subject.first)
+        end_time = Time.at(subject.last)
+
+        # The range should span approximately one month (28-31 days)
+        days_difference = (end_time - start_time) / 1.day
+        expect(days_difference).to be_between(27, 31)
+      end
+
+      context 'with user timezone' do
+        let(:user) { create(:user) }
+
+        before do
+          user.settings['timezone'] = 'Asia/Singapore'
+          user.save!
+        end
+
+        it 'uses user timezone for month boundaries' do
+          # Singapore is UTC+8, so January 1st 00:00 in Singapore
+          # is December 31st 16:00 UTC
+          start_time = Time.at(subject.first).utc
+
+          # For a UTC+8 timezone, start of January 1st should be
+          # 8 hours before UTC start of day
+          expect(start_time.hour).to eq(16)
+          expect(start_time.month).to eq(12) # Previous month in UTC
+        end
       end
     end
 

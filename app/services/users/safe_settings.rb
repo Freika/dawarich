@@ -26,6 +26,7 @@ class Users::SafeSettings
     'maps_maplibre_style' => 'light',
     'digest_emails_enabled' => true,
     'globe_projection' => false,
+    'timezone' => nil,
     # Transportation mode thresholds (speeds in km/h, distances in km)
     'transportation_thresholds' => {
       'walking_max_speed' => 7,
@@ -74,9 +75,13 @@ class Users::SafeSettings
       enabled_map_layers: enabled_map_layers,
       maps_maplibre_style: maps_maplibre_style,
       globe_projection: globe_projection,
+<<<<<<< HEAD
+      timezone: timezone
+=======
       transportation_thresholds: transportation_thresholds,
       transportation_expert_thresholds: transportation_expert_thresholds,
       transportation_expert_mode: transportation_expert_mode?
+>>>>>>> feature/insights-page
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -182,6 +187,10 @@ class Users::SafeSettings
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def timezone
+    settings['timezone']
   end
 
   def transportation_thresholds

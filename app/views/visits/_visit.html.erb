@@ -2,7 +2,7 @@
   <div class="flex items-center justify-between">
     <div>
       <%= render 'visits/name', visit: visit %>
-      <div><%= "#{visit.started_at.strftime('%H:%M')} - #{visit.ended_at.strftime('%H:%M')}" %></div>
+      <div><%= "#{visit.started_at.in_time_zone(current_user.timezone).strftime('%H:%M')} - #{visit.ended_at.in_time_zone(current_user.timezone).strftime('%H:%M')}" %></div>
     </div>
     <div class="opacity-0 transition-opacity duration-200 group-hover:opacity-100 flex items-center ml-4">
       <%= render 'visits/buttons', visit: visit %>

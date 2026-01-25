@@ -139,6 +139,7 @@ export default class extends Controller {
     this.settingsController = new SettingsController(this)
     await this.settingsController.loadSettings()
     this.settings = this.settingsController.settings
+    this.settings.timezone = this.timezoneValue || 'UTC'
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
@@ -218,7 +219,7 @@ export default class extends Controller {
       return
     }
 
-    this.searchManager = new SearchManager(this.map, this.apiKeyValue)
+    this.searchManager = new SearchManager(this.map, this.apiKeyValue, this.timezoneValue)
     this.searchManager.initialize(this.searchInputTarget, this.searchResultsTarget)
   }
 

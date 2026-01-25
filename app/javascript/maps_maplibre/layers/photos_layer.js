@@ -10,6 +10,7 @@ export class PhotosLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: 'photos', ...options })
     this.markers = [] // Store marker references for cleanup
+    this.timezone = options.timezone || 'UTC'
   }
 
   async add(data) {
@@ -128,7 +129,7 @@ export class PhotosLayer extends BaseLayer {
     const { thumbnail_url, taken_at, filename, city, state, country, type, source } = feature.properties
     const [lng, lat] = feature.geometry.coordinates
 
-    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : 'Unknown'
+    const takenDate = taken_at ? new Date(taken_at).toLocaleString(undefined, { timeZone: this.timezone }) : 'Unknown'
     const location = [city, state, country].filter(Boolean).join(', ') || 'Unknown location'
     const mediaType = type === 'VIDEO' ? '🎥 Video' : '📷 Photo'
 

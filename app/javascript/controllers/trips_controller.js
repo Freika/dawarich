@@ -9,6 +9,7 @@ import { createAllMapLayers } from "../maps/layers"
 import { createPopupContent } from "../maps/popups"
 import { showFlashMessage } from "../maps/helpers"
 import { fetchAndDisplayPhotos } from "../maps/photos"
+import { timestampToDateInTimezone } from "../utils/timezone"
 
 export default class extends BaseController {
   static targets = ["container", "startedAt", "endedAt"]
@@ -97,12 +98,13 @@ export default class extends BaseController {
       if (this.coordinates?.length) {
         const firstCoord = this.coordinates[0];
         const lastCoord = this.coordinates[this.coordinates.length - 1];
-        startDate = new Date(firstCoord[4] * 1000).toISOString().split('T')[0];
-        endDate = new Date(lastCoord[4] * 1000).toISOString().split('T')[0];
+        // Use timezone-aware date extraction for correct day boundaries
+        startDate = timestampToDateInTimezone(firstCoord[4], this.timezone);
+        endDate = timestampToDateInTimezone(lastCoord[4], this.timezone);
       } else if (startedAt && endedAt) {
-        // Parse the dates and format them correctly
-        startDate = new Date(startedAt).toISOString().split('T')[0];
-        endDate = new Date(endedAt).toISOString().split('T')[0];
+        // Parse the dates and format them correctly using timezone
+        startDate = timestampToDateInTimezone(new Date(startedAt).getTime() / 1000, this.timezone);
+        endDate = timestampToDateInTimezone(new Date(endedAt).getTime() / 1000, this.timezone);
       } else {
         console.log('No date range available for photos');
         showFlashMessage(
