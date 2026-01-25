@@ -530,6 +530,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_24_221434) do
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["started_at"], name: "index_visits_on_started_at"
+    t.index ["user_id", "status", "started_at"], name: "index_visits_on_user_id_and_status_and_started_at"
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 

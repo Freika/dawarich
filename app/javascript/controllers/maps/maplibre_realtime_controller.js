@@ -161,10 +161,6 @@ export default class extends Controller {
         this.handleFamilyLocation(data.member);
         break;
 
-      case "notification":
-        this.handleNotification(data.notification);
-        break;
-
       // Note: notifications are handled by notifications_controller.js in the navbar
     }
   }
