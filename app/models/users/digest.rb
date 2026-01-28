@@ -11,7 +11,9 @@ class Users::Digest < ApplicationRecord
   belongs_to :user
 
   validates :year, :period_type, presence: true
-  validates :year, uniqueness: { scope: %i[user_id period_type] }
+  validates :year, uniqueness: { scope: %i[user_id month period_type] }
+  validates :month, presence: true, if: :monthly?
+  validates :month, inclusion: { in: 1..12 }, allow_nil: true
 
   before_create :generate_sharing_uuid
 
@@ -130,6 +132,80 @@ class Users::Digest < ApplicationRecord
 
   def total_distance_all_time
     (all_time_stats['total_distance'] || 0).to_i
+  end
+
+  # Monthly digest specific methods
+  # Returns daily distances as array of [day, distance] pairs
+  # Format: [[1, 5000], [2, 3000], ...]
+  def daily_distances
+    monthly_distances
+  end
+
+  def active_days_count
+    return 0 unless daily_distances.is_a?(Array)
+
+    daily_distances.count { |pair| pair[1].to_i.positive? }
+  end
+
+  def days_in_month
+    return nil unless month
+
+    Date.new(year, month, -1).day
+  end
+
+  def weekly_pattern
+    return [] unless daily_distances.is_a?(Array) && month.present?
+
+    pattern = Array.new(7, 0)
+    daily_distances.each do |day, distance|
+      date = Date.new(year, month, day.to_i)
+      dow = (date.wday + 6) % 7 # Monday = 0
+      pattern[dow] += distance.to_i
+    end
+    pattern
+  end
+
+  def mom_distance_change
+    year_over_year['distance_change_percent'] if monthly?
+  end
+
+  def mom_countries_change
+    year_over_year['countries_change'] if monthly?
+  end
+
+  def mom_cities_change
+    year_over_year['cities_change'] if monthly?
+  end
+
+  # Travel patterns accessors
+  def time_of_day_distribution
+    travel_patterns['time_of_day'] || {}
+  end
+
+  def seasonality
+    travel_patterns['seasonality'] || {}
+  end
+
+  def day_of_week_distances
+    weekly_pattern
+  end
+
+  def activity_breakdown
+    travel_patterns['activity_breakdown'] || {}
+  end
+
+  def previous_month_value
+    year_over_year['previous_month'] if monthly?
+  end
+
+  def previous_month_year
+    year_over_year['previous_year'] if monthly?
+  end
+
+  def month_name
+    return nil unless month
+
+    Date::MONTHNAMES[month]
   end
 
   def untracked_days

@@ -13,6 +13,7 @@ class Cache::Clean
         delete_countries_cities_cache(user)
         delete_total_distance_cache(user)
         delete_supporter_cache(user)
+        delete_insights_digest_cache(user)
       end
 
       Rails.logger.info('Cache cleaned')
@@ -50,6 +51,12 @@ class Cache::Clean
       return if email.blank?
 
       Rails.cache.delete(Supporter::VerifyEmail.new(email).cache_key)
+    end
+
+    def delete_insights_digest_cache(user)
+      return unless Rails.cache.respond_to?(:delete_matched)
+
+      Rails.cache.delete_matched("insights/yearly_digest/#{user.id}/*")
     end
   end
 end

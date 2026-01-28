@@ -18,7 +18,11 @@ class OwnTracks::PointCreator
     return [] if payload[:timestamp].nil? || payload[:lonlat].nil?
 
     result = upsert_points([payload])
-    User.reset_counters(user_id, :points) if result.any?
+    if result.any?
+      User.reset_counters(user_id, :points)
+      Tracks::RealtimeDebouncer.new(user_id).trigger
+    end
+
     result
   end
 

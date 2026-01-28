@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Transportation mode detection for tracks**: Tracks are now automatically segmented by transportation mode (walking, cycling, driving, etc.) with configurable speed thresholds in settings. Modes are recalculated when threshold settings change.
 - **Near real-time track generation**: Tracks are now generated within ~45 seconds of receiving new points (via OwnTracks, Overland, or the Points API) using a Redis-based debouncer. This replaces the previous 4-hour polling cycle for most cases. Daily generation job frequency reduced from every 4 hours to every 12 hours as a fallback.
 - **Track merging**: Consecutive tracks that belong to the same journey are automatically merged when the gap between them is within the configured time threshold.
+- Email preferences moved to "General" tab in user settings for better organization.
+
 ## Fixed
 
 - Remove assets before precompilation to prevent stale assets from being served. #2187

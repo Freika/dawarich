@@ -39,6 +39,9 @@ class Cache::PreheatingJob < ApplicationJob
 
       # Preheat supporter status cache
       user.supporter_info
+
+      # Preheat insights yearly digest cache
+      Cache::PreheatInsightsDigests.new(user).call
     end
   end
 end

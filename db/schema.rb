@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_13_230537) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_25_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -96,9 +96,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_230537) do
     t.datetime "sent_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "month"
+    t.jsonb "travel_patterns", default: {}
     t.index ["period_type"], name: "index_digests_on_period_type"
     t.index ["sharing_uuid"], name: "index_digests_on_sharing_uuid", unique: true
-    t.index ["user_id", "year", "period_type"], name: "index_digests_on_user_id_and_year_and_period_type", unique: true
+    t.index ["user_id", "year", "month", "period_type"], name: "index_digests_on_user_year_month_period_type", unique: true
     t.index ["user_id"], name: "index_digests_on_user_id"
     t.index ["year"], name: "index_digests_on_year"
   end
@@ -427,12 +429,31 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_230537) do
     t.index ["user_id"], name: "index_tags_on_user_id"
   end
 
+  create_table "track_segments", force: :cascade do |t|
+    t.bigint "track_id", null: false
+    t.integer "transportation_mode", default: 0, null: false
+    t.integer "start_index", null: false
+    t.integer "end_index", null: false
+    t.integer "distance"
+    t.integer "duration"
+    t.float "avg_speed"
+    t.float "max_speed"
+    t.float "avg_acceleration"
+    t.integer "confidence", default: 0
+    t.string "source"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
+    t.index ["track_id"], name: "index_track_segments_on_track_id"
+    t.index ["transportation_mode"], name: "index_track_segments_on_transportation_mode"
+  end
+
   create_table "tracks", force: :cascade do |t|
     t.datetime "start_at", null: false
     t.datetime "end_at", null: false
     t.bigint "user_id", null: false
     t.geometry "original_path", limit: {srid: 0, type: "line_string"}, null: false
-    t.decimal "distance", precision: 8, scale: 2
+    t.bigint "distance"
     t.float "avg_speed"
     t.integer "duration"
     t.integer "elevation_gain"
@@ -441,6 +462,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_230537) do
     t.integer "elevation_min"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "dominant_mode", default: 0
+    t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
@@ -477,13 +500,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_230537) do
     t.integer "status", default: 0
     t.datetime "active_until"
     t.integer "points_count", default: 0, null: false
-    t.string "provider"
-    t.string "uid"
     t.string "utm_source"
     t.string "utm_medium"
     t.string "utm_campaign"
     t.string "utm_term"
     t.string "utm_content"
+    t.string "provider"
+    t.string "uid"
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
@@ -507,7 +530,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_230537) do
     t.index ["area_id"], name: "index_visits_on_area_id"
     t.index ["place_id"], name: "index_visits_on_place_id"
     t.index ["started_at"], name: "index_visits_on_started_at"
-    t.index ["user_id", "status", "started_at"], name: "index_visits_on_user_id_and_status_and_started_at"
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
@@ -523,7 +545,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_230537) do
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
-  add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", name: "fk_rails_points_raw_data_archives", on_delete: :nullify, validate: false
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :nullify
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
@@ -534,6 +555,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_13_230537) do
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
   add_foreign_key "tags", "users"
+  add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"
