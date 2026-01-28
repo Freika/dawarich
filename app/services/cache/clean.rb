@@ -12,6 +12,7 @@ class Cache::Clean
         delete_points_geocoded_stats_cache(user)
         delete_countries_cities_cache(user)
         delete_total_distance_cache(user)
+        delete_supporter_cache(user)
       end
 
       Rails.logger.info('Cache cleaned')
@@ -42,6 +43,13 @@ class Cache::Clean
 
     def delete_total_distance_cache(user)
       Rails.cache.delete("dawarich/user_#{user.id}_total_distance")
+    end
+
+    def delete_supporter_cache(user)
+      email = user.safe_settings.supporter_email
+      return if email.blank?
+
+      Rails.cache.delete(Supporter::VerifyEmail.new(email).cache_key)
     end
   end
 end

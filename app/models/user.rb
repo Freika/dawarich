@@ -191,17 +191,17 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def supporter?
-    return false if safe_settings.supporter_email.blank?
-
-    result = Supporter::VerifyEmail.new(safe_settings.supporter_email).call
-    result[:supporter] == true
+    supporter_info[:supporter] == true
   end
 
   def supporter_platform
-    return nil if safe_settings.supporter_email.blank?
+    supporter_info[:platform]
+  end
 
-    result = Supporter::VerifyEmail.new(safe_settings.supporter_email).call
-    result[:platform]
+  def supporter_info
+    return { supporter: false } if safe_settings.supporter_email.blank?
+
+    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
   end
 
   private

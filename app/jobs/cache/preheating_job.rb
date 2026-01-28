@@ -36,6 +36,9 @@ class Cache::PreheatingJob < ApplicationJob
         Stat.convert_distance(total_distance_meters, user.safe_settings.distance_unit),
         expires_in: 1.day
       )
+
+      # Preheat supporter status cache
+      user.supporter_info
     end
   end
 end
