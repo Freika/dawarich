@@ -26,23 +26,7 @@ class Users::SafeSettings
     'maps_maplibre_style' => 'light',
     'digest_emails_enabled' => true,
     'globe_projection' => false,
-    # Transportation mode thresholds (speeds in km/h, distances in km)
-    'transportation_thresholds' => {
-      'walking_max_speed' => 7,
-      'cycling_max_speed' => 45,
-      'driving_max_speed' => 220,
-      'flying_min_speed' => 150
-    },
-    'transportation_expert_thresholds' => {
-      'stationary_max_speed' => 1,
-      'running_vs_cycling_accel' => 0.25,
-      'cycling_vs_driving_accel' => 0.4,
-      'train_min_speed' => 80,
-      'min_segment_duration' => 60,
-      'time_gap_threshold' => 180,
-      'min_flight_distance_km' => 100
-    },
-    'transportation_expert_mode' => false
+    'supporter_email' => nil
   }.freeze
 
   def initialize(settings = {})
@@ -181,16 +165,7 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(value)
   end
 
-  def transportation_thresholds
-    settings['transportation_thresholds'] || DEFAULT_VALUES['transportation_thresholds']
+  def supporter_email
+    settings['supporter_email']
   end
-
-  def transportation_expert_thresholds
-    settings['transportation_expert_thresholds'] || DEFAULT_VALUES['transportation_expert_thresholds']
-  end
-
-  def transportation_expert_mode?
-    ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
-  end
-
 end

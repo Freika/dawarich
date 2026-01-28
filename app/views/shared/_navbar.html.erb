@@ -181,6 +181,11 @@
                   <%= icon 'star' %>
                 </span>
               <% end %>
+              <% if current_user.supporter? %>
+                <span class='tooltip tooltip-bottom' data-tip="Dawarich Supporter">
+                  <%= icon 'heart', class: 'text-pink-500' %>
+                </span>
+              <% end %>
             </summary>
             <ul class="p-2 bg-base-100 rounded-t-none z-10">
               <li><%= link_to 'Account', edit_user_registration_path %></li>
