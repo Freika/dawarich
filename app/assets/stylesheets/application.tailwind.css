@@ -65,6 +65,15 @@
   }
 }
 
+/* Supporter Badge Animation */
+@keyframes supporter-rainbow-glow {
+  0%   { filter: hue-rotate(0deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4)); }
+  25%  { filter: hue-rotate(90deg) drop-shadow(0 0 8px rgba(236, 72, 153, 0.8)); }
+  50%  { filter: hue-rotate(180deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4)); }
+  75%  { filter: hue-rotate(270deg) drop-shadow(0 0 8px rgba(236, 72, 153, 0.8)); }
+  100% { filter: hue-rotate(360deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4)); }
+}
+
 /* Visit Form Popup Styles */
 .visit-form-popup .leaflet-popup-content-wrapper {
   border-radius: 8px;

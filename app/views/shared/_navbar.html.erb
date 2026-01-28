@@ -183,7 +183,9 @@
               <% end %>
               <% if current_user.supporter? %>
                 <span class='tooltip tooltip-bottom' data-tip="Dawarich Supporter">
-                  <%= icon 'heart', class: 'text-pink-500' %>
+                  <span class="text-sky-400 inline-block animate-[supporter-rainbow-glow_8s_linear_infinite]">
+                    <%= icon 'gem' %>
+                  </span>
                 </span>
               <% end %>
             </summary>
