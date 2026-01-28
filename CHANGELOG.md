@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **Movement wellness**: Health-related insights based on your movement data
   - **Location clusters**: Geographic clustering of your visited locations
 - **Transportation mode detection for tracks**: Tracks are now automatically segmented by transportation mode (walking, cycling, driving, etc.) with configurable speed thresholds in settings. Modes are recalculated when threshold settings change.
+- Email preferences moved to "General" tab in user settings for better organization.
 
 ## Fixed
 
