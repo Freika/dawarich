@@ -27,6 +27,7 @@ class Users::SafeSettings
     'digest_emails_enabled' => true,
     'globe_projection' => false,
     'supporter_email' => nil,
+    'show_supporter_badge' => true,
     # Transportation mode thresholds (speeds in km/h, distances in km)
     'transportation_thresholds' => {
       'walking_max_speed' => 7,
@@ -187,6 +188,13 @@ class Users::SafeSettings
 
   def supporter_email
     settings['supporter_email']
+  end
+
+  def show_supporter_badge?
+    value = settings['show_supporter_badge']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
   end
 
   def transportation_thresholds

@@ -33,7 +33,7 @@ module Supporter
       )
 
       response.success? ? response.parsed_response.symbolize_keys : { supporter: false }
-    rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED, SocketError => e
+    rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, SocketError => e
       Rails.logger.warn("Supporter verification failed: #{e.message}")
       { supporter: false }
     end

@@ -113,42 +113,6 @@
             </div>
           <% end %>
 
-          <div class="lg:col-span-2">
-            <h2 class="text-2xl font-bold mb-4 flex items-center">
-              <%= icon 'heart', class: 'mr-2 text-pink-500' %> Supporter Status
-            </h2>
-            <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-              <% if current_user.supporter? %>
-                <div class="alert alert-success">
-                  <%= icon 'circle-check', class: 'w-5 h-5' %>
-                  <span>Thank you for supporting Dawarich<%= " via #{current_user.supporter_platform&.titleize}" if current_user.supporter_platform %>!</span>
-                </div>
-              <% end %>
-
-              <div class="form-control w-full">
-                <%= f.label :supporter_email, class: 'label' do %>
-                  <span class="label-text font-medium">Email used for Patreon/GitHub/Ko-fi</span>
-                <% end %>
-                <%= f.email_field :supporter_email,
-                    value: current_user.safe_settings.supporter_email,
-                    class: 'input input-bordered w-full',
-                    placeholder: 'supporter@example.com' %>
-                <span class="label-text-alt mt-1">
-                  Enter the email you used to support Dawarich on
-                  <a href="https://patreon.com/dawarich" class="link link-primary" target="_blank" rel="noopener noreferrer">Patreon</a>,
-                  <a href="https://github.com/sponsors/Freika" class="link link-primary" target="_blank" rel="noopener noreferrer">GitHub Sponsors</a>, or
-                  <a href="https://ko-fi.com/freika" class="link link-primary" target="_blank" rel="noopener noreferrer">Ko-fi</a>
-                </span>
-              </div>
-
-              <% if current_user.safe_settings.supporter_email.present? && !current_user.supporter? %>
-                <div class="alert alert-warning">
-                  <%= icon 'triangle-alert', class: 'w-5 h-5' %>
-                  <span>Email not found in supporter list. Make sure you're using the same email as your donation platform.</span>
-                </div>
-              <% end %>
-            </div>
-          </div>
         </div>
         <div class="card-actions justify-end mt-6">
           <%= f.submit "Save & Test Connection", class: "btn btn-primary" %>

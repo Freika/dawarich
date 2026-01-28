@@ -29,6 +29,30 @@
               </div>
             </div>
           </div>
+
+          <% if DawarichSettings.self_hosted? && current_user.supporter? %>
+            <!-- Badge Toggle (only for verified supporters) -->
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'gem', class: 'mr-2 text-sky-400' %> Supporter Badge
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
+                    <%= f.check_box :show_supporter_badge,
+                                    checked: current_user.safe_settings.show_supporter_badge?,
+                                    class: "toggle toggle-primary" %>
+                    <div>
+                      <span class="label-text font-medium">Show supporter badge in navbar</span>
+                      <p class="text-sm text-base-content/70 mt-1">
+                        Display a gem icon next to your profile to show your supporter status
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          <% end %>
         </div>
         <div class="card-actions justify-end mt-6">
           <%= f.submit 'Save changes', class: "btn btn-primary" %>
@@ -36,4 +60,73 @@
       </div>
     <% end %>
   </div>
+
+  <% if DawarichSettings.self_hosted? %>
+    <!-- Supporter Section (separate card with its own form) -->
+    <div class="card bg-base-200 shadow-xl mt-6">
+      <div class="card-body">
+        <h2 class="text-2xl font-bold mb-4 flex items-center">
+          <%= icon 'heart', class: 'mr-2 text-pink-500' %> Supporter Status
+        </h2>
+        <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+          <% if current_user.supporter? %>
+            <div class="alert alert-success">
+              <%= icon 'circle-check', class: 'w-5 h-5' %>
+              <span>Thank you for supporting Dawarich<%= " via #{current_user.supporter_platform&.titleize}" if current_user.supporter_platform %>!</span>
+            </div>
+          <% end %>
+
+          <%= form_with url: settings_verify_supporter_path, method: :post, data: { turbo: false } do |vf| %>
+            <div class="form-control max-w-md">
+              <%= vf.label :supporter_email, class: 'label' do %>
+                <span class="label-text font-medium">Email used for Patreon/GitHub/Ko-fi</span>
+              <% end %>
+              <div class="flex gap-2">
+                <%= vf.email_field :supporter_email,
+                    value: current_user.safe_settings.supporter_email,
+                    class: 'input input-bordered flex-1',
+                    placeholder: 'supporter@example.com' %>
+                <%= vf.submit 'Verify', class: 'btn btn-primary' %>
+              </div>
+            </div>
+          <% end %>
+
+          <% if current_user.safe_settings.supporter_email.present? && !current_user.supporter? %>
+            <div class="alert alert-warning">
+              <%= icon 'triangle-alert', class: 'w-5 h-5' %>
+              <span>Email not found in supporter list. Make sure you're using the same email as your donation platform.</span>
+            </div>
+          <% end %>
+
+          <!-- Info panel -->
+          <div class="bg-base-200 p-4 rounded-lg space-y-3">
+            <h3 class="font-semibold flex items-center gap-2">
+              <%= icon 'info', class: 'w-4 h-4 text-primary' %> How to support Dawarich
+            </h3>
+            <p class="text-sm text-base-content/70">
+              Dawarich is a free and open-source project. Your support helps cover hosting costs, fund development, and keep the project alive. You can support us through any of these platforms:
+            </p>
+            <div class="flex flex-wrap gap-2">
+              <a href="https://www.patreon.com/freika" class="btn btn-sm btn-outline" target="_blank" rel="noopener noreferrer">
+                Patreon
+              </a>
+              <a href="https://github.com/sponsors/Freika" class="btn btn-sm btn-outline" target="_blank" rel="noopener noreferrer">
+                GitHub Sponsors
+              </a>
+              <a href="https://ko-fi.com/freika" class="btn btn-sm btn-outline" target="_blank" rel="noopener noreferrer">
+                Ko-fi
+              </a>
+            </div>
+
+            <h3 class="font-semibold mt-3">Supporter benefits</h3>
+            <ul class="text-sm text-base-content/70 list-disc list-inside space-y-1">
+              <li>Access to reverse geocoding API (see Patreon tier)</li>
+              <li>Mention in Github Releases</li>
+              <li>Supporter badge displayed in the navbar</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
 </div>
