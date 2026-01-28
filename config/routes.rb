@@ -38,6 +38,7 @@ Rails.application.routes.draw do
   namespace :settings do
     resources :general, only: [:index]
     patch 'general', to: 'general#update'
+    post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
 
     resources :background_jobs, only: %i[index create]
     resources :users, only: %i[index create destroy edit update] do
