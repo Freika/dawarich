@@ -219,6 +219,79 @@ RSpec.describe Visits::Detector do
       end
     end
 
+    describe '#calculate_weighted_center' do
+      context 'with points having different accuracy values' do
+        let(:high_accuracy_point) do
+          build_stubbed(:point, lonlat: 'POINT(-74.0060 40.7128)', accuracy: 5)
+        end
+
+        let(:low_accuracy_point) do
+          build_stubbed(:point, lonlat: 'POINT(-74.0080 40.7148)', accuracy: 100)
+        end
+
+        it 'weights points by accuracy (inverse relationship)' do
+          test_points = [high_accuracy_point, low_accuracy_point]
+          center = subject.send(:calculate_weighted_center, test_points)
+
+          # The center should be closer to the high accuracy point
+          # High accuracy point: 40.7128, -74.0060 (weight: 1/5 = 0.2)
+          # Low accuracy point: 40.7148, -74.0080 (weight: 1/100 = 0.01)
+          # Weighted average should be much closer to high accuracy point
+          expect(center[0]).to be_within(0.001).of(40.7129)
+          expect(center[1]).to be_within(0.001).of(-74.0061)
+        end
+      end
+
+      context 'with points having nil accuracy' do
+        let(:point_with_accuracy) do
+          build_stubbed(:point, lonlat: 'POINT(-74.0060 40.7128)', accuracy: 10)
+        end
+
+        let(:point_without_accuracy) do
+          build_stubbed(:point, lonlat: 'POINT(-74.0080 40.7148)', accuracy: nil)
+        end
+
+        it 'uses default accuracy when nil' do
+          test_points = [point_with_accuracy, point_without_accuracy]
+          center = subject.send(:calculate_weighted_center, test_points)
+
+          # Point with accuracy 10 has higher weight than nil (default 50)
+          # Should be closer to the point with accuracy 10
+          expect(center[0]).to be_within(0.01).of(40.7131)
+          expect(center[1]).to be_within(0.01).of(-74.0063)
+        end
+      end
+
+      context 'with points having equal accuracy' do
+        let(:point1) do
+          build_stubbed(:point, lonlat: 'POINT(-74.0060 40.7128)', accuracy: 10)
+        end
+
+        let(:point2) do
+          build_stubbed(:point, lonlat: 'POINT(-74.0080 40.7148)', accuracy: 10)
+        end
+
+        it 'calculates simple centroid when all accuracies are equal' do
+          test_points = [point1, point2]
+          center = subject.send(:calculate_weighted_center, test_points)
+
+          # Should be the midpoint
+          expected_lat = (40.7128 + 40.7148) / 2
+          expected_lon = (-74.0060 + -74.0080) / 2
+
+          expect(center[0]).to be_within(0.0001).of(expected_lat)
+          expect(center[1]).to be_within(0.0001).of(expected_lon)
+        end
+      end
+
+      context 'with empty points' do
+        it 'handles empty array gracefully' do
+          # This should use the fallback and handle divide by zero
+          expect { subject.send(:calculate_weighted_center, []) }.not_to raise_error
+        end
+      end
+    end
+
     describe '#calculate_visit_radius' do
       let(:center) { [40.7128, -74.0060] }
       let(:test_points) do

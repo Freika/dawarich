@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Added
 
+- **Enhanced visit detection using PostGIS DBSCAN clustering**: Visits are now detected using database-level spatial clustering (DBSCAN) instead of O(n²) Ruby iteration, with automatic fallback to the previous algorithm. Visit center points are now calculated using GPS accuracy-weighted averaging for better precision.
+- **Configurable visit detection settings**: New settings card in Background Jobs page allows fine-tuning clustering distance, minimum points per visit, time gap threshold, extended merge window, travel merge threshold, and default GPS accuracy.
+- **Extended visit merging**: Visits with gaps beyond 30 minutes (up to a configurable window, default 2 hours) can now be merged if the user didn't travel far during the gap, using PostGIS for efficient consecutive distance calculation.
+- **Monthly batching for large visit detection ranges**: Visit detection for ranges exceeding 31 days is now processed in monthly batches to improve performance and memory usage.
 - App-level DNS cache with 5 minutes TTL to reduce DNS lookups and improve performance. #2183
 - New **Insights page** with comprehensive analytics and visualizations:
   - **Activity heatmap**: GitHub-style contribution graph showing daily activity throughout the year

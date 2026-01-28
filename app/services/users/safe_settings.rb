@@ -42,7 +42,14 @@ class Users::SafeSettings
       'time_gap_threshold' => 180,
       'min_flight_distance_km' => 100
     },
-    'transportation_expert_mode' => false
+    'transportation_expert_mode' => false,
+    # Visit detection settings
+    'visit_detection_eps_meters' => 50,
+    'visit_detection_min_points' => 2,
+    'visit_detection_time_gap_minutes' => 30,
+    'visit_detection_extended_merge_hours' => 2,
+    'visit_detection_travel_threshold_meters' => 200,
+    'visit_detection_default_accuracy' => 50
   }.freeze
 
   def initialize(settings = {})
@@ -194,5 +201,30 @@ class Users::SafeSettings
 
   def transportation_expert_mode?
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
+  end
+
+  # Visit detection settings
+  def visit_detection_eps_meters
+    settings['visit_detection_eps_meters']
+  end
+
+  def visit_detection_min_points
+    settings['visit_detection_min_points']
+  end
+
+  def visit_detection_time_gap_minutes
+    settings['visit_detection_time_gap_minutes']
+  end
+
+  def visit_detection_extended_merge_hours
+    settings['visit_detection_extended_merge_hours']
+  end
+
+  def visit_detection_travel_threshold_meters
+    settings['visit_detection_travel_threshold_meters']
+  end
+
+  def visit_detection_default_accuracy
+    settings['visit_detection_default_accuracy']
   end
 end
