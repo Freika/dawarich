@@ -20,11 +20,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **Movement wellness**: Health-related insights based on your movement data
   - **Location clusters**: Geographic clustering of your visited locations
 - **Transportation mode detection for tracks**: Tracks are now automatically segmented by transportation mode (walking, cycling, driving, etc.) with configurable speed thresholds in settings. Modes are recalculated when threshold settings change.
+- **Near real-time track generation**: Tracks are now generated within ~45 seconds of receiving new points (via OwnTracks, Overland, or the Points API) using a Redis-based debouncer. This replaces the previous 4-hour polling cycle for most cases. Daily generation job frequency reduced from every 4 hours to every 12 hours as a fallback.
+- **Track merging**: Consecutive tracks that belong to the same journey are automatically merged when the gap between them is within the configured time threshold.
+- **Supporter verification**: Users can now link their Patreon, GitHub Sponsors, or Ko-fi email in settings to verify supporter status. Verified supporters see a heart icon in the navbar.
 
 ## Fixed
 
 - Remove assets before precompilation to prevent stale assets from being served. #2187
 - undefined method 'to_sym' for nil in sidekiq #2190
+- `Tracks::BoundaryResolverJob` now uses deterministic exponential backoff instead of random delays, and stops retrying after 5 attempts to avoid infinite rescheduling.
+
+## Changed
+
+- Removed duplicate `split_points_into_segments_geocoder` method from `Tracks::Segmentation`; it is now an alias for `split_points_into_segments`.
+- "Trips" label in the navbar no longer shows the alpha superscript tag.
+- Daily track generation job runs every 12 hours instead of every 4 hours, since real-time generation handles most cases.
 
 
 # [1.0.1] - 2026-01-24

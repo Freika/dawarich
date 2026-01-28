@@ -42,7 +42,8 @@ class Users::SafeSettings
       'time_gap_threshold' => 180,
       'min_flight_distance_km' => 100
     },
-    'transportation_expert_mode' => false
+    'transportation_expert_mode' => false,
+    'supporter_email' => nil
   }.freeze
 
   def initialize(settings = {})
@@ -194,5 +195,9 @@ class Users::SafeSettings
 
   def transportation_expert_mode?
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
+  end
+
+  def supporter_email
+    settings['supporter_email']
   end
 end

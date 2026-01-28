@@ -27,7 +27,11 @@ class Points::Create
       created_points.concat(result)
     end
 
-    User.reset_counters(user.id, :points) if created_points.any?
+    if created_points.any?
+      User.reset_counters(user.id, :points)
+      Tracks::RealtimeDebouncer.new(user.id).trigger
+    end
+
     created_points
   end
 end

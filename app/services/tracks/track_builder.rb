@@ -87,12 +87,6 @@ module Tracks::TrackBuilder
     Tracks::BuildPath.new(points).call
   end
 
-  def calculate_track_distance(points)
-    # Always calculate and store distance in meters for consistency
-    distance_in_meters = Point.total_distance(points, :m)
-    distance_in_meters.round
-  end
-
   def calculate_duration(points)
     points.last.timestamp - points.first.timestamp
   end
