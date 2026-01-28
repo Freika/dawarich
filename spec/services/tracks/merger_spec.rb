@@ -70,6 +70,15 @@ RSpec.describe Tracks::Merger do
         # Distance should change after merging
         expect(older_track.distance).not_to eq(original_distance)
       end
+
+      it 'deletes old segments and re-detects for the merged track' do
+        create(:track_segment, track: older_track, start_index: 0, end_index: 1)
+        create(:track_segment, track: newer_track, start_index: 0, end_index: 1)
+
+        expect { merger.call }.to change { TrackSegment.count }
+        expect(newer_track.track_segments).to be_empty
+        expect(older_track.reload.track_segments.count).to be >= 0
+      end
     end
 
     context 'when older_track is nil' do

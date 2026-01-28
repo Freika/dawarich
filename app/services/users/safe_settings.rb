@@ -195,5 +195,4 @@ class Users::SafeSettings
   def transportation_expert_mode?
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
   end
-
 end

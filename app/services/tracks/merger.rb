@@ -19,6 +19,8 @@
 # - Tracks::IncrementalGenerator
 #
 class Tracks::Merger
+  include Tracks::TrackBuilder
+
   def initialize(older_track, newer_track)
     @older_track = older_track
     @newer_track = newer_track
@@ -28,6 +30,10 @@ class Tracks::Merger
     return false if invalid_merge?
 
     ActiveRecord::Base.transaction do
+      # Delete segments from both tracks (indices become invalid after merge)
+      @older_track.track_segments.delete_all
+      @newer_track.track_segments.delete_all
+
       # Update newer track's points to belong to older track
       @newer_track.points.update_all(track_id: @older_track.id)
 
@@ -40,6 +46,9 @@ class Tracks::Merger
       # Remove the now-empty newer track
       @newer_track.destroy!
     end
+
+    # Re-detect transportation modes for the merged track
+    detect_and_create_segments(@older_track, @older_track.points.order(:timestamp))
 
     true
   rescue StandardError => e
