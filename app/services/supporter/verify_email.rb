@@ -29,16 +29,10 @@ module Supporter
       response = HTTParty.get(
         "#{SUPPORTER_VERIFICATION_URL}?email_hash=#{email_hash}",
         timeout: 5,
-        headers: {
-          'X-Dawarich-Version' => APP_VERSION
-        }
+        headers: { 'X-Dawarich-Version' => APP_VERSION }
       )
 
-      if response.success?
-        response.parsed_response.symbolize_keys
-      else
-        { supporter: false }
-      end
+      response.success? ? response.parsed_response.symbolize_keys : { supporter: false }
     rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED, SocketError => e
       Rails.logger.warn("Supporter verification failed: #{e.message}")
       { supporter: false }
