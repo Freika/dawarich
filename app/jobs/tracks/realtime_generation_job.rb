@@ -18,11 +18,11 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
   queue_as :tracks
 
   def perform(user_id)
+    # Always clear debounce key first so new triggers aren't blocked
+    Tracks::RealtimeDebouncer.new(user_id).clear
+
     user = User.find_by(id: user_id)
     return unless user&.active? || user&.trial?
-
-    # Clear debounce key to allow new triggers
-    Tracks::RealtimeDebouncer.new(user_id).clear
 
     # Generate tracks from recent untracked points
     Tracks::IncrementalGenerator.new(user).call

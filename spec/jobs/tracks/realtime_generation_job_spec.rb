@@ -59,6 +59,15 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
 
         expect(Tracks::IncrementalGenerator).not_to have_received(:new)
       end
+
+      it 'still clears the debounce key' do
+        debouncer = instance_double(Tracks::RealtimeDebouncer, clear: true)
+        allow(Tracks::RealtimeDebouncer).to receive(:new).with(inactive_user.id).and_return(debouncer)
+
+        described_class.perform_now(inactive_user.id)
+
+        expect(debouncer).to have_received(:clear)
+      end
     end
 
     context 'when user does not exist' do
@@ -72,6 +81,15 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
         described_class.perform_now(-1)
 
         expect(Tracks::IncrementalGenerator).not_to have_received(:new)
+      end
+
+      it 'still clears the debounce key' do
+        debouncer = instance_double(Tracks::RealtimeDebouncer, clear: true)
+        allow(Tracks::RealtimeDebouncer).to receive(:new).with(-1).and_return(debouncer)
+
+        described_class.perform_now(-1)
+
+        expect(debouncer).to have_received(:clear)
       end
     end
 
