@@ -1,0 +1,8 @@
+<% target_theme = current_user.theme == 'light' ? 'dark' : 'light' %>
+<%= link_to settings_theme_path(theme: target_theme), data: { turbo: false },
+            class: local_assigns.fetch(:css_class, 'btn btn-ghost') do %>
+  <%= icon(target_theme == 'dark' ? 'moon' : 'sun') %>
+  <% if local_assigns[:show_label] %>
+    <span><%= target_theme == 'dark' ? 'Dark mode' : 'Light mode' %></span>
+  <% end %>
+<% end %>

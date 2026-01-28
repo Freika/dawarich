@@ -131,6 +131,14 @@ module ApplicationHelper
     end
   end
 
+  def trial_days_remaining_compact(user)
+    expiry = user.active_until
+    return "Expired" if expiry.blank? || expiry.past?
+
+    days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max
+    "#{days_left}d left"
+  end
+
   def oauth_provider_name(provider)
     return OIDC_PROVIDER_NAME if provider == :openid_connect
 
