@@ -74,6 +74,8 @@ module Tracks::TrackBuilder
     if track.save
       Point.where(id: points.map(&:id)).update_all(track_id: track.id)
 
+      detect_and_create_segments(track, points)
+
       track
     else
       Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
@@ -83,12 +85,6 @@ module Tracks::TrackBuilder
 
   def build_path(points)
     Tracks::BuildPath.new(points).call
-  end
-
-  def calculate_track_distance(points)
-    # Always calculate and store distance in meters for consistency
-    distance_in_meters = Point.total_distance(points, :m)
-    distance_in_meters.round
   end
 
   def calculate_duration(points)
@@ -140,6 +136,41 @@ module Tracks::TrackBuilder
       max: 0,
       min: 0
     }
+  end
+
+  def detect_and_create_segments(track, points)
+    detector = TransportationModes::Detector.new(track, points)
+    segment_data = detector.call
+
+    return if segment_data.empty?
+
+    segments = segment_data.map do |data|
+      track.track_segments.create(
+        transportation_mode: data[:mode],
+        start_index: data[:start_index],
+        end_index: data[:end_index],
+        distance: data[:distance],
+        duration: data[:duration],
+        avg_speed: data[:avg_speed],
+        max_speed: data[:max_speed],
+        avg_acceleration: data[:avg_acceleration],
+        confidence: data[:confidence],
+        source: data[:source]
+      )
+    end.compact
+
+    update_dominant_mode(track, segments)
+  rescue StandardError => e
+    Rails.logger.error "Failed to detect transportation modes for track #{track.id}: #{e.message}"
+  end
+
+  def update_dominant_mode(track, segments)
+    return if segments.empty?
+
+    dominant_segment = segments.max_by { |s| s.duration || 0 }
+    return unless dominant_segment
+
+    track.update_column(:dominant_mode, dominant_segment.transportation_mode)
   end
 
   private

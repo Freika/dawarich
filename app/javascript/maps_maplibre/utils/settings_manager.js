@@ -15,7 +15,24 @@ const DEFAULT_SETTINGS = {
   pointsRenderingMode: 'raw',
   speedColoredRoutes: false,
   speedColorScale: '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
-  globeProjection: false
+  globeProjection: false,
+  // Transportation mode thresholds (speeds in km/h, distances in km)
+  transportationExpertMode: false,
+  transportationThresholds: {
+    walkingMaxSpeed: 7,
+    cyclingMaxSpeed: 45,
+    drivingMaxSpeed: 220,
+    flyingMinSpeed: 150
+  },
+  transportationExpertThresholds: {
+    stationaryMaxSpeed: 1,
+    runningVsCyclingAccel: 0.25,
+    cyclingVsDrivingAccel: 0.4,
+    trainMinSpeed: 80,
+    minSegmentDuration: 60,
+    timeGapThreshold: 180,
+    minFlightDistanceKm: 100
+  }
 }
 
 // Mapping between v2 layer names and v1 layer names in enabled_map_layers array
@@ -43,7 +60,28 @@ const BACKEND_SETTINGS_MAP = {
   pointsRenderingMode: 'points_rendering_mode',
   speedColoredRoutes: 'speed_colored_routes',
   speedColorScale: 'speed_color_scale',
-  globeProjection: 'globe_projection'
+  globeProjection: 'globe_projection',
+  transportationExpertMode: 'transportation_expert_mode',
+  transportationThresholds: 'transportation_thresholds',
+  transportationExpertThresholds: 'transportation_expert_thresholds'
+}
+
+// Mapping for nested transportation threshold keys (frontend camelCase to backend snake_case)
+const TRANSPORTATION_THRESHOLD_MAP = {
+  walkingMaxSpeed: 'walking_max_speed',
+  cyclingMaxSpeed: 'cycling_max_speed',
+  drivingMaxSpeed: 'driving_max_speed',
+  flyingMinSpeed: 'flying_min_speed'
+}
+
+const TRANSPORTATION_EXPERT_THRESHOLD_MAP = {
+  stationaryMaxSpeed: 'stationary_max_speed',
+  runningVsCyclingAccel: 'running_vs_cycling_accel',
+  cyclingVsDrivingAccel: 'cycling_vs_driving_accel',
+  trainMinSpeed: 'train_min_speed',
+  minSegmentDuration: 'min_segment_duration',
+  timeGapThreshold: 'time_gap_threshold',
+  minFlightDistanceKm: 'min_flight_distance_km'
 }
 
 export class SettingsManager {
@@ -111,6 +149,35 @@ export class SettingsManager {
   }
 
   /**
+   * Convert transportation thresholds between frontend and backend formats
+   * @param {Object} thresholds - Threshold object to convert
+   * @param {Object} keyMap - Mapping between frontend camelCase and backend snake_case keys
+   * @param {boolean} toFrontend - If true, convert from backend to frontend; otherwise, convert to backend
+   * @returns {Object} Converted threshold object
+   */
+  static _convertTransportationThresholds(thresholds, keyMap, toFrontend = false) {
+    if (!thresholds) return null
+
+    const converted = {}
+    if (toFrontend) {
+      // backend (snake_case) to frontend (camelCase)
+      Object.entries(keyMap).forEach(([frontendKey, backendKey]) => {
+        if (backendKey in thresholds) {
+          converted[frontendKey] = parseFloat(thresholds[backendKey])
+        }
+      })
+    } else {
+      // frontend (camelCase) to backend (snake_case)
+      Object.entries(keyMap).forEach(([frontendKey, backendKey]) => {
+        if (frontendKey in thresholds) {
+          converted[backendKey] = thresholds[frontendKey]
+        }
+      })
+    }
+    return converted
+  }
+
+  /**
    * Load settings from backend API
    * @returns {Promise<Object>} Settings object from backend
    */
@@ -156,6 +223,14 @@ export class SettingsManager {
             value = value === true || value === 'true'
           } else if (frontendKey === 'globeProjection') {
             value = value === true || value === 'true'
+          } else if (frontendKey === 'transportationExpertMode') {
+            value = value === true || value === 'true'
+          } else if (frontendKey === 'transportationThresholds' && value) {
+            // Convert backend snake_case keys to frontend camelCase
+            value = this._convertTransportationThresholds(value, TRANSPORTATION_THRESHOLD_MAP, true)
+          } else if (frontendKey === 'transportationExpertThresholds' && value) {
+            // Convert backend snake_case keys to frontend camelCase
+            value = this._convertTransportationThresholds(value, TRANSPORTATION_EXPERT_THRESHOLD_MAP, true)
           }
 
           frontendSettings[frontendKey] = value
@@ -194,12 +269,12 @@ export class SettingsManager {
   /**
    * Save settings to backend API
    * @param {Object} settings - Settings to save
-   * @returns {Promise<boolean>} Success status
+   * @returns {Promise<Object|null>} API response data or null on failure
    */
   static async saveToBackend(settings) {
     if (!this.apiKey) {
       console.warn('[Settings] API key not set, cannot save to backend')
-      return false
+      return null
     }
 
     try {
@@ -225,6 +300,14 @@ export class SettingsManager {
             value = Boolean(value)
           } else if (frontendKey === 'globeProjection') {
             value = Boolean(value)
+          } else if (frontendKey === 'transportationExpertMode') {
+            value = Boolean(value)
+          } else if (frontendKey === 'transportationThresholds' && value) {
+            // Convert frontend camelCase keys to backend snake_case
+            value = this._convertTransportationThresholds(value, TRANSPORTATION_THRESHOLD_MAP, false)
+          } else if (frontendKey === 'transportationExpertThresholds' && value) {
+            // Convert frontend camelCase keys to backend snake_case
+            value = this._convertTransportationThresholds(value, TRANSPORTATION_EXPERT_THRESHOLD_MAP, false)
           }
 
           backendSettings[backendKey] = value
@@ -240,14 +323,17 @@ export class SettingsManager {
         body: JSON.stringify({ settings: backendSettings })
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error(`Failed to save settings: ${response.status}`)
+        // Return the response data even on error so we can check for locked status
+        return data
       }
 
-      return true
+      return data
     } catch (error) {
       console.error('[Settings] Failed to save to backend:', error)
-      return false
+      return null
     }
   }
 
@@ -264,6 +350,7 @@ export class SettingsManager {
    * Update a specific setting and save to backend
    * @param {string} key - Setting key
    * @param {*} value - New value
+   * @returns {Promise<Object|null>} API response data
    */
   static async updateSetting(key, value) {
     const settings = this.getSettings()
@@ -279,8 +366,8 @@ export class SettingsManager {
     // Update cache immediately
     this.updateCache(settings)
 
-    // Save to backend
-    await this.saveToBackend(settings)
+    // Save to backend and return response
+    return await this.saveToBackend(settings)
   }
 
   /**

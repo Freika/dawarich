@@ -1,13 +1,14 @@
-<% content_for :title, 'Email Settings' %>
+<% content_for :title, "General settings" %>
 
 <div class="min-h-content w-full my-5">
-  <h1 class="text-3xl font-bold mb-6">Email Settings</h1>
+  <h1 class="text-3xl font-bold mb-6">General settings</h1>
   <%= render 'settings/navigation' %>
 
   <div class="card bg-base-200 shadow-xl">
-    <%= form_for :emails, url: settings_emails_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
+    <%= form_with url: settings_general_path, method: :patch, data: { turbo: false } do |f| %>
       <div class="card-body">
         <div class="space-y-8 animate-fade-in">
+          <!-- Email Preferences Section -->
           <div>
             <h2 class="text-2xl font-bold mb-4 flex items-center">
               <%= icon 'mail', class: "text-primary mr-2" %> Email Preferences

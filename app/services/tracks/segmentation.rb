@@ -67,37 +67,10 @@ module Tracks::Segmentation
     segments
   end
 
-  # Alternative segmentation using Geocoder (no SQL dependency)
-  def split_points_into_segments_geocoder(points)
-    return [] if points.empty?
-
-    segments = []
-    current_segment = []
-
-    points.each do |point|
-      if should_start_new_segment_geocoder?(point, current_segment.last)
-        # Finalize current segment if it has enough points
-        segments << current_segment if current_segment.size >= 2
-        current_segment = [point]
-      else
-        current_segment << point
-      end
-    end
-
-    # Don't forget the last segment
-    segments << current_segment if current_segment.size >= 2
-
-    segments
-  end
+  # Alias for backwards compatibility with TimeChunkProcessorJob
+  alias split_points_into_segments_geocoder split_points_into_segments
 
   def should_start_new_segment?(current_point, previous_point)
-    return false if previous_point.nil?
-
-    time_gap_exceeded?(current_point.timestamp, previous_point.timestamp)
-  end
-
-  # Alternative segmentation logic using Geocoder (no SQL dependency)
-  def should_start_new_segment_geocoder?(current_point, previous_point)
     return false if previous_point.nil?
 
     time_gap_exceeded?(current_point.timestamp, previous_point.timestamp)
@@ -108,24 +81,6 @@ module Tracks::Segmentation
     time_threshold_seconds = time_threshold_minutes.to_i * 60
 
     time_diff_seconds > time_threshold_seconds
-  end
-
-  def should_finalize_segment?(segment_points, grace_period_minutes = 5)
-    return false if segment_points.size < 2
-
-    last_point = segment_points.last
-    last_timestamp = last_point.timestamp
-    current_time = Time.current.to_i
-
-    # Don't finalize if the last point is too recent (within grace period)
-    time_since_last_point = current_time - last_timestamp
-    grace_period_seconds = grace_period_minutes * 60
-
-    time_since_last_point > grace_period_seconds
-  end
-
-  def point_coordinates(point)
-    [point.lat, point.lon]
   end
 
   def time_threshold_minutes

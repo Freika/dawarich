@@ -12,6 +12,7 @@ class Cache::Clean
         delete_points_geocoded_stats_cache(user)
         delete_countries_cities_cache(user)
         delete_total_distance_cache(user)
+        delete_insights_digest_cache(user)
       end
 
       Rails.logger.info('Cache cleaned')
@@ -42,6 +43,12 @@ class Cache::Clean
 
     def delete_total_distance_cache(user)
       Rails.cache.delete("dawarich/user_#{user.id}_total_distance")
+    end
+
+    def delete_insights_digest_cache(user)
+      return unless Rails.cache.respond_to?(:delete_matched)
+
+      Rails.cache.delete_matched("insights/yearly_digest/#{user.id}/*")
     end
   end
 end

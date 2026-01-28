@@ -100,6 +100,7 @@ namespace :demo do
     puts "   Confirmed Visits: #{user.visits.confirmed.count}"
     puts "   Areas: #{user.areas.count}"
     puts "   Tracks: #{user.tracks.count}"
+    puts "   Track Segments: #{TrackSegment.joins(:track).where(tracks: { user_id: user.id }).count}"
     puts "   Family Members: #{family_members.count}"
     puts "\n🔐 Login credentials:"
     puts '   Email: demo@dawarich.app'
@@ -256,7 +257,7 @@ namespace :demo do
     end
 
     # Create or find owner membership
-    owner_membership = Family::Membership.find_or_create_by!(
+    Family::Membership.find_or_create_by!(
       family: family,
       user: owner,
       role: :owner
@@ -309,7 +310,7 @@ namespace :demo do
         # Create 3-5 recent points for this member within 1km of base location
         points_count = rand(3..5)
 
-        points_count.times do |point_index|
+        points_count.times do |_point_index|
           # Add random offset (within ~1km)
           lat_offset = (rand(-0.01..0.01) * 100) / 100.0
           lon_offset = (rand(-0.01..0.01) * 100) / 100.0
@@ -345,13 +346,16 @@ namespace :demo do
     family_members
   end
 
+  # Transportation modes for demo tracks
+  DEMO_TRANSPORTATION_MODES = %i[walking running cycling driving bus train stationary].freeze
+
   def create_tracks(user, count)
     # Get points that aren't already assigned to tracks
     available_points = Point.where(user_id: user.id, track_id: nil)
                             .order(:timestamp)
 
     if available_points.count < 10
-      puts "   ⚠️  Not enough untracked points to create tracks"
+      puts '   ⚠️  Not enough untracked points to create tracks'
       return 0
     end
 
@@ -421,6 +425,9 @@ namespace :demo do
       # Associate points with the track
       track_points.each { |p| p.update_column(:track_id, track.id) }
 
+      # Create transportation mode segments for this track
+      create_track_segments(track, track_points)
+
       created_count += 1
       print '.' if (index + 1) % 5 == 0
     end
@@ -429,10 +436,95 @@ namespace :demo do
     created_count
   end
 
+  def create_track_segments(track, track_points)
+    return if track_points.length < 2
+
+    # Determine number of segments (1-4 based on track length)
+    num_segments = case track_points.length
+                   when 2..5 then 1
+                   when 6..15 then rand(1..2)
+                   when 16..30 then rand(2..3)
+                   else rand(2..4)
+                   end
+
+    # Calculate segment boundaries
+    points_per_segment = track_points.length / num_segments
+    current_index = 0
+
+    num_segments.times do |seg_idx|
+      # Calculate start and end indices for this segment
+      start_index = current_index
+      end_index = if seg_idx == num_segments - 1
+                    track_points.length - 1
+                  else
+                    [current_index + points_per_segment - 1, track_points.length - 1].min
+                  end
+
+      # Get points for this segment
+      segment_points = track_points[start_index..end_index]
+      next if segment_points.length < 2
+
+      # Calculate segment metrics
+      segment_distance = 0
+      segment_points.each_cons(2) do |p1, p2|
+        segment_distance += haversine_distance(p1.lat, p1.lon, p2.lat, p2.lon)
+      end
+
+      segment_duration = Time.zone.at(segment_points.last.timestamp) - Time.zone.at(segment_points.first.timestamp)
+      segment_duration = [segment_duration.to_i, 1].max # Minimum 1 second
+
+      segment_avg_speed = segment_distance / segment_duration.to_f # m/s
+      segment_avg_speed_kmh = segment_avg_speed * 3.6 # Convert to km/h
+
+      # Determine transportation mode based on speed
+      transportation_mode = determine_mode_from_speed(segment_avg_speed_kmh)
+
+      # Calculate max speed from velocities if available
+      velocities = segment_points.map(&:velocity).compact
+      max_speed = velocities.any? ? velocities.max : segment_avg_speed_kmh
+
+      # Determine confidence based on segment length and consistency
+      confidence = case segment_points.length
+                   when 2..3 then :low
+                   when 4..10 then :medium
+                   else :high
+                   end
+
+      # Create the track segment
+      track.track_segments.create!(
+        transportation_mode: transportation_mode,
+        start_index: start_index,
+        end_index: end_index,
+        distance: segment_distance.to_i,
+        duration: segment_duration,
+        avg_speed: segment_avg_speed_kmh,
+        max_speed: max_speed,
+        confidence: confidence
+      )
+
+      current_index = end_index + 1
+    end
+
+    # Update the track's dominant mode
+    track.update_dominant_mode!
+  end
+
+  def determine_mode_from_speed(speed_kmh)
+    case speed_kmh
+    when 0..1 then :stationary
+    when 1..7 then :walking
+    when 7..15 then :running
+    when 15..35 then :cycling
+    when 35..120 then :driving
+    when 120..250 then :train
+    else :flying
+    end
+  end
+
   def haversine_distance(lat1, lon1, lat2, lon2)
     # Haversine formula to calculate distance in meters
     rad_per_deg = Math::PI / 180
-    rm = 6371000 # Earth radius in meters
+    rm = 6_371_000 # Earth radius in meters
 
     dlat_rad = (lat2 - lat1) * rad_per_deg
     dlon_rad = (lon2 - lon1) * rad_per_deg

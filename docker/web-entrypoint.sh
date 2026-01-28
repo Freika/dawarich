@@ -38,7 +38,9 @@ rm -f $APP_PATH/tmp/pids/server.pid
 # This ensures new and updated files are copied to the persistent volume
 if [ -d "/tmp/public_assets" ]; then
   echo "📦 Syncing static assets to public volume..."
-  cp -ru /tmp/public_assets/* $APP_PATH/public/ 2>/dev/null || true
+  # Remove old compiled assets to prevent stale files from persisting
+  rm -rf $APP_PATH/public/assets
+  cp -r /tmp/public_assets/* $APP_PATH/public/
   echo "✅ Static assets synced!"
 fi
 

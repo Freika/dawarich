@@ -1,0 +1,119 @@
+<% if @year_stats.any? %>
+  <!-- Top Stats Row -->
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+    <!-- Total Distance -->
+    <div class="card bg-base-200">
+      <div class="card-body p-4">
+        <div class="flex justify-between items-start">
+          <div class="flex items-center gap-2 text-base-content/60 text-sm">
+            <%= icon 'chart-bar', class: 'w-4 h-4' %>
+            TOTAL DISTANCE
+          </div>
+          <% if @distance_change && @distance_change != 0 %>
+            <span class="badge badge-<%= @distance_change.positive? ? 'success' : 'warning' %> badge-sm">
+              <%= @distance_change.positive? ? '+' : '' %><%= @distance_change %>%
+            </span>
+          <% end %>
+        </div>
+        <div class="text-3xl font-bold mt-2"><%= number_with_delimiter(@total_distance) %> <%= current_user.safe_settings.distance_unit %></div>
+        <div class="text-base-content/50 text-sm">
+          <% if @all_time %>
+            All tracked history
+          <% elsif @prev_total_distance && @prev_total_distance.positive? %>
+            vs <%= number_with_delimiter(@prev_total_distance) %> <%= current_user.safe_settings.distance_unit %> in <%= @previous_year %>
+          <% else %>
+            This year
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countries -->
+    <div class="card bg-base-200">
+      <div class="card-body p-4">
+        <div class="flex justify-between items-start">
+          <div class="flex items-center gap-2 text-base-content/60 text-sm">
+            <%= icon 'globe', class: 'w-4 h-4' %>
+            COUNTRIES
+          </div>
+          <% if @countries_change && @countries_change != 0 %>
+            <span class="badge badge-<%= @countries_change.positive? ? 'success' : 'warning' %> badge-sm">
+              <%= @countries_change.positive? ? '+' : '' %><%= @countries_change %>
+            </span>
+          <% end %>
+        </div>
+        <div class="text-3xl font-bold mt-2"><%= @countries_count %></div>
+        <div class="text-base-content/50 text-sm">
+          <% if @all_time %>
+            All tracked history
+          <% elsif @prev_countries_count && @countries_change && @countries_change.positive? %>
+            <%= @countries_change %> new vs <%= @previous_year %>
+          <% elsif @prev_countries_count %>
+            vs <%= @prev_countries_count %> in <%= @previous_year %>
+          <% else %>
+            This year
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cities -->
+    <div class="card bg-base-200">
+      <div class="card-body p-4">
+        <div class="flex justify-between items-start">
+          <div class="flex items-center gap-2 text-base-content/60 text-sm">
+            <%= icon 'building', class: 'w-4 h-4' %>
+            CITIES
+          </div>
+          <% if @cities_change && @cities_change != 0 %>
+            <span class="badge badge-<%= @cities_change.positive? ? 'success' : 'warning' %> badge-sm">
+              <%= @cities_change.positive? ? '+' : '' %><%= @cities_change %>%
+            </span>
+          <% end %>
+        </div>
+        <div class="text-3xl font-bold mt-2"><%= @cities_count %></div>
+        <div class="text-base-content/50 text-sm">
+          <% if @all_time %>
+            All tracked history
+          <% elsif @prev_cities_count && @prev_cities_count.positive? %>
+            vs <%= @prev_cities_count %> in <%= @previous_year %>
+          <% else %>
+            This year
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Days Traveling -->
+    <div class="card bg-base-200">
+      <div class="card-body p-4">
+        <div class="flex justify-between items-start">
+          <div class="flex items-center gap-2 text-base-content/60 text-sm">
+            <%= icon 'calendar', class: 'w-4 h-4' %>
+            DAYS TRAVELING
+          </div>
+          <% if @days_change && @days_change != 0 %>
+            <span class="badge badge-<%= @days_change.positive? ? 'success' : 'warning' %> badge-sm">
+              <%= @days_change.positive? ? '+' : '' %><%= @days_change %>%
+            </span>
+          <% end %>
+        </div>
+        <div class="text-3xl font-bold mt-2"><%= @days_traveling %></div>
+        <div class="text-base-content/50 text-sm">
+          <% if @all_time %>
+            All tracked history
+          <% elsif @prev_days_traveling && @prev_days_traveling.positive? %>
+            vs <%= @prev_days_traveling %> in <%= @previous_year %>
+          <% else %>
+            Active days this year
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div class="alert alert-info mb-6">
+    <%= icon 'info', class: 'w-5 h-5' %>
+    <span>No stats data available<%= @all_time ? '' : " for #{@selected_year}" %>. Stats are calculated from your tracked points.</span>
+  </div>
+<% end %>

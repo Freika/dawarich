@@ -1,0 +1,45 @@
+<% if @activity_heatmap && !@all_time %>
+  <% is_current_year = @selected_year.to_i == Time.current.year %>
+  <div class="w-full lg:w-1/4 mb-6">
+    <div class="card bg-base-200">
+      <div class="card-body p-3 <%= 'justify-center' unless is_current_year %>">
+        <!-- Header -->
+        <div class="flex items-center gap-2 mb-2">
+          <%= icon 'flame', class: 'w-4 h-4 text-orange-500' %>
+          <h3 class="text-base font-semibold">Activity Streak</h3>
+        </div>
+
+        <% if is_current_year %>
+          <!-- Current Streak (only for current year) -->
+          <div class="text-center mb-2">
+            <div class="text-3xl font-bold text-primary">
+              <%= @activity_heatmap.current_streak %>
+            </div>
+            <div class="text-xs text-base-content/60">
+              current <%= 'day'.pluralize(@activity_heatmap.current_streak) %>
+            </div>
+          </div>
+
+          <div class="divider my-1"></div>
+        <% end %>
+
+        <!-- Longest Streak -->
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-1 mb-1">
+            <%= icon 'trophy', class: 'w-3 h-3 text-warning' %>
+            <span class="text-xs font-medium text-base-content/70">Longest Streak</span>
+          </div>
+          <div class="text-xl font-bold">
+            <%= @activity_heatmap.longest_streak %>
+            <%= 'day'.pluralize(@activity_heatmap.longest_streak) %>
+          </div>
+          <% if @activity_heatmap.longest_streak_start && @activity_heatmap.longest_streak_end %>
+            <div class="text-xs text-base-content/40 mt-1">
+              <%= @activity_heatmap.longest_streak_start.strftime('%b %d') %> - <%= @activity_heatmap.longest_streak_end.strftime('%b %d') %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

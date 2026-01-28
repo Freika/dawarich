@@ -4,6 +4,27 @@ RSpec.describe Track, type: :model do
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to have_many(:points).dependent(:nullify) }
+    it { is_expected.to have_many(:track_segments).dependent(:destroy) }
+  end
+
+  describe 'enums' do
+    it do
+      is_expected.to define_enum_for(:dominant_mode)
+        .with_values(
+          unknown: 0,
+          stationary: 1,
+          walking: 2,
+          running: 3,
+          cycling: 4,
+          driving: 5,
+          bus: 6,
+          train: 7,
+          flying: 8,
+          boat: 9,
+          motorcycle: 10
+        )
+        .with_prefix(true)
+    end
   end
 
   describe 'validations' do
@@ -113,6 +134,89 @@ RSpec.describe Track, type: :model do
       it 'includes tracks that end on the target day' do
         result = Track.last_for_day(user, target_day)
         expect(result).to eq(spanning_track)
+      end
+    end
+  end
+
+  describe 'scopes' do
+    let(:user) { create(:user) }
+
+    describe '.by_mode' do
+      let!(:walking_track) { create(:track, user: user, dominant_mode: :walking) }
+      let!(:driving_track) { create(:track, user: user, dominant_mode: :driving) }
+
+      it 'returns tracks with the specified mode' do
+        expect(Track.by_mode(:walking)).to include(walking_track)
+        expect(Track.by_mode(:walking)).not_to include(driving_track)
+      end
+    end
+
+    describe '.with_unknown_mode' do
+      let!(:unknown_track) { create(:track, user: user, dominant_mode: :unknown) }
+      let!(:walking_track) { create(:track, user: user, dominant_mode: :walking) }
+
+      it 'returns only tracks with unknown mode' do
+        expect(Track.with_unknown_mode).to include(unknown_track)
+        expect(Track.with_unknown_mode).not_to include(walking_track)
+      end
+    end
+
+    describe '.with_detected_mode' do
+      let!(:unknown_track) { create(:track, user: user, dominant_mode: :unknown) }
+      let!(:walking_track) { create(:track, user: user, dominant_mode: :walking) }
+
+      it 'returns only tracks with detected mode' do
+        expect(Track.with_detected_mode).to include(walking_track)
+        expect(Track.with_detected_mode).not_to include(unknown_track)
+      end
+    end
+  end
+
+  describe '#activity_breakdown' do
+    let(:user) { create(:user) }
+    let(:track) { create(:track, user: user) }
+
+    context 'when track has no segments' do
+      it 'returns empty hash' do
+        expect(track.activity_breakdown).to eq({})
+      end
+    end
+
+    context 'when track has segments' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :walking, duration: 600)
+        create(:track_segment, track: track, transportation_mode: :driving, duration: 1200)
+        create(:track_segment, track: track, transportation_mode: :walking, duration: 300)
+      end
+
+      it 'returns duration grouped by mode' do
+        breakdown = track.activity_breakdown
+        expect(breakdown['walking']).to eq(900)
+        expect(breakdown['driving']).to eq(1200)
+      end
+    end
+  end
+
+  describe '#update_dominant_mode!' do
+    let(:user) { create(:user) }
+    let(:track) { create(:track, user: user, dominant_mode: :unknown) }
+
+    context 'when track has no segments' do
+      it 'sets dominant_mode to unknown' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('unknown')
+      end
+    end
+
+    context 'when track has segments' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :walking, duration: 600)
+        create(:track_segment, track: track, transportation_mode: :driving, duration: 1200)
+      end
+
+      it 'sets dominant_mode to the mode with longest duration' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('driving')
       end
     end
   end

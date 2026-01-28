@@ -39,6 +39,7 @@ gem 'rails', '~> 8.0'
 gem 'rails_icons'
 gem 'rails_pulse'
 gem 'redis'
+gem 'resolv-replace', '~> 0.2.0'
 gem 'rexml'
 gem 'rgeo'
 gem 'rgeo-activerecord', '~> 8.0.0'
@@ -86,5 +87,4 @@ end
 group :development do
   gem 'database_consistency', '>= 2.0.5', require: false
   gem 'rubocop-rails', '>= 2.33.4', require: false
-  gem 'strong_migrations', '>= 2.4.0'
 end

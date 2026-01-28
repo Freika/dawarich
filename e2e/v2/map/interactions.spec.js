@@ -7,6 +7,42 @@ import {
   hasPopup
 } from '../helpers/setup.js'
 
+/**
+ * Helper to enable routes layer and disable points layer via settings UI
+ * This prevents points from intercepting route clicks while ensuring routes are visible
+ */
+async function enableRoutesDisablePoints(page) {
+  // Open settings panel
+  await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click();
+  await page.waitForTimeout(300);
+
+  // Click layers tab
+  await page.locator('button[data-tab="layers"]').click();
+  await page.waitForTimeout(300);
+
+  // Make sure Routes layer is enabled
+  const routesCheckbox = page.locator('label:has-text("Routes") input.toggle').first();
+  if (!(await routesCheckbox.isChecked().catch(() => true))) {
+    await routesCheckbox.check();
+    await page.waitForTimeout(200);
+  }
+
+  // Disable Points layer to prevent click interception
+  const pointsCheckbox = page.locator('label:has-text("Points") input.toggle').first();
+  if (await pointsCheckbox.isChecked().catch(() => false)) {
+    await pointsCheckbox.uncheck();
+    await page.waitForTimeout(200);
+  }
+
+  // Close settings panel - the close button is inside .panel-header and uses toggleSettings action
+  const closeButton = page.locator('.panel-header button[data-action="click->maps--maplibre#toggleSettings"]');
+  await closeButton.click();
+  await page.waitForTimeout(500);
+  
+  // Verify the panel is closed by checking the settings button is visible/usable
+  // (the panel overlays part of the map when open)
+}
+
 test.describe('Map Interactions', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
@@ -63,6 +99,11 @@ test.describe('Map Interactions', () => {
   })
 
   test.describe('Route Interactions', () => {
+    // Enable routes and disable points layer before each route test to prevent click interception
+    test.beforeEach(async ({ page }) => {
+      await enableRoutesDisablePoints(page);
+    });
+
     test('route hover layer exists', async ({ page }) => {
       await page.waitForFunction(() => {
         const element = document.querySelector('[data-controller*="maps--maplibre"]')

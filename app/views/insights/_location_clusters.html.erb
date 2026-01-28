@@ -1,0 +1,44 @@
+<!-- Location Clusters Card -->
+<div class="card bg-base-200">
+  <div class="card-body p-5">
+    <h2 class="card-title text-lg flex items-center gap-2">
+      <%= icon 'map-pin', class: 'w-5 h-5 text-primary' %>
+      Top Visited Locations
+    </h2>
+
+    <% if @top_visited_locations.present? %>
+      <div class="space-y-3 mt-3">
+        <% @top_visited_locations.each_with_index do |location, index| %>
+          <div class="p-3 bg-base-300 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 bg-primary text-primary-content rounded-full flex items-center justify-center text-xs font-bold">
+                  <%= index + 1 %>
+                </span>
+                <span class="font-medium"><%= location[:name] %></span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-center">
+              <div>
+                <div class="text-xl font-bold"><%= location[:visit_count] %></div>
+                <div class="text-xs text-base-content/60"><%= 'visit'.pluralize(location[:visit_count]) %></div>
+              </div>
+              <div>
+                <div class="text-xl font-bold"><%= format_location_time(location[:total_duration]) %></div>
+                <div class="text-xs text-base-content/60">total time</div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-8 text-base-content/60">
+        <div class="flex flex-col items-center gap-2">
+          <%= icon 'map-pin', class: 'w-8 h-8 opacity-50' %>
+          <p>No visit data available for this period.</p>
+          <p class="text-sm">Confirmed visits will appear here.</p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

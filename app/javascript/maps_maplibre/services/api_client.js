@@ -524,6 +524,23 @@ export class ApiClient {
     return response.json()
   }
 
+  /**
+   * Fetch points belonging to a specific track
+   * @param {number} trackId - Track ID
+   * @returns {Promise<Array>} Points belonging to the track
+   */
+  async fetchTrackPoints(trackId) {
+    const response = await fetch(`${this.baseURL}/tracks/${trackId}/points`, {
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch track points: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
   getHeaders() {
     return {
       'Authorization': `Bearer ${this.apiKey}`,

@@ -114,6 +114,19 @@ FactoryBot.define do
 
     trait :monthly do
       period_type { :monthly }
+      month { 1 }
+      # Monthly digests use array format: [[day, distance], ...]
+      monthly_distances do
+        [
+          [1, 5000], [2, 3000], [3, 0], [4, 7000], [5, 2000],
+          [6, 0], [7, 8000], [8, 4000], [9, 0], [10, 6000],
+          [11, 0], [12, 5000], [13, 3000], [14, 0], [15, 9000],
+          [16, 0], [17, 7000], [18, 4000], [19, 0], [20, 6000],
+          [21, 0], [22, 5000], [23, 3000], [24, 0], [25, 8000],
+          [26, 0], [27, 7000], [28, 4000], [29, 0], [30, 5000],
+          [31, 2000]
+        ]
+      end
     end
 
     trait :without_previous_year do
@@ -124,7 +137,7 @@ FactoryBot.define do
       first_time_visits do
         {
           'countries' => %w[Germany France Spain],
-          'cities' => ['Berlin', 'Paris', 'Madrid', 'Barcelona']
+          'cities' => %w[Berlin Paris Madrid Barcelona]
         }
       end
       year_over_year { {} }

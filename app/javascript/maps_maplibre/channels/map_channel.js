@@ -10,7 +10,8 @@ export function createMapChannel(options = {}) {
   const { enableLiveMode = false, ...callbacks } = options
   const subscriptions = {
     family: null,
-    points: null
+    points: null,
+    tracks: null
   }
 
   console.log('[MapChannel] Creating channels with enableLiveMode:', enableLiveMode)
@@ -85,6 +86,33 @@ export function createMapChannel(options = {}) {
 
   // Note: NotificationsChannel is handled by notifications_controller.js in the navbar
   // Creating a second subscription here causes issues with ActionCable
+
+  // Subscribe to tracks channel for real-time track updates
+  try {
+    subscriptions.tracks = consumer.subscriptions.create('TracksChannel', {
+      connected() {
+        console.log('TracksChannel connected')
+        callbacks.connected?.('tracks')
+      },
+
+      disconnected() {
+        console.log('TracksChannel disconnected')
+        callbacks.disconnected?.('tracks')
+      },
+
+      received(data) {
+        console.log('TracksChannel received:', data)
+        callbacks.received?.({
+          type: 'track_update',
+          action: data.action,
+          track: data.track,
+          track_id: data.track_id
+        })
+      }
+    })
+  } catch (error) {
+    console.warn('[MapChannel] Failed to subscribe to tracks channel:', error)
+  }
 
   return {
     subscriptions,

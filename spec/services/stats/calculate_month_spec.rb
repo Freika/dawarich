@@ -216,7 +216,7 @@ RSpec.describe Stats::CalculateMonth do
       context 'when invalidating caches' do
         it 'invalidates user caches after updating stats' do
           cache_service = instance_double(Cache::InvalidateUserCaches)
-          allow(Cache::InvalidateUserCaches).to receive(:new).with(user.id).and_return(cache_service)
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user.id, year: year).and_return(cache_service)
           allow(cache_service).to receive(:call)
 
           calculate_stats

@@ -36,7 +36,7 @@ place_name_fetching_job:
   queue: places
 
 daily_track_generation_job:
-  cron: "0 */4 * * *" # every 4 hours
+  cron: "0 */12 * * *" # every 12 hours (real-time generation handles most cases)
   class: "Tracks::DailyGenerationJob"
   queue: tracks
 

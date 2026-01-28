@@ -157,4 +157,24 @@ module ApplicationHelper
     preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
     preferred_version == 'v1' ? map_v1_path : map_v2_path
   end
+
+  def format_duration_short(seconds)
+    return '0m' if seconds.nil? || seconds.to_i.zero?
+
+    duration = ActiveSupport::Duration.build(seconds.to_i)
+    parts = duration.parts
+
+    weeks = parts[:weeks] || 0
+    days = (parts[:days] || 0) + (weeks * 7)
+    hours = parts[:hours] || 0
+    minutes = parts[:minutes] || 0
+
+    if days.positive?
+      hours.positive? ? "#{days}d #{hours}h" : "#{days}d"
+    elsif hours.positive?
+      "#{hours}h #{minutes}m"
+    else
+      "#{minutes}m"
+    end
+  end
 end

@@ -56,5 +56,62 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(response.parsed_body['message']).to eq('Something went wrong')
       end
     end
+
+    context 'with transportation thresholds' do
+      let(:threshold_params) do
+        {
+          settings: {
+            transportation_thresholds: {
+              walking_max_speed: 8,
+              cycling_max_speed: 50
+            }
+          }
+        }
+      end
+
+      it 'triggers recalculation when thresholds change' do
+        expect(Tracks::TransportationModeRecalculationJob).to receive(:perform_later).with(user.id)
+
+        patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['recalculation_triggered']).to be true
+      end
+
+      context 'when recalculation is in progress' do
+        before do
+          Tracks::TransportationRecalculationStatus.new(user.id).start(total_tracks: 100)
+        end
+
+        it 'returns locked status' do
+          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
+
+          expect(response).to have_http_status(:locked)
+          expect(response.parsed_body['status']).to eq('locked')
+        end
+      end
+    end
+  end
+
+  describe 'GET /transportation_recalculation_status' do
+    it 'returns idle status when no recalculation is running' do
+      get "/api/v1/settings/transportation_recalculation_status?api_key=#{api_key}"
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['status']).to eq('idle')
+    end
+
+    it 'returns processing status when recalculation is in progress' do
+      status = Tracks::TransportationRecalculationStatus.new(user.id)
+      status.start(total_tracks: 100)
+      status.update_progress(processed_tracks: 50, total_tracks: 100)
+
+      get "/api/v1/settings/transportation_recalculation_status?api_key=#{api_key}"
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['status']).to eq('processing')
+      expect(response.parsed_body['total_tracks']).to eq(100)
+      expect(response.parsed_body['processed_tracks']).to eq(50)
+    end
   end
 end
