@@ -3,6 +3,7 @@
 module Supporter
   class VerifyEmail
     CACHE_TTL = 24.hours
+    SUPPORTER_VERIFICATION_URL = 'https://verify.dawarich.app/api/v1/verify'
 
     attr_reader :email
 
@@ -26,7 +27,7 @@ module Supporter
 
     def fetch_supporter_status
       response = HTTParty.get(
-        "#{::SUPPORTER_VERIFICATION_URL}?email_hash=#{email_hash}",
+        "#{SUPPORTER_VERIFICATION_URL}?email_hash=#{email_hash}",
         timeout: 5,
         headers: {
           'X-Dawarich-Version' => APP_VERSION
