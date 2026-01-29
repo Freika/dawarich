@@ -1,3 +1,5 @@
+AllCops:
+  NewCops: disable
 require: rubocop-rails
 
 Style/Documentation:
