@@ -41,9 +41,9 @@ class Settings::UsersController < ApplicationController
     @user = User.find(params[:id])
 
     if @user.destroy
-      redirect_to settings_url, notice: 'User was successfully deleted.'
+      redirect_to settings_users_url, notice: 'User was successfully deleted.'
     else
-      redirect_to settings_url, notice: 'User could not be deleted.', status: :unprocessable_content
+      redirect_to settings_users_url, notice: 'User could not be deleted.', status: :unprocessable_content
     end
   end
 

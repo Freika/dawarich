@@ -5,7 +5,7 @@
   <%= render 'settings/navigation' %>
 
   <div class="card bg-base-200 shadow-xl">
-    <%= form_for :settings, url: settings_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
+    <%= form_for :settings, url: settings_integrations_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
       <div class="card-body">
         <div class="space-y-8 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 animate-fade-in">
           <div>
@@ -112,6 +112,7 @@
               </div>
             </div>
           <% end %>
+
         </div>
         <div class="card-actions justify-end mt-6">
           <%= f.submit "Save & Test Connection", class: "btn btn-primary" %>
