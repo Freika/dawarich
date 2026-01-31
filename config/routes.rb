@@ -34,9 +34,16 @@ Rails.application.routes.draw do
                         '/'
                       }, via: :get
 
-  resources :settings, only: :index
   namespace :settings do
+    resources :general, only: [:index]
+    patch 'general', to: 'general#update'
+    post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+
+    resources :integrations, only: [:index]
+    patch 'integrations', to: 'integrations#update'
+
     resources :background_jobs, only: %i[index create]
+    patch 'background_jobs', to: 'background_jobs#update'
     resources :users, only: %i[index create destroy edit update] do
       collection do
         get 'export'
@@ -46,12 +53,8 @@ Rails.application.routes.draw do
 
     resources :maps, only: %i[index]
     patch 'maps', to: 'maps#update'
-
-    resources :emails, only: %i[index]
-    patch 'emails', to: 'emails#update'
   end
 
-  patch 'settings', to: 'settings#update'
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
@@ -88,6 +91,7 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  resources :insights, only: :index
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
   get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
@@ -141,6 +145,7 @@ Rails.application.routes.draw do
       get   'health', to: 'health#index'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index show create update destroy]
@@ -196,7 +201,9 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :tracks, only: [:index]
+      resources :tracks, only: [:index] do
+        resources :points, only: [:index], controller: 'tracks/points'
+      end
 
       namespace :maps do
         resources :hexagons, only: [:index] do

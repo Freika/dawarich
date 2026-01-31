@@ -88,7 +88,47 @@ export default class extends Controller {
     'routeDistance',
     'routeSpeed',
     'routeSpeedContainer',
-    'routePoints'
+    'routePoints',
+    // Transportation mode thresholds
+    'transportationCollapseToggle',
+    'transportationExpertToggle',
+    'transportationBasicSettings',
+    'transportationExpertSettings',
+    // Transportation speed inputs
+    'walkingMaxSpeedInput',
+    'cyclingMaxSpeedInput',
+    'drivingMaxSpeedInput',
+    'flyingMinSpeedInput',
+    // Transportation speed value displays
+    'walkingMaxSpeedValue',
+    'cyclingMaxSpeedValue',
+    'drivingMaxSpeedValue',
+    'flyingMinSpeedValue',
+    // Transportation expert inputs
+    'stationaryMaxSpeedInput',
+    'trainMinSpeedInput',
+    'runningVsCyclingAccelInput',
+    'cyclingVsDrivingAccelInput',
+    'minSegmentDurationInput',
+    'timeGapThresholdInput',
+    'minFlightDistanceInput',
+    // Transportation expert value displays
+    'stationaryMaxSpeedValue',
+    'trainMinSpeedValue',
+    'runningVsCyclingAccelValue',
+    'cyclingVsDrivingAccelValue',
+    'minSegmentDurationValue',
+    'timeGapThresholdValue',
+    'minFlightDistanceValue',
+    // Transportation unit labels
+    'speedUnitLabel',
+    'distanceUnitLabel',
+    // Transportation recalculation status
+    'transportationRecalculationAlert',
+    'transportationLockedMessage',
+    // Transportation apply button
+    'transportationApplyButton',
+    'transportationDirtyMessage'
   ]
 
   async connect() {
@@ -146,6 +186,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.cleanup.cleanup()
     this.map?.remove()
@@ -252,6 +293,10 @@ export default class extends Controller {
   updateMetersBetweenDisplay(event) { return this.settingsController.updateMetersBetweenDisplay(event) }
   updateMinutesBetweenDisplay(event) { return this.settingsController.updateMinutesBetweenDisplay(event) }
   toggleGlobe(event) { return this.settingsController.toggleGlobe(event) }
+  toggleTransportationExpertMode(event) { return this.settingsController.toggleTransportationExpertMode(event) }
+  updateTransportationThresholdDisplay(event) { return this.settingsController.updateTransportationThresholdDisplay(event) }
+  markTransportationSettingsDirty(event) { return this.settingsController.markTransportationSettingsDirty(event) }
+  applyTransportationSettings(event) { return this.settingsController.applyTransportationSettings(event) }
 
   // Area Selection Manager methods
   startSelectArea() { return this.areaSelectionManager.startSelectArea() }
@@ -512,9 +557,14 @@ export default class extends Controller {
     if (!this.hasInfoDisplayTarget) return
     this.infoDisplayTarget.classList.add('hidden')
 
-    // Clear route selection when info panel is closed
+    // Clear the appropriate selection when info panel is closed
+    // Only one type can be selected at a time
     if (this.eventHandlers) {
-      this.eventHandlers.clearRouteSelection()
+      if (this.eventHandlers.selectedTrackFeature) {
+        this.eventHandlers.clearTrackSelection()
+      } else if (this.eventHandlers.selectedRouteFeature) {
+        this.eventHandlers.clearRouteSelection()
+      }
     }
   }
 

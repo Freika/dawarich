@@ -139,7 +139,7 @@ class ReverseGeocoding::Places::FetchData
 
     return unless places_to_update.any?
 
-    update_attributes = places_to_update.map do |place|
+    update_attributes = places_to_update.uniq(&:id).map do |place|
       {
         id: place.id,
         name: place.name,

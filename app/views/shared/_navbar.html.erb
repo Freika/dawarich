@@ -6,8 +6,9 @@
       </label>
       <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
         <li><%= link_to 'Map', preferred_map_path, class: "#{active_class?(preferred_map_path)}" %></li>
-        <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
+        <li><%= link_to 'Trips'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
         <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
+        <li><%= link_to 'Insights<sup>α</sup>'.html_safe, insights_url, class: "#{active_class?(insights_url)}" %></li>
         <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
           <li>
             <% if current_user.in_family? %>
@@ -78,8 +79,9 @@
   <div class="navbar-center hidden lg:flex">
     <ul class="menu menu-horizontal px-1">
       <li><%= link_to 'Map', preferred_map_path, class: "mx-1 #{active_class?(preferred_map_path)}" %></li>
-      <li><%= link_to 'Trips<sup>α</sup>'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
+      <li><%= link_to 'Trips'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
       <li><%= link_to 'Stats', stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
+      <li><%= link_to 'Insights<sup>α</sup>'.html_safe, insights_url, class: "mx-1 #{active_class?(insights_url)}" %></li>
       <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
         <li>
           <% if current_user.in_family? %>
@@ -227,15 +229,17 @@
                   <%= icon 'star' %>
                 </span>
               <% end %>
-              <% if current_user.supporter? %>
+              <% if current_user.supporter? && current_user.safe_settings.show_supporter_badge? %>
                 <span class='tooltip tooltip-bottom' data-tip="Dawarich Supporter">
-                  <%= icon 'heart', class: 'text-pink-500' %>
+                  <span class="text-sky-400 inline-block animate-[supporter-rainbow-glow_8s_linear_infinite]">
+                    <%= icon 'gem' %>
+                  </span>
                 </span>
               <% end %>
             </summary>
             <ul class="p-2 bg-base-100 rounded-t-none z-10">
               <li><%= link_to 'Account', edit_user_registration_path %></li>
-              <li><%= link_to 'Settings', settings_path %></li>
+              <li><%= link_to 'Settings', settings_general_index_path %></li>
               <% if !DawarichSettings.self_hosted? %>
                 <li><%= link_to 'Subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
               <% end %>

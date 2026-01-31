@@ -1,0 +1,35 @@
+<% content_for :title, 'Insights' %>
+
+<div class="w-full my-5">
+  <%= render 'header' %>
+  <%= render 'stats_row' %>
+
+  <!-- Heatmap and Streak Row -->
+  <div class="flex flex-col lg:flex-row gap-6">
+    <%= render 'activity_heatmap' %>
+    <%= render 'activity_streak' %>
+  </div>
+
+  <!-- Two Column Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Left Column -->
+    <div class="space-y-6">
+      <%= render 'year_comparison' %>
+      <%= render 'activity_breakdown' %>
+      <%= render 'location_clusters' %>
+    </div>
+
+    <!-- Right Column -->
+    <div class="space-y-6">
+      <%= render 'monthly_digest' %>
+      <%= render 'travel_patterns' %>
+    </div>
+  </div>
+
+  <%= render 'movement_wellness' %>
+
+  <!-- Footer -->
+  <div class="text-center text-sm text-base-content/50 py-4">
+    Geodata Insights &bull; Powered by your location history
+  </div>
+</div>

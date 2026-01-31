@@ -1,7 +1,7 @@
 <div class="tabs tabs-boxed mb-6">
-  <%= link_to 'Integrations', settings_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_path)}" %>
+  <%= link_to 'General', settings_general_index_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_general_index_path)}" %>
+  <%= link_to 'Integrations', settings_integrations_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_integrations_path)}" %>
   <%= link_to 'Map', settings_maps_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_maps_path)}" %>
-  <%= link_to 'Emails', settings_emails_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_emails_path)}" %>
   <% if DawarichSettings.self_hosted? && current_user.admin? %>
     <%= link_to 'Users', settings_users_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_users_path)}" %>
     <%= link_to 'Background Jobs', settings_background_jobs_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_background_jobs_path)}" %>

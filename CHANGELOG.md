@@ -4,7 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [1.0.2] - Unreleased
+# [1.0.2] - 2026-01-31
+
+The Insights, Transportation Mode Detection and Supporter Verification release
+
+Quiet a few big things in this release! It starterted with the idea of adding the Insights page. I experimented with it a bit to see what kinds charts and visualizations we can already have based on the existing data. There were some, but one of the most exciting to me would be the ability to see the Activity Breakdown: now many hours I spent walking, driving and running. Spoiler: I didn't run that much last year :) Anyway, to get that, we needed to have transportation mode detection for tracks. So naturally I went ahead and implemented that as well. Now, not only we can see the activity breakdown, but also, on the Map V2, if you click on a track (Tracks layer should enabled), you will see the transportation modes for it. That's what I wanted for Dawarich for a long time, and I'm happy it's finally here! In the map settings panel, there is now Transportation Mode Detection section, where you can configure speed thresholds for each mode. By default, they are set to reasonable values, but you can tweak them as you wish. Changing the thresholds will recalculate modes for all tracks in the background, which may take a while depending on how many tracks you have.
+
+Another thing introduced in this release, is support verification. Almost 150 people have supported us financially on [Ko-fi](https://ko-fi.com/freika), [Patreon](https://www.patreon.com/freika) and [GitHub Sponsors](https://github.com/sponsors/Freika/), and if you're one of them, on the Settings page you can now enter your email and verify your support. Verified supporters will get a special (disableable) badge in the navbar as a token of our appreciation. Thank you so much for supporting Dawarich!
+
+Anyway, enjoy the release and don't forget to report any bugs you may find!
 
 ## Added
 
@@ -22,16 +30,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Transportation mode detection for tracks**: Tracks are now automatically segmented by transportation mode (walking, cycling, driving, etc.) with configurable speed thresholds in settings. Modes are recalculated when threshold settings change.
 - **Near real-time track generation**: Tracks are now generated within ~45 seconds of receiving new points (via OwnTracks, Overland, or the Points API) using a Redis-based debouncer. This replaces the previous 4-hour polling cycle for most cases. Daily generation job frequency reduced from every 4 hours to every 12 hours as a fallback.
 - **Track merging**: Consecutive tracks that belong to the same journey are automatically merged when the gap between them is within the configured time threshold.
+- Email preferences moved to "General" tab in user settings for better organization.
+
 ## Fixed
 
 - Remove assets before precompilation to prevent stale assets from being served. #2187
 - undefined method 'to_sym' for nil in sidekiq #2190
 - `Tracks::BoundaryResolverJob` now uses deterministic exponential backoff instead of random delays, and stops retrying after 5 attempts to avoid infinite rescheduling.
+- Hanging Sidekiq job #2134
 
 ## Changed
 
-- Removed duplicate `split_points_into_segments_geocoder` method from `Tracks::Segmentation`; it is now an alias for `split_points_into_segments`.
-- "Trips" label in the navbar no longer shows the alpha superscript tag.
 - Daily track generation job runs every 12 hours instead of every 4 hours, since real-time generation handles most cases.
 
 
