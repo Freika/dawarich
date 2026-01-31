@@ -117,7 +117,7 @@ Rails.application.configure do
     user_name:       ENV['SMTP_USERNAME'],
     password:        ENV['SMTP_PASSWORD'],
     authentication:  'plain',
-    enable_starttls: true,
+    enable_starttls: ENV.fetch('SMTP_STARTTLS', 'true') == 'true',
     open_timeout:    5,
     read_timeout:    5
   }
