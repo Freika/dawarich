@@ -70,8 +70,8 @@ test.describe('Advanced Layers', () => {
       // Verify slider value was set
       expect(await fogRadiusSlider.inputValue()).toBe('500')
 
-      // Click Apply Settings button
-      const applyButton = page.locator('button:has-text("Apply Settings")')
+      // Click the main Apply Settings submit button (not the transportation one)
+      const applyButton = page.locator('button[type="submit"]:has-text("Apply Settings")')
       await applyButton.click()
       await page.waitForTimeout(500)
 
@@ -98,8 +98,8 @@ test.describe('Advanced Layers', () => {
       })
       await page.waitForTimeout(200)
 
-      // Click Apply Settings - this should not throw an error
-      const applyButton = page.locator('button:has-text("Apply Settings")')
+      // Click the main Apply Settings submit button (not the transportation one)
+      const applyButton = page.locator('button[type="submit"]:has-text("Apply Settings")')
       await applyButton.click()
       await page.waitForTimeout(500)
 

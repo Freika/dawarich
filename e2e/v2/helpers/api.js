@@ -169,7 +169,8 @@ export async function waitForRecentPointVisible(page, timeout = 15000) {
 export async function enableLiveMode(page) {
   // Open settings panel
   await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click();
-  await page.waitForTimeout(300);
+  await page.waitForSelector('.map-control-panel.open', { timeout: 3000 });
+  await page.waitForTimeout(200);
 
   // Click Settings tab
   await page.locator('button[data-tab="settings"]').click();
@@ -177,6 +178,7 @@ export async function enableLiveMode(page) {
 
   // Enable live mode if not already enabled
   const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]');
+  await liveModeToggle.waitFor({ state: 'visible', timeout: 3000 });
   if (!await liveModeToggle.isChecked()) {
     await liveModeToggle.click();
     await page.waitForTimeout(500);

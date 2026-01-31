@@ -231,13 +231,23 @@ test.describe('Points Layer', () => {
                routesSource?._data?.features?.length > 0
       }, { timeout: 15000 })
 
-      // Ensure points layer is visible by clicking the checkbox
+      // Ensure points layer is visible via the settings panel UI
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page.waitForTimeout(300)
+      await page.locator('button[data-tab="layers"]').click()
+      await page.waitForTimeout(300)
+
       const pointsCheckbox = page.locator('[data-maps--maplibre-target="pointsToggle"]')
       const isChecked = await pointsCheckbox.isChecked()
       if (!isChecked) {
         await pointsCheckbox.click()
         await page.waitForTimeout(500)
       }
+
+      // Close settings panel
+      const closeBtn = page.locator('.panel-header button[data-action="click->maps--maplibre#toggleSettings"]')
+      await closeBtn.click()
+      await page.waitForTimeout(300)
 
       await page.waitForTimeout(2000)
 

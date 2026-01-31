@@ -92,6 +92,51 @@ export async function getMapZoom(page) {
 }
 
 /**
+ * Open the settings panel by clicking the gear button
+ * @param {Page} page - Playwright page object
+ */
+export async function openSettingsPanel(page) {
+  await page.locator('.map-settings-button').click();
+  await page.waitForSelector('.leaflet-settings-panel', { state: 'visible', timeout: 5000 });
+}
+
+/**
+ * Close the settings panel by clicking the gear button again
+ * @param {Page} page - Playwright page object
+ */
+export async function closeSettingsPanel(page) {
+  await page.locator('.map-settings-button').click();
+  await page.waitForSelector('.leaflet-settings-panel', { state: 'detached', timeout: 5000 });
+}
+
+/**
+ * Hover over the first route polyline segment to trigger popup
+ * @param {Page} page - Playwright page object
+ * @returns {Promise<boolean>} - True if a route was hovered, false otherwise
+ */
+export async function hoverFirstRoute(page) {
+  return await page.evaluate(() => {
+    const controller = window.Stimulus?.controllers.find(c => c.identifier === 'maps');
+    if (!controller?.polylinesLayer) return false;
+    let hovered = false;
+    controller.polylinesLayer.eachLayer((layer) => {
+      if (hovered) return;
+      if (layer._layers) {
+        Object.values(layer._layers).forEach((segment) => {
+          if (hovered) return;
+          const latlngs = segment.getLatLngs?.();
+          if (latlngs?.length > 0) {
+            segment.fire('mouseover', { latlng: latlngs[0] });
+            hovered = true;
+          }
+        });
+      }
+    });
+    return hovered;
+  });
+}
+
+/**
  * Wait for MapLibre map (Maps V2) to be fully initialized
  * @param {Page} page - Playwright page object
  */
