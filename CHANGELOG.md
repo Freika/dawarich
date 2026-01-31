@@ -32,8 +32,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Changed
 
-- Removed duplicate `split_points_into_segments_geocoder` method from `Tracks::Segmentation`; it is now an alias for `split_points_into_segments`.
-- "Trips" label in the navbar no longer shows the alpha superscript tag.
 - Daily track generation job runs every 12 hours instead of every 4 hours, since real-time generation handles most cases.
 
 

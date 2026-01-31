@@ -161,24 +161,40 @@ export class TracksLayer extends BaseLayer {
    * Set up hover event handlers for segment layer
    */
   _setupSegmentHoverEvents() {
-    // Mouse enter on segment
-    this.map.on("mouseenter", this.segmentLayerId, (e) => {
+    // Store bound handlers for later cleanup
+    this._segmentMouseEnterHandler = (e) => {
       this.map.getCanvas().style.cursor = "pointer";
 
       if (e.features && e.features[0] && this.onSegmentHover) {
         const segmentIndex = e.features[0].properties.segmentIndex;
         this.onSegmentHover(segmentIndex);
       }
-    });
+    };
 
-    // Mouse leave segment
-    this.map.on("mouseleave", this.segmentLayerId, () => {
+    this._segmentMouseLeaveHandler = () => {
       this.map.getCanvas().style.cursor = "";
 
       if (this.onSegmentLeave) {
         this.onSegmentLeave();
       }
-    });
+    };
+
+    this.map.on("mouseenter", this.segmentLayerId, this._segmentMouseEnterHandler);
+    this.map.on("mouseleave", this.segmentLayerId, this._segmentMouseLeaveHandler);
+  }
+
+  /**
+   * Remove segment hover event handlers
+   */
+  _removeSegmentHoverEvents() {
+    if (this._segmentMouseEnterHandler) {
+      this.map.off("mouseenter", this.segmentLayerId, this._segmentMouseEnterHandler);
+      this._segmentMouseEnterHandler = null;
+    }
+    if (this._segmentMouseLeaveHandler) {
+      this.map.off("mouseleave", this.segmentLayerId, this._segmentMouseLeaveHandler);
+      this._segmentMouseLeaveHandler = null;
+    }
   }
 
   /**
@@ -263,6 +279,9 @@ export class TracksLayer extends BaseLayer {
    * Override remove to also clean up segment layer
    */
   remove() {
+    // Remove segment event handlers
+    this._removeSegmentHoverEvents();
+
     // Remove segment layer and source
     if (this.map.getLayer(this.segmentLayerId)) {
       this.map.removeLayer(this.segmentLayerId);

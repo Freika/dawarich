@@ -56,19 +56,22 @@ module Tracks
       end
 
       points = track.points.order(:timestamp).to_a
-      track.track_segments.destroy_all
 
-      # Get user-specific thresholds
-      user_thresholds, expert_thresholds = extract_user_thresholds(track.user)
+      Track.transaction do
+        track.track_segments.destroy_all
 
-      detector = TransportationModes::Detector.new(
-        track, points,
-        user_thresholds: user_thresholds,
-        user_expert_thresholds: expert_thresholds
-      )
-      segment_data = detector.call
+        # Get user-specific thresholds
+        user_thresholds, expert_thresholds = extract_user_thresholds(track.user)
 
-      create_segments(track, segment_data)
+        detector = TransportationModes::Detector.new(
+          track, points,
+          user_thresholds: user_thresholds,
+          user_expert_thresholds: expert_thresholds
+        )
+        segment_data = detector.call
+
+        create_segments(track, segment_data)
+      end
     rescue StandardError => e
       Rails.logger.error "Failed to reprocess track #{track.id}: #{e.message}"
     end
@@ -96,7 +99,7 @@ module Tracks
           confidence: data[:confidence],
           source: data[:source]
         )
-      end.compact
+      end.select(&:persisted?)
 
       update_dominant_mode(track, segments)
     end

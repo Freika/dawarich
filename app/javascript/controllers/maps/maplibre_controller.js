@@ -186,6 +186,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.cleanup.cleanup()
     this.map?.remove()

@@ -157,7 +157,7 @@ module Tracks::TrackBuilder
         confidence: data[:confidence],
         source: data[:source]
       )
-    end.compact
+    end.select(&:persisted?)
 
     update_dominant_mode(track, segments)
   rescue StandardError => e

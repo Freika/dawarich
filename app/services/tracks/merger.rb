@@ -47,8 +47,12 @@ class Tracks::Merger
       @newer_track.destroy!
     end
 
-    # Re-detect transportation modes for the merged track
-    detect_and_create_segments(@older_track, @older_track.points.order(:timestamp))
+    # Re-detect transportation modes for the merged track (non-critical)
+    begin
+      detect_and_create_segments(@older_track, @older_track.points.order(:timestamp))
+    rescue StandardError => e
+      Rails.logger.error "Failed to detect segments after merging tracks #{@older_track.id}: #{e.message}"
+    end
 
     true
   rescue StandardError => e
