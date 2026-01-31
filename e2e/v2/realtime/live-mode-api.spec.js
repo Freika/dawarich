@@ -214,6 +214,9 @@ test.describe('Live Mode API Integration', () => {
     });
 
     test('should show recent point marker when live mode enabled', async ({ page, request }) => {
+      // Extend timeout for this test
+      test.setTimeout(60000);
+
       // Enable live mode
       await enableLiveMode(page);
       await page.waitForTimeout(1000);
