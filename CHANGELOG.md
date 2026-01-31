@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [1.0.3] - 2026-02-01
+
+## Fixed
+
+- Gemfile being not updated #2210
+- Excessive memory usage during visits suggestions job (thanks @nareddyt!) #2119
+
+## Added
+
+- `SMTP_STARTTLS` environment variable to enable STARTTLS for SMTP connections. Disabled by default.
+
 # [1.0.2] - 2026-01-31
 
 The Insights, Transportation Mode Detection and Supporter Verification release
