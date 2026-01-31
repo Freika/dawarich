@@ -468,45 +468,43 @@ test.describe('Live Mode', () => {
       expect(hasMethod).toBe(true)
     })
 
-    test('should display recent point when new point is broadcast in live mode', async ({ page, request }) => {
+    test('should display recent point when new point is broadcast in live mode', async ({ page }) => {
       // Enable live mode
       await enableLiveMode(page)
-      const channelConnected = await waitForPointsChannelConnected(page, 5000)
       await page.waitForTimeout(1000)
 
-      // Send a new point via API - this triggers ActionCable broadcast
-      const testLat = TEST_LOCATIONS.BERLIN_CENTER.lat + (Math.random() * 0.001)
-      const testLon = TEST_LOCATIONS.BERLIN_CENTER.lon + (Math.random() * 0.001)
+      // Simulate receiving a new point by calling handleNewPoint directly
+      // This bypasses ActionCable and tests the client-side handling
+      const testLat = TEST_LOCATIONS.BERLIN_CENTER.lat
+      const testLon = TEST_LOCATIONS.BERLIN_CENTER.lon
       const timestamp = Math.floor(Date.now() / 1000)
 
-      const response = await sendOwnTracksPoint(
-        request,
-        API_KEYS.DEMO_USER,
-        testLat,
-        testLon,
-        timestamp
-      )
+      const result = await page.evaluate(({ lat, lon, ts }) => {
+        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
 
-      expect(response.status()).toBe(200)
+        if (!controller) return { success: false, reason: 'controller not found' }
+        if (typeof controller.handleNewPoint !== 'function') return { success: false, reason: 'handleNewPoint not found' }
 
-      // Wait for recent point layer to become visible
-      // Note: requires server-side live_map_enabled setting + working ActionCable
-      const recentPointVisible = await waitForRecentPointVisible(page, 10000)
+        // Enable live mode programmatically
+        controller.liveModeEnabled = true
 
-      if (channelConnected && recentPointVisible) {
-        // Verify recent point layer is showing
-        const hasRecentPoint = await page.evaluate(() => {
-          const element = document.querySelector('[data-controller*="maps--maplibre"]')
-          const app = window.Stimulus || window.Application
-          const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-          const recentPointLayer = controller?.layerManager?.getLayer('recentPoint')
-          return recentPointLayer?.visible === true
-        })
+        // Call handleNewPoint with array format: [lat, lon, battery, altitude, timestamp, velocity, id, country_name]
+        controller.handleNewPoint([lat, lon, 85, 0, ts, 0, 999998, null])
 
-        expect(hasRecentPoint).toBe(true)
-      } else {
-        console.log('[Test] Recent point not visible - broadcast requires server-side live_map_enabled setting')
-      }
+        // Check if recent point layer became visible
+        const mapsController = controller.mapsV2Controller
+        const recentPointLayer = mapsController?.layerManager?.getLayer('recentPoint')
+
+        return {
+          success: true,
+          recentPointVisible: recentPointLayer?.visible === true
+        }
+      }, { lat: testLat, lon: testLon, ts: timestamp })
+
+      expect(result.success).toBe(true)
+      expect(result.recentPointVisible).toBe(true)
     })
   })
 })

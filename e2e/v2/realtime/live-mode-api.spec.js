@@ -6,7 +6,6 @@ import {
   sendOwnTracksPoint,
   waitForPointOnMap,
   waitForFamilyMemberOnMap,
-  waitForRecentPointVisible,
   enableLiveMode,
   waitForActionCableConnection,
   waitForPointsChannelConnected
@@ -220,32 +219,40 @@ test.describe('Live Mode API Integration', () => {
 
       // Enable live mode
       await enableLiveMode(page);
+      await page.waitForTimeout(1000);
 
-      // Wait for connection
-      await waitForActionCableConnection(page);
-      await waitForPointsChannelConnected(page, 5000);
-      await page.waitForTimeout(2000);
-
-      // Send point
+      // Simulate receiving a new point by calling handleNewPoint directly
+      // This bypasses ActionCable and tests the client-side handling
+      const testLat = TEST_LOCATIONS.BERLIN_NORTH.lat;
+      const testLon = TEST_LOCATIONS.BERLIN_NORTH.lon;
       const timestamp = Math.floor(Date.now() / 1000);
-      const response = await sendOwnTracksPoint(
-        request,
-        API_KEYS.DEMO_USER,
-        TEST_LOCATIONS.BERLIN_NORTH.lat,
-        TEST_LOCATIONS.BERLIN_NORTH.lon,
-        timestamp
-      );
 
-      expect(response.status()).toBe(200);
+      const result = await page.evaluate(({ lat, lon, ts }) => {
+        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]');
+        const app = window.Stimulus || window.Application;
+        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime');
 
-      // Check if recent point layer becomes visible
-      const recentPointVisible = await waitForRecentPointVisible(page, 10000);
+        if (!controller) return { success: false, reason: 'controller not found' };
+        if (typeof controller.handleNewPoint !== 'function') return { success: false, reason: 'handleNewPoint not found' };
 
-      if (recentPointVisible) {
-        console.log('[Test] Recent point marker displayed successfully');
-      } else {
-        console.log('[Test] Recent point marker not visible - may require ActionCable');
-      }
+        // Enable live mode programmatically
+        controller.liveModeEnabled = true;
+
+        // Call handleNewPoint with array format: [lat, lon, battery, altitude, timestamp, velocity, id, country_name]
+        controller.handleNewPoint([lat, lon, 85, 0, ts, 0, 999999, null]);
+
+        // Check if recent point layer became visible
+        const mapsController = controller.mapsV2Controller;
+        const recentPointLayer = mapsController?.layerManager?.getLayer('recentPoint');
+
+        return {
+          success: true,
+          recentPointVisible: recentPointLayer?.visible === true
+        };
+      }, { lat: testLat, lon: testLon, ts: timestamp });
+
+      expect(result.success).toBe(true);
+      expect(result.recentPointVisible).toBe(true);
     });
   });
 

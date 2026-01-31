@@ -37,6 +37,7 @@ Anyway, enjoy the release and don't forget to report any bugs you may find!
 - Remove assets before precompilation to prevent stale assets from being served. #2187
 - undefined method 'to_sym' for nil in sidekiq #2190
 - `Tracks::BoundaryResolverJob` now uses deterministic exponential backoff instead of random delays, and stops retrying after 5 attempts to avoid infinite rescheduling.
+- Hanging Sidekiq job #2134
 
 ## Changed
 
