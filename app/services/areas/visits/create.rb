@@ -11,17 +11,27 @@ class Areas::Visits::Create
   end
 
   def call
-    areas.map { area_visits(_1) }
+    # Don't return unnecessary values, causes high memory usage (see #2119)
+    areas.each { area_visits(_1) }
   end
 
   private
 
   def area_visits(area)
-    points_grouped_by_month = area_points(area)
-    visits_by_month = group_points_by_month(points_grouped_by_month)
+    # Process month-by-month sequentially to avoid loading all points into memory.
+    # Loading all points and grouping in Ruby caused 16GB+ memory usage (see #2119).
+    # Query distinct months first (no point data), then process each month separately.
+    # Process visits immediately per month - DO NOT build a hash of all visits for all months
+    # before processing (removing that intermediate hash was a key optimization).
+    months = distinct_months_for_area(area)
+    Rails.logger.debug("[Areas::Visits::Create] distinct_months_for_area area_id=#{area.id} months=#{months.inspect} count=#{months.size}")
 
-    visits_by_month.each do |month, visits|
-      Rails.logger.info("Month: #{month}, Total visits: #{visits.size}")
+    months.each do |month|
+      points = area_points_for_month(area, month)
+      visits = Visits::Group.new(
+        time_threshold_minutes: @time_threshold_minutes,
+        merge_threshold_minutes: @merge_threshold_minutes
+      ).call(points, already_sorted: true)
 
       visits.each do |time_range, visit_points|
         create_or_update_visit(area, time_range, visit_points)
@@ -29,7 +39,7 @@ class Areas::Visits::Create
     end
   end
 
-  def area_points(area)
+  def distinct_months_for_area(area)
     area_radius =
       if user.safe_settings.distance_unit == :km
         area.radius / ::DISTANCE_UNITS[:km]
@@ -37,26 +47,38 @@ class Areas::Visits::Create
         area.radius / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
       end
 
-    points = Point.where(user_id: user.id)
-                  .near([area.latitude, area.longitude], area_radius, user.safe_settings.distance_unit)
-                  .order(timestamp: :asc)
-
-    # check if all points within the area are assigned to a visit
-
-    points.group_by { |point| Time.zone.at(point.timestamp).strftime('%Y-%m') }
+    # Same pattern as User#years_tracked: Use select_all for better performance with large datasets.
+    # From the subquery (filtered points, runs db-side), compute distinct month strings.
+    relation = Point.where(user_id: user.id)
+                    .near([area.latitude, area.longitude], area_radius, user.safe_settings.distance_unit)
+    sql = <<~SQL.squish
+      SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp), 'YYYY-MM') AS month
+      FROM (#{relation.to_sql}) AS sub
+      ORDER BY month ASC
+    SQL
+    result = ActiveRecord::Base.connection.select_all(sql)
+    result.map { |r| r['month'] }
   end
 
-  def group_points_by_month(points)
-    visits_by_month = {}
+  def area_points_for_month(area, month)
+    area_radius =
+      if user.safe_settings.distance_unit == :km
+        area.radius / ::DISTANCE_UNITS[:km]
+      else
+        area.radius / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
+      end
 
-    points.each do |month, points_in_month|
-      visits_by_month[month] = Visits::Group.new(
-        time_threshold_minutes: @time_threshold_minutes,
-        merge_threshold_minutes: @merge_threshold_minutes
-      ).call(points_in_month)
-    end
+    year, month_num = month.split('-').map(&:to_i)
+    month_start = Time.utc(year, month_num, 1).to_i
+    month_end = (Time.utc(year, month_num, 1) + 1.month).to_i - 1
 
-    visits_by_month
+    Point.where(user_id: user.id)
+         # Drop raw_data JSON to keep memory usage reasonable (see #2119)
+         .without_raw_data
+         .near([area.latitude, area.longitude], area_radius, user.safe_settings.distance_unit)
+         .where(timestamp: month_start..month_end)
+         .order(timestamp: :asc)
+         .to_a
   end
 
   def create_or_update_visit(area, time_range, visit_points)

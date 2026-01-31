@@ -11,6 +11,7 @@ require 'sidekiq/testing'
 require 'super_diff/rspec-rails'
 
 require 'rake'
+require 'shoulda/matchers'
 
 Rails.application.load_tasks
 

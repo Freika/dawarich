@@ -63,6 +63,9 @@ RUN bundle config set --local path 'vendor/bundle' \
 
 COPY ../. ./
 
+# Install Node.js dependencies
+RUN yarn install --ignore-engines
+
 # Precompile assets
 RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
     && rm -rf node_modules tmp/cache
