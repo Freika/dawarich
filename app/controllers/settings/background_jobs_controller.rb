@@ -3,7 +3,8 @@
 class Settings::BackgroundJobsController < ApplicationController
   before_action :authenticate_self_hosted!
   before_action :authenticate_admin!, unless: lambda {
-    %w[start_immich_import start_photoprism_import].include?(params[:job_name])
+    action_name == 'create' &&
+      %w[start_immich_import start_photoprism_import].include?(params[:job_name])
   }
 
   def index; end
