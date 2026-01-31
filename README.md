@@ -9,6 +9,9 @@
 ![Map](screenshots/map.png)
 *Map View*
 
+#[Insights](screenshots/insights.png)
+*Insights Page*
+
 ![Family](screenshots/family.png)
 *Family Page*
 
