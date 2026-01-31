@@ -9,8 +9,6 @@ class Visits::Group
   end
 
   def call(points, already_sorted: false)
-    # Avoid extra in-memory sorting when points are already ordered by timestamp.
-    # Sorting large point sets creates a full-sized copy and can spike memory (see #2119).
     process_points(already_sorted ? points : points.sort_by(&:timestamp))
     finalize_current_visit
     merge_visits
