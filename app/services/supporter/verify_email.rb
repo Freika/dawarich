@@ -2,7 +2,6 @@
 
 module Supporter
   class VerifyEmail
-    CACHE_TTL = 24.hours
     SUPPORTER_VERIFICATION_URL = 'https://verify.dawarich.app/api/v1/verify'
 
     attr_reader :email
@@ -14,13 +13,7 @@ module Supporter
     def call
       return { supporter: false } if email.blank?
 
-      Rails.cache.fetch(cache_key, expires_in: CACHE_TTL) do
-        fetch_supporter_status
-      end
-    end
-
-    def cache_key
-      "dawarich/supporter:#{email_hash}"
+      fetch_supporter_status
     end
 
     private

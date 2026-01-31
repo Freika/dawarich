@@ -26,10 +26,6 @@ class Settings::GeneralController < ApplicationController
     current_user.settings['supporter_email'] = email
     current_user.save!
 
-    # Clear cached verification so we get a fresh result
-    verifier = Supporter::VerifyEmail.new(email)
-    Rails.cache.delete(verifier.cache_key)
-
     if current_user.reload.supporter?
       redirect_to settings_general_index_path,
                   notice: "Verified! Thank you for supporting Dawarich via #{current_user.supporter_platform&.titleize}."

@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Settings::Integrations', type: :request do
   describe 'PATCH /settings/integrations' do
     let(:user) { create(:user) }
-    let(:params) { { settings: { 'meters_between_routes' => '1000', 'minutes_between_routes' => '10' } } }
+    let(:params) { { settings: { 'immich_skip_ssl_verification' => '1', 'photoprism_skip_ssl_verification' => '1' } } }
 
     before do
       sign_in user
@@ -15,8 +15,8 @@ RSpec.describe 'Settings::Integrations', type: :request do
       patch '/settings/integrations', params: params
 
       user.reload
-      expect(user.settings['meters_between_routes']).to eq('1000')
-      expect(user.settings['minutes_between_routes']).to eq('10')
+      expect(user.settings['immich_skip_ssl_verification']).to eq('1')
+      expect(user.settings['photoprism_skip_ssl_verification']).to eq('1')
     end
 
     it 'refreshes cached photos when requested' do

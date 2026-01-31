@@ -37,9 +37,6 @@ class Cache::PreheatingJob < ApplicationJob
         expires_in: 1.day
       )
 
-      # Preheat supporter status cache
-      user.supporter_info
-
       # Preheat insights yearly digest cache
       Cache::PreheatInsightsDigests.new(user).call
     end

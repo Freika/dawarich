@@ -32,7 +32,7 @@
       <div class="flex flex-row gap-5 w-full px-5">
         <%= yield %>
       </div>
-      <%= render SELF_HOSTED ? 'shared/footer' : 'shared/legal_footer' %>
+      <%= render DawarichSettings.self_hosted? ? 'shared/footer' : 'shared/legal_footer' %>
     </div>
 
     <%= render 'map/onboarding_modal' %>

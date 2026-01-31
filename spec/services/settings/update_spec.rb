@@ -7,7 +7,7 @@ RSpec.describe Settings::Update do
 
   describe '#call' do
     context 'when updating basic settings' do
-      let(:settings_params) { { 'meters_between_routes' => '1000', 'minutes_between_routes' => '10' } }
+      let(:settings_params) { { 'immich_url' => 'https://immich.test', 'photoprism_url' => 'https://photoprism.test' } }
       let(:service) { described_class.new(user, settings_params) }
 
       it 'updates the user settings' do
@@ -15,13 +15,13 @@ RSpec.describe Settings::Update do
 
         expect(result[:success]).to be true
         expect(result[:notices]).to include('Settings updated')
-        expect(user.reload.settings['meters_between_routes']).to eq('1000')
-        expect(user.reload.settings['minutes_between_routes']).to eq('10')
+        expect(user.reload.settings['immich_url']).to eq('https://immich.test')
+        expect(user.reload.settings['photoprism_url']).to eq('https://photoprism.test')
       end
     end
 
     context 'when user update fails' do
-      let(:settings_params) { { 'meters_between_routes' => '1000' } }
+      let(:settings_params) { { 'immich_url' => 'https://immich.test' } }
       let(:service) { described_class.new(user, settings_params) }
 
       before do
@@ -37,7 +37,7 @@ RSpec.describe Settings::Update do
     end
 
     context 'when refresh_photos_cache is requested' do
-      let(:settings_params) { { 'meters_between_routes' => '1000' } }
+      let(:settings_params) { { 'immich_url' => 'https://immich.test' } }
       let(:service) { described_class.new(user, settings_params, refresh_photos_cache: true) }
       let(:cache_cleaner) { instance_double(Photos::CacheCleaner) }
 

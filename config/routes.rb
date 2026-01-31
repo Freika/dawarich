@@ -43,6 +43,7 @@ Rails.application.routes.draw do
     patch 'integrations', to: 'integrations#update'
 
     resources :background_jobs, only: %i[index create]
+    patch 'background_jobs', to: 'background_jobs#update'
     resources :users, only: %i[index create destroy edit update] do
       collection do
         get 'export'
