@@ -6,7 +6,7 @@ class Settings::GeneralController < ApplicationController
   def index; end
 
   def update
-    update_email_settings if params[:digest_emails_enabled].present?
+    update_email_settings
     update_supporter_settings
 
     if current_user.save
@@ -42,7 +42,12 @@ class Settings::GeneralController < ApplicationController
   private
 
   def update_email_settings
-    current_user.settings['digest_emails_enabled'] = ActiveModel::Type::Boolean.new.cast(params[:digest_emails_enabled])
+    if params.key?(:digest_emails_enabled)
+      current_user.settings['digest_emails_enabled'] = ActiveModel::Type::Boolean.new.cast(params[:digest_emails_enabled])
+    end
+    if params.key?(:news_emails_enabled)
+      current_user.settings['news_emails_enabled'] = ActiveModel::Type::Boolean.new.cast(params[:news_emails_enabled])
+    end
   end
 
   def update_supporter_settings

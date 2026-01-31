@@ -34,11 +34,13 @@ Rails.application.routes.draw do
                         '/'
                       }, via: :get
 
-  resources :settings, only: :index
   namespace :settings do
     resources :general, only: [:index]
     patch 'general', to: 'general#update'
     post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+
+    resources :integrations, only: [:index]
+    patch 'integrations', to: 'integrations#update'
 
     resources :background_jobs, only: %i[index create]
     resources :users, only: %i[index create destroy edit update] do
@@ -52,7 +54,6 @@ Rails.application.routes.draw do
     patch 'maps', to: 'maps#update'
   end
 
-  patch 'settings', to: 'settings#update'
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 

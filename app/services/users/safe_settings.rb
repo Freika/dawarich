@@ -25,6 +25,7 @@ class Users::SafeSettings
     'enabled_map_layers' => %w[Routes Heatmap],
     'maps_maplibre_style' => 'light',
     'digest_emails_enabled' => true,
+    'news_emails_enabled' => true,
     'globe_projection' => false,
     'supporter_email' => nil,
     'show_supporter_badge' => true,
@@ -181,6 +182,13 @@ class Users::SafeSettings
 
   def digest_emails_enabled?
     value = settings['digest_emails_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def news_emails_enabled?
+    value = settings['news_emails_enabled']
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)

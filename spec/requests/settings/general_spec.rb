@@ -32,6 +32,20 @@ RSpec.describe 'settings/general', type: :request do
         expect(response).to redirect_to(settings_general_index_path)
         expect(user.reload.settings['digest_emails_enabled']).to eq(true)
       end
+
+      it 'disables news emails setting' do
+        patch settings_general_path, params: { news_emails_enabled: '0' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['news_emails_enabled']).to eq(false)
+      end
+
+      it 'enables news emails setting' do
+        patch settings_general_path, params: { news_emails_enabled: '1' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['news_emails_enabled']).to eq(true)
+      end
     end
   end
 

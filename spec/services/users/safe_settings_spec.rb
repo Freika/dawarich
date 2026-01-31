@@ -102,7 +102,10 @@ RSpec.describe Users::SafeSettings do
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
             'digest_emails_enabled' => true,
+            'news_emails_enabled' => true,
             'globe_projection' => false,
+            'supporter_email' => nil,
+            'show_supporter_badge' => true,
             'transportation_thresholds' => {
               'walking_max_speed' => 7,
               'cycling_max_speed' => 45,
@@ -238,6 +241,34 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.maps).to eq({ 'name' => 'custom', 'url' => 'https://custom.example.com' })
         expect(safe_settings.visits_suggestions_enabled?).to be false
         expect(safe_settings.enabled_map_layers).to eq(['Points', 'Tracks', 'Fog of War', 'Suggested Visits'])
+      end
+    end
+  end
+
+  describe '#news_emails_enabled?' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when not set' do
+      let(:settings) { {} }
+
+      it 'defaults to true' do
+        expect(safe_settings.news_emails_enabled?).to be true
+      end
+    end
+
+    context 'when explicitly set to true' do
+      let(:settings) { { 'news_emails_enabled' => true } }
+
+      it 'returns true' do
+        expect(safe_settings.news_emails_enabled?).to be true
+      end
+    end
+
+    context 'when set to false' do
+      let(:settings) { { 'news_emails_enabled' => false } }
+
+      it 'returns false' do
+        expect(safe_settings.news_emails_enabled?).to be false
       end
     end
   end
