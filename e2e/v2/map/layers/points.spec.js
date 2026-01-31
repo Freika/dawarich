@@ -231,24 +231,23 @@ test.describe('Points Layer', () => {
                routesSource?._data?.features?.length > 0
       }, { timeout: 15000 })
 
-      // Ensure points layer is visible via the settings panel UI
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
-      await page.waitForTimeout(300)
-      await page.locator('button[data-tab="layers"]').click()
-      await page.waitForTimeout(300)
+      // Ensure points layer is visible before testing dragging (same pattern as test 74)
+      await page.evaluate(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const pointsLayer = controller?.layerManager?.layers?.pointsLayer
 
-      const pointsCheckbox = page.locator('[data-maps--maplibre-target="pointsToggle"]')
-      const isChecked = await pointsCheckbox.isChecked()
-      if (!isChecked) {
-        await pointsCheckbox.click()
-        await page.waitForTimeout(500)
-      }
+        if (pointsLayer) {
+          const visibility = controller.map.getLayoutProperty('points', 'visibility')
+          const isVisible = visibility === 'visible' || visibility === undefined
+          if (!isVisible) {
+            pointsLayer.show()
+          }
+        }
+      })
 
-      // Close settings panel
-      const closeBtn = page.locator('.panel-header button[data-action="click->maps--maplibre#toggleSettings"]')
-      await closeBtn.click()
-      await page.waitForTimeout(300)
-
+      // Wait for layer to render
       await page.waitForTimeout(2000)
 
       // Get initial data
@@ -261,24 +260,22 @@ test.describe('Points Layer', () => {
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
 
-        // Get all rendered point features
         const features = controller.map.queryRenderedFeatures(undefined, { layers: ['points'] })
 
         if (features.length === 0) {
-          return { found: false }
+          return { found: false, totalFeatures: 0 }
         }
 
-        // Pick the first rendered point
         const feature = features[0]
         const coords = feature.geometry.coordinates
         const point = controller.map.project(coords)
 
-        // Get the canvas position on the page
         const canvas = controller.map.getCanvas()
         const rect = canvas.getBoundingClientRect()
 
         return {
           found: true,
+          totalFeatures: features.length,
           pointId: feature.properties.id,
           coords: coords,
           x: point.x,
@@ -292,12 +289,6 @@ test.describe('Points Layer', () => {
 
       const pointId = renderedPoint.pointId
       const initialCoords = renderedPoint.coords
-      const pointPixel = {
-        x: renderedPoint.x,
-        y: renderedPoint.y,
-        pageX: renderedPoint.pageX,
-        pageY: renderedPoint.pageY
-      }
 
       // Find routes that contain this point
       const connectedRoutes = initialRoutesData.features.filter(route => {
@@ -307,23 +298,24 @@ test.describe('Points Layer', () => {
         )
       })
 
-
       const dragOffset = { x: 100, y: 100 }
-      const startX = pointPixel.pageX
-      const startY = pointPixel.pageY
+      const startX = renderedPoint.pageX
+      const startY = renderedPoint.pageY
       const endX = startX + dragOffset.x
       const endY = startY + dragOffset.y
 
-      // Perform drag with slower movement
+      // Check cursor style on hover (matches test 74 pattern)
       await page.mouse.move(startX, startY)
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(200)
+
+      // Perform the drag operation with slower movement
       await page.mouse.down()
       await page.waitForTimeout(100)
       await page.mouse.move(endX, endY, { steps: 20 })
       await page.waitForTimeout(100)
       await page.mouse.up()
 
-      // Wait for updates
+      // Wait for API call to complete
       await page.waitForTimeout(3000)
 
       // Get updated data
@@ -331,7 +323,17 @@ test.describe('Points Layer', () => {
       const updatedRoutesData = await getRoutesSourceData(page)
 
       const updatedPoint = updatedPointsData.features.find(f => f.properties.id === pointId)
+      expect(updatedPoint).toBeDefined()
       const updatedCoords = updatedPoint.geometry.coordinates
+
+      // The point moved, so verify the coordinates actually changed
+      const updatedLng = parseFloat(updatedCoords[0])
+      const updatedLat = parseFloat(updatedCoords[1])
+      const initialLng = parseFloat(initialCoords[0])
+      const initialLat = parseFloat(initialCoords[1])
+
+      expect(updatedLng).not.toBeCloseTo(initialLng, 5)
+      expect(updatedLat).not.toBeCloseTo(initialLat, 5)
 
       // Verify routes have been updated
       const updatedConnectedRoutes = updatedRoutesData.features.filter(route => {
@@ -341,20 +343,10 @@ test.describe('Points Layer', () => {
         )
       })
 
-
       // Routes that were originally connected should now be at the new position
       if (connectedRoutes.length > 0) {
         expect(updatedConnectedRoutes.length).toBeGreaterThan(0)
       }
-
-      // The point moved, so verify the coordinates actually changed
-      const lngChanged = Math.abs(parseFloat(updatedCoords[0]) - initialCoords[0]) > 0.0001
-      const latChanged = Math.abs(parseFloat(updatedCoords[1]) - initialCoords[1]) > 0.0001
-
-      expect(lngChanged || latChanged).toBe(true)
-
-      // Since the route segments update is best-effort (depends on coordinate matching),
-      // we'll just verify that routes exist and the point moved
     })
 
     test('persists point position after page reload', async ({ page }) => {
@@ -367,14 +359,23 @@ test.describe('Points Layer', () => {
         return source?._data?.features?.length > 0
       }, { timeout: 15000 })
 
-      // Ensure points layer is visible by clicking the checkbox
-      const pointsCheckbox = page.locator('[data-maps--maplibre-target="pointsToggle"]')
-      const isChecked = await pointsCheckbox.isChecked()
-      if (!isChecked) {
-        await pointsCheckbox.click()
-        await page.waitForTimeout(500)
-      }
+      // Ensure points layer is visible (programmatic - same pattern as test 74)
+      await page.evaluate(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const pointsLayer = controller?.layerManager?.layers?.pointsLayer
 
+        if (pointsLayer) {
+          const visibility = controller.map.getLayoutProperty('points', 'visibility')
+          const isVisible = visibility === 'visible' || visibility === undefined
+          if (!isVisible) {
+            pointsLayer.show()
+          }
+        }
+      })
+
+      // Wait for layer to render
       await page.waitForTimeout(2000)
 
       // Find a rendered point feature on the map
@@ -383,24 +384,22 @@ test.describe('Points Layer', () => {
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
 
-        // Get all rendered point features
         const features = controller.map.queryRenderedFeatures(undefined, { layers: ['points'] })
 
         if (features.length === 0) {
-          return { found: false }
+          return { found: false, totalFeatures: 0 }
         }
 
-        // Pick the first rendered point
         const feature = features[0]
         const coords = feature.geometry.coordinates
         const point = controller.map.project(coords)
 
-        // Get the canvas position on the page
         const canvas = controller.map.getCanvas()
         const rect = canvas.getBoundingClientRect()
 
         return {
           found: true,
+          totalFeatures: features.length,
           pointId: feature.properties.id,
           coords: coords,
           x: point.x,
@@ -414,30 +413,25 @@ test.describe('Points Layer', () => {
 
       const pointId = renderedPoint.pointId
       const initialCoords = renderedPoint.coords
-      const pointPixel = {
-        x: renderedPoint.x,
-        y: renderedPoint.y,
-        pageX: renderedPoint.pageX,
-        pageY: renderedPoint.pageY
-      }
-
 
       const dragOffset = { x: 100, y: 100 }
-      const startX = pointPixel.pageX
-      const startY = pointPixel.pageY
+      const startX = renderedPoint.pageX
+      const startY = renderedPoint.pageY
       const endX = startX + dragOffset.x
       const endY = startY + dragOffset.y
 
-      // Perform drag with slower movement
+      // Check cursor style on hover (matches test 74 pattern)
       await page.mouse.move(startX, startY)
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(200)
+
+      // Perform the drag operation with slower movement
       await page.mouse.down()
       await page.waitForTimeout(100)
       await page.mouse.move(endX, endY, { steps: 20 })
       await page.waitForTimeout(100)
       await page.mouse.up()
 
-      // Wait for API call
+      // Wait for API call to complete
       await page.waitForTimeout(3000)
 
       // Get the new position
@@ -445,6 +439,14 @@ test.describe('Points Layer', () => {
       const afterDragPoint = afterDragData.features.find(f => f.properties.id === pointId)
       const afterDragCoords = afterDragPoint.geometry.coordinates
 
+      // Verify the drag succeeded before reloading
+      const dragLng = parseFloat(afterDragCoords[0])
+      const dragLat = parseFloat(afterDragCoords[1])
+      const initialLng = parseFloat(initialCoords[0])
+      const initialLat = parseFloat(initialCoords[1])
+
+      expect(dragLng).not.toBeCloseTo(initialLng, 5)
+      expect(dragLat).not.toBeCloseTo(initialLat, 5)
 
       // Reload the page
       await page.reload()
@@ -466,20 +468,15 @@ test.describe('Points Layer', () => {
       const afterReloadPoint = afterReloadData.features.find(f => f.properties.id === pointId)
       const afterReloadCoords = afterReloadPoint.geometry.coordinates
 
-
-      // Verify the position persisted (parse coordinates as numbers)
+      // Verify the position persisted
       const reloadLng = parseFloat(afterReloadCoords[0])
       const reloadLat = parseFloat(afterReloadCoords[1])
-      const dragLng = parseFloat(afterDragCoords[0])
-      const dragLat = parseFloat(afterDragCoords[1])
-      const initialLng = parseFloat(initialCoords[0])
-      const initialLat = parseFloat(initialCoords[1])
 
-      // Position after reload should match position after drag (high precision)
+      // Position after reload should match position after drag
       expect(reloadLng).toBeCloseTo(dragLng, 5)
       expect(reloadLat).toBeCloseTo(dragLat, 5)
 
-      // And it should be different from the initial position (lower precision - just verify it moved)
+      // And it should be different from the initial position
       const lngDiff = Math.abs(reloadLng - initialLng)
       const latDiff = Math.abs(reloadLat - initialLat)
       const moved = lngDiff > 0.00001 || latDiff > 0.00001

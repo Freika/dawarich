@@ -271,50 +271,53 @@ test.describe('Map Interactions', () => {
 
       await page.waitForTimeout(1000)
 
-      // Click on a route
-      const routeCenter = await page.evaluate(() => {
+      // Center map on route midpoint for reliable clicking
+      await page.evaluate(() => {
         const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         const source = controller.map.getSource('routes-source')
 
-        if (!source._data?.features?.length) return null
+        if (!source._data?.features?.length) return
 
         const route = source._data.features[0]
         const coords = route.geometry.coordinates
         const midCoord = coords[Math.floor(coords.length / 2)]
-        const point = controller.map.project(midCoord)
 
-        return { x: point.x, y: point.y }
+        controller.map.jumpTo({ center: midCoord, zoom: 15 })
       })
 
-      if (routeCenter) {
-        const canvas = page.locator('.maplibregl-canvas')
-        await canvas.click({
-          position: { x: routeCenter.x, y: routeCenter.y }
-        })
+      await page.waitForTimeout(500)
 
-        await page.waitForTimeout(500)
+      // Click at the center of the canvas — the route midpoint is projected there
+      const canvas = page.locator('.maplibregl-canvas')
+      const box = await canvas.boundingBox()
+      if (!box) return
 
-        // Move mouse away from route
-        await canvas.hover({ position: { x: 100, y: 100 } })
-        await page.waitForTimeout(500)
+      await canvas.click({
+        position: { x: Math.floor(box.width / 2), y: Math.floor(box.height / 2) }
+      })
 
-        // Check if route is still highlighted
-        const isStillHighlighted = await page.evaluate(() => {
-          const element = document.querySelector('[data-controller*="maps--maplibre"]')
-          const app = window.Stimulus || window.Application
-          const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-          const hoverSource = controller.map.getSource('routes-hover-source')
-          return hoverSource && hoverSource._data?.features?.length > 0
-        })
+      await page.waitForTimeout(500)
 
-        expect(isStillHighlighted).toBe(true)
+      // Move mouse away from route
+      await canvas.hover({ position: { x: 50, y: 50 } })
+      await page.waitForTimeout(500)
 
-        // Check if info panel is still visible
-        const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
-        await expect(infoDisplay).not.toHaveClass(/hidden/)
-      }
+      // Check if route is still highlighted
+      const isStillHighlighted = await page.evaluate(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const hoverSource = controller.map.getSource('routes-hover-source')
+        return hoverSource && hoverSource._data?.features?.length > 0
+      })
+
+      expect(isStillHighlighted).toBe(true)
+
+      // Check if info panel is still visible
+      const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+      await expect(infoDisplay).not.toHaveClass(/hidden/)
     })
 
     test('clicking elsewhere on map deselects route', async ({ page }) => {
@@ -331,53 +334,56 @@ test.describe('Map Interactions', () => {
 
       await page.waitForTimeout(1000)
 
-      // Click on a route first
-      const routeCenter = await page.evaluate(() => {
+      // Center map on route midpoint for reliable clicking
+      await page.evaluate(() => {
         const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         const source = controller.map.getSource('routes-source')
 
-        if (!source._data?.features?.length) return null
+        if (!source._data?.features?.length) return
 
         const route = source._data.features[0]
         const coords = route.geometry.coordinates
         const midCoord = coords[Math.floor(coords.length / 2)]
-        const point = controller.map.project(midCoord)
 
-        return { x: point.x, y: point.y }
+        controller.map.jumpTo({ center: midCoord, zoom: 15 })
       })
 
-      if (routeCenter) {
-        const canvas = page.locator('.maplibregl-canvas')
-        await canvas.click({
-          position: { x: routeCenter.x, y: routeCenter.y }
-        })
+      await page.waitForTimeout(500)
 
-        await page.waitForTimeout(500)
+      // Click at the center of the canvas — the route midpoint is projected there
+      const canvas = page.locator('.maplibregl-canvas')
+      const box = await canvas.boundingBox()
+      if (!box) return
 
-        // Verify route is selected
-        const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
-        await expect(infoDisplay).not.toHaveClass(/hidden/)
+      await canvas.click({
+        position: { x: Math.floor(box.width / 2), y: Math.floor(box.height / 2) }
+      })
 
-        // Click elsewhere on map (far from route)
-        await canvas.click({ position: { x: 100, y: 100 } })
-        await page.waitForTimeout(500)
+      await page.waitForTimeout(500)
 
-        // Check if route is deselected (hover source cleared)
-        const isDeselected = await page.evaluate(() => {
-          const element = document.querySelector('[data-controller*="maps--maplibre"]')
-          const app = window.Stimulus || window.Application
-          const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-          const hoverSource = controller.map.getSource('routes-hover-source')
-          return hoverSource && hoverSource._data?.features?.length === 0
-        })
+      // Verify route is selected
+      const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+      await expect(infoDisplay).not.toHaveClass(/hidden/)
 
-        expect(isDeselected).toBe(true)
+      // Click elsewhere on map (top-left corner, far from route)
+      await canvas.click({ position: { x: 50, y: 50 } })
+      await page.waitForTimeout(500)
 
-        // Check if info panel is hidden
-        await expect(infoDisplay).toHaveClass(/hidden/)
-      }
+      // Check if route is deselected (hover source cleared)
+      const isDeselected = await page.evaluate(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const hoverSource = controller.map.getSource('routes-hover-source')
+        return hoverSource && hoverSource._data?.features?.length === 0
+      })
+
+      expect(isDeselected).toBe(true)
+
+      // Check if info panel is hidden
+      await expect(infoDisplay).toHaveClass(/hidden/)
     })
 
     test('clicking close button on info panel deselects route', async ({ page }) => {
@@ -394,54 +400,57 @@ test.describe('Map Interactions', () => {
 
       await page.waitForTimeout(1000)
 
-      // Click on a route
-      const routeCenter = await page.evaluate(() => {
+      // Center map on route midpoint for reliable clicking
+      await page.evaluate(() => {
         const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         const source = controller.map.getSource('routes-source')
 
-        if (!source._data?.features?.length) return null
+        if (!source._data?.features?.length) return
 
         const route = source._data.features[0]
         const coords = route.geometry.coordinates
         const midCoord = coords[Math.floor(coords.length / 2)]
-        const point = controller.map.project(midCoord)
 
-        return { x: point.x, y: point.y }
+        controller.map.jumpTo({ center: midCoord, zoom: 15 })
       })
 
-      if (routeCenter) {
-        const canvas = page.locator('.maplibregl-canvas')
-        await canvas.click({
-          position: { x: routeCenter.x, y: routeCenter.y }
-        })
+      await page.waitForTimeout(500)
 
-        await page.waitForTimeout(500)
+      // Click at the center of the canvas — the route midpoint is projected there
+      const canvas = page.locator('.maplibregl-canvas')
+      const box = await canvas.boundingBox()
+      if (!box) return
 
-        // Verify info panel is open
-        const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
-        await expect(infoDisplay).not.toHaveClass(/hidden/)
+      await canvas.click({
+        position: { x: Math.floor(box.width / 2), y: Math.floor(box.height / 2) }
+      })
 
-        // Click the close button
-        const closeButton = page.locator('button[data-action="click->maps--maplibre#closeInfo"]')
-        await closeButton.click()
-        await page.waitForTimeout(500)
+      await page.waitForTimeout(500)
 
-        // Check if route is deselected
-        const isDeselected = await page.evaluate(() => {
-          const element = document.querySelector('[data-controller*="maps--maplibre"]')
-          const app = window.Stimulus || window.Application
-          const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-          const hoverSource = controller.map.getSource('routes-hover-source')
-          return hoverSource && hoverSource._data?.features?.length === 0
-        })
+      // Verify info panel is open
+      const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+      await expect(infoDisplay).not.toHaveClass(/hidden/)
 
-        expect(isDeselected).toBe(true)
+      // Click the close button
+      const closeButton = page.locator('button[data-action="click->maps--maplibre#closeInfo"]')
+      await closeButton.click()
+      await page.waitForTimeout(500)
 
-        // Check if info panel is hidden
-        await expect(infoDisplay).toHaveClass(/hidden/)
-      }
+      // Check if route is deselected
+      const isDeselected = await page.evaluate(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const hoverSource = controller.map.getSource('routes-hover-source')
+        return hoverSource && hoverSource._data?.features?.length === 0
+      })
+
+      expect(isDeselected).toBe(true)
+
+      // Check if info panel is hidden
+      await expect(infoDisplay).toHaveClass(/hidden/)
     })
 
     test('route cursor changes to pointer on hover', async ({ page }) => {
@@ -458,41 +467,44 @@ test.describe('Map Interactions', () => {
 
       await page.waitForTimeout(1000)
 
-      // Hover over a route
-      const routeCenter = await page.evaluate(() => {
+      // Center map on route midpoint for reliable hovering
+      await page.evaluate(() => {
         const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         const source = controller.map.getSource('routes-source')
 
-        if (!source._data?.features?.length) return null
+        if (!source._data?.features?.length) return
 
         const route = source._data.features[0]
         const coords = route.geometry.coordinates
         const midCoord = coords[Math.floor(coords.length / 2)]
-        const point = controller.map.project(midCoord)
 
-        return { x: point.x, y: point.y }
+        controller.map.jumpTo({ center: midCoord, zoom: 15 })
       })
 
-      if (routeCenter) {
-        const canvas = page.locator('.maplibregl-canvas')
-        await canvas.hover({
-          position: { x: routeCenter.x, y: routeCenter.y }
-        })
+      await page.waitForTimeout(500)
 
-        await page.waitForTimeout(300)
+      // Hover at the center of the canvas — the route midpoint is projected there
+      const canvas = page.locator('.maplibregl-canvas')
+      const box = await canvas.boundingBox()
+      if (!box) return
 
-        // Check cursor style
-        const cursor = await page.evaluate(() => {
-          const element = document.querySelector('[data-controller*="maps--maplibre"]')
-          const app = window.Stimulus || window.Application
-          const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-          return controller.map.getCanvas().style.cursor
-        })
+      await canvas.hover({
+        position: { x: Math.floor(box.width / 2), y: Math.floor(box.height / 2) }
+      })
 
-        expect(cursor).toBe('pointer')
-      }
+      await page.waitForTimeout(300)
+
+      // Check cursor style
+      const cursor = await page.evaluate(() => {
+        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const app = window.Stimulus || window.Application
+        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        return controller.map.getCanvas().style.cursor
+      })
+
+      expect(cursor).toBe('pointer')
     })
 
     test('hovering over different route while one is selected shows both highlighted', async ({ page }) => {
