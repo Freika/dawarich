@@ -7,6 +7,42 @@ import {
   hasPopup
 } from '../helpers/setup.js'
 
+/**
+ * Helper to enable routes layer and disable points layer via settings UI
+ * This prevents points from intercepting route clicks while ensuring routes are visible
+ */
+async function enableRoutesDisablePoints(page) {
+  // Open settings panel
+  await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click();
+  await page.waitForTimeout(300);
+
+  // Click layers tab
+  await page.locator('button[data-tab="layers"]').click();
+  await page.waitForTimeout(300);
+
+  // Make sure Routes layer is enabled
+  const routesCheckbox = page.locator('label:has-text("Routes") input.toggle').first();
+  if (!(await routesCheckbox.isChecked().catch(() => true))) {
+    await routesCheckbox.check();
+    await page.waitForTimeout(200);
+  }
+
+  // Disable Points layer to prevent click interception
+  const pointsCheckbox = page.locator('label:has-text("Points") input.toggle').first();
+  if (await pointsCheckbox.isChecked().catch(() => false)) {
+    await pointsCheckbox.uncheck();
+    await page.waitForTimeout(200);
+  }
+
+  // Close settings panel - the close button is inside .panel-header and uses toggleSettings action
+  const closeButton = page.locator('.panel-header button[data-action="click->maps--maplibre#toggleSettings"]');
+  await closeButton.click();
+  await page.waitForTimeout(500);
+  
+  // Verify the panel is closed by checking the settings button is visible/usable
+  // (the panel overlays part of the map when open)
+}
+
 test.describe('Map Interactions', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
@@ -63,6 +99,11 @@ test.describe('Map Interactions', () => {
   })
 
   test.describe('Route Interactions', () => {
+    // Enable routes and disable points layer before each route test to prevent click interception
+    test.beforeEach(async ({ page }) => {
+      await enableRoutesDisablePoints(page);
+    });
+
     test('route hover layer exists', async ({ page }) => {
       await page.waitForFunction(() => {
         const element = document.querySelector('[data-controller*="maps--maplibre"]')
@@ -162,56 +203,58 @@ test.describe('Map Interactions', () => {
 
       await page.waitForTimeout(1000)
 
-      // Get first route's center and click on it
-      const routeCenter = await page.evaluate(() => {
+      // Center map on route midpoint
+      await page.evaluate(() => {
         const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         const source = controller.map.getSource('routes-source')
 
-        if (!source._data?.features?.length) return null
+        if (!source._data?.features?.length) return
 
         const route = source._data.features[0]
         const coords = route.geometry.coordinates
         const midCoord = coords[Math.floor(coords.length / 2)]
-        const point = controller.map.project(midCoord)
 
-        return { x: point.x, y: point.y }
+        controller.map.jumpTo({ center: midCoord, zoom: 15 })
       })
 
-      if (routeCenter) {
-        // Click on the route
-        const canvas = page.locator('.maplibregl-canvas')
-        await canvas.click({
-          position: { x: routeCenter.x, y: routeCenter.y }
-        })
+      await page.waitForTimeout(500)
 
-        await page.waitForTimeout(500)
+      // Click at the center of the canvas — the route midpoint is projected there
+      const canvas = page.locator('.maplibregl-canvas')
+      const box = await canvas.boundingBox()
+      if (!box) return
 
-        // Check if info panel is visible
-        const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
-        await expect(infoDisplay).not.toHaveClass(/hidden/)
+      await canvas.click({
+        position: { x: Math.floor(box.width / 2), y: Math.floor(box.height / 2) }
+      })
 
-        // Check if info panel has route information title
-        const infoTitle = page.locator('[data-maps--maplibre-target="infoTitle"]')
-        await expect(infoTitle).toHaveText('Route Information')
+      await page.waitForTimeout(500)
 
-        // Check if route details are displayed
-        const infoContent = page.locator('[data-maps--maplibre-target="infoContent"]')
-        const content = await infoContent.textContent()
+      // Check if info panel is visible
+      const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+      await expect(infoDisplay).not.toHaveClass(/hidden/)
 
-        expect(content).toContain('Start:')
-        expect(content).toContain('End:')
-        expect(content).toContain('Duration:')
-        expect(content).toContain('Distance:')
-        expect(content).toContain('Points:')
+      // Check if info panel has route information title
+      const infoTitle = page.locator('[data-maps--maplibre-target="infoTitle"]')
+      await expect(infoTitle).toHaveText('Route Information')
 
-        // Check for emoji markers (start 🚥 and end 🏁)
-        const startMarker = page.locator('.route-emoji-marker:has-text("🚥")')
-        const endMarker = page.locator('.route-emoji-marker:has-text("🏁")')
-        await expect(startMarker).toBeVisible()
-        await expect(endMarker).toBeVisible()
-      }
+      // Check if route details are displayed
+      const infoContent = page.locator('[data-maps--maplibre-target="infoContent"]')
+      const content = await infoContent.textContent()
+
+      expect(content).toContain('Start:')
+      expect(content).toContain('End:')
+      expect(content).toContain('Duration:')
+      expect(content).toContain('Distance:')
+      expect(content).toContain('Points:')
+
+      // Check for emoji markers (start 🚥 and end 🏁)
+      const startMarker = page.locator('.route-emoji-marker:has-text("🚥")')
+      const endMarker = page.locator('.route-emoji-marker:has-text("🏁")')
+      await expect(startMarker).toBeVisible()
+      await expect(endMarker).toBeVisible()
     })
 
     test('clicked route stays highlighted after mouse moves away', async ({ page }) => {
@@ -620,43 +663,43 @@ test.describe('Map Interactions', () => {
 
       await page.waitForTimeout(1000)
 
-      // Click on a route
-      const routeCenter = await page.evaluate(() => {
+      // Center map on route midpoint
+      await page.evaluate(() => {
         const element = document.querySelector('[data-controller*="maps--maplibre"]')
         const app = window.Stimulus || window.Application
         const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
         const source = controller.map.getSource('routes-source')
-
-        if (!source._data?.features?.length) return null
-
+        if (!source._data?.features?.length) return
         const route = source._data.features[0]
         const coords = route.geometry.coordinates
         const midCoord = coords[Math.floor(coords.length / 2)]
-        const point = controller.map.project(midCoord)
-
-        return { x: point.x, y: point.y }
+        controller.map.jumpTo({ center: midCoord, zoom: 15 })
       })
 
-      if (routeCenter) {
-        const canvas = page.locator('.maplibregl-canvas')
-        await canvas.click({
-          position: { x: routeCenter.x, y: routeCenter.y }
-        })
+      await page.waitForTimeout(500)
 
-        await page.waitForTimeout(500)
+      // Click at canvas center where the route midpoint is projected
+      const canvas = page.locator('.maplibregl-canvas')
+      const box = await canvas.boundingBox()
+      if (!box) return
 
-        // Verify markers are present
-        let markerCount = await page.locator('.route-emoji-marker').count()
-        expect(markerCount).toBe(2)
+      await canvas.click({
+        position: { x: Math.floor(box.width / 2), y: Math.floor(box.height / 2) }
+      })
 
-        // Click elsewhere on map
-        await canvas.click({ position: { x: 100, y: 100 } })
-        await page.waitForTimeout(500)
+      await page.waitForTimeout(500)
 
-        // Verify markers are removed
-        markerCount = await page.locator('.route-emoji-marker').count()
-        expect(markerCount).toBe(0)
-      }
+      // Verify markers are present
+      let markerCount = await page.locator('.route-emoji-marker').count()
+      expect(markerCount).toBe(2)
+
+      // Click elsewhere on map (top-left corner, away from route)
+      await canvas.click({ position: { x: 50, y: 50 } })
+      await page.waitForTimeout(500)
+
+      // Verify markers are removed
+      markerCount = await page.locator('.route-emoji-marker').count()
+      expect(markerCount).toBe(0)
     })
   })
 })

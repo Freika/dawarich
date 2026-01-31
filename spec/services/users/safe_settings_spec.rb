@@ -32,7 +32,23 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: nil,
             enabled_map_layers: %w[Routes Heatmap],
             maps_maplibre_style: 'light',
-            globe_projection: false
+            globe_projection: false,
+            transportation_thresholds: {
+              'walking_max_speed' => 7,
+              'cycling_max_speed' => 45,
+              'driving_max_speed' => 220,
+              'flying_min_speed' => 150
+            },
+            transportation_expert_thresholds: {
+              'stationary_max_speed' => 1,
+              'running_vs_cycling_accel' => 0.25,
+              'cycling_vs_driving_accel' => 0.4,
+              'train_min_speed' => 80,
+              'min_segment_duration' => 60,
+              'time_gap_threshold' => 180,
+              'min_flight_distance_km' => 100
+            },
+            transportation_expert_mode: false
           }
         )
       end
@@ -86,7 +102,26 @@ RSpec.describe Users::SafeSettings do
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
             'digest_emails_enabled' => true,
-            'globe_projection' => false
+            'news_emails_enabled' => true,
+            'globe_projection' => false,
+            'supporter_email' => nil,
+            'show_supporter_badge' => true,
+            'transportation_thresholds' => {
+              'walking_max_speed' => 7,
+              'cycling_max_speed' => 45,
+              'driving_max_speed' => 220,
+              'flying_min_speed' => 150
+            },
+            'transportation_expert_thresholds' => {
+              'stationary_max_speed' => 1,
+              'running_vs_cycling_accel' => 0.25,
+              'cycling_vs_driving_accel' => 0.4,
+              'train_min_speed' => 80,
+              'min_segment_duration' => 60,
+              'time_gap_threshold' => 180,
+              'min_flight_distance_km' => 100
+            },
+            'transportation_expert_mode' => false
           }
         )
       end
@@ -115,7 +150,23 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: nil,
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
-            globe_projection: false
+            globe_projection: false,
+            transportation_thresholds: {
+              'walking_max_speed' => 7,
+              'cycling_max_speed' => 45,
+              'driving_max_speed' => 220,
+              'flying_min_speed' => 150
+            },
+            transportation_expert_thresholds: {
+              'stationary_max_speed' => 1,
+              'running_vs_cycling_accel' => 0.25,
+              'cycling_vs_driving_accel' => 0.4,
+              'train_min_speed' => 80,
+              'min_segment_duration' => 60,
+              'time_gap_threshold' => 180,
+              'min_flight_distance_km' => 100
+            },
+            transportation_expert_mode: false
           }
         )
       end
@@ -190,6 +241,113 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.maps).to eq({ 'name' => 'custom', 'url' => 'https://custom.example.com' })
         expect(safe_settings.visits_suggestions_enabled?).to be false
         expect(safe_settings.enabled_map_layers).to eq(['Points', 'Tracks', 'Fog of War', 'Suggested Visits'])
+      end
+    end
+  end
+
+  describe '#news_emails_enabled?' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when not set' do
+      let(:settings) { {} }
+
+      it 'defaults to true' do
+        expect(safe_settings.news_emails_enabled?).to be true
+      end
+    end
+
+    context 'when explicitly set to true' do
+      let(:settings) { { 'news_emails_enabled' => true } }
+
+      it 'returns true' do
+        expect(safe_settings.news_emails_enabled?).to be true
+      end
+    end
+
+    context 'when set to false' do
+      let(:settings) { { 'news_emails_enabled' => false } }
+
+      it 'returns false' do
+        expect(safe_settings.news_emails_enabled?).to be false
+      end
+    end
+  end
+
+  describe 'transportation threshold settings' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'with default values' do
+      let(:settings) { {} }
+
+      it 'returns default transportation thresholds' do
+        expect(safe_settings.transportation_thresholds).to eq(
+          {
+            'walking_max_speed' => 7,
+            'cycling_max_speed' => 45,
+            'driving_max_speed' => 220,
+            'flying_min_speed' => 150
+          }
+        )
+      end
+
+      it 'returns default transportation expert thresholds' do
+        expect(safe_settings.transportation_expert_thresholds).to eq(
+          {
+            'stationary_max_speed' => 1,
+            'running_vs_cycling_accel' => 0.25,
+            'cycling_vs_driving_accel' => 0.4,
+            'train_min_speed' => 80,
+            'min_segment_duration' => 60,
+            'time_gap_threshold' => 180,
+            'min_flight_distance_km' => 100
+          }
+        )
+      end
+
+      it 'returns false for transportation expert mode' do
+        expect(safe_settings.transportation_expert_mode?).to be false
+      end
+    end
+
+    context 'with custom values' do
+      let(:settings) do
+        {
+          'transportation_thresholds' => {
+            'walking_max_speed' => 8,
+            'cycling_max_speed' => 50,
+            'driving_max_speed' => 200,
+            'flying_min_speed' => 180
+          },
+          'transportation_expert_thresholds' => {
+            'stationary_max_speed' => 2,
+            'train_min_speed' => 100
+          },
+          'transportation_expert_mode' => true
+        }
+      end
+
+      it 'returns custom transportation thresholds' do
+        expect(safe_settings.transportation_thresholds).to eq(
+          {
+            'walking_max_speed' => 8,
+            'cycling_max_speed' => 50,
+            'driving_max_speed' => 200,
+            'flying_min_speed' => 180
+          }
+        )
+      end
+
+      it 'returns custom transportation expert thresholds' do
+        expect(safe_settings.transportation_expert_thresholds).to eq(
+          {
+            'stationary_max_speed' => 2,
+            'train_min_speed' => 100
+          }
+        )
+      end
+
+      it 'returns true for transportation expert mode' do
+        expect(safe_settings.transportation_expert_mode?).to be true
       end
     end
   end

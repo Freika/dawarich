@@ -190,6 +190,20 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     [home_place.latitude, home_place.longitude]
   end
 
+  def supporter?
+    supporter_info[:supporter] == true
+  end
+
+  def supporter_platform
+    supporter_info[:platform]
+  end
+
+  def supporter_info
+    return { supporter: false } if safe_settings.supporter_email.blank?
+
+    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+  end
+
   private
 
   def create_api_key

@@ -36,6 +36,9 @@ class Cache::PreheatingJob < ApplicationJob
         Stat.convert_distance(total_distance_meters, user.safe_settings.distance_unit),
         expires_in: 1.day
       )
+
+      # Preheat insights yearly digest cache
+      Cache::PreheatInsightsDigests.new(user).call
     end
   end
 end

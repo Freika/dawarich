@@ -8,9 +8,11 @@ import { waitForMapLibre, waitForLoadingComplete } from '../helpers/setup.js'
  */
 async function openSearchTab(page) {
   await page.click('button[title="Open map settings"]')
-  await page.waitForTimeout(400)
-  await page.click('button[title="Search"]')
+  // Wait for panel to fully open (300ms CSS transition + buffer)
+  await page.waitForSelector('.map-control-panel.open', { timeout: 3000 })
   await page.waitForTimeout(200)
+  await page.click('button[title="Search"]')
+  await page.waitForTimeout(300)
 }
 
 test.describe('Location Search', () => {
@@ -137,23 +139,51 @@ test.describe('Location Search', () => {
   })
 
   test.describe('Visit Search and Creation', () => {
-    test('clicking on suggestion shows visits', async ({ page }) => {
+    /**
+     * Helper to search for a location and wait for suggestions
+     */
+    async function searchAndGetSuggestion(page) {
       await openSearchTab(page)
 
       const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
       const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
 
-      // Search for a location
+      // Type search query and wait for the suggestions API response
+      const suggestionsPromise = page.waitForResponse(
+        resp => resp.url().includes('/api/v1/locations/suggestions') && resp.status() === 200,
+        { timeout: 15000 }
+      )
       await searchInput.fill('Sterndamm')
-      await page.waitForTimeout(800) // Wait for debounce + API
+      await suggestionsPromise
 
-      // Wait for suggestions to appear
+      // Wait for suggestions to render
       const firstSuggestion = resultsContainer.locator('.search-result-item').first()
       await expect(firstSuggestion).toBeVisible({ timeout: 5000 })
 
-      // Click on first suggestion
+      return { searchInput, resultsContainer, firstSuggestion }
+    }
+
+    /**
+     * Helper to click a suggestion and wait for visits to load
+     */
+    async function clickSuggestionAndWaitForVisits(page, firstSuggestion) {
+      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
+
+      // Click suggestion and wait for visits API response
+      const visitsPromise = page.waitForResponse(
+        resp => resp.url().includes('/api/v1/locations?') && resp.status() === 200,
+        { timeout: 15000 }
+      ).catch(() => null) // Visits API may fail
       await firstSuggestion.click()
-      await page.waitForTimeout(1500) // Wait for visits API call
+      await visitsPromise
+      await page.waitForTimeout(500) // Let DOM update
+
+      return resultsContainer
+    }
+
+    test('clicking on suggestion shows visits', async ({ page }) => {
+      const { firstSuggestion } = await searchAndGetSuggestion(page)
+      const resultsContainer = await clickSuggestionAndWaitForVisits(page, firstSuggestion)
 
       // Results container should show visits or "no visits found"
       const hasVisits = await resultsContainer.locator('.location-result').count()
@@ -163,19 +193,8 @@ test.describe('Location Search', () => {
     })
 
     test('visits are grouped by year with expand/collapse', async ({ page }) => {
-      await openSearchTab(page)
-
-      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
-
-      // Search and select location
-      await searchInput.fill('Sterndamm')
-      await page.waitForTimeout(800)
-
-      const firstSuggestion = resultsContainer.locator('.search-result-item').first()
-      await expect(firstSuggestion).toBeVisible({ timeout: 5000 })
-      await firstSuggestion.click()
-      await page.waitForTimeout(1500)
+      const { firstSuggestion } = await searchAndGetSuggestion(page)
+      const resultsContainer = await clickSuggestionAndWaitForVisits(page, firstSuggestion)
 
       // Check if year toggles exist
       const yearToggle = resultsContainer.locator('.year-toggle').first()
@@ -196,19 +215,8 @@ test.describe('Location Search', () => {
     })
 
     test('clicking on visit item opens create visit modal', async ({ page }) => {
-      await openSearchTab(page)
-
-      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
-
-      // Search and select location
-      await searchInput.fill('Sterndamm')
-      await page.waitForTimeout(800)
-
-      const firstSuggestion = resultsContainer.locator('.search-result-item').first()
-      await expect(firstSuggestion).toBeVisible({ timeout: 5000 })
-      await firstSuggestion.click()
-      await page.waitForTimeout(1500)
+      const { firstSuggestion } = await searchAndGetSuggestion(page)
+      const resultsContainer = await clickSuggestionAndWaitForVisits(page, firstSuggestion)
 
       // Check if there are visits
       const yearToggle = resultsContainer.locator('.year-toggle').first()
@@ -242,19 +250,8 @@ test.describe('Location Search', () => {
     })
 
     test('create visit modal has prefilled data', async ({ page }) => {
-      await openSearchTab(page)
-
-      const searchInput = page.locator('[data-maps--maplibre-target="searchInput"]')
-      const resultsContainer = page.locator('[data-maps--maplibre-target="searchResults"]')
-
-      // Search and select location
-      await searchInput.fill('Sterndamm')
-      await page.waitForTimeout(800)
-
-      const firstSuggestion = resultsContainer.locator('.search-result-item').first()
-      await expect(firstSuggestion).toBeVisible({ timeout: 5000 })
-      await firstSuggestion.click()
-      await page.waitForTimeout(1500)
+      const { firstSuggestion } = await searchAndGetSuggestion(page)
+      const resultsContainer = await clickSuggestionAndWaitForVisits(page, firstSuggestion)
 
       // Check if there are visits
       const yearToggle = resultsContainer.locator('.year-toggle').first()
