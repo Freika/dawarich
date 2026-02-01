@@ -45,7 +45,9 @@ const LAYER_NAME_MAP = {
   'Areas': 'areasEnabled',
   'Tracks': 'tracksEnabled',
   'Fog of War': 'fogEnabled',
-  'Scratch map': 'scratchEnabled'
+  'Scratch map': 'scratchEnabled',
+  'Family Members': 'familyEnabled',
+  'Places': 'placesEnabled'
 }
 
 // Mapping between frontend settings and backend API keys

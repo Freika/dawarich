@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [1.0.5] - Unreleased
+
+## Fixed
+
+- The SSL Security Warning is now working correctly on the Immich and Photoprism integration forms.
+- Family members and Places layers are now being correctly remembered across page reloads on Map v2.
+
+
 # [1.0.4] - 2026-02-01
 
 ## Fixed

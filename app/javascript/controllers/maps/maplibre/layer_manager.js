@@ -339,7 +339,7 @@ export class LayerManager {
   _addFamilyLayer() {
     if (!this.layers.familyLayer) {
       this.layers.familyLayer = new FamilyLayer(this.map, {
-        visible: false, // Initially hidden, shown when family locations arrive via ActionCable
+        visible: this.settings.familyEnabled || false,
       });
       this.layers.familyLayer.add({ type: "FeatureCollection", features: [] });
     }

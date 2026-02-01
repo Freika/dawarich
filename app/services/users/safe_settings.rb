@@ -141,11 +141,11 @@ class Users::SafeSettings
   end
 
   def immich_skip_ssl_verification
-    settings['immich_skip_ssl_verification']
+    ActiveModel::Type::Boolean.new.cast(settings['immich_skip_ssl_verification'])
   end
 
   def photoprism_skip_ssl_verification
-    settings['photoprism_skip_ssl_verification']
+    ActiveModel::Type::Boolean.new.cast(settings['photoprism_skip_ssl_verification'])
   end
 
   def maps
