@@ -28,8 +28,13 @@ RSpec.describe Visits::SmartDetect do
 
       before do
         allow(user).to receive_message_chain(:points, :not_visited, :order, :where).and_return(points)
-        allow(Visits::Detector).to receive(:new).with(points).and_return(visit_detector)
-        allow(Visits::Merger).to receive(:new).with(points).and_return(visit_merger)
+        allow(Visits::Detector).to receive(:new).with(
+          points,
+          user: user,
+          start_at: start_at.to_i,
+          end_at: end_at.to_i
+        ).and_return(visit_detector)
+        allow(Visits::Merger).to receive(:new).with(points, user: user).and_return(visit_merger)
         allow(Visits::Creator).to receive(:new).with(user).and_return(visit_creator)
         allow(visit_detector).to receive(:detect_potential_visits).and_return(potential_visits)
         allow(visit_merger).to receive(:merge_visits).with(potential_visits).and_return(merged_visits)

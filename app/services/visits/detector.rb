@@ -6,15 +6,62 @@ module Visits
     MINIMUM_VISIT_DURATION = 3.minutes
     MAXIMUM_VISIT_GAP = 30.minutes
     MINIMUM_POINTS_FOR_VISIT = 2
+    DEFAULT_ACCURACY_METERS = 50 # Fallback when user settings not available
 
-    attr_reader :points, :place_name_suggester
+    attr_reader :points, :place_name_suggester, :user, :start_at, :end_at, :use_dbscan
 
-    def initialize(points)
+    def initialize(points, user: nil, start_at: nil, end_at: nil, use_dbscan: true)
       @points = points
+      @user = user
+      @start_at = start_at
+      @end_at = end_at
+      @use_dbscan = use_dbscan
       @place_name_suggester = Visits::Names::Suggester
     end
 
     def detect_potential_visits
+      if use_dbscan && user && start_at && end_at
+        detect_with_dbscan
+      else
+        detect_with_iteration
+      end
+    end
+
+    private
+
+    # PostGIS DBSCAN-based detection (preferred)
+    def detect_with_dbscan
+      raw_clusters = DbscanClusterer.new(user, start_at: start_at, end_at: end_at).call
+      return detect_with_iteration if raw_clusters.empty?
+
+      raw_clusters.filter_map do |cluster|
+        cluster_points = Point.where(id: cluster[:point_ids]).order(:timestamp)
+        next if cluster_points.empty?
+
+        finalize_visit_from_cluster(cluster_points, cluster)
+      end
+    rescue StandardError => e
+      Rails.logger.warn("DBSCAN clustering failed, falling back to iteration: #{e.message}")
+      detect_with_iteration
+    end
+
+    def finalize_visit_from_cluster(cluster_points, cluster)
+      center = calculate_weighted_center(cluster_points)
+
+      {
+        start_time: cluster[:start_time],
+        end_time: cluster[:end_time],
+        duration: cluster[:end_time] - cluster[:start_time],
+        center_lat: center[0],
+        center_lon: center[1],
+        radius: calculate_visit_radius(cluster_points, center),
+        points: cluster_points.to_a,
+        suggested_name: suggest_place_name(cluster_points) || fetch_place_name(center)
+      }
+    end
+
+    # Ruby iteration-based detection (fallback)
+    def detect_with_iteration
       visits = []
       current_visit = nil
 
@@ -38,8 +85,6 @@ module Visits
 
       visits
     end
-
-    private
 
     def initialize_visit(point)
       {
@@ -83,7 +128,7 @@ module Visits
 
     def finalize_visit(visit)
       points = visit[:points]
-      center = calculate_center(points)
+      center = calculate_weighted_center(points)
 
       visit.merge(
         duration: visit[:end_time] - visit[:start_time],
@@ -94,16 +139,49 @@ module Visits
       )
     end
 
-    def calculate_center(points)
-      lat_sum = points.sum(&:lat)
-      lon_sum = points.sum(&:lon)
-      count = points.size.to_f
+    # Calculates the center of points weighted by GPS accuracy.
+    # Points with better accuracy (lower value) have higher weight.
+    def calculate_weighted_center(points)
+      point_array = points.respond_to?(:to_a) ? points.to_a : points
+      return calculate_simple_center(point_array) if point_array.empty?
+
+      total_weight = 0.0
+      weighted_lat = 0.0
+      weighted_lon = 0.0
+
+      point_array.each do |point|
+        accuracy = point.accuracy.presence || default_accuracy_meters
+        weight = 1.0 / [accuracy, 1].max # Prevent division by zero
+
+        weighted_lat += point.lat * weight
+        weighted_lon += point.lon * weight
+        total_weight += weight
+      end
+
+      return calculate_simple_center(point_array) if total_weight.zero?
+
+      [weighted_lat / total_weight, weighted_lon / total_weight]
+    end
+
+    def default_accuracy_meters
+      return DEFAULT_ACCURACY_METERS unless user
+
+      user.safe_settings.visit_detection_default_accuracy || DEFAULT_ACCURACY_METERS
+    end
+
+    # Simple centroid calculation (fallback)
+    def calculate_simple_center(points)
+      point_array = points.respond_to?(:to_a) ? points.to_a : points
+      lat_sum = point_array.sum(&:lat)
+      lon_sum = point_array.sum(&:lon)
+      count = point_array.size.to_f
 
       [lat_sum / count, lon_sum / count]
     end
 
     def calculate_visit_radius(points, center)
-      max_distance = points.map do |point|
+      point_array = points.respond_to?(:to_a) ? points.to_a : points
+      max_distance = point_array.map do |point|
         Geocoder::Calculations.distance_between(center, [point.lat, point.lon], units: :km)
       end.max
 
