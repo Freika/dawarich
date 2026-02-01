@@ -19,10 +19,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Points info on the Map V2 now shows time in 24h format and includes seconds. #2172
 - Digests not being created for years earlier than 2000. #2158
 - Tracks on Map V2 are now respecting the date filters correctly. #2196
+- Undefined method `.to_sym` for nil in Sidekiq. #2190
 
 ## Changed
 
 - Zooming animation is disabled on Map V2 loading #2219
+- Exporting points to GPX and GeoJSON now works better and faster for large numbers of points by processing the export in chunks to reduce memory usage. #2161
 
 
 # [1.0.4] - 2026-02-01

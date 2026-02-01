@@ -29,7 +29,6 @@ class Imports::Destroy
       ids = @import.points.limit(BATCH_SIZE).pluck(:id)
       break if ids.empty?
 
-      Point.where(id: ids).update_all(visit_id: nil, track_id: nil)
       Point.where(id: ids).delete_all
     end
   end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class StaleJobsRecoveryJob < ApplicationJob
-  queue_as :default
+  queue_as :exports
   sidekiq_options retry: false
 
   EXPORT_TIMEOUT = 2.hours
