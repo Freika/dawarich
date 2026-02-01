@@ -4,7 +4,7 @@ class CountriesAndCities
   CountryData = Struct.new(:country, :cities, keyword_init: true)
   CityData = Struct.new(:city, :points, :timestamp, :stayed_for, keyword_init: true)
 
-  def initialize(points, min_minutes_spent_in_city: ::MIN_MINUTES_SPENT_IN_CITY, max_gap_minutes: 120)
+  def initialize(points, min_minutes_spent_in_city: 60, max_gap_minutes: 120)
     @points = points
     @min_minutes_spent_in_city = min_minutes_spent_in_city
     @max_gap_minutes = max_gap_minutes
