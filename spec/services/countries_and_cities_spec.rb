@@ -27,6 +27,34 @@ RSpec.describe CountriesAndCities do
       ]
     end
 
+    context 'when MIN_MINUTES_SPENT_IN_CITY is 5 (regression for issue #2207)' do
+      before do
+        stub_const('MIN_MINUTES_SPENT_IN_CITY', 5)
+      end
+
+      let(:points) do
+        # Points 15 minutes apart, total duration 75 minutes
+        (0..5).map do |i|
+          create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + (i * 15).minutes)
+        end
+      end
+
+      it 'counts the city even with a low MIN_MINUTES_SPENT_IN_CITY' do
+        expect(countries_and_cities).to eq(
+          [
+            CountriesAndCities::CountryData.new(
+              country: 'Germany',
+              cities: [
+                CountriesAndCities::CityData.new(
+                  city: 'Berlin', points: 6, timestamp: (timestamp + 75.minutes).to_i, stayed_for: 75
+                )
+              ]
+            )
+          ]
+        )
+      end
+    end
+
     context 'when MIN_MINUTES_SPENT_IN_CITY is 60 (in minutes)' do
       before do
         stub_const('MIN_MINUTES_SPENT_IN_CITY', 60)

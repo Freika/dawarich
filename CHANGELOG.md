@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The SSL Security Warning is now working correctly on the Immich and Photoprism integration forms.
 - Family members and Places layers are now being correctly remembered across page reloads on Map v2.
 - Immich returning 400. #2222 #2186
+- Points info on the Map V2 now shows time in 24h format and includes seconds. #2172
 
 
 

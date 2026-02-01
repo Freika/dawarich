@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class CountriesAndCities
+  MAX_GAP_MINUTES = 60
+
   CountryData = Struct.new(:country, :cities, keyword_init: true)
   CityData = Struct.new(:city, :points, :timestamp, :stayed_for, keyword_init: true)
 
@@ -53,7 +55,7 @@ class CountriesAndCities
 
     sorted = timestamps.sort
     total_minutes = 0
-    gap_threshold_seconds = ::MIN_MINUTES_SPENT_IN_CITY * 60
+    gap_threshold_seconds = MAX_GAP_MINUTES * 60
 
     sorted.each_cons(2) do |prev_ts, curr_ts|
       interval_seconds = curr_ts - prev_ts
