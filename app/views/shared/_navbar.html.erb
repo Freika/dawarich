@@ -143,7 +143,7 @@
           </label>
           <ul tabindex="0" class="dropdown-content menu menu-sm mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
             <li><%= link_to 'Account', edit_user_registration_path %></li>
-            <li><%= link_to 'Settings', settings_path %></li>
+            <li><%= link_to 'Settings', settings_general_index_path %></li>
             <% if !DawarichSettings.self_hosted? %>
               <li><%= link_to 'Subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
             <% end %>
