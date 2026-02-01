@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Imports::Destroy
+  BATCH_SIZE = 5000
+
   attr_reader :user, :import
 
   def initialize(user, import)
@@ -11,13 +13,24 @@ class Imports::Destroy
   def call
     points_count = @import.points_count.to_i
 
-    ActiveRecord::Base.transaction do
-      @import.points.destroy_all
-      @import.destroy!
-    end
+    delete_points_in_batches
+
+    @import.destroy!
 
     Rails.logger.info "Import #{@import.id} deleted with #{points_count} points"
 
     Stats::BulkCalculator.new(@user.id).call
+  end
+
+  private
+
+  def delete_points_in_batches
+    loop do
+      ids = @import.points.limit(BATCH_SIZE).pluck(:id)
+      break if ids.empty?
+
+      Point.where(id: ids).update_all(visit_id: nil, track_id: nil)
+      Point.where(id: ids).delete_all
+    end
   end
 end

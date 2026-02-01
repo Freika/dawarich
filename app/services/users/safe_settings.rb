@@ -51,7 +51,7 @@ class Users::SafeSettings
   }.freeze
 
   def initialize(settings = {})
-    @settings = DEFAULT_VALUES.dup.merge(settings)
+    @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
   end
 
   # rubocop:disable Metrics/MethodLength
@@ -157,7 +157,7 @@ class Users::SafeSettings
   end
 
   def distance_unit
-    settings.dig('maps', 'distance_unit')
+    settings.dig('maps', 'distance_unit') || DEFAULT_VALUES.dig('maps', 'distance_unit')
   end
 
   def visits_suggestions_enabled?
