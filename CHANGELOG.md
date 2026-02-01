@@ -6,11 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [1.0.5] - Unreleased
 
+## Added
+
+- Photos are now being clustered on the Map v2 to improve performance and usability when viewing large numbers of photos.
+
 ## Fixed
 
 - The SSL Security Warning is now working correctly on the Immich and Photoprism integration forms.
 - Family members and Places layers are now being correctly remembered across page reloads on Map v2.
 - Immich returning 400. #2222 #2186
+
+
 
 
 # [1.0.4] - 2026-02-01

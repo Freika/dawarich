@@ -294,18 +294,47 @@ export class RoutesManager {
 
   /**
    * Toggle photos layer
+   * Fetches photos from backend on first enable (lazy-load pattern)
    */
-  togglePhotos(event) {
+  async togglePhotos(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting('photosEnabled', enabled)
 
-    const photosLayer = this.layerManager.getLayer('photos')
-    if (photosLayer) {
+    try {
+      const photosLayer = this.layerManager.getLayer('photos')
+
       if (enabled) {
-        photosLayer.show()
+        if (photosLayer && photosLayer.data?.features?.length > 0) {
+          photosLayer.show()
+        } else {
+          // Fetch photos from backend
+          const api = this.controller.api
+          const dataLoader = this.controller.dataLoader
+          const startDate = this.controller.startDateValue
+          const endDate = this.controller.endDateValue
+
+          const photosPromise = api.fetchPhotos({ start_at: startDate, end_at: endDate })
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Photo fetch timeout')), 15000)
+          )
+          const photos = await Promise.race([photosPromise, timeoutPromise])
+          const photosGeoJSON = dataLoader.photosToGeoJSON(photos)
+
+          await this.layerManager._addPhotosLayer(photosGeoJSON)
+
+          const newPhotosLayer = this.layerManager.getLayer('photos')
+          if (newPhotosLayer) {
+            newPhotosLayer.show()
+          }
+        }
       } else {
-        photosLayer.hide()
+        if (photosLayer) {
+          photosLayer.hide()
+        }
       }
+    } catch (error) {
+      console.error('Failed to toggle photos layer:', error)
+      Toast.error('Failed to load photos')
     }
   }
 

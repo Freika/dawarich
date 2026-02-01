@@ -662,7 +662,7 @@ export default class extends BaseController {
         if (this.drawControl && !this.map.hasControl && !this.map._controlCorners.topleft.querySelector('.leaflet-draw')) {
           this.map.addControl(this.drawControl);
         }
-      } else if (event.name === 'Photos') {
+      } else if (event.layer === this.photoMarkers) {
         // Load photos when Photos layer is enabled
         console.log('Photos layer enabled via layer control');
         const urlParams = new URLSearchParams(window.location.search);
@@ -1744,19 +1744,8 @@ export default class extends BaseController {
         console.log(`Enabled layer: ${name}`);
 
         // Trigger special initialization for certain layers
-        if (name === 'Photos') {
-          const urlParams = new URLSearchParams(window.location.search);
-          const startDate = urlParams.get('start_at') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-          const endDate = urlParams.get('end_at') || new Date().toISOString();
-          fetchAndDisplayPhotos({
-            map: this.map,
-            photoMarkers: this.photoMarkers,
-            apiKey: this.apiKey,
-            startDate: startDate,
-            endDate: endDate,
-            userSettings: this.userSettings
-          });
-        } else if (name === 'Fog of War') {
+        // Note: Photos fetch is handled by the overlayadd event handler
+        if (name === 'Fog of War') {
           this.updateFog(this.markers, this.clearFogRadius, this.fogLineThreshold);
         } else if (name === 'Suggested' || name === 'Confirmed') {
           if (this.visitsManager && typeof this.visitsManager.fetchAndDisplayVisits === 'function') {
