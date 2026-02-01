@@ -138,11 +138,22 @@ test.describe('Places Layer in Maps V2', () => {
     await placesToggle.check()
     await page.waitForTimeout(1000)
 
+    // Wait for tag badges to be rendered (checkboxes have CSS class 'hidden' so use badge visibility)
+    await page.waitForSelector('[data-maps--maplibre-target="placesFilters"] .badge', { timeout: 10000 })
+    await page.waitForTimeout(500) // Extra wait for initialization to complete
+
     // Get first tag badge (in Places filters section) - click badge since checkbox is hidden
     const firstBadge = page.locator('[data-maps--maplibre-target="placesFilters"] .badge').first()
     const firstCheckbox = page.locator('[data-maps--maplibre-target="placesFilters"] input[name="place_tag_ids[]"]').first()
 
-    // Check initial state (should be checked by default)
+    // Ensure checkboxes are initialized (checked by default)
+    // If not checked, force-check it first to test the toggle behavior
+    const isInitiallyChecked = await firstCheckbox.isChecked()
+    if (!isInitiallyChecked) {
+      await firstBadge.click()
+      await page.waitForTimeout(300)
+    }
+
     await expect(firstCheckbox).toBeChecked()
     const initialClass = await firstBadge.getAttribute('class')
     expect(initialClass).not.toContain('badge-outline')
@@ -244,14 +255,24 @@ test.describe('Places Layer in Maps V2', () => {
     await placesToggle.check()
     await page.waitForTimeout(1000)
 
+    // Wait for tag badges to be rendered (checkboxes have CSS class 'hidden' so use badge visibility)
+    await page.waitForSelector('[data-maps--maplibre-target="placesFilters"] .badge', { timeout: 10000 })
+    await page.waitForTimeout(500) // Wait for tag initialization to complete
+
     const enableAllToggle = page.locator('input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]')
 
-    // Initially all tags should be enabled
+    // First, ensure all tags are checked by clicking Enable All
+    // This handles the case where saved filters might have some unchecked
+    const isAllChecked = await enableAllToggle.isChecked()
+    if (!isAllChecked) {
+      await enableAllToggle.check()
+      await page.waitForTimeout(500)
+    }
+
     await expect(enableAllToggle).toBeChecked()
 
     // Click first badge to uncheck it (checkbox is hidden, must click badge)
     const firstBadge = page.locator('[data-maps--maplibre-target="placesFilters"] .badge').first()
-    const firstCheckbox = page.locator('[data-maps--maplibre-target="placesFilters"] input[name="place_tag_ids[]"]').first()
 
     await firstBadge.click()
     await page.waitForTimeout(300)

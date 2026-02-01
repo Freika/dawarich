@@ -3,7 +3,32 @@
  * Used for sending location data via OwnTracks protocol
  */
 
+import { API_KEYS } from './constants.js';
+
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+
+/**
+ * Reset map settings to defaults via API
+ * This ensures test isolation by resetting enabled_map_layers to only ["Points", "Routes"]
+ * @param {import('@playwright/test').APIRequestContext} request - Playwright request context
+ * @param {string} [apiKey] - User's API key (defaults to DEMO_USER key)
+ * @returns {Promise<import('@playwright/test').APIResponse>}
+ */
+export async function resetMapSettings(request, apiKey) {
+  const key = apiKey || API_KEYS.DEMO_USER;
+  const response = await request.patch(`${BASE_URL}/api/v1/settings`, {
+    headers: {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json'
+    },
+    data: {
+      settings: {
+        enabled_map_layers: ['Points', 'Routes']
+      }
+    }
+  });
+  return response;
+}
 
 /**
  * Send a location point via OwnTracks API

@@ -13,13 +13,20 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Fetch base branch
+      - name: Determine base ref
+        id: base
         env:
-          BASE_REF: ${{ github.base_ref || 'dev' }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          CURRENT=$(git rev-parse --abbrev-ref HEAD)
-          if [ "$BASE_REF" != "$CURRENT" ]; then
-            git fetch origin "$BASE_REF":"$BASE_REF"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            CURRENT=$(git rev-parse --abbrev-ref HEAD)
+            if [ "$BASE_REF" != "$CURRENT" ]; then
+              git fetch origin "$BASE_REF":"$BASE_REF"
+            fi
+            echo "ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
           fi
       - name: Setup Biome
         uses: biomejs/setup-biome@v2
@@ -27,5 +34,5 @@ jobs:
           version: 2.3.11
       - name: Run Biome
         env:
-          BASE_REF: ${{ github.base_ref || 'dev' }}
-        run: biome ci . --reporter=github --changed --since="$BASE_REF"
+          BASE: ${{ steps.base.outputs.ref }}
+        run: biome ci . --reporter=github --changed --since="$BASE"
