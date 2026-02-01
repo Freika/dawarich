@@ -45,7 +45,9 @@ class Users::SafeSettings
       'time_gap_threshold' => 180,
       'min_flight_distance_km' => 100
     },
-    'transportation_expert_mode' => false
+    'transportation_expert_mode' => false,
+    'min_minutes_spent_in_city' => 60,
+    'max_gap_minutes_in_city' => 120
   }.freeze
 
   def initialize(settings = {})
@@ -79,7 +81,9 @@ class Users::SafeSettings
       globe_projection: globe_projection,
       transportation_thresholds: transportation_thresholds,
       transportation_expert_thresholds: transportation_expert_thresholds,
-      transportation_expert_mode: transportation_expert_mode?
+      transportation_expert_mode: transportation_expert_mode?,
+      min_minutes_spent_in_city: min_minutes_spent_in_city,
+      max_gap_minutes_in_city: max_gap_minutes_in_city
     }
   end
   # rubocop:enable Metrics/MethodLength
@@ -215,5 +219,13 @@ class Users::SafeSettings
 
   def transportation_expert_mode?
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
+  end
+
+  def min_minutes_spent_in_city
+    (settings['min_minutes_spent_in_city'] || DEFAULT_VALUES['min_minutes_spent_in_city']).to_i
+  end
+
+  def max_gap_minutes_in_city
+    (settings['max_gap_minutes_in_city'] || DEFAULT_VALUES['max_gap_minutes_in_city']).to_i
   end
 end

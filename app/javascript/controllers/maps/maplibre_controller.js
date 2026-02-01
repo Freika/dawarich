@@ -45,6 +45,8 @@ export default class extends Controller {
     'fogThresholdValue',
     'metersBetweenValue',
     'minutesBetweenValue',
+    'minMinutesInCityValue',
+    'maxGapMinutesValue',
     // Search
     'searchInput',
     'searchResults',
@@ -292,6 +294,8 @@ export default class extends Controller {
   updateFogThresholdDisplay(event) { return this.settingsController.updateFogThresholdDisplay(event) }
   updateMetersBetweenDisplay(event) { return this.settingsController.updateMetersBetweenDisplay(event) }
   updateMinutesBetweenDisplay(event) { return this.settingsController.updateMinutesBetweenDisplay(event) }
+  updateMinMinutesInCityDisplay(event) { return this.settingsController.updateMinMinutesInCityDisplay(event) }
+  updateMaxGapMinutesDisplay(event) { return this.settingsController.updateMaxGapMinutesDisplay(event) }
   toggleGlobe(event) { return this.settingsController.toggleGlobe(event) }
   toggleTransportationExpertMode(event) { return this.settingsController.toggleTransportationExpertMode(event) }
   updateTransportationThresholdDisplay(event) { return this.settingsController.updateTransportationThresholdDisplay(event) }

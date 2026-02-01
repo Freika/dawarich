@@ -16,6 +16,9 @@ const DEFAULT_SETTINGS = {
   speedColoredRoutes: false,
   speedColorScale: '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
   globeProjection: false,
+  // City statistics thresholds
+  minMinutesSpentInCity: 60,
+  maxGapMinutesInCity: 120,
   // Transportation mode thresholds (speeds in km/h, distances in km)
   transportationExpertMode: false,
   transportationThresholds: {
@@ -63,6 +66,8 @@ const BACKEND_SETTINGS_MAP = {
   speedColoredRoutes: 'speed_colored_routes',
   speedColorScale: 'speed_color_scale',
   globeProjection: 'globe_projection',
+  minMinutesSpentInCity: 'min_minutes_spent_in_city',
+  maxGapMinutesInCity: 'max_gap_minutes_in_city',
   transportationExpertMode: 'transportation_expert_mode',
   transportationThresholds: 'transportation_thresholds',
   transportationExpertThresholds: 'transportation_expert_thresholds'
@@ -221,6 +226,10 @@ export class SettingsManager {
             value = parseInt(value) || DEFAULT_SETTINGS.metersBetweenRoutes
           } else if (frontendKey === 'minutesBetweenRoutes') {
             value = parseInt(value) || DEFAULT_SETTINGS.minutesBetweenRoutes
+          } else if (frontendKey === 'minMinutesSpentInCity') {
+            value = parseInt(value) || DEFAULT_SETTINGS.minMinutesSpentInCity
+          } else if (frontendKey === 'maxGapMinutesInCity') {
+            value = parseInt(value) || DEFAULT_SETTINGS.maxGapMinutesInCity
           } else if (frontendKey === 'speedColoredRoutes') {
             value = value === true || value === 'true'
           } else if (frontendKey === 'globeProjection') {
@@ -296,7 +305,8 @@ export class SettingsManager {
           if (frontendKey === 'routeOpacity') {
             value = parseFloat(value).toString()
           } else if (frontendKey === 'fogOfWarRadius' || frontendKey === 'fogOfWarThreshold' ||
-                     frontendKey === 'metersBetweenRoutes' || frontendKey === 'minutesBetweenRoutes') {
+                     frontendKey === 'metersBetweenRoutes' || frontendKey === 'minutesBetweenRoutes' ||
+                     frontendKey === 'minMinutesSpentInCity' || frontendKey === 'maxGapMinutesInCity') {
             value = parseInt(value).toString()
           } else if (frontendKey === 'speedColoredRoutes') {
             value = Boolean(value)

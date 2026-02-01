@@ -4,12 +4,9 @@ require 'rails_helper'
 
 RSpec.describe CountriesAndCities do
   describe '#call' do
-    subject(:countries_and_cities) { described_class.new(points).call }
+    subject(:countries_and_cities) { described_class.new(points, **kwargs).call }
 
-    # we have 5 points in the same city and country within 1 hour,
-    # 5 points in the differnt city within 10 minutes
-    # and we expect to get one country with one city which has 5 points
-
+    let(:kwargs) { {} }
     let(:timestamp) { DateTime.new(2021, 1, 1, 0, 0, 0) }
 
     let(:points) do
@@ -27,10 +24,8 @@ RSpec.describe CountriesAndCities do
       ]
     end
 
-    context 'when MIN_MINUTES_SPENT_IN_CITY is 5 (regression for issue #2207)' do
-      before do
-        stub_const('MIN_MINUTES_SPENT_IN_CITY', 5)
-      end
+    context 'when min_minutes_spent_in_city is 5 (regression for issue #2207)' do
+      let(:kwargs) { { min_minutes_spent_in_city: 5 } }
 
       let(:points) do
         # Points 15 minutes apart, total duration 75 minutes
@@ -39,7 +34,7 @@ RSpec.describe CountriesAndCities do
         end
       end
 
-      it 'counts the city even with a low MIN_MINUTES_SPENT_IN_CITY' do
+      it 'counts the city even with a low min_minutes_spent_in_city' do
         expect(countries_and_cities).to eq(
           [
             CountriesAndCities::CountryData.new(
@@ -55,10 +50,8 @@ RSpec.describe CountriesAndCities do
       end
     end
 
-    context 'when MIN_MINUTES_SPENT_IN_CITY is 60 (in minutes)' do
-      before do
-        stub_const('MIN_MINUTES_SPENT_IN_CITY', 60)
-      end
+    context 'when min_minutes_spent_in_city is 60 (default)' do
+      let(:kwargs) { { min_minutes_spent_in_city: 60 } }
 
       context 'when user stayed in the city for more than 1 hour' do
         it 'returns countries and cities' do
@@ -109,20 +102,21 @@ RSpec.describe CountriesAndCities do
       end
 
       context 'when points have a gap larger than threshold (passing through)' do
+        let(:kwargs) { { min_minutes_spent_in_city: 60, max_gap_minutes: 120 } }
+
         let(:points) do
           [
-            # User in Berlin at 9:00, leaves, returns at 11:00
+            # User in Berlin at 9:00, leaves, returns at 11:30
             create(:point, city: 'Berlin', country: 'Germany', timestamp:),
             create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 15.minutes),
-            # 105-minute gap here (user left the city)
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 120.minutes),
-            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 130.minutes)
+            # 135-minute gap here (user left the city, exceeds 120-min default)
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 150.minutes),
+            create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + 160.minutes)
           ]
         end
 
         it 'only counts time between consecutive points within threshold' do
-          # Old logic would count 130 minutes (span from first to last)
-          # New logic counts: 15 min (0->15) + 10 min (120->130) = 25 minutes
+          # 15 min (0->15) + 10 min (150->160) = 25 minutes
           # Since 25 < 60, Berlin should be filtered out
           expect(countries_and_cities).to eq(
             [
@@ -136,16 +130,15 @@ RSpec.describe CountriesAndCities do
       end
 
       context 'when points span a long time but have continuous presence' do
-        let(:points) do
-          # Points every 30 minutes for 2.5 hours = continuous presence
-          (0..5).map do |i|
+        it 'counts the full duration when all intervals are within threshold' do
+          points_data = (0..5).map do |i|
             create(:point, city: 'Berlin', country: 'Germany', timestamp: timestamp + (i * 30).minutes)
           end
-        end
 
-        it 'counts the full duration when all intervals are within threshold' do
+          result = described_class.new(points_data, min_minutes_spent_in_city: 60).call
+
           # 5 intervals of 30 minutes each = 150 minutes total
-          expect(countries_and_cities).to eq(
+          expect(result).to eq(
             [
               CountriesAndCities::CountryData.new(
                 country: 'Germany',

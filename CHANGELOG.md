@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - Photos are now being clustered on the Map v2 to improve performance and usability when viewing large numbers of photos.
+- City statistics thresholds are now user-configurable: "Min Minutes in City" and "Max Gap Between Points" sliders in the Map v2 Settings panel. #2207
 
 ## Fixed
 
@@ -16,8 +17,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Family members and Places layers are now being correctly remembered across page reloads on Map v2.
 - Immich returning 400. #2222 #2186
 - Points info on the Map V2 now shows time in 24h format and includes seconds. #2172
+- Digests not being created for years earlier than 2000. #2158
 
+## Changed
 
+- Zooming animation is disabled on Map V2 loading #2219
 
 
 # [1.0.4] - 2026-02-01
