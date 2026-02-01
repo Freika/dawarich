@@ -14,7 +14,13 @@ export class DateManager {
     const hours = pad(date.getHours())
     const minutes = pad(date.getMinutes())
 
-    return `${year}-${month}-${day}T${hours}:${minutes}`
+    // Include timezone offset for accurate server-side parsing
+    const tzOffset = -date.getTimezoneOffset()
+    const tzSign = tzOffset >= 0 ? '+' : '-'
+    const tzHours = pad(Math.floor(Math.abs(tzOffset) / 60))
+    const tzMinutes = pad(Math.abs(tzOffset) % 60)
+
+    return `${year}-${month}-${day}T${hours}:${minutes}${tzSign}${tzHours}:${tzMinutes}`
   }
 
   /**

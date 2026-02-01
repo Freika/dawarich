@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Immich returning 400. #2222 #2186
 - Points info on the Map V2 now shows time in 24h format and includes seconds. #2172
 - Digests not being created for years earlier than 2000. #2158
+- Tracks on Map V2 are now respecting the date filters correctly. #2196
 
 ## Changed
 

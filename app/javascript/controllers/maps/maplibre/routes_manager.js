@@ -357,18 +357,42 @@ export class RoutesManager {
 
   /**
    * Toggle tracks layer
+   * Fetches tracks from backend on first enable (lazy-load pattern)
    */
-  toggleTracks(event) {
+  async toggleTracks(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting('tracksEnabled', enabled)
 
-    const tracksLayer = this.layerManager.getLayer('tracks')
-    if (tracksLayer) {
+    try {
+      const tracksLayer = this.layerManager.getLayer('tracks')
+
       if (enabled) {
-        tracksLayer.show()
+        if (tracksLayer && tracksLayer.data?.features?.length > 0) {
+          tracksLayer.show()
+        } else {
+          // Fetch tracks from backend (lazy-load)
+          const api = this.controller.api
+          const startDate = this.controller.startDateValue
+          const endDate = this.controller.endDateValue
+
+          const tracksGeoJSON = await api.fetchTracks({
+            start_at: startDate,
+            end_at: endDate
+          })
+
+          if (tracksLayer) {
+            tracksLayer.update(tracksGeoJSON)
+            tracksLayer.show()
+          }
+        }
       } else {
-        tracksLayer.hide()
+        if (tracksLayer) {
+          tracksLayer.hide()
+        }
       }
+    } catch (error) {
+      console.error('Failed to toggle tracks layer:', error)
+      Toast.error('Failed to load tracks')
     }
   }
 

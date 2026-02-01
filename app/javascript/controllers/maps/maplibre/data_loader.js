@@ -105,14 +105,18 @@ export class DataLoader {
     }
     data.placesGeoJSON = this.placesToGeoJSON(data.places)
 
-    // Fetch tracks
-    try {
-      data.tracksGeoJSON = await this.api.fetchTracks({
-        start_at: startDate,
-        end_at: endDate
-      })
-    } catch (error) {
-      console.warn('[Tracks] Failed to fetch tracks (non-blocking):', error.message)
+    // Fetch tracks - only if tracks layer is enabled
+    if (this.settings.tracksEnabled) {
+      try {
+        data.tracksGeoJSON = await this.api.fetchTracks({
+          start_at: startDate,
+          end_at: endDate
+        })
+      } catch (error) {
+        console.warn('[Tracks] Failed to fetch tracks (non-blocking):', error.message)
+        data.tracksGeoJSON = { type: 'FeatureCollection', features: [] }
+      }
+    } else {
       data.tracksGeoJSON = { type: 'FeatureCollection', features: [] }
     }
 
