@@ -14,7 +14,6 @@ RSpec.describe Exports::Create do
     let(:export) do
       create(:export, user:, name: export_name, status: :created, file_format: file_format, start_at:, end_at:)
     end
-    let(:export_content) { Points::GeojsonSerializer.new(points).call }
     let(:reverse_geocoded_at) { Time.zone.local(2021, 1, 1) }
     let!(:points) do
       10.times.map do |i|
@@ -29,12 +28,14 @@ RSpec.describe Exports::Create do
       allow_any_instance_of(Point).to receive(:reverse_geocoded_at).and_return(reverse_geocoded_at)
     end
 
-    it 'writes the data to a file' do
+    it 'writes valid GeoJSON with all points to the export file' do
       create_export
 
-      file_path = Rails.root.join('spec/fixtures/files/geojson/export_same_points.json')
+      blob = export.reload.file.blob
+      json = JSON.parse(blob.download)
 
-      expect(File.read(file_path).strip).to eq(export_content)
+      expect(json['type']).to eq('FeatureCollection')
+      expect(json['features'].size).to eq(10)
     end
 
     it 'sets the export file' do
@@ -53,15 +54,42 @@ RSpec.describe Exports::Create do
       expect { create_export }.to change { Notification.count }.by(1)
     end
 
+    context 'when file format is gpx' do
+      let(:file_format) { :gpx }
+
+      it 'writes valid GPX to the export file' do
+        create_export
+
+        blob = export.reload.file.blob
+        content = blob.download
+
+        expect(content).to include('<gpx')
+        expect(content).to include('<trkpt')
+      end
+
+      it 'updates the export status to completed' do
+        create_export
+
+        expect(export.reload.completed?).to be_truthy
+      end
+    end
+
     context 'when an error occurs' do
       before do
-        allow_any_instance_of(Points::GeojsonSerializer).to receive(:call).and_raise(StandardError)
+        allow_any_instance_of(Exports::PointGeojsonSerializer)
+          .to receive(:call).and_raise(StandardError, 'test error')
       end
 
       it 'updates the export status to failed' do
         create_export
 
         expect(export.reload.failed?).to be_truthy
+      end
+
+      it 'stores the error message' do
+        create_export
+
+        expect(export.reload.error_message).to eq('test error')
       end
 
       it 'creates a notification' do

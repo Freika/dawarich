@@ -9,7 +9,7 @@
 ![Map](screenshots/map.png)
 *Map View*
 
-#[Insights](screenshots/insights.png)
+![Insights](screenshots/insights.png)
 *Insights Page*
 
 ![Family](screenshots/family.png)
@@ -47,8 +47,6 @@ It enables you to:
 ## ⚠️ Disclaimer
 
 ### Updating strategy
-
-It's recommended to update to the latest minor version (e.g., 1.x.0) if you prefer stability, and to the latest patch version (e.g., 1.0.x) for the newest features and fixes. No breaking changes are expected in minor version updates.
 
 - 💔 **DO NOT UPDATE AUTOMATICALLY**: Read release notes before updating. Automatic updates may break your setup.
 - 🛠️ **Under active development**: Expect frequent updates, bugs, and breaking changes.
