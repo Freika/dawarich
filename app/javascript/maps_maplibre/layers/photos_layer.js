@@ -1,6 +1,6 @@
-import { BaseLayer } from './base_layer'
-import maplibregl from 'maplibre-gl'
-import { getCurrentTheme, getThemeColors } from '../utils/popup_theme'
+import maplibregl from "maplibre-gl"
+import { getCurrentTheme, getThemeColors } from "../utils/popup_theme"
+import { BaseLayer } from "./base_layer"
 
 /**
  * Photos layer with clustering and thumbnail markers
@@ -9,9 +9,9 @@ import { getCurrentTheme, getThemeColors } from '../utils/popup_theme'
  */
 export class PhotosLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: 'photos', ...options })
+    super(map, { id: "photos", ...options })
     this.markerCache = new Map() // keyed by feature id for efficient reuse
-    this.legCache = new Map()    // spider leg layer ids keyed by feature id
+    this.legCache = new Map() // spider leg layer ids keyed by feature id
     this._spiderfiedMarkers = []
     this._syncMarkers = this._syncMarkers.bind(this)
     this._onClusterClick = this._onClusterClick.bind(this)
@@ -20,53 +20,55 @@ export class PhotosLayer extends BaseLayer {
 
   getSourceConfig() {
     return {
-      type: 'geojson',
-      data: this.data || { type: 'FeatureCollection', features: [] },
+      type: "geojson",
+      data: this.data || { type: "FeatureCollection", features: [] },
       cluster: true,
       clusterRadius: 60,
-      clusterMaxZoom: 15
+      clusterMaxZoom: 15,
     }
   }
 
   getLayerConfigs() {
     return [
       {
-        id: 'photos-clusters',
-        type: 'circle',
+        id: "photos-clusters",
+        type: "circle",
         source: this.sourceId,
-        filter: ['has', 'point_count'],
+        filter: ["has", "point_count"],
         paint: {
-          'circle-color': 'rgba(59, 130, 246, 0.7)',
-          'circle-radius': [
-            'step',
-            ['get', 'point_count'],
-            20,  // default radius
-            10, 25,  // >= 10 photos
-            50, 30   // >= 50 photos
+          "circle-color": "rgba(59, 130, 246, 0.7)",
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            20, // default radius
+            10,
+            25, // >= 10 photos
+            50,
+            30, // >= 50 photos
           ],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff'
-        }
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+        },
       },
       {
-        id: 'photos-cluster-count',
-        type: 'symbol',
+        id: "photos-cluster-count",
+        type: "symbol",
         source: this.sourceId,
-        filter: ['has', 'point_count'],
+        filter: ["has", "point_count"],
         layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-size': 14,
-          'text-allow-overlap': true
+          "text-field": "{point_count_abbreviated}",
+          "text-size": 14,
+          "text-allow-overlap": true,
         },
         paint: {
-          'text-color': '#ffffff'
-        }
-      }
+          "text-color": "#ffffff",
+        },
+      },
     ]
   }
 
   getLayerIds() {
-    return ['photos-clusters', 'photos-cluster-count']
+    return ["photos-clusters", "photos-cluster-count"]
   }
 
   async add(data) {
@@ -76,22 +78,22 @@ export class PhotosLayer extends BaseLayer {
     super.add(data)
 
     // Cluster click → zoom in
-    this.map.on('click', 'photos-clusters', this._onClusterClick)
+    this.map.on("click", "photos-clusters", this._onClusterClick)
 
     // Cursor changes on cluster hover
-    this.map.on('mouseenter', 'photos-clusters', () => {
-      this.map.getCanvas().style.cursor = 'pointer'
+    this.map.on("mouseenter", "photos-clusters", () => {
+      this.map.getCanvas().style.cursor = "pointer"
     })
-    this.map.on('mouseleave', 'photos-clusters', () => {
-      this.map.getCanvas().style.cursor = ''
+    this.map.on("mouseleave", "photos-clusters", () => {
+      this.map.getCanvas().style.cursor = ""
     })
 
     // Sync DOM markers when data loads or map moves;
     // also clear any spiderfied cluster expansion on move
-    this.map.on('moveend', this._onMoveEnd)
+    this.map.on("moveend", this._onMoveEnd)
 
     // Also sync when source data finishes loading
-    this.map.on('data', (e) => {
+    this.map.on("data", (e) => {
       if (e.sourceId === this.sourceId && e.isSourceLoaded) {
         this._syncMarkers()
       }
@@ -104,7 +106,7 @@ export class PhotosLayer extends BaseLayer {
   async update(data) {
     this.data = data
     const source = this.map.getSource(this.sourceId)
-    if (source && source.setData) {
+    if (source?.setData) {
       source.setData(data)
     }
     // Markers will sync via the data event
@@ -117,7 +119,7 @@ export class PhotosLayer extends BaseLayer {
 
   _onClusterClick(e) {
     const features = this.map.queryRenderedFeatures(e.point, {
-      layers: ['photos-clusters']
+      layers: ["photos-clusters"],
     })
     if (!features.length) return
 
@@ -130,13 +132,17 @@ export class PhotosLayer extends BaseLayer {
       // If expansion zoom exceeds max zoom, the cluster can't split further
       // (all points share the same coordinates). Spiderfy them directly.
       if (zoom > this.map.getMaxZoom()) {
-        this._spiderfyCluster(source, clusterId, features[0].geometry.coordinates)
+        this._spiderfyCluster(
+          source,
+          clusterId,
+          features[0].geometry.coordinates,
+        )
         return
       }
 
       this.map.easeTo({
         center: features[0].geometry.coordinates,
-        zoom: zoom
+        zoom: zoom,
       })
     })
   }
@@ -162,10 +168,10 @@ export class PhotosLayer extends BaseLayer {
 
         // Draw a thin line from the original position to the spiderfied position
         const line = this._createSpiderLeg(center, [lngLat.lng, lngLat.lat])
-        if (line) this._spiderfiedMarkers.push({ type: 'leg', id: line })
+        if (line) this._spiderfiedMarkers.push({ type: "leg", id: line })
 
         const marker = this._createPhotoMarker(leaf, [lngLat.lng, lngLat.lat])
-        this._spiderfiedMarkers.push({ type: 'marker', ref: marker })
+        this._spiderfiedMarkers.push({ type: "marker", ref: marker })
       })
     })
   }
@@ -177,23 +183,23 @@ export class PhotosLayer extends BaseLayer {
     const legId = `spider-leg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     try {
       this.map.addSource(legId, {
-        type: 'geojson',
+        type: "geojson",
         data: {
-          type: 'Feature',
-          geometry: { type: 'LineString', coordinates: [from, to] }
-        }
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: [from, to] },
+        },
       })
       this.map.addLayer({
         id: legId,
-        type: 'line',
+        type: "line",
         source: legId,
         paint: {
-          'line-color': 'rgba(59, 130, 246, 0.4)',
-          'line-width': 1.5
-        }
+          "line-color": "rgba(59, 130, 246, 0.4)",
+          "line-width": 1.5,
+        },
       })
       return legId
-    } catch (e) {
+    } catch (_e) {
       return null
     }
   }
@@ -205,9 +211,9 @@ export class PhotosLayer extends BaseLayer {
     if (!this._spiderfiedMarkers) return
 
     for (const item of this._spiderfiedMarkers) {
-      if (item.type === 'marker') {
+      if (item.type === "marker") {
         item.ref.remove()
-      } else if (item.type === 'leg') {
+      } else if (item.type === "leg") {
         if (this.map.getLayer(item.id)) this.map.removeLayer(item.id)
         if (this.map.getSource(item.id)) this.map.removeSource(item.id)
       }
@@ -228,13 +234,15 @@ export class PhotosLayer extends BaseLayer {
 
     // Query unclustered features from the source
     const features = this.map.querySourceFeatures(this.sourceId, {
-      filter: ['!', ['has', 'point_count']]
+      filter: ["!", ["has", "point_count"]],
     })
 
     // Deduplicate by feature id (querySourceFeatures can return dupes across tiles)
     const seen = new Map()
     for (const feature of features) {
-      const id = feature.properties.id || `${feature.geometry.coordinates[0]}_${feature.geometry.coordinates[1]}`
+      const id =
+        feature.properties.id ||
+        `${feature.geometry.coordinates[0]}_${feature.geometry.coordinates[1]}`
       if (!seen.has(id)) {
         seen.set(id, feature)
       }
@@ -335,7 +343,7 @@ export class PhotosLayer extends BaseLayer {
     for (const group of groups) {
       const centerPx = {
         x: group.reduce((s, e) => s + e.px, 0) / group.length,
-        y: group.reduce((s, e) => s + e.py, 0) / group.length
+        y: group.reduce((s, e) => s + e.py, 0) / group.length,
       }
 
       const positions = this._computeSpiralPositions(group.length, centerPx)
@@ -367,7 +375,7 @@ export class PhotosLayer extends BaseLayer {
         const angle = (2 * Math.PI * i) / count - Math.PI / 2
         positions.push({
           x: center.x + radius * Math.cos(angle),
-          y: center.y + radius * Math.sin(angle)
+          y: center.y + radius * Math.sin(angle),
         })
       }
     } else {
@@ -378,13 +386,16 @@ export class PhotosLayer extends BaseLayer {
       while (placed < count) {
         const radius = ring * step
         const circumference = 2 * Math.PI * radius
-        const fitInRing = Math.min(Math.floor(circumference / step), count - placed)
+        const fitInRing = Math.min(
+          Math.floor(circumference / step),
+          count - placed,
+        )
 
         for (let i = 0; i < fitInRing; i++) {
           const angle = (2 * Math.PI * i) / fitInRing - Math.PI / 2
           positions.push({
             x: center.x + radius * Math.cos(angle),
-            y: center.y + radius * Math.sin(angle)
+            y: center.y + radius * Math.sin(angle),
           })
           placed++
         }
@@ -401,8 +412,8 @@ export class PhotosLayer extends BaseLayer {
    */
   _updateLeg(featureId, origin, offset) {
     const lineData = {
-      type: 'Feature',
-      geometry: { type: 'LineString', coordinates: [origin, offset] }
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: [origin, offset] },
     }
 
     const legId = this.legCache.get(featureId)
@@ -418,19 +429,19 @@ export class PhotosLayer extends BaseLayer {
     // Create new leg
     const newLegId = `photo-leg-${featureId}`
     try {
-      this.map.addSource(newLegId, { type: 'geojson', data: lineData })
+      this.map.addSource(newLegId, { type: "geojson", data: lineData })
       this.map.addLayer({
         id: newLegId,
-        type: 'line',
+        type: "line",
         source: newLegId,
         paint: {
-          'line-color': 'rgba(59, 130, 246, 0.4)',
-          'line-width': 1.5,
-          'line-dasharray': [2, 2]
-        }
+          "line-color": "rgba(59, 130, 246, 0.4)",
+          "line-width": 1.5,
+          "line-dasharray": [2, 2],
+        },
       })
       this.legCache.set(featureId, newLegId)
-    } catch (e) {
+    } catch (_e) {
       // Silently ignore if source/layer already exists from a race
     }
   }
@@ -465,11 +476,11 @@ export class PhotosLayer extends BaseLayer {
     const { thumbnail_url } = feature.properties
     const [lng, lat] = lngLat || feature.geometry.coordinates
 
-    const container = document.createElement('div')
-    container.style.display = this.visible ? 'block' : 'none'
+    const container = document.createElement("div")
+    container.style.display = this.visible ? "block" : "none"
 
-    const el = document.createElement('div')
-    el.className = 'photo-marker'
+    const el = document.createElement("div")
+    el.className = "photo-marker"
     el.style.cssText = `
       width: 50px;
       height: 50px;
@@ -483,19 +494,19 @@ export class PhotosLayer extends BaseLayer {
       transition: transform 0.2s, box-shadow 0.2s;
     `
 
-    el.addEventListener('mouseenter', () => {
-      el.style.transform = 'scale(1.2)'
-      el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.4)'
-      el.style.zIndex = '1000'
+    el.addEventListener("mouseenter", () => {
+      el.style.transform = "scale(1.2)"
+      el.style.boxShadow = "0 4px 8px rgba(0,0,0,0.4)"
+      el.style.zIndex = "1000"
     })
 
-    el.addEventListener('mouseleave', () => {
-      el.style.transform = 'scale(1)'
-      el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'
-      el.style.zIndex = '1'
+    el.addEventListener("mouseleave", () => {
+      el.style.transform = "scale(1)"
+      el.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)"
+      el.style.zIndex = "1"
     })
 
-    el.addEventListener('click', (e) => {
+    el.addEventListener("click", (e) => {
       e.stopPropagation()
       this.showPhotoPopup(feature)
     })
@@ -514,12 +525,22 @@ export class PhotosLayer extends BaseLayer {
    * @param {Object} feature - GeoJSON feature with photo properties
    */
   showPhotoPopup(feature) {
-    const { thumbnail_url, taken_at, filename, city, state, country, type, source } = feature.properties
+    const {
+      thumbnail_url,
+      taken_at,
+      filename,
+      city,
+      state,
+      country,
+      type,
+      source,
+    } = feature.properties
     const [lng, lat] = feature.geometry.coordinates
 
-    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : 'Unknown'
-    const location = [city, state, country].filter(Boolean).join(', ') || 'Unknown location'
-    const mediaType = type === 'VIDEO' ? '🎥 Video' : '📷 Photo'
+    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : "Unknown"
+    const location =
+      [city, state, country].filter(Boolean).join(", ") || "Unknown location"
+    const mediaType = type === "VIDEO" ? "🎥 Video" : "📷 Photo"
 
     // Get theme colors
     const theme = getCurrentTheme()
@@ -531,17 +552,17 @@ export class PhotosLayer extends BaseLayer {
         <div style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: ${colors.backgroundAlt};">
           <img
             src="${thumbnail_url}"
-            alt="${filename || 'Photo'}"
+            alt="${filename || "Photo"}"
             style="width: 100%; height: auto; max-height: 350px; object-fit: contain; display: block;"
             loading="lazy"
           />
         </div>
         <div style="font-size: 13px;">
-          ${filename ? `<div style="font-weight: 600; color: ${colors.textPrimary}; margin-bottom: 6px; word-wrap: break-word;">${filename}</div>` : ''}
+          ${filename ? `<div style="font-weight: 600; color: ${colors.textPrimary}; margin-bottom: 6px; word-wrap: break-word;">${filename}</div>` : ""}
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📅 ${takenDate}</div>
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📍 ${location}</div>
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">Source: ${source}</div>` : ''}
+          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">Source: ${source}</div>` : ""}
           <div style="font-size: 14px; margin-top: 8px; color: ${colors.textPrimary};">${mediaType}</div>
         </div>
       </div>
@@ -550,7 +571,7 @@ export class PhotosLayer extends BaseLayer {
     new maplibregl.Popup({
       closeButton: true,
       closeOnClick: true,
-      maxWidth: '400px'
+      maxWidth: "400px",
     })
       .setLngLat([lng, lat])
       .setHTML(popupHTML)
@@ -575,11 +596,11 @@ export class PhotosLayer extends BaseLayer {
     this.visible = true
     this.setVisibility(true)
     for (const [, marker] of this.markerCache) {
-      marker.getElement().style.display = 'block'
+      marker.getElement().style.display = "block"
     }
     for (const [, legId] of this.legCache) {
       if (this.map.getLayer(legId)) {
-        this.map.setLayoutProperty(legId, 'visibility', 'visible')
+        this.map.setLayoutProperty(legId, "visibility", "visible")
       }
     }
     // Re-sync to pick up any features that should now be visible
@@ -594,11 +615,11 @@ export class PhotosLayer extends BaseLayer {
     this.setVisibility(false)
     this._clearSpiderfiedMarkers()
     for (const [, marker] of this.markerCache) {
-      marker.getElement().style.display = 'none'
+      marker.getElement().style.display = "none"
     }
     for (const [, legId] of this.legCache) {
       if (this.map.getLayer(legId)) {
-        this.map.setLayoutProperty(legId, 'visibility', 'none')
+        this.map.setLayoutProperty(legId, "visibility", "none")
       }
     }
   }
@@ -609,8 +630,8 @@ export class PhotosLayer extends BaseLayer {
   remove() {
     this.clearMarkers()
     this._clearSpiderfiedMarkers()
-    this.map.off('moveend', this._onMoveEnd)
-    this.map.off('click', 'photos-clusters', this._onClusterClick)
+    this.map.off("moveend", this._onMoveEnd)
+    this.map.off("click", "photos-clusters", this._onClusterClick)
     super.remove()
   }
 }

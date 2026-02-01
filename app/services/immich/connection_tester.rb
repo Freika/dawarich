@@ -32,7 +32,6 @@ class Immich::ConnectionTester
     test_thumbnail_access(asset_id)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def search_metadata
     HTTParty.post(
       "#{url}/api/search/metadata",
@@ -55,7 +54,6 @@ class Immich::ConnectionTester
       )
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_thumbnail_access(asset_id)
     response = HTTParty.get(

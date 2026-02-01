@@ -50,7 +50,7 @@ RSpec.describe '/digests', type: :request do
       end
 
       it 'displays existing digests' do
-        digest = create(:users_digest, user:, year: 2024)
+        create(:users_digest, user:, year: 2024)
 
         get users_digests_url
 

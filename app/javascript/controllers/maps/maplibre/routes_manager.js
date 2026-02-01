@@ -1,6 +1,6 @@
-import { SettingsManager } from 'maps_maplibre/utils/settings_manager'
-import { Toast } from 'maps_maplibre/components/toast'
-import { lazyLoader } from 'maps_maplibre/utils/lazy_loader'
+import { Toast } from "maps_maplibre/components/toast"
+import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages routes-related operations for Maps V2
@@ -21,16 +21,18 @@ export class RoutesManager {
     const element = event.currentTarget
     const visible = element.checked
 
-    const routesLayer = this.layerManager.getLayer('routes')
+    const routesLayer = this.layerManager.getLayer("routes")
     if (routesLayer) {
       routesLayer.toggle(visible)
     }
 
     if (this.controller.hasRoutesOptionsTarget) {
-      this.controller.routesOptionsTarget.style.display = visible ? 'block' : 'none'
+      this.controller.routesOptionsTarget.style.display = visible
+        ? "block"
+        : "none"
     }
 
-    SettingsManager.updateSetting('routesVisible', visible)
+    SettingsManager.updateSetting("routesVisible", visible)
   }
 
   /**
@@ -38,10 +40,13 @@ export class RoutesManager {
    */
   async toggleSpeedColoredRoutes(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('speedColoredRoutesEnabled', enabled)
+    SettingsManager.updateSetting("speedColoredRoutesEnabled", enabled)
 
     if (this.controller.hasSpeedColorScaleContainerTarget) {
-      this.controller.speedColorScaleContainerTarget.classList.toggle('hidden', !enabled)
+      this.controller.speedColorScaleContainerTarget.classList.toggle(
+        "hidden",
+        !enabled,
+      )
     }
 
     await this.reloadRoutes()
@@ -51,22 +56,27 @@ export class RoutesManager {
    * Open speed color editor modal
    */
   openSpeedColorEditor() {
-    const currentScale = this.controller.speedColorScaleInputTarget.value ||
-      '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300'
+    const currentScale =
+      this.controller.speedColorScaleInputTarget.value ||
+      "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
 
-    let modal = document.getElementById('speed-color-editor-modal')
+    let modal = document.getElementById("speed-color-editor-modal")
     if (!modal) {
       modal = this.createSpeedColorEditorModal(currentScale)
       document.body.appendChild(modal)
     } else {
-      const controller = this.controller.application.getControllerForElementAndIdentifier(modal, 'speed-color-editor')
+      const controller =
+        this.controller.application.getControllerForElementAndIdentifier(
+          modal,
+          "speed-color-editor",
+        )
       if (controller) {
         controller.colorStopsValue = currentScale
         controller.loadColorStops()
       }
     }
 
-    const checkbox = modal.querySelector('.modal-toggle')
+    const checkbox = modal.querySelector(".modal-toggle")
     if (checkbox) {
       checkbox.checked = true
     }
@@ -76,11 +86,17 @@ export class RoutesManager {
    * Create speed color editor modal element
    */
   createSpeedColorEditorModal(currentScale) {
-    const modal = document.createElement('div')
-    modal.id = 'speed-color-editor-modal'
-    modal.setAttribute('data-controller', 'speed-color-editor')
-    modal.setAttribute('data-speed-color-editor-color-stops-value', currentScale)
-    modal.setAttribute('data-action', 'speed-color-editor:save->maps--maplibre#handleSpeedColorSave')
+    const modal = document.createElement("div")
+    modal.id = "speed-color-editor-modal"
+    modal.setAttribute("data-controller", "speed-color-editor")
+    modal.setAttribute(
+      "data-speed-color-editor-color-stops-value",
+      currentScale,
+    )
+    modal.setAttribute(
+      "data-action",
+      "speed-color-editor:save->maps--maplibre#handleSpeedColorSave",
+    )
 
     modal.innerHTML = `
       <input type="checkbox" id="speed-color-editor-toggle" class="modal-toggle" />
@@ -152,7 +168,7 @@ export class RoutesManager {
     const newScale = event.detail.colorStops
 
     this.controller.speedColorScaleInputTarget.value = newScale
-    SettingsManager.updateSetting('speedColorScale', newScale)
+    SettingsManager.updateSetting("speedColorScale", newScale)
 
     if (this.controller.speedColoredToggleTarget.checked) {
       this.reloadRoutes()
@@ -163,33 +179,35 @@ export class RoutesManager {
    * Reload routes layer
    */
   async reloadRoutes() {
-    this.controller.showLoading('Reloading routes...')
+    this.controller.showLoading("Reloading routes...")
 
     try {
-      const pointsLayer = this.layerManager.getLayer('points')
-      const points = pointsLayer?.data?.features?.map(f => ({
-        latitude: f.geometry.coordinates[1],
-        longitude: f.geometry.coordinates[0],
-        timestamp: f.properties.timestamp
-      })) || []
+      const pointsLayer = this.layerManager.getLayer("points")
+      const points =
+        pointsLayer?.data?.features?.map((f) => ({
+          latitude: f.geometry.coordinates[1],
+          longitude: f.geometry.coordinates[0],
+          timestamp: f.properties.timestamp,
+        })) || []
 
       const distanceThresholdMeters = this.settings.metersBetweenRoutes || 1000
       const timeThresholdMinutes = this.settings.minutesBetweenRoutes || 60
 
-      const { calculateSpeed, getSpeedColor } = await import('maps_maplibre/utils/speed_colors')
+      const { calculateSpeed, getSpeedColor } = await import(
+        "maps_maplibre/utils/speed_colors"
+      )
 
       const routesGeoJSON = await this.generateRoutesWithSpeedColors(
         points,
         { distanceThresholdMeters, timeThresholdMinutes },
         calculateSpeed,
-        getSpeedColor
+        getSpeedColor,
       )
 
-      this.layerManager.updateLayer('routes', routesGeoJSON)
-
+      this.layerManager.updateLayer("routes", routesGeoJSON)
     } catch (error) {
-      console.error('Failed to reload routes:', error)
-      Toast.error('Failed to reload routes')
+      console.error("Failed to reload routes:", error)
+      Toast.error("Failed to reload routes")
     } finally {
       this.controller.hideLoading()
     }
@@ -198,10 +216,17 @@ export class RoutesManager {
   /**
    * Generate routes with speed coloring
    */
-  async generateRoutesWithSpeedColors(points, options, calculateSpeed, getSpeedColor) {
-    const { RoutesLayer } = await import('maps_maplibre/layers/routes_layer')
+  async generateRoutesWithSpeedColors(
+    points,
+    options,
+    calculateSpeed,
+    getSpeedColor,
+  ) {
+    const { RoutesLayer } = await import("maps_maplibre/layers/routes_layer")
     const useSpeedColors = this.settings.speedColoredRoutesEnabled || false
-    const speedColorScale = this.settings.speedColorScale || '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300'
+    const speedColorScale =
+      this.settings.speedColorScale ||
+      "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
 
     const routesGeoJSON = RoutesLayer.pointsToRoutes(points, options)
 
@@ -209,10 +234,10 @@ export class RoutesManager {
       return routesGeoJSON
     }
 
-    routesGeoJSON.features = routesGeoJSON.features.map((feature, index) => {
+    routesGeoJSON.features = routesGeoJSON.features.map((feature, _index) => {
       const segment = points.slice(
-        points.findIndex(p => p.timestamp === feature.properties.startTime),
-        points.findIndex(p => p.timestamp === feature.properties.endTime) + 1
+        points.findIndex((p) => p.timestamp === feature.properties.startTime),
+        points.findIndex((p) => p.timestamp === feature.properties.endTime) + 1,
       )
 
       if (segment.length >= 2) {
@@ -233,9 +258,9 @@ export class RoutesManager {
    */
   toggleHeatmap(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('heatmapEnabled', enabled)
+    SettingsManager.updateSetting("heatmapEnabled", enabled)
 
-    const heatmapLayer = this.layerManager.getLayer('heatmap')
+    const heatmapLayer = this.layerManager.getLayer("heatmap")
     if (heatmapLayer) {
       if (enabled) {
         heatmapLayer.show()
@@ -250,13 +275,13 @@ export class RoutesManager {
    */
   toggleFog(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('fogEnabled', enabled)
+    SettingsManager.updateSetting("fogEnabled", enabled)
 
-    const fogLayer = this.layerManager.getLayer('fog')
+    const fogLayer = this.layerManager.getLayer("fog")
     if (fogLayer) {
       fogLayer.toggle(enabled)
     } else {
-      console.warn('Fog layer not yet initialized')
+      console.warn("Fog layer not yet initialized")
     }
   }
 
@@ -265,18 +290,21 @@ export class RoutesManager {
    */
   async toggleScratch(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('scratchEnabled', enabled)
+    SettingsManager.updateSetting("scratchEnabled", enabled)
 
     try {
-      const scratchLayer = this.layerManager.getLayer('scratch')
+      const scratchLayer = this.layerManager.getLayer("scratch")
       if (!scratchLayer && enabled) {
-        const ScratchLayer = await lazyLoader.loadLayer('scratch')
+        const ScratchLayer = await lazyLoader.loadLayer("scratch")
         const newScratchLayer = new ScratchLayer(this.map, {
           visible: true,
-          apiClient: this.controller.api
+          apiClient: this.controller.api,
         })
-        const pointsLayer = this.layerManager.getLayer('points')
-        const pointsData = pointsLayer?.data || { type: 'FeatureCollection', features: [] }
+        const pointsLayer = this.layerManager.getLayer("points")
+        const pointsData = pointsLayer?.data || {
+          type: "FeatureCollection",
+          features: [],
+        }
         await newScratchLayer.add(pointsData)
         this.layerManager.layers.scratchLayer = newScratchLayer
       } else if (scratchLayer) {
@@ -287,8 +315,8 @@ export class RoutesManager {
         }
       }
     } catch (error) {
-      console.error('Failed to toggle scratch layer:', error)
-      Toast.error('Failed to load scratch layer')
+      console.error("Failed to toggle scratch layer:", error)
+      Toast.error("Failed to load scratch layer")
     }
   }
 
@@ -298,10 +326,10 @@ export class RoutesManager {
    */
   async togglePhotos(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('photosEnabled', enabled)
+    SettingsManager.updateSetting("photosEnabled", enabled)
 
     try {
-      const photosLayer = this.layerManager.getLayer('photos')
+      const photosLayer = this.layerManager.getLayer("photos")
 
       if (enabled) {
         if (photosLayer && photosLayer.data?.features?.length > 0) {
@@ -313,16 +341,19 @@ export class RoutesManager {
           const startDate = this.controller.startDateValue
           const endDate = this.controller.endDateValue
 
-          const photosPromise = api.fetchPhotos({ start_at: startDate, end_at: endDate })
+          const photosPromise = api.fetchPhotos({
+            start_at: startDate,
+            end_at: endDate,
+          })
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Photo fetch timeout')), 15000)
+            setTimeout(() => reject(new Error("Photo fetch timeout")), 15000),
           )
           const photos = await Promise.race([photosPromise, timeoutPromise])
           const photosGeoJSON = dataLoader.photosToGeoJSON(photos)
 
           await this.layerManager._addPhotosLayer(photosGeoJSON)
 
-          const newPhotosLayer = this.layerManager.getLayer('photos')
+          const newPhotosLayer = this.layerManager.getLayer("photos")
           if (newPhotosLayer) {
             newPhotosLayer.show()
           }
@@ -333,8 +364,8 @@ export class RoutesManager {
         }
       }
     } catch (error) {
-      console.error('Failed to toggle photos layer:', error)
-      Toast.error('Failed to load photos')
+      console.error("Failed to toggle photos layer:", error)
+      Toast.error("Failed to load photos")
     }
   }
 
@@ -343,9 +374,9 @@ export class RoutesManager {
    */
   toggleAreas(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('areasEnabled', enabled)
+    SettingsManager.updateSetting("areasEnabled", enabled)
 
-    const areasLayer = this.layerManager.getLayer('areas')
+    const areasLayer = this.layerManager.getLayer("areas")
     if (areasLayer) {
       if (enabled) {
         areasLayer.show()
@@ -361,10 +392,10 @@ export class RoutesManager {
    */
   async toggleTracks(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('tracksEnabled', enabled)
+    SettingsManager.updateSetting("tracksEnabled", enabled)
 
     try {
-      const tracksLayer = this.layerManager.getLayer('tracks')
+      const tracksLayer = this.layerManager.getLayer("tracks")
 
       if (enabled) {
         if (tracksLayer && tracksLayer.data?.features?.length > 0) {
@@ -377,7 +408,7 @@ export class RoutesManager {
 
           const tracksGeoJSON = await api.fetchTracks({
             start_at: startDate,
-            end_at: endDate
+            end_at: endDate,
           })
 
           if (tracksLayer) {
@@ -391,8 +422,8 @@ export class RoutesManager {
         }
       }
     } catch (error) {
-      console.error('Failed to toggle tracks layer:', error)
-      Toast.error('Failed to load tracks')
+      console.error("Failed to toggle tracks layer:", error)
+      Toast.error("Failed to load tracks")
     }
   }
 
@@ -403,12 +434,12 @@ export class RoutesManager {
     const element = event.currentTarget
     const visible = element.checked
 
-    const pointsLayer = this.layerManager.getLayer('points')
+    const pointsLayer = this.layerManager.getLayer("points")
     if (pointsLayer) {
       pointsLayer.toggle(visible)
     }
 
-    SettingsManager.updateSetting('pointsVisible', visible)
+    SettingsManager.updateSetting("pointsVisible", visible)
   }
 
   /**
@@ -416,9 +447,9 @@ export class RoutesManager {
    */
   async toggleFamily(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('familyEnabled', enabled)
+    SettingsManager.updateSetting("familyEnabled", enabled)
 
-    const familyLayer = this.layerManager.getLayer('family')
+    const familyLayer = this.layerManager.getLayer("family")
     if (familyLayer) {
       if (enabled) {
         familyLayer.show()
@@ -431,7 +462,9 @@ export class RoutesManager {
 
     // Show/hide the family members list
     if (this.controller.hasFamilyMembersListTarget) {
-      this.controller.familyMembersListTarget.style.display = enabled ? 'block' : 'none'
+      this.controller.familyMembersListTarget.style.display = enabled
+        ? "block"
+        : "none"
     }
   }
 }

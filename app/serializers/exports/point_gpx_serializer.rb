@@ -56,7 +56,7 @@ class Exports::PointGpxSerializer
     io.write("      <trkpt lat=\"#{point.lat}\" lon=\"#{point.lon}\">\n")
     io.write("        <ele>#{point.altitude.to_f}</ele>\n")
 
-    if point.velocity.present? && point.velocity.to_f > 0
+    if point.velocity.present? && point.velocity.to_f.positive?
       io.write("        <speed>#{point.velocity.to_f}</speed>\n")
     end
 

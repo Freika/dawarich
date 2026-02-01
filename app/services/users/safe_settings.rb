@@ -54,7 +54,6 @@ class Users::SafeSettings
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def config
     {
       fog_of_war_meters: fog_of_war_meters,
@@ -86,7 +85,6 @@ class Users::SafeSettings
       max_gap_minutes_in_city: max_gap_minutes_in_city
     }
   end
-  # rubocop:enable Metrics/MethodLength
 
   def fog_of_war_meters
     settings['fog_of_war_meters']

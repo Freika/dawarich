@@ -14,10 +14,18 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Fetch base branch
-        run: git fetch origin ${{ github.base_ref || 'dev' }}:${{ github.base_ref || 'dev' }}
+        env:
+          BASE_REF: ${{ github.base_ref || 'dev' }}
+        run: |
+          CURRENT=$(git rev-parse --abbrev-ref HEAD)
+          if [ "$BASE_REF" != "$CURRENT" ]; then
+            git fetch origin "$BASE_REF":"$BASE_REF"
+          fi
       - name: Setup Biome
         uses: biomejs/setup-biome@v2
         with:
           version: 2.3.11
       - name: Run Biome
-        run: biome ci . --reporter=github --changed --since=${{ github.base_ref || 'dev' }}
+        env:
+          BASE_REF: ${{ github.base_ref || 'dev' }}
+        run: biome ci . --reporter=github --changed --since="$BASE_REF"

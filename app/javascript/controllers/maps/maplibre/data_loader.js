@@ -1,7 +1,7 @@
-import { pointsToGeoJSON } from 'maps_maplibre/utils/geojson_transformers'
-import { RoutesLayer } from 'maps_maplibre/layers/routes_layer'
-import { createCircle } from 'maps_maplibre/utils/geometry'
-import { performanceMonitor } from 'maps_maplibre/utils/performance_monitor'
+import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
+import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
+import { createCircle } from "maps_maplibre/utils/geometry"
+import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 /**
  * Handles loading and transforming data from API
@@ -27,31 +27,31 @@ export class DataLoader {
     const data = {}
 
     // Fetch points
-    performanceMonitor.mark('fetch-points')
+    performanceMonitor.mark("fetch-points")
     data.points = await this.api.fetchAllPoints({
       start_at: startDate,
       end_at: endDate,
-      onProgress: onProgress
+      onProgress: onProgress,
     })
-    performanceMonitor.measure('fetch-points')
+    performanceMonitor.measure("fetch-points")
 
     // Transform points to GeoJSON
-    performanceMonitor.mark('transform-geojson')
+    performanceMonitor.mark("transform-geojson")
     data.pointsGeoJSON = pointsToGeoJSON(data.points)
     data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
-      timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60
+      timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
     })
-    performanceMonitor.measure('transform-geojson')
+    performanceMonitor.measure("transform-geojson")
 
     // Fetch visits
     try {
       data.visits = await this.api.fetchVisits({
         start_at: startDate,
-        end_at: endDate
+        end_at: endDate,
       })
     } catch (error) {
-      console.warn('Failed to fetch visits:', error)
+      console.warn("Failed to fetch visits:", error)
       data.visits = []
     }
     data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
@@ -60,38 +60,46 @@ export class DataLoader {
     // Skip API call if photos are disabled to avoid blocking on failed integrations
     if (this.settings.photosEnabled) {
       try {
-        console.log('[Photos] Fetching photos from:', startDate, 'to', endDate)
+        console.log("[Photos] Fetching photos from:", startDate, "to", endDate)
         // Use Promise.race to enforce a client-side timeout
         const photosPromise = this.api.fetchPhotos({
           start_at: startDate,
-          end_at: endDate
+          end_at: endDate,
         })
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Photo fetch timeout')), 15000) // 15 second timeout
+        const timeoutPromise = new Promise(
+          (_, reject) =>
+            setTimeout(() => reject(new Error("Photo fetch timeout")), 15000), // 15 second timeout
         )
 
         data.photos = await Promise.race([photosPromise, timeoutPromise])
-        console.log('[Photos] Fetched photos:', data.photos.length, 'photos')
-        console.log('[Photos] Sample photo:', data.photos[0])
+        console.log("[Photos] Fetched photos:", data.photos.length, "photos")
+        console.log("[Photos] Sample photo:", data.photos[0])
       } catch (error) {
-        console.warn('[Photos] Failed to fetch photos (non-blocking):', error.message)
+        console.warn(
+          "[Photos] Failed to fetch photos (non-blocking):",
+          error.message,
+        )
         data.photos = []
       }
     } else {
-      console.log('[Photos] Photos layer disabled, skipping fetch')
+      console.log("[Photos] Photos layer disabled, skipping fetch")
       data.photos = []
     }
     data.photosGeoJSON = this.photosToGeoJSON(data.photos)
-    console.log('[Photos] Converted to GeoJSON:', data.photosGeoJSON.features.length, 'features')
+    console.log(
+      "[Photos] Converted to GeoJSON:",
+      data.photosGeoJSON.features.length,
+      "features",
+    )
     if (data.photosGeoJSON.features.length > 0) {
-      console.log('[Photos] Sample feature:', data.photosGeoJSON.features[0])
+      console.log("[Photos] Sample feature:", data.photosGeoJSON.features[0])
     }
 
     // Fetch areas
     try {
       data.areas = await this.api.fetchAreas()
     } catch (error) {
-      console.warn('Failed to fetch areas:', error)
+      console.warn("Failed to fetch areas:", error)
       data.areas = []
     }
     data.areasGeoJSON = this.areasToGeoJSON(data.areas)
@@ -100,7 +108,7 @@ export class DataLoader {
     try {
       data.places = await this.api.fetchPlaces()
     } catch (error) {
-      console.warn('Failed to fetch places:', error)
+      console.warn("Failed to fetch places:", error)
       data.places = []
     }
     data.placesGeoJSON = this.placesToGeoJSON(data.places)
@@ -110,14 +118,17 @@ export class DataLoader {
       try {
         data.tracksGeoJSON = await this.api.fetchTracks({
           start_at: startDate,
-          end_at: endDate
+          end_at: endDate,
         })
       } catch (error) {
-        console.warn('[Tracks] Failed to fetch tracks (non-blocking):', error.message)
-        data.tracksGeoJSON = { type: 'FeatureCollection', features: [] }
+        console.warn(
+          "[Tracks] Failed to fetch tracks (non-blocking):",
+          error.message,
+        )
+        data.tracksGeoJSON = { type: "FeatureCollection", features: [] }
       }
     } else {
-      data.tracksGeoJSON = { type: 'FeatureCollection', features: [] }
+      data.tracksGeoJSON = { type: "FeatureCollection", features: [] }
     }
 
     return data
@@ -128,12 +139,12 @@ export class DataLoader {
    */
   visitsToGeoJSON(visits) {
     return {
-      type: 'FeatureCollection',
-      features: visits.map(visit => ({
-        type: 'Feature',
+      type: "FeatureCollection",
+      features: visits.map((visit) => ({
+        type: "Feature",
         geometry: {
-          type: 'Point',
-          coordinates: [visit.place.longitude, visit.place.latitude]
+          type: "Point",
+          coordinates: [visit.place.longitude, visit.place.latitude],
         },
         properties: {
           id: visit.id,
@@ -142,9 +153,9 @@ export class DataLoader {
           status: visit.status,
           started_at: visit.started_at,
           ended_at: visit.ended_at,
-          duration: visit.duration
-        }
-      }))
+          duration: visit.duration,
+        },
+      })),
     }
   }
 
@@ -153,16 +164,16 @@ export class DataLoader {
    */
   photosToGeoJSON(photos) {
     return {
-      type: 'FeatureCollection',
-      features: photos.map(photo => {
+      type: "FeatureCollection",
+      features: photos.map((photo) => {
         // Construct thumbnail URL
         const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`
 
         return {
-          type: 'Feature',
+          type: "Feature",
           geometry: {
-            type: 'Point',
-            coordinates: [photo.longitude, photo.latitude]
+            type: "Point",
+            coordinates: [photo.longitude, photo.latitude],
           },
           properties: {
             id: photo.id,
@@ -173,10 +184,10 @@ export class DataLoader {
             state: photo.state,
             country: photo.country,
             type: photo.type,
-            source: photo.source
-          }
+            source: photo.source,
+          },
         }
-      })
+      }),
     }
   }
 
@@ -185,12 +196,12 @@ export class DataLoader {
    */
   placesToGeoJSON(places) {
     return {
-      type: 'FeatureCollection',
-      features: places.map(place => ({
-        type: 'Feature',
+      type: "FeatureCollection",
+      features: places.map((place) => ({
+        type: "Feature",
         geometry: {
-          type: 'Point',
-          coordinates: [place.longitude, place.latitude]
+          type: "Point",
+          coordinates: [place.longitude, place.latitude],
         },
         properties: {
           id: place.id,
@@ -201,9 +212,9 @@ export class DataLoader {
           // Stringify tags for MapLibre GL JS compatibility
           tags: JSON.stringify(place.tags || []),
           // Use first tag's color if available
-          color: place.tags?.[0]?.color || '#6366f1'
-        }
-      }))
+          color: place.tags?.[0]?.color || "#6366f1",
+        },
+      })),
     }
   }
 
@@ -213,27 +224,27 @@ export class DataLoader {
    */
   areasToGeoJSON(areas) {
     return {
-      type: 'FeatureCollection',
-      features: areas.map(area => {
+      type: "FeatureCollection",
+      features: areas.map((area) => {
         // Create circle polygon from center and radius
         // Parse as floats since API returns strings
         const center = [parseFloat(area.longitude), parseFloat(area.latitude)]
         const coordinates = createCircle(center, area.radius)
 
         return {
-          type: 'Feature',
+          type: "Feature",
           geometry: {
-            type: 'Polygon',
-            coordinates: [coordinates]
+            type: "Polygon",
+            coordinates: [coordinates],
           },
           properties: {
             id: area.id,
             name: area.name,
-            color: area.color || '#ef4444',
-            radius: area.radius
-          }
+            color: area.color || "#ef4444",
+            radius: area.radius,
+          },
         }
-      })
+      }),
     }
   }
 
@@ -242,19 +253,19 @@ export class DataLoader {
    */
   tracksToGeoJSON(tracks) {
     return {
-      type: 'FeatureCollection',
-      features: tracks.map(track => ({
-        type: 'Feature',
+      type: "FeatureCollection",
+      features: tracks.map((track) => ({
+        type: "Feature",
         geometry: {
-          type: 'LineString',
-          coordinates: track.coordinates
+          type: "LineString",
+          coordinates: track.coordinates,
         },
         properties: {
           id: track.id,
           name: track.name,
-          color: track.color || '#8b5cf6'
-        }
-      }))
+          color: track.color || "#8b5cf6",
+        },
+      })),
     }
   }
 }

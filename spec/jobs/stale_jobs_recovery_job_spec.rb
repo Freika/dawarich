@@ -76,7 +76,7 @@ RSpec.describe StaleJobsRecoveryJob do
 
     context 'with no stale jobs' do
       it 'does not create any notifications' do
-        expect { described_class.new.perform }.not_to change { Notification.count }
+        expect { described_class.new.perform }.not_to(change { Notification.count })
       end
     end
   end

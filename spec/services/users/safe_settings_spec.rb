@@ -244,7 +244,8 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.immich_api_key).to eq('immich-key')
         expect(safe_settings.photoprism_url).to eq('https://photoprism.example.com')
         expect(safe_settings.photoprism_api_key).to eq('photoprism-key')
-        expect(safe_settings.maps).to eq({ 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' })
+        expect(safe_settings.maps).to eq({ 'distance_unit' => 'km', 'name' => 'custom',
+'url' => 'https://custom.example.com' })
         expect(safe_settings.visits_suggestions_enabled?).to be false
         expect(safe_settings.enabled_map_layers).to eq(['Points', 'Tracks', 'Fog of War', 'Suggested Visits'])
       end
