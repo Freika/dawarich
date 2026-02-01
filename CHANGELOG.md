@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The SSL Security Warning is now working correctly on the Immich and Photoprism integration forms.
 - Family members and Places layers are now being correctly remembered across page reloads on Map v2.
+- Immich returning 400. #2222 #2186
 
 
 # [1.0.4] - 2026-02-01

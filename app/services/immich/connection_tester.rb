@@ -45,11 +45,11 @@ class Immich::ConnectionTester
           },
           body: {
             takenAfter: Time.current.beginning_of_day.iso8601,
-          size: 1,
-          page: 1,
-          order: 'asc',
-          withExif: true
-          },
+            size: 1,
+            page: 1,
+            order: 'asc',
+            withExif: true
+          }.to_json,
         timeout: 10
         }
       )
