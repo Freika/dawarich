@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [1.0.4] - 2026-02-01
+
+## Fixed
+
+- Wrong path helper in the navbar for Settings link. #2215 #2213
+
+
 # [1.0.3] - 2026-02-01
 
 ## Fixed
