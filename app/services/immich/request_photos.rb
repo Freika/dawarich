@@ -37,7 +37,7 @@ class Immich::RequestPhotos
         http_options_with_ssl(
           @user, :immich, {
             headers: headers,
-            body: request_body(page),
+            body: JOSN.generate(request_body(page)),
             timeout: 10
           }
         )
