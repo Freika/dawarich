@@ -43,13 +43,13 @@ class Immich::ConnectionTester
             'accept' => 'application/json',
             'Content-Type' => 'application/json'
           },
-          body: {
+          body: JSON.generate({
             takenAfter: Time.current.beginning_of_day.iso8601,
           size: 1,
           page: 1,
           order: 'asc',
           withExif: true
-          },
+          }),
         timeout: 10
         }
       )
