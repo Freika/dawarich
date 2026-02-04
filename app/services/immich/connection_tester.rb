@@ -45,10 +45,10 @@ class Immich::ConnectionTester
           },
           body: JSON.generate({
             takenAfter: Time.current.beginning_of_day.iso8601,
-          size: 1,
-          page: 1,
-          order: 'asc',
-          withExif: true
+            size: 1,
+            page: 1,
+            order: 'asc',
+            withExif: true
           }),
         timeout: 10
         }
