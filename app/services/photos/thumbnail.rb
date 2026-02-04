@@ -3,7 +3,7 @@
 class Photos::Thumbnail
   include SslConfigurable
 
-  SUPPORTED_SOURCES = %w[immich photoprism].freeze
+  SUPPORTED_SOURCES = %w[immich photoprism google_photos].freeze
 
   def initialize(user, source, id)
     @user = user
@@ -14,6 +14,10 @@ class Photos::Thumbnail
   def call
     raise ArgumentError, 'Photo source cannot be nil' if source.nil?
     unsupported_source_error unless SUPPORTED_SOURCES.include?(source)
+
+    # Google Photos thumbnails are publicly accessible via the baseUrl
+    # No authentication needed - just fetch directly
+    return fetch_google_photos_thumbnail if source == 'google_photos'
 
     HTTParty.get(
       request_url,
@@ -65,5 +69,17 @@ class Photos::Thumbnail
 
   def source_type
     source == 'immich' ? :immich : :photoprism
+  end
+
+  def fetch_google_photos_thumbnail
+    # For Google Photos, the id IS the baseUrl
+    # Append size parameters for thumbnail (500x500 max dimension)
+    thumbnail_url = "#{id}=w500-h500"
+
+    HTTParty.get(
+      thumbnail_url,
+      headers: { 'Accept' => 'image/*' },
+      timeout: 10
+    )
   end
 end

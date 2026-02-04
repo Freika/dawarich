@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Zooming animation is disabled on Map V2 loading #2219
 - Exporting points to GPX and GeoJSON now works better and faster for large numbers of points by processing the export in chunks to reduce memory usage. #2161
+- Production Procfile now starts Prometheus exporter in the web process.
 
 
 # [1.0.4] - 2026-02-01

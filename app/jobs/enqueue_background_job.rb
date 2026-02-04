@@ -9,6 +9,8 @@ class EnqueueBackgroundJob < ApplicationJob
       Import::ImmichGeodataJob.perform_later(user_id)
     when 'start_photoprism_import'
       Import::PhotoprismGeodataJob.perform_later(user_id)
+    when 'start_google_photos_import'
+      Import::GooglePhotosGeodataJob.perform_later(user_id)
     when 'start_reverse_geocoding', 'continue_reverse_geocoding'
       Jobs::Create.new(job_name, user_id).call
     else
