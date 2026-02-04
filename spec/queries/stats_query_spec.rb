@@ -160,12 +160,12 @@ RSpec.describe StatsQuery do
       end
 
       it 'returns cached results on subsequent calls' do
-        # First call - should hit database and cache
-        expect(Point.connection).to receive(:select_one).once.and_call_original
+        # First call - should hit database and cache (two queries: geocoded + without_data)
+        expect(Point.connection).to receive(:select_value).twice.and_call_original
         first_result = points_stats
 
         # Second call - should use cache, not hit database
-        expect(Point.connection).not_to receive(:select_one)
+        expect(Point.connection).not_to receive(:select_value)
         second_result = points_stats
 
         expect(first_result).to eq(second_result)

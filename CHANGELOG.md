@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Digests not being created for years earlier than 2000. #2158
 - Tracks on Map V2 are now respecting the date filters correctly. #2196
 - Undefined method `.to_sym` for nil in Sidekiq. #2190
+- `/api/v1/stats` now works faster.
 
 ## Changed
 
