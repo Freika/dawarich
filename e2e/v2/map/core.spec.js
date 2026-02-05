@@ -1,39 +1,43 @@
-import { test, expect } from '@playwright/test'
-import { closeOnboardingModal } from '../../helpers/navigation.js'
+import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "../../helpers/navigation.js"
 import {
+  getMapCenter,
+  getMapZoom,
+  hasMapInstance,
   navigateToMapsV2,
   navigateToMapsV2WithDate,
-  waitForMapLibre,
   waitForLoadingComplete,
-  hasMapInstance,
-  getMapZoom,
-  getMapCenter
-} from '../helpers/setup.js'
+  waitForMapLibre,
+} from "../helpers/setup.js"
 
-test.describe('Map Core', () => {
+test.describe("Map Core", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToMapsV2(page)
     await closeOnboardingModal(page)
   })
 
-  test.describe('Initialization', () => {
-    test('loads map container', async ({ page }) => {
-      const mapContainer = page.locator('[data-maps--maplibre-target="container"]')
+  test.describe("Initialization", () => {
+    test("loads map container", async ({ page }) => {
+      const mapContainer = page.locator(
+        '[data-maps--maplibre-target="container"]',
+      )
       await expect(mapContainer).toBeVisible()
     })
 
-    test('initializes MapLibre instance', async ({ page }) => {
+    test("initializes MapLibre instance", async ({ page }) => {
       await waitForMapLibre(page)
 
-      const canvas = page.locator('.maplibregl-canvas')
+      const canvas = page.locator(".maplibregl-canvas")
       await expect(canvas).toBeVisible()
 
       const hasMap = await hasMapInstance(page)
       expect(hasMap).toBe(true)
     })
 
-    test('has valid initial center and zoom', async ({ page }) => {
-      await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    test("has valid initial center and zoom", async ({ page }) => {
+      await page.goto(
+        "/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59",
+      )
       await closeOnboardingModal(page)
       await waitForMapLibre(page)
       await waitForLoadingComplete(page)
@@ -53,11 +57,13 @@ test.describe('Map Core', () => {
     })
   })
 
-  test.describe('Loading States', () => {
-    test('shows loading indicator during data fetch', async ({ page }) => {
-      const progressBar = page.locator('[data-maps--maplibre-target="progressBar"]')
+  test.describe("Loading States", () => {
+    test("shows loading indicator during data fetch", async ({ page }) => {
+      const progressBar = page.locator(
+        '[data-maps--maplibre-target="progressBar"]',
+      )
 
-      const navigationPromise = page.reload({ waitUntil: 'domcontentloaded' })
+      const navigationPromise = page.reload({ waitUntil: "domcontentloaded" })
 
       // Progress bar may briefly appear during loading
       await navigationPromise
@@ -68,8 +74,12 @@ test.describe('Map Core', () => {
       await expect(progressBar).toBeAttached()
     })
 
-    test('handles empty data gracefully', async ({ page }) => {
-      await navigateToMapsV2WithDate(page, '2020-01-01T00:00', '2020-01-01T23:59')
+    test("handles empty data gracefully", async ({ page }) => {
+      await navigateToMapsV2WithDate(
+        page,
+        "2020-01-01T00:00",
+        "2020-01-01T23:59",
+      )
       await closeOnboardingModal(page)
 
       await waitForLoadingComplete(page)
@@ -80,9 +90,11 @@ test.describe('Map Core', () => {
     })
   })
 
-  test.describe('Data Bounds', () => {
-    test('fits map bounds to loaded data', async ({ page }) => {
-      await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+  test.describe("Data Bounds", () => {
+    test("fits map bounds to loaded data", async ({ page }) => {
+      await page.goto(
+        "/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59",
+      )
       await closeOnboardingModal(page)
       await waitForMapLibre(page)
       await waitForLoadingComplete(page)
@@ -93,14 +105,16 @@ test.describe('Map Core', () => {
     })
   })
 
-  test.describe('Lifecycle', () => {
-    test('cleans up and reinitializes on navigation', async ({ page }) => {
-      await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+  test.describe("Lifecycle", () => {
+    test("cleans up and reinitializes on navigation", async ({ page }) => {
+      await page.goto(
+        "/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59",
+      )
       await closeOnboardingModal(page)
       await waitForLoadingComplete(page)
 
       // Navigate away
-      await page.goto('/')
+      await page.goto("/")
       await page.waitForTimeout(500)
 
       // Navigate back
@@ -112,15 +126,23 @@ test.describe('Map Core', () => {
       expect(hasMap).toBe(true)
     })
 
-    test('reloads data when changing date range', async ({ page }) => {
-      await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    test("reloads data when changing date range", async ({ page }) => {
+      await page.goto(
+        "/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59",
+      )
       await closeOnboardingModal(page)
       await waitForLoadingComplete(page)
 
-      const startInput = page.locator('input[type="datetime-local"][name="start_at"]')
+      const startInput = page.locator(
+        'input[type="datetime-local"][name="start_at"]',
+      )
       const initialStartDate = await startInput.inputValue()
 
-      await navigateToMapsV2WithDate(page, '2024-10-14T00:00', '2024-10-14T23:59')
+      await navigateToMapsV2WithDate(
+        page,
+        "2024-10-14T00:00",
+        "2024-10-14T23:59",
+      )
       await closeOnboardingModal(page)
 
       await waitForMapLibre(page)

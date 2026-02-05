@@ -13,7 +13,9 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
   z-index: 460;
   padding: 14px 18px;
-  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  transition:
+    opacity 0.2s ease-in-out,
+    transform 0.2s ease-in-out;
 }
 
 .timeline-panel.hidden {
@@ -170,7 +172,9 @@
   border: none;
   border-radius: 2px;
   box-shadow: 0 0 8px oklch(var(--p) / 0.5);
-  transition: width 0.1s, box-shadow 0.15s;
+  transition:
+    width 0.1s,
+    box-shadow 0.15s;
 }
 
 .timeline-scrubber::-webkit-slider-thumb:hover {
@@ -195,7 +199,9 @@
   border: none;
   border-radius: 2px;
   box-shadow: 0 0 8px oklch(var(--p) / 0.5);
-  transition: width 0.1s, box-shadow 0.15s;
+  transition:
+    width 0.1s,
+    box-shadow 0.15s;
 }
 
 .timeline-scrubber::-moz-range-thumb:hover {

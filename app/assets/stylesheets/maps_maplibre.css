@@ -26,7 +26,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -222,15 +224,16 @@ html.dark .maplibregl-popup-tip {
 }
 
 .connection-indicator.connected .indicator-text::before {
-  content: 'Connected';
+  content: "Connected";
 }
 
 .connection-indicator.disconnected .indicator-text::before {
-  content: 'Connecting...';
+  content: "Connecting...";
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
