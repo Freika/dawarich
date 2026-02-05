@@ -17,12 +17,11 @@ export class TracksLayer extends BaseLayer {
     this.selectionBorderLayerId = "tracks-selection-border";
     this.flowLayerId = "tracks-selection-flow";
 
-    // Segment flow overlay (animated dashes over transport mode colors)
-    this.segmentFlowLayerId = "tracks-segments-flow";
-
     // Flow animation state
     this.animationFrame = null;
     this.animationActive = false;
+    this.segmentsActive = false;
+    this.selectedTrackLength = 0; // meters
     this.flowTrackColor = "#ff0000";
 
     this.onSegmentHover = null; // Callback for segment hover events
@@ -129,6 +128,10 @@ export class TracksLayer extends BaseLayer {
 
     if (feature) {
       this.flowTrackColor = feature.properties?.color || "#ff0000";
+      this.segmentsActive = false;
+      this.selectedTrackLength = this._computeLineLength(
+        feature.geometry?.coordinates || [],
+      );
       selectionSource.setData({
         type: "FeatureCollection",
         features: [feature],
@@ -136,6 +139,8 @@ export class TracksLayer extends BaseLayer {
       this._startFlowAnimation();
     } else {
       this._stopFlowAnimation();
+      this.segmentsActive = false;
+      this.selectedTrackLength = 0;
       selectionSource.setData({ type: "FeatureCollection", features: [] });
     }
   }
@@ -150,8 +155,8 @@ export class TracksLayer extends BaseLayer {
    * @param {number} phase - Animation phase from 0 to 1
    * @returns {Array} MapLibre line-gradient expression
    */
-  _buildFlowGradient(phase, { baseColor, highlightColor } = {}) {
-    const numDashes = 6;
+  _buildFlowGradient(phase, { baseColor, highlightColor, numDashes: numDashesOpt } = {}) {
+    const numDashes = numDashesOpt || 6;
     const dashFraction = 0.15; // 15% of one period is the dash
     const softEdge = 0.04; // fade width at dash boundaries
     const highlight = highlightColor || "rgba(255,255,255,0.5)";
@@ -238,20 +243,20 @@ export class TracksLayer extends BaseLayer {
 
       try {
         if (this.map.getLayer(this.flowLayerId)) {
+          // ~400m per dash; clamp to [4, 30] for visual consistency
+          const numDashes = this.selectedTrackLength > 0
+            ? Math.max(4, Math.min(30, Math.round(this.selectedTrackLength / 400)))
+            : 6;
+
+          // Transparent base when segments visible so their colors show through
+          const baseColor = this.segmentsActive
+            ? "rgba(255,255,255,0)"
+            : undefined;
+
           this.map.setPaintProperty(
             this.flowLayerId,
             "line-gradient",
-            this._buildFlowGradient(phase),
-          );
-        }
-        if (this.map.getLayer(this.segmentFlowLayerId)) {
-          this.map.setPaintProperty(
-            this.segmentFlowLayerId,
-            "line-gradient",
-            this._buildFlowGradient(phase, {
-              baseColor: "rgba(255,255,255,0)",
-              highlightColor: "rgba(255,255,255,0.5)",
-            }),
+            this._buildFlowGradient(phase, { baseColor, numDashes }),
           );
         }
       } catch (e) {
@@ -275,6 +280,27 @@ export class TracksLayer extends BaseLayer {
       cancelAnimationFrame(this.animationFrame);
       this.animationFrame = null;
     }
+  }
+
+  /**
+   * Compute the total length of a LineString in meters (haversine).
+   * @param {Array} coordinates - Array of [lon, lat] pairs
+   * @returns {number} Length in meters
+   */
+  _computeLineLength(coordinates) {
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    let total = 0;
+    for (let i = 1; i < coordinates.length; i++) {
+      const [lon1, lat1] = coordinates[i - 1];
+      const [lon2, lat2] = coordinates[i];
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      total += 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    return total;
   }
 
   /**
@@ -344,7 +370,6 @@ export class TracksLayer extends BaseLayer {
       this.map.addSource(this.segmentSourceId, {
         type: "geojson",
         data: segmentGeoJSON,
-        lineMetrics: true,
       });
 
       this.map.addLayer({
@@ -362,33 +387,20 @@ export class TracksLayer extends BaseLayer {
         },
       });
 
-      // Flow overlay: transparent base with white dashes over segment colors
-      this.map.addLayer({
-        id: this.segmentFlowLayerId,
-        type: "line",
-        source: this.segmentSourceId,
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-width": 6,
-          "line-gradient": this._buildFlowGradient(0, {
-            baseColor: "rgba(255,255,255,0)",
-            highlightColor: "rgba(255,255,255,0.5)",
-          }),
-        },
-      });
-
       // Set up hover events for segments
       this._setupSegmentHoverEvents();
     } else {
       this.map.getSource(this.segmentSourceId).setData(segmentGeoJSON);
-      // Make sure layers are visible
+      // Make sure layer is visible
       this.map.setLayoutProperty(this.segmentLayerId, "visibility", "visible");
-      if (this.map.getLayer(this.segmentFlowLayerId)) {
-        this.map.setLayoutProperty(this.segmentFlowLayerId, "visibility", "visible");
-      }
+    }
+
+    // Move the flow layer on top of segments so dashes overlay the
+    // transport-mode colors. The animation loop switches to a transparent
+    // base when segmentsActive is true, letting segment colors show through.
+    this.segmentsActive = true;
+    if (this.map.getLayer(this.flowLayerId)) {
+      this.map.moveLayer(this.flowLayerId);
     }
 
     // Dim the original track to highlight segments
@@ -401,10 +413,9 @@ export class TracksLayer extends BaseLayer {
    * Hide segment highlighting
    */
   hideSegments() {
-    // Hide segment layers (base + flow overlay)
-    if (this.map.getLayer(this.segmentFlowLayerId)) {
-      this.map.setLayoutProperty(this.segmentFlowLayerId, "visibility", "none");
-    }
+    this.segmentsActive = false;
+
+    // Hide segment layer
     if (this.map.getLayer(this.segmentLayerId)) {
       this.map.setLayoutProperty(this.segmentLayerId, "visibility", "none");
     }
@@ -543,12 +554,10 @@ export class TracksLayer extends BaseLayer {
     // Remove segment event handlers
     this._removeSegmentHoverEvents();
 
-    // Remove segment layers (flow overlay first, then base) and source
-    [this.segmentFlowLayerId, this.segmentLayerId].forEach((layerId) => {
-      if (this.map.getLayer(layerId)) {
-        this.map.removeLayer(layerId);
-      }
-    });
+    // Remove segment layer and source
+    if (this.map.getLayer(this.segmentLayerId)) {
+      this.map.removeLayer(this.segmentLayerId);
+    }
     if (this.map.getSource(this.segmentSourceId)) {
       this.map.removeSource(this.segmentSourceId);
     }

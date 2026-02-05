@@ -389,7 +389,7 @@ export class DataLoader {
         properties: {
           id: track.id,
           name: track.name,
-          color: track.color || "#8b5cf6",
+          color: track.color || "#6366F1",
         },
       })),
     }

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Tracks::GeojsonSerializer
-  DEFAULT_COLOR = '#ff0000'
+  DEFAULT_COLOR = '#6366F1'
 
   # Emoji mapping for transportation modes (for debug visualization)
   MODE_EMOJIS = {
@@ -18,19 +18,19 @@ class Tracks::GeojsonSerializer
     'unknown' => '❓'
   }.freeze
 
-  # Color mapping for segment visualization
+  # Color mapping for segment visualization (Tailwind 500)
   MODE_COLORS = {
-    'walking' => '#4CAF50',    # Green
-    'running' => '#FF9800',    # Orange
-    'cycling' => '#2196F3',    # Blue
-    'driving' => '#9C27B0',    # Purple
-    'bus' => '#FFEB3B',        # Yellow
-    'train' => '#F44336',      # Red
-    'flying' => '#00BCD4',     # Cyan
-    'boat' => '#3F51B5',       # Indigo
-    'motorcycle' => '#E91E63', # Pink
-    'stationary' => '#607D8B', # Blue Grey
-    'unknown' => '#9E9E9E'     # Grey
+    'walking' => '#22C55E',    # Green
+    'running' => '#F97316',    # Orange
+    'cycling' => '#3B82F6',    # Blue
+    'driving' => '#EF4444',    # Red
+    'bus' => '#EAB308',        # Yellow
+    'train' => '#84CC16',      # Lime
+    'flying' => '#06B6D4',     # Cyan
+    'boat' => '#14B8A6',       # Teal
+    'motorcycle' => '#EC4899', # Pink
+    'stationary' => '#94A3B8', # Slate
+    'unknown' => '#CBD5E1'     # Light slate
   }.freeze
 
   def initialize(tracks, include_segments: false)
