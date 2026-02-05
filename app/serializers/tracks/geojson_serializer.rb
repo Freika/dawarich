@@ -79,7 +79,10 @@ class Tracks::GeojsonSerializer
       dominant_mode_emoji: emoji_for_mode(track.dominant_mode)
     }
 
-    # Only include segments when explicitly requested (lazy-loading optimization)
+    # Lightweight mode timeline for per-segment emoji in timeline scrubber
+    props[:mode_timeline] = mode_timeline_for(track)
+
+    # Only include full segments when explicitly requested (lazy-loading optimization)
     props[:segments] = segments_for(track) if include_segments
 
     props
@@ -134,6 +137,24 @@ class Tracks::GeojsonSerializer
       start_time: start_time.to_i,
       end_time: end_time.to_i
     }
+  end
+
+  def mode_timeline_for(track)
+    return [] unless track.respond_to?(:track_segments)
+
+    segments = track.track_segments.to_a.sort_by(&:start_index)
+    return [] if segments.empty?
+
+    current_time = track.start_at
+    segments.map do |segment|
+      start_ts = current_time.to_i
+      current_time += (segment.duration || 0).seconds
+      {
+        start_time: start_ts,
+        end_time: current_time.to_i,
+        emoji: emoji_for_mode(segment.transportation_mode)
+      }
+    end
   end
 
   def emoji_for_mode(mode)

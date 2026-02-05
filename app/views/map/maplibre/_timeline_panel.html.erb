@@ -8,50 +8,44 @@
     &times;
   </button>
 
-  <%# Day navigation header %>
-  <div class="timeline-header">
-    <button type="button"
-            data-action="click->maps--maplibre#timelinePrevDay"
-            data-maps--maplibre-target="timelinePrevDayButton"
-            title="Previous day">
-      &larr;
-    </button>
-    <div class="timeline-day-info">
-      <span class="timeline-day-display" data-maps--maplibre-target="timelineDayDisplay">
-        No data loaded
+  <%# Controls row: Day nav | Time display | Replay + Cycle controls %>
+  <div class="timeline-controls-row">
+    <%# Left: Day navigation %>
+    <div class="timeline-day-nav">
+      <button type="button"
+              data-action="click->maps--maplibre#timelinePrevDay"
+              data-maps--maplibre-target="timelinePrevDayButton"
+              title="Previous day">
+        &larr;
+      </button>
+      <div class="timeline-day-info">
+        <span class="timeline-day-display" data-maps--maplibre-target="timelineDayDisplay">
+          No data loaded
+        </span>
+        <span class="timeline-day-count" data-maps--maplibre-target="timelineDayCount"></span>
+      </div>
+      <button type="button"
+              data-action="click->maps--maplibre#timelineNextDay"
+              data-maps--maplibre-target="timelineNextDayButton"
+              title="Next day">
+        &rarr;
+      </button>
+    </div>
+
+    <%# Center: Time display %>
+    <div class="timeline-time-block">
+      <span class="timeline-time-display" data-maps--maplibre-target="timelineTimeDisplay">
+        --:--
       </span>
-      <span class="timeline-day-count" data-maps--maplibre-target="timelineDayCount"></span>
+      <span class="timeline-speed-display" data-maps--maplibre-target="timelineSpeedDisplay">
+      </span>
+      <span class="timeline-data-indicator hidden" data-maps--maplibre-target="timelineDataIndicator">
+        No data
+      </span>
     </div>
-    <button type="button"
-            data-action="click->maps--maplibre#timelineNextDay"
-            data-maps--maplibre-target="timelineNextDayButton"
-            title="Next day">
-      &rarr;
-    </button>
-  </div>
 
-  <%# Custom scrubber with data density visualization %>
-  <div class="timeline-scrubber-wrapper">
-    <span class="timeline-time-label">00:00</span>
-    <div class="timeline-scrubber-track" data-maps--maplibre-target="timelineScrubberTrack">
-      <%# Data density bars will be rendered here dynamically %>
-      <div class="timeline-density-container" data-maps--maplibre-target="timelineDensityContainer"></div>
-      <%# Range input overlaid on top %>
-      <input type="range"
-             class="timeline-scrubber"
-             min="0"
-             max="1439"
-             value="720"
-             data-maps--maplibre-target="timelineScrubber"
-             data-action="input->maps--maplibre#timelineScrubberHover">
-    </div>
-    <span class="timeline-time-label">23:59</span>
-  </div>
-
-  <%# Bottom row: Replay controls | Time display | Cycle controls %>
-  <div class="timeline-bottom-row">
-    <%# Left: Replay controls %>
-    <div class="timeline-replay-controls">
+    <%# Right: Replay controls + Cycle controls %>
+    <div class="timeline-action-controls">
       <button type="button"
               class="timeline-play-btn"
               data-maps--maplibre-target="timelinePlayButton"
@@ -72,37 +66,37 @@
                title="Replay speed">
         <span class="timeline-speed-label" data-maps--maplibre-target="timelineSpeedLabel">2x</span>
       </div>
-    </div>
-
-    <%# Center: Time and Speed display %>
-    <div class="timeline-time-block">
-      <div class="timeline-time-speed-row">
-        <span class="timeline-time-display" data-maps--maplibre-target="timelineTimeDisplay">
-          --:--
+      <div class="timeline-cycle-controls hidden" data-maps--maplibre-target="timelineCycleControls">
+        <button type="button"
+                data-action="click->maps--maplibre#timelineCyclePrev"
+                title="Previous point">
+          &larr;
+        </button>
+        <span class="timeline-point-counter" data-maps--maplibre-target="timelinePointCounter">
+          Point 1 of 1
         </span>
-        <span class="timeline-speed-display" data-maps--maplibre-target="timelineSpeedDisplay">
-        </span>
+        <button type="button"
+                data-action="click->maps--maplibre#timelineCycleNext"
+                title="Next point">
+          &rarr;
+        </button>
       </div>
-      <span class="timeline-data-indicator hidden" data-maps--maplibre-target="timelineDataIndicator">
-        No data
-      </span>
     </div>
+  </div>
 
-    <%# Right: Cycle controls for multiple points at same minute %>
-    <div class="timeline-cycle-controls hidden" data-maps--maplibre-target="timelineCycleControls">
-      <button type="button"
-              data-action="click->maps--maplibre#timelineCyclePrev"
-              title="Previous point">
-        &larr;
-      </button>
-      <span class="timeline-point-counter" data-maps--maplibre-target="timelinePointCounter">
-        Point 1 of 1
-      </span>
-      <button type="button"
-              data-action="click->maps--maplibre#timelineCycleNext"
-              title="Next point">
-        &rarr;
-      </button>
+  <%# Scrubber with data density visualization %>
+  <div class="timeline-scrubber-wrapper">
+    <span class="timeline-time-label">00:00</span>
+    <div class="timeline-scrubber-track" data-maps--maplibre-target="timelineScrubberTrack">
+      <div class="timeline-density-container" data-maps--maplibre-target="timelineDensityContainer"></div>
+      <input type="range"
+             class="timeline-scrubber"
+             min="0"
+             max="1439"
+             value="720"
+             data-maps--maplibre-target="timelineScrubber"
+             data-action="input->maps--maplibre#timelineScrubberHover">
     </div>
+    <span class="timeline-time-label">23:59</span>
   </div>
 </div>

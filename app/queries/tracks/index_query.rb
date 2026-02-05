@@ -13,6 +13,7 @@ class Tracks::IndexQuery
     scoped = apply_date_range(scoped)
 
     scoped
+      .includes(:track_segments)
       .order(start_at: :desc)
       .page(page_param)
       .per(per_page_param)

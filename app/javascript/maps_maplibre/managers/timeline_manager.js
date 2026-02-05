@@ -413,6 +413,9 @@ export class TimelineManager {
     const pointTime = TimelineManager._parseTimestampStatic(timestamp)
     if (!pointTime) return null
 
+    // Convert pointTime to seconds for segment matching
+    const pointTimeSec = Math.floor(pointTime / 1000)
+
     for (const track of tracksGeoJSON.features) {
       const startAt = track.properties?.start_at
       const endAt = track.properties?.end_at
@@ -422,6 +425,20 @@ export class TimelineManager {
         const trackEnd = new Date(endAt).getTime()
 
         if (pointTime >= trackStart && pointTime <= trackEnd) {
+          // Try per-segment matching first (mode_timeline has start_time/end_time in unix seconds)
+          const modeTimeline = track.properties?.mode_timeline
+          if (modeTimeline?.length) {
+            for (const seg of modeTimeline) {
+              if (
+                pointTimeSec >= seg.start_time &&
+                pointTimeSec <= seg.end_time
+              ) {
+                return seg.emoji || null
+              }
+            }
+          }
+
+          // Fall back to track-level dominant mode
           return track.properties.dominant_mode_emoji || null
         }
       }
