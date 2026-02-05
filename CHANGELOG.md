@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [1.0.5] - Unreleased
+# [1.1.0] - Unreleased
+
+The Timeline Release
+
+In Map V2 Tools, user can now enable Timeline tool, which allows to quickly navigate through time and see how their location changed throughout the day. It can also be used to replay a trip by clicking the play button. Timeline tool always spans across 24 hours, but you can change the date by clicking on the date picker. Timeline tool is available only on Map V2.
 
 ## Added
 
