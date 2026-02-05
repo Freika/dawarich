@@ -126,7 +126,12 @@ export class DataLoader {
    * @param {Object} options.onTracksLoaded - Callback when tracks finish loading
    * @param {Object} options.onPhotosLoaded - Callback when photos finish loading
    */
-  async fetchMapData(startDate, endDate, onProgress, { onTracksLoaded, onPhotosLoaded } = {}) {
+  async fetchMapData(
+    startDate,
+    endDate,
+    onProgress,
+    { onTracksLoaded, onPhotosLoaded } = {},
+  ) {
     const data = {}
 
     // Create progress tracker for all data sources
@@ -156,42 +161,45 @@ export class DataLoader {
 
     // Fetch visits, areas, places in parallel with progress tracking
     const [visits, areas, places] = await Promise.all([
-      this.api.fetchVisits({
-        start_at: startDate,
-        end_at: endDate,
-        onProgress: progressTracker
-          ? ({ progress }) => progressTracker.update("visits", progress)
-          : null,
-      })
-        .then(result => {
+      this.api
+        .fetchVisits({
+          start_at: startDate,
+          end_at: endDate,
+          onProgress: progressTracker
+            ? ({ progress }) => progressTracker.update("visits", progress)
+            : null,
+        })
+        .then((result) => {
           if (progressTracker) progressTracker.complete("visits")
           return result
         })
-        .catch(error => {
+        .catch((error) => {
           console.warn("Failed to fetch visits:", error)
           if (progressTracker) progressTracker.complete("visits")
           return []
         }),
-      this.api.fetchAreas()
-        .then(result => {
+      this.api
+        .fetchAreas()
+        .then((result) => {
           if (progressTracker) progressTracker.complete("areas")
           return result
         })
-        .catch(error => {
+        .catch((error) => {
           console.warn("Failed to fetch areas:", error)
           if (progressTracker) progressTracker.complete("areas")
           return []
         }),
-      this.api.fetchPlaces({
-        onProgress: progressTracker
-          ? ({ progress }) => progressTracker.update("places", progress)
-          : null,
-      })
-        .then(result => {
+      this.api
+        .fetchPlaces({
+          onProgress: progressTracker
+            ? ({ progress }) => progressTracker.update("places", progress)
+            : null,
+        })
+        .then((result) => {
           if (progressTracker) progressTracker.complete("places")
           return result
         })
-        .catch(error => {
+        .catch((error) => {
           console.warn("Failed to fetch places:", error)
           if (progressTracker) progressTracker.complete("places")
           return []
@@ -245,7 +253,9 @@ export class DataLoader {
 
       Promise.race([photosPromise, timeoutPromise])
         .then((photos) => {
-          console.log(`[Photos] Background fetch complete: ${photos.length} photos`)
+          console.log(
+            `[Photos] Background fetch complete: ${photos.length} photos`,
+          )
           if (progressTracker) progressTracker.complete("photos")
           data.photos = photos
           data.photosGeoJSON = this.photosToGeoJSON(photos)

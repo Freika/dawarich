@@ -44,15 +44,19 @@ export class MapDataManager {
         {
           // Callback when tracks finish loading in background
           onTracksLoaded: (tracksGeoJSON) => {
-            console.log("[MapDataManager] Updating tracks layer from background load")
+            console.log(
+              "[MapDataManager] Updating tracks layer from background load",
+            )
             this._updateTracksLayer(tracksGeoJSON)
           },
           // Callback when photos finish loading in background
           onPhotosLoaded: (photosGeoJSON) => {
-            console.log("[MapDataManager] Updating photos layer from background load")
+            console.log(
+              "[MapDataManager] Updating photos layer from background load",
+            )
             this._updatePhotosLayer(photosGeoJSON)
           },
-        }
+        },
       )
 
       // Store visits for filtering

@@ -1059,7 +1059,8 @@ export default class extends Controller {
     const hasDataAtMinute = this.timelineManager.hasDataAtMinute(minute)
 
     // Find nearest minute with points
-    const nearestMinute = this.timelineManager.findNearestMinuteWithPoints(minute)
+    const nearestMinute =
+      this.timelineManager.findNearestMinuteWithPoints(minute)
 
     // Update time display to show current scrubber position
     this._updateTimelineTimeDisplay(minute, !hasDataAtMinute)
@@ -1315,13 +1316,14 @@ export default class extends Controller {
 
     if (velocity !== null && velocity !== undefined && velocity !== "") {
       const speedMs = parseFloat(velocity)
-      if (!isNaN(speedMs) && speedMs > 0) {
+      if (!Number.isNaN(speedMs) && speedMs > 0) {
         // Convert m/s to km/h (multiply by 3.6)
         const speedKmh = speedMs * 3.6
         const distanceUnit = this.settings?.distance_unit || "km"
         const unit = distanceUnit === "mi" ? "mph" : "km/h"
         // Convert km/h to mph if needed (multiply by 0.621371)
-        const displaySpeed = distanceUnit === "mi" ? speedKmh * 0.621371 : speedKmh
+        const displaySpeed =
+          distanceUnit === "mi" ? speedKmh * 0.621371 : speedKmh
         this.timelineSpeedDisplayTarget.textContent = `${Math.round(displaySpeed)} ${unit}`
       } else {
         this.timelineSpeedDisplayTarget.textContent = ""
@@ -1342,8 +1344,7 @@ export default class extends Controller {
     const currentIndex = this.timelineManager.currentDayIndex + 1
     const pointCount = this.timelineManager.getCurrentDayPointCount()
 
-    this.timelineDayCountTarget.textContent =
-      `Day ${currentIndex} of ${dayCount} • ${pointCount.toLocaleString()} points`
+    this.timelineDayCountTarget.textContent = `Day ${currentIndex} of ${dayCount} • ${pointCount.toLocaleString()} points`
   }
 
   /**
@@ -1554,10 +1555,14 @@ export default class extends Controller {
     if (this.timelineReplayCurrentCoords && this.timelineReplayNextCoords) {
       currentLon =
         this.timelineReplayCurrentCoords.lon +
-        (this.timelineReplayNextCoords.lon - this.timelineReplayCurrentCoords.lon) * progress
+        (this.timelineReplayNextCoords.lon -
+          this.timelineReplayCurrentCoords.lon) *
+          progress
       currentLat =
         this.timelineReplayCurrentCoords.lat +
-        (this.timelineReplayNextCoords.lat - this.timelineReplayCurrentCoords.lat) * progress
+        (this.timelineReplayNextCoords.lat -
+          this.timelineReplayCurrentCoords.lat) *
+          progress
 
       // Update marker position smoothly
       this._showTimelineMarkerAt(currentLon, currentLat)
@@ -1585,7 +1590,8 @@ export default class extends Controller {
 
           // Get points for new day
           const newDay = this.timelineManager.getCurrentDay()
-          this.timelineReplayPoints = this.timelineManager.pointsByDay[newDay] || []
+          this.timelineReplayPoints =
+            this.timelineManager.pointsByDay[newDay] || []
           this.timelineReplayPointIndex = 0
 
           if (this.timelineReplayPoints.length === 0) {
@@ -1600,8 +1606,10 @@ export default class extends Controller {
       }
 
       // Get current and next points for interpolation
-      const currentPoint = this.timelineReplayPoints[this.timelineReplayPointIndex]
-      const nextPoint = this.timelineReplayPoints[this.timelineReplayPointIndex + 1]
+      const currentPoint =
+        this.timelineReplayPoints[this.timelineReplayPointIndex]
+      const nextPoint =
+        this.timelineReplayPoints[this.timelineReplayPointIndex + 1]
 
       if (!currentPoint) {
         this._stopTimelineReplay()
@@ -1609,14 +1617,18 @@ export default class extends Controller {
       }
 
       // Store coordinates for interpolation
-      this.timelineReplayCurrentCoords = this.timelineManager.getCoordinates(currentPoint)
+      this.timelineReplayCurrentCoords =
+        this.timelineManager.getCoordinates(currentPoint)
       this.timelineReplayNextCoords = nextPoint
         ? this.timelineManager.getCoordinates(nextPoint)
         : this.timelineReplayCurrentCoords
 
       // Update transportation emoji for current point
       const tracksGeoJSON = this.mapDataManager?.lastLoadedData?.tracksGeoJSON
-      this.timelineReplayCurrentEmoji = TimelineManager.findTransportationEmoji(currentPoint, tracksGeoJSON)
+      this.timelineReplayCurrentEmoji = TimelineManager.findTransportationEmoji(
+        currentPoint,
+        tracksGeoJSON,
+      )
 
       // Update speed display for current point
       this._updateTimelineSpeedDisplay(this._getPointVelocity(currentPoint))
@@ -1694,7 +1706,7 @@ export default class extends Controller {
     if (timelineMarkerLayer) {
       // Use the stored emoji from the current replay point
       timelineMarkerLayer.showMarker(lon, lat, {
-        emoji: this.timelineReplayCurrentEmoji || '',
+        emoji: this.timelineReplayCurrentEmoji || "",
       })
     }
   }
@@ -1735,14 +1747,17 @@ export default class extends Controller {
     if (timelineMarkerLayer) {
       // Look up transportation mode emoji from tracks data
       const tracksGeoJSON = this.mapDataManager?.lastLoadedData?.tracksGeoJSON
-      const emoji = TimelineManager.findTransportationEmoji(point, tracksGeoJSON)
+      const emoji = TimelineManager.findTransportationEmoji(
+        point,
+        tracksGeoJSON,
+      )
 
       // Store current emoji for replay interpolation
       this.timelineReplayCurrentEmoji = emoji
 
       timelineMarkerLayer.showMarker(coords.lon, coords.lat, {
         timestamp: this.timelineManager._getTimestamp(point),
-        emoji: emoji || '',
+        emoji: emoji || "",
       })
     }
   }

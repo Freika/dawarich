@@ -5,7 +5,7 @@
 export class ApiClient {
   constructor(apiKey) {
     this.apiKey = apiKey
-    this.baseURL = '/api/v1'
+    this.baseURL = "/api/v1"
   }
 
   /**
@@ -19,12 +19,12 @@ export class ApiClient {
       end_at,
       page: page.toString(),
       per_page: per_page.toString(),
-      slim: 'true',
-      order: 'asc'
+      slim: "true",
+      order: "asc",
     })
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -35,8 +35,8 @@ export class ApiClient {
 
     return {
       points,
-      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
-      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1')
+      currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
+      totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
     }
   }
 
@@ -45,9 +45,19 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, onProgress, maxConcurrent }
    * @returns {Promise<Array>} All points
    */
-  async fetchAllPoints({ start_at, end_at, onProgress = null, maxConcurrent = 3 }) {
+  async fetchAllPoints({
+    start_at,
+    end_at,
+    onProgress = null,
+    maxConcurrent = 3,
+  }) {
     // First fetch to get total pages
-    const firstPage = await this.fetchPoints({ start_at, end_at, page: 1, per_page: 1000 })
+    const firstPage = await this.fetchPoints({
+      start_at,
+      end_at,
+      page: 1,
+      per_page: 1000,
+    })
     const totalPages = firstPage.totalPages
 
     // If only one page, return immediately
@@ -57,7 +67,7 @@ export class ApiClient {
           loaded: firstPage.points.length,
           currentPage: 1,
           totalPages: 1,
-          progress: 1.0
+          progress: 1.0,
         })
       }
       return firstPage.points
@@ -70,7 +80,7 @@ export class ApiClient {
     // Create array of remaining page numbers
     const remainingPages = Array.from(
       { length: totalPages - 1 },
-      (_, i) => i + 2
+      (_, i) => i + 2,
     )
 
     // Process pages in batches of maxConcurrent
@@ -78,9 +88,10 @@ export class ApiClient {
       const batch = remainingPages.slice(i, i + maxConcurrent)
 
       // Fetch batch in parallel
-      const batchPromises = batch.map(page =>
-        this.fetchPoints({ start_at, end_at, page, per_page: 1000 })
-          .then(result => ({ page, points: result.points }))
+      const batchPromises = batch.map((page) =>
+        this.fetchPoints({ start_at, end_at, page, per_page: 1000 }).then(
+          (result) => ({ page, points: result.points }),
+        ),
       )
 
       const batchResults = await Promise.all(batchPromises)
@@ -94,7 +105,7 @@ export class ApiClient {
           loaded: pageResults.reduce((sum, r) => sum + r.points.length, 0),
           currentPage: completedPages,
           totalPages,
-          progress
+          progress,
         })
       }
     }
@@ -103,7 +114,7 @@ export class ApiClient {
     pageResults.sort((a, b) => a.page - b.page)
 
     // Flatten into single array
-    return pageResults.flatMap(r => r.points)
+    return pageResults.flatMap((r) => r.points)
   }
 
   /**
@@ -116,11 +127,11 @@ export class ApiClient {
       start_at,
       end_at,
       page: page.toString(),
-      per_page: per_page.toString()
+      per_page: per_page.toString(),
     })
 
     const response = await fetch(`${this.baseURL}/visits?${params}`, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -131,8 +142,8 @@ export class ApiClient {
 
     return {
       visits,
-      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
-      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1')
+      currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
+      totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
     }
   }
 
@@ -147,8 +158,11 @@ export class ApiClient {
     let totalPages = 1
 
     do {
-      const { visits, currentPage, totalPages: total } =
-        await this.fetchVisitsPage({ start_at, end_at, page, per_page: 500 })
+      const {
+        visits,
+        currentPage,
+        totalPages: total,
+      } = await this.fetchVisitsPage({ start_at, end_at, page, per_page: 500 })
 
       allVisits.push(...visits)
       totalPages = total
@@ -160,7 +174,7 @@ export class ApiClient {
           loaded: allVisits.length,
           currentPage,
           totalPages,
-          progress
+          progress,
         })
       }
     } while (page <= totalPages)
@@ -176,17 +190,19 @@ export class ApiClient {
   async fetchPlacesPage({ tag_ids = [], page = 1, per_page = 500 } = {}) {
     const params = new URLSearchParams({
       page: page.toString(),
-      per_page: per_page.toString()
+      per_page: per_page.toString(),
     })
 
     if (tag_ids && tag_ids.length > 0) {
-      tag_ids.forEach(id => params.append('tag_ids[]', id))
+      for (const id of tag_ids) {
+        params.append("tag_ids[]", id)
+      }
     }
 
     const url = `${this.baseURL}/places?${params.toString()}`
 
     const response = await fetch(url, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -197,8 +213,8 @@ export class ApiClient {
 
     return {
       places,
-      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
-      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1')
+      currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
+      totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
     }
   }
 
@@ -213,8 +229,11 @@ export class ApiClient {
     let totalPages = 1
 
     do {
-      const { places, currentPage, totalPages: total } =
-        await this.fetchPlacesPage({ tag_ids, page, per_page: 500 })
+      const {
+        places,
+        currentPage,
+        totalPages: total,
+      } = await this.fetchPlacesPage({ tag_ids, page, per_page: 500 })
 
       allPlaces.push(...places)
       totalPages = total
@@ -226,7 +245,7 @@ export class ApiClient {
           loaded: allPlaces.length,
           currentPage,
           totalPages,
-          progress
+          progress,
         })
       }
     } while (page <= totalPages)
@@ -242,13 +261,13 @@ export class ApiClient {
     // Pass dates as-is (matching V1 behavior)
     const params = new URLSearchParams({
       start_date: start_at,
-      end_date: end_at
+      end_date: end_at,
     })
 
     const url = `${this.baseURL}/photos?${params}`
 
     const response = await fetch(url, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -263,7 +282,7 @@ export class ApiClient {
    */
   async fetchAreas() {
     const response = await fetch(`${this.baseURL}/areas`, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -279,7 +298,7 @@ export class ApiClient {
    */
   async fetchArea(areaId) {
     const response = await fetch(`${this.baseURL}/areas/${areaId}`, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -297,16 +316,16 @@ export class ApiClient {
   async fetchTracksPage({ start_at, end_at, page = 1, per_page = 500 }) {
     const params = new URLSearchParams({
       page: page.toString(),
-      per_page: per_page.toString()
+      per_page: per_page.toString(),
     })
 
-    if (start_at) params.append('start_at', start_at)
-    if (end_at) params.append('end_at', end_at)
+    if (start_at) params.append("start_at", start_at)
+    if (end_at) params.append("end_at", end_at)
 
     const url = `${this.baseURL}/tracks?${params.toString()}`
 
     const response = await fetch(url, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -317,9 +336,9 @@ export class ApiClient {
 
     return {
       features: geojson.features,
-      currentPage: parseInt(response.headers.get('X-Current-Page') || '1'),
-      totalPages: parseInt(response.headers.get('X-Total-Pages') || '1'),
-      totalCount: parseInt(response.headers.get('X-Total-Count') || '0')
+      currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
+      totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
+      totalCount: parseInt(response.headers.get("X-Total-Count") || "0", 10),
     }
   }
 
@@ -334,7 +353,7 @@ export class ApiClient {
       start_at,
       end_at,
       page: 1,
-      per_page: 500
+      per_page: 500,
     })
     const totalPages = firstPage.totalPages
 
@@ -344,8 +363,8 @@ export class ApiClient {
         onProgress(1, 1)
       }
       return {
-        type: 'FeatureCollection',
-        features: firstPage.features
+        type: "FeatureCollection",
+        features: firstPage.features,
       }
     }
 
@@ -356,7 +375,7 @@ export class ApiClient {
     // Create array of remaining page numbers
     const remainingPages = Array.from(
       { length: totalPages - 1 },
-      (_, i) => i + 2
+      (_, i) => i + 2,
     )
 
     // Process pages in batches of maxConcurrent
@@ -364,9 +383,10 @@ export class ApiClient {
       const batch = remainingPages.slice(i, i + maxConcurrent)
 
       // Fetch batch in parallel
-      const batchPromises = batch.map(page =>
-        this.fetchTracksPage({ start_at, end_at, page, per_page: 500 })
-          .then(result => ({ page, features: result.features }))
+      const batchPromises = batch.map((page) =>
+        this.fetchTracksPage({ start_at, end_at, page, per_page: 500 }).then(
+          (result) => ({ page, features: result.features }),
+        ),
       )
 
       const batchResults = await Promise.all(batchPromises)
@@ -384,8 +404,8 @@ export class ApiClient {
 
     // Flatten into single array
     return {
-      type: 'FeatureCollection',
-      features: pageResults.flatMap(r => r.features)
+      type: "FeatureCollection",
+      features: pageResults.flatMap((r) => r.features),
     }
   }
 
@@ -398,7 +418,7 @@ export class ApiClient {
     const url = `${this.baseURL}/tracks/${trackId}`
 
     const response = await fetch(url, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -417,9 +437,9 @@ export class ApiClient {
    */
   async createArea(area) {
     const response = await fetch(`${this.baseURL}/areas`, {
-      method: 'POST',
+      method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({ area })
+      body: JSON.stringify({ area }),
     })
 
     if (!response.ok) {
@@ -435,8 +455,8 @@ export class ApiClient {
    */
   async deleteArea(areaId) {
     const response = await fetch(`${this.baseURL}/areas/${areaId}`, {
-      method: 'DELETE',
-      headers: this.getHeaders()
+      method: "DELETE",
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -451,7 +471,14 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, min_longitude, max_longitude, min_latitude, max_latitude }
    * @returns {Promise<Array>} Points within the area
    */
-  async fetchPointsInArea({ start_at, end_at, min_longitude, max_longitude, min_latitude, max_latitude }) {
+  async fetchPointsInArea({
+    start_at,
+    end_at,
+    min_longitude,
+    max_longitude,
+    min_latitude,
+    max_latitude,
+  }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
@@ -459,11 +486,11 @@ export class ApiClient {
       max_longitude: max_longitude.toString(),
       min_latitude: min_latitude.toString(),
       max_latitude: max_latitude.toString(),
-      per_page: '10000' // Get all points in area (up to 10k)
+      per_page: "10000", // Get all points in area (up to 10k)
     })
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -478,19 +505,26 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, sw_lat, sw_lng, ne_lat, ne_lng }
    * @returns {Promise<Array>} Visits within the area
    */
-  async fetchVisitsInArea({ start_at, end_at, sw_lat, sw_lng, ne_lat, ne_lng }) {
+  async fetchVisitsInArea({
+    start_at,
+    end_at,
+    sw_lat,
+    sw_lng,
+    ne_lat,
+    ne_lng,
+  }) {
     const params = new URLSearchParams({
       start_at,
       end_at,
-      selection: 'true',
+      selection: "true",
       sw_lat: sw_lat.toString(),
       sw_lng: sw_lng.toString(),
       ne_lat: ne_lat.toString(),
-      ne_lng: ne_lng.toString()
+      ne_lng: ne_lng.toString(),
     })
 
     const response = await fetch(`${this.baseURL}/visits?${params}`, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -507,9 +541,9 @@ export class ApiClient {
    */
   async bulkDeletePoints(pointIds) {
     const response = await fetch(`${this.baseURL}/points/bulk_destroy`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: this.getHeaders(),
-      body: JSON.stringify({ point_ids: pointIds })
+      body: JSON.stringify({ point_ids: pointIds }),
     })
 
     if (!response.ok) {
@@ -527,9 +561,9 @@ export class ApiClient {
    */
   async updateVisitStatus(visitId, status) {
     const response = await fetch(`${this.baseURL}/visits/${visitId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: this.getHeaders(),
-      body: JSON.stringify({ visit: { status } })
+      body: JSON.stringify({ visit: { status } }),
     })
 
     if (!response.ok) {
@@ -546,9 +580,9 @@ export class ApiClient {
    */
   async mergeVisits(visitIds) {
     const response = await fetch(`${this.baseURL}/visits/merge`, {
-      method: 'POST',
+      method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({ visit_ids: visitIds })
+      body: JSON.stringify({ visit_ids: visitIds }),
     })
 
     if (!response.ok) {
@@ -566,9 +600,9 @@ export class ApiClient {
    */
   async bulkUpdateVisits(visitIds, status) {
     const response = await fetch(`${this.baseURL}/visits/bulk_update`, {
-      method: 'POST',
+      method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({ visit_ids: visitIds, status })
+      body: JSON.stringify({ visit_ids: visitIds, status }),
     })
 
     if (!response.ok) {
@@ -585,7 +619,7 @@ export class ApiClient {
    */
   async fetchTrackPoints(trackId) {
     const response = await fetch(`${this.baseURL}/tracks/${trackId}/points`, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
     })
 
     if (!response.ok) {
@@ -597,8 +631,8 @@ export class ApiClient {
 
   getHeaders() {
     return {
-      'Authorization': `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${this.apiKey}`,
+      "Content-Type": "application/json",
     }
   }
 }

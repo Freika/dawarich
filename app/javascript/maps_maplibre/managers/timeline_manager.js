@@ -4,15 +4,15 @@
  */
 export class TimelineManager {
   constructor(options = {}) {
-    this.timezone = options.timezone || 'UTC'
+    this.timezone = options.timezone || "UTC"
     this.points = []
-    this.pointsByDay = {}       // { '2025-01-15': [point1, ...] }
-    this.availableDays = []     // ['2025-01-15', '2025-01-16']
+    this.pointsByDay = {} // { '2025-01-15': [point1, ...] }
+    this.availableDays = [] // ['2025-01-15', '2025-01-16']
     this.currentDayIndex = 0
-    this.pointsByMinute = {}    // { 480: [point1, point2] } for current day
+    this.pointsByMinute = {} // { 480: [point1, point2] } for current day
     this.minutesWithData = new Set() // Set of minutes that have data
     this.pinnedPoint = null
-    this.cycleIndex = 0         // For multi-point minutes
+    this.cycleIndex = 0 // For multi-point minutes
     this.onStateChange = options.onStateChange || (() => {})
   }
 
@@ -37,12 +37,12 @@ export class TimelineManager {
     if (!timestamp) return null
 
     // Handle ISO 8601 string
-    if (typeof timestamp === 'string') {
+    if (typeof timestamp === "string") {
       return new Date(timestamp)
     }
 
     // Handle Unix timestamp
-    if (typeof timestamp === 'number') {
+    if (typeof timestamp === "number") {
       // Unix timestamp in seconds (< year 2286 in seconds)
       if (timestamp < 10000000000) {
         return new Date(timestamp * 1000)
@@ -60,7 +60,7 @@ export class TimelineManager {
   groupPointsByDay() {
     this.pointsByDay = {}
 
-    this.points.forEach(point => {
+    this.points.forEach((point) => {
       const timestamp = this._getTimestamp(point)
       if (!timestamp) return
 
@@ -79,7 +79,7 @@ export class TimelineManager {
     this.availableDays = Object.keys(this.pointsByDay).sort()
 
     // Sort points within each day by timestamp
-    this.availableDays.forEach(day => {
+    this.availableDays.forEach((day) => {
       this.pointsByDay[day].sort((a, b) => {
         const tsA = this._parseTimestamp(this._getTimestamp(a))?.getTime() || 0
         const tsB = this._parseTimestamp(this._getTimestamp(b))?.getTime() || 0
@@ -100,7 +100,7 @@ export class TimelineManager {
 
     const dayPoints = this.pointsByDay[currentDay] || []
 
-    dayPoints.forEach(point => {
+    dayPoints.forEach((point) => {
       const timestamp = this._getTimestamp(point)
       if (!timestamp) return
 
@@ -155,7 +155,7 @@ export class TimelineManager {
     const density = new Array(segments).fill(0)
     const minutesPerSegment = 1440 / segments
 
-    this.minutesWithData.forEach(minute => {
+    this.minutesWithData.forEach((minute) => {
       const segmentIndex = Math.floor(minute / minutesPerSegment)
       if (segmentIndex < segments) {
         density[segmentIndex]++
@@ -164,7 +164,7 @@ export class TimelineManager {
 
     // Normalize to 0-1
     const maxDensity = Math.max(...density, 1)
-    return density.map(d => d / maxDensity)
+    return density.map((d) => d / maxDensity)
   }
 
   /**
@@ -191,15 +191,15 @@ export class TimelineManager {
    */
   getCurrentDayDisplay() {
     const day = this.getCurrentDay()
-    if (!day) return 'No data'
+    if (!day) return "No data"
 
-    const [year, month, dayNum] = day.split('-').map(Number)
+    const [year, month, dayNum] = day.split("-").map(Number)
     const date = new Date(year, month - 1, dayNum)
 
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     })
   }
 
@@ -227,7 +227,10 @@ export class TimelineManager {
     const maxMinute = 1439
     for (let offset = 1; offset <= maxMinute; offset++) {
       // Check forward
-      if (minute + offset <= maxMinute && this.minutesWithData.has(minute + offset)) {
+      if (
+        minute + offset <= maxMinute &&
+        this.minutesWithData.has(minute + offset)
+      ) {
         return minute + offset
       }
       // Check backward
@@ -267,7 +270,7 @@ export class TimelineManager {
    */
   pinPoint(point) {
     this.pinnedPoint = point
-    this.onStateChange({ type: 'pin', point })
+    this.onStateChange({ type: "pin", point })
   }
 
   /**
@@ -276,7 +279,7 @@ export class TimelineManager {
   unpinPoint() {
     this.pinnedPoint = null
     this.cycleIndex = 0
-    this.onStateChange({ type: 'unpin' })
+    this.onStateChange({ type: "unpin" })
   }
 
   /**
@@ -392,7 +395,7 @@ export class TimelineManager {
   static formatMinuteToTime(minute) {
     const hours = Math.floor(minute / 60)
     const mins = minute % 60
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
+    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`
   }
 
   /**
@@ -451,13 +454,13 @@ export class TimelineManager {
     if (!timestamp) return null
 
     // Handle ISO 8601 string
-    if (typeof timestamp === 'string') {
+    if (typeof timestamp === "string") {
       const date = new Date(timestamp)
       return Number.isNaN(date.getTime()) ? null : date.getTime()
     }
 
     // Handle Unix timestamp
-    if (typeof timestamp === 'number') {
+    if (typeof timestamp === "number") {
       // Unix timestamp in seconds (< year 2286 in seconds)
       if (timestamp < 10000000000) {
         return timestamp * 1000
@@ -493,8 +496,8 @@ export class TimelineManager {
    */
   _formatDayKey(date) {
     const year = date.getFullYear()
-    const month = (date.getMonth() + 1).toString().padStart(2, '0')
-    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, "0")
+    const day = date.getDate().toString().padStart(2, "0")
     return `${year}-${month}-${day}`
   }
 
@@ -522,15 +525,14 @@ export class TimelineManager {
     else if (point.lon !== undefined && point.lat !== undefined) {
       lon = point.lon
       lat = point.lat
-    }
-    else {
+    } else {
       return null
     }
 
     // Ensure coordinates are numbers (not strings) for arithmetic operations
     return {
       lon: Number(lon),
-      lat: Number(lat)
+      lat: Number(lat),
     }
   }
 }
