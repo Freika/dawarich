@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Tracks::IndexQuery
-  DEFAULT_PER_PAGE = 100
+  DEFAULT_PER_PAGE = 500
 
   def initialize(user:, params: {})
     @user = user
@@ -9,7 +9,7 @@ class Tracks::IndexQuery
   end
 
   def call
-    scoped = user.tracks.includes(:track_segments)
+    scoped = user.tracks
     scoped = apply_date_range(scoped)
 
     scoped

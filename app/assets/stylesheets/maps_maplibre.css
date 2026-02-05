@@ -35,6 +35,58 @@
   color: #6b7280;
 }
 
+/* Non-blocking Progress Bar */
+.map-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.map-progress-bar.hidden {
+  display: none;
+}
+
+.map-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 0.3s ease-out;
+}
+
+.map-progress-text {
+  position: absolute;
+  top: 8px;
+  right: 60px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #4b5563;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.map-progress-text.hidden {
+  display: none;
+}
+
+/* Dark theme support for progress bar */
+html[data-theme="dark"] .map-progress-bar,
+html.dark .map-progress-bar {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .map-progress-text,
+html.dark .map-progress-text {
+  background: rgba(31, 41, 55, 0.95);
+  color: #d1d5db;
+}
+
 /* Popup Styles */
 .point-popup {
   font-family: system-ui, -apple-system, sans-serif;

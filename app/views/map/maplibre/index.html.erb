@@ -31,14 +31,19 @@
     </button>
   </div>
 
-  <!-- Loading overlay -->
-  <div data-maps--maplibre-target="loading" class="loading-overlay hidden">
-    <div class="loading-spinner"></div>
-    <div class="loading-text" data-maps--maplibre-target="loadingText">Loading points...</div>
+  <!-- Non-blocking progress bar -->
+  <div data-maps--maplibre-target="progressBar" class="map-progress-bar hidden">
+    <div data-maps--maplibre-target="progressFill" class="map-progress-fill"></div>
+  </div>
+  <div data-maps--maplibre-target="progressText" class="map-progress-text hidden">
+    Loading... 0%
   </div>
 
   <!-- Settings panel -->
   <%= render 'map/maplibre/settings_panel' %>
+
+  <!-- Timeline panel -->
+  <%= render 'map/maplibre/timeline_panel' %>
 
   <!-- Visit creation modal -->
   <%= render 'map/maplibre/visit_creation_modal' %>

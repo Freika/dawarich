@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Photos are now being clustered on the Map v2 to improve performance and usability when viewing large numbers of photos.
 - City statistics thresholds are now user-configurable: "Min Minutes in City" and "Max Gap Between Points" sliders in the Map v2 Settings panel. #2207
+- New Timeline tool is added to Map V2. It allows user to quickly navigate through time and see how their location changed throughout the day. It can also be used to replay a trip by clicking the play button.
 
 ## Fixed
 

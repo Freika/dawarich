@@ -71,6 +71,7 @@ const BACKEND_SETTINGS_MAP = {
   transportationExpertMode: "transportation_expert_mode",
   transportationThresholds: "transportation_thresholds",
   transportationExpertThresholds: "transportation_expert_thresholds",
+  distance_unit: "distance_unit",
 }
 
 // Mapping for nested transportation threshold keys (frontend camelCase to backend snake_case)

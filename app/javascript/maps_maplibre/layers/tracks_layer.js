@@ -11,6 +11,20 @@ export class TracksLayer extends BaseLayer {
     super(map, { id: "tracks", ...options });
     this.segmentSourceId = "tracks-segments-source";
     this.segmentLayerId = "tracks-segments";
+    this.selectionSourceId = "tracks-selection-source";
+
+    // Selection layer IDs (3-layer stack: main + border + flow gradient)
+    this.selectionBorderLayerId = "tracks-selection-border";
+    this.flowLayerId = "tracks-selection-flow";
+
+    // Segment flow overlay (animated dashes over transport mode colors)
+    this.segmentFlowLayerId = "tracks-segments-flow";
+
+    // Flow animation state
+    this.animationFrame = null;
+    this.animationActive = false;
+    this.flowTrackColor = "#ff0000";
+
     this.onSegmentHover = null; // Callback for segment hover events
     this.onSegmentLeave = null; // Callback for segment leave events
   }
@@ -27,6 +41,7 @@ export class TracksLayer extends BaseLayer {
 
   getLayerConfigs() {
     return [
+      // Main tracks layer (bottom)
       {
         id: this.id,
         type: "line",
@@ -41,7 +56,225 @@ export class TracksLayer extends BaseLayer {
           "line-opacity": 0.7,
         },
       },
+      // Selection Layer 1: White border (widest, bottom of selection stack)
+      {
+        id: this.selectionBorderLayerId,
+        type: "line",
+        source: this.selectionSourceId,
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": 10,
+          "line-opacity": 0.9,
+        },
+      },
+      // Selection Layer 2: Flowing gradient dashes (line-gradient animation)
+      {
+        id: this.flowLayerId,
+        type: "line",
+        source: this.selectionSourceId,
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-width": 6,
+          "line-gradient": this._buildFlowGradient(0),
+        },
+      },
     ];
+  }
+
+  /**
+   * Override add() to create both main and selection sources
+   */
+  add(data) {
+    this.data = data;
+
+    // Add main source
+    if (!this.map.getSource(this.sourceId)) {
+      this.map.addSource(this.sourceId, this.getSourceConfig());
+    }
+
+    // Add selection source (initially empty, lineMetrics required for line-gradient)
+    if (!this.map.getSource(this.selectionSourceId)) {
+      this.map.addSource(this.selectionSourceId, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+        lineMetrics: true,
+      });
+    }
+
+    // Add layers
+    const layers = this.getLayerConfigs();
+    layers.forEach((layerConfig) => {
+      if (!this.map.getLayer(layerConfig.id)) {
+        this.map.addLayer(layerConfig);
+      }
+    });
+
+    this.setVisibility(this.visible);
+  }
+
+  /**
+   * Set selected track for highlighting
+   * @param {Object|null} feature - Track feature or null to clear
+   */
+  setSelectedTrack(feature) {
+    const selectionSource = this.map.getSource(this.selectionSourceId);
+    if (!selectionSource) return;
+
+    if (feature) {
+      this.flowTrackColor = feature.properties?.color || "#ff0000";
+      selectionSource.setData({
+        type: "FeatureCollection",
+        features: [feature],
+      });
+      this._startFlowAnimation();
+    } else {
+      this._stopFlowAnimation();
+      selectionSource.setData({ type: "FeatureCollection", features: [] });
+    }
+  }
+
+  /**
+   * Build a line-gradient expression with flowing dash pattern.
+   *
+   * Creates an interpolated gradient along line-progress (0→1) that alternates
+   * between the track color and semi-transparent white highlight dashes.
+   * Shifting `phase` (0→1) each frame produces smooth continuous motion.
+   *
+   * @param {number} phase - Animation phase from 0 to 1
+   * @returns {Array} MapLibre line-gradient expression
+   */
+  _buildFlowGradient(phase, { baseColor, highlightColor } = {}) {
+    const numDashes = 6;
+    const dashFraction = 0.15; // 15% of one period is the dash
+    const softEdge = 0.04; // fade width at dash boundaries
+    const highlight = highlightColor || "rgba(255,255,255,0.5)";
+    const trackColor = baseColor || this.flowTrackColor;
+    const period = 1 / numDashes;
+
+    const stops = [];
+
+    // Add stops for each dash (including overflow at boundaries)
+    for (let i = -1; i <= numDashes; i++) {
+      const center = (i + phase) * period;
+      const halfDash = (dashFraction * period) / 2;
+
+      const fadeInStart = center - halfDash - softEdge;
+      const dashStart = center - halfDash;
+      const dashEnd = center + halfDash;
+      const fadeOutEnd = center + halfDash + softEdge;
+
+      // Only add stops that fall within or near [0, 1]
+      if (fadeOutEnd < 0 || fadeInStart > 1) continue;
+
+      if (fadeInStart >= 0 && fadeInStart <= 1) {
+        stops.push([fadeInStart, trackColor]);
+      }
+      if (dashStart >= 0 && dashStart <= 1) {
+        stops.push([dashStart, highlight]);
+      }
+      if (dashEnd >= 0 && dashEnd <= 1) {
+        stops.push([dashEnd, highlight]);
+      }
+      if (fadeOutEnd >= 0 && fadeOutEnd <= 1) {
+        stops.push([fadeOutEnd, trackColor]);
+      }
+    }
+
+    // Sort by position
+    stops.sort((a, b) => a[0] - b[0]);
+
+    // Ensure endpoints exist
+    if (stops.length === 0 || stops[0][0] > 0) {
+      stops.unshift([0, trackColor]);
+    }
+    if (stops[stops.length - 1][0] < 1) {
+      stops.push([1, trackColor]);
+    }
+
+    // Deduplicate stops at same position (keep last)
+    const deduped = [];
+    for (let i = 0; i < stops.length; i++) {
+      if (i < stops.length - 1 && Math.abs(stops[i][0] - stops[i + 1][0]) < 1e-6) {
+        continue;
+      }
+      deduped.push(stops[i]);
+    }
+
+    // Build the expression: ["interpolate", ["linear"], ["line-progress"], pos, color, ...]
+    const expr = ["interpolate", ["linear"], ["line-progress"]];
+    for (const [pos, color] of deduped) {
+      expr.push(pos, color);
+    }
+
+    return expr;
+  }
+
+  /**
+   * Start the flowing gradient animation for the selected track.
+   * Uses setPaintProperty to update the line-gradient expression each frame,
+   * which triggers MapLibre's internal gradientVersion increment and
+   * texture regeneration without the overhead of removeLayer/addLayer.
+   * Cycle duration: 3000ms (one full period shift per 3 seconds).
+   */
+  _startFlowAnimation() {
+    if (this.animationActive) return;
+    this.animationActive = true;
+
+    const cycleDuration = 3000;
+    let startTime = null;
+
+    const animate = (timestamp) => {
+      if (!this.animationActive) return;
+      if (!startTime) startTime = timestamp;
+
+      const phase = ((timestamp - startTime) / cycleDuration) % 1;
+
+      try {
+        if (this.map.getLayer(this.flowLayerId)) {
+          this.map.setPaintProperty(
+            this.flowLayerId,
+            "line-gradient",
+            this._buildFlowGradient(phase),
+          );
+        }
+        if (this.map.getLayer(this.segmentFlowLayerId)) {
+          this.map.setPaintProperty(
+            this.segmentFlowLayerId,
+            "line-gradient",
+            this._buildFlowGradient(phase, {
+              baseColor: "rgba(255,255,255,0)",
+              highlightColor: "rgba(255,255,255,0.5)",
+            }),
+          );
+        }
+      } catch (e) {
+        console.warn("[TracksLayer] Animation frame error:", e);
+      }
+
+      if (this.animationActive) {
+        this.animationFrame = requestAnimationFrame(animate);
+      }
+    };
+
+    this.animationFrame = requestAnimationFrame(animate);
+  }
+
+  /**
+   * Stop the flowing gradient animation
+   */
+  _stopFlowAnimation() {
+    this.animationActive = false;
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
   }
 
   /**
@@ -111,6 +344,7 @@ export class TracksLayer extends BaseLayer {
       this.map.addSource(this.segmentSourceId, {
         type: "geojson",
         data: segmentGeoJSON,
+        lineMetrics: true,
       });
 
       this.map.addLayer({
@@ -128,12 +362,33 @@ export class TracksLayer extends BaseLayer {
         },
       });
 
+      // Flow overlay: transparent base with white dashes over segment colors
+      this.map.addLayer({
+        id: this.segmentFlowLayerId,
+        type: "line",
+        source: this.segmentSourceId,
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-width": 6,
+          "line-gradient": this._buildFlowGradient(0, {
+            baseColor: "rgba(255,255,255,0)",
+            highlightColor: "rgba(255,255,255,0.5)",
+          }),
+        },
+      });
+
       // Set up hover events for segments
       this._setupSegmentHoverEvents();
     } else {
       this.map.getSource(this.segmentSourceId).setData(segmentGeoJSON);
-      // Make sure layer is visible
+      // Make sure layers are visible
       this.map.setLayoutProperty(this.segmentLayerId, "visibility", "visible");
+      if (this.map.getLayer(this.segmentFlowLayerId)) {
+        this.map.setLayoutProperty(this.segmentFlowLayerId, "visibility", "visible");
+      }
     }
 
     // Dim the original track to highlight segments
@@ -146,7 +401,10 @@ export class TracksLayer extends BaseLayer {
    * Hide segment highlighting
    */
   hideSegments() {
-    // Hide segment layer if it exists
+    // Hide segment layers (base + flow overlay)
+    if (this.map.getLayer(this.segmentFlowLayerId)) {
+      this.map.setLayoutProperty(this.segmentFlowLayerId, "visibility", "none");
+    }
     if (this.map.getLayer(this.segmentLayerId)) {
       this.map.setLayoutProperty(this.segmentLayerId, "visibility", "none");
     }
@@ -276,18 +534,35 @@ export class TracksLayer extends BaseLayer {
   }
 
   /**
-   * Override remove to also clean up segment layer
+   * Override remove to also clean up segment and selection layers
    */
   remove() {
+    // Stop animation first
+    this._stopFlowAnimation();
+
     // Remove segment event handlers
     this._removeSegmentHoverEvents();
 
-    // Remove segment layer and source
-    if (this.map.getLayer(this.segmentLayerId)) {
-      this.map.removeLayer(this.segmentLayerId);
-    }
+    // Remove segment layers (flow overlay first, then base) and source
+    [this.segmentFlowLayerId, this.segmentLayerId].forEach((layerId) => {
+      if (this.map.getLayer(layerId)) {
+        this.map.removeLayer(layerId);
+      }
+    });
     if (this.map.getSource(this.segmentSourceId)) {
       this.map.removeSource(this.segmentSourceId);
+    }
+
+    // Remove selection layers (border + flow)
+    [this.flowLayerId, this.selectionBorderLayerId].forEach((layerId) => {
+      if (this.map.getLayer(layerId)) {
+        this.map.removeLayer(layerId);
+      }
+    });
+
+    // Remove selection source
+    if (this.map.getSource(this.selectionSourceId)) {
+      this.map.removeSource(this.selectionSourceId);
     }
 
     // Call parent remove

@@ -4,6 +4,104 @@ import { createCircle } from "maps_maplibre/utils/geometry"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 /**
+ * Tracks loading progress across multiple data sources
+ * Dynamically weights only enabled layers for accurate progress tracking
+ */
+class ProgressTracker {
+  constructor(onProgress, settings) {
+    this.onProgress = onProgress
+    this.settings = settings
+    this.sources = {}
+    this.weights = this._calculateWeights()
+  }
+
+  /**
+   * Calculate weights for each data source based on enabled settings
+   * Only enabled layers contribute to progress
+   */
+  _calculateWeights() {
+    const weights = {}
+
+    // Points needed for routes/heatmap/fog even if pointsVisible is false
+    const needsPoints =
+      this.settings.pointsVisible !== false ||
+      this.settings.routesVisible !== false ||
+      this.settings.heatmapEnabled ||
+      this.settings.fogEnabled
+
+    if (needsPoints) weights.points = 1.0
+
+    if (this.settings.visitsEnabled) weights.visits = 0.15
+    if (this.settings.placesEnabled) weights.places = 0.1
+    if (this.settings.areasEnabled) weights.areas = 0.05
+    if (this.settings.tracksEnabled) weights.tracks = 0.2
+    if (this.settings.photosEnabled) weights.photos = 0.15
+
+    // Normalize weights so they sum to 1
+    const total = Object.values(weights).reduce((a, b) => a + b, 0)
+    if (total > 0) {
+      for (const key of Object.keys(weights)) {
+        weights[key] /= total
+      }
+    }
+
+    return weights
+  }
+
+  /**
+   * Update progress for a specific source
+   * @param {string} source - Source name (points, visits, places, areas, tracks, photos)
+   * @param {number} progress - Progress value 0.0-1.0
+   */
+  update(source, progress) {
+    // Only track sources that have weights (are enabled)
+    if (this.weights[source] === undefined) return
+    this.sources[source] = Math.min(1.0, Math.max(0.0, progress))
+    this._reportProgress()
+  }
+
+  /**
+   * Mark a source as complete
+   * @param {string} source - Source name
+   */
+  complete(source) {
+    // Only track sources that have weights (are enabled)
+    if (this.weights[source] === undefined) return
+    this.sources[source] = 1.0
+    this._reportProgress()
+  }
+
+  /**
+   * Check if all tracked sources are complete
+   * @returns {boolean}
+   */
+  isComplete() {
+    return Object.keys(this.weights).every(
+      (source) => this.sources[source] >= 1.0,
+    )
+  }
+
+  /**
+   * Calculate and report combined progress
+   */
+  _reportProgress() {
+    if (!this.onProgress) return
+
+    let combinedProgress = 0
+    for (const [source, weight] of Object.entries(this.weights)) {
+      const sourceProgress = this.sources[source] || 0
+      combinedProgress += sourceProgress * weight
+    }
+
+    this.onProgress({
+      progress: combinedProgress,
+      sources: { ...this.sources },
+      isComplete: this.isComplete(),
+    })
+  }
+}
+
+/**
  * Handles loading and transforming data from API
  */
 export class DataLoader {
@@ -22,16 +120,28 @@ export class DataLoader {
 
   /**
    * Fetch all map data (points, visits, photos, areas, tracks)
+   * Core data (points, visits, areas, places) loads synchronously.
+   * Heavy data (tracks, photos) loads in background via callbacks.
+   *
+   * @param {Object} options.onTracksLoaded - Callback when tracks finish loading
+   * @param {Object} options.onPhotosLoaded - Callback when photos finish loading
    */
-  async fetchMapData(startDate, endDate, onProgress) {
+  async fetchMapData(startDate, endDate, onProgress, { onTracksLoaded, onPhotosLoaded } = {}) {
     const data = {}
 
-    // Fetch points
+    // Create progress tracker for all data sources
+    const progressTracker = onProgress
+      ? new ProgressTracker(onProgress, this.settings)
+      : null
+
+    // Fetch points (core data - blocks until complete)
     performanceMonitor.mark("fetch-points")
     data.points = await this.api.fetchAllPoints({
       start_at: startDate,
       end_at: endDate,
-      onProgress: onProgress,
+      onProgress: progressTracker
+        ? ({ progress }) => progressTracker.update("points", progress)
+        : null,
     })
     performanceMonitor.measure("fetch-points")
 
@@ -44,91 +154,107 @@ export class DataLoader {
     })
     performanceMonitor.measure("transform-geojson")
 
-    // Fetch visits
-    try {
-      data.visits = await this.api.fetchVisits({
+    // Fetch visits, areas, places in parallel with progress tracking
+    const [visits, areas, places] = await Promise.all([
+      this.api.fetchVisits({
+        start_at: startDate,
+        end_at: endDate,
+        onProgress: progressTracker
+          ? ({ progress }) => progressTracker.update("visits", progress)
+          : null,
+      })
+        .then(result => {
+          if (progressTracker) progressTracker.complete("visits")
+          return result
+        })
+        .catch(error => {
+          console.warn("Failed to fetch visits:", error)
+          if (progressTracker) progressTracker.complete("visits")
+          return []
+        }),
+      this.api.fetchAreas()
+        .then(result => {
+          if (progressTracker) progressTracker.complete("areas")
+          return result
+        })
+        .catch(error => {
+          console.warn("Failed to fetch areas:", error)
+          if (progressTracker) progressTracker.complete("areas")
+          return []
+        }),
+      this.api.fetchPlaces({
+        onProgress: progressTracker
+          ? ({ progress }) => progressTracker.update("places", progress)
+          : null,
+      })
+        .then(result => {
+          if (progressTracker) progressTracker.complete("places")
+          return result
+        })
+        .catch(error => {
+          console.warn("Failed to fetch places:", error)
+          if (progressTracker) progressTracker.complete("places")
+          return []
+        }),
+    ])
+
+    data.visits = visits
+    data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
+    data.areas = areas
+    data.areasGeoJSON = this.areasToGeoJSON(data.areas)
+    data.places = places
+    data.placesGeoJSON = this.placesToGeoJSON(data.places)
+
+    // Initialize empty collections for background-loaded data
+    data.photos = []
+    data.photosGeoJSON = { type: "FeatureCollection", features: [] }
+    data.tracksGeoJSON = { type: "FeatureCollection", features: [] }
+
+    // Start background loading of heavy data (tracks, photos)
+    // These don't block the map from unlocking
+
+    // Background: Fetch tracks
+    if (this.settings.tracksEnabled && onTracksLoaded) {
+      console.log("[Tracks] Starting background fetch...")
+      this.api
+        .fetchTracks({ start_at: startDate, end_at: endDate })
+        .then((tracksGeoJSON) => {
+          console.log(
+            `[Tracks] Background fetch complete: ${tracksGeoJSON.features.length} tracks`,
+          )
+          if (progressTracker) progressTracker.complete("tracks")
+          data.tracksGeoJSON = tracksGeoJSON
+          onTracksLoaded(tracksGeoJSON)
+        })
+        .catch((error) => {
+          console.warn("[Tracks] Background fetch failed:", error.message)
+          if (progressTracker) progressTracker.complete("tracks")
+        })
+    }
+
+    // Background: Fetch photos
+    if (this.settings.photosEnabled && onPhotosLoaded) {
+      console.log("[Photos] Starting background fetch...")
+      const photosPromise = this.api.fetchPhotos({
         start_at: startDate,
         end_at: endDate,
       })
-    } catch (error) {
-      console.warn("Failed to fetch visits:", error)
-      data.visits = []
-    }
-    data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Photo fetch timeout")), 15000),
+      )
 
-    // Fetch photos - only if photos layer is enabled and integration is configured
-    // Skip API call if photos are disabled to avoid blocking on failed integrations
-    if (this.settings.photosEnabled) {
-      try {
-        console.log("[Photos] Fetching photos from:", startDate, "to", endDate)
-        // Use Promise.race to enforce a client-side timeout
-        const photosPromise = this.api.fetchPhotos({
-          start_at: startDate,
-          end_at: endDate,
+      Promise.race([photosPromise, timeoutPromise])
+        .then((photos) => {
+          console.log(`[Photos] Background fetch complete: ${photos.length} photos`)
+          if (progressTracker) progressTracker.complete("photos")
+          data.photos = photos
+          data.photosGeoJSON = this.photosToGeoJSON(photos)
+          onPhotosLoaded(data.photosGeoJSON)
         })
-        const timeoutPromise = new Promise(
-          (_, reject) =>
-            setTimeout(() => reject(new Error("Photo fetch timeout")), 15000), // 15 second timeout
-        )
-
-        data.photos = await Promise.race([photosPromise, timeoutPromise])
-        console.log("[Photos] Fetched photos:", data.photos.length, "photos")
-        console.log("[Photos] Sample photo:", data.photos[0])
-      } catch (error) {
-        console.warn(
-          "[Photos] Failed to fetch photos (non-blocking):",
-          error.message,
-        )
-        data.photos = []
-      }
-    } else {
-      console.log("[Photos] Photos layer disabled, skipping fetch")
-      data.photos = []
-    }
-    data.photosGeoJSON = this.photosToGeoJSON(data.photos)
-    console.log(
-      "[Photos] Converted to GeoJSON:",
-      data.photosGeoJSON.features.length,
-      "features",
-    )
-    if (data.photosGeoJSON.features.length > 0) {
-      console.log("[Photos] Sample feature:", data.photosGeoJSON.features[0])
-    }
-
-    // Fetch areas
-    try {
-      data.areas = await this.api.fetchAreas()
-    } catch (error) {
-      console.warn("Failed to fetch areas:", error)
-      data.areas = []
-    }
-    data.areasGeoJSON = this.areasToGeoJSON(data.areas)
-
-    // Fetch places (no date filtering)
-    try {
-      data.places = await this.api.fetchPlaces()
-    } catch (error) {
-      console.warn("Failed to fetch places:", error)
-      data.places = []
-    }
-    data.placesGeoJSON = this.placesToGeoJSON(data.places)
-
-    // Fetch tracks - only if tracks layer is enabled
-    if (this.settings.tracksEnabled) {
-      try {
-        data.tracksGeoJSON = await this.api.fetchTracks({
-          start_at: startDate,
-          end_at: endDate,
+        .catch((error) => {
+          console.warn("[Photos] Background fetch failed:", error.message)
+          if (progressTracker) progressTracker.complete("photos")
         })
-      } catch (error) {
-        console.warn(
-          "[Tracks] Failed to fetch tracks (non-blocking):",
-          error.message,
-        )
-        data.tracksGeoJSON = { type: "FeatureCollection", features: [] }
-      }
-    } else {
-      data.tracksGeoJSON = { type: "FeatureCollection", features: [] }
     }
 
     return data

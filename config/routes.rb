@@ -201,7 +201,7 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :tracks, only: [:index] do
+      resources :tracks, only: %i[index show] do
         resources :points, only: [:index], controller: 'tracks/points'
       end
 

@@ -368,3 +368,163 @@ export async function waitForLayerVisibility(page, layerId, expectedVisibility, 
     { timeout }
   );
 }
+
+// ============================================================
+// Timeline Panel Helpers
+// ============================================================
+
+/**
+ * Open the timeline panel via Tools tab
+ * @param {Page} page - Playwright page object
+ * @param {boolean} closeSettingsPanel - Whether to close the settings panel after opening timeline (default: false)
+ */
+export async function openTimelinePanel(page, closeSettingsPanel = false) {
+  // Open settings panel
+  const settingsButton = page.locator('button[title="Open map settings"]')
+  await settingsButton.click()
+  await waitForSettingsPanel(page)
+
+  // Click the tools tab
+  const toolsTab = page.locator('button[data-tab="tools"]')
+  await toolsTab.click()
+  await page.waitForTimeout(300)
+
+  // Click the Timeline button
+  const timelineButton = page.locator('[data-tab-content="tools"] button:has-text("Timeline")')
+  await timelineButton.click()
+  await page.waitForTimeout(300)
+
+  // Optionally close settings panel to avoid click interception
+  if (closeSettingsPanel) {
+    const closeButton = page.locator('button[title="Close panel"]')
+    await closeButton.click()
+    await page.waitForTimeout(200)
+  }
+}
+
+/**
+ * Wait for timeline panel to be visible
+ * @param {Page} page - Playwright page object
+ * @param {number} timeout - Timeout in milliseconds (default: 5000)
+ */
+export async function waitForTimelinePanel(page, timeout = 5000) {
+  await page.waitForFunction(
+    () => {
+      const panel = document.querySelector('[data-maps--maplibre-target="timelinePanel"]')
+      return panel && !panel.classList.contains('hidden')
+    },
+    { timeout }
+  )
+}
+
+/**
+ * Check if the timeline panel is visible
+ * @param {Page} page - Playwright page object
+ * @returns {Promise<boolean>}
+ */
+export async function isTimelinePanelVisible(page) {
+  return await page.evaluate(() => {
+    const panel = document.querySelector('[data-maps--maplibre-target="timelinePanel"]')
+    return panel && !panel.classList.contains('hidden')
+  })
+}
+
+/**
+ * Get the current scrubber value
+ * @param {Page} page - Playwright page object
+ * @returns {Promise<number>}
+ */
+export async function getScrubberValue(page) {
+  return await page.evaluate(() => {
+    const scrubber = document.querySelector('[data-maps--maplibre-target="timelineScrubber"]')
+    return scrubber ? parseInt(scrubber.value, 10) : -1
+  })
+}
+
+/**
+ * Set the scrubber value and trigger input event
+ * @param {Page} page - Playwright page object
+ * @param {number} minute - Minute value (0-1439)
+ */
+export async function setScrubberValue(page, minute) {
+  await page.evaluate((min) => {
+    const scrubber = document.querySelector('[data-maps--maplibre-target="timelineScrubber"]')
+    if (scrubber) {
+      scrubber.value = min
+      scrubber.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  }, minute)
+}
+
+/**
+ * Check if replay is currently active
+ * @param {Page} page - Playwright page object
+ * @returns {Promise<boolean>}
+ */
+export async function isReplayActive(page) {
+  return await page.evaluate(() => {
+    const element = document.querySelector('[data-controller*="maps--maplibre"]')
+    if (!element) return false
+    const app = window.Stimulus || window.Application
+    if (!app) return false
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+    return controller?.timelineReplayActive === true
+  })
+}
+
+/**
+ * Get timeline manager state from controller
+ * @param {Page} page - Playwright page object
+ * @returns {Promise<{hasData: boolean, dayCount: number, currentDayIndex: number, currentDayPointCount: number} | null>}
+ */
+export async function getTimelineState(page) {
+  return await page.evaluate(() => {
+    const element = document.querySelector('[data-controller*="maps--maplibre"]')
+    if (!element) return null
+    const app = window.Stimulus || window.Application
+    if (!app) return null
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+    if (!controller?.timelineManager) return null
+
+    const tm = controller.timelineManager
+    return {
+      hasData: tm.hasData(),
+      dayCount: tm.getDayCount(),
+      currentDayIndex: tm.currentDayIndex,
+      currentDayPointCount: tm.getCurrentDayPointCount()
+    }
+  })
+}
+
+/**
+ * Get the timeline marker layer visibility and position
+ * @param {Page} page - Playwright page object
+ * @returns {Promise<{visible: boolean, coordinates: [number, number] | null}>}
+ */
+export async function getTimelineMarkerState(page) {
+  return await page.evaluate(() => {
+    const element = document.querySelector('[data-controller*="maps--maplibre"]')
+    if (!element) return { visible: false, coordinates: null }
+    const app = window.Stimulus || window.Application
+    if (!app) return { visible: false, coordinates: null }
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+    if (!controller?.timelineMarkerLayer) return { visible: false, coordinates: null }
+
+    const layer = controller.timelineMarkerLayer
+    return {
+      visible: layer.isVisible(),
+      coordinates: layer.currentPosition || null
+    }
+  })
+}
+
+/**
+ * Convert minute value (0-1439) to time string (HH:MM)
+ * @param {number} minute - Minute value
+ * @returns {string}
+ */
+export function minuteToTimeString(minute) {
+  const hours = Math.floor(minute / 60)
+  const mins = minute % 60
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
+}

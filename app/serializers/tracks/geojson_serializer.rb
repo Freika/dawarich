@@ -33,8 +33,9 @@ class Tracks::GeojsonSerializer
     'unknown' => '#9E9E9E'     # Grey
   }.freeze
 
-  def initialize(tracks)
+  def initialize(tracks, include_segments: false)
     @tracks = Array.wrap(tracks)
+    @include_segments = include_segments
   end
 
   def call
@@ -46,7 +47,7 @@ class Tracks::GeojsonSerializer
 
   private
 
-  attr_reader :tracks
+  attr_reader :tracks, :include_segments
 
   def feature_for(track)
     {
@@ -73,11 +74,15 @@ class Tracks::GeojsonSerializer
   end
 
   def segment_properties(track)
-    {
+    props = {
       dominant_mode: track.dominant_mode,
-      dominant_mode_emoji: emoji_for_mode(track.dominant_mode),
-      segments: segments_for(track)
+      dominant_mode_emoji: emoji_for_mode(track.dominant_mode)
     }
+
+    # Only include segments when explicitly requested (lazy-loading optimization)
+    props[:segments] = segments_for(track) if include_segments
+
+    props
   end
 
   def segments_for(track)

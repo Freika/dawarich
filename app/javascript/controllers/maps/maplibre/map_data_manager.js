@@ -32,21 +32,36 @@ export class MapDataManager {
     performanceMonitor.mark("load-map-data")
 
     if (showLoading) {
-      this.controller.showLoading()
+      this.controller.showProgress()
     }
 
     try {
-      // Fetch data from API
+      // Fetch data from API with background loading callbacks
       const data = await this.dataLoader.fetchMapData(
         startDate,
         endDate,
         showLoading ? onProgress : null,
+        {
+          // Callback when tracks finish loading in background
+          onTracksLoaded: (tracksGeoJSON) => {
+            console.log("[MapDataManager] Updating tracks layer from background load")
+            this._updateTracksLayer(tracksGeoJSON)
+          },
+          // Callback when photos finish loading in background
+          onPhotosLoaded: (photosGeoJSON) => {
+            console.log("[MapDataManager] Updating photos layer from background load")
+            this._updatePhotosLayer(photosGeoJSON)
+          },
+        }
       )
 
       // Store visits for filtering
       this.filterManager.setAllVisits(data.visits)
 
-      // Setup layers
+      // Store data for timeline and other features
+      this.lastLoadedData = data
+
+      // Setup layers (with empty tracks/photos initially)
       await this._setupLayers(data)
 
       // Fit bounds if requested
@@ -63,14 +78,44 @@ export class MapDataManager {
       return data
     } catch (error) {
       console.error("[MapDataManager] Failed to load map data:", error)
+      if (showLoading) {
+        this.controller.hideProgress()
+      }
       Toast.error("Failed to load location data. Please try again.")
       throw error
     } finally {
-      if (showLoading) {
-        this.controller.hideLoading()
-      }
       const duration = performanceMonitor.measure("load-map-data")
       console.log(`[Performance] Map data loaded in ${duration}ms`)
+    }
+  }
+
+  /**
+   * Update tracks layer after background load completes
+   * @private
+   */
+  _updateTracksLayer(tracksGeoJSON) {
+    const tracksLayer = this.layerManager?.getLayer("tracks")
+    if (tracksLayer) {
+      tracksLayer.update(tracksGeoJSON)
+      // Also update stored data
+      if (this.lastLoadedData) {
+        this.lastLoadedData.tracksGeoJSON = tracksGeoJSON
+      }
+    }
+  }
+
+  /**
+   * Update photos layer after background load completes
+   * @private
+   */
+  _updatePhotosLayer(photosGeoJSON) {
+    const photosLayer = this.layerManager?.getLayer("photos")
+    if (photosLayer) {
+      photosLayer.update(photosGeoJSON)
+      // Also update stored data
+      if (this.lastLoadedData) {
+        this.lastLoadedData.photosGeoJSON = photosGeoJSON
+      }
     }
   }
 
