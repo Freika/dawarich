@@ -211,17 +211,29 @@ See `.env.template` for available configuration options including:
 ## Code Quality
 
 ### Tools
-- **Linting**: RuboCop with Rails extensions
+- **Ruby Linting**: RuboCop with Rails extensions
+- **JS/CSS Linting**: Biome (formatting, lint, import sorting)
 - **Security**: Brakeman, bundler-audit
 - **Dependencies**: Strong Migrations for safe database changes
 - **Performance**: Stackprof for profiling
 
 ### Commands
 ```bash
-bundle exec rubocop                  # Code linting
+bundle exec rubocop                  # Ruby linting
+npx @biomejs/biome check --write .   # JS/CSS auto-fix (safe fixes)
+npx @biomejs/biome check --write --unsafe .  # JS/CSS auto-fix (all fixes)
+npx @biomejs/biome ci .              # JS/CSS CI check (read-only)
 bundle exec brakeman                 # Security scan
 bundle exec bundle-audit             # Dependency security
 ```
+
+### Lint Rules
+- **Always run RuboCop** on modified Ruby files before committing: `bundle exec rubocop <files>`
+- **Always run Biome** on modified JS/CSS files before committing: `npx @biomejs/biome check --write <files>`
+- If Biome `--write` leaves remaining errors, use `--write --unsafe` to apply fixes like `parseInt` radix and `Number.isNaN`
+- CI runs `biome ci --changed --since=dev` — it compares against the `dev` branch, not `master`
+- The `noStaticOnlyClass` warning is acceptable and does not fail CI
+- Tailwind CSS files (`*.tailwind.css`) have `@import` position rules disabled in `biome.json` because `@tailwind` directives must come first
 
 ## Important Notes for Development
 
