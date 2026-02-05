@@ -207,14 +207,14 @@ test.describe("Track Transportation Modes", () => {
   }
 
   test.describe("Track Segments Data", () => {
-    test("tracks have segments property in GeoJSON", async ({ page }) => {
+    test("tracks have dominant_mode property in GeoJSON", async ({ page }) => {
       await enableTracksLayer(page);
 
       const tracksData = await getTracksSourceData(page);
 
       if (tracksData.features.length > 0) {
         tracksData.features.forEach((feature) => {
-          expect(feature.properties).toHaveProperty("segments");
+          expect(feature.properties).toHaveProperty("dominant_mode");
         });
       }
     });

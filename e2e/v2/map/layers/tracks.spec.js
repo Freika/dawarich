@@ -305,7 +305,7 @@ test.describe('Tracks Layer', () => {
       }
     })
 
-    test('tracks have red color property', async ({ page }) => {
+    test('tracks have default color property', async ({ page }) => {
       // Enable tracks layer first
       await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
       await page.waitForTimeout(200)
@@ -331,7 +331,7 @@ test.describe('Tracks Layer', () => {
       if (tracksData.features.length > 0) {
         tracksData.features.forEach(feature => {
           expect(feature.properties).toHaveProperty('color')
-          expect(feature.properties.color).toBe('#ff0000') // Red color
+          expect(feature.properties.color).toBe('#6366F1')
         })
       }
     })

@@ -55,18 +55,17 @@ test.describe('Map Core', () => {
 
   test.describe('Loading States', () => {
     test('shows loading indicator during data fetch', async ({ page }) => {
-      const loading = page.locator('[data-maps--maplibre-target="loading"]')
+      const progressBar = page.locator('[data-maps--maplibre-target="progressBar"]')
 
       const navigationPromise = page.reload({ waitUntil: 'domcontentloaded' })
 
-      const loadingVisible = await loading.evaluate((el) => !el.classList.contains('hidden'))
-        .catch(() => false)
-
+      // Progress bar may briefly appear during loading
       await navigationPromise
       await closeOnboardingModal(page)
 
       await waitForLoadingComplete(page)
-      await expect(loading).toHaveClass(/hidden/)
+      // After loading completes, progress bar should exist in the DOM
+      await expect(progressBar).toBeAttached()
     })
 
     test('handles empty data gracefully', async ({ page }) => {

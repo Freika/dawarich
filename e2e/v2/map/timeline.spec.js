@@ -522,7 +522,7 @@ test.describe('Timeline Panel', () => {
         // Start replay and wait for potential day change
         const playButton = page.locator('[data-maps--maplibre-target="timelinePlayButton"]')
         await playButton.click()
-        await page.waitForTimeout(5000) // Wait for potential advancement
+        await page.waitForTimeout(2000) // Wait for potential advancement
 
         await playButton.click() // Stop
 
@@ -556,7 +556,7 @@ test.describe('Timeline Panel', () => {
       // Start replay
       const playButton = page.locator('[data-maps--maplibre-target="timelinePlayButton"]')
       await playButton.click()
-      await page.waitForTimeout(3000)
+      await page.waitForTimeout(2000)
 
       // Replay should have stopped automatically or still be active but at end
       const isPlaying = await isReplayActive(page)

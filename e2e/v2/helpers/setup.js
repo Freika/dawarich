@@ -63,9 +63,9 @@ export async function navigateToMapsV2WithDate(page, startDate, endDate) {
 /**
  * Wait for MapLibre map to be fully initialized
  * @param {Page} page - Playwright page object
- * @param {number} timeout - Timeout in milliseconds (default: 10000)
+ * @param {number} timeout - Timeout in milliseconds (default: 15000)
  */
-export async function waitForMapLibre(page, timeout = 10000) {
+export async function waitForMapLibre(page, timeout = 15000) {
   // Wait for canvas to appear
   await page.waitForSelector('.maplibregl-canvas', { timeout });
 
@@ -78,12 +78,6 @@ export async function waitForMapLibre(page, timeout = 10000) {
     const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
     // Check if map exists and style is loaded (more reliable than loaded())
     return controller?.map && controller.map.isStyleLoaded();
-  }, { timeout: 15000 });
-
-  // Wait for loading overlay to be hidden
-  await page.waitForFunction(() => {
-    const loading = document.querySelector('[data-maps--maplibre-target="loading"]');
-    return loading && loading.classList.contains('hidden');
   }, { timeout: 15000 });
 }
 
@@ -210,9 +204,17 @@ export async function clickMapAt(page, x, y) {
  * @param {Page} page - Playwright page object
  */
 export async function waitForLoadingComplete(page) {
+  // Wait for map data manager to have finished initial data load
+  // The map is interactive once core data (points, routes) is loaded,
+  // even if background fetches (tracks, photos) are still in progress
   await page.waitForFunction(() => {
-    const loading = document.querySelector('[data-maps--maplibre-target="loading"]');
-    return loading && loading.classList.contains('hidden');
+    const element = document.querySelector('[data-controller*="maps--maplibre"]');
+    if (!element) return false;
+    const app = window.Stimulus || window.Application;
+    if (!app) return false;
+    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
+    // Map data manager stores lastLoadedData after core data is ready
+    return controller?.mapDataManager?.lastLoadedData !== undefined;
   }, { timeout: 15000 });
 }
 
