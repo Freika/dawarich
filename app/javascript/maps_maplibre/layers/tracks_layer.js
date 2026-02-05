@@ -434,7 +434,7 @@ export class TracksLayer extends BaseLayer {
     this._segmentMouseEnterHandler = (e) => {
       this.map.getCanvas().style.cursor = "pointer";
 
-      if (e.features && e.features[0] && this.onSegmentHover) {
+      if (e.features?.[0] && this.onSegmentHover) {
         const segmentIndex = e.features[0].properties.segmentIndex;
         this.onSegmentHover(segmentIndex);
       }

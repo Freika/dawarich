@@ -11,7 +11,7 @@
   background: oklch(var(--b1));
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
-  z-index: 100;
+  z-index: 460;
   padding: 14px 18px;
   transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
 }

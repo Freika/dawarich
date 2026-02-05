@@ -88,7 +88,7 @@ class Tracks::GeojsonSerializer
   def segments_for(track)
     return [] unless track.respond_to?(:track_segments)
 
-    segments = track.track_segments.order(:start_index).to_a
+    segments = track.track_segments.to_a.sort_by(&:start_index)
     return [] if segments.empty?
 
     # Calculate cumulative start times from track start

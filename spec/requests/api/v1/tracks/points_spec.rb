@@ -78,13 +78,56 @@ RSpec.describe '/api/v1/tracks/:track_id/points', type: :request do
     end
 
     context 'when track has no points' do
-      let(:empty_track) { create(:track, user: user) }
+      let(:empty_track) do
+        create(:track, user: user,
+               start_at: Time.zone.parse('2000-01-01 00:00'),
+               end_at: Time.zone.parse('2000-01-01 01:00'))
+      end
 
       it 'returns empty array' do
         get api_v1_track_points_url(empty_track), headers: headers
         json = JSON.parse(response.body)
 
         expect(json).to eq([])
+      end
+    end
+
+    context 'fallback to time range' do
+      let(:fallback_track) do
+        create(:track, user: user,
+               start_at: 2.hours.ago,
+               end_at: 1.hour.ago)
+      end
+      let!(:point_in_range) do
+        create(:point, user: user, timestamp: 90.minutes.ago.to_i)
+      end
+
+      it 'returns points within the track time range when no direct association exists' do
+        get api_v1_track_points_url(fallback_track), headers: headers
+        json = JSON.parse(response.body)
+
+        point_ids = json.map { |p| p['id'] }
+        expect(point_ids).to include(point_in_range.id)
+      end
+    end
+
+    context 'fallback excludes other users' do
+      let(:other_user) { create(:user) }
+      let(:fallback_track) do
+        create(:track, user: user,
+               start_at: 2.hours.ago,
+               end_at: 1.hour.ago)
+      end
+      let!(:other_user_point) do
+        create(:point, user: other_user, timestamp: 90.minutes.ago.to_i)
+      end
+
+      it 'does not return points from other users in the time range' do
+        get api_v1_track_points_url(fallback_track), headers: headers
+        json = JSON.parse(response.body)
+
+        point_ids = json.map { |p| p['id'] }
+        expect(point_ids).not_to include(other_user_point.id)
       end
     end
   end

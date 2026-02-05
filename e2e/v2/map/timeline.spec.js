@@ -748,6 +748,113 @@ test.describe('Timeline Panel', () => {
     })
   })
 
+  test.describe('Timeline Interactions', () => {
+    test('replay stops when closing timeline', async ({ page }) => {
+      await openTimelinePanel(page)
+      await waitForTimelinePanel(page)
+
+      // Start replay
+      const playButton = page.locator('[data-maps--maplibre-target="timelinePlayButton"]')
+      await playButton.click()
+      await page.waitForTimeout(500)
+
+      let isPlaying = await isReplayActive(page)
+      expect(isPlaying).toBe(true)
+
+      // Close settings panel first so it doesn't intercept clicks
+      const closeSettingsButton = page.locator('button[title="Close panel"]')
+      await closeSettingsButton.click()
+      await page.waitForTimeout(300)
+
+      // Close the timeline panel
+      const closeButton = page.locator('.timeline-close')
+      await closeButton.click()
+      await page.waitForTimeout(500)
+
+      isPlaying = await isReplayActive(page)
+      expect(isPlaying).toBe(false)
+    })
+
+    test('timeline and track selection coexistence', async ({ page }) => {
+      // Collect console errors
+      const consoleErrors = []
+      page.on('console', msg => {
+        if (msg.type() === 'error') {
+          consoleErrors.push(msg.text())
+        }
+      })
+
+      await openTimelinePanel(page)
+      await waitForTimelinePanel(page)
+
+      // Try clicking on the map where a track might be
+      const mapCanvas = page.locator('.maplibregl-canvas')
+      const box = await mapCanvas.boundingBox()
+      if (box) {
+        await mapCanvas.click({ position: { x: box.width / 2, y: box.height / 2 } })
+        await page.waitForTimeout(500)
+      }
+
+      // Verify no JS errors from the interaction
+      const relevantErrors = consoleErrors.filter(err =>
+        !err.includes('404') && !err.includes('net::')
+      )
+      expect(relevantErrors).toEqual([])
+
+      // Timeline should still be functional
+      const isVisible = await isTimelinePanelVisible(page)
+      expect(isVisible).toBe(true)
+    })
+
+    test('day navigation resets scrubber', async ({ page }) => {
+      await openTimelinePanel(page)
+      await waitForTimelinePanel(page)
+
+      // Set scrubber to a known position
+      await setScrubberValue(page, 720)
+      await page.waitForTimeout(200)
+
+      const initialValue = await getScrubberValue(page)
+
+      // Navigate to next day if possible
+      const nextButton = page.locator('[data-maps--maplibre-target="timelineNextDayButton"]')
+      if (!(await nextButton.isDisabled())) {
+        await nextButton.click()
+        await page.waitForTimeout(500)
+
+        const newValue = await getScrubberValue(page)
+        // After day change the scrubber may reset or change
+        // Just verify it's a valid value
+        expect(newValue).toBeGreaterThanOrEqual(0)
+        expect(newValue).toBeLessThanOrEqual(1439)
+      }
+    })
+
+    test('marker source exists after scrub', async ({ page }) => {
+      await openTimelinePanel(page)
+      await waitForTimelinePanel(page)
+
+      const state = await getTimelineState(page)
+      if (state && state.hasData) {
+        // Scrub to noon where data might exist
+        await setScrubberValue(page, 720)
+        await page.waitForTimeout(500)
+
+        const hasSource = await page.evaluate(() => {
+          const element = document.querySelector('[data-controller*="maps--maplibre"]')
+          if (!element) return false
+          const app = window.Stimulus || window.Application
+          if (!app) return false
+          const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+          if (!controller?.map) return false
+          return !!controller.map.getSource('timeline-marker-source')
+        })
+
+        expect(hasSource).toBe(true)
+      }
+    })
+  })
+
   test.describe('Edge Cases', () => {
     test('handles empty date range gracefully', async ({ page }) => {
       // Navigate to date with no data

@@ -209,7 +209,7 @@ export class EventHandlers {
   /**
    * Handle route mouse leave
    */
-  handleRouteMouseLeave(e) {
+  handleRouteMouseLeave() {
     const routesLayer = this.controller.layerManager.getLayer("routes");
     if (!routesLayer) return;
 
@@ -463,7 +463,7 @@ export class EventHandlers {
 
     // Update selection layer to highlight selected track
     const tracksLayer = this.controller.layerManager.getLayer("tracks");
-    if (tracksLayer && tracksLayer.setSelectedTrack) {
+    if (tracksLayer?.setSelectedTrack) {
       tracksLayer.setSelectedTrack(fullFeature);
     }
 
@@ -507,7 +507,7 @@ export class EventHandlers {
 
       // Update tracks layer to show segment highlighting
       const tracksLayer = this.controller.layerManager.getLayer("tracks");
-      if (tracksLayer && tracksLayer.showSegments) {
+      if (tracksLayer?.showSegments) {
         tracksLayer.showSegments(fullFeature, segments);
 
         // Set up callbacks for map segment hover → list highlight
@@ -668,6 +668,9 @@ export class EventHandlers {
     // Clear segment markers
     this._clearTrackMarkers();
 
+    // Clean up segment list listeners
+    this._cleanupSegmentListHover();
+
     // Close info panel
     this.controller.closeInfo();
   }
@@ -802,7 +805,7 @@ export class EventHandlers {
     if (coords.length < 2) return;
 
     // Add marker at start of each segment
-    segments.forEach((segment, idx) => {
+    segments.forEach((segment) => {
       const coordIndex = Math.min(segment.start_index || 0, coords.length - 1);
       const coord = coords[coordIndex];
       if (!coord) return;
@@ -858,31 +861,63 @@ export class EventHandlers {
   }
 
   /**
+   * Clean up segment list hover/click listeners and pending timeout
+   * @private
+   */
+  _cleanupSegmentListHover() {
+    if (this._segmentListTimeout) {
+      clearTimeout(this._segmentListTimeout);
+      this._segmentListTimeout = null;
+    }
+
+    if (this._segmentListListeners) {
+      this._segmentListListeners.forEach(({ element, event, handler }) => {
+        element.removeEventListener(event, handler);
+      });
+      this._segmentListListeners = null;
+    }
+  }
+
+  /**
    * Set up hover and click event listeners for segment list items in the info panel
    * @param {Array} segments - Array of segment data
    */
   _setupSegmentListHover(segments) {
+    // Clean up any existing listeners first
+    this._cleanupSegmentListHover();
+
     // Use setTimeout to ensure the DOM has been updated
-    setTimeout(() => {
+    this._segmentListTimeout = setTimeout(() => {
+      this._segmentListTimeout = null;
       const listItems = document.querySelectorAll(".segment-list-item");
+      this._segmentListListeners = [];
 
       listItems.forEach((item) => {
         const segmentIndex = parseInt(item.dataset.segmentIndex, 10);
 
-        item.addEventListener("mouseenter", () => {
+        const enterHandler = () => {
           this._highlightSegmentOnMap(segmentIndex);
           this._highlightSegmentListItem(segmentIndex);
-        });
+        };
 
-        item.addEventListener("mouseleave", () => {
+        const leaveHandler = () => {
           this._clearSegmentHighlight();
           this._clearSegmentListHighlight();
-        });
+        };
 
-        // Add click handler to zoom to segment bounds
-        item.addEventListener("click", () => {
+        const clickHandler = () => {
           this._zoomToSegment(segments[segmentIndex]);
-        });
+        };
+
+        item.addEventListener("mouseenter", enterHandler);
+        item.addEventListener("mouseleave", leaveHandler);
+        item.addEventListener("click", clickHandler);
+
+        this._segmentListListeners.push(
+          { element: item, event: "mouseenter", handler: enterHandler },
+          { element: item, event: "mouseleave", handler: leaveHandler },
+          { element: item, event: "click", handler: clickHandler },
+        );
       });
     }, 50);
   }
@@ -965,7 +1000,7 @@ export class EventHandlers {
    */
   _highlightSegmentListItem(segmentIndex) {
     const listItems = document.querySelectorAll(".segment-list-item");
-    listItems.forEach((item, idx) => {
+    listItems.forEach((item) => {
       if (parseInt(item.dataset.segmentIndex, 10) === segmentIndex) {
         item.classList.add("bg-primary", "bg-opacity-20");
       } else {

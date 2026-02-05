@@ -65,7 +65,7 @@ export class TimelineManager {
       if (!timestamp) return
 
       const date = this._parseTimestamp(timestamp)
-      if (!date || isNaN(date.getTime())) return
+      if (!date || Number.isNaN(date.getTime())) return
 
       const dayKey = this._formatDayKey(date)
 
@@ -105,7 +105,7 @@ export class TimelineManager {
       if (!timestamp) return
 
       const date = this._parseTimestamp(timestamp)
-      if (!date || isNaN(date.getTime())) return
+      if (!date || Number.isNaN(date.getTime())) return
 
       const minuteOfDay = date.getHours() * 60 + date.getMinutes()
 
@@ -404,10 +404,10 @@ export class TimelineManager {
   static findTransportationEmoji(point, tracksGeoJSON) {
     if (!tracksGeoJSON?.features?.length) return null
 
-    const timestamp = this._getTimestampStatic(point)
+    const timestamp = TimelineManager._getTimestampStatic(point)
     if (!timestamp) return null
 
-    const pointTime = this._parseTimestampStatic(timestamp)
+    const pointTime = TimelineManager._parseTimestampStatic(timestamp)
     if (!pointTime) return null
 
     for (const track of tracksGeoJSON.features) {
@@ -453,7 +453,7 @@ export class TimelineManager {
     // Handle ISO 8601 string
     if (typeof timestamp === 'string') {
       const date = new Date(timestamp)
-      return isNaN(date.getTime()) ? null : date.getTime()
+      return Number.isNaN(date.getTime()) ? null : date.getTime()
     }
 
     // Handle Unix timestamp
