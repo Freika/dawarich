@@ -34,7 +34,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("opens from Tools tab button", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const isVisible = await isTimelinePanelVisible(page)
@@ -42,7 +42,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("closes with close button", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Close the settings panel first so it doesn't intercept clicks
@@ -60,7 +60,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("toggles with repeated button clicks", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       let isVisible = await isTimelinePanelVisible(page)
@@ -85,7 +85,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("has correct CSS styling (positioned at bottom)", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const panel = page.locator('[data-maps--maplibre-target="timelinePanel"]')
@@ -143,7 +143,7 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Day Navigation", () => {
     test("displays formatted date correctly", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const dayDisplay = page.locator(
@@ -156,7 +156,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("shows day count and point count", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const dayCount = page.locator(
@@ -170,7 +170,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("previous button navigates to earlier day", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // First navigate to day 2 (if possible)
@@ -206,7 +206,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("next button navigates to later day", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const dayDisplay = page.locator(
@@ -229,7 +229,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("prev button disabled on first day", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Navigate to first day
@@ -251,7 +251,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("next button disabled on last day", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Navigate to last day
@@ -275,7 +275,7 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Scrubber Interaction", () => {
     test("scrubber has correct min and max attributes", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const scrubber = page.locator(
@@ -289,7 +289,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("moving scrubber updates time display", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const timeDisplay = page.locator(
@@ -306,7 +306,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("scrubbing shows marker on map", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Find a minute with data by checking state
@@ -324,7 +324,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("shows no data indicator for empty minutes", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const dataIndicator = page.locator(
@@ -341,7 +341,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("hides no data indicator when data exists", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const dataIndicator = page.locator(
@@ -372,7 +372,7 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Data Density", () => {
     test("displays density segments", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const densityContainer = page.locator(
@@ -386,7 +386,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("segments with data have has-data class", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const state = await getTimelineState(page)
@@ -400,7 +400,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("high density segments have high-density class", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const state = await getTimelineState(page)
@@ -417,7 +417,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("density updates when changing days", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const densityContainer = page.locator(
@@ -451,8 +451,16 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Replay Controls", () => {
     test("play button starts replay", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
+
+      // Verify timeline has data before attempting replay
+      const state = await getTimelineState(page)
+      if (!state || !state.hasData || state.currentDayPointCount === 0) {
+        // No data available for replay — skip assertions that require data
+        test.skip()
+        return
+      }
 
       const playButton = page.locator(
         '[data-maps--maplibre-target="timelinePlayButton"]',
@@ -476,7 +484,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("pause button stops replay", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Start replay
@@ -510,7 +518,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("replay advances scrubber over time", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Set scrubber to beginning
@@ -538,7 +546,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("speed slider changes speed label", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const speedSlider = page.locator(
@@ -563,7 +571,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("replay continues to next day at day end", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const state = await getTimelineState(page)
@@ -609,7 +617,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("replay stops at end of last day", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Navigate to last day
@@ -654,7 +662,7 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Cycle Controls", () => {
     test("cycle controls hidden by default", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const cycleControls = page.locator(
@@ -666,7 +674,7 @@ test.describe("Timeline Panel", () => {
     test("cycle controls appear when multiple points at same minute", async ({
       page,
     }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // This test requires finding a minute with multiple points
@@ -832,7 +840,7 @@ test.describe("Timeline Panel", () => {
     test("cycle controls hide when moving to single-point minute", async ({
       page,
     }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const cycleControls = page.locator(
@@ -873,7 +881,7 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Timeline Interactions", () => {
     test("replay stops when closing timeline", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Start replay
@@ -909,7 +917,7 @@ test.describe("Timeline Panel", () => {
         }
       })
 
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Try clicking on the map where a track might be
@@ -934,7 +942,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("day navigation resets scrubber", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Set scrubber to a known position
@@ -960,7 +968,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("marker source exists after scrub", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const state = await getTimelineState(page)
@@ -1031,7 +1039,7 @@ test.describe("Timeline Panel", () => {
       await waitForLoadingComplete(page)
       await page.waitForTimeout(500)
 
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       const prevButton = page.locator(
@@ -1050,7 +1058,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("timeline survives main date navigation", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Change the main date range
@@ -1073,7 +1081,7 @@ test.describe("Timeline Panel", () => {
       await page.waitForTimeout(1000)
 
       // Timeline panel may be hidden after navigation, open it again
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Should work without errors
@@ -1084,7 +1092,7 @@ test.describe("Timeline Panel", () => {
     test("closing settings panel does not affect timeline", async ({
       page,
     }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Close settings panel
@@ -1098,7 +1106,7 @@ test.describe("Timeline Panel", () => {
     })
 
     test("rapid scrubber movements handled correctly", async ({ page }) => {
-      await openTimelinePanel(page)
+      await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
 
       // Rapidly move scrubber

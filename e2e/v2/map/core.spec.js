@@ -59,19 +59,19 @@ test.describe("Map Core", () => {
 
   test.describe("Loading States", () => {
     test("shows loading indicator during data fetch", async ({ page }) => {
-      const progressBar = page.locator(
-        '[data-maps--maplibre-target="progressBar"]',
+      const progressBadge = page.locator(
+        '[data-maps--maplibre-target="progressBadge"]',
       )
 
       const navigationPromise = page.reload({ waitUntil: "domcontentloaded" })
 
-      // Progress bar may briefly appear during loading
+      // Progress badge may briefly appear during loading
       await navigationPromise
       await closeOnboardingModal(page)
 
       await waitForLoadingComplete(page)
-      // After loading completes, progress bar should exist in the DOM
-      await expect(progressBar).toBeAttached()
+      // After loading completes, progress badge should exist in the DOM
+      await expect(progressBadge).toBeAttached()
     })
 
     test("handles empty data gracefully", async ({ page }) => {
