@@ -92,6 +92,42 @@ RSpec.describe '/api/v1/tracks/:track_id/points', type: :request do
       end
     end
 
+    context 'with pagination' do
+      it 'paginates when page param is present' do
+        get api_v1_track_points_url(track), headers: headers, params: { page: 1, per_page: 2 }
+        json = JSON.parse(response.body)
+
+        expect(json.length).to eq(2)
+        expect(response.headers['X-Current-Page']).to eq('1')
+        expect(response.headers['X-Total-Pages']).to eq('2')
+      end
+
+      it 'returns the second page' do
+        get api_v1_track_points_url(track), headers: headers, params: { page: 2, per_page: 2 }
+        json = JSON.parse(response.body)
+
+        expect(json.length).to eq(1)
+        expect(response.headers['X-Current-Page']).to eq('2')
+      end
+
+      it 'caps per_page at 1000' do
+        get api_v1_track_points_url(track), headers: headers, params: { page: 1, per_page: 999_999 }
+
+        expect(response).to be_successful
+        # With only 3 points, total pages should be 1 regardless of per_page cap
+        expect(response.headers['X-Total-Pages']).to eq('1')
+      end
+
+      it 'returns all points without pagination headers when page param is absent' do
+        get api_v1_track_points_url(track), headers: headers
+        json = JSON.parse(response.body)
+
+        expect(json.length).to eq(3)
+        expect(response.headers['X-Current-Page']).to be_nil
+        expect(response.headers['X-Total-Pages']).to be_nil
+      end
+    end
+
     context 'fallback to time range' do
       let(:fallback_track) do
         create(:track, user: user,

@@ -667,20 +667,73 @@ export class ApiClient {
   }
 
   /**
-   * Fetch points belonging to a specific track
+   * Fetch a single page of points belonging to a specific track
    * @param {number} trackId - Track ID
-   * @returns {Promise<Array>} Points belonging to the track
+   * @param {Object} options - { page, per_page }
+   * @returns {Promise<Object>} { points, currentPage, totalPages }
    */
-  async fetchTrackPoints(trackId) {
-    const response = await fetch(`${this.baseURL}/tracks/${trackId}/points`, {
-      headers: this.getHeaders(),
+  async fetchTrackPointsPage(trackId, { page = 1, per_page = 1000 } = {}) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      per_page: per_page.toString(),
     })
+
+    const response = await fetch(
+      `${this.baseURL}/tracks/${trackId}/points?${params}`,
+      { headers: this.getHeaders() },
+    )
 
     if (!response.ok) {
       throw new Error(`Failed to fetch track points: ${response.statusText}`)
     }
 
-    return response.json()
+    const points = await response.json()
+
+    return {
+      points,
+      currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
+      totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
+    }
+  }
+
+  /**
+   * Fetch all points belonging to a specific track (handles pagination)
+   * @param {number} trackId - Track ID
+   * @param {Object} options - { per_page, maxConcurrent }
+   * @returns {Promise<Array>} All points belonging to the track
+   */
+  async fetchTrackPoints(trackId, { per_page = 1000, maxConcurrent = 3 } = {}) {
+    const firstPage = await this.fetchTrackPointsPage(trackId, {
+      page: 1,
+      per_page,
+    })
+    const totalPages = firstPage.totalPages
+
+    if (totalPages <= 1) {
+      return firstPage.points
+    }
+
+    const pageResults = [{ page: 1, points: firstPage.points }]
+
+    const remainingPages = Array.from(
+      { length: totalPages - 1 },
+      (_, i) => i + 2,
+    )
+
+    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
+      const batch = remainingPages.slice(i, i + maxConcurrent)
+      const batchResults = await Promise.all(
+        batch.map((page) =>
+          this.fetchTrackPointsPage(trackId, { page, per_page }).then(
+            (result) => ({ page, points: result.points }),
+          ),
+        ),
+      )
+      pageResults.push(...batchResults)
+    }
+
+    pageResults.sort((a, b) => a.page - b.page)
+    return pageResults.flatMap((r) => r.points)
   }
 
   getHeaders() {
