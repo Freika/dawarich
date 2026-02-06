@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Background job to deduplicate tracks for a single user.
-# Enqueued by the DeduplicateTracksAndAddUniqueIndex migration.
+# Enqueued by the DeduplicateTracks migration.
 class Tracks::DeduplicationJob < ApplicationJob
   queue_as :tracks
 

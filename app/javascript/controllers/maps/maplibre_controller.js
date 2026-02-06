@@ -242,6 +242,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this._stopTimelineReplay()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.cleanup.cleanup()
@@ -1538,6 +1539,7 @@ export default class extends Controller {
    * @private
    */
   _startTimelineReplay() {
+    if (this.timelineReplayActive) return
     if (!this.timelineManager || !this.hasTimelineScrubberTarget) return
 
     // Get points for current day
@@ -1796,16 +1798,10 @@ export default class extends Controller {
     const lngOffset = (lon - center.lng) / lngSpan
     const latOffset = (lat - center.lat) / latSpan
 
-    // If marker is more than 30% from center, smoothly pan towards it
+    // If marker is more than 30% from center, reposition immediately
     const threshold = 0.3
     if (Math.abs(lngOffset) > threshold || Math.abs(latOffset) > threshold) {
-      // Use setCenter for immediate repositioning (no animation stutter)
-      // Offset slightly in the direction of travel for a "leading" effect
-      this.map.easeTo({
-        center: [lon, lat],
-        duration: 100, // Very short duration for smooth following
-        easing: (t) => t, // Linear easing
-      })
+      this.map.setCenter([lon, lat])
     }
   }
 

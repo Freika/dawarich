@@ -18,8 +18,10 @@ class Tracks::Deduplicator
     count_before = user.tracks.count
     return 0 unless duplicates_exist?
 
-    delete_orphaned_segments
-    deleted = delete_duplicate_tracks
+    deleted = ActiveRecord::Base.transaction do
+      delete_orphaned_segments
+      delete_duplicate_tracks
+    end
 
     Rails.logger.info "[Tracks::Deduplicator] Removed #{deleted} duplicate tracks for user #{user.id}" \
                       " (#{count_before} -> #{count_before - deleted})"

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class DeduplicateTracksAndAddUniqueIndex < ActiveRecord::Migration[8.0]
+class DeduplicateTracks < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   USER_DELAY_SECONDS = 30
