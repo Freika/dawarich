@@ -32,7 +32,10 @@ class Tracks::ParallelGenerator
     # Enqueue boundary resolver job (with delay to let chunks complete)
     enqueue_boundary_resolver(session.session_id, time_chunks.size)
 
-    Rails.logger.info "Started parallel track generation for user #{user.id} with #{time_chunks.size} chunks (session: #{session.session_id})"
+    Rails.logger.info(
+      "Started parallel track generation for user #{user.id} " \
+      "with #{time_chunks.size} chunks (session: #{session.session_id})"
+    )
 
     session
   end
@@ -104,7 +107,7 @@ class Tracks::ParallelGenerator
     start_at.present? || end_at.present?
   end
 
-  def time_range
+  def time_range # rubocop:disable Metrics/PerceivedComplexity
     return nil unless time_range_defined?
 
     start_time = start_at&.to_i
@@ -133,28 +136,16 @@ class Tracks::ParallelGenerator
   end
 
   def humanize_duration(duration)
-    case duration
-    when 1.day then '1 day'
-    when 1.hour then '1 hour'
-    when 6.hours then '6 hours'
-    when 12.hours then '12 hours'
-    when 2.days then '2 days'
-    when 1.week then '1 week'
-    else
-      # Convert seconds to readable format
-      seconds = duration.to_i
-      if seconds >= 86_400 # days
-        days = seconds / 86_400
-        "#{days} day#{'s' if days != 1}"
-      elsif seconds >= 3600 # hours
-        hours = seconds / 3600
-        "#{hours} hour#{'s' if hours != 1}"
-      elsif seconds >= 60 # minutes
-        minutes = seconds / 60
-        "#{minutes} minute#{'s' if minutes != 1}"
-      else
-        "#{seconds} second#{'s' if seconds != 1}"
-      end
+    seconds = duration.to_i
+    unit, count = duration_unit_and_count(seconds)
+    "#{count} #{unit}#{'s' if count != 1}"
+  end
+
+  def duration_unit_and_count(seconds)
+    if seconds >= 86_400 then ['day', seconds / 86_400]
+    elsif seconds >= 3600 then ['hour', seconds / 3600]
+    elsif seconds >= 60   then ['minute', seconds / 60]
+    else ['second', seconds]
     end
   end
 end
