@@ -33,9 +33,8 @@ export default class extends Controller {
 
   static targets = [
     "container",
-    "progressBar",
-    "progressFill",
-    "progressText",
+    "progressBadge",
+    "progressBadgeText",
     "monthSelect",
     "clusterToggle",
     "settingsPanel",
@@ -292,10 +291,7 @@ export default class extends Controller {
     return this.mapDataManager.loadMapData(
       this.startDateValue,
       this.endDateValue,
-      {
-        ...options,
-        onProgress: this.updateLoadingProgress.bind(this),
-      },
+      options,
     )
   }
 
@@ -313,31 +309,26 @@ export default class extends Controller {
   }
 
   /**
-   * Show non-blocking progress bar
+   * Show loading progress badge
    */
   showProgress() {
-    if (this.hasProgressBarTarget) {
-      this.progressBarTarget.classList.remove("hidden")
+    this._lastSourceCount = 0
+    if (this.hasProgressBadgeTarget) {
+      this.progressBadgeTarget.classList.remove("complete", "pop")
+      this.progressBadgeTarget.classList.add("visible")
     }
-    if (this.hasProgressTextTarget) {
-      this.progressTextTarget.classList.remove("hidden")
-      this.progressTextTarget.textContent = "Loading... 0%"
+    if (this.hasProgressBadgeTextTarget) {
+      this.progressBadgeTextTarget.textContent = "Loading..."
     }
   }
 
   /**
-   * Hide progress bar
+   * Hide loading progress badge with fade-out
    */
   hideProgress() {
-    if (this.hasProgressBarTarget) {
-      this.progressBarTarget.classList.add("hidden")
-    }
-    if (this.hasProgressTextTarget) {
-      this.progressTextTarget.classList.add("hidden")
-    }
-    if (this.hasProgressFillTarget) {
-      this.progressFillTarget.style.width = "0%"
-    }
+    if (!this.hasProgressBadgeTarget) return
+    const badge = this.progressBadgeTarget
+    badge.classList.remove("visible")
   }
 
   /**
@@ -355,18 +346,55 @@ export default class extends Controller {
   }
 
   /**
-   * Update loading progress
+   * Update loading counts badge
    */
-  updateLoadingProgress({ progress, isComplete }) {
-    const percentage = Math.round(progress * 100)
-    if (this.hasProgressFillTarget) {
-      this.progressFillTarget.style.width = `${percentage}%`
+  updateLoadingCounts({ counts, isComplete }) {
+    this._lastLoadingCounts = counts
+    this._renderLoadingBadge(isComplete)
+  }
+
+  /**
+   * Render the loading badge text from current counts
+   * @private
+   */
+  _renderLoadingBadge(isComplete = false) {
+    if (!this.hasProgressBadgeTextTarget) return
+
+    const counts = this._lastLoadingCounts || {}
+    const parts = []
+    for (const [source, count] of Object.entries(counts)) {
+      parts.push(`${count.toLocaleString()} ${source}`)
     }
-    if (this.hasProgressTextTarget) {
-      this.progressTextTarget.textContent = `Loading... ${percentage}%`
+
+    // Append family count if family layer is enabled
+    if (this.settings?.familyEnabled) {
+      const familyCount = this._familyMemberCount || 0
+      parts.push(`${familyCount.toLocaleString()} family`)
     }
+
+    // Detect when a new data source appears and trigger a pop animation
+    const sourceCount = parts.length
+    if (
+      this.hasProgressBadgeTarget &&
+      sourceCount > (this._lastSourceCount || 0)
+    ) {
+      const badge = this.progressBadgeTarget
+      badge.classList.remove("pop")
+      // Force reflow so re-adding the class restarts the animation
+      void badge.offsetWidth
+      badge.classList.add("pop")
+    }
+    this._lastSourceCount = sourceCount
+
+    this.progressBadgeTextTarget.textContent =
+      parts.length > 0 ? parts.join(" \u00B7 ") : "Loading..."
+
     if (isComplete) {
-      setTimeout(() => this.hideProgress(), 500)
+      if (this.hasProgressBadgeTarget) {
+        this.progressBadgeTarget.classList.add("complete")
+      }
+      this._lastSourceCount = 0
+      setTimeout(() => this.hideProgress(), 1200)
     }
   }
 
@@ -578,6 +606,12 @@ export default class extends Controller {
   // Family Members methods
   async loadFamilyMembers() {
     try {
+      this.showProgress()
+      this.updateLoadingCounts({
+        counts: { family: 0 },
+        isComplete: false,
+      })
+
       const response = await fetch(
         `/api/v1/families/locations?api_key=${this.apiKeyValue}`,
         {
@@ -591,6 +625,10 @@ export default class extends Controller {
       if (!response.ok) {
         if (response.status === 403) {
           Toast.info("Family feature not available")
+          this.updateLoadingCounts({
+            counts: { family: 0 },
+            isComplete: true,
+          })
           return
         }
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -604,6 +642,13 @@ export default class extends Controller {
       if (familyLayer) {
         familyLayer.loadMembers(locations)
       }
+
+      // Update family count in badge
+      this._familyMemberCount = locations.length
+      this.updateLoadingCounts({
+        counts: { family: locations.length },
+        isComplete: true,
+      })
 
       // Render family members list
       this.renderFamilyMembersList(locations)

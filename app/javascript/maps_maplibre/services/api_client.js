@@ -42,15 +42,27 @@ export class ApiClient {
 
   /**
    * Fetch all points for date range (handles pagination with parallel requests)
-   * @param {Object} options - { start_at, end_at, onProgress, maxConcurrent }
+   * @param {Object} options - { start_at, end_at, onProgress, onBatch, maxConcurrent }
+   * @param {Function} options.onBatch - Called with accumulated points array after each batch
    * @returns {Promise<Array>} All points
    */
   async fetchAllPoints({
     start_at,
     end_at,
     onProgress = null,
+    onBatch = null,
     maxConcurrent = 3,
   }) {
+    // Report that fetching has started
+    if (onProgress) {
+      onProgress({
+        loaded: 0,
+        currentPage: 0,
+        totalPages: 0,
+        progress: 0,
+      })
+    }
+
     // First fetch to get total pages
     const firstPage = await this.fetchPoints({
       start_at,
@@ -70,12 +82,28 @@ export class ApiClient {
           progress: 1.0,
         })
       }
+      if (onBatch) {
+        onBatch(firstPage.points)
+      }
       return firstPage.points
     }
 
     // Initialize results array with first page
     const pageResults = [{ page: 1, points: firstPage.points }]
     let completedPages = 1
+
+    // Report first page completed
+    if (onProgress) {
+      onProgress({
+        loaded: firstPage.points.length,
+        currentPage: 1,
+        totalPages,
+        progress: 1 / totalPages,
+      })
+    }
+    if (onBatch) {
+      onBatch(firstPage.points)
+    }
 
     // Create array of remaining page numbers
     const remainingPages = Array.from(
@@ -107,6 +135,12 @@ export class ApiClient {
           totalPages,
           progress,
         })
+      }
+
+      // Call batch callback with all accumulated points so far (sorted)
+      if (onBatch) {
+        const sorted = [...pageResults].sort((a, b) => a.page - b.page)
+        onBatch(sorted.flatMap((r) => r.points))
       }
     }
 
@@ -347,7 +381,13 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, onProgress, maxConcurrent }
    * @returns {Promise<Object>} GeoJSON FeatureCollection
    */
-  async fetchTracks({ start_at, end_at, onProgress, maxConcurrent = 3 } = {}) {
+  async fetchTracks({
+    start_at,
+    end_at,
+    onProgress,
+    onBatch = null,
+    maxConcurrent = 3,
+  } = {}) {
     // First fetch to get total pages
     const firstPage = await this.fetchTracksPage({
       start_at,
@@ -362,6 +402,9 @@ export class ApiClient {
       if (onProgress) {
         onProgress(1, 1)
       }
+      if (onBatch) {
+        onBatch(firstPage.features.length)
+      }
       return {
         type: "FeatureCollection",
         features: firstPage.features,
@@ -371,6 +414,10 @@ export class ApiClient {
     // Initialize results array with first page
     const pageResults = [{ page: 1, features: firstPage.features }]
     let completedPages = 1
+
+    if (onBatch) {
+      onBatch(firstPage.features.length)
+    }
 
     // Create array of remaining page numbers
     const remainingPages = Array.from(
@@ -396,6 +443,13 @@ export class ApiClient {
       // Call progress callback after each batch
       if (onProgress) {
         onProgress(completedPages, totalPages)
+      }
+      if (onBatch) {
+        const totalFeatures = pageResults.reduce(
+          (sum, r) => sum + r.features.length,
+          0,
+        )
+        onBatch(totalFeatures)
       }
     }
 

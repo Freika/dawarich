@@ -17,7 +17,7 @@ class Tracks::ParallelGenerator
   end
 
   def call
-    clean_bulk_tracks if mode == :bulk
+    clean_existing_tracks if mode.in?(%i[bulk daily])
 
     # Generate time chunks
     time_chunks = generate_time_chunks
@@ -88,7 +88,7 @@ class Tracks::ParallelGenerator
     )
   end
 
-  def clean_bulk_tracks
+  def clean_existing_tracks
     if time_range_defined?
       user.tracks.where(
         '(start_at, end_at) OVERLAPS (?, ?)',

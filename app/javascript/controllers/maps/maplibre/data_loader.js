@@ -4,98 +4,51 @@ import { createCircle } from "maps_maplibre/utils/geometry"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 /**
- * Tracks loading progress across multiple data sources
- * Dynamically weights only enabled layers for accurate progress tracking
+ * Tracks loading counts across multiple data sources
+ * Reports live item counts instead of percentage progress
  */
-class ProgressTracker {
-  constructor(onProgress, settings) {
-    this.onProgress = onProgress
-    this.settings = settings
-    this.sources = {}
-    this.weights = this._calculateWeights()
+class LoadingCounter {
+  constructor(onUpdate) {
+    this.onUpdate = onUpdate
+    this.counts = {}
+    this.completed = new Set()
+    this.expectedSources = new Set()
   }
 
   /**
-   * Calculate weights for each data source based on enabled settings
-   * Only enabled layers contribute to progress
+   * Register a source that will be tracked.
+   * Must be called before fetching begins so the badge shows "0 source" immediately.
    */
-  _calculateWeights() {
-    const weights = {}
-
-    // Points needed for routes/heatmap/fog even if pointsVisible is false
-    const needsPoints =
-      this.settings.pointsVisible !== false ||
-      this.settings.routesVisible !== false ||
-      this.settings.heatmapEnabled ||
-      this.settings.fogEnabled
-
-    if (needsPoints) weights.points = 1.0
-
-    if (this.settings.visitsEnabled) weights.visits = 0.15
-    if (this.settings.placesEnabled) weights.places = 0.1
-    if (this.settings.areasEnabled) weights.areas = 0.05
-    if (this.settings.tracksEnabled) weights.tracks = 0.2
-    if (this.settings.photosEnabled) weights.photos = 0.15
-
-    // Normalize weights so they sum to 1
-    const total = Object.values(weights).reduce((a, b) => a + b, 0)
-    if (total > 0) {
-      for (const key of Object.keys(weights)) {
-        weights[key] /= total
-      }
-    }
-
-    return weights
+  expect(source) {
+    this.expectedSources.add(source)
+    this._report()
   }
 
-  /**
-   * Update progress for a specific source
-   * @param {string} source - Source name (points, visits, places, areas, tracks, photos)
-   * @param {number} progress - Progress value 0.0-1.0
-   */
-  update(source, progress) {
-    // Only track sources that have weights (are enabled)
-    if (this.weights[source] === undefined) return
-    this.sources[source] = Math.min(1.0, Math.max(0.0, progress))
-    this._reportProgress()
+  update(source, count) {
+    this.counts[source] = count
+    this._report()
   }
 
-  /**
-   * Mark a source as complete
-   * @param {string} source - Source name
-   */
   complete(source) {
-    // Only track sources that have weights (are enabled)
-    if (this.weights[source] === undefined) return
-    this.sources[source] = 1.0
-    this._reportProgress()
+    this.completed.add(source)
+    this._report()
   }
 
-  /**
-   * Check if all tracked sources are complete
-   * @returns {boolean}
-   */
   isComplete() {
-    return Object.keys(this.weights).every(
-      (source) => this.sources[source] >= 1.0,
+    return (
+      this.expectedSources.size > 0 &&
+      [...this.expectedSources].every((s) => this.completed.has(s))
     )
   }
 
-  /**
-   * Calculate and report combined progress
-   */
-  _reportProgress() {
-    if (!this.onProgress) return
-
-    let combinedProgress = 0
-    for (const [source, weight] of Object.entries(this.weights)) {
-      const sourceProgress = this.sources[source] || 0
-      combinedProgress += sourceProgress * weight
+  _report() {
+    if (!this.onUpdate) return
+    const fullCounts = {}
+    for (const source of this.expectedSources) {
+      fullCounts[source] = this.counts[source] || 0
     }
-
-    this.onProgress({
-      progress: combinedProgress,
-      sources: { ...this.sources },
+    this.onUpdate({
+      counts: fullCounts,
       isComplete: this.isComplete(),
     })
   }
@@ -119,92 +72,188 @@ export class DataLoader {
   }
 
   /**
+   * Fetch only points data and transform to GeoJSON.
+   * Used by ensurePointsLoaded() for lazy-loading point-dependent layers.
+   */
+  async fetchPointsData(startDate, endDate) {
+    const points = await this.api.fetchAllPoints({
+      start_at: startDate,
+      end_at: endDate,
+    })
+    const pointsGeoJSON = pointsToGeoJSON(points)
+    const routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
+      distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
+      timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
+    })
+    return { points, pointsGeoJSON, routesGeoJSON }
+  }
+
+  /**
    * Fetch all map data (points, visits, photos, areas, tracks)
-   * Core data (points, visits, areas, places) loads synchronously.
+   * Core data (points, visits, areas, places) loads incrementally.
    * Heavy data (tracks, photos) loads in background via callbacks.
    *
-   * @param {Object} options.onTracksLoaded - Callback when tracks finish loading
-   * @param {Object} options.onPhotosLoaded - Callback when photos finish loading
+   * @param {string} startDate
+   * @param {string} endDate
+   * @param {Object} callbacks
+   * @param {Function} callbacks.onUpdate - Called with { counts, isComplete }
+   * @param {Function} callbacks.onLayerData - Called with (source, geoJSON) when a source has renderable data
+   * @param {Function} callbacks.onTracksLoaded - Callback when tracks finish loading
+   * @param {Function} callbacks.onPhotosLoaded - Callback when photos finish loading
    */
   async fetchMapData(
     startDate,
     endDate,
-    onProgress,
-    { onTracksLoaded, onPhotosLoaded } = {},
+    { onUpdate, onLayerData, onTracksLoaded, onPhotosLoaded } = {},
   ) {
     const data = {}
 
-    // Create progress tracker for all data sources
-    const progressTracker = onProgress
-      ? new ProgressTracker(onProgress, this.settings)
-      : null
+    const counter = onUpdate ? new LoadingCounter(onUpdate) : null
 
-    // Fetch points (core data - blocks until complete)
+    // Determine whether any layer that depends on points data is enabled
+    const needsPoints =
+      this.settings.pointsVisible !== false ||
+      this.settings.routesVisible !== false ||
+      this.settings.heatmapEnabled ||
+      this.settings.fogEnabled ||
+      this.settings.scratchEnabled
+
+    // Register core sources that will be fetched so the badge shows them immediately.
+    // Tracks and photos load in the background after fetchMapData returns,
+    // so they are not tracked here — the badge completes with core data.
+    if (counter) {
+      if (needsPoints) counter.expect("points")
+      if (this.settings.visitsEnabled) counter.expect("visits")
+      if (this.settings.placesEnabled) counter.expect("places")
+      if (this.settings.areasEnabled) counter.expect("areas")
+    }
+
+    // Start ALL core fetches in parallel for better progress granularity.
     performanceMonitor.mark("fetch-points")
-    data.points = await this.api.fetchAllPoints({
-      start_at: startDate,
-      end_at: endDate,
-      onProgress: progressTracker
-        ? ({ progress }) => progressTracker.update("points", progress)
-        : null,
-    })
-    performanceMonitor.measure("fetch-points")
-
-    // Transform points to GeoJSON
-    performanceMonitor.mark("transform-geojson")
-    data.pointsGeoJSON = pointsToGeoJSON(data.points)
-    data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
-      distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
-      timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
-    })
-    performanceMonitor.measure("transform-geojson")
-
-    // Fetch visits, areas, places in parallel with progress tracking
-    const [visits, areas, places] = await Promise.all([
-      this.api
-        .fetchVisits({
+    const pointsPromise = needsPoints
+      ? this.api.fetchAllPoints({
           start_at: startDate,
           end_at: endDate,
-          onProgress: progressTracker
-            ? ({ progress }) => progressTracker.update("visits", progress)
+          onProgress: counter
+            ? ({ loaded }) => counter.update("points", loaded)
+            : null,
+          onBatch: onLayerData
+            ? (accumulatedPoints) => {
+                const geoJSON = pointsToGeoJSON(accumulatedPoints)
+                onLayerData("points", geoJSON)
+                onLayerData("heatmap", geoJSON)
+                if (counter) counter.update("points", accumulatedPoints.length)
+              }
             : null,
         })
-        .then((result) => {
-          if (progressTracker) progressTracker.complete("visits")
-          return result
-        })
-        .catch((error) => {
-          console.warn("Failed to fetch visits:", error)
-          if (progressTracker) progressTracker.complete("visits")
-          return []
-        }),
-      this.api
-        .fetchAreas()
-        .then((result) => {
-          if (progressTracker) progressTracker.complete("areas")
-          return result
-        })
-        .catch((error) => {
-          console.warn("Failed to fetch areas:", error)
-          if (progressTracker) progressTracker.complete("areas")
-          return []
-        }),
-      this.api
-        .fetchPlaces({
-          onProgress: progressTracker
-            ? ({ progress }) => progressTracker.update("places", progress)
-            : null,
-        })
-        .then((result) => {
-          if (progressTracker) progressTracker.complete("places")
-          return result
-        })
-        .catch((error) => {
-          console.warn("Failed to fetch places:", error)
-          if (progressTracker) progressTracker.complete("places")
-          return []
-        }),
+      : Promise.resolve([])
+
+    const visitsPromise = this.settings.visitsEnabled
+      ? this.api
+          .fetchVisits({
+            start_at: startDate,
+            end_at: endDate,
+          })
+          .then((result) => {
+            if (counter) {
+              counter.update("visits", result.length)
+              counter.complete("visits")
+            }
+            if (onLayerData) {
+              onLayerData("visits", this.visitsToGeoJSON(result))
+            }
+            return result
+          })
+          .catch((error) => {
+            console.warn("Failed to fetch visits:", error)
+            if (counter) counter.complete("visits")
+            return []
+          })
+      : Promise.resolve([])
+
+    const areasPromise = this.settings.areasEnabled
+      ? this.api
+          .fetchAreas()
+          .then((result) => {
+            if (counter) {
+              counter.update("areas", result.length)
+              counter.complete("areas")
+            }
+            if (onLayerData) {
+              onLayerData("areas", this.areasToGeoJSON(result))
+            }
+            return result
+          })
+          .catch((error) => {
+            console.warn("Failed to fetch areas:", error)
+            if (counter) counter.complete("areas")
+            return []
+          })
+      : Promise.resolve([])
+
+    const placesPromise = this.settings.placesEnabled
+      ? this.api
+          .fetchPlaces()
+          .then((result) => {
+            if (counter) {
+              counter.update("places", result.length)
+              counter.complete("places")
+            }
+            if (onLayerData) {
+              onLayerData("places", this.placesToGeoJSON(result))
+            }
+            return result
+          })
+          .catch((error) => {
+            console.warn("Failed to fetch places:", error)
+            if (counter) counter.complete("places")
+            return []
+          })
+      : Promise.resolve([])
+
+    // Wait for all core data
+    const [points, visits, areas, places] = await Promise.all([
+      pointsPromise,
+      visitsPromise,
+      areasPromise,
+      placesPromise,
     ])
+    performanceMonitor.measure("fetch-points")
+
+    const emptyGeoJSON = { type: "FeatureCollection", features: [] }
+
+    if (needsPoints) {
+      // Mark points complete
+      if (counter) {
+        counter.update("points", points.length)
+        counter.complete("points")
+      }
+
+      // Transform points to GeoJSON
+      performanceMonitor.mark("transform-geojson")
+      data.points = points
+      data.pointsGeoJSON = pointsToGeoJSON(data.points)
+      data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
+        distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
+        timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
+      })
+      performanceMonitor.measure("transform-geojson")
+
+      // Update routes layer now that all points are available
+      if (onLayerData) {
+        onLayerData("routes", data.routesGeoJSON)
+        // Final points/heatmap update with complete dataset
+        onLayerData("points", data.pointsGeoJSON)
+        onLayerData("heatmap", data.pointsGeoJSON)
+        // Fog and scratch need all points — update once
+        onLayerData("fog", data.pointsGeoJSON)
+        onLayerData("scratch", data.pointsGeoJSON)
+      }
+    } else {
+      data.points = []
+      data.pointsGeoJSON = emptyGeoJSON
+      data.routesGeoJSON = emptyGeoJSON
+    }
 
     data.visits = visits
     data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
@@ -219,24 +268,24 @@ export class DataLoader {
     data.tracksGeoJSON = { type: "FeatureCollection", features: [] }
 
     // Start background loading of heavy data (tracks, photos)
-    // These don't block the map from unlocking
 
     // Background: Fetch tracks
     if (this.settings.tracksEnabled && onTracksLoaded) {
       console.log("[Tracks] Starting background fetch...")
       this.api
-        .fetchTracks({ start_at: startDate, end_at: endDate })
+        .fetchTracks({
+          start_at: startDate,
+          end_at: endDate,
+        })
         .then((tracksGeoJSON) => {
           console.log(
             `[Tracks] Background fetch complete: ${tracksGeoJSON.features.length} tracks`,
           )
-          if (progressTracker) progressTracker.complete("tracks")
           data.tracksGeoJSON = tracksGeoJSON
           onTracksLoaded(tracksGeoJSON)
         })
         .catch((error) => {
           console.warn("[Tracks] Background fetch failed:", error.message)
-          if (progressTracker) progressTracker.complete("tracks")
         })
     }
 
@@ -256,14 +305,12 @@ export class DataLoader {
           console.log(
             `[Photos] Background fetch complete: ${photos.length} photos`,
           )
-          if (progressTracker) progressTracker.complete("photos")
           data.photos = photos
           data.photosGeoJSON = this.photosToGeoJSON(photos)
           onPhotosLoaded(data.photosGeoJSON)
         })
         .catch((error) => {
           console.warn("[Photos] Background fetch failed:", error.message)
-          if (progressTracker) progressTracker.complete("photos")
         })
     }
 

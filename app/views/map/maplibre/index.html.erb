@@ -15,10 +15,10 @@
   <!-- Map container takes full width and height -->
   <div data-maps--maplibre-target="container" class="maps-maplibre-container" style="width: 100%; height: 100%;"></div>
 
-  <!-- Connection indicator -->
-  <div class="connection-indicator disconnected">
-    <span class="indicator-dot"></span>
-    <span class="indicator-text"></span>
+  <!-- Loading progress badge -->
+  <div data-maps--maplibre-target="progressBadge" class="map-progress-badge">
+    <span class="map-progress-badge-dot"></span>
+    <span data-maps--maplibre-target="progressBadgeText">Loading...</span>
   </div>
 
   <!-- Settings button (top-left corner) -->
@@ -29,14 +29,6 @@
       <%= icon 'square-pen' %>
       <span class="ml-1">Settings</span>
     </button>
-  </div>
-
-  <!-- Non-blocking progress bar -->
-  <div data-maps--maplibre-target="progressBar" class="map-progress-bar hidden">
-    <div data-maps--maplibre-target="progressFill" class="map-progress-fill"></div>
-  </div>
-  <div data-maps--maplibre-target="progressText" class="map-progress-text hidden">
-    Loading... 0%
   </div>
 
   <!-- Settings panel -->
