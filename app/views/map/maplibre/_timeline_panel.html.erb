@@ -1,0 +1,102 @@
+<%# Timeline Panel - Bottom scrubber for navigating through location data by time %>
+<div class="timeline-panel hidden" data-maps--maplibre-target="timelinePanel">
+  <%# Close button %>
+  <button type="button"
+          class="timeline-close"
+          data-action="click->maps--maplibre#toggleTimeline"
+          title="Close timeline">
+    &times;
+  </button>
+
+  <%# Controls row: Day nav | Time display | Replay + Cycle controls %>
+  <div class="timeline-controls-row">
+    <%# Left: Day navigation %>
+    <div class="timeline-day-nav">
+      <button type="button"
+              data-action="click->maps--maplibre#timelinePrevDay"
+              data-maps--maplibre-target="timelinePrevDayButton"
+              title="Previous day">
+        &larr;
+      </button>
+      <div class="timeline-day-info">
+        <span class="timeline-day-display" data-maps--maplibre-target="timelineDayDisplay">
+          No data loaded
+        </span>
+        <span class="timeline-day-count" data-maps--maplibre-target="timelineDayCount"></span>
+      </div>
+      <button type="button"
+              data-action="click->maps--maplibre#timelineNextDay"
+              data-maps--maplibre-target="timelineNextDayButton"
+              title="Next day">
+        &rarr;
+      </button>
+    </div>
+
+    <%# Center: Time display %>
+    <div class="timeline-time-block">
+      <span class="timeline-time-display" data-maps--maplibre-target="timelineTimeDisplay">
+        --:--
+      </span>
+      <span class="timeline-speed-display" data-maps--maplibre-target="timelineSpeedDisplay">
+      </span>
+      <span class="timeline-data-indicator hidden" data-maps--maplibre-target="timelineDataIndicator">
+        No data
+      </span>
+    </div>
+
+    <%# Right: Replay controls + Cycle controls %>
+    <div class="timeline-action-controls">
+      <button type="button"
+              class="timeline-play-btn"
+              data-maps--maplibre-target="timelinePlayButton"
+              data-action="click->maps--maplibre#timelineToggleReplay"
+              title="Play/Pause">
+        <span class="play-icon" data-maps--maplibre-target="timelinePlayIcon">&#9658;</span>
+        <span class="pause-icon hidden" data-maps--maplibre-target="timelinePauseIcon">&#10074;&#10074;</span>
+      </button>
+      <div class="timeline-speed-control">
+        <input type="range"
+               class="timeline-speed-slider"
+               min="1"
+               max="4"
+               value="2"
+               step="1"
+               data-maps--maplibre-target="timelineSpeedSlider"
+               data-action="input->maps--maplibre#timelineSpeedChange"
+               title="Replay speed">
+        <span class="timeline-speed-label" data-maps--maplibre-target="timelineSpeedLabel">2x</span>
+      </div>
+      <div class="timeline-cycle-controls hidden" data-maps--maplibre-target="timelineCycleControls">
+        <button type="button"
+                data-action="click->maps--maplibre#timelineCyclePrev"
+                title="Previous point">
+          &larr;
+        </button>
+        <span class="timeline-point-counter" data-maps--maplibre-target="timelinePointCounter">
+          Point 1 of 1
+        </span>
+        <button type="button"
+                data-action="click->maps--maplibre#timelineCycleNext"
+                title="Next point">
+          &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <%# Scrubber with data density visualization %>
+  <div class="timeline-scrubber-wrapper">
+    <span class="timeline-time-label">00:00</span>
+    <div class="timeline-scrubber-track" data-maps--maplibre-target="timelineScrubberTrack">
+      <div class="timeline-density-container" data-maps--maplibre-target="timelineDensityContainer"></div>
+      <input type="range"
+             class="timeline-scrubber"
+             min="0"
+             max="1439"
+             value="720"
+             data-maps--maplibre-target="timelineScrubber"
+             data-action="input->maps--maplibre#timelineScrubberHover">
+    </div>
+    <span class="timeline-time-label">23:59</span>
+  </div>
+</div>

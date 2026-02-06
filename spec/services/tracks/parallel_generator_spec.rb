@@ -132,16 +132,15 @@ RSpec.describe Tracks::ParallelGenerator do
       end
 
       context 'daily mode' do
-        let(:options) { { mode: :daily, start_at: 1.day.ago.beginning_of_day } }
+        let(:options) { { mode: :daily, start_at: 1.day.ago.beginning_of_day, end_at: Time.current } }
 
-        it 'preserves existing tracks' do
+        it 'cleans overlapping tracks in the time range' do
           expect(user.tracks.count).to eq(2)
 
           generator.call
 
-          # Daily mode should preserve all existing tracks
-          remaining_tracks = user.tracks.count
-          expect(remaining_tracks).to eq(2)
+          # Daily mode now cleans overlapping tracks to prevent duplicates
+          expect(user.tracks.count).to eq(0)
         end
       end
 

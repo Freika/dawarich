@@ -10,7 +10,8 @@ class Api::SlimPointSerializer
       id:        point.id,
       latitude:  point.lat.to_s,
       longitude: point.lon.to_s,
-      timestamp: point.timestamp
+      timestamp: point.timestamp,
+      velocity:  point.velocity
     }
   end
 

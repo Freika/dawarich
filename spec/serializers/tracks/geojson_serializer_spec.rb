@@ -26,7 +26,7 @@ RSpec.describe Tracks::GeojsonSerializer do
       expect(feature[:geometry][:type]).to eq('LineString')
       expect(feature[:properties]).to include(
         id: track.id,
-        color: '#ff0000',
+        color: '#6366F1',
         start_at: track.start_at.iso8601,
         end_at: track.end_at.iso8601,
         distance: track.distance.to_i,

@@ -74,6 +74,9 @@
         "rules": {
           "suspicious": {
             "noUnknownAtRules": "off"
+          },
+          "correctness": {
+            "noInvalidPositionAtImportRule": "off"
           }
         }
       }
