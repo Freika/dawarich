@@ -145,13 +145,17 @@ class Tracks::GeojsonSerializer
     segments = track.track_segments.to_a.sort_by(&:start_index)
     return [] if segments.empty?
 
-    current_time = track.start_at
+    track_start = track.start_at.to_f
+    track_end = track.end_at.to_f
+    total_points = segments.last.end_index + 1
+    time_span = track_end - track_start
+
     segments.map do |segment|
-      start_ts = current_time.to_i
-      current_time += (segment.duration || 0).seconds
+      seg_start = track_start + (segment.start_index.to_f / total_points) * time_span
+      seg_end = track_start + ((segment.end_index + 1).to_f / total_points) * time_span
       {
-        start_time: start_ts,
-        end_time: current_time.to_i,
+        start_time: seg_start.to_i,
+        end_time: seg_end.to_i,
         emoji: emoji_for_mode(segment.transportation_mode)
       }
     end

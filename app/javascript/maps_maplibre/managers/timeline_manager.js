@@ -436,6 +436,15 @@ export class TimelineManager {
                 return seg.emoji || null
               }
             }
+
+            // Nearest-segment fallback: find last segment whose start_time <= pointTime
+            let nearest = null
+            for (const seg of modeTimeline) {
+              if (seg.start_time <= pointTimeSec) {
+                nearest = seg
+              }
+            }
+            if (nearest?.emoji) return nearest.emoji
           }
 
           // Fall back to track-level dominant mode

@@ -1,15 +1,17 @@
+import maplibregl from "maplibre-gl"
 import { BaseLayer } from "./base_layer"
 
 /**
  * Timeline marker layer for displaying a pulsing marker at timeline position
  * Supports both circle markers (default) and transportation mode emojis
+ * Uses an HTML marker for emoji rendering (MapLibre SDF fonts can't render emoji)
  * Uses orange color to distinguish from recent point (red)
  */
 export class TimelineMarkerLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "timeline-marker", visible: false, ...options })
-    this._markerMode = "circle" // 'circle' or 'emoji'
     this._currentEmoji = null
+    this._htmlMarker = null
   }
 
   getSourceConfig() {
@@ -35,7 +37,7 @@ export class TimelineMarkerLayer extends BaseLayer {
           "circle-opacity": 0.3,
         },
       },
-      // Main point circle (hidden when showing emoji)
+      // Main point circle (visible when no emoji)
       {
         id: this.id,
         type: "circle",
@@ -47,72 +49,7 @@ export class TimelineMarkerLayer extends BaseLayer {
           "circle-stroke-color": "#ffffff",
         },
       },
-      // Emoji symbol layer (hidden when showing circle)
-      {
-        id: `${this.id}-emoji`,
-        type: "symbol",
-        source: this.sourceId,
-        layout: {
-          "text-field": ["get", "emoji"],
-          "text-size": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            0,
-            16,
-            10,
-            24,
-            20,
-            40,
-          ],
-          "text-allow-overlap": true,
-          "text-ignore-placement": true,
-          visibility: "none",
-        },
-        paint: {
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 2,
-        },
-      },
     ]
-  }
-
-  /**
-   * Set marker display mode
-   * @param {string} mode - 'circle' or 'emoji'
-   * @param {boolean} force - Force update even if mode hasn't changed
-   * @private
-   */
-  _setMarkerMode(mode, force = false) {
-    if (this._markerMode === mode && !force) return
-    this._markerMode = mode
-
-    if (!this.map) return
-
-    const circleLayerId = this.id
-    const emojiLayerId = `${this.id}-emoji`
-
-    try {
-      if (mode === "emoji") {
-        // Hide circle, show emoji
-        if (this.map.getLayer(circleLayerId)) {
-          this.map.setLayoutProperty(circleLayerId, "visibility", "none")
-        }
-        if (this.map.getLayer(emojiLayerId)) {
-          this.map.setLayoutProperty(emojiLayerId, "visibility", "visible")
-        }
-      } else {
-        // Show circle, hide emoji
-        if (this.map.getLayer(circleLayerId)) {
-          this.map.setLayoutProperty(circleLayerId, "visibility", "visible")
-        }
-        if (this.map.getLayer(emojiLayerId)) {
-          this.map.setLayoutProperty(emojiLayerId, "visibility", "none")
-        }
-      }
-    } catch (_e) {
-      // Layer might not exist yet, ignore
-    }
   }
 
   /**
@@ -122,7 +59,6 @@ export class TimelineMarkerLayer extends BaseLayer {
    * @param {Object} properties - Additional point properties (including emoji)
    */
   showMarker(lon, lat, properties = {}) {
-    // Validate coordinates
     if (
       lon === undefined ||
       lat === undefined ||
@@ -133,15 +69,8 @@ export class TimelineMarkerLayer extends BaseLayer {
       return
     }
 
-    // Determine marker mode based on emoji presence
     const emoji = properties.emoji
     const hasEmoji = emoji && typeof emoji === "string" && emoji.trim() !== ""
-
-    // Store emoji in properties for the symbol layer
-    const featureProperties = { ...properties }
-    if (hasEmoji) {
-      featureProperties.emoji = emoji
-    }
 
     const data = {
       type: "FeatureCollection",
@@ -152,14 +81,23 @@ export class TimelineMarkerLayer extends BaseLayer {
             type: "Point",
             coordinates: [lon, lat],
           },
-          properties: featureProperties,
+          properties: properties,
         },
       ],
     }
 
     this.update(data)
-    this._setMarkerMode(hasEmoji ? "emoji" : "circle")
     this._currentEmoji = hasEmoji ? emoji : null
+
+    // Update HTML emoji marker
+    if (hasEmoji) {
+      this._showEmojiMarker(lon, lat, emoji)
+      this._hideCircleLayer()
+    } else {
+      this._removeEmojiMarker()
+      this._showCircleLayer()
+    }
+
     this.show()
   }
 
@@ -175,6 +113,7 @@ export class TimelineMarkerLayer extends BaseLayer {
    * Hide the marker
    */
   hideMarker() {
+    this._removeEmojiMarker()
     this.hide()
   }
 
@@ -187,15 +126,68 @@ export class TimelineMarkerLayer extends BaseLayer {
       features: [],
     })
     this._currentEmoji = null
+    this._removeEmojiMarker()
     this.hide()
   }
 
   /**
-   * Override show to ensure correct layer visibility
+   * Show or update the HTML emoji marker
+   * @private
    */
-  show() {
-    super.show()
-    // Re-apply marker mode when showing (force update to ensure correct visibility)
-    this._setMarkerMode(this._markerMode, true)
+  _showEmojiMarker(lon, lat, emoji) {
+    if (this._htmlMarker) {
+      // Update position and emoji
+      this._htmlMarker.setLngLat([lon, lat])
+      this._htmlMarker.getElement().textContent = emoji
+    } else {
+      const el = document.createElement("div")
+      el.className = "timeline-emoji-marker"
+      el.textContent = emoji
+      this._htmlMarker = new maplibregl.Marker({
+        element: el,
+        anchor: "center",
+      })
+        .setLngLat([lon, lat])
+        .addTo(this.map)
+    }
+  }
+
+  /**
+   * Remove the HTML emoji marker
+   * @private
+   */
+  _removeEmojiMarker() {
+    if (this._htmlMarker) {
+      this._htmlMarker.remove()
+      this._htmlMarker = null
+    }
+  }
+
+  /**
+   * Hide the inner circle layer (when showing emoji)
+   * @private
+   */
+  _hideCircleLayer() {
+    try {
+      if (this.map?.getLayer(this.id)) {
+        this.map.setLayoutProperty(this.id, "visibility", "none")
+      }
+    } catch (_e) {
+      // Layer might not exist yet
+    }
+  }
+
+  /**
+   * Show the inner circle layer (when no emoji)
+   * @private
+   */
+  _showCircleLayer() {
+    try {
+      if (this.map?.getLayer(this.id)) {
+        this.map.setLayoutProperty(this.id, "visibility", "visible")
+      }
+    } catch (_e) {
+      // Layer might not exist yet
+    }
   }
 }

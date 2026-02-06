@@ -382,6 +382,16 @@
   box-shadow: 0 0 12px oklch(var(--p) / 0.7);
 }
 
+/* Timeline emoji marker (HTML overlay on map) */
+.timeline-emoji-marker {
+  font-size: 28px;
+  line-height: 1;
+  text-align: center;
+  cursor: default;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+  pointer-events: none;
+}
+
 /* Close button */
 .timeline-close {
   position: absolute;

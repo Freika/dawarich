@@ -962,6 +962,63 @@ export default class extends Controller {
   }
 
   /**
+   * Replay a specific track from its start time (triggered from track info card)
+   */
+  replayTrack(event) {
+    if (!this.hasTimelinePanelTarget) return
+
+    // If replay is already active, pause it
+    if (this.timelineReplayActive) {
+      this._stopTimelineReplay()
+      return
+    }
+
+    // If timeline is already visible and initialized, resume from current position
+    const isVisible = !this.timelinePanelTarget.classList.contains("hidden")
+    if (isVisible && this.timelineManager?.hasData()) {
+      this._startTimelineReplay()
+      this._updateTrackReplayButton(true)
+      return
+    }
+
+    const trackStart = event.currentTarget.dataset.trackStart
+    if (!trackStart) return
+
+    const trackDate = new Date(trackStart)
+    if (Number.isNaN(trackDate.getTime())) return
+
+    // First time: initialize timeline and navigate to the track's day
+    this._initializeTimeline()
+    this.timelinePanelTarget.classList.remove("hidden")
+
+    if (!this.timelineManager?.hasData()) return
+
+    // Navigate to the day matching the track's start
+    const targetDay = `${trackDate.getFullYear()}-${String(trackDate.getMonth() + 1).padStart(2, "0")}-${String(trackDate.getDate()).padStart(2, "0")}`
+    const dayIndex = this.timelineManager.availableDays.indexOf(targetDay)
+
+    if (dayIndex >= 0 && dayIndex !== this.timelineManager.currentDayIndex) {
+      this.timelineManager.currentDayIndex = dayIndex
+      this.timelineManager.buildMinuteIndex()
+      this._updateTimelineDayDisplay()
+      this._updateTimelineDayCount()
+      this._updateTimelineDayButtons()
+      this._renderTimelineDensity()
+    }
+
+    // Set scrubber to the track's start minute
+    const startMinute = trackDate.getHours() * 60 + trackDate.getMinutes()
+    if (this.hasTimelineScrubberTarget) {
+      this.timelineScrubberTarget.value = startMinute
+      this._handleTimelineMinuteChange(startMinute)
+    }
+
+    // Start replay and update card button to Pause
+    this._startTimelineReplay()
+    this._updateTrackReplayButton(true)
+  }
+
+  /**
    * Initialize timeline with currently loaded points
    * @private
    */
@@ -1145,12 +1202,6 @@ export default class extends Controller {
     this.timelineReplayNextCoords = nextPoint
       ? this.timelineManager.getCoordinates(nextPoint)
       : this.timelineReplayCurrentCoords
-
-    // Update emoji for the new point
-    const tracksGeoJSON = this.mapDataManager?.lastLoadedData?.tracksGeoJSON
-    this.timelineReplayCurrentEmoji = currentPoint
-      ? TimelineManager.findTransportationEmoji(currentPoint, tracksGeoJSON)
-      : null
 
     // Reset timing so interpolation starts fresh from this point
     this.timelineReplayLastTime = performance.now()
@@ -1531,6 +1582,31 @@ export default class extends Controller {
     if (this.hasTimelinePauseIconTarget) {
       this.timelinePauseIconTarget.classList.add("hidden")
     }
+
+    // Also reset the track card replay button
+    this._updateTrackReplayButton(false)
+  }
+
+  /**
+   * Update the Replay/Pause button in the track info card
+   * @param {boolean} playing - Whether replay is active
+   * @private
+   */
+  _updateTrackReplayButton(playing) {
+    const playIcon = document.getElementById("track-replay-play-icon")
+    const pauseIcon = document.getElementById("track-replay-pause-icon")
+    const label = document.getElementById("track-replay-label")
+    if (!playIcon || !pauseIcon || !label) return
+
+    if (playing) {
+      playIcon.classList.add("hidden")
+      pauseIcon.classList.remove("hidden")
+      label.textContent = "Pause"
+    } else {
+      playIcon.classList.remove("hidden")
+      pauseIcon.classList.add("hidden")
+      label.textContent = "Replay"
+    }
   }
 
   /**
@@ -1623,13 +1699,6 @@ export default class extends Controller {
         ? this.timelineManager.getCoordinates(nextPoint)
         : this.timelineReplayCurrentCoords
 
-      // Update transportation emoji for current point
-      const tracksGeoJSON = this.mapDataManager?.lastLoadedData?.tracksGeoJSON
-      this.timelineReplayCurrentEmoji = TimelineManager.findTransportationEmoji(
-        currentPoint,
-        tracksGeoJSON,
-      )
-
       // Update speed display for current point
       this._updateTimelineSpeedDisplay(this._getPointVelocity(currentPoint))
 
@@ -1704,10 +1773,7 @@ export default class extends Controller {
 
     const timelineMarkerLayer = this.layerManager?.getLayer("timelineMarker")
     if (timelineMarkerLayer) {
-      // Use the stored emoji from the current replay point
-      timelineMarkerLayer.showMarker(lon, lat, {
-        emoji: this.timelineReplayCurrentEmoji || "",
-      })
+      timelineMarkerLayer.showMarker(lon, lat)
     }
   }
 
@@ -1724,8 +1790,6 @@ export default class extends Controller {
     this.timelineReplayAnimationId = null
     this.timelineReplayCurrentCoords = null
     this.timelineReplayNextCoords = null
-    this.timelineReplayCurrentEmoji = null
-
     // Set initial speed label
     if (this.hasTimelineSpeedLabelTarget) {
       this.timelineSpeedLabelTarget.textContent = "2x"
@@ -1745,19 +1809,8 @@ export default class extends Controller {
 
     const timelineMarkerLayer = this.layerManager?.getLayer("timelineMarker")
     if (timelineMarkerLayer) {
-      // Look up transportation mode emoji from tracks data
-      const tracksGeoJSON = this.mapDataManager?.lastLoadedData?.tracksGeoJSON
-      const emoji = TimelineManager.findTransportationEmoji(
-        point,
-        tracksGeoJSON,
-      )
-
-      // Store current emoji for replay interpolation
-      this.timelineReplayCurrentEmoji = emoji
-
       timelineMarkerLayer.showMarker(coords.lon, coords.lat, {
         timestamp: this.timelineManager._getTimestamp(point),
-        emoji: emoji || "",
       })
     }
   }
