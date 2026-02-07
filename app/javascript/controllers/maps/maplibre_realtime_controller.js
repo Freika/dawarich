@@ -1,7 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { createMapChannel } from "maps_maplibre/channels/map_channel"
 import { Toast } from "maps_maplibre/components/toast"
-import { WebSocketManager } from "maps_maplibre/utils/websocket_manager"
 
 /**
  * Real-time controller
@@ -213,7 +212,7 @@ export default class extends Controller {
         coordinates: [parseFloat(lon), parseFloat(lat)],
       },
       properties: {
-        id: parseInt(id),
+        id: parseInt(id, 10),
         latitude: parseFloat(lat),
         longitude: parseFloat(lon),
         battery: parseFloat(battery) || null,
@@ -234,7 +233,7 @@ export default class extends Controller {
 
     // Update recent point marker (always visible in live mode)
     this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
-      id: parseInt(id),
+      id: parseInt(id, 10),
       battery: parseFloat(battery) || null,
       altitude: parseFloat(altitude) || null,
       timestamp: timestamp,
