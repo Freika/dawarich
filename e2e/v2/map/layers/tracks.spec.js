@@ -351,7 +351,7 @@ test.describe("Tracks Layer", () => {
         { timeout: 20000 },
       )
 
-      const tracksData = await page.evaluate(() => {
+      const tracksData = await page.evaluate(async () => {
         const element = document.querySelector(
           '[data-controller*="maps--maplibre"]',
         )
@@ -367,7 +367,7 @@ test.describe("Tracks Layer", () => {
         const source = controller.map.getSource("tracks-source")
         if (!source) return { hasSource: false, featureCount: 0, features: [] }
 
-        const data = source._data
+        const data = await source.getData()
         return {
           hasSource: true,
           featureCount: data?.features?.length || 0,
@@ -395,7 +395,7 @@ test.describe("Tracks Layer", () => {
       await tracksToggle.check()
       await page.waitForTimeout(1000)
 
-      const tracksData = await page.evaluate(() => {
+      const tracksData = await page.evaluate(async () => {
         const element = document.querySelector(
           '[data-controller*="maps--maplibre"]',
         )
@@ -409,7 +409,7 @@ test.describe("Tracks Layer", () => {
         if (!controller?.map) return { features: [] }
 
         const source = controller.map.getSource("tracks-source")
-        const data = source?._data
+        const data = source ? await source.getData() : undefined
         return { features: data?.features || [] }
       })
 
@@ -437,7 +437,7 @@ test.describe("Tracks Layer", () => {
       await tracksToggle.check()
       await page.waitForTimeout(1000)
 
-      const tracksData = await page.evaluate(() => {
+      const tracksData = await page.evaluate(async () => {
         const element = document.querySelector(
           '[data-controller*="maps--maplibre"]',
         )
@@ -451,7 +451,7 @@ test.describe("Tracks Layer", () => {
         if (!controller?.map) return { features: [] }
 
         const source = controller.map.getSource("tracks-source")
-        const data = source?._data
+        const data = source ? await source.getData() : undefined
         return { features: data?.features || [] }
       })
 
@@ -479,7 +479,7 @@ test.describe("Tracks Layer", () => {
       await tracksToggle.check()
       await page.waitForTimeout(1000)
 
-      const tracksData = await page.evaluate(() => {
+      const tracksData = await page.evaluate(async () => {
         const element = document.querySelector(
           '[data-controller*="maps--maplibre"]',
         )
@@ -493,7 +493,7 @@ test.describe("Tracks Layer", () => {
         if (!controller?.map) return { features: [] }
 
         const source = controller.map.getSource("tracks-source")
-        const data = source?._data
+        const data = source ? await source.getData() : undefined
         return { features: data?.features || [] }
       })
 
