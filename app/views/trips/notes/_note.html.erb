@@ -1,0 +1,36 @@
+<turbo-frame id="note-<%= trip.id %>-<%= note.date %>">
+  <div data-note-display="<%= note.date %>">
+    <div class="prose prose-sm max-w-none mb-3">
+      <%= note.body %>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn btn-xs btn-ghost"
+              data-action="click->trip-maplibre#showNoteForm"
+              data-date="<%= note.date %>">
+        Edit
+      </button>
+      <%= button_to "Delete",
+          trip_note_path(trip, note),
+          method: :delete,
+          class: "btn btn-xs btn-ghost text-error",
+          data: { turbo_confirm: "Delete this note?" } %>
+    </div>
+  </div>
+
+  <div data-note-form="<%= note.date %>" class="hidden">
+    <%= form_with url: trip_note_path(trip, note), method: :patch, class: "space-y-3" do %>
+      <input type="hidden" name="note[date]" value="<%= note.date %>">
+      <div>
+        <textarea name="note[body]"
+                  class="textarea textarea-bordered w-full min-h-[100px]"
+                  placeholder="Write your notes for this day..."><%= note.body.to_plain_text %></textarea>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">Update note</button>
+        <button type="button" class="btn btn-ghost btn-sm"
+                data-action="click->trip-maplibre#hideNoteForm"
+                data-date="<%= note.date %>">Cancel</button>
+      </div>
+    <% end %>
+  </div>
+</turbo-frame>

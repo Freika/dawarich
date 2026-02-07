@@ -62,7 +62,9 @@ Rails.application.routes.draw do
   resources :visits, only: %i[index update]
   resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
-  resources :trips
+  resources :trips do
+    resources :notes, controller: 'trips/notes', only: %i[create update destroy]
+  end
   resources :tags, except: [:show]
 
   # Family management routes (only if feature is enabled)
@@ -216,6 +218,8 @@ Rails.application.routes.draw do
       namespace :families do
         resources :locations, only: [:index]
       end
+
+      resources :notes, only: %i[index show create update destroy]
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
     end
