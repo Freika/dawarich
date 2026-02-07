@@ -66,16 +66,16 @@
           <%= icon 'clock' %>
           <span class="hidden sm:inline">Replay</span>
         </button>
-      </div>
 
-      <%# Accordion days %>
-      <div data-trip-maplibre-target="daysAccordion" class="space-y-1 mb-6">
-        <%# "Show all days" button %>
-        <button class="btn btn-sm btn-primary mb-2"
+        <button class="btn btn-sm btn-outline gap-1"
                 data-trip-maplibre-target="expandAllBtn"
                 data-action="click->trip-maplibre#expandAllDays">
           Show all days
         </button>
+      </div>
+
+      <%# Accordion days %>
+      <div data-trip-maplibre-target="daysAccordion" class="space-y-1 mb-6">
 
         <% (@trip.started_at.to_date..@trip.ended_at.to_date).each do |date| %>
           <% day_key = date.strftime('%Y-%m-%d') %>
