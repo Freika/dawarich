@@ -11,7 +11,7 @@ class Settings::Update
 
   def call
     existing_settings = user.safe_settings.settings
-    updated_settings = existing_settings.merge(settings_params)
+    updated_settings = existing_settings.merge(cast_boolean_params(settings_params))
 
     immich_changed = settings_changed?(existing_settings, updated_settings, %w[immich_url immich_api_key])
     photoprism_changed = settings_changed?(existing_settings, updated_settings, %w[photoprism_url photoprism_api_key])
@@ -35,6 +35,16 @@ class Settings::Update
   end
 
   private
+
+  BOOLEAN_KEYS = %w[immich_skip_ssl_verification photoprism_skip_ssl_verification].freeze
+
+  def cast_boolean_params(params)
+    params.to_h.tap do |h|
+      BOOLEAN_KEYS.each do |key|
+        h[key] = ActiveModel::Type::Boolean.new.cast(h[key]) if h.key?(key)
+      end
+    end
+  end
 
   def settings_changed?(existing_settings, updated_settings, keys)
     keys.any? { |key| existing_settings[key] != updated_settings[key] }

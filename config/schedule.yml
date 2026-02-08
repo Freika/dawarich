@@ -50,6 +50,11 @@ nightly_family_invitations_cleanup_job:
   class: "Family::Invitations::CleanupJob"
   queue: families
 
+stale_jobs_recovery_job:
+  cron: "*/30 * * * *" # every 30 minutes
+  class: "StaleJobsRecoveryJob"
+  queue: exports
+
 rails_pulse_summary_job:
   cron: "5 * * * *" # every hour at 5 minutes past the hour
   class: "RailsPulse::SummaryJob"

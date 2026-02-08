@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RailsPulse.configure do |config|
   # ====================================================================================================
   #                                         GLOBAL CONFIGURATION

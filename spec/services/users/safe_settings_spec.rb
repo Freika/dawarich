@@ -48,7 +48,9 @@ RSpec.describe Users::SafeSettings do
               'time_gap_threshold' => 180,
               'min_flight_distance_km' => 100
             },
-            transportation_expert_mode: false
+            transportation_expert_mode: false,
+            min_minutes_spent_in_city: 60,
+            max_gap_minutes_in_city: 120
           }
         )
       end
@@ -97,7 +99,7 @@ RSpec.describe Users::SafeSettings do
             'photoprism_url' => 'https://photoprism.example.com',
             'photoprism_api_key' => 'photoprism-key',
             'photoprism_skip_ssl_verification' => false,
-            'maps' => { 'name' => 'custom', 'url' => 'https://custom.example.com' },
+            'maps' => { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
@@ -121,7 +123,9 @@ RSpec.describe Users::SafeSettings do
               'time_gap_threshold' => 180,
               'min_flight_distance_km' => 100
             },
-            'transportation_expert_mode' => false
+            'transportation_expert_mode' => false,
+            'min_minutes_spent_in_city' => 60,
+            'max_gap_minutes_in_city' => 120
           }
         )
       end
@@ -143,8 +147,8 @@ RSpec.describe Users::SafeSettings do
             immich_api_key: 'immich-key',
             photoprism_url: 'https://photoprism.example.com',
             photoprism_api_key: 'photoprism-key',
-            maps: { 'name' => 'custom', 'url' => 'https://custom.example.com' },
-            distance_unit: nil,
+            maps: { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
+            distance_unit: 'km',
             visits_suggestions_enabled: false,
             speed_color_scale: nil,
             fog_of_war_threshold: nil,
@@ -166,7 +170,9 @@ RSpec.describe Users::SafeSettings do
               'time_gap_threshold' => 180,
               'min_flight_distance_km' => 100
             },
-            transportation_expert_mode: false
+            transportation_expert_mode: false,
+            min_minutes_spent_in_city: 60,
+            max_gap_minutes_in_city: 120
           }
         )
       end
@@ -238,9 +244,38 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.immich_api_key).to eq('immich-key')
         expect(safe_settings.photoprism_url).to eq('https://photoprism.example.com')
         expect(safe_settings.photoprism_api_key).to eq('photoprism-key')
-        expect(safe_settings.maps).to eq({ 'name' => 'custom', 'url' => 'https://custom.example.com' })
+        expect(safe_settings.maps).to eq({ 'distance_unit' => 'km', 'name' => 'custom',
+'url' => 'https://custom.example.com' })
         expect(safe_settings.visits_suggestions_enabled?).to be false
         expect(safe_settings.enabled_map_layers).to eq(['Points', 'Tracks', 'Fog of War', 'Suggested Visits'])
+      end
+    end
+  end
+
+  describe '#distance_unit' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when maps key exists without distance_unit' do
+      let(:settings) { { 'maps' => { 'name' => 'custom' } } }
+
+      it 'falls back to the default distance unit' do
+        expect(safe_settings.distance_unit).to eq('km')
+      end
+    end
+
+    context 'when maps key is explicitly set to nil' do
+      let(:settings) { { 'maps' => nil } }
+
+      it 'falls back to the default distance unit' do
+        expect(safe_settings.distance_unit).to eq('km')
+      end
+    end
+
+    context 'when distance_unit is explicitly set' do
+      let(:settings) { { 'maps' => { 'distance_unit' => 'mi' } } }
+
+      it 'returns the custom distance unit' do
+        expect(safe_settings.distance_unit).to eq('mi')
       end
     end
   end
@@ -337,11 +372,16 @@ RSpec.describe Users::SafeSettings do
         )
       end
 
-      it 'returns custom transportation expert thresholds' do
+      it 'returns custom transportation expert thresholds merged with defaults' do
         expect(safe_settings.transportation_expert_thresholds).to eq(
           {
             'stationary_max_speed' => 2,
-            'train_min_speed' => 100
+            'running_vs_cycling_accel' => 0.25,
+            'cycling_vs_driving_accel' => 0.4,
+            'train_min_speed' => 100,
+            'min_segment_duration' => 60,
+            'time_gap_threshold' => 180,
+            'min_flight_distance_km' => 100
           }
         )
       end

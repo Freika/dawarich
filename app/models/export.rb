@@ -11,6 +11,8 @@ class Export < ApplicationRecord
 
   has_one_attached :file
 
+  before_save :set_processing_started_at, if: :status_changed_to_processing?
+
   after_commit -> { ExportJob.perform_later(id) }, on: :create, unless: -> { user_data? || archive? }
   after_commit -> { remove_attached_file }, on: :destroy
 
@@ -28,6 +30,14 @@ class Export < ApplicationRecord
   end
 
   private
+
+  def set_processing_started_at
+    self.processing_started_at = Time.current
+  end
+
+  def status_changed_to_processing?
+    status_changed? && processing?
+  end
 
   def remove_attached_file
     file.purge_later

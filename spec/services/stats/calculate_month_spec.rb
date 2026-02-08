@@ -98,7 +98,7 @@ RSpec.describe Stats::CalculateMonth do
         let(:timestamp_base) { DateTime.new(year, month, 1, 12).to_i }
         let!(:import) { create(:import, user:) }
 
-        context 'when user spent more than MIN_MINUTES_SPENT_IN_CITY in a city' do
+        context 'when user spent more than min_minutes_spent_in_city in a city' do
           let!(:berlin_points) do
             [
               create(:point, user:, import:, timestamp: timestamp_base,
@@ -124,7 +124,7 @@ RSpec.describe Stats::CalculateMonth do
           end
         end
 
-        context 'when user spent less than MIN_MINUTES_SPENT_IN_CITY in a city' do
+        context 'when user spent less than min_minutes_spent_in_city in a city' do
           let!(:prague_points) do
             [
               create(:point, user:, import:, timestamp: timestamp_base,
@@ -192,7 +192,7 @@ RSpec.describe Stats::CalculateMonth do
             ]
           end
 
-          it 'only includes cities where user spent >= MIN_MINUTES_SPENT_IN_CITY' do
+          it 'only includes cities where user spent >= min_minutes_spent_in_city' do
             calculate_stats
 
             stat = user.stats.last

@@ -15,8 +15,8 @@ RSpec.describe 'Settings::Integrations', type: :request do
       patch '/settings/integrations', params: params
 
       user.reload
-      expect(user.settings['immich_skip_ssl_verification']).to eq('1')
-      expect(user.settings['photoprism_skip_ssl_verification']).to eq('1')
+      expect(user.settings['immich_skip_ssl_verification']).to eq(true)
+      expect(user.settings['photoprism_skip_ssl_verification']).to eq(true)
     end
 
     it 'refreshes cached photos when requested' do

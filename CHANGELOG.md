@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [1.1.0] - Unreleased
+
+The Timeline Release
+
+In Map V2 Tools, user can now enable Timeline tool, which allows to quickly navigate through time and see how their location changed throughout the day. It can also be used to replay a trip by clicking the play button. Timeline tool always spans across 24 hours, but you can change the date by clicking on the date picker. Timeline tool is available only on Map V2.
+
+## Added
+
+- Photos are now being clustered on the Map v2 to improve performance and usability when viewing large numbers of photos.
+- City statistics thresholds are now user-configurable: "Min Minutes in City" and "Max Gap Between Points" sliders in the Map v2 Settings panel. #2207
+- New Timeline tool is added to Map V2. It allows user to quickly navigate through time and see how their location changed throughout the day. It can also be used to replay a trip by clicking the play button.
+
+## Fixed
+
+- The SSL Security Warning is now working correctly on the Immich and Photoprism integration forms.
+- Family members and Places layers are now being correctly remembered across page reloads on Map v2.
+- Immich returning 400. #2222 #2186
+- Points info on the Map V2 now shows time in 24h format and includes seconds. #2172
+- Digests not being created for years earlier than 2000. #2158
+- Tracks on Map V2 are now respecting the date filters correctly. #2196
+- Undefined method `.to_sym` for nil in Sidekiq. #2190
+- `/api/v1/stats` now works faster.
+
+## Changed
+
+- Zooming animation is disabled on Map V2 loading #2219
+- Exporting points to GPX and GeoJSON now works better and faster for large numbers of points by processing the export in chunks to reduce memory usage. #2161
+
+
 # [1.0.4] - 2026-02-01
 
 ## Fixed

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
+class User < ApplicationRecord
   include UserFamily
   include Omniauthable
 
@@ -156,7 +156,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   # Aggregate cities from all stats' toponyms
-  # This respects MIN_MINUTES_SPENT_IN_CITY since toponyms are already filtered
+  # This respects min_minutes_spent_in_city since toponyms are already filtered
   def cities_visited_uncached
     cities = Set.new
 

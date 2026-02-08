@@ -1,66 +1,68 @@
-import {
-  formatTimestamp,
-  formatTimeOnly,
-} from "maps_maplibre/utils/geojson_transformers";
+import maplibregl from "maplibre-gl"
 import {
   formatDistance,
   formatSpeed,
   minutesToDaysHoursMinutes,
-} from "maps/helpers";
-import maplibregl from "maplibre-gl";
+} from "maps/helpers"
+import {
+  formatTimeOnly,
+  formatTimestamp,
+} from "maps_maplibre/utils/geojson_transformers"
 
 /**
  * Handles map interaction events (clicks, info display)
  */
 export class EventHandlers {
   constructor(map, controller) {
-    this.map = map;
-    this.controller = controller;
-    this.selectedRouteFeature = null;
-    this.selectedTrackFeature = null; // Track selection state
-    this.routeMarkers = []; // Store start/end markers for routes
-    this.trackMarkers = []; // Store segment markers for tracks
+    this.map = map
+    this.controller = controller
+    this.selectedRouteFeature = null
+    this.selectedTrackFeature = null // Track selection state
+    this.routeMarkers = [] // Store start/end markers for routes
+    this.trackMarkers = [] // Store segment markers for tracks
+    this._infoPanelDelegationSetup = false // Track if delegation is setup
   }
 
   /**
    * Handle point click
    */
   handlePointClick(e) {
-    const feature = e.features[0];
-    const properties = feature.properties;
+    const feature = e.features[0]
+    const properties = feature.properties
+    const distanceUnit = this.controller.settings.distance_unit || "km"
 
     const content = `
       <div class="space-y-2">
         <div><span class="font-semibold">Time:</span> ${formatTimestamp(properties.timestamp, this.controller.timezoneValue)}</div>
         ${properties.battery ? `<div><span class="font-semibold">Battery:</span> ${properties.battery}%</div>` : ""}
         ${properties.altitude ? `<div><span class="font-semibold">Altitude:</span> ${Math.round(properties.altitude)}m</div>` : ""}
-        ${properties.velocity ? `<div><span class="font-semibold">Speed:</span> ${Math.round(properties.velocity)} km/h</div>` : ""}
+        ${properties.velocity ? `<div><span class="font-semibold">Speed:</span> ${formatSpeed(properties.velocity, distanceUnit)}</div>` : ""}
       </div>
-    `;
+    `
 
-    this.controller.showInfo("Location Point", content);
+    this.controller.showInfo("Location Point", content)
   }
 
   /**
    * Handle visit click
    */
   handleVisitClick(e) {
-    const feature = e.features[0];
-    const properties = feature.properties;
+    const feature = e.features[0]
+    const properties = feature.properties
 
     const startTime = formatTimestamp(
       properties.started_at,
       this.controller.timezoneValue,
-    );
+    )
     const endTime = formatTimestamp(
       properties.ended_at,
       this.controller.timezoneValue,
-    );
-    const durationHours = Math.round(properties.duration / 3600);
+    )
+    const durationHours = Math.round(properties.duration / 3600)
     const durationDisplay =
       durationHours >= 1
         ? `${durationHours}h`
-        : `${Math.round(properties.duration / 60)}m`;
+        : `${Math.round(properties.duration / 60)}m`
 
     const content = `
       <div class="space-y-2">
@@ -69,7 +71,7 @@ export class EventHandlers {
         <div><span class="font-semibold">Left:</span> ${endTime}</div>
         <div><span class="font-semibold">Duration:</span> ${durationDisplay}</div>
       </div>
-    `;
+    `
 
     const actions = [
       {
@@ -79,45 +81,45 @@ export class EventHandlers {
         entityType: "visit",
         label: "Edit",
       },
-    ];
+    ]
 
     this.controller.showInfo(
       properties.name || properties.place_name || "Visit",
       content,
       actions,
-    );
+    )
   }
 
   /**
    * Handle photo click
    */
   handlePhotoClick(e) {
-    const feature = e.features[0];
-    const properties = feature.properties;
+    const feature = e.features[0]
+    const properties = feature.properties
 
     const content = `
       <div class="space-y-2">
         ${properties.photo_url ? `<img src="${properties.photo_url}" alt="Photo" class="w-full rounded-lg mb-2" />` : ""}
         ${properties.taken_at ? `<div><span class="font-semibold">Taken:</span> ${formatTimestamp(properties.taken_at, this.controller.timezoneValue)}</div>` : ""}
       </div>
-    `;
+    `
 
-    this.controller.showInfo("Photo", content);
+    this.controller.showInfo("Photo", content)
   }
 
   /**
    * Handle place click
    */
   handlePlaceClick(e) {
-    const feature = e.features[0];
-    const properties = feature.properties;
+    const feature = e.features[0]
+    const properties = feature.properties
 
     const content = `
       <div class="space-y-2">
         ${properties.tag ? `<div class="badge badge-sm badge-primary">${properties.tag}</div>` : ""}
         ${properties.description ? `<div>${properties.description}</div>` : ""}
       </div>
-    `;
+    `
 
     const actions = properties.id
       ? [
@@ -129,24 +131,24 @@ export class EventHandlers {
             label: "Edit",
           },
         ]
-      : [];
+      : []
 
-    this.controller.showInfo(properties.name || "Place", content, actions);
+    this.controller.showInfo(properties.name || "Place", content, actions)
   }
 
   /**
    * Handle area click
    */
   handleAreaClick(e) {
-    const feature = e.features[0];
-    const properties = feature.properties;
+    const feature = e.features[0]
+    const properties = feature.properties
 
     const content = `
       <div class="space-y-2">
         ${properties.radius ? `<div><span class="font-semibold">Radius:</span> ${Math.round(properties.radius)}m</div>` : ""}
         ${properties.latitude && properties.longitude ? `<div><span class="font-semibold">Center:</span> ${properties.latitude.toFixed(6)}, ${properties.longitude.toFixed(6)}</div>` : ""}
       </div>
-    `;
+    `
 
     const actions = properties.id
       ? [
@@ -158,25 +160,25 @@ export class EventHandlers {
             label: "Delete",
           },
         ]
-      : [];
+      : []
 
-    this.controller.showInfo(properties.name || "Area", content, actions);
+    this.controller.showInfo(properties.name || "Area", content, actions)
   }
 
   /**
    * Handle route hover
    */
   handleRouteHover(e) {
-    const clickedFeature = e.features[0];
-    if (!clickedFeature) return;
+    const clickedFeature = e.features[0]
+    if (!clickedFeature) return
 
-    const routesLayer = this.controller.layerManager.getLayer("routes");
-    if (!routesLayer) return;
+    const routesLayer = this.controller.layerManager.getLayer("routes")
+    if (!routesLayer) return
 
     // Get the full feature from source (not the clipped tile version)
     // Fallback to clipped feature if full feature not found
     const fullFeature =
-      this._getFullRouteFeature(clickedFeature.properties) || clickedFeature;
+      this._getFullRouteFeature(clickedFeature.properties) || clickedFeature
 
     // If a route is selected and we're hovering over a different route, show both
     if (this.selectedRouteFeature) {
@@ -184,42 +186,42 @@ export class EventHandlers {
       const isSameRoute = this._areFeaturesSame(
         this.selectedRouteFeature,
         fullFeature,
-      );
+      )
 
       if (!isSameRoute) {
         // Show both selected and hovered routes
-        const features = [this.selectedRouteFeature, fullFeature];
+        const features = [this.selectedRouteFeature, fullFeature]
         routesLayer.setHoverRoute({
           type: "FeatureCollection",
           features: features,
-        });
+        })
         // Create markers for both routes
-        this._createRouteMarkers(features);
+        this._createRouteMarkers(features)
       }
     } else {
       // No selection, just show hovered route
-      routesLayer.setHoverRoute(fullFeature);
+      routesLayer.setHoverRoute(fullFeature)
       // Create markers for hovered route
-      this._createRouteMarkers(fullFeature);
+      this._createRouteMarkers(fullFeature)
     }
   }
 
   /**
    * Handle route mouse leave
    */
-  handleRouteMouseLeave(e) {
-    const routesLayer = this.controller.layerManager.getLayer("routes");
-    if (!routesLayer) return;
+  handleRouteMouseLeave() {
+    const routesLayer = this.controller.layerManager.getLayer("routes")
+    if (!routesLayer) return
 
     // If a route is selected, keep showing only the selected route
     if (this.selectedRouteFeature) {
-      routesLayer.setHoverRoute(this.selectedRouteFeature);
+      routesLayer.setHoverRoute(this.selectedRouteFeature)
       // Keep markers for selected route only
-      this._createRouteMarkers(this.selectedRouteFeature);
+      this._createRouteMarkers(this.selectedRouteFeature)
     } else {
       // No selection, clear hover and markers
-      routesLayer.setHoverRoute(null);
-      this._clearRouteMarkers();
+      routesLayer.setHoverRoute(null)
+      this._clearRouteMarkers()
     }
   }
 
@@ -229,73 +231,73 @@ export class EventHandlers {
    * We need the full geometry from the source for proper highlighting
    */
   _getFullRouteFeature(properties) {
-    const routesLayer = this.controller.layerManager.getLayer("routes");
-    if (!routesLayer) return null;
+    const routesLayer = this.controller.layerManager.getLayer("routes")
+    if (!routesLayer) return null
 
-    const source = this.map.getSource(routesLayer.sourceId);
-    if (!source) return null;
+    const source = this.map.getSource(routesLayer.sourceId)
+    if (!source) return null
 
     // Get the source data (GeoJSON FeatureCollection)
     // Try multiple ways to access the data
-    let sourceData = null;
+    let sourceData = null
 
     // Method 1: Internal _data property (most common)
     if (source._data) {
-      sourceData = source._data;
+      sourceData = source._data
     }
     // Method 2: Serialize and deserialize (fallback)
     else if (source.serialize) {
-      const serialized = source.serialize();
-      sourceData = serialized.data;
+      const serialized = source.serialize()
+      sourceData = serialized.data
     }
     // Method 3: Use cached data from layer
     else if (routesLayer.data) {
-      sourceData = routesLayer.data;
+      sourceData = routesLayer.data
     }
 
-    if (!sourceData || !sourceData.features) return null;
+    if (!sourceData || !sourceData.features) return null
 
     // Find the matching feature by properties
     // First try to match by unique ID (most reliable)
     if (properties.id) {
       const featureById = sourceData.features.find(
         (f) => f.properties.id === properties.id,
-      );
-      if (featureById) return featureById;
+      )
+      if (featureById) return featureById
     }
     if (properties.routeId) {
       const featureByRouteId = sourceData.features.find(
         (f) => f.properties.routeId === properties.routeId,
-      );
-      if (featureByRouteId) return featureByRouteId;
+      )
+      if (featureByRouteId) return featureByRouteId
     }
 
     // Fall back to matching by start/end times and point count
     return sourceData.features.find((feature) => {
-      const props = feature.properties;
+      const props = feature.properties
       return (
         props.startTime === properties.startTime &&
         props.endTime === properties.endTime &&
         props.pointCount === properties.pointCount
-      );
-    });
+      )
+    })
   }
 
   /**
    * Compare two features to see if they represent the same route
    */
   _areFeaturesSame(feature1, feature2) {
-    if (!feature1 || !feature2) return false;
+    if (!feature1 || !feature2) return false
 
-    const props1 = feature1.properties;
-    const props2 = feature2.properties;
+    const props1 = feature1.properties
+    const props2 = feature2.properties
 
     // First check for unique route identifier (most reliable)
     if (props1.id && props2.id) {
-      return props1.id === props2.id;
+      return props1.id === props2.id
     }
     if (props1.routeId && props2.routeId) {
-      return props1.routeId === props2.routeId;
+      return props1.routeId === props2.routeId
     }
 
     // Fall back to comparing start/end times and point count
@@ -303,7 +305,7 @@ export class EventHandlers {
       props1.startTime === props2.startTime &&
       props1.endTime === props2.endTime &&
       props1.pointCount === props2.pointCount
-    );
+    )
   }
 
   /**
@@ -312,10 +314,10 @@ export class EventHandlers {
    */
   _createRouteMarkers(features) {
     // Clear existing markers first
-    this._clearRouteMarkers();
+    this._clearRouteMarkers()
 
     // Ensure we have an array
-    const featureArray = Array.isArray(features) ? features : [features];
+    const featureArray = Array.isArray(features) ? features : [features]
 
     featureArray.forEach((feature) => {
       if (
@@ -323,23 +325,23 @@ export class EventHandlers {
         !feature.geometry ||
         feature.geometry.type !== "LineString"
       )
-        return;
+        return
 
-      const coords = feature.geometry.coordinates;
-      if (coords.length < 2) return;
+      const coords = feature.geometry.coordinates
+      if (coords.length < 2) return
 
       // Start marker (🚥)
-      const startCoord = coords[0];
-      const startMarker = this._createEmojiMarker("🚥");
-      startMarker.setLngLat(startCoord).addTo(this.map);
-      this.routeMarkers.push(startMarker);
+      const startCoord = coords[0]
+      const startMarker = this._createEmojiMarker("🚥")
+      startMarker.setLngLat(startCoord).addTo(this.map)
+      this.routeMarkers.push(startMarker)
 
       // End marker (🏁)
-      const endCoord = coords[coords.length - 1];
-      const endMarker = this._createEmojiMarker("🏁");
-      endMarker.setLngLat(endCoord).addTo(this.map);
-      this.routeMarkers.push(endMarker);
-    });
+      const endCoord = coords[coords.length - 1]
+      const endMarker = this._createEmojiMarker("🏁")
+      endMarker.setLngLat(endCoord).addTo(this.map)
+      this.routeMarkers.push(endMarker)
+    })
   }
 
   /**
@@ -349,60 +351,62 @@ export class EventHandlers {
    * @returns {maplibregl.Marker}
    */
   _createEmojiMarker(emoji, markerClass = "route-emoji-marker") {
-    const el = document.createElement("div");
-    el.className = markerClass;
-    el.textContent = emoji;
-    el.style.fontSize = "24px";
-    el.style.cursor = "pointer";
-    el.style.userSelect = "none";
+    const el = document.createElement("div")
+    el.className = markerClass
+    el.textContent = emoji
+    el.style.fontSize = "24px"
+    el.style.cursor = "pointer"
+    el.style.userSelect = "none"
 
-    return new maplibregl.Marker({ element: el, anchor: "center" });
+    return new maplibregl.Marker({ element: el, anchor: "center" })
   }
 
   /**
    * Clear all route markers
    */
   _clearRouteMarkers() {
-    this.routeMarkers.forEach((marker) => marker.remove());
-    this.routeMarkers = [];
+    for (const marker of this.routeMarkers) {
+      marker.remove()
+    }
+    this.routeMarkers = []
   }
 
   /**
    * Handle route click
    */
   handleRouteClick(e) {
-    const clickedFeature = e.features[0];
-    const properties = clickedFeature.properties;
+    const clickedFeature = e.features[0]
+    const properties = clickedFeature.properties
 
     // Get the full feature from source (not the clipped tile version)
     // Fallback to clipped feature if full feature not found
-    const fullFeature = this._getFullRouteFeature(properties) || clickedFeature;
+    const fullFeature = this._getFullRouteFeature(properties) || clickedFeature
 
     // Store selected route (use full feature)
-    this.selectedRouteFeature = fullFeature;
+    this.selectedRouteFeature = fullFeature
 
     // Update hover layer to show selected route
-    const routesLayer = this.controller.layerManager.getLayer("routes");
+    const routesLayer = this.controller.layerManager.getLayer("routes")
     if (routesLayer) {
-      routesLayer.setHoverRoute(fullFeature);
+      routesLayer.setHoverRoute(fullFeature)
     }
 
     // Create markers for selected route
-    this._createRouteMarkers(fullFeature);
+    this._createRouteMarkers(fullFeature)
 
     // Calculate duration
-    const durationSeconds = properties.endTime - properties.startTime;
-    const durationMinutes = Math.floor(durationSeconds / 60);
-    const durationFormatted = minutesToDaysHoursMinutes(durationMinutes);
+    const durationSeconds = properties.endTime - properties.startTime
+    const durationMinutes = Math.floor(durationSeconds / 60)
+    const durationFormatted = minutesToDaysHoursMinutes(durationMinutes)
 
     // Calculate average speed
-    let avgSpeed = properties.speed;
+    let avgSpeed = properties.speed
     if (!avgSpeed && properties.distance > 0 && durationSeconds > 0) {
-      avgSpeed = (properties.distance / durationSeconds) * 3600; // km/h
+      avgSpeed = (properties.distance / durationSeconds) * 3600 // km/h
     }
 
     // Get user preferences
-    const distanceUnit = this.controller.settings.distance_unit || "km";
+    const distanceUnit = this.controller.settings.distance_unit || "km"
 
     // Prepare route data object
     const routeData = {
@@ -418,86 +422,161 @@ export class EventHandlers {
       distance: formatDistance(properties.distance, distanceUnit),
       speed: avgSpeed ? formatSpeed(avgSpeed, distanceUnit) : null,
       pointCount: properties.pointCount,
-    };
+    }
 
     // Call controller method to display route info
-    this.controller.showRouteInfo(routeData);
+    this.controller.showRouteInfo(routeData)
   }
 
   /**
    * Clear route selection
    */
   clearRouteSelection() {
-    if (!this.selectedRouteFeature) return;
+    if (!this.selectedRouteFeature) return
 
-    this.selectedRouteFeature = null;
+    this.selectedRouteFeature = null
 
-    const routesLayer = this.controller.layerManager.getLayer("routes");
+    const routesLayer = this.controller.layerManager.getLayer("routes")
     if (routesLayer) {
-      routesLayer.setHoverRoute(null);
+      routesLayer.setHoverRoute(null)
     }
 
     // Clear markers
-    this._clearRouteMarkers();
+    this._clearRouteMarkers()
 
     // Close info panel
-    this.controller.closeInfo();
+    this.controller.closeInfo()
   }
 
   /**
-   * Handle track click - shows segment visualization (debug mode)
+   * Handle track click - shows segment visualization with lazy loading
    */
   handleTrackClick(e) {
-    const clickedFeature = e.features[0];
-    if (!clickedFeature) return;
+    const clickedFeature = e.features[0]
+    if (!clickedFeature) return
 
-    const properties = clickedFeature.properties;
+    const properties = clickedFeature.properties
 
     // Get the full feature from source (not clipped)
-    const fullFeature = this._getFullTrackFeature(properties) || clickedFeature;
+    const fullFeature = this._getFullTrackFeature(properties) || clickedFeature
 
     // Store selected track
-    this.selectedTrackFeature = fullFeature;
+    this.selectedTrackFeature = fullFeature
 
-    // Parse segments from properties (stored as JSON string in GeoJSON)
-    let segments = [];
+    // Update selection layer to highlight selected track
+    const tracksLayer = this.controller.layerManager.getLayer("tracks")
+    if (tracksLayer?.setSelectedTrack) {
+      tracksLayer.setSelectedTrack(fullFeature)
+    }
+
+    // Show basic info panel immediately with loading indicator for segments
+    this._showTrackInfoPanel(properties)
+
+    // Lazy-load segments from API
+    this._loadTrackSegments(properties.id, fullFeature)
+  }
+
+  /**
+   * Load track segments from API (lazy loading)
+   * @private
+   */
+  async _loadTrackSegments(trackId, fullFeature) {
+    const segmentsContainer = document.getElementById(
+      "track-segments-container",
+    )
+
     try {
-      segments =
-        typeof properties.segments === "string"
-          ? JSON.parse(properties.segments)
-          : properties.segments || [];
-    } catch (err) {
-      console.warn("Failed to parse track segments:", err);
+      // Fetch track with segments from API
+      const trackFeature =
+        await this.controller.api.fetchTrackWithSegments(trackId)
+
+      if (!trackFeature) {
+        console.warn("Failed to fetch track segments")
+        if (segmentsContainer) {
+          segmentsContainer.textContent = "No segments available"
+        }
+        return
+      }
+
+      // Parse segments from the fetched track
+      let segments = []
+      try {
+        const props = trackFeature.properties
+        segments =
+          typeof props.segments === "string"
+            ? JSON.parse(props.segments)
+            : props.segments || []
+      } catch (err) {
+        console.warn("Failed to parse track segments:", err)
+      }
+
+      // Update tracks layer to show segment highlighting
+      const tracksLayer = this.controller.layerManager.getLayer("tracks")
+      if (tracksLayer?.showSegments) {
+        tracksLayer.showSegments(fullFeature, segments)
+
+        // Set up callbacks for map segment hover → list highlight
+        tracksLayer.setSegmentHoverCallback((segmentIndex) => {
+          this._highlightSegmentOnMap(segmentIndex)
+          this._highlightSegmentListItem(segmentIndex)
+        })
+
+        tracksLayer.setSegmentLeaveCallback(() => {
+          this._clearSegmentHighlight()
+          this._clearSegmentListHighlight()
+        })
+      }
+
+      // Create segment markers with emojis
+      this._createTrackSegmentMarkers(fullFeature, segments)
+
+      // Update segments list in info panel
+      this._updateSegmentsList(segments)
+
+      // Set up hover event listeners for segment list items
+      this._setupSegmentListHover(segments)
+    } catch (error) {
+      console.error("Failed to load track segments:", error)
+      if (segmentsContainer) {
+        segmentsContainer.textContent = "Failed to load segments"
+      }
     }
+  }
 
-    // Update tracks layer to show segment highlighting
-    const tracksLayer = this.controller.layerManager.getLayer("tracks");
-    if (tracksLayer && tracksLayer.showSegments) {
-      tracksLayer.showSegments(fullFeature, segments);
+  /**
+   * Show track info panel with basic info (segments loaded separately)
+   * @private
+   */
+  _showTrackInfoPanel(properties) {
+    const distanceUnit = this.controller.settings.distance_unit || "km"
+    const durationMinutes = Math.floor((properties.duration || 0) / 60)
+    const trackDistanceKm = (properties.distance || 0) / 1000
 
-      // Set up callbacks for map segment hover → list highlight
-      tracksLayer.setSegmentHoverCallback((segmentIndex) => {
-        this._highlightSegmentOnMap(segmentIndex);
-        this._highlightSegmentListItem(segmentIndex);
-      });
+    // Build content using template - data comes from our own trusted backend
+    const content = this._buildTrackInfoContent(
+      properties,
+      distanceUnit,
+      durationMinutes,
+      trackDistanceKm,
+    )
 
-      tracksLayer.setSegmentLeaveCallback(() => {
-        this._clearSegmentHighlight();
-        this._clearSegmentListHighlight();
-      });
-    }
+    this.controller.showInfo(`Track #${properties.id}`, content)
 
-    // Create segment markers with emojis
-    this._createTrackSegmentMarkers(fullFeature, segments);
+    // Set up the show points toggle handler (uses event delegation)
+    this._setupTrackPointsToggle()
+  }
 
-    // Build info panel content
-    const distanceUnit = this.controller.settings.distance_unit || "km";
-    const durationMinutes = Math.floor((properties.duration || 0) / 60);
-
-    // Convert distance from meters to km for formatDistance
-    const trackDistanceKm = (properties.distance || 0) / 1000;
-
-    // Show Points toggle for editing track points
+  /**
+   * Build track info panel HTML content
+   * Note: Data comes from our own backend API, not user input
+   * @private
+   */
+  _buildTrackInfoContent(
+    properties,
+    distanceUnit,
+    durationMinutes,
+    trackDistanceKm,
+  ) {
     const showPointsToggle = `
       <div class="form-control mt-3 pt-3 border-t border-base-300">
         <label class="label cursor-pointer justify-start gap-3 py-1">
@@ -509,34 +588,26 @@ export class EventHandlers {
         </label>
         <p class="text-xs text-base-content/60 ml-10">Enable to view and drag points to edit track</p>
       </div>
-    `;
+    `
 
-    let segmentsList = "";
-    if (segments.length > 0) {
-      segmentsList = `
-        <div class="mt-2">
-          <span class="font-semibold">Segments:</span>
-          <ul id="track-segments-list" class="list-none pl-0 mt-1 space-y-1">
-            ${segments
-              .map(
-                (s, idx) => `
-              <li class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors hover:bg-base-200 segment-list-item"
-                  data-segment-index="${idx}"
-                  data-segment-mode="${s.mode}">
-                <span class="text-xs opacity-60 font-mono w-24">${formatTimeOnly(s.start_time, this.controller.timezoneValue)} - ${formatTimeOnly(s.end_time, this.controller.timezoneValue)}</span>
-                <span>${s.emoji}</span>
-                <span class="capitalize flex-1">${s.mode}</span>
-                <span class="text-xs opacity-70">${formatDistance((s.distance || 0) / 1000, distanceUnit)}</span>
-              </li>
-            `,
-              )
-              .join("")}
-          </ul>
-        </div>
-      `;
-    }
+    const replayButton = `
+      <div class="mt-3 pt-3 border-t border-base-300">
+        <button id="track-replay-button"
+                class="btn btn-sm btn-primary gap-2"
+                data-action="click->maps--maplibre#replayTrack"
+                data-track-start="${properties.start_at}">
+          <svg id="track-replay-play-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+          </svg>
+          <svg id="track-replay-pause-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 hidden" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+          <span id="track-replay-label">Replay</span>
+        </button>
+      </div>
+    `
 
-    const content = `
+    return `
       <div class="space-y-2">
         <div><span class="font-semibold">Start:</span> ${formatTimestamp(properties.start_at, this.controller.timezoneValue)}</div>
         <div><span class="font-semibold">End:</span> ${formatTimestamp(properties.end_at, this.controller.timezoneValue)}</div>
@@ -545,64 +616,122 @@ export class EventHandlers {
         <div><span class="font-semibold">Avg Speed:</span> ${formatSpeed(properties.avg_speed || 0, distanceUnit)}</div>
         ${properties.dominant_mode ? `<div><span class="font-semibold">Mode:</span> ${properties.dominant_mode_emoji} ${properties.dominant_mode}</div>` : ""}
         ${showPointsToggle}
-        ${segmentsList}
+        ${replayButton}
+        <div id="track-segments-container" class="mt-2">
+          <div class="flex items-center gap-2 text-sm text-base-content/60">
+            <span class="loading loading-spinner loading-xs"></span>
+            Loading segments...
+          </div>
+        </div>
       </div>
-    `;
+    `
+  }
 
-    this.controller.showInfo(`Track #${properties.id}`, content);
+  /**
+   * Update segments list in the info panel after lazy loading
+   * Note: Data comes from our own backend API, not user input
+   * @private
+   */
+  _updateSegmentsList(segments) {
+    const segmentsContainer = document.getElementById(
+      "track-segments-container",
+    )
+    if (!segmentsContainer) return
 
-    // Set up hover event listeners for segment list items after the content is rendered
-    this._setupSegmentListHover(segments);
+    if (segments.length === 0) {
+      segmentsContainer.textContent = "No segments"
+      return
+    }
 
-    // Set up the show points toggle handler
-    this._setupTrackPointsToggle(properties.id);
+    const distanceUnit = this.controller.settings.distance_unit || "km"
+
+    // Build segments list HTML - data is from our trusted backend
+    const segmentsHtml = segments
+      .map(
+        (s, idx) => `
+        <li class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors hover:bg-base-200 segment-list-item"
+            data-segment-index="${idx}"
+            data-segment-mode="${s.mode}">
+          <span class="text-xs opacity-60 font-mono w-24">${formatTimeOnly(s.start_time, this.controller.timezoneValue)} - ${formatTimeOnly(s.end_time, this.controller.timezoneValue)}</span>
+          <span>${s.emoji}</span>
+          <span class="capitalize flex-1">${s.mode}</span>
+          <span class="text-xs opacity-70">${formatDistance((s.distance || 0) / 1000, distanceUnit)}</span>
+        </li>
+      `,
+      )
+      .join("")
+
+    // Using innerHTML for trusted backend data only
+    segmentsContainer.innerHTML = `
+      <div class="mt-2">
+        <span class="font-semibold">Segments:</span>
+        <ul id="track-segments-list" class="list-none pl-0 mt-1 space-y-1">
+          ${segmentsHtml}
+        </ul>
+      </div>
+    `
   }
 
   /**
    * Clear track selection
    */
   clearTrackSelection() {
-    if (!this.selectedTrackFeature) return;
+    if (!this.selectedTrackFeature) return
 
-    this.selectedTrackFeature = null;
+    this.selectedTrackFeature = null
 
-    const tracksLayer = this.controller.layerManager.getLayer("tracks");
+    const tracksLayer = this.controller.layerManager.getLayer("tracks")
     if (tracksLayer) {
+      // Clear selection highlight
+      if (tracksLayer.setSelectedTrack) {
+        tracksLayer.setSelectedTrack(null)
+      }
       if (tracksLayer.hideSegments) {
-        tracksLayer.hideSegments();
+        tracksLayer.hideSegments()
       }
       // Clear hover callbacks
-      tracksLayer.setSegmentHoverCallback(null);
-      tracksLayer.setSegmentLeaveCallback(null);
+      tracksLayer.setSegmentHoverCallback(null)
+      tracksLayer.setSegmentLeaveCallback(null)
     }
 
     // Clear track points layer
-    this._clearTrackPointsLayer();
+    this._clearTrackPointsLayer()
 
     // Restore main points layer opacity
-    this._setMainPointsOpacity(1.0);
+    this._setMainPointsOpacity(1.0)
 
     // Clear segment markers
-    this._clearTrackMarkers();
+    this._clearTrackMarkers()
+
+    // Clean up segment list listeners
+    this._cleanupSegmentListHover()
 
     // Close info panel
-    this.controller.closeInfo();
+    this.controller.closeInfo()
   }
 
   /**
-   * Set up the track points toggle handler
-   * @param {number} trackId - Track ID
+   * Set up the track points toggle handler using event delegation
+   * Uses delegation on info panel container to reliably catch toggle changes
+   * regardless of DOM timing
    */
-  _setupTrackPointsToggle(trackId) {
-    setTimeout(() => {
-      const toggle = document.getElementById("track-points-toggle");
-      if (!toggle) return;
+  _setupTrackPointsToggle() {
+    // Only set up delegation once
+    if (this._infoPanelDelegationSetup) return
 
-      toggle.addEventListener("change", async (e) => {
-        const enabled = e.target.checked;
-        await this._toggleTrackPoints(trackId, enabled);
-      });
-    }, 50);
+    const infoDisplay = this.controller.infoDisplayTarget
+    if (!infoDisplay) return
+
+    // Use event delegation - listen for changes on the container
+    infoDisplay.addEventListener("change", async (e) => {
+      if (e.target.id === "track-points-toggle") {
+        const trackId = e.target.dataset.trackId
+        const enabled = e.target.checked
+        await this._toggleTrackPoints(trackId, enabled)
+      }
+    })
+
+    this._infoPanelDelegationSetup = true
   }
 
   /**
@@ -613,33 +742,34 @@ export class EventHandlers {
   async _toggleTrackPoints(trackId, enabled) {
     if (enabled) {
       // Dim the main points layer
-      this._setMainPointsOpacity(0.3);
+      this._setMainPointsOpacity(0.3)
 
       // Get or create track points layer
       let trackPointsLayer =
-        this.controller.layerManager.getLayer("track-points");
+        this.controller.layerManager.getLayer("track-points")
 
       if (!trackPointsLayer) {
         // Import and create the layer dynamically
-        const { TrackPointsLayer } =
-          await import("maps_maplibre/layers/track_points_layer");
+        const { TrackPointsLayer } = await import(
+          "maps_maplibre/layers/track_points_layer"
+        )
         trackPointsLayer = new TrackPointsLayer(this.map, {
           apiClient: this.controller.api,
-        });
+        })
         this.controller.layerManager.registerLayer(
           "track-points",
           trackPointsLayer,
-        );
+        )
       }
 
       // Load track points
-      await trackPointsLayer.loadTrackPoints(trackId);
+      await trackPointsLayer.loadTrackPoints(trackId)
     } else {
       // Clear track points layer
-      this._clearTrackPointsLayer();
+      this._clearTrackPointsLayer()
 
       // Restore main points layer opacity
-      this._setMainPointsOpacity(1.0);
+      this._setMainPointsOpacity(1.0)
     }
   }
 
@@ -648,9 +778,9 @@ export class EventHandlers {
    */
   _clearTrackPointsLayer() {
     const trackPointsLayer =
-      this.controller.layerManager.getLayer("track-points");
+      this.controller.layerManager.getLayer("track-points")
     if (trackPointsLayer) {
-      trackPointsLayer.clear();
+      trackPointsLayer.clear()
     }
   }
 
@@ -659,14 +789,14 @@ export class EventHandlers {
    * @param {number} opacity - Opacity value (0-1)
    */
   _setMainPointsOpacity(opacity) {
-    const pointsLayer = this.controller.layerManager.getLayer("points");
+    const pointsLayer = this.controller.layerManager.getLayer("points")
     if (pointsLayer && this.map.getLayer(pointsLayer.id)) {
-      this.map.setPaintProperty(pointsLayer.id, "circle-opacity", opacity);
+      this.map.setPaintProperty(pointsLayer.id, "circle-opacity", opacity)
       this.map.setPaintProperty(
         pointsLayer.id,
         "circle-stroke-opacity",
         opacity,
-      );
+      )
     }
   }
 
@@ -674,69 +804,71 @@ export class EventHandlers {
    * Get full track feature from source data
    */
   _getFullTrackFeature(properties) {
-    const tracksLayer = this.controller.layerManager.getLayer("tracks");
-    if (!tracksLayer) return null;
+    const tracksLayer = this.controller.layerManager.getLayer("tracks")
+    if (!tracksLayer) return null
 
-    const source = this.map.getSource(tracksLayer.sourceId);
-    if (!source) return null;
+    const source = this.map.getSource(tracksLayer.sourceId)
+    if (!source) return null
 
-    let sourceData = null;
+    let sourceData = null
     if (source._data) {
-      sourceData = source._data;
+      sourceData = source._data
     } else if (tracksLayer.data) {
-      sourceData = tracksLayer.data;
+      sourceData = tracksLayer.data
     }
 
-    if (!sourceData || !sourceData.features) return null;
+    if (!sourceData || !sourceData.features) return null
 
     // Find by track ID
     if (properties.id) {
-      return sourceData.features.find((f) => f.properties.id === properties.id);
+      return sourceData.features.find((f) => f.properties.id === properties.id)
     }
 
-    return null;
+    return null
   }
 
   /**
    * Create emoji markers at segment transition points
    */
   _createTrackSegmentMarkers(feature, segments) {
-    this._clearTrackMarkers();
+    this._clearTrackMarkers()
 
     if (!feature || !feature.geometry || feature.geometry.type !== "LineString")
-      return;
-    if (!segments || segments.length === 0) return;
+      return
+    if (!segments || segments.length === 0) return
 
-    const coords = feature.geometry.coordinates;
-    if (coords.length < 2) return;
+    const coords = feature.geometry.coordinates
+    if (coords.length < 2) return
 
     // Add marker at start of each segment
-    segments.forEach((segment, idx) => {
-      const coordIndex = Math.min(segment.start_index || 0, coords.length - 1);
-      const coord = coords[coordIndex];
-      if (!coord) return;
+    segments.forEach((segment) => {
+      const coordIndex = Math.min(segment.start_index || 0, coords.length - 1)
+      const coord = coords[coordIndex]
+      if (!coord) return
 
       const marker = this._createEmojiMarker(
         segment.emoji || "❓",
         "track-emoji-marker",
-      );
-      marker.setLngLat(coord).addTo(this.map);
-      this.trackMarkers.push(marker);
-    });
+      )
+      marker.setLngLat(coord).addTo(this.map)
+      this.trackMarkers.push(marker)
+    })
 
     // Add end marker (🏁) at the last point
-    const endCoord = coords[coords.length - 1];
-    const endMarker = this._createEmojiMarker("🏁", "track-emoji-marker");
-    endMarker.setLngLat(endCoord).addTo(this.map);
-    this.trackMarkers.push(endMarker);
+    const endCoord = coords[coords.length - 1]
+    const endMarker = this._createEmojiMarker("🏁", "track-emoji-marker")
+    endMarker.setLngLat(endCoord).addTo(this.map)
+    this.trackMarkers.push(endMarker)
   }
 
   /**
    * Clear all track segment markers
    */
   _clearTrackMarkers() {
-    this.trackMarkers.forEach((marker) => marker.remove());
-    this.trackMarkers = [];
+    for (const marker of this.trackMarkers) {
+      marker.remove()
+    }
+    this.trackMarkers = []
   }
 
   /**
@@ -745,25 +877,43 @@ export class EventHandlers {
    * @param {Object} feature - The updated track GeoJSON feature
    */
   updateTrackMarkers(feature) {
-    if (!this.selectedTrackFeature) return;
+    if (!this.selectedTrackFeature) return
     if (!feature || !feature.geometry || feature.geometry.type !== "LineString")
-      return;
+      return
 
     // Parse segments from feature properties
-    let segments = [];
+    let segments = []
     try {
-      const props = feature.properties || {};
+      const props = feature.properties || {}
       segments =
         typeof props.segments === "string"
           ? JSON.parse(props.segments)
-          : props.segments || [];
+          : props.segments || []
     } catch (err) {
-      console.warn("Failed to parse track segments for marker update:", err);
-      return;
+      console.warn("Failed to parse track segments for marker update:", err)
+      return
     }
 
     // Recreate markers with new coordinates
-    this._createTrackSegmentMarkers(feature, segments);
+    this._createTrackSegmentMarkers(feature, segments)
+  }
+
+  /**
+   * Clean up segment list hover/click listeners and pending timeout
+   * @private
+   */
+  _cleanupSegmentListHover() {
+    if (this._segmentListTimeout) {
+      clearTimeout(this._segmentListTimeout)
+      this._segmentListTimeout = null
+    }
+
+    if (this._segmentListListeners) {
+      this._segmentListListeners.forEach(({ element, event, handler }) => {
+        element.removeEventListener(event, handler)
+      })
+      this._segmentListListeners = null
+    }
   }
 
   /**
@@ -771,29 +921,43 @@ export class EventHandlers {
    * @param {Array} segments - Array of segment data
    */
   _setupSegmentListHover(segments) {
+    // Clean up any existing listeners first
+    this._cleanupSegmentListHover()
+
     // Use setTimeout to ensure the DOM has been updated
-    setTimeout(() => {
-      const listItems = document.querySelectorAll(".segment-list-item");
+    this._segmentListTimeout = setTimeout(() => {
+      this._segmentListTimeout = null
+      const listItems = document.querySelectorAll(".segment-list-item")
+      this._segmentListListeners = []
 
       listItems.forEach((item) => {
-        const segmentIndex = parseInt(item.dataset.segmentIndex, 10);
+        const segmentIndex = parseInt(item.dataset.segmentIndex, 10)
 
-        item.addEventListener("mouseenter", () => {
-          this._highlightSegmentOnMap(segmentIndex);
-          this._highlightSegmentListItem(segmentIndex);
-        });
+        const enterHandler = () => {
+          this._highlightSegmentOnMap(segmentIndex)
+          this._highlightSegmentListItem(segmentIndex)
+        }
 
-        item.addEventListener("mouseleave", () => {
-          this._clearSegmentHighlight();
-          this._clearSegmentListHighlight();
-        });
+        const leaveHandler = () => {
+          this._clearSegmentHighlight()
+          this._clearSegmentListHighlight()
+        }
 
-        // Add click handler to zoom to segment bounds
-        item.addEventListener("click", () => {
-          this._zoomToSegment(segments[segmentIndex]);
-        });
-      });
-    }, 50);
+        const clickHandler = () => {
+          this._zoomToSegment(segments[segmentIndex])
+        }
+
+        item.addEventListener("mouseenter", enterHandler)
+        item.addEventListener("mouseleave", leaveHandler)
+        item.addEventListener("click", clickHandler)
+
+        this._segmentListListeners.push(
+          { element: item, event: "mouseenter", handler: enterHandler },
+          { element: item, event: "mouseleave", handler: leaveHandler },
+          { element: item, event: "click", handler: clickHandler },
+        )
+      })
+    }, 50)
   }
 
   /**
@@ -801,30 +965,30 @@ export class EventHandlers {
    * @param {Object} segment - Segment data with start_index and end_index
    */
   _zoomToSegment(segment) {
-    if (!this.selectedTrackFeature || !segment) return;
+    if (!this.selectedTrackFeature || !segment) return
 
-    const coords = this.selectedTrackFeature.geometry?.coordinates;
-    if (!coords || coords.length < 2) return;
+    const coords = this.selectedTrackFeature.geometry?.coordinates
+    if (!coords || coords.length < 2) return
 
-    const startIdx = Math.max(0, segment.start_index || 0);
-    const endIdx = Math.min(coords.length - 1, segment.end_index || startIdx);
+    const startIdx = Math.max(0, segment.start_index || 0)
+    const endIdx = Math.min(coords.length - 1, segment.end_index || startIdx)
 
     // Extract coordinates for this segment
-    const segmentCoords = coords.slice(startIdx, endIdx + 1);
-    if (segmentCoords.length < 1) return;
+    const segmentCoords = coords.slice(startIdx, endIdx + 1)
+    if (segmentCoords.length < 1) return
 
     // Build bounds from segment coordinates
-    const bounds = new maplibregl.LngLatBounds();
+    const bounds = new maplibregl.LngLatBounds()
     segmentCoords.forEach((coord) => {
-      bounds.extend(coord);
-    });
+      bounds.extend(coord)
+    })
 
     // Fit map to segment bounds
     this.map.fitBounds(bounds, {
       padding: 80,
       maxZoom: 17,
       duration: 500,
-    });
+    })
   }
 
   /**
@@ -832,11 +996,11 @@ export class EventHandlers {
    * @param {number} segmentIndex - Index of the segment to highlight
    */
   _highlightSegmentOnMap(segmentIndex) {
-    const tracksLayer = this.controller.layerManager.getLayer("tracks");
-    if (!tracksLayer) return;
+    const tracksLayer = this.controller.layerManager.getLayer("tracks")
+    if (!tracksLayer) return
 
-    const segmentLayerId = tracksLayer.segmentLayerId;
-    if (!this.map.getLayer(segmentLayerId)) return;
+    const segmentLayerId = tracksLayer.segmentLayerId
+    if (!this.map.getLayer(segmentLayerId)) return
 
     // Increase opacity/width of hovered segment, dim others
     this.map.setPaintProperty(segmentLayerId, "line-opacity", [
@@ -844,28 +1008,28 @@ export class EventHandlers {
       ["==", ["get", "segmentIndex"], segmentIndex],
       1.0,
       0.4,
-    ]);
+    ])
     this.map.setPaintProperty(segmentLayerId, "line-width", [
       "case",
       ["==", ["get", "segmentIndex"], segmentIndex],
       8,
       4,
-    ]);
+    ])
   }
 
   /**
    * Clear segment highlight on map
    */
   _clearSegmentHighlight() {
-    const tracksLayer = this.controller.layerManager.getLayer("tracks");
-    if (!tracksLayer) return;
+    const tracksLayer = this.controller.layerManager.getLayer("tracks")
+    if (!tracksLayer) return
 
-    const segmentLayerId = tracksLayer.segmentLayerId;
-    if (!this.map.getLayer(segmentLayerId)) return;
+    const segmentLayerId = tracksLayer.segmentLayerId
+    if (!this.map.getLayer(segmentLayerId)) return
 
     // Reset to uniform appearance
-    this.map.setPaintProperty(segmentLayerId, "line-opacity", 0.9);
-    this.map.setPaintProperty(segmentLayerId, "line-width", 6);
+    this.map.setPaintProperty(segmentLayerId, "line-opacity", 0.9)
+    this.map.setPaintProperty(segmentLayerId, "line-width", 6)
   }
 
   /**
@@ -873,23 +1037,23 @@ export class EventHandlers {
    * @param {number} segmentIndex - Index of the segment to highlight
    */
   _highlightSegmentListItem(segmentIndex) {
-    const listItems = document.querySelectorAll(".segment-list-item");
-    listItems.forEach((item, idx) => {
+    const listItems = document.querySelectorAll(".segment-list-item")
+    listItems.forEach((item) => {
       if (parseInt(item.dataset.segmentIndex, 10) === segmentIndex) {
-        item.classList.add("bg-primary", "bg-opacity-20");
+        item.classList.add("bg-primary", "bg-opacity-20")
       } else {
-        item.classList.add("opacity-50");
+        item.classList.add("opacity-50")
       }
-    });
+    })
   }
 
   /**
    * Clear segment list item highlight
    */
   _clearSegmentListHighlight() {
-    const listItems = document.querySelectorAll(".segment-list-item");
+    const listItems = document.querySelectorAll(".segment-list-item")
     listItems.forEach((item) => {
-      item.classList.remove("bg-primary", "bg-opacity-20", "opacity-50");
-    });
+      item.classList.remove("bg-primary", "bg-opacity-20", "opacity-50")
+    })
   }
 }
