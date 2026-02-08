@@ -121,6 +121,20 @@ RSpec.describe '/trips/:trip_id/notes', type: :request do
         expect(response).to redirect_to(trip)
       end
     end
+
+    context 'when accessing another user trip' do
+      let(:other_user) { create(:user) }
+      let(:other_trip) { create(:trip, user: other_user) }
+      let!(:other_note) do
+        create(:note, user: other_user, attachable: other_trip,
+                      noted_at: other_trip.started_at.to_date.to_datetime.noon, body: 'Other note')
+      end
+
+      it 'returns not found' do
+        patch trip_note_url(other_trip, other_note), params: update_params
+        expect(response).to have_http_status(:not_found)
+      end
+    end
   end
 
   describe 'DELETE /trips/:trip_id/notes/:id' do
@@ -138,6 +152,23 @@ RSpec.describe '/trips/:trip_id/notes', type: :request do
     it 'redirects to the trip for HTML format' do
       delete trip_note_url(trip, note)
       expect(response).to redirect_to(trip)
+    end
+
+    context 'when accessing another user trip' do
+      let(:other_user) { create(:user) }
+      let(:other_trip) { create(:trip, user: other_user) }
+      let!(:other_note) do
+        create(:note, user: other_user, attachable: other_trip,
+                      noted_at: other_trip.started_at.to_date.to_datetime.noon, body: 'Other note')
+      end
+
+      it 'returns not found' do
+        expect do
+          delete trip_note_url(other_trip, other_note)
+        end.not_to change(Note, :count)
+
+        expect(response).to have_http_status(:not_found)
+      end
     end
   end
 end

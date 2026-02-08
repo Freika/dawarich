@@ -161,6 +161,16 @@ RSpec.describe '/api/v1/notes', type: :request do
         expect(response).to have_http_status(:unprocessable_content)
       end
     end
+
+    context 'with another user note' do
+      let(:other_note) { create(:note, noted_at: Time.current) }
+
+      it 'returns 404' do
+        patch api_v1_note_url(other_note), headers: headers,
+                                           params: { note: { body: 'Hijack' } }
+        expect(response).to have_http_status(:not_found)
+      end
+    end
   end
 
   describe 'DELETE /destroy' do
@@ -175,6 +185,37 @@ RSpec.describe '/api/v1/notes', type: :request do
     it 'returns ok status' do
       delete api_v1_note_url(note), headers: headers
       expect(response).to have_http_status(:ok)
+    end
+
+    context 'with another user note' do
+      let!(:other_note) { create(:note, noted_at: Time.current) }
+
+      it 'returns 404' do
+        expect do
+          delete api_v1_note_url(other_note), headers: headers
+        end.not_to change(Note, :count)
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
+
+  describe 'POST /create with invalid attachable_type' do
+    it 'rejects an invalid attachable_type' do
+      params = {
+        note: {
+          body: 'Sneaky note',
+          noted_at: Time.current.iso8601,
+          attachable_type: 'User',
+          attachable_id: user.id
+        }
+      }
+
+      expect do
+        post api_v1_notes_url, headers: headers, params: params
+      end.not_to change(Note, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 end

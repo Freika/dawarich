@@ -4,6 +4,6 @@ module Notable
   extend ActiveSupport::Concern
 
   included do
-    has_many :notes, as: :attachable, dependent: :nullify
+    has_many :notes, as: :attachable, dependent: :destroy
   end
 end

@@ -172,11 +172,39 @@ RSpec.describe Note, type: :model do
                     noted_at: trip.started_at.to_date.to_datetime.noon)
     end
 
-    it 'nullifies notes when attachable is destroyed' do
-      trip.destroy
-      note.reload
-      expect(note.attachable_id).to be_nil
-      expect(note.attachable_type).to be_nil
+    it 'destroys notes when attachable is destroyed' do
+      expect { trip.destroy }.to change(Note, :count).by(-1)
+    end
+  end
+
+  describe 'attachable_type validation' do
+    let(:user) { create(:user) }
+
+    it 'allows valid attachable types' do
+      %w[Trip Area Visit Place Point].each do |type|
+        note = build(:note, user: user, noted_at: Time.current)
+        note.attachable_type = type
+        note.valid?
+        expect(note.errors[:attachable_type]).to be_empty
+      end
+    end
+
+    it 'rejects invalid attachable types' do
+      note = build(:note, user: user, noted_at: Time.current, attachable_type: 'User')
+      expect(note).not_to be_valid
+      expect(note.errors[:attachable_type]).to be_present
+    end
+
+    it 'allows nil attachable_type' do
+      note = build(:note, user: user, noted_at: Time.current)
+      expect(note).to be_valid
+    end
+
+    it 'requires attachable to exist when attachable_type is set' do
+      note = build(:note, user: user, noted_at: Time.current,
+                          attachable_type: 'Trip', attachable_id: 999_999)
+      expect(note).not_to be_valid
+      expect(note.errors[:attachable]).to be_present
     end
   end
 end

@@ -1223,7 +1223,7 @@ export default class extends Controller {
     // Find the point index closest to (or at) the target minute
     let targetIndex = 0
     for (let i = 0; i < dayPoints.length; i++) {
-      const timestamp = this.timelineManager._getTimestamp(dayPoints[i])
+      const timestamp = this.timelineManager.getTimestamp(dayPoints[i])
       const pointTime = this._parseTimelineTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
@@ -1549,8 +1549,8 @@ export default class extends Controller {
     const currentDay = this.timelineManager.getCurrentDay()
     if (!currentDay) return
 
-    const dayPoints = this.timelineManager.pointsByDay[currentDay]
-    if (!dayPoints || dayPoints.length === 0) return
+    const dayPoints = this.timelineManager.getPointsForDay(currentDay)
+    if (dayPoints.length === 0) return
 
     this.timelineReplayActive = true
     this.timelineReplaySpeed = this.timelineReplaySpeed || 2
@@ -1560,7 +1560,7 @@ export default class extends Controller {
     // Find starting index based on current scrubber position
     const currentMinute = parseInt(this.timelineScrubberTarget.value, 10)
     for (let i = 0; i < dayPoints.length; i++) {
-      const timestamp = this.timelineManager._getTimestamp(dayPoints[i])
+      const timestamp = this.timelineManager.getTimestamp(dayPoints[i])
       const pointTime = this._parseTimelineTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
@@ -1717,7 +1717,7 @@ export default class extends Controller {
           // Get points for new day
           const newDay = this.timelineManager.getCurrentDay()
           this.timelineReplayPoints =
-            this.timelineManager.pointsByDay[newDay] || []
+            this.timelineManager.getPointsForDay(newDay)
           this.timelineReplayPointIndex = 0
 
           if (this.timelineReplayPoints.length === 0) {
@@ -1753,7 +1753,7 @@ export default class extends Controller {
       this._updateTimelineSpeedDisplay(this._getPointVelocity(currentPoint))
 
       // Get minute for this point to update scrubber
-      const timestamp = this.timelineManager._getTimestamp(currentPoint)
+      const timestamp = this.timelineManager.getTimestamp(currentPoint)
       const pointTime = this._parseTimelineTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
@@ -1854,7 +1854,7 @@ export default class extends Controller {
     const timelineMarkerLayer = this.layerManager?.getLayer("timelineMarker")
     if (timelineMarkerLayer) {
       timelineMarkerLayer.showMarker(coords.lon, coords.lat, {
-        timestamp: this.timelineManager._getTimestamp(point),
+        timestamp: this.timelineManager.getTimestamp(point),
       })
     }
   }
@@ -1905,7 +1905,7 @@ export default class extends Controller {
       return
     }
 
-    const timestamp = this.timelineManager._getTimestamp(point)
+    const timestamp = this.timelineManager.getTimestamp(point)
     if (!timestamp) {
       routesLayer.setHoverRoute(null)
       return

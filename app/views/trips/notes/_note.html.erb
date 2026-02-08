@@ -18,15 +18,28 @@
   </div>
 
   <div data-note-form="<%= note.date %>" class="hidden">
-    <%= form_with url: trip_note_path(trip, note), method: :patch, class: "space-y-3" do %>
-      <input type="hidden" name="note[date]" value="<%= note.date %>">
+    <%= form_with(
+      model: note,
+      url: trip_note_path(trip, note),
+      method: :patch,
+      class: "space-y-3"
+    ) do |form| %>
+      <%= form.hidden_field :date, value: note.date %>
+
+      <% if note.errors.any? %>
+        <div class="alert alert-error text-sm">
+          <%= note.errors.full_messages.join(', ') %>
+        </div>
+      <% end %>
+
       <div>
         <textarea name="note[body]"
                   class="textarea textarea-bordered w-full min-h-[100px]"
                   placeholder="Write your notes for this day..."><%= note.body.to_plain_text %></textarea>
       </div>
+
       <div class="flex gap-2">
-        <button type="submit" class="btn btn-primary btn-sm">Update note</button>
+        <%= form.submit "Update note", class: "btn btn-primary btn-sm" %>
         <button type="button" class="btn btn-ghost btn-sm"
                 data-action="click->trip-maplibre#hideNoteForm"
                 data-date="<%= note.date %>">Cancel</button>

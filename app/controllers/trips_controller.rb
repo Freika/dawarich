@@ -13,12 +13,14 @@ class TripsController < ApplicationController
   def show
     @photo_previews = @trip.photo_previews
     @photo_sources = @trip.photo_sources
+    @distance_unit = current_user.safe_settings.distance_unit
+    @timezone = current_user.timezone
     @day_notes = @trip.notes.index_by(&:date)
     @day_stats = compute_day_stats
 
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
 
-    Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
+    Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
 
   def new
@@ -69,23 +71,26 @@ class TripsController < ApplicationController
   end
 
   def compute_day_stats
-    tz = current_user.timezone
-    points_data = @trip.points.order(:timestamp)
-                       .pluck(Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'), :timestamp)
-    return {} if points_data.empty?
+    cache_key = "trip_day_stats/#{@trip.id}/#{@trip.updated_at.to_i}/#{@timezone}"
 
-    points_data.group_by { |_, _, ts| Time.at(ts).in_time_zone(tz).to_date }.transform_values do |pts|
-      first_time = Time.at(pts.first[2]).in_time_zone(tz)
-      last_time  = Time.at(pts.last[2]).in_time_zone(tz)
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      points_data = @trip.points.order(:timestamp)
+                         .pluck(Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'), :timestamp)
+      next {} if points_data.empty?
 
-      distance_km = 0.0
-      pts.each_cons(2) do |(lat1, lon1, _), (lat2, lon2, _)|
-        distance_km += Geocoder::Calculations.distance_between(
-          [lat1.to_f, lon1.to_f], [lat2.to_f, lon2.to_f], units: :km
-        )
+      points_data.group_by { |_, _, ts| Time.at(ts).in_time_zone(@timezone).to_date }.transform_values do |pts|
+        first_time = Time.at(pts.first[2]).in_time_zone(@timezone)
+        last_time  = Time.at(pts.last[2]).in_time_zone(@timezone)
+
+        distance_m = 0.0
+        pts.each_cons(2) do |(lat1, lon1, _), (lat2, lon2, _)|
+          distance_m += Geocoder::Calculations.distance_between(
+            [lat1.to_f, lon1.to_f], [lat2.to_f, lon2.to_f], units: :km
+          ) * 1000
+        end
+
+        { first_time: first_time, last_time: last_time, distance_m: distance_m }
       end
-
-      { first_time: first_time, last_time: last_time, distance_km: distance_km }
     end
   end
 end

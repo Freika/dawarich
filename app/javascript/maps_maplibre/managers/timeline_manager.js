@@ -514,6 +514,24 @@ export class TimelineManager {
     return null
   }
 
+  /**
+   * Get timestamp from point (handles different point formats)
+   * @param {Object} point - Point object
+   * @returns {*} Timestamp value or null
+   */
+  getTimestamp(point) {
+    return this._getTimestamp(point)
+  }
+
+  /**
+   * Get points for a specific day
+   * @param {string} dayKey - Day key like '2025-01-15'
+   * @returns {Array} Points for that day, or empty array
+   */
+  getPointsForDay(dayKey) {
+    return this.pointsByDay[dayKey] || []
+  }
+
   // Private helpers
 
   /**

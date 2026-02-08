@@ -196,7 +196,13 @@ export default class extends Controller {
         return
       }
 
-      this.pointsByDay = this.groupPointsByDay(allPoints)
+      // Use TimelineManager for canonical day grouping
+      const grouper = new TimelineManager({ timezone: this.timezoneValue })
+      grouper.setPoints(allPoints)
+      this.pointsByDay = {}
+      for (const dayKey of grouper.availableDays) {
+        this.pointsByDay[dayKey] = grouper.getPointsForDay(dayKey)
+      }
       const dayKeys = Object.keys(this.pointsByDay).sort()
 
       if (!dayKeys.length) {
@@ -228,35 +234,6 @@ export default class extends Controller {
       console.error("[TripMapLibre] Error fetching points:", e)
       this.showLoading(false)
     }
-  }
-
-  groupPointsByDay(points) {
-    const byDay = {}
-
-    for (const point of points) {
-      let ts = point.timestamp
-      if (!ts) continue
-
-      if (typeof ts === "number" && ts < 10000000000) {
-        ts = ts * 1000
-      }
-
-      const date = new Date(ts)
-      if (Number.isNaN(date.getTime())) continue
-
-      const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-
-      if (!byDay[dayKey]) {
-        byDay[dayKey] = []
-      }
-      byDay[dayKey].push(point)
-    }
-
-    for (const dayKey of Object.keys(byDay)) {
-      byDay[dayKey].sort((a, b) => a.timestamp - b.timestamp)
-    }
-
-    return byDay
   }
 
   applyDayColors(dayKeys) {
@@ -598,7 +575,7 @@ export default class extends Controller {
 
     let targetIndex = 0
     for (let i = 0; i < dayPoints.length; i++) {
-      const timestamp = this.timelineManager._getTimestamp(dayPoints[i])
+      const timestamp = this.timelineManager.getTimestamp(dayPoints[i])
       const pointTime = this._parseTimelineTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
@@ -845,8 +822,8 @@ export default class extends Controller {
     const currentDay = this.timelineManager.getCurrentDay()
     if (!currentDay) return
 
-    const dayPoints = this.timelineManager.pointsByDay[currentDay]
-    if (!dayPoints || dayPoints.length === 0) return
+    const dayPoints = this.timelineManager.getPointsForDay(currentDay)
+    if (dayPoints.length === 0) return
 
     this.timelineReplayActive = true
     this.timelineReplaySpeed = this.timelineReplaySpeed || 2
@@ -855,7 +832,7 @@ export default class extends Controller {
 
     const currentMinute = parseInt(this.timelineScrubberTarget.value, 10)
     for (let i = 0; i < dayPoints.length; i++) {
-      const timestamp = this.timelineManager._getTimestamp(dayPoints[i])
+      const timestamp = this.timelineManager.getTimestamp(dayPoints[i])
       const pointTime = this._parseTimelineTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
@@ -973,7 +950,7 @@ export default class extends Controller {
 
           const newDay = this.timelineManager.getCurrentDay()
           this.timelineReplayPoints =
-            this.timelineManager.pointsByDay[newDay] || []
+            this.timelineManager.getPointsForDay(newDay)
           this.timelineReplayPointIndex = 0
 
           if (this.timelineReplayPoints.length === 0) {
@@ -1004,7 +981,7 @@ export default class extends Controller {
 
       this._updateTimelineSpeedDisplay(this._getPointVelocity(currentPoint))
 
-      const timestamp = this.timelineManager._getTimestamp(currentPoint)
+      const timestamp = this.timelineManager.getTimestamp(currentPoint)
       const pointTime = this._parseTimelineTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
@@ -1048,7 +1025,7 @@ export default class extends Controller {
 
     if (this.timelineMarkerLayer) {
       this.timelineMarkerLayer.showMarker(coords.lon, coords.lat, {
-        timestamp: this.timelineManager._getTimestamp(point),
+        timestamp: this.timelineManager.getTimestamp(point),
       })
     }
   }

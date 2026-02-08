@@ -77,7 +77,7 @@
       <%# Accordion days %>
       <div data-trip-maplibre-target="daysAccordion" class="space-y-1 mb-6">
 
-        <% (@trip.started_at.to_date..@trip.ended_at.to_date).each do |date| %>
+        <% (@trip.started_at.in_time_zone(@timezone).to_date..@trip.ended_at.in_time_zone(@timezone).to_date).each do |date| %>
           <% day_key = date.strftime('%Y-%m-%d') %>
           <% stats = @day_stats[date] %>
           <details class="collapse collapse-arrow bg-base-200 rounded-lg"
@@ -93,10 +93,11 @@
                   <%= stats[:first_time].strftime('%H:%M') %> – <%= stats[:last_time].strftime('%H:%M') %>
                 </span>
                 <span class="text-base-content/50 ml-auto mr-6 text-xs">
-                  <% if stats[:distance_km] < 1 %>
-                    <%= (stats[:distance_km] * 1000).round %> m
+                  <% day_distance = Trip.convert_distance(stats[:distance_m], @distance_unit) %>
+                  <% if day_distance < 1 %>
+                    &lt; 1 <%= @distance_unit %>
                   <% else %>
-                    <%= number_with_precision(stats[:distance_km], precision: 1) %> km
+                    <%= number_with_precision(day_distance, precision: 1) %> <%= @distance_unit %>
                   <% end %>
                 </span>
               <% else %>

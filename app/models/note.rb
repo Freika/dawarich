@@ -3,6 +3,8 @@
 class Note < ApplicationRecord
   include Nearable
 
+  ALLOWED_ATTACHABLE_TYPES = %w[Trip Area Visit Place Point].freeze
+
   has_rich_text :body
 
   belongs_to :user
@@ -11,6 +13,8 @@ class Note < ApplicationRecord
   before_validation :build_lonlat_from_coords, if: -> { @latitude.present? && @longitude.present? }
 
   validates :noted_at, presence: true
+  validates :attachable_type, inclusion: { in: ALLOWED_ATTACHABLE_TYPES }, allow_nil: true
+  validates :attachable, presence: true, if: -> { attachable_type.present? || attachable_id.present? }
 
   validate :unique_date_per_attachable
   validate :date_within_attachable_range
