@@ -1,5 +1,5 @@
-import maplibregl from 'maplibre-gl'
-import { getMapStyle } from 'maps_maplibre/utils/style_manager'
+import maplibregl from "maplibre-gl"
+import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 /**
  * Handles map initialization for Maps V2
@@ -13,11 +13,11 @@ export class MapInitializer {
    */
   static async initialize(container, settings = {}) {
     const {
-      mapStyle = 'streets',
+      mapStyle = "streets",
       center = [0, 0],
       zoom = 2,
       showControls = true,
-      globeProjection = false
+      globeProjection = false,
     } = settings
 
     const style = await getMapStyle(mapStyle)
@@ -26,29 +26,42 @@ export class MapInitializer {
       container,
       style,
       center,
-      zoom
+      zoom,
+      attributionControl: false,
     }
 
     const map = new maplibregl.Map(mapOptions)
 
     // Set globe projection after map loads
-    if (globeProjection === true || globeProjection === 'true') {
-      map.on('load', () => {
-        map.setProjection({ type: 'globe' })
+    if (globeProjection === true || globeProjection === "true") {
+      map.on("load", () => {
+        map.setProjection({ type: "globe" })
 
         // Add atmosphere effect
         map.setSky({
-          'atmosphere-blend': [
-            'interpolate', ['linear'], ['zoom'],
-            0, 1, 5, 1, 7, 0
-          ]
+          "atmosphere-blend": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0,
+            1,
+            5,
+            1,
+            7,
+            0,
+          ],
         })
       })
     }
 
     if (showControls) {
-      map.addControl(new maplibregl.NavigationControl(), 'top-right')
+      map.addControl(new maplibregl.NavigationControl(), "top-right")
     }
+
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+      "bottom-right",
+    )
 
     return map
   }
@@ -60,17 +73,14 @@ export class MapInitializer {
    * @param {Object} options - Fit bounds options
    */
   static fitToBounds(map, geojson, options = {}) {
-    const {
-      padding = 50,
-      maxZoom = 15
-    } = options
+    const { padding = 50, maxZoom = 15 } = options
 
     if (!geojson?.features?.length) {
-      console.warn('[MapInitializer] No features to fit bounds to')
+      console.warn("[MapInitializer] No features to fit bounds to")
       return
     }
 
-    const coordinates = geojson.features.map(f => f.geometry.coordinates)
+    const coordinates = geojson.features.map((f) => f.geometry.coordinates)
 
     const bounds = coordinates.reduce((bounds, coord) => {
       return bounds.extend(coord)
@@ -78,7 +88,7 @@ export class MapInitializer {
 
     map.fitBounds(bounds, {
       padding,
-      maxZoom
+      maxZoom,
     })
   }
 }

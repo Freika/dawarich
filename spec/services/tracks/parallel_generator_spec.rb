@@ -68,7 +68,8 @@ RSpec.describe Tracks::ParallelGenerator do
         expect(session_data['metadata']['chunk_size']).to eq('1 day')
         expect(session_data['metadata']['user_settings']['time_threshold_minutes']).to eq(30)
         expect(session_data['metadata']['user_settings']['distance_threshold_meters']).to eq(500)
-        expect(session_data['metadata']['user_settings']['distance_threshold_behavior']).to eq('ignored_for_frontend_parity')
+        expect(session_data['metadata']['user_settings']['distance_threshold_behavior'])
+          .to eq('ignored_for_frontend_parity')
       end
 
       it 'marks session as started with chunk count' do

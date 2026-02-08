@@ -988,7 +988,7 @@ export default class extends Controller {
   /**
    * Toggle timeline panel visibility
    */
-  toggleTimeline() {
+  async toggleTimeline() {
     if (!this.hasTimelinePanelTarget) return
 
     const isVisible = !this.timelinePanelTarget.classList.contains("hidden")
@@ -1002,7 +1002,7 @@ export default class extends Controller {
       this._updateTimelineSpeedDisplay(null)
     } else {
       // Show timeline and initialize with loaded points
-      this._initializeTimeline()
+      await this._initializeTimeline()
       this.timelinePanelTarget.classList.remove("hidden")
     }
   }
@@ -1010,7 +1010,7 @@ export default class extends Controller {
   /**
    * Replay a specific track from its start time (triggered from track info card)
    */
-  replayTrack(event) {
+  async replayTrack(event) {
     if (!this.hasTimelinePanelTarget) return
 
     // If replay is already active, pause it
@@ -1034,7 +1034,7 @@ export default class extends Controller {
     if (Number.isNaN(trackDate.getTime())) return
 
     // First time: initialize timeline and navigate to the track's day
-    this._initializeTimeline()
+    await this._initializeTimeline()
     this.timelinePanelTarget.classList.remove("hidden")
 
     if (!this.timelineManager?.hasData()) return
@@ -1068,8 +1068,10 @@ export default class extends Controller {
    * Initialize timeline with currently loaded points
    * @private
    */
-  _initializeTimeline() {
-    // Get loaded points from dataLoader
+  async _initializeTimeline() {
+    // Ensure points are loaded (fetches with progress badge if needed, no-op if cached)
+    await this.mapDataManager.ensurePointsLoaded()
+
     const points = this._getLoadedPoints()
 
     if (!points || points.length === 0) {
@@ -1411,22 +1413,23 @@ export default class extends Controller {
   _updateTimelineSpeedDisplay(velocity) {
     if (!this.hasTimelineSpeedDisplayTarget) return
 
+    const distanceUnit = this.settings?.distance_unit || "km"
+    const unit = distanceUnit === "mi" ? "mph" : "km/h"
+
     if (velocity !== null && velocity !== undefined && velocity !== "") {
       const speedMs = parseFloat(velocity)
       if (!Number.isNaN(speedMs) && speedMs > 0) {
         // Convert m/s to km/h (multiply by 3.6)
         const speedKmh = speedMs * 3.6
-        const distanceUnit = this.settings?.distance_unit || "km"
-        const unit = distanceUnit === "mi" ? "mph" : "km/h"
         // Convert km/h to mph if needed (multiply by 0.621371)
         const displaySpeed =
           distanceUnit === "mi" ? speedKmh * 0.621371 : speedKmh
         this.timelineSpeedDisplayTarget.textContent = `${Math.round(displaySpeed)} ${unit}`
       } else {
-        this.timelineSpeedDisplayTarget.textContent = ""
+        this.timelineSpeedDisplayTarget.textContent = `?? ${unit}`
       }
     } else {
-      this.timelineSpeedDisplayTarget.textContent = ""
+      this.timelineSpeedDisplayTarget.textContent = `?? ${unit}`
     }
   }
 

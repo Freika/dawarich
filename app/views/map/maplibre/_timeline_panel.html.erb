@@ -4,7 +4,8 @@
   <button type="button"
           class="timeline-close"
           data-action="click->maps--maplibre#toggleTimeline"
-          title="Close timeline">
+          title="Close timeline"
+          aria-label="Close timeline">
     &times;
   </button>
 
@@ -15,7 +16,8 @@
       <button type="button"
               data-action="click->maps--maplibre#timelinePrevDay"
               data-maps--maplibre-target="timelinePrevDayButton"
-              title="Previous day">
+              title="Previous day"
+              aria-label="Previous day">
         &larr;
       </button>
       <div class="timeline-day-info">
@@ -27,19 +29,20 @@
       <button type="button"
               data-action="click->maps--maplibre#timelineNextDay"
               data-maps--maplibre-target="timelineNextDayButton"
-              title="Next day">
+              title="Next day"
+              aria-label="Next day">
         &rarr;
       </button>
     </div>
 
     <%# Center: Time display %>
     <div class="timeline-time-block">
-      <span class="timeline-time-display" data-maps--maplibre-target="timelineTimeDisplay">
+      <span class="timeline-time-display" data-maps--maplibre-target="timelineTimeDisplay" aria-live="polite">
         --:--
       </span>
       <span class="timeline-speed-display" data-maps--maplibre-target="timelineSpeedDisplay">
       </span>
-      <span class="timeline-data-indicator hidden" data-maps--maplibre-target="timelineDataIndicator">
+      <span class="timeline-data-indicator hidden" data-maps--maplibre-target="timelineDataIndicator" role="status">
         No data
       </span>
     </div>
@@ -50,7 +53,8 @@
               class="timeline-play-btn"
               data-maps--maplibre-target="timelinePlayButton"
               data-action="click->maps--maplibre#timelineToggleReplay"
-              title="Play/Pause">
+              title="Play/Pause"
+              aria-label="Play or pause timeline replay">
         <span class="play-icon" data-maps--maplibre-target="timelinePlayIcon">&#9658;</span>
         <span class="pause-icon hidden" data-maps--maplibre-target="timelinePauseIcon">&#10074;&#10074;</span>
       </button>
@@ -63,13 +67,15 @@
                step="1"
                data-maps--maplibre-target="timelineSpeedSlider"
                data-action="input->maps--maplibre#timelineSpeedChange"
-               title="Replay speed">
+               title="Replay speed"
+               aria-label="Replay speed">
         <span class="timeline-speed-label" data-maps--maplibre-target="timelineSpeedLabel">2x</span>
       </div>
       <div class="timeline-cycle-controls hidden" data-maps--maplibre-target="timelineCycleControls">
         <button type="button"
                 data-action="click->maps--maplibre#timelineCyclePrev"
-                title="Previous point">
+                title="Previous point"
+                aria-label="Previous point">
           &larr;
         </button>
         <span class="timeline-point-counter" data-maps--maplibre-target="timelinePointCounter">
@@ -77,7 +83,8 @@
         </span>
         <button type="button"
                 data-action="click->maps--maplibre#timelineCycleNext"
-                title="Next point">
+                title="Next point"
+                aria-label="Next point">
           &rarr;
         </button>
       </div>
@@ -95,7 +102,8 @@
              max="1439"
              value="720"
              data-maps--maplibre-target="timelineScrubber"
-             data-action="input->maps--maplibre#timelineScrubberHover">
+             data-action="input->maps--maplibre#timelineScrubberHover"
+             aria-label="Timeline scrubber - time of day">
     </div>
     <span class="timeline-time-label">23:59</span>
   </div>

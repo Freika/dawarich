@@ -3,9 +3,9 @@
  * Used for sending location data via OwnTracks protocol
  */
 
-import { API_KEYS } from './constants.js';
+import { API_KEYS } from "./constants.js"
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.BASE_URL || "http://localhost:3000"
 
 /**
  * Reset map settings to defaults via API
@@ -15,19 +15,19 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
  * @returns {Promise<import('@playwright/test').APIResponse>}
  */
 export async function resetMapSettings(request, apiKey) {
-  const key = apiKey || API_KEYS.DEMO_USER;
+  const key = apiKey || API_KEYS.DEMO_USER
   const response = await request.patch(`${BASE_URL}/api/v1/settings`, {
     headers: {
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
     },
     data: {
       settings: {
-        enabled_map_layers: ['Points', 'Routes']
-      }
-    }
-  });
-  return response;
+        enabled_map_layers: ["Points", "Routes"],
+      },
+    },
+  })
+  return response
 }
 
 /**
@@ -40,11 +40,18 @@ export async function resetMapSettings(request, apiKey) {
  * @param {Object} [options] - Additional point options
  * @returns {Promise<import('@playwright/test').APIResponse>}
  */
-export async function sendOwnTracksPoint(request, apiKey, lat, lon, timestamp, options = {}) {
-  const tst = timestamp || Math.floor(Date.now() / 1000);
+export async function sendOwnTracksPoint(
+  request,
+  apiKey,
+  lat,
+  lon,
+  timestamp,
+  options = {},
+) {
+  const tst = timestamp || Math.floor(Date.now() / 1000)
 
   const pointData = {
-    _type: 'location',
+    _type: "location",
     lat,
     lon,
     tst,
@@ -52,17 +59,20 @@ export async function sendOwnTracksPoint(request, apiKey, lat, lon, timestamp, o
     batt: options.battery || 85,
     vel: options.velocity || 0,
     alt: options.altitude || 0,
-    tid: options.trackerId || 'e2e'
-  };
+    tid: options.trackerId || "e2e",
+  }
 
-  const response = await request.post(`${BASE_URL}/api/v1/owntracks/points?api_key=${apiKey}`, {
-    data: pointData,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  });
+  const response = await request.post(
+    `${BASE_URL}/api/v1/owntracks/points?api_key=${apiKey}`,
+    {
+      data: pointData,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  )
 
-  return response;
+  return response
 }
 
 /**
@@ -74,41 +84,54 @@ export async function sendOwnTracksPoint(request, apiKey, lat, lon, timestamp, o
  * @param {number} [tolerance=0.0001] - Coordinate tolerance for matching
  * @returns {Promise<boolean>}
  */
-export async function waitForPointOnMap(page, expectedLat, expectedLon, timeout = 15000, tolerance = 0.0001) {
+export async function waitForPointOnMap(
+  page,
+  expectedLat,
+  expectedLon,
+  timeout = 15000,
+  tolerance = 0.0001,
+) {
   try {
     await page.waitForFunction(
       ({ lat, lon, tol }) => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]');
-        if (!element) return false;
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
+        if (!element) return false
 
-        const app = window.Stimulus || window.Application;
-        if (!app) return false;
+        const app = window.Stimulus || window.Application
+        if (!app) return false
 
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
-        if (!controller?.map) return false;
+        const controller = app.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        if (!controller?.map) return false
 
         // Check points source for the new point
-        const source = controller.map.getSource('points-source');
-        if (!source) return false;
+        const source = controller.map.getSource("points-source")
+        if (!source) return false
 
-        const data = source._data;
-        if (!data?.features) return false;
+        const data = source._data
+        if (!data?.features) return false
 
         // Look for a point matching our coordinates
-        return data.features.some(feature => {
-          const coords = feature.geometry?.coordinates;
-          if (!coords) return false;
+        return data.features.some((feature) => {
+          const coords = feature.geometry?.coordinates
+          if (!coords) return false
 
-          const [pointLon, pointLat] = coords;
-          return Math.abs(pointLat - lat) < tol && Math.abs(pointLon - lon) < tol;
-        });
+          const [pointLon, pointLat] = coords
+          return (
+            Math.abs(pointLat - lat) < tol && Math.abs(pointLon - lon) < tol
+          )
+        })
       },
       { lat: expectedLat, lon: expectedLon, tol: tolerance },
-      { timeout }
-    );
-    return true;
+      { timeout },
+    )
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -119,37 +142,46 @@ export async function waitForPointOnMap(page, expectedLat, expectedLon, timeout 
  * @param {number} [timeout=15000] - Timeout in milliseconds
  * @returns {Promise<boolean>}
  */
-export async function waitForFamilyMemberOnMap(page, memberEmail, timeout = 15000) {
+export async function waitForFamilyMemberOnMap(
+  page,
+  memberEmail,
+  timeout = 15000,
+) {
   try {
     await page.waitForFunction(
       (email) => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]');
-        if (!element) return false;
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
+        if (!element) return false
 
-        const app = window.Stimulus || window.Application;
-        if (!app) return false;
+        const app = window.Stimulus || window.Application
+        if (!app) return false
 
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
-        if (!controller?.map) return false;
+        const controller = app.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        if (!controller?.map) return false
 
         // Check family layer source for the member
-        const source = controller.map.getSource('family-source');
-        if (!source) return false;
+        const source = controller.map.getSource("family-source")
+        if (!source) return false
 
-        const data = source._data;
-        if (!data?.features) return false;
+        const data = source._data
+        if (!data?.features) return false
 
         // Look for a feature with matching email in properties
-        return data.features.some(feature => {
-          return feature.properties?.email === email;
-        });
+        return data.features.some((feature) => {
+          return feature.properties?.email === email
+        })
       },
       memberEmail,
-      { timeout }
-    );
-    return true;
+      { timeout },
+    )
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -163,26 +195,31 @@ export async function waitForRecentPointVisible(page, timeout = 15000) {
   try {
     await page.waitForFunction(
       () => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]');
-        if (!element) return false;
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
+        if (!element) return false
 
-        const app = window.Stimulus || window.Application;
-        if (!app) return false;
+        const app = window.Stimulus || window.Application
+        if (!app) return false
 
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
-        if (!controller?.layerManager) return false;
+        const controller = app.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        if (!controller?.layerManager) return false
 
-        const recentPointLayer = controller.layerManager.getLayer('recentPoint');
-        if (!recentPointLayer) return false;
+        const recentPointLayer = controller.layerManager.getLayer("recentPoint")
+        if (!recentPointLayer) return false
 
         // Check if layer is visible and has data
-        return recentPointLayer.visible === true;
+        return recentPointLayer.visible === true
       },
-      { timeout }
-    );
-    return true;
+      { timeout },
+    )
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -193,25 +230,33 @@ export async function waitForRecentPointVisible(page, timeout = 15000) {
  */
 export async function enableLiveMode(page) {
   // Open settings panel
-  await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click();
-  await page.waitForSelector('.map-control-panel.open', { timeout: 3000 });
-  await page.waitForTimeout(200);
+  await page
+    .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+    .first()
+    .click()
+  await page.waitForSelector(".map-control-panel.open", { timeout: 3000 })
+  await page.waitForTimeout(200)
 
   // Click Settings tab
-  await page.locator('button[data-tab="settings"]').click();
-  await page.waitForTimeout(300);
+  await page.locator('button[data-tab="settings"]').click()
+  await page.waitForTimeout(300)
 
   // Enable live mode if not already enabled
-  const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]');
-  await liveModeToggle.waitFor({ state: 'visible', timeout: 3000 });
-  if (!await liveModeToggle.isChecked()) {
-    await liveModeToggle.click();
-    await page.waitForTimeout(500);
+  const liveModeToggle = page.locator(
+    '[data-maps--maplibre-realtime-target="liveModeToggle"]',
+  )
+  await liveModeToggle.waitFor({ state: "visible", timeout: 3000 })
+  if (!(await liveModeToggle.isChecked())) {
+    await liveModeToggle.click()
+    await page.waitForTimeout(500)
   }
 
   // Close settings
-  await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click();
-  await page.waitForTimeout(300);
+  await page
+    .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+    .first()
+    .click()
+  await page.waitForTimeout(300)
 }
 
 /**
@@ -224,23 +269,28 @@ export async function waitForActionCableConnection(page, timeout = 10000) {
   try {
     await page.waitForFunction(
       () => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]');
-        if (!element) return false;
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
+        if (!element) return false
 
-        const app = window.Stimulus || window.Application;
-        if (!app) return false;
+        const app = window.Stimulus || window.Application
+        if (!app) return false
 
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime');
-        if (!controller?.channels) return false;
+        const controller = app.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        if (!controller?.channels) return false
 
         // Check if we have at least one active channel
-        return controller.channels !== undefined;
+        return controller.channels !== undefined
       },
-      { timeout }
-    );
-    return true;
+      { timeout },
+    )
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -254,24 +304,29 @@ export async function waitForPointsChannelConnected(page, timeout = 10000) {
   try {
     await page.waitForFunction(
       () => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]');
-        if (!element) return false;
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
+        if (!element) return false
 
-        const app = window.Stimulus || window.Application;
-        if (!app) return false;
+        const app = window.Stimulus || window.Application
+        if (!app) return false
 
-        const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime');
-        if (!controller?.channels?.subscriptions?.points) return false;
+        const controller = app.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        if (!controller?.channels?.subscriptions?.points) return false
 
         // Check if the points channel subscription exists
-        const pointsSub = controller.channels.subscriptions.points;
-        return pointsSub !== null && pointsSub !== undefined;
+        const pointsSub = controller.channels.subscriptions.points
+        return pointsSub !== null && pointsSub !== undefined
       },
-      { timeout }
-    );
-    return true;
+      { timeout },
+    )
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -282,18 +337,23 @@ export async function waitForPointsChannelConnected(page, timeout = 10000) {
  */
 export async function getPointCount(page) {
   return await page.evaluate(() => {
-    const element = document.querySelector('[data-controller*="maps--maplibre"]');
-    if (!element) return 0;
+    const element = document.querySelector(
+      '[data-controller*="maps--maplibre"]',
+    )
+    if (!element) return 0
 
-    const app = window.Stimulus || window.Application;
-    if (!app) return 0;
+    const app = window.Stimulus || window.Application
+    if (!app) return 0
 
-    const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre');
-    if (!controller?.map) return 0;
+    const controller = app.getControllerForElementAndIdentifier(
+      element,
+      "maps--maplibre",
+    )
+    if (!controller?.map) return 0
 
-    const source = controller.map.getSource('points-source');
-    if (!source?._data?.features) return 0;
+    const source = controller.map.getSource("points-source")
+    if (!source?._data?.features) return 0
 
-    return source._data.features.length;
-  });
+    return source._data.features.length
+  })
 }
