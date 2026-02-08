@@ -42,13 +42,9 @@ test.describe("Timeline Panel", () => {
     })
 
     test("closes with close button", async ({ page }) => {
+      // openTimelinePanel with `true` already closes the settings panel
       await openTimelinePanel(page, true)
       await waitForTimelinePanel(page)
-
-      // Close the settings panel first so it doesn't intercept clicks
-      const closeSettingsButton = page.locator('button[title="Close panel"]')
-      await closeSettingsButton.click()
-      await page.waitForTimeout(300)
 
       // Click the timeline close button
       const closeButton = page.locator(".timeline-close")
