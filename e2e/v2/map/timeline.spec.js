@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { closeOnboardingModal } from "../../helpers/navigation.js"
+import { API_KEYS } from "../helpers/constants.js"
 import {
   getScrubberValue,
   getTimelineMarkerState,
@@ -1123,6 +1124,82 @@ test.describe("Timeline Panel", () => {
       )
       const displayText = await timeDisplay.textContent()
       expect(displayText).toBeTruthy()
+    })
+  })
+
+  test.describe("On-demand point loading", () => {
+    test("timeline loads points when only tracks layer is enabled", async ({
+      page,
+      request,
+    }) => {
+      // Step 1: Set enabled_map_layers to only Tracks via API (no point-dependent layers)
+      await request.patch("http://localhost:3000/api/v1/settings", {
+        headers: {
+          Authorization: `Bearer ${API_KEYS.DEMO_USER}`,
+          "Content-Type": "application/json",
+        },
+        data: {
+          settings: { enabled_map_layers: ["Tracks"] },
+        },
+      })
+
+      // Step 2: Reload the page so the new settings take effect
+      await page.goto(
+        "/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-16T23:59",
+      )
+      await closeOnboardingModal(page)
+      await waitForMapLibre(page)
+      await waitForLoadingComplete(page)
+      await page.waitForTimeout(500)
+
+      // Verify points were NOT loaded on initial load
+      const pointsBeforeTimeline = await page.evaluate(() => {
+        const el = document.querySelector('[data-controller*="maps--maplibre"]')
+        if (!el) return null
+        const app = window.Stimulus || window.Application
+        if (!app) return null
+        const ctrl = app.getControllerForElementAndIdentifier(
+          el,
+          "maps--maplibre",
+        )
+        return ctrl?.mapDataManager?.lastLoadedData?.points?.length ?? 0
+      })
+      expect(pointsBeforeTimeline).toBe(0)
+
+      // Step 3: Open timeline — this should trigger ensurePointsLoaded()
+      await openTimelinePanel(page, true)
+      // Use a longer timeout since points need to be fetched on demand
+      await waitForTimelinePanel(page, 15000)
+
+      // Step 4: Verify timeline has data
+      const state = await getTimelineState(page)
+      expect(state).not.toBeNull()
+      expect(state.hasData).toBe(true)
+      expect(state.currentDayPointCount).toBeGreaterThan(0)
+
+      // Step 5: Verify replay works
+      const playButton = page.locator(
+        '[data-maps--maplibre-target="timelinePlayButton"]',
+      )
+      await playButton.click()
+      await page.waitForTimeout(500)
+
+      const isPlaying = await isReplayActive(page)
+      expect(isPlaying).toBe(true)
+
+      // Stop replay
+      await playButton.click()
+
+      // Step 6: Restore default settings
+      await request.patch("http://localhost:3000/api/v1/settings", {
+        headers: {
+          Authorization: `Bearer ${API_KEYS.DEMO_USER}`,
+          "Content-Type": "application/json",
+        },
+        data: {
+          settings: { enabled_map_layers: ["Points", "Routes"] },
+        },
+      })
     })
   })
 })
