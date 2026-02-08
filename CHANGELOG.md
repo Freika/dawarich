@@ -4,7 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [1.1.0] - Unreleased
+# [1.1.1] - Unreleased
+
+The Trips Update Release
+
+Trips are now using MapLibre instead of Leaflet to provide same smooth experience as the Map V2.
+
+Each day of a trip now has its own card on the trip page with where user can leave a note for that day. Each day is colored in different color on the map to easily distinguish them. Timeline and Replay functionality is now available on the trip page as well, so you can easily see how your location changed during the trip and replay it if you want.
+
+## Added
+
+- Countries flags as SVGs instead of emojis.
+
+## Fixed
+
+- Countries that were not showed as flags before now fixed.
+
+# [1.1.0] - 2026-02-08
 
 The Timeline Release
 

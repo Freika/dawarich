@@ -16,7 +16,8 @@ module CountryFlagHelper
     'Indian Ocean Territories' => 'AU',
     'Coral Sea Islands' => 'AU',
     'Clipperton Island' => 'FR',
-    'Ashmore and Cartier Islands' => 'AU'
+    'Ashmore and Cartier Islands' => 'AU',
+    'Norway' => 'NO'
   }.freeze
 
   def country_flag(country_name)
