@@ -14,6 +14,7 @@ class Note < ApplicationRecord
 
   validate :unique_date_per_attachable
   validate :date_within_attachable_range
+  validate :attachable_belongs_to_user
 
   scope :standalone, -> { where(attachable_id: nil) }
   scope :attached, -> { where.not(attachable_id: nil) }
@@ -72,5 +73,13 @@ class Note < ApplicationRecord
     return unless date < attachable.started_at.to_date || date > attachable.ended_at.to_date
 
     errors.add(:date, 'must be within the trip date range')
+  end
+
+  def attachable_belongs_to_user
+    return if attachable.blank?
+    return unless attachable.respond_to?(:user_id)
+    return if attachable.user_id == user_id
+
+    errors.add(:attachable, 'must belong to the same user')
   end
 end

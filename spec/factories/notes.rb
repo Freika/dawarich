@@ -13,7 +13,7 @@ FactoryBot.define do
     end
 
     trait :trip_day do
-      association :attachable, factory: :trip
+      attachable { association(:trip, user: user) }
       noted_at { attachable.started_at.to_date.to_datetime.noon }
     end
   end

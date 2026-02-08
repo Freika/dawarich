@@ -41,6 +41,31 @@ RSpec.describe Note, type: :model do
       end
     end
 
+    context 'attachable belongs to user' do
+      let(:user) { create(:user) }
+      let(:other_user) { create(:user) }
+      let(:trip) { create(:trip, user: user) }
+      let(:other_trip) { create(:trip, user: other_user) }
+
+      it 'is valid when attachable belongs to the same user' do
+        note = build(:note, user: user, attachable: trip,
+                            noted_at: trip.started_at.to_date.to_datetime.noon)
+        expect(note).to be_valid
+      end
+
+      it 'is invalid when attachable belongs to a different user' do
+        note = build(:note, user: user, attachable: other_trip,
+                            noted_at: other_trip.started_at.to_date.to_datetime.noon)
+        expect(note).not_to be_valid
+        expect(note.errors[:attachable]).to include('must belong to the same user')
+      end
+
+      it 'is valid when attachable is blank (standalone note)' do
+        note = build(:note, user: user, noted_at: Time.current)
+        expect(note).to be_valid
+      end
+    end
+
     context 'date within trip range' do
       let(:user) { create(:user) }
       let(:trip) { create(:trip, user: user) }

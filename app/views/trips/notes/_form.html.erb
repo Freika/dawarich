@@ -13,7 +13,9 @@
     <% end %>
 
     <div>
-      <%= form.rich_text_area :body, class: "w-full min-h-[100px]" %>
+      <textarea name="note[body]"
+                class="textarea textarea-bordered w-full min-h-[100px]"
+                placeholder="Write your notes for this day..."><%= note.body.to_plain_text %></textarea>
     </div>
 
     <div class="flex gap-2">
@@ -21,7 +23,7 @@
           class: "btn btn-primary btn-sm" %>
       <button type="button"
               class="btn btn-ghost btn-sm"
-              data-action="click->trip-maplibre#cancelDayNote"
+              data-action="click->trip-maplibre#hideNoteForm"
               data-date="<%= note.date %>">
         Cancel
       </button>
