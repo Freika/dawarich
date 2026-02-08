@@ -1413,22 +1413,23 @@ export default class extends Controller {
   _updateTimelineSpeedDisplay(velocity) {
     if (!this.hasTimelineSpeedDisplayTarget) return
 
+    const distanceUnit = this.settings?.distance_unit || "km"
+    const unit = distanceUnit === "mi" ? "mph" : "km/h"
+
     if (velocity !== null && velocity !== undefined && velocity !== "") {
       const speedMs = parseFloat(velocity)
       if (!Number.isNaN(speedMs) && speedMs > 0) {
         // Convert m/s to km/h (multiply by 3.6)
         const speedKmh = speedMs * 3.6
-        const distanceUnit = this.settings?.distance_unit || "km"
-        const unit = distanceUnit === "mi" ? "mph" : "km/h"
         // Convert km/h to mph if needed (multiply by 0.621371)
         const displaySpeed =
           distanceUnit === "mi" ? speedKmh * 0.621371 : speedKmh
         this.timelineSpeedDisplayTarget.textContent = `${Math.round(displaySpeed)} ${unit}`
       } else {
-        this.timelineSpeedDisplayTarget.textContent = ""
+        this.timelineSpeedDisplayTarget.textContent = `?? ${unit}`
       }
     } else {
-      this.timelineSpeedDisplayTarget.textContent = ""
+      this.timelineSpeedDisplayTarget.textContent = `?? ${unit}`
     }
   }
 
