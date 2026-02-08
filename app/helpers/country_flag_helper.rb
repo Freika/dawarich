@@ -6,7 +6,17 @@ module CountryFlagHelper
   TERRITORY_CODES = {
     'Kosovo' => 'XK',
     'Somaliland' => 'SO',
-    'Northern Cyprus' => 'CY'
+    'Northern Cyprus' => 'CY',
+    'Dhekelia Sovereign Base Area' => 'GB',
+    'Akrotiri Sovereign Base Area' => 'GB',
+    'US Naval Base Guantanamo Bay' => 'US',
+    'Cyprus No Mans Area' => 'CY',
+    'Baykonur Cosmodrome' => 'KZ',
+    'Brazilian Island' => 'BR',
+    'Indian Ocean Territories' => 'AU',
+    'Coral Sea Islands' => 'AU',
+    'Clipperton Island' => 'FR',
+    'Ashmore and Cartier Islands' => 'AU'
   }.freeze
 
   def country_flag(country_name)

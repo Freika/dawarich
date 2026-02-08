@@ -184,6 +184,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_07_075817) do
     t.datetime "noted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index "attachable_type, attachable_id, ((noted_at)::date)", name: "index_notes_on_attachable_and_noted_date", unique: true, where: "(attachable_id IS NOT NULL)"
     t.index ["attachable_type", "attachable_id"], name: "index_notes_on_attachable_type_and_attachable_id"
     t.index ["lonlat"], name: "index_notes_on_lonlat", using: :gist
     t.index ["user_id", "noted_at"], name: "index_notes_on_user_id_and_noted_at"

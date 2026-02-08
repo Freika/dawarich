@@ -80,19 +80,12 @@ class TripsController < ApplicationController
 
       distance_km = 0.0
       pts.each_cons(2) do |(lat1, lon1, _), (lat2, lon2, _)|
-        distance_km += haversine_km(lat1.to_f, lon1.to_f, lat2.to_f, lon2.to_f)
+        distance_km += Geocoder::Calculations.distance_between(
+          [lat1.to_f, lon1.to_f], [lat2.to_f, lon2.to_f], units: :km
+        )
       end
 
       { first_time: first_time, last_time: last_time, distance_km: distance_km }
     end
-  end
-
-  def haversine_km(lat1, lon1, lat2, lon2)
-    r = 6371.0
-    dlat = (lat2 - lat1) * Math::PI / 180
-    dlon = (lon2 - lon1) * Math::PI / 180
-    a = Math.sin(dlat / 2)**2 +
-        Math.cos(lat1 * Math::PI / 180) * Math.cos(lat2 * Math::PI / 180) * Math.sin(dlon / 2)**2
-    r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   end
 end
