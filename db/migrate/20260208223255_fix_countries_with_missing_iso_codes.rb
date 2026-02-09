@@ -25,12 +25,12 @@ class FixCountriesWithMissingIsoCodes < ActiveRecord::Migration[8.0]
 
   def up
     CORRECTIONS.each do |name, codes|
-      execute(
-        sanitize_sql([
-          "UPDATE countries SET iso_a2 = ?, iso_a3 = ? WHERE name = ? AND iso_a2 = '-99'",
-          codes[:iso_a2], codes[:iso_a3], name
-        ])
-      )
+      execute(sanitize_sql(
+                [
+                  "UPDATE countries SET iso_a2 = ?, iso_a3 = ? WHERE name = ? AND iso_a2 = '-99'",
+                  codes[:iso_a2], codes[:iso_a3], name
+                ]
+              ))
     end
   end
 

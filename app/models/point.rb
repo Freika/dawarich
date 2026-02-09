@@ -75,7 +75,6 @@ class Point < ApplicationRecord
 
   private
 
-  # rubocop:disable Metrics/MethodLength Metrics/AbcSize
   def broadcast_coordinates
     if user.safe_settings.live_map_enabled
       PointsChannel.broadcast_to(
@@ -95,7 +94,6 @@ class Point < ApplicationRecord
 
     broadcast_to_family if should_broadcast_to_family?
   end
-  # rubocop:enable Metrics/MethodLength
 
   def should_broadcast_to_family?
     return false unless DawarichSettings.family_feature_enabled?
