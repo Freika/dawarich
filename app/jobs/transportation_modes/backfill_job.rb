@@ -4,8 +4,6 @@ module TransportationModes
   # Job to backfill transportation mode detection for existing tracks.
   # Processes tracks that don't have any track_segments or have unknown dominant_mode.
   #
-  # Uses user-specific transportation thresholds from settings.
-  #
   # Usage:
   #   TransportationModes::BackfillJob.perform_later(user_id)
   #   TransportationModes::BackfillJob.perform_later(user_id, batch_size: 50)
@@ -13,16 +11,14 @@ module TransportationModes
   class BackfillJob < ApplicationJob
     queue_as :low_priority
 
+    # Process tracks in batches to avoid memory issues
     DEFAULT_BATCH_SIZE = 100
 
     def perform(user_id, batch_size: DEFAULT_BATCH_SIZE)
-      @user = User.find_by(id: user_id)
-      return unless @user
+      user = User.find_by(id: user_id)
+      return unless user
 
-      # Extract user thresholds once for all tracks
-      @user_thresholds, @expert_thresholds = extract_user_thresholds
-
-      tracks_to_process.find_in_batches(batch_size: batch_size) do |tracks|
+      tracks_to_process(user).find_in_batches(batch_size: batch_size) do |tracks|
         tracks.each do |track|
           process_track(track)
         end
@@ -33,21 +29,18 @@ module TransportationModes
 
     private
 
-    def extract_user_thresholds
-      safe_settings = Users::SafeSettings.new(@user.settings || {})
-      [safe_settings.transportation_thresholds, safe_settings.transportation_expert_thresholds]
-    end
-
-    def tracks_to_process
-      @user.tracks
-           .left_joins(:track_segments)
-           .where(track_segments: { id: nil })
-           .or(@user.tracks.where(dominant_mode: :unknown))
-           .distinct
-           .order(created_at: :asc)
+    def tracks_to_process(user)
+      # Find tracks without segments or with unknown mode
+      user.tracks
+          .left_joins(:track_segments)
+          .where(track_segments: { id: nil })
+          .or(user.tracks.where(dominant_mode: :unknown))
+          .distinct
+          .order(created_at: :asc)
     end
 
     def process_track(track)
+      # Load points for this track
       points = track.points.order(:timestamp).to_a
 
       if points.size < 2
@@ -55,18 +48,14 @@ module TransportationModes
         return
       end
 
-      Track.transaction do
-        track.track_segments.destroy_all
+      # Clear any existing segments
+      track.track_segments.destroy_all
 
-        detector = TransportationModes::Detector.new(
-          track, points,
-          user_thresholds: @user_thresholds,
-          user_expert_thresholds: @expert_thresholds
-        )
-        segment_data = detector.call
+      # Detect and create new segments
+      detector = TransportationModes::Detector.new(track, points)
+      segment_data = detector.call
 
-        create_segments(track, segment_data)
-      end
+      create_segments(track, segment_data)
 
       Rails.logger.debug "Processed track #{track.id}: #{track.dominant_mode}"
     rescue StandardError => e
@@ -89,8 +78,9 @@ module TransportationModes
           confidence: data[:confidence],
           source: data[:source]
         )
-      end.select(&:persisted?)
+      end.compact
 
+      # Update dominant mode
       dominant_segment = segments.max_by { |s| s.duration || 0 }
       track.update_column(:dominant_mode, dominant_segment&.transportation_mode || :unknown)
     end

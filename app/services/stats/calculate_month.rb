@@ -23,10 +23,16 @@ class Stats::CalculateMonth
 
   attr_reader :user, :year, :month
 
-  def start_timestamp = DateTime.new(year, month, 1).to_i
+  def start_timestamp
+    TimezoneHelper.month_bounds(year, month, user_timezone).first
+  end
 
   def end_timestamp
-    DateTime.new(year, month, -1).to_i
+    TimezoneHelper.month_bounds(year, month, user_timezone).last
+  end
+
+  def user_timezone
+    user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
   end
 
   def update_month_stats(year, month)
@@ -43,7 +49,7 @@ class Stats::CalculateMonth
 
       stat.save!
 
-      Cache::InvalidateUserCaches.new(user.id, year: year).call
+      Cache::InvalidateUserCaches.new(user.id).call
     end
   end
 
@@ -65,11 +71,7 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    CountriesAndCities.new(
-      points,
-      min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
-      max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
-    ).call
+    CountriesAndCities.new(points).call
   end
 
   def create_stats_update_failed_notification(user, error)

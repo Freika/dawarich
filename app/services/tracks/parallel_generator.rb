@@ -17,7 +17,7 @@ class Tracks::ParallelGenerator
   end
 
   def call
-    clean_existing_tracks if mode.in?(%i[bulk daily])
+    clean_bulk_tracks if mode == :bulk
 
     # Generate time chunks
     time_chunks = generate_time_chunks
@@ -91,7 +91,7 @@ class Tracks::ParallelGenerator
     )
   end
 
-  def clean_existing_tracks
+  def clean_bulk_tracks
     if time_range_defined?
       user.tracks.where(
         '(start_at, end_at) OVERLAPS (?, ?)',
@@ -107,7 +107,7 @@ class Tracks::ParallelGenerator
     start_at.present? || end_at.present?
   end
 
-  def time_range # rubocop:disable Metrics/PerceivedComplexity
+  def time_range
     return nil unless time_range_defined?
 
     start_time = start_at&.to_i
@@ -123,8 +123,16 @@ class Tracks::ParallelGenerator
   end
 
   def daily_time_range
-    day = start_at&.to_date || Date.current
-    day.beginning_of_day.to_i..day.end_of_day.to_i
+    timezone = user.timezone
+    day = if start_at.is_a?(Date)
+            start_at
+          elsif start_at
+            start_at.to_time.in_time_zone(timezone).to_date
+          else
+            TimezoneHelper.today_in_timezone(timezone)
+          end
+    start_ts, end_ts = TimezoneHelper.day_bounds(day, timezone)
+    start_ts..end_ts
   end
 
   def distance_threshold_meters
@@ -136,16 +144,28 @@ class Tracks::ParallelGenerator
   end
 
   def humanize_duration(duration)
-    seconds = duration.to_i
-    unit, count = duration_unit_and_count(seconds)
-    "#{count} #{unit}#{'s' if count != 1}"
-  end
-
-  def duration_unit_and_count(seconds)
-    if seconds >= 86_400 then ['day', seconds / 86_400]
-    elsif seconds >= 3600 then ['hour', seconds / 3600]
-    elsif seconds >= 60   then ['minute', seconds / 60]
-    else ['second', seconds]
+    case duration
+    when 1.day then '1 day'
+    when 1.hour then '1 hour'
+    when 6.hours then '6 hours'
+    when 12.hours then '12 hours'
+    when 2.days then '2 days'
+    when 1.week then '1 week'
+    else
+      # Convert seconds to readable format
+      seconds = duration.to_i
+      if seconds >= 86_400 # days
+        days = seconds / 86_400
+        "#{days} day#{'s' if days != 1}"
+      elsif seconds >= 3600 # hours
+        hours = seconds / 3600
+        "#{hours} hour#{'s' if hours != 1}"
+      elsif seconds >= 60 # minutes
+        minutes = seconds / 60
+        "#{minutes} minute#{'s' if minutes != 1}"
+      else
+        "#{seconds} second#{'s' if seconds != 1}"
+      end
     end
   end
 end

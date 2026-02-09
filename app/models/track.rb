@@ -173,11 +173,11 @@ class Track < ApplicationRecord
   def broadcast_geojson_updated
     Rails.logger.info "[Track#broadcast_geojson_updated] Broadcasting track #{id} to user #{user_id}"
     geojson_feature = Tracks::GeojsonSerializer.new(self).call[:features].first
-
     Rails.logger.info "[Track#broadcast_geojson_updated] GeoJSON feature id: #{geojson_feature[:properties][:id]}"
-
-    TracksChannel.broadcast_to(user, { action: 'geojson_updated', track: geojson_feature })
-
+    TracksChannel.broadcast_to(user, {
+                                 action: 'geojson_updated',
+      track: geojson_feature
+                               })
     Rails.logger.info "[Track#broadcast_geojson_updated] Broadcast complete for track #{id}"
   end
 
@@ -192,7 +192,10 @@ class Track < ApplicationRecord
   end
 
   def broadcast_track_destroyed
-    TracksChannel.broadcast_to(user, { action: 'destroyed', track_id: id })
+    TracksChannel.broadcast_to(user, {
+                                 action: 'destroyed',
+      track_id: id
+                               })
   end
 
   def broadcast_track_update(action)

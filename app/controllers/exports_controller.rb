@@ -11,8 +11,10 @@ class ExportsController < ApplicationController
   end
 
   def create
-    export_name =
-      "export_from_#{params[:start_at].to_date}_to_#{params[:end_at].to_date}.#{params[:file_format]}"
+    timezone = current_user.timezone
+    start_date = Time.zone.parse(params[:start_at]).in_time_zone(timezone).to_date
+    end_date = Time.zone.parse(params[:end_at]).in_time_zone(timezone).to_date
+    export_name = "export_from_#{start_date}_to_#{end_date}.#{params[:file_format]}"
     export = current_user.exports.create(
       name: export_name,
       status: :created,

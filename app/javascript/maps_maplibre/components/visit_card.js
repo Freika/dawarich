@@ -9,38 +9,46 @@ export class VisitCard {
    * @returns {string} HTML string
    */
   static create(visit, options = {}) {
-    const { isSelected = false, onSelect, onConfirm, onDecline, onHover } = options
-    const isSuggested = visit.status === 'suggested'
-    const isConfirmed = visit.status === 'confirmed'
-    const isDeclined = visit.status === 'declined'
+    const {
+      isSelected = false,
+      onSelect,
+      onConfirm,
+      onDecline,
+      onHover,
+      timezone = "UTC",
+    } = options
+    const isSuggested = visit.status === "suggested"
+    const isConfirmed = visit.status === "confirmed"
+    const isDeclined = visit.status === "declined"
 
     // Format date and time
     const startDate = new Date(visit.started_at)
     const endDate = new Date(visit.ended_at)
-    const dateStr = startDate.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+    const dateStr = startDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: timezone,
     })
-    const timeRange = `${startDate.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })} - ${endDate.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    const timeRange = `${startDate.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: timezone,
+    })} - ${endDate.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: timezone,
     })}`
 
     // Format duration (duration is in minutes from the backend)
     const hours = Math.floor(visit.duration / 60)
     const minutes = visit.duration % 60
-    const durationStr = hours > 0
-      ? `${hours}h ${minutes}m`
-      : `${minutes}m`
+    const durationStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
 
     // Border style based on status
-    const borderClass = isSuggested ? 'border-dashed' : ''
-    const bgClass = isDeclined ? 'bg-base-200 opacity-60' : 'bg-base-100'
-    const selectedClass = isSelected ? 'ring-2 ring-primary' : ''
+    const borderClass = isSuggested ? "border-dashed" : ""
+    const bgClass = isDeclined ? "bg-base-200 opacity-60" : "bg-base-100"
+    const selectedClass = isSelected ? "ring-2 ring-primary" : ""
 
     return `
       <div class="visit-card card ${bgClass} ${borderClass} ${selectedClass} border-2 border-base-content/20 mb-2 hover:shadow-md transition-all relative"
@@ -50,10 +58,10 @@ export class VisitCard {
            onmouseleave="if(!this.querySelector('.visit-checkbox input').checked) this.querySelector('.visit-checkbox').classList.add('hidden')">
 
         <!-- Checkbox (hidden by default, shown on hover) -->
-        <div class="visit-checkbox absolute top-3 right-3 z-10 ${isSelected ? '' : 'hidden'}">
+        <div class="visit-checkbox absolute top-3 right-3 z-10 ${isSelected ? "" : "hidden"}">
           <input type="checkbox"
                  class="checkbox checkbox-primary checkbox-sm"
-                 ${isSelected ? 'checked' : ''}
+                 ${isSelected ? "checked" : ""}
                  data-visit-select="${visit.id}"
                  onclick="event.stopPropagation()">
         </div>
@@ -61,7 +69,7 @@ export class VisitCard {
         <div class="card-body p-3">
           <!-- Visit Name -->
           <h3 class="card-title text-sm font-semibold mb-2">
-            ${visit.name || visit.place?.name || 'Unnamed Visit'}
+            ${visit.name || visit.place?.name || "Unnamed Visit"}
           </h3>
 
           <!-- Date and Time -->
@@ -87,7 +95,9 @@ export class VisitCard {
           </div>
 
           <!-- Action buttons for suggested visits -->
-          ${isSuggested ? `
+          ${
+            isSuggested
+              ? `
             <div class="card-actions justify-end mt-3 gap-1.5">
               <button class="btn btn-xs btn-outline btn-error" data-visit-decline="${visit.id}">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,16 +112,22 @@ export class VisitCard {
                 Confirm
               </button>
             </div>
-          ` : ''}
+          `
+              : ""
+          }
 
           <!-- Status badge for confirmed/declined visits -->
-          ${isConfirmed || isDeclined ? `
+          ${
+            isConfirmed || isDeclined
+              ? `
             <div class="mt-2">
-              <span class="badge badge-xs ${isConfirmed ? 'badge-success' : 'badge-error'}">
+              <span class="badge badge-xs ${isConfirmed ? "badge-success" : "badge-error"}">
                 ${visit.status}
               </span>
             </div>
-          ` : ''}
+          `
+              : ""
+          }
         </div>
       </div>
     `
@@ -123,12 +139,12 @@ export class VisitCard {
    * @returns {string} HTML string
    */
   static createBulkActions(selectedCount) {
-    if (selectedCount < 2) return ''
+    if (selectedCount < 2) return ""
 
     return `
       <div class="bulk-actions-panel sticky bottom-0 bg-base-100 border-t border-base-300 p-4 mt-4 space-y-2">
         <div class="text-sm font-medium mb-3">
-          ${selectedCount} visit${selectedCount === 1 ? '' : 's'} selected
+          ${selectedCount} visit${selectedCount === 1 ? "" : "s"} selected
         </div>
         <div class="grid grid-cols-3 gap-2">
           <button class="btn btn-sm btn-outline" data-bulk-merge>

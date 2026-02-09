@@ -7,39 +7,26 @@ module TransportationModes
   # Uses speed and acceleration analysis to detect mode changes and
   # classify segments of movement.
   #
-  # Supports user-configurable thresholds via the user_thresholds parameter.
-  #
   class MovementAnalyzer
-    # Default values (can be overridden by user settings)
-    DEFAULT_MIN_SEGMENT_DURATION_SECONDS = 60
+    # Minimum segment duration in seconds to be considered valid
+    MIN_SEGMENT_DURATION = 60
+
+    # Minimum number of points for a valid segment
     MIN_SEGMENT_POINTS = 2
 
     # Speed change threshold to consider a mode change (km/h)
     # Increased to reduce noise-induced segment splits
     SPEED_CHANGE_THRESHOLD = 25
 
-    # Default time gap that indicates a mode change (seconds)
-    DEFAULT_TIME_GAP_THRESHOLD = 180
+    # Time gap that indicates a mode change (seconds)
+    TIME_GAP_THRESHOLD = 180
 
     # Smoothing window size for speed averaging
     SMOOTHING_WINDOW = 5
 
-    # @param track [Track] The track being analyzed
-    # @param points [Array<Point>] Points to analyze
-    # @param user_thresholds [Hash, nil] User-configured thresholds from settings
-    # @param user_expert_thresholds [Hash, nil] Expert thresholds from settings
-    #   Expected keys:
-    #   - 'min_segment_duration' => 60 (seconds)
-    #   - 'time_gap_threshold' => 180 (seconds)
-    def initialize(track, points, user_thresholds: nil, user_expert_thresholds: nil)
+    def initialize(track, points)
       @track = track
       @points = points.sort_by(&:timestamp)
-      @user_thresholds = user_thresholds || {}
-      @user_expert_thresholds = normalize_hash_keys(user_expert_thresholds)
-
-      # Apply user settings or use defaults
-      @min_segment_duration = extract_min_segment_duration
-      @time_gap_threshold = extract_time_gap_threshold
     end
 
     def call
@@ -56,24 +43,6 @@ module TransportationModes
     end
 
     private
-
-    attr_reader :min_segment_duration, :time_gap_threshold
-
-    def normalize_hash_keys(hash)
-      return {} if hash.nil?
-
-      hash.transform_keys(&:to_s)
-    end
-
-    def extract_min_segment_duration
-      value = @user_expert_thresholds['min_segment_duration']
-      value.present? ? value.to_i : DEFAULT_MIN_SEGMENT_DURATION_SECONDS
-    end
-
-    def extract_time_gap_threshold
-      value = @user_expert_thresholds['time_gap_threshold']
-      value.present? ? value.to_i : DEFAULT_TIME_GAP_THRESHOLD
-    end
 
     def calculate_movement_metrics
       metrics = []
@@ -122,10 +91,10 @@ module TransportationModes
     end
 
     def geocoder_distance(p1, p2)
-      lat1 = p1.lat
-      lat2 = p2.lat
-      lon1 = p1.lon
-      lon2 = p2.lon
+      lat1 = p1.latitude || extract_lat(p1)
+      lat2 = p2.latitude || extract_lat(p2)
+      lon1 = p1.longitude || extract_lon(p1)
+      lon2 = p2.longitude || extract_lon(p2)
 
       # Return 0 if any coordinate is missing
       return 0 if lat1.nil? || lat2.nil? || lon1.nil? || lon2.nil?
@@ -142,6 +111,36 @@ module TransportationModes
       distance_km * 1000
     rescue StandardError
       0
+    end
+
+    def extract_lat(point)
+      return nil unless point.lonlat
+
+      # Extract from PostGIS point or WKT string
+      if point.lonlat.respond_to?(:y)
+        point.lonlat.y
+      elsif point.lonlat.is_a?(String)
+        # Parse WKT string like "POINT(lon lat)"
+        match = point.lonlat.match(/POINT\s*\(\s*[\d.-]+\s+([\d.-]+)\s*\)/i)
+        match[1].to_f if match
+      end
+    rescue StandardError
+      nil
+    end
+
+    def extract_lon(point)
+      return nil unless point.lonlat
+
+      # Extract from PostGIS point or WKT string
+      if point.lonlat.respond_to?(:x)
+        point.lonlat.x
+      elsif point.lonlat.is_a?(String)
+        # Parse WKT string like "POINT(lon lat)"
+        match = point.lonlat.match(/POINT\s*\(\s*([\d.-]+)\s+[\d.-]+\s*\)/i)
+        match[1].to_f if match
+      end
+    rescue StandardError
+      nil
     end
 
     def get_speed(_p1, p2, distance, time_diff)
@@ -172,8 +171,8 @@ module TransportationModes
         prev_metric = movement_data[idx - 1]
         is_boundary = false
 
-        # Check for time gap (indicates stop/start) - uses user-configurable threshold
-        is_boundary = true if metric[:time_diff] > time_gap_threshold
+        # Check for time gap (indicates stop/start)
+        is_boundary = true if metric[:time_diff] > TIME_GAP_THRESHOLD
 
         # Check for significant speed change
         speed_diff = (smoothed_speeds[idx] - smoothed_speeds[idx - 1]).abs
@@ -192,7 +191,7 @@ module TransportationModes
       # Add final segment
       boundaries << { start: current_start, end: movement_data.size - 1 }
 
-      # Merge very short segments - uses user-configurable threshold
+      # Merge very short segments
       merge_short_segments(boundaries, movement_data)
     end
 
@@ -216,8 +215,7 @@ module TransportationModes
       boundaries[1..].each do |segment|
         segment_duration = calculate_boundary_duration(current, movement_data)
 
-        # Uses user-configurable min_segment_duration
-        if segment_duration < min_segment_duration
+        if segment_duration < MIN_SEGMENT_DURATION
           # Merge with next segment
           current = { start: current[:start], end: segment[:end] }
         else
@@ -327,14 +325,12 @@ module TransportationModes
       total_distance = distances.sum
       total_duration = durations.sum
 
-      # Classify the segment - pass user thresholds to ModeClassifier
+      # Classify the segment
       classifier = ModeClassifier.new(
         avg_speed_kmh: avg_speed,
         max_speed_kmh: max_speed,
         avg_acceleration: avg_acceleration,
-        duration: total_duration,
-        user_thresholds: @user_thresholds,
-        user_expert_thresholds: @user_expert_thresholds
+        duration: total_duration
       )
 
       mode = classifier.classify

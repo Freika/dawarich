@@ -42,27 +42,15 @@ export class ApiClient {
 
   /**
    * Fetch all points for date range (handles pagination with parallel requests)
-   * @param {Object} options - { start_at, end_at, onProgress, onBatch, maxConcurrent }
-   * @param {Function} options.onBatch - Called with accumulated points array after each batch
+   * @param {Object} options - { start_at, end_at, onProgress, maxConcurrent }
    * @returns {Promise<Array>} All points
    */
   async fetchAllPoints({
     start_at,
     end_at,
     onProgress = null,
-    onBatch = null,
     maxConcurrent = 3,
   }) {
-    // Report that fetching has started
-    if (onProgress) {
-      onProgress({
-        loaded: 0,
-        currentPage: 0,
-        totalPages: 0,
-        progress: 0,
-      })
-    }
-
     // First fetch to get total pages
     const firstPage = await this.fetchPoints({
       start_at,
@@ -82,28 +70,12 @@ export class ApiClient {
           progress: 1.0,
         })
       }
-      if (onBatch) {
-        onBatch(firstPage.points)
-      }
       return firstPage.points
     }
 
     // Initialize results array with first page
     const pageResults = [{ page: 1, points: firstPage.points }]
     let completedPages = 1
-
-    // Report first page completed
-    if (onProgress) {
-      onProgress({
-        loaded: firstPage.points.length,
-        currentPage: 1,
-        totalPages,
-        progress: 1 / totalPages,
-      })
-    }
-    if (onBatch) {
-      onBatch(firstPage.points)
-    }
 
     // Create array of remaining page numbers
     const remainingPages = Array.from(
@@ -135,12 +107,6 @@ export class ApiClient {
           totalPages,
           progress,
         })
-      }
-
-      // Call batch callback with all accumulated points so far (sorted)
-      if (onBatch) {
-        const sorted = [...pageResults].sort((a, b) => a.page - b.page)
-        onBatch(sorted.flatMap((r) => r.points))
       }
     }
 
@@ -228,9 +194,9 @@ export class ApiClient {
     })
 
     if (tag_ids && tag_ids.length > 0) {
-      for (const id of tag_ids) {
+      tag_ids.forEach((id) => {
         params.append("tag_ids[]", id)
-      }
+      })
     }
 
     const url = `${this.baseURL}/places?${params.toString()}`
@@ -347,7 +313,7 @@ export class ApiClient {
    * @param {Object} options - { start_at, end_at, page, per_page }
    * @returns {Promise<Object>} { features, currentPage, totalPages, totalCount }
    */
-  async fetchTracksPage({ start_at, end_at, page = 1, per_page = 500 }) {
+  async fetchTracksPage({ start_at, end_at, page = 1, per_page = 100 }) {
     const params = new URLSearchParams({
       page: page.toString(),
       per_page: per_page.toString(),
@@ -377,112 +343,37 @@ export class ApiClient {
   }
 
   /**
-   * Fetch all tracks (handles pagination with parallel requests)
-   * @param {Object} options - { start_at, end_at, onProgress, maxConcurrent }
+   * Fetch all tracks (handles pagination automatically)
+   * @param {Object} options - { start_at, end_at, onProgress }
    * @returns {Promise<Object>} GeoJSON FeatureCollection
    */
-  async fetchTracks({
-    start_at,
-    end_at,
-    onProgress,
-    onBatch = null,
-    maxConcurrent = 3,
-  } = {}) {
-    // First fetch to get total pages
-    const firstPage = await this.fetchTracksPage({
-      start_at,
-      end_at,
-      page: 1,
-      per_page: 500,
-    })
-    const totalPages = firstPage.totalPages
+  async fetchTracks({ start_at, end_at, onProgress } = {}) {
+    let allFeatures = []
+    let currentPage = 1
+    let totalPages = 1
 
-    // If only one page, return immediately
-    if (totalPages === 1) {
+    while (currentPage <= totalPages) {
+      const { features, totalPages: tp } = await this.fetchTracksPage({
+        start_at,
+        end_at,
+        page: currentPage,
+        per_page: 100,
+      })
+
+      allFeatures = allFeatures.concat(features)
+      totalPages = tp
+
       if (onProgress) {
-        onProgress(1, 1)
+        onProgress(currentPage, totalPages)
       }
-      if (onBatch) {
-        onBatch(firstPage.features.length)
-      }
-      return {
-        type: "FeatureCollection",
-        features: firstPage.features,
-      }
+
+      currentPage++
     }
 
-    // Initialize results array with first page
-    const pageResults = [{ page: 1, features: firstPage.features }]
-    let completedPages = 1
-
-    if (onBatch) {
-      onBatch(firstPage.features.length)
-    }
-
-    // Create array of remaining page numbers
-    const remainingPages = Array.from(
-      { length: totalPages - 1 },
-      (_, i) => i + 2,
-    )
-
-    // Process pages in batches of maxConcurrent
-    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
-      const batch = remainingPages.slice(i, i + maxConcurrent)
-
-      // Fetch batch in parallel
-      const batchPromises = batch.map((page) =>
-        this.fetchTracksPage({ start_at, end_at, page, per_page: 500 }).then(
-          (result) => ({ page, features: result.features }),
-        ),
-      )
-
-      const batchResults = await Promise.all(batchPromises)
-      pageResults.push(...batchResults)
-      completedPages += batchResults.length
-
-      // Call progress callback after each batch
-      if (onProgress) {
-        onProgress(completedPages, totalPages)
-      }
-      if (onBatch) {
-        const totalFeatures = pageResults.reduce(
-          (sum, r) => sum + r.features.length,
-          0,
-        )
-        onBatch(totalFeatures)
-      }
-    }
-
-    // Sort by page number to ensure correct order
-    pageResults.sort((a, b) => a.page - b.page)
-
-    // Flatten into single array
     return {
       type: "FeatureCollection",
-      features: pageResults.flatMap((r) => r.features),
+      features: allFeatures,
     }
-  }
-
-  /**
-   * Fetch a single track with its segments (for lazy-loading on click)
-   * @param {number|string} trackId - The track ID
-   * @returns {Promise<Object>} GeoJSON Feature with segments
-   */
-  async fetchTrackWithSegments(trackId) {
-    const url = `${this.baseURL}/tracks/${trackId}`
-
-    const response = await fetch(url, {
-      headers: this.getHeaders(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch track: ${response.statusText}`)
-    }
-
-    const geojson = await response.json()
-
-    // Return the first (and only) feature from the FeatureCollection
-    return geojson.features?.[0] || null
   }
 
   /**
@@ -667,73 +558,20 @@ export class ApiClient {
   }
 
   /**
-   * Fetch a single page of points belonging to a specific track
+   * Fetch points belonging to a specific track
    * @param {number} trackId - Track ID
-   * @param {Object} options - { page, per_page }
-   * @returns {Promise<Object>} { points, currentPage, totalPages }
+   * @returns {Promise<Array>} Points belonging to the track
    */
-  async fetchTrackPointsPage(trackId, { page = 1, per_page = 1000 } = {}) {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      per_page: per_page.toString(),
+  async fetchTrackPoints(trackId) {
+    const response = await fetch(`${this.baseURL}/tracks/${trackId}/points`, {
+      headers: this.getHeaders(),
     })
-
-    const response = await fetch(
-      `${this.baseURL}/tracks/${trackId}/points?${params}`,
-      { headers: this.getHeaders() },
-    )
 
     if (!response.ok) {
       throw new Error(`Failed to fetch track points: ${response.statusText}`)
     }
 
-    const points = await response.json()
-
-    return {
-      points,
-      currentPage: parseInt(response.headers.get("X-Current-Page") || "1", 10),
-      totalPages: parseInt(response.headers.get("X-Total-Pages") || "1", 10),
-    }
-  }
-
-  /**
-   * Fetch all points belonging to a specific track (handles pagination)
-   * @param {number} trackId - Track ID
-   * @param {Object} options - { per_page, maxConcurrent }
-   * @returns {Promise<Array>} All points belonging to the track
-   */
-  async fetchTrackPoints(trackId, { per_page = 1000, maxConcurrent = 3 } = {}) {
-    const firstPage = await this.fetchTrackPointsPage(trackId, {
-      page: 1,
-      per_page,
-    })
-    const totalPages = firstPage.totalPages
-
-    if (totalPages <= 1) {
-      return firstPage.points
-    }
-
-    const pageResults = [{ page: 1, points: firstPage.points }]
-
-    const remainingPages = Array.from(
-      { length: totalPages - 1 },
-      (_, i) => i + 2,
-    )
-
-    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
-      const batch = remainingPages.slice(i, i + maxConcurrent)
-      const batchResults = await Promise.all(
-        batch.map((page) =>
-          this.fetchTrackPointsPage(trackId, { page, per_page }).then(
-            (result) => ({ page, points: result.points }),
-          ),
-        ),
-      )
-      pageResults.push(...batchResults)
-    }
-
-    pageResults.sort((a, b) => a.page - b.page)
-    return pageResults.flatMap((r) => r.points)
+    return response.json()
   }
 
   getHeaders() {

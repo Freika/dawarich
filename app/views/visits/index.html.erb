@@ -76,7 +76,7 @@
             </svg>
           </div>
           <div class="timeline-start md:text-end">
-            <time class="font-mono italic"><%= visit.started_at.strftime('%A, %d %B %Y') %></time>
+            <time class="font-mono italic"><%= visit.started_at.in_time_zone(current_user.timezone).strftime('%A, %d %B %Y') %></time>
           </div>
           <div class="timeline-end md:text-end">
             <%= render partial: 'visit', locals: { visit: visit } %>

@@ -112,7 +112,7 @@
           </div>
           <div class="space-y-2">
             <div class="text-sm text-base-content opacity-60">Expires:</div>
-            <div class="text-base font-semibold text-base-content"><%= @invitation.expires_at.strftime('%b %d, %Y') %></div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.expires_at.in_time_zone(current_user&.timezone || Time.zone.name).strftime('%b %d, %Y') %></div>
           </div>
         </div>
       </div>

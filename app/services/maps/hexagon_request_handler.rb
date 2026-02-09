@@ -32,14 +32,17 @@ module Maps
     def find_matching_stat
       return unless user && start_date
 
-      # Parse the date to extract year and month
-      if start_date.is_a?(String)
-        date = Date.parse(start_date)
-      elsif start_date.is_a?(Time)
-        date = start_date.to_date
-      else
-        return
-      end
+      # Parse the date to extract year and month using user's timezone
+      timezone = user.timezone
+      date = if start_date.is_a?(String)
+               Date.parse(start_date)
+             elsif start_date.is_a?(Time)
+               start_date.in_time_zone(timezone).to_date
+             elsif start_date.is_a?(Integer)
+               TimezoneHelper.timestamp_to_date(start_date, timezone)
+             else
+               return
+             end
 
       # Find the stat for this user, year, and month
       user.stats.find_by(year: date.year, month: date.month)

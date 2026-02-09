@@ -160,6 +160,10 @@ export default class extends Controller {
         this.handleFamilyLocation(data.member)
         break
 
+      case "notification":
+        this.handleNotification(data.notification)
+        break
+
       // Note: notifications are handled by notifications_controller.js in the navbar
     }
   }
@@ -316,7 +320,15 @@ export default class extends Controller {
   }
 
   /**
-   * Update connection indicator (no-op, badge removed)
+   * Update connection indicator
    */
-  updateConnectionIndicator(_connected) {}
+  updateConnectionIndicator(connected) {
+    const indicator = document.querySelector(".connection-indicator")
+    if (indicator) {
+      // Show the indicator when connection is attempted
+      indicator.classList.add("active")
+      indicator.classList.toggle("connected", connected)
+      indicator.classList.toggle("disconnected", !connected)
+    }
+  }
 }

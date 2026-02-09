@@ -42,7 +42,7 @@
         <% if @photo_sources.any? %>
           <div class="text-center mt-6">
             <% @photo_sources.each do |source| %>
-              <%= link_to "More photos on #{source}", photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at), class: "btn btn-primary mt-2", target: '_blank' %>
+              <%= link_to "More photos on #{source}", photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at, timezone: current_user.timezone), class: "btn btn-primary mt-2", target: '_blank' %>
             <% end %>
           </div>
         <% end %>

@@ -74,8 +74,9 @@ class Immich::ImportGeodata
   end
 
   def file_name(immich_data_json)
-    from              = Time.zone.at(immich_data_json.first[:timestamp]).to_date
-    to                = Time.zone.at(immich_data_json.last[:timestamp]).to_date
+    timezone = user.timezone
+    from = TimezoneHelper.timestamp_to_date(immich_data_json.first[:timestamp], timezone)
+    to = TimezoneHelper.timestamp_to_date(immich_data_json.last[:timestamp], timezone)
 
     "immich-geodata-#{user.email}-from-#{from}-to-#{to}.json"
   end

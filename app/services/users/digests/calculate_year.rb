@@ -108,55 +108,41 @@ module Users
       end
 
       def calculate_actual_country_minutes
-        # Use SQL aggregation to avoid loading millions of points into memory
-        # Groups by date and country, returning min/max timestamps and country count per day
-        daily_country_stats = fetch_daily_country_stats
+        points_by_date = group_points_by_date
         country_minutes = Hash.new(0)
 
-        # Group by date to process multi-country days
-        daily_country_stats.group_by { |row| row['point_date'] }.each do |_date, day_rows|
-          if day_rows.size == 1
+        points_by_date.each do |_date, day_points|
+          countries_on_day = day_points.map(&:country_name).uniq
+
+          if countries_on_day.size == 1
             # Single country day - assign full day
-            country_minutes[day_rows.first['country_name']] += MINUTES_PER_DAY
+            country_minutes[countries_on_day.first] += MINUTES_PER_DAY
           else
             # Multi-country day - calculate proportional time
-            calculate_proportional_time_from_stats(day_rows, country_minutes)
+            calculate_proportional_time(day_points, country_minutes)
           end
         end
 
         country_minutes
       end
 
-      def fetch_daily_country_stats
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
-        end_of_year = start_of_year.end_of_year
+      def group_points_by_date
+        points = fetch_year_points_with_country_ordered
 
-        sql = <<~SQL
-          SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-            country_name,
-            MIN(timestamp) as min_timestamp,
-            MAX(timestamp) as max_timestamp
-          FROM points
-          WHERE user_id = #{user.id}
-            AND timestamp >= #{start_of_year.to_i}
-            AND timestamp <= #{end_of_year.to_i}
-            AND country_name IS NOT NULL
-            AND country_name != ''
-          GROUP BY point_date, country_name
-          ORDER BY point_date, min_timestamp
-        SQL
-
-        ActiveRecord::Base.connection.execute(sql).to_a
+        points.group_by do |point|
+          TimezoneHelper.timestamp_to_date(point.timestamp, user_timezone)
+        end
       end
 
-      def calculate_proportional_time_from_stats(day_rows, country_minutes)
-        country_spans = {}
+      def calculate_proportional_time(day_points, country_minutes)
+        country_spans = Hash.new(0)
+        points_by_country = day_points.group_by(&:country_name)
 
-        day_rows.each do |row|
-          span_seconds = row['max_timestamp'].to_i - row['min_timestamp'].to_i
+        points_by_country.each do |country, country_points|
+          timestamps = country_points.map(&:timestamp)
+          span_seconds = timestamps.max - timestamps.min
           # Minimum 60 seconds (1 min) for single-point countries
-          country_spans[row['country_name']] = [span_seconds, 60].max
+          country_spans[country] = [span_seconds, 60].max
         end
 
         total_spans = country_spans.values.sum.to_f
@@ -165,6 +151,21 @@ module Users
           proportional_minutes = (span / total_spans * MINUTES_PER_DAY).round
           country_minutes[country] += proportional_minutes
         end
+      end
+
+      def fetch_year_points_with_country_ordered
+        start_timestamp, end_timestamp = TimezoneHelper.year_bounds(year, user_timezone)
+
+        user.points
+            .without_raw_data
+            .where('timestamp >= ? AND timestamp <= ?', start_timestamp, end_timestamp)
+            .where.not(country_name: [nil, ''])
+            .select(:country_name, :timestamp)
+            .order(timestamp: :asc)
+      end
+
+      def user_timezone
+        user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
       end
 
       def calculate_city_time_spent

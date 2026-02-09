@@ -67,11 +67,15 @@ class Stats::HexagonCalculator
   end
 
   def start_timestamp
-    DateTime.new(year, month, 1).to_i
+    TimezoneHelper.month_bounds(year, month, user_timezone).first
   end
 
   def end_timestamp
-    DateTime.new(year, month, -1).to_i # -1 returns last day of month
+    TimezoneHelper.month_bounds(year, month, user_timezone).last
+  end
+
+  def user_timezone
+    user.timezone.presence || TimezoneHelper::DEFAULT_TIMEZONE
   end
 
   def points

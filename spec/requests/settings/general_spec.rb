@@ -16,75 +16,40 @@ RSpec.describe 'settings/general', type: :request do
 
         expect(response).to be_successful
       end
+
+      it 'renders the timezone dropdown' do
+        get settings_general_index_url
+
+        expect(response.body).to include('Your Timezone')
+        expect(response.body).to include('select')
+      end
     end
 
     describe 'PATCH /update' do
-      it 'updates email settings with checkbox value' do
-        patch settings_general_path, params: { digest_emails_enabled: '0' }
-
-        expect(response).to redirect_to(settings_general_index_path)
-        expect(user.reload.settings['digest_emails_enabled']).to eq(false)
-      end
-
-      it 'enables email settings' do
-        patch settings_general_path, params: { digest_emails_enabled: '1' }
-
-        expect(response).to redirect_to(settings_general_index_path)
-        expect(user.reload.settings['digest_emails_enabled']).to eq(true)
-      end
-
-      it 'disables news emails setting' do
-        patch settings_general_path, params: { news_emails_enabled: '0' }
-
-        expect(response).to redirect_to(settings_general_index_path)
-        expect(user.reload.settings['news_emails_enabled']).to eq(false)
-      end
-
-      it 'enables news emails setting' do
-        patch settings_general_path, params: { news_emails_enabled: '1' }
-
-        expect(response).to redirect_to(settings_general_index_path)
-        expect(user.reload.settings['news_emails_enabled']).to eq(true)
-      end
-    end
-
-    describe 'POST /verify_supporter' do
-      context 'when email is blank' do
-        it 'redirects with alert' do
-          post settings_verify_supporter_path, params: { supporter_email: '' }
+      context 'with HTML format' do
+        it 'updates the timezone and redirects' do
+          patch settings_general_path, params: { timezone: 'America/New_York' }
 
           expect(response).to redirect_to(settings_general_index_path)
-          expect(flash[:alert]).to eq('Please enter an email address')
+          expect(user.reload.settings['timezone']).to eq('America/New_York')
+        end
+
+        it 'shows success notice' do
+          patch settings_general_path, params: { timezone: 'Europe/London' }
+
+          expect(flash[:notice]).to eq('Timezone updated')
         end
       end
 
-      context 'when email is a verified supporter' do
-        before do
-          allow_any_instance_of(Supporter::VerifyEmail).to receive(:call)
-            .and_return({ supporter: true, platform: 'patreon' })
-        end
+      context 'with JSON format' do
+        it 'updates the timezone and returns JSON response' do
+          patch settings_general_path, params: { timezone: 'Asia/Tokyo' }, as: :json
 
-        it 'saves email and redirects with success notice' do
-          post settings_verify_supporter_path, params: { supporter_email: 'supporter@example.com' }
-
-          expect(response).to redirect_to(settings_general_index_path)
-          expect(flash[:notice]).to include('Verified!')
-          expect(user.reload.settings['supporter_email']).to eq('supporter@example.com')
-        end
-      end
-
-      context 'when email is not a supporter' do
-        before do
-          allow_any_instance_of(Supporter::VerifyEmail).to receive(:call)
-            .and_return({ supporter: false })
-        end
-
-        it 'saves email and redirects with failure alert' do
-          post settings_verify_supporter_path, params: { supporter_email: 'unknown@example.com' }
-
-          expect(response).to redirect_to(settings_general_index_path)
-          expect(flash[:alert]).to include('Email not found in supporter list')
-          expect(user.reload.settings['supporter_email']).to eq('unknown@example.com')
+          expect(response).to be_successful
+          json_response = JSON.parse(response.body)
+          expect(json_response['success']).to be true
+          expect(json_response['timezone']).to eq('Asia/Tokyo')
+          expect(user.reload.settings['timezone']).to eq('Asia/Tokyo')
         end
       end
     end

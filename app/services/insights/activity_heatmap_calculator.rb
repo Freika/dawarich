@@ -76,9 +76,11 @@ module Insights
     end
 
     def normalize_daily_distance(daily_distance)
-      return daily_distance unless daily_distance.is_a?(Array)
-
-      daily_distance.to_h
+      if daily_distance.is_a?(Array)
+        daily_distance.to_h
+      else
+        daily_distance
+      end
     end
 
     def build_date(year, month, day)
@@ -156,13 +158,10 @@ module Insights
     def calculate_current_streak(active_dates, reference_date)
       return 0 if active_dates.empty?
 
-      # Use Set for O(1) lookups instead of Array O(n)
-      active_dates_set = active_dates.to_set
-
       streak = 0
       check_date = reference_date
 
-      while active_dates_set.include?(check_date)
+      while active_dates.include?(check_date)
         streak += 1
         check_date -= 1
       end
@@ -170,8 +169,7 @@ module Insights
       return streak if streak.positive?
 
       check_date = reference_date - 1
-
-      while active_dates_set.include?(check_date)
+      while active_dates.include?(check_date)
         streak += 1
         check_date -= 1
       end

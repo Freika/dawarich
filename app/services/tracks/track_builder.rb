@@ -87,6 +87,12 @@ module Tracks::TrackBuilder
     Tracks::BuildPath.new(points).call
   end
 
+  def calculate_track_distance(points)
+    # Always calculate and store distance in meters for consistency
+    distance_in_meters = Point.total_distance(points, :m)
+    distance_in_meters.round
+  end
+
   def calculate_duration(points)
     points.last.timestamp - points.first.timestamp
   end
@@ -113,7 +119,7 @@ module Tracks::TrackBuilder
 
     altitudes[1..].each do |altitude|
       diff = altitude - previous_altitude
-      if diff > 0
+      if diff.positive?
         elevation_gain += diff
       else
         elevation_loss += diff.abs
@@ -157,7 +163,7 @@ module Tracks::TrackBuilder
         confidence: data[:confidence],
         source: data[:source]
       )
-    end.select(&:persisted?)
+    end.compact
 
     update_dominant_mode(track, segments)
   rescue StandardError => e

@@ -3,8 +3,6 @@
 module Tracks
   # Reprocesses tracks to update transportation mode segments.
   # Can reprocess tracks for a specific import or individual tracks.
-  #
-  # Uses user-specific transportation thresholds from settings when available.
   class Reprocessor
     LARGE_TRACK_THRESHOLD = 10_000
 
@@ -26,7 +24,7 @@ module Tracks
       Rails.logger.info "Reprocessing #{track_ids.size} tracks for import #{@import.id}"
 
       count = 0
-      Track.where(id: track_ids).includes(:user).find_each do |track|
+      Track.where(id: track_ids).find_each do |track|
         reprocess_track(track)
         count += 1
       end
@@ -56,31 +54,14 @@ module Tracks
       end
 
       points = track.points.order(:timestamp).to_a
+      track.track_segments.destroy_all
 
-      Track.transaction do
-        track.track_segments.destroy_all
+      detector = TransportationModes::Detector.new(track, points)
+      segment_data = detector.call
 
-        # Get user-specific thresholds
-        user_thresholds, expert_thresholds = extract_user_thresholds(track.user)
-
-        detector = TransportationModes::Detector.new(
-          track, points,
-          user_thresholds: user_thresholds,
-          user_expert_thresholds: expert_thresholds
-        )
-        segment_data = detector.call
-
-        create_segments(track, segment_data)
-      end
+      create_segments(track, segment_data)
     rescue StandardError => e
       Rails.logger.error "Failed to reprocess track #{track.id}: #{e.message}"
-    end
-
-    def extract_user_thresholds(user)
-      return [nil, nil] unless user
-
-      safe_settings = Users::SafeSettings.new(user.settings || {})
-      [safe_settings.transportation_thresholds, safe_settings.transportation_expert_thresholds]
     end
 
     def create_segments(track, segment_data)
@@ -99,7 +80,7 @@ module Tracks
           confidence: data[:confidence],
           source: data[:source]
         )
-      end.select(&:persisted?)
+      end.compact
 
       update_dominant_mode(track, segments)
     end

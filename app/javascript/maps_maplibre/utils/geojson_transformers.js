@@ -45,14 +45,12 @@ export function formatTimestamp(timestamp, timezone = "UTC") {
     date = new Date(timestamp)
   }
 
-  return date.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
+  return date.toLocaleString("en-US", {
     year: "numeric",
+    month: "short",
+    day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
     timeZone: timezone,
   })
 }
