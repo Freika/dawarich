@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class User < ApplicationRecord
+class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   include UserFamily
   include Omniauthable
 
@@ -133,7 +133,12 @@ class User < ApplicationRecord
   end
 
   def timezone
-    Time.zone.name
+    settings['timezone'].presence || Time.zone.name
+  end
+
+  def timezone=(value)
+    validated = TimezoneHelper.validate_timezone(value)
+    self.settings = settings.merge('timezone' => validated)
   end
 
   # Aggregate countries from all stats' toponyms
@@ -156,7 +161,7 @@ class User < ApplicationRecord
   end
 
   # Aggregate cities from all stats' toponyms
-  # This respects min_minutes_spent_in_city since toponyms are already filtered
+  # This respects MIN_MINUTES_SPENT_IN_CITY since toponyms are already filtered
   def cities_visited_uncached
     cities = Set.new
 
@@ -188,20 +193,6 @@ class User < ApplicationRecord
     return nil unless home_place
 
     [home_place.latitude, home_place.longitude]
-  end
-
-  def supporter?
-    supporter_info[:supporter] == true
-  end
-
-  def supporter_platform
-    supporter_info[:platform]
-  end
-
-  def supporter_info
-    return { supporter: false } if safe_settings.supporter_email.blank?
-
-    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
   end
 
   private

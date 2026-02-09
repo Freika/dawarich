@@ -16,9 +16,6 @@ const DEFAULT_SETTINGS = {
   speedColoredRoutes: false,
   speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
   globeProjection: false,
-  // City statistics thresholds
-  minMinutesSpentInCity: 60,
-  maxGapMinutesInCity: 120,
   // Transportation mode thresholds (speeds in km/h, distances in km)
   transportationExpertMode: false,
   transportationThresholds: {
@@ -49,8 +46,6 @@ const LAYER_NAME_MAP = {
   Tracks: "tracksEnabled",
   "Fog of War": "fogEnabled",
   "Scratch map": "scratchEnabled",
-  "Family Members": "familyEnabled",
-  Places: "placesEnabled",
 }
 
 // Mapping between frontend settings and backend API keys
@@ -66,12 +61,9 @@ const BACKEND_SETTINGS_MAP = {
   speedColoredRoutes: "speed_colored_routes",
   speedColorScale: "speed_color_scale",
   globeProjection: "globe_projection",
-  minMinutesSpentInCity: "min_minutes_spent_in_city",
-  maxGapMinutesInCity: "max_gap_minutes_in_city",
   transportationExpertMode: "transportation_expert_mode",
   transportationThresholds: "transportation_thresholds",
   transportationExpertThresholds: "transportation_expert_thresholds",
-  distance_unit: "distance_unit",
 }
 
 // Mapping for nested transportation threshold keys (frontend camelCase to backend snake_case)
@@ -235,12 +227,6 @@ export class SettingsManager {
             } else if (frontendKey === "minutesBetweenRoutes") {
               value =
                 parseInt(value, 10) || DEFAULT_SETTINGS.minutesBetweenRoutes
-            } else if (frontendKey === "minMinutesSpentInCity") {
-              value =
-                parseInt(value, 10) || DEFAULT_SETTINGS.minMinutesSpentInCity
-            } else if (frontendKey === "maxGapMinutesInCity") {
-              value =
-                parseInt(value, 10) || DEFAULT_SETTINGS.maxGapMinutesInCity
             } else if (frontendKey === "speedColoredRoutes") {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {
@@ -333,9 +319,7 @@ export class SettingsManager {
               frontendKey === "fogOfWarRadius" ||
               frontendKey === "fogOfWarThreshold" ||
               frontendKey === "metersBetweenRoutes" ||
-              frontendKey === "minutesBetweenRoutes" ||
-              frontendKey === "minMinutesSpentInCity" ||
-              frontendKey === "maxGapMinutesInCity"
+              frontendKey === "minutesBetweenRoutes"
             ) {
               value = parseInt(value, 10).toString()
             } else if (frontendKey === "speedColoredRoutes") {

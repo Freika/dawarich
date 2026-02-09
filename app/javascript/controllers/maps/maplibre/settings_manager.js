@@ -61,7 +61,6 @@ export class SettingsController {
       scratchToggle: "scratchEnabled",
       familyToggle: "familyEnabled",
       speedColoredToggle: "speedColoredRoutesEnabled",
-      tracksToggle: "tracksEnabled",
     }
 
     Object.entries(toggleMap).forEach(([targetName, settingKey]) => {
@@ -159,27 +158,6 @@ export class SettingsController {
       minutesBetweenInput.value = this.settings.minutesBetweenRoutes || 60
       if (controller.hasMinutesBetweenValueTarget) {
         controller.minutesBetweenValueTarget.textContent = `${minutesBetweenInput.value}min`
-      }
-    }
-
-    // Sync city statistics settings
-    const minMinutesInput = controller.element.querySelector(
-      'input[name="minMinutesSpentInCity"]',
-    )
-    if (minMinutesInput) {
-      minMinutesInput.value = this.settings.minMinutesSpentInCity || 60
-      if (controller.hasMinMinutesInCityValueTarget) {
-        controller.minMinutesInCityValueTarget.textContent = `${minMinutesInput.value} min`
-      }
-    }
-
-    const maxGapInput = controller.element.querySelector(
-      'input[name="maxGapMinutesInCity"]',
-    )
-    if (maxGapInput) {
-      maxGapInput.value = this.settings.maxGapMinutesInCity || 120
-      if (controller.hasMaxGapMinutesValueTarget) {
-        controller.maxGapMinutesValueTarget.textContent = `${maxGapInput.value} min`
       }
     }
 
@@ -1050,11 +1028,6 @@ export class SettingsController {
       minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
       pointsRenderingMode: formData.get("pointsRenderingMode"),
       speedColoredRoutes: formData.get("speedColoredRoutes") === "on",
-      minMinutesSpentInCity: parseInt(
-        formData.get("minMinutesSpentInCity"),
-        10,
-      ),
-      maxGapMinutesInCity: parseInt(formData.get("maxGapMinutesInCity"), 10),
     }
 
     // Collect transportation thresholds if present (convert from display units to metric)
@@ -1220,18 +1193,6 @@ export class SettingsController {
   updateMinutesBetweenDisplay(event) {
     if (this.controller.hasMinutesBetweenValueTarget) {
       this.controller.minutesBetweenValueTarget.textContent = `${event.target.value}min`
-    }
-  }
-
-  updateMinMinutesInCityDisplay(event) {
-    if (this.controller.hasMinMinutesInCityValueTarget) {
-      this.controller.minMinutesInCityValueTarget.textContent = `${event.target.value} min`
-    }
-  }
-
-  updateMaxGapMinutesDisplay(event) {
-    if (this.controller.hasMaxGapMinutesValueTarget) {
-      this.controller.maxGapMinutesValueTarget.textContent = `${event.target.value} min`
     }
   }
 }

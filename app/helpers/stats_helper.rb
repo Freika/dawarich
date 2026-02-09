@@ -116,13 +116,16 @@ module StatsHelper
     peak = stat.daily_distance.max_by { _1[1] }
     return 'N/A' unless peak && peak[1].positive?
 
-    date = Date.new(stat.year, stat.month, peak[0])
+    timezone = stat.user.timezone
+    tz = ActiveSupport::TimeZone[timezone] || ActiveSupport::TimeZone['UTC']
+    date = tz.local(stat.year, stat.month, peak[0]).to_date
     distance_unit = stat.user.safe_settings.distance_unit
 
     distance_value = Stat.convert_distance(peak[1], distance_unit).round
     text = "#{date.strftime('%B %d')} (#{distance_value} #{distance_unit})"
 
-    link_to text, map_url(start_at: date.beginning_of_day, end_at: date.end_of_day), class: 'underline'
+    start_ts, end_ts = TimezoneHelper.day_bounds(date, timezone)
+    link_to text, map_url(start_at: Time.zone.at(start_ts), end_at: Time.zone.at(end_ts)), class: 'underline'
   end
 
   def quietest_week(stat)
@@ -139,15 +142,19 @@ module StatsHelper
   private
 
   def build_distance_by_date_hash(stat)
+    timezone = stat.user.timezone
+    tz = ActiveSupport::TimeZone[timezone] || ActiveSupport::TimeZone['UTC']
     stat.daily_distance.to_h.transform_keys do |day_number|
-      Date.new(stat.year, stat.month, day_number)
+      tz.local(stat.year, stat.month, day_number).to_date
     end
   end
 
   def find_quietest_week_start_date(stat, distance_by_date)
     quietest_start_date = nil
     quietest_distance = Float::INFINITY
-    stat_month_start = Date.new(stat.year, stat.month, 1)
+    timezone = stat.user.timezone
+    tz = ActiveSupport::TimeZone[timezone] || ActiveSupport::TimeZone['UTC']
+    stat_month_start = tz.local(stat.year, stat.month, 1).to_date
     stat_month_end = stat_month_start.end_of_month
 
     (stat_month_start..(stat_month_end - 6.days)).each do |start_date|

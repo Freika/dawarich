@@ -21,11 +21,12 @@ module ApplicationHelper
     end
   end
 
-  def year_timespan(year)
-    start_at = DateTime.new(year).beginning_of_year.strftime('%Y-%m-%dT%H:%M')
-    end_at = DateTime.new(year).end_of_year.strftime('%Y-%m-%dT%H:%M')
+  def year_timespan(year, timezone: nil)
+    tz = timezone || current_user&.timezone || 'UTC'
+    start_time = TimezoneHelper.year_start_time(year, tz)
+    end_time = TimezoneHelper.year_end_time(year, tz)
 
-    { start_at:, end_at: }
+    { start_at: start_time.strftime('%Y-%m-%dT%H:%M'), end_at: end_time.strftime('%Y-%m-%dT%H:%M') }
   end
 
   def header_colors
@@ -63,29 +64,34 @@ module ApplicationHelper
     'text-blue-600'
   end
 
-  def human_date(date)
-    date.strftime('%e %B %Y')
+  def human_date(date, user: nil)
+    timezone = user&.timezone || Time.zone.name
+    date.in_time_zone(timezone).strftime('%e %B %Y')
   end
 
-  def human_datetime(datetime)
+  def human_datetime(datetime, user: nil)
     return unless datetime
 
+    timezone = user&.timezone || Time.zone.name
+    datetime_in_tz = datetime.in_time_zone(timezone)
     content_tag(
       :span,
-      datetime.strftime('%e %b %Y, %H:%M'),
+      datetime_in_tz.strftime('%e %b %Y, %H:%M'),
       class: 'tooltip',
-      data: { tip: datetime.iso8601 }
+      data: { tip: datetime_in_tz.iso8601 }
     )
   end
 
-  def human_datetime_with_seconds(datetime)
+  def human_datetime_with_seconds(datetime, user: nil)
     return unless datetime
 
+    timezone = user&.timezone || Time.zone.name
+    datetime_in_tz = datetime.in_time_zone(timezone)
     content_tag(
       :span,
-      datetime.strftime('%e %b %Y, %H:%M:%S'),
+      datetime_in_tz.strftime('%e %b %Y, %H:%M:%S'),
       class: 'tooltip',
-      data: { tip: datetime.iso8601 }
+      data: { tip: datetime_in_tz.iso8601 }
     )
   end
 
@@ -119,7 +125,11 @@ module ApplicationHelper
   end
 
   def trial_button_class(user)
-    case (user.active_until.to_date - Time.current.to_date).to_i
+    today = TimezoneHelper.today_in_timezone(user.timezone)
+    active_until_date = user.active_until.in_time_zone(user.timezone).to_date
+    days_remaining = (active_until_date - today).to_i
+
+    case days_remaining
     when 5..8
       'btn-info'
     when 2...5
@@ -129,14 +139,6 @@ module ApplicationHelper
     else
       'btn-success'
     end
-  end
-
-  def trial_days_remaining_compact(user)
-    expiry = user.active_until
-    return "Expired" if expiry.blank? || expiry.past?
-
-    days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max
-    "#{days_left}d left"
   end
 
   def oauth_provider_name(provider)

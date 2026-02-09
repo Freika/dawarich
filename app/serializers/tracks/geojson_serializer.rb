@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Tracks::GeojsonSerializer
-  DEFAULT_COLOR = '#6366F1'
+  DEFAULT_COLOR = '#ff0000'
 
   # Emoji mapping for transportation modes (for debug visualization)
   MODE_EMOJIS = {
@@ -18,24 +18,23 @@ class Tracks::GeojsonSerializer
     'unknown' => '❓'
   }.freeze
 
-  # Color mapping for segment visualization (Tailwind 500)
+  # Color mapping for segment visualization
   MODE_COLORS = {
-    'walking' => '#22C55E',    # Green
-    'running' => '#F97316',    # Orange
-    'cycling' => '#3B82F6',    # Blue
-    'driving' => '#EF4444',    # Red
-    'bus' => '#EAB308',        # Yellow
-    'train' => '#84CC16',      # Lime
-    'flying' => '#06B6D4',     # Cyan
-    'boat' => '#14B8A6',       # Teal
-    'motorcycle' => '#EC4899', # Pink
-    'stationary' => '#94A3B8', # Slate
-    'unknown' => '#CBD5E1'     # Light slate
+    'walking' => '#4CAF50',    # Green
+    'running' => '#FF9800',    # Orange
+    'cycling' => '#2196F3',    # Blue
+    'driving' => '#9C27B0',    # Purple
+    'bus' => '#FFEB3B',        # Yellow
+    'train' => '#F44336',      # Red
+    'flying' => '#00BCD4',     # Cyan
+    'boat' => '#3F51B5',       # Indigo
+    'motorcycle' => '#E91E63', # Pink
+    'stationary' => '#607D8B', # Blue Grey
+    'unknown' => '#9E9E9E'     # Grey
   }.freeze
 
-  def initialize(tracks, include_segments: false)
+  def initialize(tracks)
     @tracks = Array.wrap(tracks)
-    @include_segments = include_segments
   end
 
   def call
@@ -47,7 +46,7 @@ class Tracks::GeojsonSerializer
 
   private
 
-  attr_reader :tracks, :include_segments
+  attr_reader :tracks
 
   def feature_for(track)
     {
@@ -74,24 +73,17 @@ class Tracks::GeojsonSerializer
   end
 
   def segment_properties(track)
-    props = {
+    {
       dominant_mode: track.dominant_mode,
-      dominant_mode_emoji: emoji_for_mode(track.dominant_mode)
+      dominant_mode_emoji: emoji_for_mode(track.dominant_mode),
+      segments: segments_for(track)
     }
-
-    # Lightweight mode timeline for per-segment emoji in timeline scrubber
-    props[:mode_timeline] = mode_timeline_for(track)
-
-    # Only include full segments when explicitly requested (lazy-loading optimization)
-    props[:segments] = segments_for(track) if include_segments
-
-    props
   end
 
   def segments_for(track)
     return [] unless track.respond_to?(:track_segments)
 
-    segments = track.track_segments.to_a.sort_by(&:start_index)
+    segments = track.track_segments.order(:start_index).to_a
     return [] if segments.empty?
 
     # Calculate cumulative start times from track start
@@ -137,28 +129,6 @@ class Tracks::GeojsonSerializer
       start_time: start_time.to_i,
       end_time: end_time.to_i
     }
-  end
-
-  def mode_timeline_for(track)
-    return [] unless track.respond_to?(:track_segments)
-
-    segments = track.track_segments.to_a.sort_by(&:start_index)
-    return [] if segments.empty?
-
-    track_start = track.start_at.to_f
-    track_end = track.end_at.to_f
-    total_points = segments.last.end_index + 1
-    time_span = track_end - track_start
-
-    segments.map do |segment|
-      seg_start = track_start + (segment.start_index.to_f / total_points) * time_span
-      seg_end = track_start + ((segment.end_index + 1).to_f / total_points) * time_span
-      {
-        start_time: seg_start.to_i,
-        end_time: seg_end.to_i,
-        emoji: emoji_for_mode(segment.transportation_mode)
-      }
-    end
   end
 
   def emoji_for_mode(mode)

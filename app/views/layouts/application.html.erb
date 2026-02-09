@@ -32,9 +32,17 @@
       <div class="flex flex-row gap-5 w-full px-5">
         <%= yield %>
       </div>
-      <%= render DawarichSettings.self_hosted? ? 'shared/footer' : 'shared/legal_footer' %>
+      <%= render SELF_HOSTED ? 'shared/footer' : 'shared/legal_footer' %>
     </div>
 
     <%= render 'map/onboarding_modal' %>
+
+    <% if user_signed_in? && current_user.settings['timezone'].blank? %>
+      <div data-controller="timezone-detection"
+           data-timezone-detection-user-timezone-value="<%= current_user.settings['timezone'] %>"
+           data-timezone-detection-update-path-value="<%= settings_general_path(format: :json) %>"
+           class="hidden">
+      </div>
+    <% end %>
   </body>
 </html>

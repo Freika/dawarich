@@ -29,27 +29,20 @@ module Stats
       sql = <<~SQL
         SELECT
           CASE
-            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE $1)) BETWEEN 0 AND 5 THEN 'night'
-            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE $1)) BETWEEN 6 AND 11 THEN 'morning'
-            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE $1)) BETWEEN 12 AND 17 THEN 'afternoon'
+            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}')) BETWEEN 0 AND 5 THEN 'night'
+            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}')) BETWEEN 6 AND 11 THEN 'morning'
+            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}')) BETWEEN 12 AND 17 THEN 'afternoon'
             ELSE 'evening'
           END as time_period,
           COUNT(*) as point_count
         FROM points
-        WHERE user_id = $2
-          AND timestamp >= $3
-          AND timestamp <= $4
+        WHERE user_id = #{user.id}
+          AND timestamp >= #{start_timestamp}
+          AND timestamp <= #{end_timestamp}
         GROUP BY time_period
       SQL
 
-      binds = [
-        ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new),
-        ActiveRecord::Relation::QueryAttribute.new('user_id', user.id, ActiveRecord::Type::Integer.new),
-        ActiveRecord::Relation::QueryAttribute.new('start_ts', start_timestamp, ActiveRecord::Type::Integer.new),
-        ActiveRecord::Relation::QueryAttribute.new('end_ts', end_timestamp, ActiveRecord::Type::Integer.new)
-      ]
-
-      ActiveRecord::Base.connection.exec_query(sql, 'TimeOfDayQuery', binds).to_a
+      ActiveRecord::Base.connection.execute(sql).to_a
     end
 
     def start_timestamp

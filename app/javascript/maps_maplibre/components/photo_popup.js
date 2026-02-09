@@ -7,7 +7,7 @@ export class PhotoPopupFactory {
    * @param {Object} properties - Photo properties
    * @returns {string} HTML for popup
    */
-  static createPhotoPopup(properties) {
+  static createPhotoPopup(properties, timezone = "UTC") {
     const {
       id,
       thumbnail_url,
@@ -17,12 +17,15 @@ export class PhotoPopupFactory {
       state,
       country,
       type,
-      source
+      source,
     } = properties
 
-    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : 'Unknown'
-    const location = [city, state, country].filter(Boolean).join(', ') || 'Unknown location'
-    const mediaType = type === 'VIDEO' ? '🎥 Video' : '📷 Photo'
+    const takenDate = taken_at
+      ? new Date(taken_at).toLocaleString(undefined, { timeZone: timezone })
+      : "Unknown"
+    const location =
+      [city, state, country].filter(Boolean).join(", ") || "Unknown location"
+    const mediaType = type === "VIDEO" ? "🎥 Video" : "📷 Photo"
 
     return `
       <div class="photo-popup">

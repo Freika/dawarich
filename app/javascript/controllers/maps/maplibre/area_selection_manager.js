@@ -1,8 +1,8 @@
-import { SelectionLayer } from 'maps_maplibre/layers/selection_layer'
-import { SelectedPointsLayer } from 'maps_maplibre/layers/selected_points_layer'
-import { pointsToGeoJSON } from 'maps_maplibre/utils/geojson_transformers'
-import { VisitCard } from 'maps_maplibre/components/visit_card'
-import { Toast } from 'maps_maplibre/components/toast'
+import { Toast } from "maps_maplibre/components/toast"
+import { VisitCard } from "maps_maplibre/components/visit_card"
+import { SelectedPointsLayer } from "maps_maplibre/layers/selected_points_layer"
+import { SelectionLayer } from "maps_maplibre/layers/selection_layer"
+import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 
 /**
  * Manages area selection and bulk operations for Maps V2
@@ -27,24 +27,24 @@ export class AreaSelectionManager {
     if (!this.selectionLayer) {
       this.selectionLayer = new SelectionLayer(this.map, {
         visible: true,
-        onSelectionComplete: this.handleAreaSelected.bind(this)
+        onSelectionComplete: this.handleAreaSelected.bind(this),
       })
 
       this.selectionLayer.add({
-        type: 'FeatureCollection',
-        features: []
+        type: "FeatureCollection",
+        features: [],
       })
     }
 
     // Initialize selected points layer if not exists
     if (!this.selectedPointsLayer) {
       this.selectedPointsLayer = new SelectedPointsLayer(this.map, {
-        visible: true
+        visible: true,
       })
 
       this.selectedPointsLayer.add({
-        type: 'FeatureCollection',
-        features: []
+        type: "FeatureCollection",
+        features: [],
       })
     }
 
@@ -60,10 +60,11 @@ export class AreaSelectionManager {
         </svg>
         Cancel Selection
       `
-      this.controller.selectAreaButtonTarget.dataset.action = 'click->maps--maplibre#cancelAreaSelection'
+      this.controller.selectAreaButtonTarget.dataset.action =
+        "click->maps--maplibre#cancelAreaSelection"
     }
 
-    Toast.info('Draw a rectangle on the map to select points')
+    Toast.info("Draw a rectangle on the map to select points")
   }
 
   /**
@@ -71,7 +72,7 @@ export class AreaSelectionManager {
    */
   async handleAreaSelected(bounds) {
     try {
-      Toast.info('Fetching data in selected area...')
+      Toast.info("Fetching data in selected area...")
 
       const [points, visits] = await Promise.all([
         this.api.fetchPointsInArea({
@@ -80,7 +81,7 @@ export class AreaSelectionManager {
           min_longitude: bounds.minLng,
           max_longitude: bounds.maxLng,
           min_latitude: bounds.minLat,
-          max_latitude: bounds.maxLat
+          max_latitude: bounds.maxLat,
         }),
         this.api.fetchVisitsInArea({
           start_at: this.controller.startDateValue,
@@ -88,14 +89,20 @@ export class AreaSelectionManager {
           sw_lat: bounds.minLat,
           sw_lng: bounds.minLng,
           ne_lat: bounds.maxLat,
-          ne_lng: bounds.maxLng
-        })
+          ne_lng: bounds.maxLng,
+        }),
       ])
 
-      console.log('[Maps V2] Found', points.length, 'points and', visits.length, 'visits in area')
+      console.log(
+        "[Maps V2] Found",
+        points.length,
+        "points and",
+        visits.length,
+        "visits in area",
+      )
 
       if (points.length === 0 && visits.length === 0) {
-        Toast.info('No data found in selected area')
+        Toast.info("No data found in selected area")
         this.cancelAreaSelection()
         return
       }
@@ -114,25 +121,27 @@ export class AreaSelectionManager {
 
       // Update UI - show action buttons
       if (this.controller.hasSelectionActionsTarget) {
-        this.controller.selectionActionsTarget.classList.remove('hidden')
+        this.controller.selectionActionsTarget.classList.remove("hidden")
       }
 
       // Update delete button text with count
       if (this.controller.hasDeleteButtonTextTarget) {
-        this.controller.deleteButtonTextTarget.textContent = `Delete ${points.length} Point${points.length === 1 ? '' : 's'}`
+        this.controller.deleteButtonTextTarget.textContent = `Delete ${points.length} Point${points.length === 1 ? "" : "s"}`
       }
 
       // Disable selection mode
       this.selectionLayer.disableSelectionMode()
 
       const messages = []
-      if (points.length > 0) messages.push(`${points.length} point${points.length === 1 ? '' : 's'}`)
-      if (visits.length > 0) messages.push(`${visits.length} visit${visits.length === 1 ? '' : 's'}`)
+      if (points.length > 0)
+        messages.push(`${points.length} point${points.length === 1 ? "" : "s"}`)
+      if (visits.length > 0)
+        messages.push(`${visits.length} visit${visits.length === 1 ? "" : "s"}`)
 
-      Toast.success(`Selected ${messages.join(' and ')}`)
+      Toast.success(`Selected ${messages.join(" and ")}`)
     } catch (error) {
-      console.error('[Maps V2] Failed to fetch data in area:', error)
-      Toast.error('Failed to fetch data in selected area')
+      console.error("[Maps V2] Failed to fetch data in area:", error)
+      Toast.error("Failed to fetch data in selected area")
       this.cancelAreaSelection()
     }
   }
@@ -146,9 +155,14 @@ export class AreaSelectionManager {
     this.selectedVisits = visits
     this.selectedVisitIds = new Set()
 
-    const cardsHTML = visits.map(visit =>
-      VisitCard.create(visit, { isSelected: false })
-    ).join('')
+    const cardsHTML = visits
+      .map((visit) =>
+        VisitCard.create(visit, {
+          isSelected: false,
+          timezone: this.controller.timezoneValue,
+        }),
+      )
+      .join("")
 
     this.controller.selectedVisitsContainerTarget.innerHTML = `
       <div class="selected-visits-list">
@@ -163,7 +177,7 @@ export class AreaSelectionManager {
       </div>
     `
 
-    this.controller.selectedVisitsContainerTarget.classList.remove('hidden')
+    this.controller.selectedVisitsContainerTarget.classList.remove("hidden")
     this.attachVisitCardListeners()
 
     requestAnimationFrame(() => {
@@ -175,31 +189,37 @@ export class AreaSelectionManager {
    * Attach event listeners to visit cards
    */
   attachVisitCardListeners() {
-    this.controller.element.querySelectorAll('[data-visit-select]').forEach(checkbox => {
-      checkbox.addEventListener('change', (e) => {
-        const visitId = parseInt(e.target.dataset.visitSelect)
-        if (e.target.checked) {
-          this.selectedVisitIds.add(visitId)
-        } else {
-          this.selectedVisitIds.delete(visitId)
-        }
-        this.updateBulkActions()
+    this.controller.element
+      .querySelectorAll("[data-visit-select]")
+      .forEach((checkbox) => {
+        checkbox.addEventListener("change", (e) => {
+          const visitId = parseInt(e.target.dataset.visitSelect, 10)
+          if (e.target.checked) {
+            this.selectedVisitIds.add(visitId)
+          } else {
+            this.selectedVisitIds.delete(visitId)
+          }
+          this.updateBulkActions()
+        })
       })
-    })
 
-    this.controller.element.querySelectorAll('[data-visit-confirm]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const visitId = parseInt(e.currentTarget.dataset.visitConfirm)
-        await this.confirmVisit(visitId)
+    this.controller.element
+      .querySelectorAll("[data-visit-confirm]")
+      .forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const visitId = parseInt(e.currentTarget.dataset.visitConfirm, 10)
+          await this.confirmVisit(visitId)
+        })
       })
-    })
 
-    this.controller.element.querySelectorAll('[data-visit-decline]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const visitId = parseInt(e.currentTarget.dataset.visitDecline)
-        await this.declineVisit(visitId)
+    this.controller.element
+      .querySelectorAll("[data-visit-decline]")
+      .forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const visitId = parseInt(e.currentTarget.dataset.visitDecline, 10)
+          await this.declineVisit(visitId)
+        })
       })
-    })
   }
 
   /**
@@ -208,28 +228,34 @@ export class AreaSelectionManager {
   updateBulkActions() {
     const selectedCount = this.selectedVisitIds.size
 
-    const existingBulkActions = this.controller.element.querySelectorAll('.bulk-actions-inline')
-    existingBulkActions.forEach(el => el.remove())
+    const existingBulkActions = this.controller.element.querySelectorAll(
+      ".bulk-actions-inline",
+    )
+    existingBulkActions.forEach((el) => {
+      el.remove()
+    })
 
     if (selectedCount >= 2) {
-      const selectedVisitCards = Array.from(this.controller.element.querySelectorAll('.visit-card'))
-        .filter(card => {
-          const visitId = parseInt(card.dataset.visitId)
-          return this.selectedVisitIds.has(visitId)
-        })
+      const selectedVisitCards = Array.from(
+        this.controller.element.querySelectorAll(".visit-card"),
+      ).filter((card) => {
+        const visitId = parseInt(card.dataset.visitId, 10)
+        return this.selectedVisitIds.has(visitId)
+      })
 
       if (selectedVisitCards.length > 0) {
-        const lastSelectedCard = selectedVisitCards[selectedVisitCards.length - 1]
+        const lastSelectedCard =
+          selectedVisitCards[selectedVisitCards.length - 1]
 
-        const bulkActionsDiv = document.createElement('div')
-        bulkActionsDiv.className = 'bulk-actions-inline mb-2'
+        const bulkActionsDiv = document.createElement("div")
+        bulkActionsDiv.className = "bulk-actions-inline mb-2"
         bulkActionsDiv.innerHTML = `
           <div class="bg-primary/10 border-2 border-primary border-dashed rounded-lg p-3">
             <div class="text-xs font-semibold mb-2 text-primary flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>${selectedCount} visit${selectedCount === 1 ? '' : 's'} selected</span>
+              <span>${selectedCount} visit${selectedCount === 1 ? "" : "s"} selected</span>
             </div>
             <div class="grid grid-cols-3 gap-1.5">
               <button class="btn btn-xs btn-outline normal-case" data-bulk-merge>
@@ -254,15 +280,18 @@ export class AreaSelectionManager {
           </div>
         `
 
-        lastSelectedCard.insertAdjacentElement('afterend', bulkActionsDiv)
+        lastSelectedCard.insertAdjacentElement("afterend", bulkActionsDiv)
 
-        const mergeBtn = bulkActionsDiv.querySelector('[data-bulk-merge]')
-        const confirmBtn = bulkActionsDiv.querySelector('[data-bulk-confirm]')
-        const declineBtn = bulkActionsDiv.querySelector('[data-bulk-decline]')
+        const mergeBtn = bulkActionsDiv.querySelector("[data-bulk-merge]")
+        const confirmBtn = bulkActionsDiv.querySelector("[data-bulk-confirm]")
+        const declineBtn = bulkActionsDiv.querySelector("[data-bulk-decline]")
 
-        if (mergeBtn) mergeBtn.addEventListener('click', () => this.bulkMergeVisits())
-        if (confirmBtn) confirmBtn.addEventListener('click', () => this.bulkConfirmVisits())
-        if (declineBtn) declineBtn.addEventListener('click', () => this.bulkDeclineVisits())
+        if (mergeBtn)
+          mergeBtn.addEventListener("click", () => this.bulkMergeVisits())
+        if (confirmBtn)
+          confirmBtn.addEventListener("click", () => this.bulkConfirmVisits())
+        if (declineBtn)
+          declineBtn.addEventListener("click", () => this.bulkDeclineVisits())
       }
     }
   }
@@ -272,12 +301,12 @@ export class AreaSelectionManager {
    */
   async confirmVisit(visitId) {
     try {
-      await this.api.updateVisitStatus(visitId, 'confirmed')
-      Toast.success('Visit confirmed')
+      await this.api.updateVisitStatus(visitId, "confirmed")
+      Toast.success("Visit confirmed")
       await this.refreshSelectedVisits()
     } catch (error) {
-      console.error('[Maps V2] Failed to confirm visit:', error)
-      Toast.error('Failed to confirm visit')
+      console.error("[Maps V2] Failed to confirm visit:", error)
+      Toast.error("Failed to confirm visit")
     }
   }
 
@@ -286,11 +315,11 @@ export class AreaSelectionManager {
    */
   async declineVisit(visitId) {
     try {
-      await this.api.updateVisitStatus(visitId, 'declined')
-      Toast.success('Visit declined')
+      await this.api.updateVisitStatus(visitId, "declined")
+      Toast.success("Visit declined")
       await this.refreshSelectedVisits()
-    } catch (error) {
-      Toast.error('Failed to decline visit')
+    } catch (_error) {
+      Toast.error("Failed to decline visit")
     }
   }
 
@@ -301,7 +330,7 @@ export class AreaSelectionManager {
     const visitIds = Array.from(this.selectedVisitIds)
 
     if (visitIds.length < 2) {
-      Toast.error('Select at least 2 visits to merge')
+      Toast.error("Select at least 2 visits to merge")
       return
     }
 
@@ -310,15 +339,15 @@ export class AreaSelectionManager {
     }
 
     try {
-      Toast.info('Merging visits...')
+      Toast.info("Merging visits...")
       const mergedVisit = await this.api.mergeVisits(visitIds)
-      Toast.success('Visits merged successfully')
+      Toast.success("Visits merged successfully")
 
       this.selectedVisitIds.clear()
       this.replaceVisitsWithMerged(visitIds, mergedVisit)
       this.updateBulkActions()
-    } catch (error) {
-      Toast.error('Failed to merge visits')
+    } catch (_error) {
+      Toast.error("Failed to merge visits")
     }
   }
 
@@ -329,14 +358,14 @@ export class AreaSelectionManager {
     const visitIds = Array.from(this.selectedVisitIds)
 
     try {
-      Toast.info('Confirming visits...')
-      await this.api.bulkUpdateVisits(visitIds, 'confirmed')
+      Toast.info("Confirming visits...")
+      await this.api.bulkUpdateVisits(visitIds, "confirmed")
       Toast.success(`Confirmed ${visitIds.length} visits`)
 
       this.selectedVisitIds.clear()
       await this.refreshSelectedVisits()
-    } catch (error) {
-      Toast.error('Failed to confirm visits')
+    } catch (_error) {
+      Toast.error("Failed to confirm visits")
     }
   }
 
@@ -351,15 +380,15 @@ export class AreaSelectionManager {
     }
 
     try {
-      Toast.info('Declining visits...')
-      await this.api.bulkUpdateVisits(visitIds, 'declined')
+      Toast.info("Declining visits...")
+      await this.api.bulkUpdateVisits(visitIds, "declined")
       Toast.success(`Declined ${visitIds.length} visits`)
 
       this.selectedVisitIds.clear()
       await this.refreshSelectedVisits()
     } catch (error) {
-      console.error('[Maps V2] Failed to decline visits:', error)
-      Toast.error('Failed to decline visits')
+      console.error("[Maps V2] Failed to decline visits:", error)
+      Toast.error("Failed to decline visits")
     }
   }
 
@@ -367,18 +396,20 @@ export class AreaSelectionManager {
    * Replace merged visit cards with the new merged visit
    */
   replaceVisitsWithMerged(oldVisitIds, mergedVisit) {
-    const container = this.controller.element.querySelector('.selected-visits-list')
+    const container = this.controller.element.querySelector(
+      ".selected-visits-list",
+    )
     if (!container) return
 
     const mergedStartTime = new Date(mergedVisit.started_at).getTime()
-    const allCards = Array.from(container.querySelectorAll('.visit-card'))
+    const allCards = Array.from(container.querySelectorAll(".visit-card"))
 
     let insertBeforeCard = null
     for (const card of allCards) {
-      const cardId = parseInt(card.dataset.visitId)
+      const cardId = parseInt(card.dataset.visitId, 10)
       if (oldVisitIds.includes(cardId)) continue
 
-      const cardVisit = this.selectedVisits.find(v => v.id === cardId)
+      const cardVisit = this.selectedVisits.find((v) => v.id === cardId)
       if (cardVisit) {
         const cardStartTime = new Date(cardVisit.started_at).getTime()
         if (cardStartTime > mergedStartTime) {
@@ -388,24 +419,33 @@ export class AreaSelectionManager {
       }
     }
 
-    oldVisitIds.forEach(id => {
-      const card = this.controller.element.querySelector(`.visit-card[data-visit-id="${id}"]`)
+    oldVisitIds.forEach((id) => {
+      const card = this.controller.element.querySelector(
+        `.visit-card[data-visit-id="${id}"]`,
+      )
       if (card) card.remove()
     })
 
-    this.selectedVisits = this.selectedVisits.filter(v => !oldVisitIds.includes(v.id))
+    this.selectedVisits = this.selectedVisits.filter(
+      (v) => !oldVisitIds.includes(v.id),
+    )
     this.selectedVisits.push(mergedVisit)
-    this.selectedVisits.sort((a, b) => new Date(a.started_at) - new Date(b.started_at))
+    this.selectedVisits.sort(
+      (a, b) => new Date(a.started_at) - new Date(b.started_at),
+    )
 
-    const newCardHTML = VisitCard.create(mergedVisit, { isSelected: false })
+    const newCardHTML = VisitCard.create(mergedVisit, {
+      isSelected: false,
+      timezone: this.controller.timezoneValue,
+    })
 
     if (insertBeforeCard) {
-      insertBeforeCard.insertAdjacentHTML('beforebegin', newCardHTML)
+      insertBeforeCard.insertAdjacentHTML("beforebegin", newCardHTML)
     } else {
-      container.insertAdjacentHTML('beforeend', newCardHTML)
+      container.insertAdjacentHTML("beforeend", newCardHTML)
     }
 
-    const header = container.querySelector('h3')
+    const header = container.querySelector("h3")
     if (header) {
       header.textContent = `Visits in Area (${this.selectedVisits.length})`
     }
@@ -424,15 +464,19 @@ export class AreaSelectionManager {
       const visits = await this.api.fetchVisitsInArea({
         start_at: this.controller.startDateValue,
         end_at: this.controller.endDateValue,
-        sw_lat: bounds.start.lat < bounds.end.lat ? bounds.start.lat : bounds.end.lat,
-        sw_lng: bounds.start.lng < bounds.end.lng ? bounds.start.lng : bounds.end.lng,
-        ne_lat: bounds.start.lat > bounds.end.lat ? bounds.start.lat : bounds.end.lat,
-        ne_lng: bounds.start.lng > bounds.end.lng ? bounds.start.lng : bounds.end.lng
+        sw_lat:
+          bounds.start.lat < bounds.end.lat ? bounds.start.lat : bounds.end.lat,
+        sw_lng:
+          bounds.start.lng < bounds.end.lng ? bounds.start.lng : bounds.end.lng,
+        ne_lat:
+          bounds.start.lat > bounds.end.lat ? bounds.start.lat : bounds.end.lat,
+        ne_lng:
+          bounds.start.lng > bounds.end.lng ? bounds.start.lng : bounds.end.lng,
       })
 
       this.displaySelectedVisits(visits)
     } catch (error) {
-      console.error('[Maps V2] Failed to refresh visits:', error)
+      console.error("[Maps V2] Failed to refresh visits:", error)
     }
   }
 
@@ -450,12 +494,12 @@ export class AreaSelectionManager {
     }
 
     if (this.controller.hasSelectedVisitsContainerTarget) {
-      this.controller.selectedVisitsContainerTarget.classList.add('hidden')
-      this.controller.selectedVisitsContainerTarget.innerHTML = ''
+      this.controller.selectedVisitsContainerTarget.classList.add("hidden")
+      this.controller.selectedVisitsContainerTarget.innerHTML = ""
     }
 
     if (this.controller.hasSelectedVisitsBulkActionsTarget) {
-      this.controller.selectedVisitsBulkActionsTarget.classList.add('hidden')
+      this.controller.selectedVisitsBulkActionsTarget.classList.add("hidden")
     }
 
     this.selectedVisits = []
@@ -472,16 +516,17 @@ export class AreaSelectionManager {
         </svg>
         Select Area
       `
-      this.controller.selectAreaButtonTarget.classList.remove('btn-error')
-      this.controller.selectAreaButtonTarget.classList.add('btn', 'btn-outline')
-      this.controller.selectAreaButtonTarget.dataset.action = 'click->maps--maplibre#startSelectArea'
+      this.controller.selectAreaButtonTarget.classList.remove("btn-error")
+      this.controller.selectAreaButtonTarget.classList.add("btn", "btn-outline")
+      this.controller.selectAreaButtonTarget.dataset.action =
+        "click->maps--maplibre#startSelectArea"
     }
 
     if (this.controller.hasSelectionActionsTarget) {
-      this.controller.selectionActionsTarget.classList.add('hidden')
+      this.controller.selectionActionsTarget.classList.add("hidden")
     }
 
-    Toast.info('Selection cancelled')
+    Toast.info("Selection cancelled")
   }
 
   /**
@@ -492,18 +537,18 @@ export class AreaSelectionManager {
     const pointIds = this.selectedPointsLayer.getSelectedPointIds()
 
     if (pointIds.length === 0) {
-      Toast.error('No points selected')
+      Toast.error("No points selected")
       return
     }
 
     const confirmed = confirm(
-      `Are you sure you want to delete ${pointCount} point${pointCount === 1 ? '' : 's'}? This action cannot be undone.`
+      `Are you sure you want to delete ${pointCount} point${pointCount === 1 ? "" : "s"}? This action cannot be undone.`,
     )
 
     if (!confirmed) return
 
     try {
-      Toast.info('Deleting points...')
+      Toast.info("Deleting points...")
       const result = await this.api.bulkDeletePoints(pointIds)
 
       this.cancelAreaSelection()
@@ -511,13 +556,15 @@ export class AreaSelectionManager {
       await this.controller.loadMapData({
         showLoading: false,
         fitBounds: false,
-        showToast: false
+        showToast: false,
       })
 
-      Toast.success(`Deleted ${result.count} point${result.count === 1 ? '' : 's'}`)
+      Toast.success(
+        `Deleted ${result.count} point${result.count === 1 ? "" : "s"}`,
+      )
     } catch (error) {
-      console.error('[Maps V2] Failed to delete points:', error)
-      Toast.error('Failed to delete points. Please try again.')
+      console.error("[Maps V2] Failed to delete points:", error)
+      Toast.error("Failed to delete points. Please try again.")
     }
   }
 }

@@ -1,3 +1,9 @@
+import {
+  formatDateForAPIWithTimezone,
+  getMonthEndInTimezone,
+  getMonthStartInTimezone,
+} from "../../../utils/timezone"
+
 /**
  * Manages date formatting and range calculations
  */
@@ -5,8 +11,15 @@ export class DateManager {
   /**
    * Format date for API requests (matching V1 format)
    * Format: "YYYY-MM-DDTHH:MM" (e.g., "2025-10-15T00:00", "2025-10-15T23:59")
+   * @param {Date} date - The date to format
+   * @param {string} timezone - Optional IANA timezone string (e.g., 'Europe/Berlin')
    */
-  static formatDateForAPI(date) {
+  static formatDateForAPI(date, timezone = null) {
+    if (timezone) {
+      return formatDateForAPIWithTimezone(date, timezone)
+    }
+
+    // Fallback to browser local time for backward compatibility
     const pad = (n) => String(n).padStart(2, "0")
     const year = date.getFullYear()
     const month = pad(date.getMonth() + 1)
@@ -14,21 +27,25 @@ export class DateManager {
     const hours = pad(date.getHours())
     const minutes = pad(date.getMinutes())
 
-    // Include timezone offset for accurate server-side parsing
-    const tzOffset = -date.getTimezoneOffset()
-    const tzSign = tzOffset >= 0 ? "+" : "-"
-    const tzHours = pad(Math.floor(Math.abs(tzOffset) / 60))
-    const tzMinutes = pad(Math.abs(tzOffset) % 60)
-
-    return `${year}-${month}-${day}T${hours}:${minutes}${tzSign}${tzHours}:${tzMinutes}`
+    return `${year}-${month}-${day}T${hours}:${minutes}`
   }
 
   /**
    * Parse month selector value to date range
+   * @param {string} value - Month selector value in "YYYY-MM" format
+   * @param {string} timezone - Optional IANA timezone string (e.g., 'Europe/Berlin')
    */
-  static parseMonthSelector(value) {
-    const [year, month] = value.split("-")
+  static parseMonthSelector(value, timezone = null) {
+    const [year, month] = value.split("-").map(Number)
 
+    if (timezone) {
+      return {
+        startDate: getMonthStartInTimezone(year, month, timezone),
+        endDate: getMonthEndInTimezone(year, month, timezone),
+      }
+    }
+
+    // Fallback to browser local time for backward compatibility
     const startDate = new Date(year, month - 1, 1, 0, 0, 0)
     const lastDay = new Date(year, month, 0).getDate()
     const endDate = new Date(year, month - 1, lastDay, 23, 59, 0)

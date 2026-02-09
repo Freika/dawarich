@@ -162,8 +162,40 @@ test.describe("Track Transportation Modes", () => {
       return null
     }
 
-    // Center map on first track's midpoint and get track ID
-    const trackInfo = await page.evaluate(() => {
+    // Center map on first track and wait for it to be visible
+    await page.evaluate(() => {
+      const element = document.querySelector(
+        '[data-controller*="maps--maplibre"]',
+      )
+      if (!element) return
+      const app = window.Stimulus || window.Application
+      if (!app) return
+      const controller = app.getControllerForElementAndIdentifier(
+        element,
+        "maps--maplibre",
+      )
+      if (!controller?.map) return
+
+      const source = controller.map.getSource("tracks-source")
+      const data = source?._data
+      if (!data?.features?.length) return
+
+      const track = data.features[0]
+      const coords = track.geometry.coordinates
+      const midCoord = coords[Math.floor(coords.length / 2)]
+
+      // Center on track and zoom in
+      controller.map.flyTo({
+        center: midCoord,
+        zoom: 14,
+        duration: 0, // Instant move for tests
+      })
+    })
+
+    await page.waitForTimeout(1000)
+
+    // Get track coordinates and click on one
+    const trackCoords = await page.evaluate(() => {
       const element = document.querySelector(
         '[data-controller*="maps--maplibre"]',
       )
@@ -180,47 +212,40 @@ test.describe("Track Transportation Modes", () => {
       const data = source?._data
       if (!data?.features?.length) return null
 
+      // Get the first track's middle coordinate
       const track = data.features[0]
       if (!track?.geometry?.coordinates?.length) return null
 
       const coords = track.geometry.coordinates
-      const midCoord = coords[Math.floor(coords.length / 2)]
+      const midIdx = Math.floor(coords.length / 2)
+      const midCoord = coords[midIdx]
 
-      // Center map exactly on the track midpoint at high zoom
-      controller.map.jumpTo({
-        center: midCoord,
-        zoom: 15,
-      })
-
-      return { trackId: track.properties.id }
+      // Convert to screen coordinates
+      const point = controller.map.project(midCoord)
+      return { x: point.x, y: point.y, trackId: track.properties.id }
     })
 
-    if (!trackInfo) return null
+    if (!trackCoords) return null
 
-    await page.waitForTimeout(1000)
-
-    // Click at the center of the canvas — the track midpoint is projected there
+    // Click on the track using canvas (same pattern as interactions.spec.js)
     const canvas = page.locator(".maplibregl-canvas")
-    const box = await canvas.boundingBox()
-    if (!box) return null
-
     await canvas.click({
-      position: { x: Math.floor(box.width / 2), y: Math.floor(box.height / 2) },
+      position: { x: trackCoords.x, y: trackCoords.y },
     })
     await page.waitForTimeout(500)
 
-    return trackInfo.trackId
+    return trackCoords.trackId
   }
 
   test.describe("Track Segments Data", () => {
-    test("tracks have dominant_mode property in GeoJSON", async ({ page }) => {
+    test("tracks have segments property in GeoJSON", async ({ page }) => {
       await enableTracksLayer(page)
 
       const tracksData = await getTracksSourceData(page)
 
       if (tracksData.features.length > 0) {
         tracksData.features.forEach((feature) => {
-          expect(feature.properties).toHaveProperty("dominant_mode")
+          expect(feature.properties).toHaveProperty("segments")
         })
       }
     })

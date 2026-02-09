@@ -16,6 +16,7 @@ class Api::V1::PointsController < ApiController
              .without_raw_data
              .where(timestamp: start_at..end_at)
 
+    # Filter by geographic bounds if provided
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
       min_lng = params[:min_longitude].to_f
@@ -23,6 +24,7 @@ class Api::V1::PointsController < ApiController
       min_lat = params[:min_latitude].to_f
       max_lat = params[:max_latitude].to_f
 
+      # Use PostGIS to filter points within bounding box
       points = points.where(
         'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
         min_lng, max_lng, min_lat, max_lat
@@ -52,8 +54,11 @@ class Api::V1::PointsController < ApiController
     point = current_api_user.points.find(params[:id])
 
     if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+      # Trigger async track recalculation if point belongs to a track
       if point.track_id.present?
-        Rails.logger.info "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
+        Rails.logger.info(
+          "[PointsController] Point #{point.id} updated, enqueuing RecalculateJob for track #{point.track_id}"
+        )
         Tracks::RecalculateJob.perform_later(point.track_id)
       end
 
