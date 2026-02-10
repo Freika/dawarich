@@ -15,10 +15,16 @@ Each day of a trip now has its own card on the trip page with where user can lea
 ## Added
 
 - Countries flags as SVGs instead of emojis.
+- Map v2 requires WebGL support, so if user's browser doesn't support it or it's disabled, they will see a warning message with a link to the list of supported browsers.
 
 ## Fixed
 
 - Countries that were not showed as flags before now fixed.
+
+## Changed
+
+- Overall app performance in browser was improved
+
 
 # [1.1.0] - 2026-02-08
 
