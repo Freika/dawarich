@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+# [1.1.1] - Unreleased
+
+## Changed
+
+- Overall app performance in browser was improved
+
+## Added
+
+- Map v2 requires WebGL support, so if user's browser doesn't support it or it's disabled, they will see a warning message with a link to the list of supported browsers.
+
 # [1.1.0] - Unreleased
 
 The Timeline Release
