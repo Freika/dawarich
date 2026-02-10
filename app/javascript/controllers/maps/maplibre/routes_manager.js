@@ -17,9 +17,13 @@ export class RoutesManager {
   /**
    * Toggle routes layer visibility
    */
-  toggleRoutes(event) {
+  async toggleRoutes(event) {
     const element = event.currentTarget
     const visible = element.checked
+
+    if (visible) {
+      await this.controller.mapDataManager.ensurePointsLoaded()
+    }
 
     const routesLayer = this.layerManager.getLayer("routes")
     if (routesLayer) {
@@ -256,9 +260,13 @@ export class RoutesManager {
   /**
    * Toggle heatmap visibility
    */
-  toggleHeatmap(event) {
+  async toggleHeatmap(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("heatmapEnabled", enabled)
+
+    if (enabled) {
+      await this.controller.mapDataManager.ensurePointsLoaded()
+    }
 
     const heatmapLayer = this.layerManager.getLayer("heatmap")
     if (heatmapLayer) {
@@ -273,9 +281,13 @@ export class RoutesManager {
   /**
    * Toggle fog of war layer
    */
-  toggleFog(event) {
+  async toggleFog(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("fogEnabled", enabled)
+
+    if (enabled) {
+      await this.controller.mapDataManager.ensurePointsLoaded()
+    }
 
     const fogLayer = this.layerManager.getLayer("fog")
     if (fogLayer) {
@@ -295,6 +307,7 @@ export class RoutesManager {
     try {
       const scratchLayer = this.layerManager.getLayer("scratch")
       if (!scratchLayer && enabled) {
+        await this.controller.mapDataManager.ensurePointsLoaded()
         const ScratchLayer = await lazyLoader.loadLayer("scratch")
         const newScratchLayer = new ScratchLayer(this.map, {
           visible: true,
@@ -336,6 +349,12 @@ export class RoutesManager {
           photosLayer.show()
         } else {
           // Fetch photos from backend
+          this.controller.showProgress()
+          this.controller.updateLoadingCounts({
+            counts: { photos: 0 },
+            isComplete: false,
+          })
+
           const api = this.controller.api
           const dataLoader = this.controller.dataLoader
           const startDate = this.controller.startDateValue
@@ -350,6 +369,11 @@ export class RoutesManager {
           )
           const photos = await Promise.race([photosPromise, timeoutPromise])
           const photosGeoJSON = dataLoader.photosToGeoJSON(photos)
+
+          this.controller.updateLoadingCounts({
+            counts: { photos: photos.length },
+            isComplete: true,
+          })
 
           await this.layerManager._addPhotosLayer(photosGeoJSON)
 
@@ -371,18 +395,42 @@ export class RoutesManager {
 
   /**
    * Toggle areas layer
+   * Fetches areas from backend on first enable (lazy-load pattern)
    */
-  toggleAreas(event) {
+  async toggleAreas(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("areasEnabled", enabled)
 
-    const areasLayer = this.layerManager.getLayer("areas")
-    if (areasLayer) {
+    try {
+      const areasLayer = this.layerManager.getLayer("areas")
+      if (!areasLayer) return
+
       if (enabled) {
-        areasLayer.show()
+        if (areasLayer.data?.features?.length > 0) {
+          areasLayer.show()
+        } else {
+          this.controller.showProgress()
+          this.controller.updateLoadingCounts({
+            counts: { areas: 0 },
+            isComplete: false,
+          })
+
+          const areas = await this.controller.api.fetchAreas()
+
+          this.controller.updateLoadingCounts({
+            counts: { areas: areas.length },
+            isComplete: true,
+          })
+
+          areasLayer.update(this.controller.dataLoader.areasToGeoJSON(areas))
+          areasLayer.show()
+        }
       } else {
         areasLayer.hide()
       }
+    } catch (error) {
+      console.error("Failed to toggle areas layer:", error)
+      Toast.error("Failed to load areas")
     }
   }
 
@@ -402,6 +450,12 @@ export class RoutesManager {
           tracksLayer.show()
         } else {
           // Fetch tracks from backend (lazy-load)
+          this.controller.showProgress()
+          this.controller.updateLoadingCounts({
+            counts: { tracks: 0 },
+            isComplete: false,
+          })
+
           const api = this.controller.api
           const startDate = this.controller.startDateValue
           const endDate = this.controller.endDateValue
@@ -409,6 +463,11 @@ export class RoutesManager {
           const tracksGeoJSON = await api.fetchTracks({
             start_at: startDate,
             end_at: endDate,
+          })
+
+          this.controller.updateLoadingCounts({
+            counts: { tracks: tracksGeoJSON.features.length },
+            isComplete: true,
           })
 
           if (tracksLayer) {
@@ -430,9 +489,13 @@ export class RoutesManager {
   /**
    * Toggle points layer visibility
    */
-  togglePoints(event) {
+  async togglePoints(event) {
     const element = event.currentTarget
     const visible = element.checked
+
+    if (visible) {
+      await this.controller.mapDataManager.ensurePointsLoaded()
+    }
 
     const pointsLayer = this.layerManager.getLayer("points")
     if (pointsLayer) {

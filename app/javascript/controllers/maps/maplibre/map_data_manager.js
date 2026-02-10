@@ -2,6 +2,8 @@ import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
+const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
+
 /**
  * Manages data loading and layer setup for the map
  */
@@ -17,60 +19,193 @@ export class MapDataManager {
 
   /**
    * Load map data from API and setup layers
+   * Initializes empty layers first for z-ordering, then updates them
+   * incrementally as each data source completes.
    * @param {string} startDate - Start date for data range
    * @param {string} endDate - End date for data range
    * @param {Object} options - Loading options
    */
   async loadMapData(startDate, endDate, options = {}) {
-    const {
-      showLoading = true,
-      fitBounds = true,
-      showToast = true,
-      onProgress = null,
-    } = options
+    const { showLoading = true, fitBounds = true } = options
 
     performanceMonitor.mark("load-map-data")
 
     if (showLoading) {
-      this.controller.showLoading()
+      this.controller.showProgress()
     }
 
     try {
-      // Fetch data from API
-      const data = await this.dataLoader.fetchMapData(
-        startDate,
-        endDate,
-        showLoading ? onProgress : null,
-      )
+      // 1. Initialize all layers with empty data for correct z-ordering
+      await this._setupLayers({
+        pointsGeoJSON: EMPTY_GEOJSON,
+        routesGeoJSON: EMPTY_GEOJSON,
+        visitsGeoJSON: EMPTY_GEOJSON,
+        photosGeoJSON: EMPTY_GEOJSON,
+        areasGeoJSON: EMPTY_GEOJSON,
+        tracksGeoJSON: EMPTY_GEOJSON,
+        placesGeoJSON: EMPTY_GEOJSON,
+      })
 
-      // Store visits for filtering
+      // 2. Fetch data with incremental callbacks
+      const data = await this.dataLoader.fetchMapData(startDate, endDate, {
+        onUpdate: showLoading
+          ? (info) => this.controller.updateLoadingCounts(info)
+          : null,
+        onLayerData: (source, geoJSON) =>
+          this._updateLayerBySource(source, geoJSON),
+        onTracksLoaded: (tracksGeoJSON) => {
+          console.log(
+            "[MapDataManager] Updating tracks layer from background load",
+          )
+          this._updateTracksLayer(tracksGeoJSON)
+        },
+        onPhotosLoaded: (photosGeoJSON) => {
+          console.log(
+            "[MapDataManager] Updating photos layer from background load",
+          )
+          this._updatePhotosLayer(photosGeoJSON)
+        },
+      })
+
+      // 3. Store visits for filtering
       this.filterManager.setAllVisits(data.visits)
 
-      // Setup layers
-      await this._setupLayers(data)
+      // 4. Store data for timeline and other features
+      this.lastLoadedData = data
 
-      // Fit bounds if requested
+      // 5. Fit bounds if requested
       if (fitBounds && data.points.length > 0) {
         this._fitMapToBounds(data.pointsGeoJSON)
-      }
-
-      // Show success message
-      if (showToast) {
-        const pointText = data.points.length === 1 ? "point" : "points"
-        Toast.success(`Loaded ${data.points.length} location ${pointText}`)
       }
 
       return data
     } catch (error) {
       console.error("[MapDataManager] Failed to load map data:", error)
+      if (showLoading) {
+        this.controller.hideProgress()
+      }
       Toast.error("Failed to load location data. Please try again.")
       throw error
     } finally {
-      if (showLoading) {
-        this.controller.hideLoading()
-      }
       const duration = performanceMonitor.measure("load-map-data")
       console.log(`[Performance] Map data loaded in ${duration}ms`)
+
+      // Safety net: if the counter didn't complete (e.g. no sources expected),
+      // ensure the badge is dismissed after a short delay.
+      if (showLoading && this.controller.hasProgressBadgeTarget) {
+        const badge = this.controller.progressBadgeTarget
+        if (
+          badge.classList.contains("visible") &&
+          !badge.classList.contains("complete")
+        ) {
+          badge.classList.add("complete")
+          setTimeout(() => this.controller.hideProgress(), 800)
+        }
+      }
+    }
+  }
+
+  /**
+   * Ensure points data is loaded (lazy-load for point-dependent layers).
+   * Deduplicates concurrent calls via a shared promise.
+   */
+  async ensurePointsLoaded() {
+    if (this.lastLoadedData?.points?.length > 0) return
+    if (!this._pointsLoadPromise) {
+      this._pointsLoadPromise = this._loadPoints()
+    }
+    return this._pointsLoadPromise
+  }
+
+  /**
+   * Fetch points data, cache it, and update all 5 point-dependent layers.
+   * @private
+   */
+  async _loadPoints() {
+    try {
+      this.controller.showProgress()
+      this.controller.updateLoadingCounts({
+        counts: { points: 0 },
+        isComplete: false,
+      })
+
+      const { points, pointsGeoJSON, routesGeoJSON } =
+        await this.dataLoader.fetchPointsData(
+          this.controller.startDateValue,
+          this.controller.endDateValue,
+        )
+
+      if (!this.lastLoadedData) this.lastLoadedData = {}
+      this.lastLoadedData.points = points
+      this.lastLoadedData.pointsGeoJSON = pointsGeoJSON
+      this.lastLoadedData.routesGeoJSON = routesGeoJSON
+
+      this._updateLayerBySource("points", pointsGeoJSON)
+      this._updateLayerBySource("heatmap", pointsGeoJSON)
+      this._updateLayerBySource("routes", routesGeoJSON)
+      this._updateLayerBySource("fog", pointsGeoJSON)
+      this._updateLayerBySource("scratch", pointsGeoJSON)
+
+      this.controller.updateLoadingCounts({
+        counts: { points: points.length },
+        isComplete: true,
+      })
+    } finally {
+      this._pointsLoadPromise = null
+    }
+  }
+
+  /**
+   * Update a specific layer by source name
+   * @private
+   */
+  _updateLayerBySource(source, geoJSON) {
+    const layerMap = {
+      points: "points",
+      heatmap: "heatmap",
+      routes: "routes",
+      visits: "visits",
+      areas: "areas",
+      places: "places",
+      tracks: "tracks",
+      photos: "photos",
+      fog: "fog",
+      scratch: "scratch",
+    }
+    const layerName = layerMap[source]
+    if (!layerName) return
+
+    const layer = this.layerManager?.getLayer(layerName)
+    if (layer) {
+      layer.update(geoJSON)
+    }
+  }
+
+  /**
+   * Update tracks layer after background load completes
+   * @private
+   */
+  _updateTracksLayer(tracksGeoJSON) {
+    const tracksLayer = this.layerManager?.getLayer("tracks")
+    if (tracksLayer) {
+      tracksLayer.update(tracksGeoJSON)
+      if (this.lastLoadedData) {
+        this.lastLoadedData.tracksGeoJSON = tracksGeoJSON
+      }
+    }
+  }
+
+  /**
+   * Update photos layer after background load completes
+   * @private
+   */
+  _updatePhotosLayer(photosGeoJSON) {
+    const photosLayer = this.layerManager?.getLayer("photos")
+    if (photosLayer) {
+      photosLayer.update(photosGeoJSON)
+      if (this.lastLoadedData) {
+        this.lastLoadedData.photosGeoJSON = photosGeoJSON
+      }
     }
   }
 

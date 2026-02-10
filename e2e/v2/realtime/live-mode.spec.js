@@ -1,16 +1,19 @@
-import { test, expect } from '@playwright/test'
-import { closeOnboardingModal } from '../../helpers/navigation.js'
-import { navigateToMapsV2, waitForMapLibre, waitForLoadingComplete } from '../helpers/setup.js'
-import { API_KEYS, TEST_LOCATIONS } from '../helpers/constants.js'
+import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "../../helpers/navigation.js"
 import {
-  sendOwnTracksPoint,
   enableLiveMode,
-  waitForPointsChannelConnected,
+  sendOwnTracksPoint,
   waitForPointOnMap,
-  waitForRecentPointVisible
-} from '../helpers/api.js'
+  waitForPointsChannelConnected,
+} from "../helpers/api.js"
+import { API_KEYS, TEST_LOCATIONS } from "../helpers/constants.js"
+import {
+  navigateToMapsV2,
+  waitForLoadingComplete,
+  waitForMapLibre,
+} from "../helpers/setup.js"
 
-test.describe('Live Mode', () => {
+test.describe("Live Mode", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToMapsV2(page)
     await closeOnboardingModal(page)
@@ -18,22 +21,33 @@ test.describe('Live Mode', () => {
     await waitForLoadingComplete(page)
 
     // Wait for layers to be fully initialized
-    await page.waitForFunction(() => {
-      const element = document.querySelector('[data-controller*="maps--maplibre"]')
-      if (!element) return false
-      const app = window.Stimulus || window.Application
-      if (!app) return false
-      const controller = app.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-      return controller?.layerManager?.layers?.recentPointLayer !== undefined
-    }, { timeout: 10000 })
+    await page.waitForFunction(
+      () => {
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
+        if (!element) return false
+        const app = window.Stimulus || window.Application
+        if (!app) return false
+        const controller = app.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        return controller?.layerManager?.layers?.recentPointLayer !== undefined
+      },
+      { timeout: 10000 },
+    )
 
     await page.waitForTimeout(1000)
   })
 
-  test.describe('Live Mode Toggle', () => {
-    test('should have live mode toggle in settings', async ({ page }) => {
+  test.describe("Live Mode Toggle", () => {
+    test("should have live mode toggle in settings", async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(300)
 
       // Click Settings tab
@@ -41,7 +55,9 @@ test.describe('Live Mode', () => {
       await page.waitForTimeout(300)
 
       // Verify Live Mode toggle exists
-      const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]')
+      const liveModeToggle = page.locator(
+        '[data-maps--maplibre-realtime-target="liveModeToggle"]',
+      )
       await expect(liveModeToggle).toBeVisible()
 
       // Verify label text
@@ -49,18 +65,23 @@ test.describe('Live Mode', () => {
       await expect(label).toBeVisible()
 
       // Verify description text
-      const description = page.locator('text=Show new points in real-time')
+      const description = page.locator("text=Show new points in real-time")
       await expect(description).toBeVisible()
     })
 
-    test('should toggle live mode on and off', async ({ page }) => {
+    test("should toggle live mode on and off", async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(300)
       await page.locator('button[data-tab="settings"]').click()
       await page.waitForTimeout(300)
 
-      const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]')
+      const liveModeToggle = page.locator(
+        '[data-maps--maplibre-realtime-target="liveModeToggle"]',
+      )
 
       // Get initial state
       const initialState = await liveModeToggle.isChecked()
@@ -82,43 +103,68 @@ test.describe('Live Mode', () => {
       expect(finalState).toBe(initialState)
     })
 
-    test('should show toast notification when toggling live mode', async ({ page }) => {
+    test("should show toast notification when toggling live mode", async ({
+      page,
+    }) => {
       // Open settings
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(300)
       await page.locator('button[data-tab="settings"]').click()
       await page.waitForTimeout(300)
 
-      const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]')
+      const liveModeToggle = page.locator(
+        '[data-maps--maplibre-realtime-target="liveModeToggle"]',
+      )
       const initialState = await liveModeToggle.isChecked()
 
       // Toggle and watch for toast
       await liveModeToggle.click()
 
       // Wait for toast to appear
-      const expectedMessage = initialState ? 'Live mode disabled' : 'Live mode enabled'
-      const toast = page.locator('.toast, [role="alert"]').filter({ hasText: expectedMessage })
+      const expectedMessage = initialState
+        ? "Live mode disabled"
+        : "Live mode enabled"
+      const toast = page
+        .locator('.toast, [role="alert"]')
+        .filter({ hasText: expectedMessage })
       await expect(toast).toBeVisible({ timeout: 3000 })
     })
   })
 
-  test.describe('Realtime Controller', () => {
-    test('should initialize realtime controller when enabled', async ({ page }) => {
+  test.describe("Realtime Controller", () => {
+    test("should initialize realtime controller when enabled", async ({
+      page,
+    }) => {
       const realtimeControllerExists = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
         return controller !== undefined
       })
 
       expect(realtimeControllerExists).toBe(true)
     })
 
-    test('should have access to maps--maplibre controller', async ({ page }) => {
+    test("should have access to maps--maplibre controller", async ({
+      page,
+    }) => {
       const hasMapsController = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const realtimeController = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
+        const realtimeController = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
         const mapsController = realtimeController?.mapsV2Controller
         return mapsController !== undefined && mapsController.map !== undefined
       })
@@ -126,14 +172,19 @@ test.describe('Live Mode', () => {
       expect(hasMapsController).toBe(true)
     })
 
-    test('should initialize ActionCable channels', async ({ page }) => {
+    test("should initialize ActionCable channels", async ({ page }) => {
       // Wait for channels to be set up
       await page.waitForTimeout(2000)
 
       const channelsInitialized = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
         return controller?.channels !== undefined
       })
 
@@ -141,114 +192,126 @@ test.describe('Live Mode', () => {
     })
   })
 
-  test.describe('Connection Indicator', () => {
-    test('should have connection indicator element in DOM', async ({ page }) => {
-      // Connection indicator should exist in DOM
-      const indicator = page.locator('.connection-indicator')
-
-      // Should exist in DOM
-      await expect(indicator).toHaveCount(1)
-
-      // With ActionCable/Redis running, the indicator may already be active
-      // Just verify the element exists and has a known state
-      const classes = await indicator.evaluate(el => Array.from(el.classList))
-      expect(classes).toContain('connection-indicator')
-      // Should have either connected or disconnected class
-      const hasConnectionState = classes.includes('connected') || classes.includes('disconnected')
-      expect(hasConnectionState).toBe(true)
+  test.describe("Connection State", () => {
+    test("should not have a connection indicator element (removed)", async ({
+      page,
+    }) => {
+      // Connection indicator badge was removed; verify it is absent
+      const indicator = page.locator(".connection-indicator")
+      await expect(indicator).toHaveCount(0)
     })
 
-    test('should have connection status classes', async ({ page }) => {
-      const indicator = page.locator('.connection-indicator')
-
-      // With ActionCable/Redis running, the indicator may be in connected state
-      // Verify it has a valid connection state class
-      const hasValidState = await indicator.evaluate(el =>
-        el.classList.contains('disconnected') || el.classList.contains('connected')
-      )
-
-      expect(hasValidState).toBe(true)
-    })
-
-    test('should show connection indicator when ActionCable connects', async ({ page }) => {
-      // Enable live mode to trigger ActionCable connection
-      await enableLiveMode(page)
-
-      // Wait for points channel to connect
-      const channelConnected = await waitForPointsChannelConnected(page, 5000)
-
-      const indicator = page.locator('.connection-indicator')
-
-      // If channel connected, indicator should be active
-      if (channelConnected) {
-        const isActive = await indicator.evaluate(el => el.classList.contains('active'))
-        // Connection indicator depends on actual WebSocket connection
-        if (isActive) {
-          await expect(indicator).toBeVisible()
-        }
-      }
-
-      // Always verify the indicator element exists
-      await expect(indicator).toHaveCount(1)
-    })
-
-    test('should show appropriate connection text when active', async ({ page }) => {
-      // Enable live mode to trigger ActionCable connection
-      await enableLiveMode(page)
-
-      // Wait for connection
-      const channelConnected = await waitForPointsChannelConnected(page, 5000)
-
-      const indicator = page.locator('.connection-indicator')
-
-      // Check if indicator became active (depends on WebSocket actually connecting)
-      const isActive = await indicator.evaluate(el => el.classList.contains('active'))
-
-      if (isActive) {
-        // Check the indicator shows connected state
-        const hasConnectedClass = await indicator.evaluate(el =>
-          el.classList.contains('connected')
+    test("should track connected channels in controller", async ({ page }) => {
+      // The realtime controller tracks connection state internally via connectedChannels Set
+      const hasSet = await page.evaluate(() => {
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
         )
-        expect(hasConnectedClass).toBe(true)
-      } else {
-        // If not active, verify at least the channel setup was attempted
-        expect(channelConnected || true).toBe(true)
-      }
+        if (!element) return false
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        return controller?.connectedChannels instanceof Set
+      })
+
+      expect(hasSet).toBe(true)
+    })
+
+    test("should attempt channel connection when live mode enabled", async ({
+      page,
+    }) => {
+      await enableLiveMode(page)
+
+      await waitForPointsChannelConnected(page, 5000)
+
+      // Channel connection depends on ActionCable/Redis availability in CI
+      // Just verify the attempt was made (channels object exists)
+      const hasChannels = await page.evaluate(() => {
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
+        if (!element) return false
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        return controller?.channels !== undefined
+      })
+
+      expect(hasChannels).toBe(true)
+    })
+
+    test("should have updateConnectionIndicator as no-op", async ({ page }) => {
+      // updateConnectionIndicator was kept as a no-op for backward compatibility
+      const isNoOp = await page.evaluate(() => {
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
+        if (!element) return false
+        const app = window.Stimulus || window.Application
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        if (!controller) return false
+        // Should not throw when called
+        controller.updateConnectionIndicator(true)
+        controller.updateConnectionIndicator(false)
+        return true
+      })
+
+      expect(isNoOp).toBe(true)
     })
   })
 
-  test.describe('Point Handling', () => {
-    test('should have handleNewPoint method', async ({ page }) => {
+  test.describe("Point Handling", () => {
+    test("should have handleNewPoint method", async ({ page }) => {
       const hasMethod = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
-        return typeof controller?.handleNewPoint === 'function'
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        return typeof controller?.handleNewPoint === "function"
       })
 
       expect(hasMethod).toBe(true)
     })
 
-    test('should have zoomToPoint method', async ({ page }) => {
+    test("should have zoomToPoint method", async ({ page }) => {
       const hasMethod = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
-        return typeof controller?.zoomToPoint === 'function'
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        return typeof controller?.zoomToPoint === "function"
       })
 
       expect(hasMethod).toBe(true)
     })
 
-    test('should add new point to map when received', async ({ page, request }) => {
+    test("should add new point to map when received", async ({
+      page,
+      request,
+    }) => {
       // Enable live mode and wait for channel connection
       await enableLiveMode(page)
       const channelConnected = await waitForPointsChannelConnected(page, 5000)
       await page.waitForTimeout(1000)
 
       // Create a new point via API - this triggers ActionCable broadcast
-      const testLat = TEST_LOCATIONS.BERLIN_CENTER.lat + (Math.random() * 0.001)
-      const testLon = TEST_LOCATIONS.BERLIN_CENTER.lon + (Math.random() * 0.001)
+      const testLat = TEST_LOCATIONS.BERLIN_CENTER.lat + Math.random() * 0.001
+      const testLon = TEST_LOCATIONS.BERLIN_CENTER.lon + Math.random() * 0.001
       const timestamp = Math.floor(Date.now() / 1000)
 
       const response = await sendOwnTracksPoint(
@@ -256,7 +319,7 @@ test.describe('Live Mode', () => {
         API_KEYS.DEMO_USER,
         testLat,
         testLon,
-        timestamp
+        timestamp,
       )
 
       // API should always work
@@ -264,16 +327,21 @@ test.describe('Live Mode', () => {
 
       // Real-time map update depends on ActionCable/WebSocket
       if (channelConnected) {
-        const pointAppeared = await waitForPointOnMap(page, testLat, testLon, 5000)
+        const pointAppeared = await waitForPointOnMap(
+          page,
+          testLat,
+          testLon,
+          5000,
+        )
         if (pointAppeared) {
-          console.log('[Test] Real-time point appeared on map')
+          console.log("[Test] Real-time point appeared on map")
         } else {
-          console.log('[Test] API successful, real-time delivery pending')
+          console.log("[Test] API successful, real-time delivery pending")
         }
       }
     })
 
-    test('should zoom to new point location', async ({ page, request }) => {
+    test("should zoom to new point location", async ({ page, request }) => {
       // Enable live mode and wait for channel connection
       await enableLiveMode(page)
       const channelConnected = await waitForPointsChannelConnected(page, 5000)
@@ -289,7 +357,7 @@ test.describe('Live Mode', () => {
         API_KEYS.DEMO_USER,
         testLat,
         testLon,
-        timestamp
+        timestamp,
       )
 
       // API should always work
@@ -298,23 +366,28 @@ test.describe('Live Mode', () => {
       // Zoom behavior depends on real-time delivery
       if (channelConnected) {
         await page.waitForTimeout(2000)
-        console.log('[Test] Point created, zoom depends on WebSocket delivery')
+        console.log("[Test] Point created, zoom depends on WebSocket delivery")
       }
     })
   })
 
-  test.describe('Live Mode State Persistence', () => {
-    test('should maintain live mode state after toggling', async ({ page }) => {
+  test.describe("Live Mode State Persistence", () => {
+    test("should maintain live mode state after toggling", async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(300)
       await page.locator('button[data-tab="settings"]').click()
       await page.waitForTimeout(300)
 
-      const liveModeToggle = page.locator('[data-maps--maplibre-realtime-target="liveModeToggle"]')
+      const liveModeToggle = page.locator(
+        '[data-maps--maplibre-realtime-target="liveModeToggle"]',
+      )
 
       // Enable live mode
-      if (!await liveModeToggle.isChecked()) {
+      if (!(await liveModeToggle.isChecked())) {
         await liveModeToggle.click()
         await page.waitForTimeout(500)
       }
@@ -323,9 +396,15 @@ test.describe('Live Mode', () => {
       expect(await liveModeToggle.isChecked()).toBe(true)
 
       // Close and reopen settings
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(300)
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(300)
       await page.locator('button[data-tab="settings"]').click()
       await page.waitForTimeout(300)
@@ -335,26 +414,33 @@ test.describe('Live Mode', () => {
     })
   })
 
-  test.describe('Error Handling', () => {
-    test('should handle missing maps controller gracefully', async ({ page }) => {
+  test.describe("Error Handling", () => {
+    test("should handle missing maps controller gracefully", async ({
+      page,
+    }) => {
       // This is tested by the controller's defensive checks
       const hasDefensiveChecks = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
 
         // The controller should have the mapsV2Controller getter
-        return typeof controller?.mapsV2Controller !== 'undefined'
+        return typeof controller?.mapsV2Controller !== "undefined"
       })
 
       expect(hasDefensiveChecks).toBe(true)
     })
 
-    test('should handle missing points layer gracefully', async ({ page }) => {
+    test("should handle missing points layer gracefully", async ({ page }) => {
       // Console errors should not crash the app
-      let consoleErrors = []
-      page.on('console', msg => {
-        if (msg.type() === 'error') {
+      const consoleErrors = []
+      page.on("console", (msg) => {
+        if (msg.type() === "error") {
           consoleErrors.push(msg.text())
         }
       })
@@ -363,51 +449,71 @@ test.describe('Live Mode', () => {
       await page.waitForTimeout(2000)
 
       // Should not have critical errors
-      const hasCriticalErrors = consoleErrors.some(err =>
-        err.includes('TypeError') || err.includes('Cannot read')
+      const hasCriticalErrors = consoleErrors.some(
+        (err) => err.includes("TypeError") || err.includes("Cannot read"),
       )
 
       expect(hasCriticalErrors).toBe(false)
     })
   })
 
-  test.describe('Recent Point Display', () => {
-    test('should have recent point layer initialized', async ({ page }) => {
+  test.describe("Recent Point Display", () => {
+    test("should have recent point layer initialized", async ({ page }) => {
       const hasRecentPointLayer = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const recentPointLayer = controller?.layerManager?.getLayer('recentPoint')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const recentPointLayer =
+          controller?.layerManager?.getLayer("recentPoint")
         return recentPointLayer !== undefined
       })
 
       expect(hasRecentPointLayer).toBe(true)
     })
 
-    test('recent point layer should be hidden by default', async ({ page }) => {
+    test("recent point layer should be hidden by default", async ({ page }) => {
       const isHidden = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const recentPointLayer = controller?.layerManager?.getLayer('recentPoint')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const recentPointLayer =
+          controller?.layerManager?.getLayer("recentPoint")
         return recentPointLayer?.visible === false
       })
 
       expect(isHidden).toBe(true)
     })
 
-    test('recent point layer can be shown programmatically', async ({ page }) => {
+    test("recent point layer can be shown programmatically", async ({
+      page,
+    }) => {
       // This tests the core functionality: the layer can be made visible
       // The toggle integration will work once assets are recompiled
 
       const result = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const recentPointLayer = controller?.layerManager?.getLayer('recentPoint')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const recentPointLayer =
+          controller?.layerManager?.getLayer("recentPoint")
 
         if (!recentPointLayer) {
-          return { success: false, reason: 'layer not found' }
+          return { success: false, reason: "layer not found" }
         }
 
         // Test that show() works
@@ -423,16 +529,24 @@ test.describe('Live Mode', () => {
       expect(result.success).toBe(true)
     })
 
-    test('recent point layer can be hidden programmatically', async ({ page }) => {
+    test("recent point layer can be hidden programmatically", async ({
+      page,
+    }) => {
       // This tests the core functionality: the layer can be hidden
       const result = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const recentPointLayer = controller?.layerManager?.getLayer('recentPoint')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const recentPointLayer =
+          controller?.layerManager?.getLayer("recentPoint")
 
         if (!recentPointLayer) {
-          return { success: false, reason: 'layer not found' }
+          return { success: false, reason: "layer not found" }
         }
 
         // Show first, then hide to test the hide functionality
@@ -446,29 +560,45 @@ test.describe('Live Mode', () => {
       expect(result.success).toBe(true)
     })
 
-    test('should have updateRecentPoint method', async ({ page }) => {
+    test("should have updateRecentPoint method", async ({ page }) => {
       const hasMethod = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
-        return typeof controller?.updateRecentPoint === 'function'
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        return typeof controller?.updateRecentPoint === "function"
       })
 
       expect(hasMethod).toBe(true)
     })
 
-    test('should have updateRecentPointLayerVisibility method', async ({ page }) => {
+    test("should have updateRecentPointLayerVisibility method", async ({
+      page,
+    }) => {
       const hasMethod = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
-        return typeof controller?.updateRecentPointLayerVisibility === 'function'
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
+        return (
+          typeof controller?.updateRecentPointLayerVisibility === "function"
+        )
       })
 
       expect(hasMethod).toBe(true)
     })
 
-    test('should display recent point when new point is broadcast in live mode', async ({ page }) => {
+    test("should display recent point when new point is broadcast in live mode", async ({
+      page,
+    }) => {
       // Enable live mode
       await enableLiveMode(page)
       await page.waitForTimeout(1000)
@@ -479,29 +609,40 @@ test.describe('Live Mode', () => {
       const testLon = TEST_LOCATIONS.BERLIN_CENTER.lon
       const timestamp = Math.floor(Date.now() / 1000)
 
-      const result = await page.evaluate(({ lat, lon, ts }) => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
-        const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
+      const result = await page.evaluate(
+        ({ lat, lon, ts }) => {
+          const element = document.querySelector(
+            '[data-controller*="maps--maplibre-realtime"]',
+          )
+          const app = window.Stimulus || window.Application
+          const controller = app?.getControllerForElementAndIdentifier(
+            element,
+            "maps--maplibre-realtime",
+          )
 
-        if (!controller) return { success: false, reason: 'controller not found' }
-        if (typeof controller.handleNewPoint !== 'function') return { success: false, reason: 'handleNewPoint not found' }
+          if (!controller)
+            return { success: false, reason: "controller not found" }
+          if (typeof controller.handleNewPoint !== "function")
+            return { success: false, reason: "handleNewPoint not found" }
 
-        // Enable live mode programmatically
-        controller.liveModeEnabled = true
+          // Enable live mode programmatically
+          controller.liveModeEnabled = true
 
-        // Call handleNewPoint with array format: [lat, lon, battery, altitude, timestamp, velocity, id, country_name]
-        controller.handleNewPoint([lat, lon, 85, 0, ts, 0, 999998, null])
+          // Call handleNewPoint with array format: [lat, lon, battery, altitude, timestamp, velocity, id, country_name]
+          controller.handleNewPoint([lat, lon, 85, 0, ts, 0, 999998, null])
 
-        // Check if recent point layer became visible
-        const mapsController = controller.mapsV2Controller
-        const recentPointLayer = mapsController?.layerManager?.getLayer('recentPoint')
+          // Check if recent point layer became visible
+          const mapsController = controller.mapsV2Controller
+          const recentPointLayer =
+            mapsController?.layerManager?.getLayer("recentPoint")
 
-        return {
-          success: true,
-          recentPointVisible: recentPointLayer?.visible === true
-        }
-      }, { lat: testLat, lon: testLon, ts: timestamp })
+          return {
+            success: true,
+            recentPointVisible: recentPointLayer?.visible === true,
+          }
+        },
+        { lat: testLat, lon: testLon, ts: timestamp },
+      )
 
       expect(result.success).toBe(true)
       expect(result.recentPointVisible).toBe(true)

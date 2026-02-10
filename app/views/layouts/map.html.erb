@@ -3,6 +3,8 @@
   <head>
     <title><%= full_title(yield(:title)) %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <%= action_cable_meta_tag %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -13,7 +15,8 @@
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
-    <%= javascript_include_tag "https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js" %>
+    <%= yield :head_scripts %>
+    <%= javascript_include_tag "https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js", defer: true %>
 
     <%= render 'application/favicon' %>
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>

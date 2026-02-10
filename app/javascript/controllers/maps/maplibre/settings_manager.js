@@ -61,6 +61,7 @@ export class SettingsController {
       scratchToggle: "scratchEnabled",
       familyToggle: "familyEnabled",
       speedColoredToggle: "speedColoredRoutesEnabled",
+      tracksToggle: "tracksEnabled",
     }
 
     Object.entries(toggleMap).forEach(([targetName, settingKey]) => {

@@ -7,6 +7,7 @@ import { PlacesLayer } from "maps_maplibre/layers/places_layer"
 import { PointsLayer } from "maps_maplibre/layers/points_layer"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
+import { TimelineMarkerLayer } from "maps_maplibre/layers/timeline_marker_layer"
 import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
 import { VisitsLayer } from "maps_maplibre/layers/visits_layer"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
@@ -61,6 +62,7 @@ export class LayerManager {
     this._addPointsLayer(pointsGeoJSON)
     this._addRoutesHitLayer() // Add hit target layer after points, will be on top visually
     this._addRecentPointLayer()
+    this._addTimelineMarkerLayer()
     this._addFogLayer(pointsGeoJSON)
 
     performanceMonitor.measure("add-layers")
@@ -364,6 +366,18 @@ export class LayerManager {
         visible: false, // Initially hidden, shown only when live mode is enabled
       })
       this.layers.recentPointLayer.add({
+        type: "FeatureCollection",
+        features: [],
+      })
+    }
+  }
+
+  _addTimelineMarkerLayer() {
+    if (!this.layers.timelineMarkerLayer) {
+      this.layers.timelineMarkerLayer = new TimelineMarkerLayer(this.map, {
+        visible: false, // Initially hidden, shown when timeline is active
+      })
+      this.layers.timelineMarkerLayer.add({
         type: "FeatureCollection",
         features: [],
       })
