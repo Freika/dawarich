@@ -11,12 +11,45 @@ RSpec.describe '/insights', type: :request do
         expect(response.status).to eq(302)
       end
     end
+
+    describe 'GET /details' do
+      it 'redirects to the sign in page' do
+        get details_insights_url
+
+        expect(response.status).to eq(302)
+      end
+    end
   end
 
   context 'when user is signed in' do
     let(:user) { create(:user) }
 
     before { sign_in user }
+
+    describe 'GET /details' do
+      it 'renders a successful response' do
+        get details_insights_url
+
+        expect(response.status).to eq(200)
+      end
+
+      context 'when there are stats' do
+        let!(:stat) do
+          create(:stat,
+                 user: user,
+                 year: Time.current.year,
+                 month: 1,
+                 distance: 100_000,
+                 daily_distance: { '1' => 50_000, '2' => 50_000 })
+        end
+
+        it 'renders details with stats' do
+          get details_insights_url(year: Time.current.year.to_s)
+
+          expect(response.status).to eq(200)
+        end
+      end
+    end
 
     describe 'GET /index' do
       it 'renders a successful response' do
