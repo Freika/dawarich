@@ -108,11 +108,11 @@ RSpec.describe '/insights', type: :request do
       end
 
       context 'when selecting a specific year' do
-        let!(:stat_2023) do
+        let!(:earlier_stat) do
           create(:stat, user: user, year: 2023, month: 6, distance: 150_000)
         end
 
-        let!(:stat_2024) do
+        let!(:later_stat) do
           create(:stat, user: user, year: 2024, month: 6, distance: 200_000)
         end
 
@@ -130,8 +130,8 @@ RSpec.describe '/insights', type: :request do
       end
 
       context 'when selecting all time view' do
-        let!(:stat_2023) { create(:stat, user: user, year: 2023, month: 6, distance: 100_000) }
-        let!(:stat_2024) { create(:stat, user: user, year: 2024, month: 6, distance: 150_000) }
+        let!(:earlier_stat) { create(:stat, user: user, year: 2023, month: 6, distance: 100_000) }
+        let!(:later_stat) { create(:stat, user: user, year: 2024, month: 6, distance: 150_000) }
 
         it 'loads stats for all years' do
           get insights_url(year: 'all')
