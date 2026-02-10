@@ -3,8 +3,9 @@
 class Trip < ApplicationRecord
   include Calculateable
   include DistanceConvertible
+  include Notable
 
-  has_rich_text :notes
+  has_rich_text :description
 
   belongs_to :user
 

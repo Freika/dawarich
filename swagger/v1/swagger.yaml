@@ -252,6 +252,335 @@ paths:
                 properties:
                   status:
                     type: string
+  "/api/v1/notes":
+    get:
+      summary: List notes
+      tags:
+      - Notes
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      - name: attachable_type
+        in: query
+        required: false
+        description: Filter by attachable type (e.g. Trip)
+        schema:
+          type: string
+      - name: attachable_id
+        in: query
+        required: false
+        description: Filter by attachable ID
+        schema:
+          type: integer
+      - name: standalone
+        in: query
+        required: false
+        description: Set to "true" to return only standalone notes
+        schema:
+          type: string
+      responses:
+        '200':
+          description: notes found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    title:
+                      type: string
+                      nullable: true
+                    body:
+                      type: string
+                      nullable: true
+                    latitude:
+                      type: number
+                      nullable: true
+                    longitude:
+                      type: number
+                      nullable: true
+                    attachable_type:
+                      type: string
+                      nullable: true
+                    attachable_id:
+                      type: integer
+                      nullable: true
+                    date:
+                      type: string
+                      nullable: true
+                      format: date
+                    noted_at:
+                      type: string
+                      format: datetime
+                    created_at:
+                      type: string
+                      format: datetime
+                    updated_at:
+                      type: string
+                      format: datetime
+                  required:
+                  - id
+                  - noted_at
+        '401':
+          description: unauthorized
+    post:
+      summary: Create note
+      tags:
+      - Notes
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '201':
+          description: note created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                    nullable: true
+                  body:
+                    type: string
+                    nullable: true
+                  latitude:
+                    type: number
+                    nullable: true
+                  longitude:
+                    type: number
+                    nullable: true
+                  attachable_type:
+                    type: string
+                    nullable: true
+                  attachable_id:
+                    type: integer
+                    nullable: true
+                  date:
+                    type: string
+                    nullable: true
+                    format: date
+                  noted_at:
+                    type: string
+                    format: datetime
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    body:
+                      type: string
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    attachable_type:
+                      type: string
+                    attachable_id:
+                      type: integer
+                    noted_at:
+                      type: string
+                      format: datetime
+                  required:
+                  - noted_at
+  "/api/v1/notes/{id}":
+    get:
+      summary: Show note
+      tags:
+      - Notes
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Note ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: note found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                    nullable: true
+                  body:
+                    type: string
+                    nullable: true
+                  latitude:
+                    type: number
+                    nullable: true
+                  longitude:
+                    type: number
+                    nullable: true
+                  attachable_type:
+                    type: string
+                    nullable: true
+                  attachable_id:
+                    type: integer
+                    nullable: true
+                  date:
+                    type: string
+                    nullable: true
+                    format: date
+                  noted_at:
+                    type: string
+                    format: datetime
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+        '404':
+          description: note not found
+        '401':
+          description: unauthorized
+    patch:
+      summary: Update note
+      tags:
+      - Notes
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Note ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: note updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                    nullable: true
+                  body:
+                    type: string
+                    nullable: true
+                  latitude:
+                    type: number
+                    nullable: true
+                  longitude:
+                    type: number
+                    nullable: true
+                  attachable_type:
+                    type: string
+                    nullable: true
+                  attachable_id:
+                    type: integer
+                    nullable: true
+                  date:
+                    type: string
+                    nullable: true
+                    format: date
+                  noted_at:
+                    type: string
+                    format: datetime
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+        '404':
+          description: note not found
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    body:
+                      type: string
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    noted_at:
+                      type: string
+                      format: datetime
+    delete:
+      summary: Delete note
+      tags:
+      - Notes
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Note ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: note deleted
+        '404':
+          description: note not found
+        '401':
+          description: unauthorized
   "/api/v1/overland/batches":
     post:
       summary: Creates a batch of points

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Area < ApplicationRecord
+  include Notable
+
   reverse_geocoded_by :latitude, :longitude
 
   belongs_to :user

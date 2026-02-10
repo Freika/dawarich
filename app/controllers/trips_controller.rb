@@ -13,10 +13,14 @@ class TripsController < ApplicationController
   def show
     @photo_previews = @trip.photo_previews
     @photo_sources = @trip.photo_sources
+    @distance_unit = current_user.safe_settings.distance_unit
+    @timezone = current_user.timezone
+    @day_notes = @trip.notes.index_by(&:date)
+    @day_stats = compute_day_stats
 
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
 
-    Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
+    Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
 
   def new
@@ -63,6 +67,30 @@ class TripsController < ApplicationController
   end
 
   def trip_params
-    params.require(:trip).permit(:name, :started_at, :ended_at, :notes)
+    params.require(:trip).permit(:name, :started_at, :ended_at, :description)
+  end
+
+  def compute_day_stats
+    cache_key = "trip_day_stats/#{@trip.id}/#{@trip.updated_at.to_i}/#{@timezone}"
+
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      points_data = @trip.points.order(:timestamp)
+                         .pluck(Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'), :timestamp)
+      next {} if points_data.empty?
+
+      points_data.group_by { |_, _, ts| Time.at(ts).in_time_zone(@timezone).to_date }.transform_values do |pts|
+        first_time = Time.at(pts.first[2]).in_time_zone(@timezone)
+        last_time  = Time.at(pts.last[2]).in_time_zone(@timezone)
+
+        distance_m = 0.0
+        pts.each_cons(2) do |(lat1, lon1, _), (lat2, lon2, _)|
+          distance_m += Geocoder::Calculations.distance_between(
+            [lat1.to_f, lon1.to_f], [lat2.to_f, lon2.to_f], units: :km
+          ) * 1000
+        end
+
+        { first_time: first_time, last_time: last_time, distance_m: distance_m }
+      end
+    end
   end
 end

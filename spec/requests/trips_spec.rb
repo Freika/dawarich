@@ -134,7 +134,7 @@ RSpec.describe '/trips', type: :request do
       let(:new_attributes) do
         {
           name: 'Updated Trip Name',
-          notes: 'Changed trip notes'
+          description: 'Changed trip notes'
         }
       end
       let(:trip) { create(:trip, :with_points, user:) }
@@ -144,8 +144,8 @@ RSpec.describe '/trips', type: :request do
         trip.reload
 
         expect(trip.name).to eq('Updated Trip Name')
-        expect(trip.notes.body.to_plain_text).to eq('Changed trip notes')
-        expect(trip.notes).to be_an(ActionText::RichText)
+        expect(trip.description.body.to_plain_text).to eq('Changed trip notes')
+        expect(trip.description).to be_an(ActionText::RichText)
       end
 
       it 'redirects to the trip' do

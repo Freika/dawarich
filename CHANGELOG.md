@@ -6,15 +6,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [1.1.1] - Unreleased
 
+The Trips Update Release
+
+Trips are now using MapLibre instead of Leaflet to provide same smooth experience as the Map V2.
+
+Each day of a trip now has its own card on the trip page with where user can leave a note for that day. Each day is colored in different color on the map to easily distinguish them. Timeline and Replay functionality is now available on the trip page as well, so you can easily see how your location changed during the trip and replay it if you want.
+
+## Added
+
+- Countries flags as SVGs instead of emojis.
+- Map v2 requires WebGL support, so if user's browser doesn't support it or it's disabled, they will see a warning message with a link to the list of supported browsers.
+
+## Fixed
+
+- Countries that were not showed as flags before now fixed.
+
 ## Changed
 
 - Overall app performance in browser was improved
 
-## Added
 
-- Map v2 requires WebGL support, so if user's browser doesn't support it or it's disabled, they will see a warning message with a link to the list of supported browsers.
-
-# [1.1.0] - Unreleased
+# [1.1.0] - 2026-02-08
 
 The Timeline Release
 
@@ -41,6 +53,11 @@ In Map V2 Tools, user can now enable Timeline tool, which allows to quickly navi
 
 - Zooming animation is disabled on Map V2 loading #2219
 - Exporting points to GPX and GeoJSON now works better and faster for large numbers of points by processing the export in chunks to reduce memory usage. #2161
+- Default color for Tracks layer on Map V2 is now set to blue instead of red.
+
+## Removed
+
+- `MIN_MINUTES_SPENT_IN_CITY` env variable is removed. It is now user-configurable in the Map v2 Settings panel. You can safely remove the `MIN_MINUTES_SPENT_IN_CITY` variable from your environment variables if you had it set before.
 
 
 # [1.0.4] - 2026-02-01

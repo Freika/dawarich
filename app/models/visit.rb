@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Visit < ApplicationRecord
+  include Notable
+
   belongs_to :area, optional: true
   belongs_to :place, optional: true
   belongs_to :user
