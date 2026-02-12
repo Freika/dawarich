@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::DigestsController < ApiController
-  before_action :authenticate_active_api_user!, only: [:create]
+  before_action :authenticate_active_api_user!, only: %i[create destroy]
 
   def index
     digests = current_api_user.digests.yearly.order(year: :desc)
@@ -53,7 +53,7 @@ class Api::V1::DigestsController < ApiController
   end
 
   def valid_year?(year)
-    return false if year < 1970 || year > Time.current.year
+    return false if year < 1970 || year >= Time.current.year
 
     current_api_user.stats.exists?(year: year)
   end

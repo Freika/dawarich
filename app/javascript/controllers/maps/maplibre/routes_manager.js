@@ -206,14 +206,25 @@ export class RoutesManager {
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
       })
 
+      const routesLayer = this.layerManager.getLayer("routes")
+
       if (this.settings.speedColoredRoutes) {
+        // Store original routes for low-zoom base layer before applying speed colors
+        if (routesLayer?.updateBaseData) {
+          routesLayer.updateBaseData(routesGeoJSON)
+        }
+
         const speedColorScale =
           this.settings.speedColorScale ||
           "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
         routesGeoJSON = applySpeedColors(routesGeoJSON, points, speedColorScale)
+      } else {
+        // Clear explicit base data so base source mirrors main source
+        if (routesLayer?.updateBaseData) {
+          routesLayer.baseData = null
+        }
       }
 
-      const routesLayer = this.layerManager.getLayer("routes")
       if (routesLayer) routesLayer.update(routesGeoJSON)
     } catch (error) {
       console.error("Failed to reload routes:", error)

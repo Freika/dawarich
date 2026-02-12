@@ -6,14 +6,14 @@ RSpec.describe 'Api::V1::Insights', type: :request do
   let(:user) { create(:user) }
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
-  let!(:stats_in_2024) do
+  let!(:full_year_stats) do
     (1..12).map do |month|
       create(:stat, year: 2024, month: month, user: user,
                     daily_distance: { '1' => 1000, '2' => 2000, '15' => 500 })
     end
   end
 
-  let!(:stats_in_2023) do
+  let!(:partial_year_stats) do
     (1..6).map do |month|
       create(:stat, year: 2023, month: month, user: user,
                     daily_distance: { '1' => 800, '10' => 1500 })

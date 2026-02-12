@@ -7,9 +7,9 @@ RSpec.describe 'Api::V1::Digests', type: :request do
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
   describe 'GET /api/v1/digests' do
-    let!(:digest_in_2024) { create(:users_digest, year: 2024, user: user) }
-    let!(:digest_in_2023) { create(:users_digest, year: 2023, user: user) }
-    let!(:stat_in_2022) { create(:stat, year: 2022, month: 1, user: user) }
+    let!(:recent_digest) { create(:users_digest, year: 2024, user: user) }
+    let!(:older_digest) { create(:users_digest, year: 2023, user: user) }
+    let!(:available_stat) { create(:stat, year: 2022, month: 1, user: user) }
 
     it 'returns http unauthorized without api key' do
       get api_v1_digests_url
