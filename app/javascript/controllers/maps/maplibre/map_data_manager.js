@@ -154,6 +154,7 @@ export class MapDataManager {
       })
     } finally {
       this._pointsLoadPromise = null
+      this.controller.hideProgress()
     }
   }
 

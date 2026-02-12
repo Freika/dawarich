@@ -12,26 +12,26 @@
   </div>
 
   <% cache [current_user.id, "stats_summary", current_user.stats.maximum(:updated_at), @points_total, current_user.safe_settings.distance_unit, DawarichSettings.reverse_geocoding_enabled?], expires_in: 24.hours do %>
-  <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 relative">
-    <div class="stat text-center">
-      <div class="stat-value text-primary">
-        <%= number_with_delimiter(current_user.total_distance.round) %> <%= current_user.safe_settings.distance_unit %>
+    <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 relative">
+      <div class="stat text-center">
+        <div class="stat-value text-primary">
+          <%= number_with_delimiter(current_user.total_distance.round) %> <%= current_user.safe_settings.distance_unit %>
+        </div>
+        <div class="stat-title">Total distance</div>
       </div>
-      <div class="stat-title">Total distance</div>
-    </div>
 
-    <div class="stat text-center">
-      <div class="stat-value text-success">
-        <%= number_with_delimiter @points_total %>
+      <div class="stat text-center">
+        <div class="stat-value text-success">
+          <%= number_with_delimiter @points_total %>
+        </div>
+        <div class="stat-title">Geopoints tracked</div>
       </div>
-      <div class="stat-title">Geopoints tracked</div>
-    </div>
 
-  <% if DawarichSettings.reverse_geocoding_enabled? %>
-    <%= render 'stats/reverse_geocoding_stats' %>
-  <% else %>
-    </div>
-  <% end %>
+    <% if DawarichSettings.reverse_geocoding_enabled? %>
+      <%= render 'stats/reverse_geocoding_stats' %>
+    <% else %>
+      </div>
+    <% end %>
   <% end %>
 
   <div class='text-xs text-gray-500 text-center mt-5'>

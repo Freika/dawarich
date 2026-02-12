@@ -190,6 +190,16 @@ export class SettingsManager {
     return converted
   }
 
+  static _parseIntOr(value, fallback) {
+    const parsed = parseInt(value, 10)
+    return Number.isNaN(parsed) ? fallback : parsed
+  }
+
+  static _parseFloatOr(value, fallback) {
+    const parsed = parseFloat(value)
+    return Number.isNaN(parsed) ? fallback : parsed
+  }
+
   /**
    * Load settings from backend API
    * @returns {Promise<Object>} Settings object from backend
@@ -223,24 +233,42 @@ export class SettingsManager {
             let value = backendSettings[backendKey]
 
             // Convert backend values to correct types
+            // Use _parseIntOr / _parseFloatOr to preserve valid 0 values
             if (frontendKey === "routeOpacity") {
-              value = parseFloat(value) || DEFAULT_SETTINGS.routeOpacity
+              value = SettingsManager._parseFloatOr(
+                value,
+                DEFAULT_SETTINGS.routeOpacity,
+              )
             } else if (frontendKey === "fogOfWarRadius") {
-              value = parseInt(value, 10) || DEFAULT_SETTINGS.fogOfWarRadius
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.fogOfWarRadius,
+              )
             } else if (frontendKey === "fogOfWarThreshold") {
-              value = parseInt(value, 10) || DEFAULT_SETTINGS.fogOfWarThreshold
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.fogOfWarThreshold,
+              )
             } else if (frontendKey === "metersBetweenRoutes") {
-              value =
-                parseInt(value, 10) || DEFAULT_SETTINGS.metersBetweenRoutes
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.metersBetweenRoutes,
+              )
             } else if (frontendKey === "minutesBetweenRoutes") {
-              value =
-                parseInt(value, 10) || DEFAULT_SETTINGS.minutesBetweenRoutes
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.minutesBetweenRoutes,
+              )
             } else if (frontendKey === "minMinutesSpentInCity") {
-              value =
-                parseInt(value, 10) || DEFAULT_SETTINGS.minMinutesSpentInCity
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.minMinutesSpentInCity,
+              )
             } else if (frontendKey === "maxGapMinutesInCity") {
-              value =
-                parseInt(value, 10) || DEFAULT_SETTINGS.maxGapMinutesInCity
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.maxGapMinutesInCity,
+              )
             } else if (frontendKey === "speedColoredRoutes") {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {

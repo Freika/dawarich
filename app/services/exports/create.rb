@@ -20,9 +20,9 @@ class Exports::Create
 
     notify_export_finished
   rescue StandardError => e
-    notify_export_failed(e)
-
     export.update!(status: :failed, error_message: e.message)
+
+    notify_export_failed(e)
   end
 
   private
