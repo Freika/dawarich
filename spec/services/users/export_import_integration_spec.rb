@@ -82,7 +82,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
         export_record.file.download { |chunk| file.write(chunk) }
       end
 
-      first_import_stats = Users::ImportData.new(target_user, temp_archive_path).import
+      Users::ImportData.new(target_user, temp_archive_path).import
       first_counts = calculate_user_entity_counts(target_user)
 
       second_import_stats = Users::ImportData.new(target_user, temp_archive_path).import
@@ -110,15 +110,15 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
     end
 
     it 'does not trigger background processing for imported imports' do
-      expect(Import::ProcessJob).not_to receive(:perform_later)
+      expect do
+        export_record = Users::ExportData.new(original_user).export
 
-      export_record = Users::ExportData.new(original_user).export
+        File.open(temp_archive_path, 'wb') do |file|
+          export_record.file.download { |chunk| file.write(chunk) }
+        end
 
-      File.open(temp_archive_path, 'wb') do |file|
-        export_record.file.download { |chunk| file.write(chunk) }
-      end
-
-      Users::ImportData.new(target_user, temp_archive_path).import
+        Users::ImportData.new(target_user, temp_archive_path).import
+      end.not_to have_enqueued_job(Import::ProcessJob)
     end
   end
 

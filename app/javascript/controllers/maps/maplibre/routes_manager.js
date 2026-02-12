@@ -44,7 +44,8 @@ export class RoutesManager {
    */
   async toggleSpeedColoredRoutes(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting("speedColoredRoutesEnabled", enabled)
+    this.settings.speedColoredRoutes = enabled
+    SettingsManager.updateSetting("speedColoredRoutes", enabled)
 
     if (this.controller.hasSpeedColorScaleContainerTarget) {
       this.controller.speedColorScaleContainerTarget.classList.toggle(
@@ -171,6 +172,7 @@ export class RoutesManager {
   handleSpeedColorSave(event) {
     const newScale = event.detail.colorStops
 
+    this.settings.speedColorScale = newScale
     this.controller.speedColorScaleInputTarget.value = newScale
     SettingsManager.updateSetting("speedColorScale", newScale)
 
@@ -194,67 +196,31 @@ export class RoutesManager {
           timestamp: f.properties.timestamp,
         })) || []
 
-      const distanceThresholdMeters = this.settings.metersBetweenRoutes || 1000
-      const timeThresholdMinutes = this.settings.minutesBetweenRoutes || 60
-
-      const { calculateSpeed, getSpeedColor } = await import(
+      const { RoutesLayer } = await import("maps_maplibre/layers/routes_layer")
+      const { applySpeedColors } = await import(
         "maps_maplibre/utils/speed_colors"
       )
 
-      const routesGeoJSON = await this.generateRoutesWithSpeedColors(
-        points,
-        { distanceThresholdMeters, timeThresholdMinutes },
-        calculateSpeed,
-        getSpeedColor,
-      )
+      let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
+        distanceThresholdMeters: this.settings.metersBetweenRoutes || 1000,
+        timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
+      })
 
-      this.layerManager.updateLayer("routes", routesGeoJSON)
+      if (this.settings.speedColoredRoutes) {
+        const speedColorScale =
+          this.settings.speedColorScale ||
+          "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
+        routesGeoJSON = applySpeedColors(routesGeoJSON, points, speedColorScale)
+      }
+
+      const routesLayer = this.layerManager.getLayer("routes")
+      if (routesLayer) routesLayer.update(routesGeoJSON)
     } catch (error) {
       console.error("Failed to reload routes:", error)
       Toast.error("Failed to reload routes")
     } finally {
       this.controller.hideLoading()
     }
-  }
-
-  /**
-   * Generate routes with speed coloring
-   */
-  async generateRoutesWithSpeedColors(
-    points,
-    options,
-    calculateSpeed,
-    getSpeedColor,
-  ) {
-    const { RoutesLayer } = await import("maps_maplibre/layers/routes_layer")
-    const useSpeedColors = this.settings.speedColoredRoutesEnabled || false
-    const speedColorScale =
-      this.settings.speedColorScale ||
-      "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
-
-    const routesGeoJSON = RoutesLayer.pointsToRoutes(points, options)
-
-    if (!useSpeedColors) {
-      return routesGeoJSON
-    }
-
-    routesGeoJSON.features = routesGeoJSON.features.map((feature, _index) => {
-      const segment = points.slice(
-        points.findIndex((p) => p.timestamp === feature.properties.startTime),
-        points.findIndex((p) => p.timestamp === feature.properties.endTime) + 1,
-      )
-
-      if (segment.length >= 2) {
-        const speed = calculateSpeed(segment[0], segment[segment.length - 1])
-        const color = getSpeedColor(speed, useSpeedColors, speedColorScale)
-        feature.properties.speed = speed
-        feature.properties.color = color
-      }
-
-      return feature
-    })
-
-    return routesGeoJSON
   }
 
   /**

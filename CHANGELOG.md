@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Added
 
 - Map v2 requires WebGL support, so if user's browser doesn't support it or it's disabled, they will see a warning message with a link to the list of supported browsers.
+- New **Insights API** (`GET /api/v1/insights`) returning year overview with totals, activity heatmap, and streak data for the mobile app.
+- New **Insights Details API** (`GET /api/v1/insights/details`) returning year-over-year comparison and travel patterns for the mobile app.
+- New **Digests API** (`GET/POST/DELETE /api/v1/digests`) allowing the mobile app to list, view, generate, and delete yearly digests. Digest generation runs asynchronously via Sidekiq and returns `202 Accepted`. Digest detail supports conditional GET (`Last-Modified` / `304 Not Modified`).
+
+## Fixed
+
+- Scratch map layer is now working again on Map v2.
+- Colored routes on Map v2 are now working correctly. Zoom in closer to see colored segments. #2254
 
 # [1.1.0] - Unreleased
 

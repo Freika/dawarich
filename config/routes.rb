@@ -176,6 +176,13 @@ Rails.application.routes.draw do
         end
       end
       resources :stats, only: :index
+      resources :insights, only: :index do
+        collection do
+          get :details
+        end
+      end
+      resources :digests, only: %i[index show create destroy], param: :year,
+                          constraints: { year: /\d{4}/ }
       resources :tags, only: [] do
         collection do
           get 'privacy_zones'

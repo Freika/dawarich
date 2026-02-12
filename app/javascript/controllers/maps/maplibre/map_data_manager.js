@@ -129,7 +129,7 @@ export class MapDataManager {
         isComplete: false,
       })
 
-      const { points, pointsGeoJSON, routesGeoJSON } =
+      const { points, pointsGeoJSON, routesGeoJSON, routesBaseGeoJSON } =
         await this.dataLoader.fetchPointsData(
           this.controller.startDateValue,
           this.controller.endDateValue,
@@ -139,10 +139,12 @@ export class MapDataManager {
       this.lastLoadedData.points = points
       this.lastLoadedData.pointsGeoJSON = pointsGeoJSON
       this.lastLoadedData.routesGeoJSON = routesGeoJSON
+      this.lastLoadedData.routesBaseGeoJSON = routesBaseGeoJSON
 
       this._updateLayerBySource("points", pointsGeoJSON)
       this._updateLayerBySource("heatmap", pointsGeoJSON)
       this._updateLayerBySource("routes", routesGeoJSON)
+      this._updateLayerBySource("routes-base", routesBaseGeoJSON)
       this._updateLayerBySource("fog", pointsGeoJSON)
       this._updateLayerBySource("scratch", pointsGeoJSON)
 
@@ -160,6 +162,15 @@ export class MapDataManager {
    * @private
    */
   _updateLayerBySource(source, geoJSON) {
+    // Handle routes-base separately — it updates the routes layer's base source
+    if (source === "routes-base") {
+      const routesLayer = this.layerManager?.getLayer("routes")
+      if (routesLayer?.updateBaseData) {
+        routesLayer.updateBaseData(geoJSON)
+      }
+      return
+    }
+
     const layerMap = {
       points: "points",
       heatmap: "heatmap",
@@ -263,17 +274,25 @@ export class MapDataManager {
       })
     }
 
-    // Always use Promise-based approach for consistent timing
-    await new Promise((resolve) => {
-      if (this.map.loaded()) {
-        addAllLayers().then(resolve)
-      } else {
-        this.map.once("load", async () => {
-          await addAllLayers()
-          resolve()
+    // Wait for style to be loaded before adding layers.
+    // Use "idle" (fires after every render) instead of "load" (fires only once).
+    // Also use isStyleLoaded() instead of loaded() — layers only need the style,
+    // not all tiles, and loaded() can return false during re-renders triggered
+    // by setPaintProperty, causing a hang if we wait for "load".
+    if (this.map.isStyleLoaded()) {
+      await addAllLayers()
+    } else {
+      await new Promise((resolve, reject) => {
+        this.map.once("idle", async () => {
+          try {
+            await addAllLayers()
+            resolve()
+          } catch (e) {
+            reject(e)
+          }
         })
-      }
-    })
+      })
+    }
   }
 
   /**
