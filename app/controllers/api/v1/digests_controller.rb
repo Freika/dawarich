@@ -27,6 +27,11 @@ class Api::V1::DigestsController < ApiController
       return
     end
 
+    if current_api_user.digests.yearly.exists?(year: year)
+      render json: { error: 'Digest already exists' }, status: :conflict
+      return
+    end
+
     Users::Digests::CalculatingJob.perform_later(current_api_user.id, year)
     render json: { message: "Digest for #{year} is being generated" }, status: :accepted
   end

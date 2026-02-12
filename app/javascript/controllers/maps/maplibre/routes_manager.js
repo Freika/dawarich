@@ -202,7 +202,7 @@ export class RoutesManager {
       )
 
       let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
-        distanceThresholdMeters: this.settings.metersBetweenRoutes || 1000,
+        distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
       })
 
