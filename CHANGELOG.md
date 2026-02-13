@@ -1,42 +1,42 @@
-# Change Log
+# Changelog
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-# [1.1.1] - Unreleased
+## [1.1.1] - Unreleased
 
-## Changed
+### Changed
 
 - Overall app performance in browser was improved
 - Docker images are now being built in parallel for both amd64 and arm64 architectures to speed up the build process. Thank you @rtuszik!
 
-## Added
+### Added
 
 - Map v2 requires WebGL support, so if user's browser doesn't support it or it's disabled, they will see a warning message with a link to the list of supported browsers.
 - New **Insights API** (`GET /api/v1/insights`) returning year overview with totals, activity heatmap, and streak data for the mobile app.
 - New **Insights Details API** (`GET /api/v1/insights/details`) returning year-over-year comparison and travel patterns for the mobile app.
 - New **Digests API** (`GET/POST/DELETE /api/v1/digests`) allowing the mobile app to list, view, generate, and delete yearly digests. Digest generation runs asynchronously via Sidekiq and returns `202 Accepted`. Digest detail supports conditional GET (`Last-Modified` / `304 Not Modified`).
 
-## Fixed
+### Fixed
 
 - Scratch map layer is now working again on Map v2.
 - Colored routes on Map v2 are now working correctly. Zoom in closer to see colored segments. #2254
 - Frontend was sped by optimizing loaded assets and lazy-loading parts of the UI.
 
-# [1.1.0] - Unreleased
+## [1.1.0] - Unreleased
 
 The Timeline Release
 
 In Map V2 Tools, user can now enable Timeline tool, which allows to quickly navigate through time and see how their location changed throughout the day. It can also be used to replay a trip by clicking the play button. Timeline tool always spans across 24 hours, but you can change the date by clicking on the date picker. Timeline tool is available only on Map V2.
 
-## Added
+### Added
 
 - Photos are now being clustered on the Map v2 to improve performance and usability when viewing large numbers of photos.
 - City statistics thresholds are now user-configurable: "Min Minutes in City" and "Max Gap Between Points" sliders in the Map v2 Settings panel. #2207
 - New Timeline tool is added to Map V2. It allows user to quickly navigate through time and see how their location changed throughout the day. It can also be used to replay a trip by clicking the play button.
 
-## Fixed
+### Fixed
 
 - The SSL Security Warning is now working correctly on the Immich and Photoprism integration forms.
 - Family members and Places layers are now being correctly remembered across page reloads on Map v2.
@@ -47,31 +47,31 @@ In Map V2 Tools, user can now enable Timeline tool, which allows to quickly navi
 - Undefined method `.to_sym` for nil in Sidekiq. #2190
 - `/api/v1/stats` now works faster.
 
-## Changed
+### Changed
 
 - Zooming animation is disabled on Map V2 loading #2219
 - Exporting points to GPX and GeoJSON now works better and faster for large numbers of points by processing the export in chunks to reduce memory usage. #2161
 
 
-# [1.0.4] - 2026-02-01
+## [1.0.4] - 2026-02-01
 
-## Fixed
+### Fixed
 
 - Wrong path helper in the navbar for Settings link. #2215 #2213
 
 
-# [1.0.3] - 2026-02-01
+## [1.0.3] - 2026-02-01
 
-## Fixed
+### Fixed
 
 - Gemfile being not updated #2210
 - Excessive memory usage during visits suggestions job (thanks @nareddyt!) #2119
 
-## Added
+### Added
 
 - `SMTP_STARTTLS` environment variable to enable STARTTLS for SMTP connections. Disabled by default.
 
-# [1.0.2] - 2026-01-31
+## [1.0.2] - 2026-01-31
 
 The Insights, Transportation Mode Detection and Supporter Verification release
 
@@ -81,7 +81,7 @@ Another thing introduced in this release, is support verification. Almost 150 pe
 
 Anyway, enjoy the release and don't forget to report any bugs you may find!
 
-## Added
+### Added
 
 - App-level DNS cache with 5 minutes TTL to reduce DNS lookups and improve performance. #2183
 - New **Insights page** with comprehensive analytics and visualizations:
@@ -99,25 +99,25 @@ Anyway, enjoy the release and don't forget to report any bugs you may find!
 - **Track merging**: Consecutive tracks that belong to the same journey are automatically merged when the gap between them is within the configured time threshold.
 - Email preferences moved to "General" tab in user settings for better organization.
 
-## Fixed
+### Fixed
 
 - Remove assets before precompilation to prevent stale assets from being served. #2187
 - undefined method 'to_sym' for nil in sidekiq #2190
 - `Tracks::BoundaryResolverJob` now uses deterministic exponential backoff instead of random delays, and stops retrying after 5 attempts to avoid infinite rescheduling.
 - Hanging Sidekiq job #2134
 
-## Changed
+### Changed
 
 - Daily track generation job runs every 12 hours instead of every 4 hours, since real-time generation handles most cases.
 
 
-# [1.0.1] - 2026-01-24
+## [1.0.1] - 2026-01-24
 
-## Added
+### Added
 
 - SSL certificate verification can now be disabled for Immich and Photoprism integrations to support self-signed certificates. A prominent security warning is displayed when this option is enabled. #1645
 
-## Fixed
+### Fixed
 
 - Photo timestamps from Immich are now correctly parsed as UTC, fixing the double timezone offset bug where times were displayed incorrectly. #1752
 - Trip photo grids now update immediately after photos are imported, instead of showing cached/stale results for up to 24 hours. #627 #988
@@ -137,70 +137,70 @@ Anyway, enjoy the release and don't forget to report any bugs you may find!
 - Removed redundant subscriptions to WS channel.
 - Live mode is working again on both map V1 and V2.
 
-## Changed
+### Changed
 
 - Map V2 is now the default map version for new users. Existing users will keep using Map V1 unless they change it in the settings.
 - Email preferences moved to dedicated "Emails" tab in user settings for better organization.
 
-## Removed
+### Removed
 
 - Tile Usage reporting feature and related prometheus metric have been removed due to low usage. #1876
 
 
-# [1.0.0] - 2026-01-20
+## [1.0.0] - 2026-01-20
 
 The 1.0.0 release. Same as in 0.37.3, but with updated version number. We're aiming to provide more stable releases going forward.
 
 All the issues that are currently open in Github will be addressed in the upcoming releases.
 
 
-# [0.37.3] - 2026-01-11
+## [0.37.3] - 2026-01-11
 
-## Fixed
+### Fixed
 
 - Routes are now being drawn the very same way on Map V2 as in Map V1. #2132 #2086 #2121
 - RailsPulse performance monitoring is now disabled for self-hosted instances. It fixes poor performance on Synology. #2139 #2096
 
-## Changed
+### Changed
 
 - Map V2 points loading is significantly sped up.
 - Points size on Map V2 was reduced to prevent overlapping. #2122
 - Points sent from Owntracks and Overland are now being created synchronously to instantly reflect success or failure of point creation.
 
-# [0.37.2] - 2026-01-04
+## [0.37.2] - 2026-01-04
 
-## Fixed
+### Fixed
 
 - Months are now correctly ordered (Jan-Dec) in the year-end digest chart instead of being sorted alphabetically.
 - Time spent in a country and city is now calculated correctly for the year-end digest email. #2104
 - Updated Trix to fix a XSS vulnerability. #2102
 - Map v2 UI no longer blocks when Immich/Photoprism integration has a bad URL or is unreachable. Added 10-second timeout to photo API requests and improved error handling to prevent UI freezing during initial load. #2085
 
-## Added
+### Added
 - In Map v2 settings, you can now enable map to be rendered as a globe.
 
-# [0.37.1] - 2025-12-30
+## [0.37.1] - 2025-12-30
 
-## Fixed
+### Fixed
 
 - The db migration preventing the app from starting.
 - Raw data archive verifier now allows having points deleted from the db after archiving.
 
-# [0.37.0] - 2025-12-30
+## [0.37.0] - 2025-12-30
 
-## Added
+### Added
 
 - In the beginning of the year users will receive a year-end digest email with stats about their tracking activity during the past year. Users can opt out of receiving these emails in User Settings -> Notifications. Emails won't be sent if no email is configured in the SMTP settings or if user has no points tracked during the year.
 
-## Changed
+### Changed
 
 - Added and removed some indexes to improve the app performance based on the production usage data.
 
-## Changed
+### Changed
 
 - Deleting an import will now be processed in the background to prevent request timeouts for large imports.
 
-## Fixed
+### Fixed
 
 - Deleting an import will no longer result in negative points count for the user.
 - Updating stats. #2022
@@ -210,9 +210,9 @@ All the issues that are currently open in Github will be addressed in the upcomi
 - Invalidate stats cache on recalculation and other operations that change stats data.
 
 
-# [0.36.4] - 2025-12-26
+## [0.36.4] - 2025-12-26
 
-## Fixed
+### Fixed
 
 - Fixed a bug preventing the app to start if a composite index on stats table already exists. #2034 #2051 #2046
 - New compiled assets will override old ones on app start to prevent serving stale assets.
@@ -221,15 +221,15 @@ All the issues that are currently open in Github will be addressed in the upcomi
 - User can now enable family layer in Maps v2 and center on family members by clicking their emails. #2036
 
 
-# [0.36.3] - 2025-12-14
+## [0.36.3] - 2025-12-14
 
-## Added
+### Added
 
 - Setting `ARCHIVE_RAW_DATA` env var to true will enable monthly raw data archiving for all users. It will look for points older than 2 months with `raw_data` column not empty and create a zip archive containing raw data files for each month. After successful archiving, raw data will be removed from the database to save space. Monthly archiving job is being run every day at 2:00 AM. Default env var value is false.
 - In map v2, user can now move points when Points layer is enabled. #2024
 - In map v2, routes are now being rendered using same logic as in map v1, route-length-wise. #2026
 
-## Fixed
+### Fixed
 
 - Cities visited during a trip are now being calculated correctly. #547 #641 #1686 #1976
 - Points on the map are now show time in user's timezone. #580 #1035 #1682
@@ -240,17 +240,17 @@ All the issues that are currently open in Github will be addressed in the upcomi
 - Map settings are now being respected in map v2. #2012
 
 
-# [0.36.2] - 2025-12-06
+## [0.36.2] - 2025-12-06
 
-## The Map v2 release
+The Map v2 release
 
 In this release we're introducing Map v2 based on MapLibre GL JS. It brings better performance, smoother interactions and more features in the future. User can select between Map v1 (Leaflet) and Map v2 (MapLibre GL JS) in the Settings -> Map Settings. New map features will be added to Map v2 only.
 
-## Added
+### Added
 
 - User can select between Map v1 (Leaflet) and Map v2 (MapLibre GL JS) in the User Settings.
 
-## Fixed
+### Fixed
 
 - Heatmap and Fog of War now are moving correctly during map interactions on v2 map. #1798
 - Polyline crossing international date line now are rendered correctly on v2 map. #1162
@@ -258,16 +258,16 @@ In this release we're introducing Map v2 based on MapLibre GL JS. It brings bett
 - Stats calculation should be faster now.
 
 
-# [0.36.1] - 2025-11-29
+## [0.36.1] - 2025-11-29
 
-## Fixed
+### Fixed
 
 - Exporting user data now works a lot faster and consumes less memory.
 - Fix the restart loop. #1937 #1975
 
-# [0.36.0] - 2025-11-24
+## [0.36.0] - 2025-11-24
 
-## OIDC and KML support release
+OIDC and KML support release
 
 So, you want to configure your OIDC provider. If not — skip to the actual changelog. You're going to need to provide at least 4 environment variables: `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ISSUER`, and `OIDC_REDIRECT_URI`. Then, if you want to rename the provider from "OpenID Connect" to something else (e.g. "Authentik"), set `OIDC_PROVIDER_NAME` variable as well. If you want to disable email/password registration and allow only OIDC login, set `ALLOW_EMAIL_PASSWORD_REGISTRATION` to `false`. After just 7 brand new environment variables, you'll never have to deal with passwords in Dawarich again!
 
@@ -285,7 +285,7 @@ OIDC_PROVIDER_NAME=YourProviderName # optional, default is OpenID Connect
 ALLOW_EMAIL_PASSWORD_REGISTRATION=false # optional, default is true
 ```
 
-## Added
+### Added
 
 - Support for KML file uploads. #350
 - Added a commented line in the `docker-compose.yml` file to use an alternative PostGIS image for ARM architecture.
@@ -296,26 +296,26 @@ ALLOW_EMAIL_PASSWORD_REGISTRATION=false # optional, default is true
 - User can define privacy zones around places with specific tags to hide map data within a certain radius.
 - If user has a place tagged with a tag named "Home" (case insensitive), and this place doesn't have a privacy zone defined, this place will be used as home location for days with no tracked data. #1659 #1575
 
-## Fixed
+### Fixed
 
 - The map settings panel is now scrollable
 - Fixed a bug where family location sharing settings were not being updated correctly. #1940
 
-## Changed
+### Changed
 
 - Internal redis settings updated to implement support for connecting to Redis via unix socket. #1706
 - Implemented authentication via GitHub and Google for Dawarich Cloud.
 - Implemented OpenID Connect authentication for self-hosted Dawarich instances. #66
 
 
-# [0.35.1] - 2025-11-09
+## [0.35.1] - 2025-11-09
 
-## Fixed
+### Fixed
 
 - StrongMigration issue #1931
 
 
-# [0.35.0] - 2025-11-09
+## [0.35.0] - 2025-11-09
 
 ⚠️ Important ⚠️
 
@@ -323,18 +323,18 @@ The default `docker-compose.yml` file has been updated to provide sensible defau
 
 You can now set `RAILS_ENV` environment variable to `production` to run Dawarich in production mode.
 
-## Added
+### Added
 
 - Selection tool on the map now can select points that user can delete in bulk. #433
 
-## Fixed
+### Fixed
 
 - Taiwan flag is now shown on its own instead of in combination with China flag.
 - On the registration page and other user forms, if something goes wrong, error messages are now shown to the user.
 - Leaving family, deleting family and cancelling invitations now prompt confirmation dialog to prevent accidental actions.
 - Each pending family invitation now also contains a link to share with the invitee.
 
-## Changed
+### Changed
 
 - Removed useless system tests and cover map functionality with Playwright e2e tests instead.
 - S3 storage now can be used in self-hosted instances as well. Set STORAGE_BACKEND environment variable to `s3` and provide `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET` and `AWS_ENDPOINT_URL` environment variables to configure it.
@@ -344,57 +344,57 @@ You can now set `RAILS_ENV` environment variable to `production` to run Dawarich
 - `.env.example` file added with default environment variables.
 - Single Dockerfile introduced so Dawarich could be run in self-hosted mode in production environment.
 
-# [0.34.2] - 2025-10-31
+## [0.34.2] - 2025-10-31
 
-## Fixed
+### Fixed
 
 - Fixed a bug in UTM trackable concern. #1909
 
-# [0.34.1] - 2025-10-30
+## [0.34.1] - 2025-10-30
 
-## Fixed
+### Fixed
 
 - Broken Stats page for users with no reverse geocoding enabled. #1877
 
-## Changed
+### Changed
 
 - Date navigation on the map page is no longer shown as floating panel. It is now part of the top navigation bar to prevent overlapping with other map controls. #1894 #1881
 
-## Added
+### Added
 
 - [Dawarich Cloud] Added support for UTM parameters during user registration. UTM parameters will be stored with the user record for marketing analytics purposes.
 
-# [0.34.0] - 2025-10-10
+## [0.34.0] - 2025-10-10
 
-## The Family release
+The Family release
 
 In this release we're introducing family features that allow users to create family groups, invite members, and share location data. Family owners can manage members, control sharing settings, and ensure secure access to shared information. Location sharing is optional and can be enabled or disabled by each member individually. Users can join only one family at a time. Location sharing settings can be set to share location for 1, 6, 12, 24 hours or permanently. Family features are now available only for self-hosted instances and will be available in the cloud in the future. When "Family members" layer is enabled on the map, family member markers will be updated in real-time.
 
-## Added
+### Added
 
 - Users can now create family groups and invite members to join.
 
-## Fixed
+### Fixed
 
 - Sign out button works again. #1844
 - Fixed user deletion bug where user could not be deleted due to counter cache on points.
 - Users always have default distance unit set to kilometers. #1832
 - All confirmation dialogs are now showing only once.
 
-## Changed
+### Changed
 
 - Minor versions of Dawarich are being built for ARM64 architecture as well again. #1840
 - Importing process for Google Maps Timeline exports, GeoJSON and geodata from photos is now significantly faster.
 - The Map page now features a full-screen map.
 
 
-# [0.33.1] - 2025-10-07
+## [0.33.1] - 2025-10-07
 
-## Changed
+### Changed
 
 - On the Trip page, instead of list of visited countries, a number of them is being shown. Clicking on it opens a modal with a list of countries visited during the trip. #1731
 
-## Fixed
+### Fixed
 
 - `GET /api/v1/stats` endpoint now returns correct 0 instead of null if no points were tracked in the requested period.
 - User import data now being streamed instead of loaded into memory all at once. This should prevent large imports from exhausting memory or hitting IO limits while reading export archives.
@@ -406,9 +406,9 @@ In this release we're introducing family features that allow users to create fam
 - Fixed time shift when creating visits manually. #1679
 - Provide default map layer if user settings are not set.
 
-# [0.33.0] - 2025-09-29
+## [0.33.0] - 2025-09-29
 
-## Fixed
+### Fixed
 
 - Fix a bug where some points from Owntracks were not being processed correctly which prevented import from being created. #1745
 - Hexagons for the stats page are now being calculated a lot faster.
@@ -420,7 +420,7 @@ In this release we're introducing family features that allow users to create fam
 - Importing GPX files that start with `<gpx` tag will now be detected correctly. #1775
 - Buttons on the map now have correct contrast in both light and dark modes.
 
-## Changed
+### Changed
 
 - Onboarding modal window now features a link to the App Store and a QR code to configure the Dawarich iOS app.
 - A permanent option was removed from stats sharing options. Now, stats can be shared for 1, 12 or 24 hours only.
@@ -428,7 +428,7 @@ In this release we're introducing family features that allow users to create fam
 - Importing progress bars are now looking nice.
 - Ruby version was updated to 3.4.6.
 
-## Added
+### Added
 
 - Based on preferred theme (light or dark), the map controls will now load with the corresponding styles.
 - [Dawarich Cloud] Added foundation for upcoming authentication from iOS app.
@@ -436,27 +436,27 @@ In this release we're introducing family features that allow users to create fam
 - [Dawarich Cloud] Added Posthog analytics. Disabled by default, can be enabled with POSTHOG_ENABLED environment variable.
 
 
-# [0.32.0] - 2025-09-13
+## [0.32.0] - 2025-09-13
 
-## Fixed
+### Fixed
 
 - Tracked distance on year card on the Stats page will always be equal to the sum of distances on the monthly chart below it. #466
 - Stats are now being calculated for trial users as well as active ones.
 
-## Added
+### Added
 
 - A cron job to generate daily tracks for users with new points since their last track generation. Being run every 4 hours.
 - A new month stat page, featuring insights on how user's month went: distance traveled, active days, countries visited and more.
 - Month stat page can now be shared via public link. User can limit access to the page by sharing period: 1/12/24 hours or permanent.
 
-## Changed
+### Changed
 
 - Stats page now loads significantly faster due to caching.
 - Data on the Stats page is being updated daily, except for total distance and number of geopoints tracked, which are being updated on the fly. Also, charts with yearly and monthly stats are being updated every hour.
 - Minor versions are now being built only for amd64 architecture to speed up the build process.
 - If user is not authorized to see a page, they will be redirected to the home page with appropriate message instead of seeing an error.
 
-# [0.31.0] - 2025-09-04
+## [0.31.0] - 2025-09-04
 
 The Search release
 
@@ -464,78 +464,78 @@ In this release we're introducing a new search feature that allows users to sear
 
 Important: This feature relies on reverse geocoding. Without reverse geocoding, the search feature will not work.
 
-## Added
+### Added
 
 - User can now search for places and see when they visited them.
 
-## Fixed
+### Fixed
 
 - Default value for `points_count` attribute is now set to 0 in the User model.
 
-## Changed
+### Changed
 
 - Tracks are not being calculated by server instead of the database. This feature is still in progress.
 
 
-# [0.30.12] - 2025-08-26
+## [0.30.12] - 2025-08-26
 
-## Fixed
+### Fixed
 
 - Number of user points is not being cached resulting in performance boost on certain pages and operations.
 - Logout bug
 - Api key is now shown even in trial period
 
 
-# [0.30.11] - 2025-08-23
+## [0.30.11] - 2025-08-23
 
-## Changed
+### Changed
 
 - If user already have import with the same name, it will be appended with timestamp during the import process.
 
-## Fixed
+### Fixed
 
 - Some types of imports were not being detected correctly and were failing to import. #1678
 
 
-# [0.30.10] - 2025-08-22
+## [0.30.10] - 2025-08-22
 
-## Added
+### Added
 
 - `POST /api/v1/visits` endpoint.
 - User now can create visits manually on the map.
 - User can now delete a visit by clicking on the delete button in the visit popup.
 - Import failure now throws an internal server error.
 
-## Changed
+### Changed
 
 - Source of imports is now being detected automatically.
 
 
-# [0.30.9] - 2025-08-19
+## [0.30.9] - 2025-08-19
 
-## Changed
+### Changed
 
 - Countries, visited during a trip, are now being calculated from points to improve performance.
 
-## Added
+### Added
 
 - QR code for API key is implemented but hidden under feature flag until the iOS app supports it.
 - X-Dawarich-Response and X-Dawarich-Version headers are now returned for all API responses.
 - Trial version for cloud users is now available.
 
 
-# [0.30.8] - 2025-08-01
+## [0.30.8] - 2025-08-01
 
-## Fixed
+### Fixed
 
 - Fog of war is now working correctly on zoom and map movement. #1603
 - Possibly fixed a bug where visits were no suggested correctly. #984
 - Scratch map is now working correctly.
 
 
-# [0.30.7] - 2025-08-01
+## [0.30.7] - 2025-08-01
 
-## Fixed
+### Fixed
 
 - Photos layer is now working again on the map page. #1563 #1421 #1071 #889
 - Suggested and Confirmed visits layers are now working again on the map page. #1443
@@ -543,15 +543,15 @@ Important: This feature relies on reverse geocoding. Without reverse geocoding, 
 - Areas layer is now working correctly. #1583
 - Live map doesn't cause memory leaks anymore. #880
 
-## Added
+### Added
 
 - Logging for Photos layer is now enabled.
 - E2e tests for map page.
 
 
-# [0.30.6] - 2025-07-29
+## [0.30.6] - 2025-07-29
 
-## Changed
+### Changed
 
 - Put all jobs in their own queues.
 - Visits page should load faster now.
@@ -559,29 +559,29 @@ Important: This feature relies on reverse geocoding. Without reverse geocoding, 
 - Country name is now being backfilled for all points. #1562
 - Stats are now reflecting countries and cities. #1562
 
-## Added
+### Added
 - Points now support discharging and connected_not_charging battery statuses. #768
 
-## Fixed
+### Fixed
 
 - Fixed a bug where import or notification could have been accessed by a different user.
 - Fixed a bug where draw control was not being added to the map when areas layer was enabled. #1583
 
 
-# [0.30.5] - 2025-07-26
+## [0.30.5] - 2025-07-26
 
-## Fixed
+### Fixed
 
 - Trips page now loads correctly.
 
 
-# [0.30.4] - 2025-07-26
+## [0.30.4] - 2025-07-26
 
-## Added
+### Added
 
 - Prometheus metrics are now available at `/metrics`. Configure `METRICS_USERNAME` and `METRICS_PASSWORD` environment variables for basic authentication, default values are `prometheus` for both. All other prometheus-related environment variables are also necessary.
 
-## Fixed
+### Fixed
 
 - The Warden error in jobs is now fixed. #1556
 - The Live Map setting is now respected.
@@ -590,39 +590,39 @@ Important: This feature relies on reverse geocoding. Without reverse geocoding, 
 - The "Delete Selected" button is now hidden when no points are selected. #1025
 
 
-# [0.30.3] - 2025-07-23
+## [0.30.3] - 2025-07-23
 
-## Changed
+### Changed
 
 - Track generation is now significantly faster and less resource intensive.
 
-## Fixed
+### Fixed
 
 - Distance on the stats page is now rounded. #1548
 - Non-selfhosted users can now export and import their account data.
 
 
-# [0.30.2] - 2025-07-22
+## [0.30.2] - 2025-07-22
 
-## Fixed
+### Fixed
 
 - Stats calculation is now significantly faster.
 
 
-# [0.30.1] - 2025-07-22
+## [0.30.1] - 2025-07-22
 
-## Fixed
+### Fixed
 
 - Points limit exceeded check is now cached.
 - Reverse geocoding for places is now significantly faster.
 
-## Changed
+### Changed
 
 - Stats page should load faster now.
 - Track creation is temporarily disabled.
 
 
-# [0.30.0] - 2025-07-21
+## [0.30.0] - 2025-07-21
 
 ⚠️ If you were using 0.29.2 RC, please run the following commands in the console, otherwise read on. ⚠️
 
@@ -639,12 +639,12 @@ User.find_each do |user|
 end
 ```
 
-## Added
+### Added
 
 - In the User Settings -> Background Jobs, you can now disable visits suggestions, which is enabled by default. It's a background task that runs every day around midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
 - Tracks are now being calculated and stored in the database instead of being calculated on the fly in the browser. This will make the map page load faster.
 
-## Changed
+### Changed
 
 - Don't check for new version in production.
 - Area popup styles are now more consistent.
@@ -686,27 +686,27 @@ end
 ```
 - Links in emails will be based on the `DOMAIN` environment variable instead of `SMTP_DOMAIN`.
 
-## Fixed
+### Fixed
 
 - Swagger documentation is now valid again.
 - Invalid owntracks points are now ignored.
 - An older Owntrack's .rec format is now also supported.
 - Course and course accuracy are now rounded to 8 decimal places to fix the issue with points creation.
 
-# [0.29.1] - 2025-07-02
+## [0.29.1] - 2025-07-02
 
-## Fixed
+### Fixed
 
 - Buttons on the imports page now looks better in both light and dark mode. #1481
 - The PROMETHEUS_EXPORTER_ENABLED environment variable default value is now "false", in quotes.
 - The RAILS_CACHE_DB, RAILS_JOB_QUEUE_DB and RAILS_WS_DB environment variables can be used to set the Redis database number for caching, background jobs and websocket connections respectively. Default values are now 0, 1 and 2 respectively. #1420
 
-## Changed
+### Changed
 
 - Skip DNS rebinding protection for the health check endpoint.
 - Added health check to app.json.
 
-# [0.29.0] - 2025-07-02
+## [0.29.0] - 2025-07-02
 
 You can now move your user data between Dawarich instances. Simply go to your Account settings and click on the "Export my data" button under the password section. An export will be created and you will be able to download it on Exports page once it's ready.
 
@@ -714,7 +714,7 @@ To import your data on a new Dawarich instance, create a new user and upload the
 
 The feature is experimental and not yet aimed to replace a proper backup solution. Please use at your own risk.
 
-## Added
+### Added
 
 - In the User Settings, you can now export your user data as a zip file. It will contain the following:
   - All your points
@@ -732,27 +732,27 @@ The feature is experimental and not yet aimed to replace a proper backup solutio
 - A button to download an import file is now displayed in the imports list. It may not work properly for imports created before the 0.25.4 release.
 - Imports now have statuses.
 
-## Changed
+### Changed
 
 - Oj is now being used for JSON serialization.
 
-## Fixed
+### Fixed
 
 - Email links now use the SMTP domain if set. #1469
 
 
 
-# 0.28.1 - 2025-06-11
+## [0.28.1] - 2025-06-11
 
-## Fixed
+### Fixed
 
 - Limit notifications in navbar to 10. Fresh one will replace the oldest one. #1184
 
-## Changed
+### Changed
 
 - No osm point types are being ignored anymore.
 
-# 0.28.0 - 2025-06-09
+## [0.28.0] - 2025-06-09
 
 ⚠️ This release includes a breaking change. ⚠️
 
@@ -882,27 +882,27 @@ _I understand the confusion, probably even anger, caused by so many breaking cha
 
 _I'm sorry._
 
-## Fixed
+### Fixed
 
 - Fixed a bug where points from Immich and Photoprism did not have lonlat attribute set. #1318
 - Added minimum password length to 6 characters. #1373
 - Text size of countries being calculated is now smaller. #1371
 
-## Changed
+### Changed
 
 - Geocoder is now being installed from a private fork for debugging purposes.
 - Redis is now being used for caching.
 - Sidekiq is now being used for background jobs.
 
-## Removed
+### Removed
 - SolidQueue, SolidCache and SolidCable are now removed.
 
 
-# 0.27.4 - 2025-06-06
+## [0.27.4] - 2025-06-06
 
 ⚠️ This release includes a breaking change. ⚠️
 
-## Changed
+### Changed
 
 - SolidQueue is now using PostgreSQL instead of SQLite. Provide `QUEUE_DATABASE_NAME`, `QUEUE_DATABASE_PASSWORD`, `QUEUE_DATABASE_USERNAME`, `QUEUE_DATABASE_PORT` and `QUEUE_DATABASE_HOST` environment variables to configure it. #1331
 - SQLite databases are now being stored in the `dawarich_sqlite_data` volume. #1361 #1357
@@ -946,23 +946,23 @@ volumes:
 ...
 ```
 
-# 0.27.3 - 2025-06-05
+## [0.27.3] - 2025-06-05
 
-## Changed
+### Changed
 
 - Added `PGSSENCMODE=disable` to the development environment to resolve sqlite3 error. #1326 #1331
 
-## Fixed
+### Fixed
 
 - Fixed rake tasks to be run with `bundle exec`. #1320
 - Fixed import name not being set when updating an import. #1269
 
-## Added
+### Added
 
 - LocationIQ can now be used as a geocoding service. Set `LOCATIONIQ_API_KEY` to configure it. #1334
 
 
-# 0.27.2 - 2025-06-02
+## [0.27.2] - 2025-06-02
 
 You can now safely remove Redis and Sidekiq from your `docker-compose.yml` file, both containers, related volumes, environment variables and container dependencies.
 
@@ -1050,22 +1050,22 @@ services:
 -       restart: true
 ```
 
-## Removed
+### Removed
 
 - Redis and Sidekiq.
 
 
 
-# 0.27.1 - 2025-06-01
+## [0.27.1] - 2025-06-01
 
-## Fixed
+### Fixed
 
 - Cache jobs are now being scheduled correctly after app start.
 - `countries.geojson` now have fixed alpha codes for France and Norway
 
 
 
-# 0.27.0 - 2025-06-01
+## [0.27.0] - 2025-06-01
 
 ⚠️ This release includes a breaking change. ⚠️
 
@@ -1097,11 +1097,11 @@ Please, update your `docker-compose.yml` and add the following:
 ```
 
 
-## Fixed
+### Fixed
 
 - Enable caching in development for the docker image to improve performance.
 
-## Changed
+### Changed
 
 - SolidCache is now being used for caching instead of Redis.
 - SolidQueue is now being used for background jobs instead of Sidekiq.
@@ -1112,65 +1112,65 @@ Please, update your `docker-compose.yml` and add the following:
 
 
 
-# 0.26.7 - 2025-05-29
+## [0.26.7] - 2025-05-29
 
-## Fixed
+### Fixed
 
 - Popups now showing distance in the correct distance unit. #1258
 
-## Added
+### Added
 
 - Bunch of system tests to cover map interactions.
 
 
-# 0.26.6 - 2025-05-22
+## [0.26.6] - 2025-05-22
 
-## Added
+### Added
 
 - armv8 to docker build. #1249
 
-## Changed
+### Changed
 
 - Points are now being created in the `points` queue. #1243
 - Route opacity is now being displayed as percentage in the map settings. #462 #1224
 - Exported GeoJSON file now contains coordinates as floats instead of strings, as per RFC 7946. #762
 - Fog of war now can be set to 200 meter per point. #630
-# 0.26.5 - 2025-05-20
+## [0.26.5] - 2025-05-20
 
-## Fixed
+### Fixed
 
 - Wget is back to fix healthchecks. #1241 #1231
 - Dockerfile.prod is now using slim image. #1245
 - Dockerfiles now use jemalloc with check for architecture. #1235
 
-# 0.26.4 - 2025-05-19
+## [0.26.4] - 2025-05-19
 
-## Changed
+### Changed
 
 - Docker image is now using slim image to introduce some memory optimizations.
 - The trip page now looks a bit nicer.
 - The "Yesterday" button on the map page was changed to "Today". #1215
 - The "Create Import" button now disabled until files are uploaded.
 
-# 0.26.3 - 2025-05-18
+## [0.26.3] - 2025-05-18
 
-## Fixed
+### Fixed
 
 - Fixed a bug where default distance unit was not being set for users. #1206
 
 
-# 0.26.2 - 2025-05-18
+## [0.26.2] - 2025-05-18
 
-## Fixed
+### Fixed
 
 - Seeds are now working properly. #1207
 - Fixed a bug where France flag was not being displayed correctly. #1204
 - Fix blank map page caused by empty default distance unit. Default distance unit is now kilometers and can be changed in Settings -> Maps. #1206
 
 
-# 0.26.1 - 2025-05-18
+## [0.26.1] - 2025-05-18
 
-## Geodata on demand
+Geodata on demand
 
 This release introduces a new environment variable `STORE_GEODATA` with default value `true` to control whether to store geodata in the database or not. Currently, geodata is being used when:
 
@@ -1197,12 +1197,12 @@ If you're running your own Photon instance, you can safely set `STORE_GEODATA` t
 
 Also, after updating to this version, Dawarich will start a huge background job to calculate countries for all your points. Just let it work.
 
-## Added
+### Added
 
 - Map page now has a button to go to the previous and next day. #296 #631 #904
 - Clicking on number of countries and cities in stats cards now opens a modal with a list of countries and cities visited in that year.
 
-## Changed
+### Changed
 
 - Reverse geocoding is now working as on-demand job instead of storing the result in the database. #619
 - Stats cards now show the last update time. #733
@@ -1210,7 +1210,7 @@ Also, after updating to this version, Dawarich will start a huge background job 
 - Distance unit is now being stored in the user settings. You can choose between kilometers and miles, default is kilometers. The setting is accessible in the user settings -> Maps -> Distance Unit. You might want to recalculate your stats after changing the unit. #1126
 - Fog of war is now being displayed as lines instead of dots. Thanks to @MeijiRestored!
 
-## Fixed
+### Fixed
 
 - Fixed a bug with an attempt to write points with same lonlat and timestamp from iOS app. #1170
 - Importing GeoJSON files now saves velocity if it was stored in either `velocity` or `speed` property.
@@ -1219,12 +1219,12 @@ Also, after updating to this version, Dawarich will start a huge background job 
 - Fixed a bug where visits were returning into Suggested state after being confirmed or declined. #848
 - If no points are found for a month during stats calculation, stats are now being deleted instead of being left empty. #1066 #406
 
-## Removed
+### Removed
 
 - Removed `DISTANCE_UNIT` constant. It can be safely removed from your environment variables in docker-compose.yml.
 
 
-# 0.26.0 - 2025-05-08
+## [0.26.0] - 2025-05-08
 
 ⚠️ This release includes a breaking change. ⚠️
 
@@ -1234,68 +1234,68 @@ If you have encountered problems with moving to a PostGIS image while still on P
 
 **You still may use PostgreSQL 14, but no support will be provided for it starting this version. It's strongly recommended to update to PostgreSQL 17.**
 
-## Changed
+### Changed
 
 - Dawarich now uses PostgreSQL 17 with PostGIS 3.5 by default.
 
 
-# 0.25.10 - 2025-05-08
+## [0.25.10] - 2025-05-08
 
-## Added
+### Added
 
 - Vector maps are supported in non-self-hosted mode.
 - Credentials for Sidekiq UI are now being set via environment variables: `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD`. Default credentials are `sidekiq` and `password`. If you don't set them, in self-hosted mode, Sidekiq UI will not be protected by basic auth.
 - New import page now shows progress of the upload.
 
-## Changed
+### Changed
 
 - Datetime is now being displayed with seconds in the Points page. #1088
 - Imported files are now being uploaded via direct uploads.
 - `/api/v1/points` endpoint now creates accepted points synchronously.
 
-## Removed
+### Removed
 
 - Sample points are no longer being imported automatically for new users.
 
-# 0.25.9 - 2025-04-29
+## [0.25.9] - 2025-04-29
 
-## Fixed
+### Fixed
 
 - `bundle exec rake points:migrate_to_lonlat` task now works properly.
 
-# 0.25.8 - 2025-04-24
+## [0.25.8] - 2025-04-24
 
-## Fixed
+### Fixed
 
 - Database was not being created if it didn't exist. #1076
 
-## Removed
+### Removed
 
 - `RAILS_MASTER_KEY` environment variable is no longer being set. You can safely remove it from your environment variables.
 
-# 0.25.7 - 2025-04-24
+## [0.25.7] - 2025-04-24
 
-## Fixed
+### Fixed
 
 - Map loading error. #1094
 
-# 0.25.6 - 2025-04-23
+## [0.25.6] - 2025-04-23
 
-## Added
+### Added
 
 - In the map settings (top left corner of the map), you can now select colors for your colored routes. #682
 
-## Changed
+### Changed
 
 - Import edit page now allows to edit import name.
 - Importing data now does not create a notification for the user.
 - Updating stats now does not create a notification for the user.
 
-## Fixed
+### Fixed
 
 - Fixed a bug where an import was failing due to partial file download. #1069 #1073 #1024 #1051
 
-# 0.25.5 - 2025-04-18
+## [0.25.5] - 2025-04-18
 
 This release introduces a new way to send transactional emails using SMTP. Example may include password reset, email confirmation, etc.
 
@@ -1310,27 +1310,27 @@ To enable SMTP mailing, you need to set the following environment variables:
 
 This is optional feature and is not required for the app to work.
 
-## Removed
+### Removed
 
 - Optional telemetry was removed from the app. The `ENABLE_TELEMETRY` env var can be safely removed from docker compose.
 
-## Changed
+### Changed
 
 - `bundle exec rake points:migrate_to_lonlat` task now also tries to extract latitude and longitude from `raw_data` column before using `longitude` and `latitude` columns to fill `lonlat` column.
 - Docker entrypoints are now using `DATABASE_NAME` environment variable to check if Postgres is existing/available.
 - Sidekiq web UI is now protected by basic auth. Use `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD` environment variables to set the credentials.
 
-## Added
+### Added
 
 - You can now provide SMTP settings in ENV vars to send emails.
 - You can now edit imports. #1044 #623
 
-## Fixed
+### Fixed
 
 - Importing data from Immich now works correctly. #1019
 
 
-# 0.25.4 - 2025-04-02
+## [0.25.4] - 2025-04-02
 
 ⚠️ This release includes a breaking change. ⚠️
 
@@ -1382,12 +1382,12 @@ Also, you can now migrate existing exports to the new storage using the `bundle 
 
 If your hardware doesn't have enough memory to migrate the imports, you can delete your imports and re-import them.
 
-## Added
+### Added
 
 - Sentry is now can be used for error tracking.
 - Subscription management is now available in non self-hosted mode.
 
-## Changed
+### Changed
 
 - Import files are now being attached to the import record instead of being stored in the `raw_data` database column.
 - Import files can now be stored in S3-compatible storage.
@@ -1396,7 +1396,7 @@ If your hardware doesn't have enough memory to migrate the imports, you can dele
 - Users can now import Google's Records.json file via the UI instead of using the CLI.
 - Optional telemetry sending is now disabled and will be removed in the future.
 
-## Fixed
+### Fixed
 
 - Moving points on the map now works correctly. #957
 - `bundle exec rake points:migrate_to_lonlat` task now also reindexes the points table.
@@ -1405,36 +1405,36 @@ If your hardware doesn't have enough memory to migrate the imports, you can dele
 - Datetime across the app is now being displayed in human readable format, i.e 26 Dec 2024, 13:49. Hover over the datetime to see the ISO 8601 timestamp.
 
 
-# 0.25.3 - 2025-03-22
+## [0.25.3] - 2025-03-22
 
-## Fixed
+### Fixed
 
 - Fixed missing `bundle exec rake points:migrate_to_lonlat` task.
 
-# 0.25.2 - 2025-03-21
+## [0.25.2] - 2025-03-21
 
-## Fixed
+### Fixed
 
 - Migration to add unique index to points now contains code to remove duplicates from the database.
 - Issue with ESRI maps not being displayed correctly. #956
 
-## Added
+### Added
 
 - `bundle exec rake data_cleanup:remove_duplicate_points` task added to remove duplicate points from the database and export them to a CSV file.
 - `bundle exec rake points:migrate_to_lonlat` task added for convenient manual migration of points to the new `lonlat` column.
 - `bundle exec rake users:activate` task added to activate all users.
 
-## Changed
+### Changed
 
 - Merged visits now use the combined name of the merged visits.
 
-# 0.25.1 - 2025-03-17
+## [0.25.1] - 2025-03-17
 
-## Fixed
+### Fixed
 
 - Coordinates on the Points page are now being displayed correctly.
 
-# 0.25.0 - 2025-03-09
+## [0.25.0] - 2025-03-09
 
 This release is focused on improving the visits experience.
 
@@ -1462,7 +1462,7 @@ end
 
 With any errors, don't hesitate to ask for help in the [Discord server](https://discord.gg/pHsBjpt5J8).
 
-## Added
+### Added
 
 - A new button to open the visits drawer.
 - User can now confirm or decline visits directly from the visits drawer.
@@ -1476,7 +1476,7 @@ With any errors, don't hesitate to ask for help in the [Discord server](https://
 - After user is created, a sample import is being created for them to demonstrate how to use the app.
 
 
-## Changed
+### Changed
 
 - Links to Points, Visits & Places, Imports and Exports were moved under "My data" section in the navbar.
 - Restrict access to Sidekiq in non self-hosted mode.
@@ -1490,15 +1490,15 @@ With any errors, don't hesitate to ask for help in the [Discord server](https://
 - Trips, places and points are now using PostGIS' database attributes for storing longitude and latitude.
 - Distance calculation are now using Postgis functions and expected to be more accurate.
 
-## Fixed
+### Fixed
 
 - Fixed a bug where non-admin users could not import Immich and Photoprism geolocation data.
 - Fixed a bug where upon point deletion it was not being removed from the map, while it was actually deleted from the database. #883
 - Fixed a bug where upon import deletion stats were not being recalculated. #824
 
-# 0.24.1 - 2025-02-13
+## [0.24.1] - 2025-02-13
 
-## Custom map tiles
+Custom map tiles
 
 In the user settings, you can now set a custom tile URL for the map. This is useful if you want to use a custom map tile provider or if you want to use a map tile provider that is not listed in the dropdown.
 
@@ -1527,9 +1527,9 @@ ruby_dawarich_map_tiles_usage 99
 
 - #748
 
-# 0.24.0 - 2025-02-10
+## [0.24.0] - 2025-02-10
 
-## Points speed units
+Points speed units
 
 Dawarich expects speed to be sent in meters per second. It's already known that OwnTracks and GPSLogger (in some configurations) are sending speed in kilometers per hour.
 
@@ -1577,7 +1577,7 @@ This will select points tracked between January 1st and January 31st 2025. Then 
 
 - `X-Dawarich-Version` header to the `GET /api/v1/health` endpoint response.
 
-# 0.23.6 - 2025-02-06
+## [0.23.6] - 2025-02-06
 
 ### Added
 
@@ -1590,7 +1590,7 @@ This will select points tracked between January 1st and January 31st 2025. Then 
 - Ruby version was updated to 3.4.1.
 - Requesting photos on the Map page now uses the start and end dates from the URL params. #589
 
-# 0.23.5 - 2025-01-22
+## [0.23.5] - 2025-01-22
 
 ### Added
 
@@ -1602,7 +1602,7 @@ This will select points tracked between January 1st and January 31st 2025. Then 
 - Fix a bug where a gpx file with empty tracks was not being imported. #646
 - Fix a bug where rc version was being checked as a stable release. #711
 
-# 0.23.3 - 2025-01-21
+## [0.23.3] - 2025-01-21
 
 ### Changed
 
@@ -1616,15 +1616,15 @@ This will select points tracked between January 1st and January 31st 2025. Then 
 
 - Add index only if it doesn't exist.
 
-# 0.23.1 - 2025-01-21
+## [0.23.1] - 2025-01-21
 
 ### Fixed
 
 - Renamed unique index on points to `unique_points_lat_long_timestamp_user_id_index` to fix naming conflict with `unique_points_index`.
 
-# 0.23.0 - 2025-01-20
+## [0.23.0] - 2025-01-20
 
-## ⚠️ IMPORTANT ⚠️
+⚠️ IMPORTANT ⚠️
 
 This release includes a data migration to remove duplicated points from the database. It will not remove anything except for duplcates from the `points` table, but please make sure to create a [backup](https://dawarich.app/docs/tutorials/backup-and-restore) before updating to this version.
 
@@ -1634,7 +1634,7 @@ This release includes a data migration to remove duplicated points from the data
 - An index to guarantee uniqueness of points across `latitude`, `longitude`, `timestamp` and `user_id` values. This is introduced to make sure no duplicates will be created in the database in addition to previously existing validations.
 - `GET /api/v1/users/me` endpoint added to get current user.
 
-# 0.22.4 - 2025-01-20
+## [0.22.4] - 2025-01-20
 
 ### Added
 
@@ -1650,13 +1650,13 @@ This release includes a data migration to remove duplicated points from the data
 
 - Fixed a bug where route wasn't highlighted when it was hovered or clicked.
 
-# 0.22.3 - 2025-01-14
+## [0.22.3] - 2025-01-14
 
 ### Changed
 
 - The Map now uses a canvas to draw polylines, points and fog of war. This should improve performance in browser with a lot of points and polylines.
 
-# 0.22.2 - 2025-01-13
+## [0.22.2] - 2025-01-13
 
 ✨ The Fancy Routes release ✨
 
@@ -1684,7 +1684,7 @@ Example:
 +    command: ['bin/dev']
 ```
 
-# 0.22.1 - 2025-01-09
+## [0.22.1] - 2025-01-09
 
 ### Removed
 
@@ -1719,7 +1719,7 @@ volumes:
 
 - `GET /api/v1/health` endpoint now returns a `X-Dawarich-Response: Hey, Im alive and authenticated!` header if user is authenticated.
 
-# 0.22.0 - 2025-01-09
+## [0.22.0] - 2025-01-09
 
 ⚠️ This release introduces a breaking change. ⚠️
 
@@ -1767,7 +1767,7 @@ Although `docker-compose.production.yml` was added, it's not being used by defau
 
 - A proper production Dockerfile, docker-compose and env files.
 
-# 0.21.6 - 2025-01-07
+## [0.21.6] - 2025-01-07
 
 ### Changed
 
@@ -1780,7 +1780,7 @@ Although `docker-compose.production.yml` was added, it's not being used by defau
 - Points are now being rendered with higher z-index than polylines. #577
 - Run cache cleaning and preheating jobs only on server start. #594
 
-# 0.21.5 - 2025-01-07
+## [0.21.5] - 2025-01-07
 
 You may now use Geoapify API for reverse geocoding. To obtain an API key, sign up at https://myprojects.geoapify.com/ and create a new project. Make sure you have read and understood the [pricing policy](https://www.geoapify.com/pricing) and [Terms and Conditions](https://www.geoapify.com/terms-and-conditions/).
 
@@ -1794,13 +1794,13 @@ You may now use Geoapify API for reverse geocoding. To obtain an API key, sign u
 - `APPLICATION_HOST` env var.
 - `REVERSE_GEOCODING_ENABLED` env var.
 
-# 0.21.4 - 2025-01-05
+## [0.21.4] - 2025-01-05
 
 ### Fixed
 
 - Fixed a bug where Photon API for patreon supporters was not being used for reverse geocoding.
 
-# 0.21.3 - 2025-01-04
+## [0.21.3] - 2025-01-04
 
 ### Added
 
@@ -1814,7 +1814,7 @@ You may now use Geoapify API for reverse geocoding. To obtain an API key, sign u
 
 - ~~Imported points will now be reverse geocoded only after import is finished.~~
 
-# 0.21.2 - 2024-12-25
+## [0.21.2] - 2024-12-25
 
 ### Added
 
@@ -1829,7 +1829,7 @@ You may now use Geoapify API for reverse geocoding. To obtain an API key, sign u
 
 - Markers on the map are now being rendered with higher z-index than polylines. #577
 
-# 0.21.1 - 2024-12-24
+## [0.21.1] - 2024-12-24
 
 ### Added
 
@@ -1841,7 +1841,7 @@ You may now use Geoapify API for reverse geocoding. To obtain an API key, sign u
 
 - Custom config for PostgreSQL is now optional in `docker-compose.yml`.
 
-# 0.21.0 - 2024-12-20
+## [0.21.0] - 2024-12-20
 
 ⚠️ This release introduces a breaking change. ⚠️
 
@@ -1903,7 +1903,7 @@ Authorization: Bearer YOUR_API_KEY
 - The `dawarich_db` service now uses a custom `postgresql.conf` file.
 - The popup over polylines now shows dates in the user's format, based on their browser settings.
 
-# 0.20.2 - 2024-12-17
+## [0.20.2] - 2024-12-17
 
 ### Added
 
@@ -1918,13 +1918,13 @@ Authorization: Bearer YOUR_API_KEY
 - The app process is now bound to :: instead of 0.0.0.0 to provide compatibility with IPV6.
 - The app was updated to use Rails 8.0.1.
 
-# 0.20.1 - 2024-12-16
+## [0.20.1] - 2024-12-16
 
 ### Fixed
 
 - Setting `reverse_geocoded_at` for points that don't have geodata is now being performed in background job, in batches of 10,000 points to prevent memory exhaustion and long-running data migration.
 
-# 0.20.0 - 2024-12-16
+## [0.20.0] - 2024-12-16
 
 ### Added
 
@@ -1946,7 +1946,7 @@ Authorization: Bearer YOUR_API_KEY
 - Months and years navigation is moved to a map panel on the right side of the map.
 - List of visited cities is now being shown in a map panel on the right side of the map.
 
-# 0.19.7 - 2024-12-11
+## [0.19.7] - 2024-12-11
 
 ### Fixed
 
@@ -1957,7 +1957,7 @@ Authorization: Bearer YOUR_API_KEY
 - With the "Points" layer enabled on the map, points with negative speed are now being shown in orange color. Since Overland reports negative speed for points that might be faulty, this should help you to identify them.
 - On the Points page, speed of the points with negative speed is now being shown in red color.
 
-# 0.19.6 - 2024-12-11
+## [0.19.6] - 2024-12-11
 
 ⚠️ This release introduces a breaking change. ⚠️
 
@@ -1992,13 +1992,13 @@ Telemetry is now disabled by default. To enable it, you need to set `ENABLE_TELE
 - Exporting process is now being logged.
 - `ENABLE_TELEMETRY` env var is now used instead of `DISABLE_TELEMETRY` to enable/disable telemetry.
 
-# 0.19.5 - 2024-12-10
+## [0.19.5] - 2024-12-10
 
 ### Fixed
 
 - Fixed a bug where the map and visits pages were throwing an error due to incorrect approach to distance calculation.
 
-# 0.19.4 - 2024-12-10
+## [0.19.4] - 2024-12-10
 
 ⚠️ This release introduces a breaking change. ⚠️
 
@@ -2039,7 +2039,7 @@ The `GET /api/v1/trips/:id/photos` endpoint now returns a different structure of
 - On the Stats page, the "Reverse geocoding" section is now showing the number of points that were reverse geocoded based on `reverse_geocoded_at` column, value of which is based on the time when the point was reverse geocoded. If no geodata for the point is available, `reverse_geocoded_at` will be set anyway. Number of points that were reverse geocoded but no geodata is available for them is shown below the "Reverse geocoded" number.
 
 
-# 0.19.3 - 2024-12-06
+## [0.19.3] - 2024-12-06
 
 ### Changed
 
@@ -2052,9 +2052,9 @@ The `GET /api/v1/trips/:id/photos` endpoint now returns a different structure of
 
 - In-app notification about telemetry being enabled.
 
-# 0.19.2 - 2024-12-04
+## [0.19.2] - 2024-12-04
 
-## The Telemetry release
+The Telemetry release
 
 Dawarich now can collect usage metrics and send them to InfluxDB. Before this release, the only metrics that could be somehow tracked by developers (only @Freika, as of now) were the number of stars on GitHub and the overall number of docker images being pulled, across all versions of Dawarich, non-splittable by version. New in-app telemetry will allow us to track more granular metrics, allowing me to make decisions based on facts, not just guesses.
 
@@ -2076,15 +2076,15 @@ The telemetry is enabled by default, but it **can be disabled** by setting `DISA
 
 - Telemetry feature. It's now collecting usage metrics and sending them to InfluxDB.
 
-# 0.19.1 - 2024-12-04
+## [0.19.1] - 2024-12-04
 
 ### Fixed
 
 - Sidekiq is now being correctly exported to Prometheus with `PROMETHEUS_EXPORTER_ENABLED=true` env var in `dawarich_sidekiq` service.
 
-# 0.19.0 - 2024-12-04
+## [0.19.0] - 2024-12-04
 
-## The Photoprism integration release
+The Photoprism integration release
 
 ⚠️ This release introduces a breaking change. ⚠️
 The `GET /api/v1/photos` endpoint now returns following structure of the response:
@@ -2116,7 +2116,7 @@ The `GET /api/v1/photos` endpoint now returns following structure of the respons
 - z-index on maps so they won't overlay notifications dropdown
 - Redis connectivity where it's not required
 
-# 0.18.2 - 2024-11-29
+## [0.18.2] - 2024-11-29
 
 ### Added
 
@@ -2126,7 +2126,7 @@ The `GET /api/v1/photos` endpoint now returns following structure of the respons
 
 - The login page now shows demo account credentials if `DEMO_ENV` env var is set to `true`.
 
-# 0.18.1 - 2024-11-29
+## [0.18.1] - 2024-11-29
 
 ### Fixed
 
@@ -2136,9 +2136,9 @@ The `GET /api/v1/photos` endpoint now returns following structure of the respons
 
 - Flash messages are now being shown on the map when Immich integration is not configured.
 
-# 0.18.0 - 2024-11-28
+## [0.18.0] - 2024-11-28
 
-## The Trips release
+The Trips release
 
 You can now create, edit and delete trips. To create a trip, click on the "New Trip" button on the Trips page. Provide a name, date and time for start and end of the trip. You can add your own notes to the trip as well.
 
@@ -2154,21 +2154,21 @@ Also, if you have Immich integrated, you will see photos from the trip on the tr
 
 - Maps are now not so rough on the edges.
 
-# 0.17.2 - 2024-11-27
+## [0.17.2] - 2024-11-27
 
 ### Fixed
 
 - Retrieving photos from Immich now using `takenAfter` and `takenBefore` instead of `createdAfter` and `createdBefore`. With `createdAfter` and `createdBefore` Immich was returning no items some years.
 
-# 0.17.1 - 2024-11-27
+## [0.17.1] - 2024-11-27
 
 ### Fixed
 
 - Retrieving photos from Immich now correctly handles cases when Immich returns no items. It also logs the response from Immich for debugging purposes.
 
-# 0.17.0 - 2024-11-26
+## [0.17.0] - 2024-11-26
 
-## The Immich Photos release
+The Immich Photos release
 
 With this release, Dawarich can now show photos from your Immich instance on the map.
 
@@ -2191,14 +2191,14 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 - `GET /api/v1/photos` endpoint added to get photos from Immich.
 - `GET /api/v1/photos/:id/thumbnail.jpg` endpoint added to get photo thumbnail from Immich.
 
-# 0.16.9 - 2024-11-24
+## [0.16.9] - 2024-11-24
 
 ### Changed
 
 - Rate limit for the Photon API is now 1 request per second. If you host your own Photon API instance, reverse geocoding requests will not be limited.
 - Requests to the Photon API are now have User-Agent header set to "Dawarich #{APP_VERSION} (https://dawarich.app)"
 
-# 0.16.8 - 2024-11-20
+## [0.16.8] - 2024-11-20
 
 ### Changed
 
@@ -2213,7 +2213,7 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
       WEB_CONCURRENCY: "2"
 ```
 
-# 0.16.7 - 2024-11-20
+## [0.16.7] - 2024-11-20
 
 ### Changed
 
@@ -2240,7 +2240,7 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 +     PROMETHEUS_EXPORTER_PORT: "9394"
 ```
 
-# 0.16.6 - 2024-11-20
+## [0.16.6] - 2024-11-20
 
 ### Added
 
@@ -2255,13 +2255,13 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
       PROMETHEUS_EXPORTER_ENABLED: "true"
 ```
 
-# 0.16.5 - 2024-11-18
+## [0.16.5] - 2024-11-18
 
 ### Changed
 
 - Dawarich now uses `POST /api/search/metadata` endpoint to get geodata from Immich.
 
-# 0.16.4 - 2024-11-12
+## [0.16.4] - 2024-11-12
 
 ### Added
 
@@ -2277,19 +2277,19 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 - Exported files will now always have an extension when downloaded. Previously, the extension was missing in case of GPX export.
 - Deleting and sorting points on the Points page will now preserve filtering and sorting params when points are deleted or sorted. Previously, the page was being reloaded and filtering and sorting params were lost.
 
-# 0.16.3 - 2024-11-10
+## [0.16.3] - 2024-11-10
 
 ### Fixed
 
 - Make ActionCable respect REDIS_URL env var. Previously, ActionCable was trying to connect to Redis on localhost.
 
-# 0.16.2 - 2024-11-08
+## [0.16.2] - 2024-11-08
 
 ### Fixed
 
 - Exported GPX file now being correctly recognized as valid by Garmin Connect, Adobe Lightroom and (probably) other services. Previously, the exported GPX file was not being recognized as valid by these services.
 
-# 0.16.1 - 2024-11-08
+## [0.16.1] - 2024-11-08
 
 ### Fixed
 
@@ -2300,9 +2300,9 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 
 - The Vists suggestion job is disabled. It will be re-enabled in the future with a new approach to the visit suggestion process.
 
-# 0.16.0 - 2024-11-07
+## [0.16.0] - 2024-11-07
 
-## The Websockets release
+The Websockets release
 
 ### Added
 
@@ -2314,19 +2314,19 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 
 - Scale on the map now shows the distance both in kilometers and miles.
 
-# 0.15.13 - 2024-11-01
+## [0.15.13] - 2024-11-01
 
 ### Added
 
 - `GET /api/v1/countries/borders` endpoint to get countries for scratch map feature
 
-# 0.15.12 - 2024-11-01
+## [0.15.12] - 2024-11-01
 
 ### Added
 
 - Scratch map. You can enable it in the map controls. The scratch map highlight countries you've visited. The scratch map is working properly only if you have your points reverse geocoded.
 
-# 0.15.11 - 2024-10-29
+## [0.15.11] - 2024-10-29
 
 ### Added
 
@@ -2370,13 +2370,13 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 +     - gem_cache:/usr/local/bundle/gems_sidekiq
 ```
 
-# 0.15.10 - 2024-10-25
+## [0.15.10] - 2024-10-25
 
 ### Fixed
 
 - Data migration that prevented the application from starting.
 
-# 0.15.9 - 2024-10-24
+## [0.15.9] - 2024-10-24
 
 ### Fixed
 
@@ -2386,25 +2386,25 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 
 - Refactored the stats calculation process to make it more efficient.
 
-# 0.15.8 - 2024-10-22
+## [0.15.8] - 2024-10-22
 
 ### Added
 
 - User can now select between "Raw" and "Simplified" mode in the map controls. "Simplified" mode will show less points, improving the map performance. "Raw" mode will show all points.
 
-# 0.15.7 - 2024-10-19
+## [0.15.7] - 2024-10-19
 
 ### Fixed
 
 - A bug where "RuntimeError: failed to get urandom" was being raised upon importing attempt on Synology.
 
-# 0.15.6 - 2024-10-19
+## [0.15.6] - 2024-10-19
 
 ### Fixed
 
 - Import of Owntracks' .rec files now correctly imports points. Previously, the import was failing due to incorrect parsing of the file.
 
-# 0.15.5 - 2024-10-16
+## [0.15.5] - 2024-10-16
 
 ### Fixed
 
@@ -2416,7 +2416,7 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 - The Map page now by default uses timeframe based on last point tracked instead of the today's points. If there are no points, the map will use the today's timeframe.
 - The map on the Map page can no longer be infinitely scrolled horizontally. #299
 
-# 0.15.4 - 2024-10-15
+## [0.15.4] - 2024-10-15
 
 ### Changed
 
@@ -2430,7 +2430,7 @@ The other thing worth mentioning is how Dawarich gets data from Immich. It goes 
 
 - Owntracks' .json files are no longer supported for import as Owntracks itself does not export to this format anymore.
 
-# 0.15.3 - 2024-10-05
+## [0.15.3] - 2024-10-05
 
 To expose the watcher functionality to the user, a new directory `/tmp/imports/watched/` was created. Add new volume to the `docker-compose.yml` file to expose this directory to the host machine.
 
@@ -2469,15 +2469,15 @@ volumes:
 
 - Watcher now looks into `/tmp/imports/watched/USER@EMAIL.TLD` directory instead of `/tmp/imports/watched/` to allow using arbitrary file names for imports
 
-# 0.15.1 - 2024-10-04
+## [0.15.1] - 2024-10-04
 
 ### Added
 
 - `linux/arm/v7` is added to the list of supported architectures to support Raspberry Pi 4 and other ARMv7 devices
 
-# 0.15.0 - 2024-10-03
+## [0.15.0] - 2024-10-03
 
-## The Watcher release
+The Watcher release
 
 The /public/imporst/watched/ directory is watched by Dawarich. Any files you put in this directory will be imported into the database. The name of the file must start with an email of the user you want to import the file for. The email must be followed by an underscore symbol (_) and the name of the file.
 
@@ -2499,7 +2499,7 @@ Both GeoJSON and GPX files are supported.
 
 - Stats update is now being correctly triggered every 6 hours
 
-# [0.14.7] - 2024-10-01
+## [0.14.7] - 2024-10-01
 
 ### Fixed
 
@@ -2513,7 +2513,7 @@ Both GeoJSON and GPX files are supported.
 - `GET /api/v1/points` can now accept optional `?order=asc` query parameter to return points in ascending order by timestamp. `?order=desc` is still available to return points in descending order by timestamp
 - `GET /api/v1/points` now returns `id` attribute for each point
 
-# [0.14.6] - 2024-29-30
+## [0.14.6] - 2024-29-30
 
 ### Fixed
 
@@ -2523,7 +2523,7 @@ Both GeoJSON and GPX files are supported.
 
 - `GET /api/v1/points?slim=true` now returns `id` attribute for each point
 
-# [0.14.5] - 2024-09-28
+## [0.14.5] - 2024-09-28
 
 ### Fixed
 
@@ -2537,7 +2537,7 @@ Both GeoJSON and GPX files are supported.
 
 - Map layers from Stadia were disabled for now due to necessary API key
 
-# [0.14.4] - 2024-09-24
+## [0.14.4] - 2024-09-24
 
 ### Fixed
 
@@ -2552,7 +2552,7 @@ Both GeoJSON and GPX files are supported.
 - "Slim" version of `GET /api/v1/points`: pass optional param `?slim=true` to it and it will return only latitude, longitude and timestamp
 
 
-# [0.14.3] — 2024-09-21
+## [0.14.3] - 2024-09-21
 
 ### Fixed
 
@@ -2561,40 +2561,40 @@ Both GeoJSON and GPX files are supported.
 - Creating exports directory if it doesn't exist by @tetebueno
 
 
-## [0.14.1] — 2024-09-16
+## [0.14.1] - 2024-09-16
 
 ### Fixed
 
 - Fixed a bug where the map was not loading due to invalid tile layer name
 
 
-## [0.14.0] — 2024-09-15
+## [0.14.0] - 2024-09-15
 
 ### Added
 
 - 17 new tile layers to choose from. Now you can select the tile layer that suits you the best. You can find the list of available tile layers in the map controls in the top right corner of the map under the layers icon.
 
 
-## [0.13.7] — 2024-09-15
+## [0.13.7] - 2024-09-15
 
 ### Added
 
 - `GET /api/v1/points` response now will include `X-Total-Pages` and `X-Current-Page` headers to make it easier to work with the endpoint
 - The Pages point now shows total number of points found for provided date range
 
-## Fixed
+### Fixed
 
 - Link to Visits page in notification informing about new visit suggestion
 
 
-## [0.13.6] — 2024-09-13
+## [0.13.6] - 2024-09-13
 
 ### Fixed
 
 - Flatten geodata retrieved from Immich before processing it to prevent errors
 
 
-## [0.13.5] — 2024-09-08
+## [0.13.5] - 2024-09-08
 
 ### Added
 
@@ -2610,14 +2610,14 @@ Both GeoJSON and GPX files are supported.
 - Visit suggestions background job was moved to its own low priority queue to prevent it from blocking other jobs.
 
 
-## [0.13.4] — 2024-09-06
+## [0.13.4] - 2024-09-06
 
 ### Fixed
 
 - Fixed a bug preventing the application from starting, when there is no users in the database but a data migration tries to update one.
 
 
-## [0.13.3] — 2024-09-06
+## [0.13.3] - 2024-09-06
 
 ### Added
 
@@ -2653,7 +2653,7 @@ It's recommended to update your stats manually after changing the `DISTANCE_UNIT
 - Default time range on the map is now 1 day instead of 1 month. It will help you with performance issues if you have a lot of points in the database.
 
 
-## [0.13.2] — 2024-09-06
+## [0.13.2] - 2024-09-06
 
 ### Fixed
 
@@ -2663,7 +2663,7 @@ It's recommended to update your stats manually after changing the `DISTANCE_UNIT
 
 - The Points page now have number of points found for provided date range
 
-## [0.13.1] — 2024-09-05
+## [0.13.1] - 2024-09-05
 
 ### Added
 
@@ -2675,7 +2675,7 @@ It's recommended to update your stats manually after changing the `DISTANCE_UNIT
 - Visits suggestion process now will try to merge consecutive visits to the same place into one visit.
 
 
-## [0.13.0] — 2024-09-03
+## [0.13.0] - 2024-09-03
 
 The GPX and GeoJSON export release
 
@@ -2713,7 +2713,7 @@ Example of a valid point in GeoJSON format:
 - Fixed a bug where the confirmation alert was shown more than once when deleting a point.
 
 
-## [0.12.3] — 2024-09-02
+## [0.12.3] - 2024-09-02
 
 ### Added
 
@@ -2737,7 +2737,7 @@ deploy:
 - Export file now also will contain `raw_dat` field for each point. This field contains the original data that was imported to the application.
 
 
-## [0.12.2] — 2024-08-28
+## [0.12.2] - 2024-08-28
 
 ### Added
 
@@ -2750,13 +2750,13 @@ deploy:
 - Map settings moved to the map itself and are available in the top right corner of the map under the gear icon.
 
 
-## [0.12.1] — 2024-08-25
+## [0.12.1] - 2024-08-25
 
 ### Fixed
 
 - Fixed a bug that prevented data migration from working correctly
 
-## [0.12.0] — 2024-08-25
+## [0.12.0] - 2024-08-25
 
 ### The visit suggestion release
 
@@ -2775,7 +2775,7 @@ deploy:
 - Places page to see and delete places suggested by Dawarich's visit suggestion process
 - Importing a file will now trigger the visit suggestion process for the user
 
-## [0.11.2] — 2024-08-22
+## [0.11.2] - 2024-08-22
 
 ### Changed
 
@@ -2785,13 +2785,13 @@ deploy:
 - Imports page with a lot of imports should now load faster.
 
 
-## [0.11.1] — 2024-08-21
+## [0.11.1] - 2024-08-21
 
 ### Changed
 
 - `/api/v1/points` endpoint now returns 100 points by default. You can specify the number of points to return by passing the `per_page` query parameter. Example: `/api/v1/points?per_page=50` will return 50 points. Also, `page` query parameter is now available to paginate the results. Example: `/api/v1/points?per_page=50&page=2` will return the second page of 50 points.
 
-## [0.11.0] — 2024-08-21
+## [0.11.0] - 2024-08-21
 
 ### Added
 
@@ -2804,7 +2804,7 @@ deploy:
 - Exports are now being named with this pattern: "export_from_dd.mm.yyyy_to_dd.mm.yyyy.json" where "dd.mm.yyyy" is the date range of the export.
 - Notification about any error now will include the stacktrace.
 
-## [0.10.0] — 2024-08-20
+## [0.10.0] - 2024-08-20
 
 ### Added
 
@@ -2841,7 +2841,7 @@ deploy:
 
 See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api-docs`) for more information.
 
-## [0.9.12] — 2024-08-15
+## [0.9.12] - 2024-08-15
 
 ### Fixed
 
@@ -2850,19 +2850,19 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 - Definition of "reverse geocoded points" is now correctly based on the number of points that have full reverse geocoding data instead of the number of points that have only country and city
 - Fixed a bug in gpx importing scipt ([thanks, bluemax!](https://github.com/Freika/dawarich/pull/126))
 
-## [0.9.11] — 2024-08-14
+## [0.9.11] - 2024-08-14
 
 ### Fixed
 
 - A bug where an attempt to import a Google's Records.json file was failing due to wrong object being passed to a background worker
 
-## [0.9.10] — 2024-08-14
+## [0.9.10] - 2024-08-14
 
 ### Added
 
 - PHOTON_API_HOST env variable to set the host of the Photon API. It will allow you to use your own Photon API instance instead of the default one.
 
-## [0.9.9] — 2024-07-30
+## [0.9.9] - 2024-07-30
 
 ### Added
 
@@ -2885,7 +2885,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.9.8] — 2024-07-27
+## [0.9.8] - 2024-07-27
 
 ### Fixed
 
@@ -2893,7 +2893,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.9.7] — 2024-07-27
+## [0.9.7] - 2024-07-27
 
 ### Fixed
 
@@ -2901,7 +2901,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.9.6] — 2024-07-27
+## [0.9.6] - 2024-07-27
 
 ### Fixed
 
@@ -2909,7 +2909,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.9.5] — 2024-07-27
+## [0.9.5] - 2024-07-27
 
 ### Added
 
@@ -2928,7 +2928,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.9.4] — 2024-07-21
+## [0.9.4] - 2024-07-21
 
 ### Added
 
@@ -2945,7 +2945,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 ---
 
 
-## [0.9.3] — 2024-07-19
+## [0.9.3] - 2024-07-19
 
 ### Added
 
@@ -2957,7 +2957,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.9.2] — 2024-07-19
+## [0.9.2] - 2024-07-19
 
 ### Fixed
 
@@ -2965,7 +2965,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.9.1] — 2024-07-12
+## [0.9.1] - 2024-07-12
 
 ### Fixed
 
@@ -2973,7 +2973,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.9.0] — 2024-07-12
+## [0.9.0] - 2024-07-12
 
 ### Added
 
@@ -3026,7 +3026,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.8.7] — 2024-07-09
+## [0.8.7] - 2024-07-09
 
 ### Changed
 
@@ -3046,7 +3046,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.8.6] — 2024-07-08
+## [0.8.6] - 2024-07-08
 
 ### Added
 
@@ -3062,7 +3062,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.8.5] — 2024-07-08
+## [0.8.5] - 2024-07-08
 
 ### Fixed
 
@@ -3070,7 +3070,7 @@ See the [PR](https://github.com/Freika/dawarich/pull/185) or Swagger docs (`/api
 
 ---
 
-## [0.8.4] — 2024-07-08
+## [0.8.4] - 2024-07-08
 
 ### Added
 
@@ -3105,7 +3105,7 @@ Note, there should be no protocol prefixes in the `APPLICATION_HOSTS` variable, 
 
 ---
 
-## [0.8.3] — 2024-07-03
+## [0.8.3] - 2024-07-03
 
 ### Added
 
@@ -3114,7 +3114,7 @@ Note, there should be no protocol prefixes in the `APPLICATION_HOSTS` variable, 
 
 ---
 
-## [0.8.2] — 2024-06-30
+## [0.8.2] - 2024-06-30
 
 ### Added
 
@@ -3126,7 +3126,7 @@ Note, there should be no protocol prefixes in the `APPLICATION_HOSTS` variable, 
 
 ---
 
-## [0.8.1] — 2024-06-30
+## [0.8.1] - 2024-06-30
 
 ### Added
 
@@ -3139,7 +3139,7 @@ Note, there should be no protocol prefixes in the `APPLICATION_HOSTS` variable, 
 
 ---
 
-## [0.8.0] — 2024-06-25
+## [0.8.0] - 2024-06-25
 
 ### Added
 
@@ -3153,7 +3153,7 @@ Note, there should be no protocol prefixes in the `APPLICATION_HOSTS` variable, 
 
 ---
 
-## [0.7.1] — 2024-06-20
+## [0.7.1] - 2024-06-20
 
 In new Settings page you can now change the following settings:
 
@@ -3171,9 +3171,9 @@ In new Settings page you can now change the following settings:
 
 ---
 
-## [0.7.0] — 2024-06-19
+## [0.7.0] - 2024-06-19
 
-## The GPX MVP Release
+The GPX MVP Release
 
 This release introduces support for GPX files to be imported. Now you can import GPX files from your devices to Dawarich. The import process is the same as for other kinds of files, just select the GPX file instead and choose "gpx" as a source. Both single-segmented and multi-segmented GPX files are supported.
 
@@ -3196,7 +3196,7 @@ This release introduces support for GPX files to be imported. Now you can import
 
 ---
 
-## [0.6.4] — 2024-06-18
+## [0.6.4] - 2024-06-18
 
 ### Added
 
@@ -3212,7 +3212,7 @@ This release introduces support for GPX files to be imported. Now you can import
 
 ---
 
-## [0.6.3] — 2024-06-14
+## [0.6.3] - 2024-06-14
 
 ⚠️ IMPORTANT: ⚠️
 
@@ -3237,13 +3237,13 @@ Please update your `docker-compose.yml` file to include the following changes:
 
 ---
 
-## [0.6.2] — 2024-06-14
+## [0.6.2] - 2024-06-14
 
 This is a debugging release. No changes were made to the application.
 
 ---
 
-## [0.6.0] — 2024-06-12
+## [0.6.0] - 2024-06-12
 
 ### Added
 
@@ -3288,7 +3288,7 @@ volumes:
 
 ---
 
-## [0.5.3] — 2024-06-10
+## [0.5.3] - 2024-06-10
 
 ### Added
 
@@ -3300,7 +3300,7 @@ volumes:
 
 ---
 
-## [0.5.2] — 2024-06-08
+## [0.5.2] - 2024-06-08
 
 ### Added
 
@@ -3308,7 +3308,7 @@ volumes:
 
 ---
 
-## [0.5.1] — 2024-06-07
+## [0.5.1] - 2024-06-07
 
 ### Added
 
@@ -3325,7 +3325,7 @@ volumes:
 
 ---
 
-## [0.5.0] — 2024-05-31
+## [0.5.0] - 2024-05-31
 
 ### Added
 
@@ -3341,7 +3341,7 @@ volumes:
 
 ---
 
-## [0.4.3] — 2024-05-30
+## [0.4.3] - 2024-05-30
 
 ### Added
 
@@ -3354,7 +3354,7 @@ volumes:
 
 ---
 
-## [0.4.2] — 2024-05-29
+## [0.4.2] - 2024-05-29
 
 ### Changed
 
@@ -3366,7 +3366,7 @@ volumes:
 - Point data, accepted from OwnTracks and Overland, is now being checked for duplicates. If a point with the same timestamp and coordinates already exists in the database, it will not be saved.
 
 ---
-## [0.4.1] — 2024-05-25
+## [0.4.1] - 2024-05-25
 
 ### Added
 
@@ -3374,7 +3374,7 @@ volumes:
 
 ---
 
-## [0.4.0] — 2024-05-25
+## [0.4.0] - 2024-05-25
 
 **BREAKING CHANGES**:
 
@@ -3403,7 +3403,7 @@ volumes:
 
 ---
 
-## [0.3.2] — 2024-05-23
+## [0.3.2] - 2024-05-23
 
 ### Added
 
@@ -3415,7 +3415,7 @@ volumes:
 
 ---
 
-## [0.3.1] — 2024-05-23
+## [0.3.1] - 2024-05-23
 
 ### Added
 
@@ -3423,7 +3423,7 @@ volumes:
 
 ---
 
-## [0.3.0] — 2024-05-23
+## [0.3.0] - 2024-05-23
 
 ### Added
 
@@ -3433,7 +3433,7 @@ volumes:
 
 ---
 
-## [0.2.6] — 2024-05-23
+## [0.2.6] - 2024-05-23
 
 ### Fixed
 
@@ -3449,7 +3449,7 @@ volumes:
 
 ---
 
-## [0.2.5] — 2024-05-21
+## [0.2.5] - 2024-05-21
 
 ### Fixed
 
@@ -3457,7 +3457,7 @@ volumes:
 
 ---
 
-## [0.2.4] — 2024-05-19
+## [0.2.4] - 2024-05-19
 
 ### Added
 
@@ -3470,7 +3470,7 @@ volumes:
 ---
 
 
-## [0.2.3] — 2024-05-18
+## [0.2.3] - 2024-05-18
 
 ### Added
 
@@ -3479,7 +3479,7 @@ volumes:
 ---
 
 
-## [0.2.2] — 2024-05-18
+## [0.2.2] - 2024-05-18
 
 ### Added
 
@@ -3487,7 +3487,7 @@ volumes:
 
 ---
 
-## [0.2.1] — 2024-05-18
+## [0.2.1] - 2024-05-18
 
 ### Added
 
@@ -3499,7 +3499,7 @@ volumes:
 
 ---
 
-## [0.2.0] — 2024-05-05
+## [0.2.0] - 2024-05-05
 
 *Breaking changes:*
 
@@ -3511,7 +3511,7 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 ---
 
-## [0.1.9] — 2024-04-25
+## [0.1.9] - 2024-04-25
 
 ### Added
 
@@ -3527,7 +3527,7 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 ---
 
-## [0.1.8.1] — 2024-04-21
+## [0.1.8.1] - 2024-04-21
 
 ### Changed
 
@@ -3540,7 +3540,7 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 ---
 
-## [0.1.8] — 2024-04-21
+## [0.1.8] - 2024-04-21
 
 ### Added
 
@@ -3554,7 +3554,7 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 ---
 
-## [0.1.7] — 2024-04-17
+## [0.1.7] - 2024-04-17
 
 ### Added
 
@@ -3567,7 +3567,7 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 ---
 
-## [0.1.6.3] — 2024-04-07
+## [0.1.6.3] - 2024-04-07
 
 ### Changed
 
@@ -3575,7 +3575,7 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 ---
 
-## [0.1.6.1] — 2024-04-06
+## [0.1.6.1] - 2024-04-06
 
 ### Fixed
 
@@ -3583,7 +3583,7 @@ In your docker-compose.yml file, you need to replace the `MINIMUM_POINTS_IN_CITY
 
 ---
 
-## [0.1.6] — 2024-04-06
+## [0.1.6] - 2024-04-06
 
 You can now use [Overland](https://overland.p3k.app/) mobile app to track your location.
 
@@ -3597,7 +3597,7 @@ You can now use [Overland](https://overland.p3k.app/) mobile app to track your l
 
 ---
 
-## [0.1.5] — 2024-04-05
+## [0.1.5] - 2024-04-05
 
 You can now specify the host of the application by setting the `APPLICATION_HOST` environment variable in the `docker-compose.yml` file.
 
