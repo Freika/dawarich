@@ -60,7 +60,7 @@ export class SettingsController {
       fogToggle: "fogEnabled",
       scratchToggle: "scratchEnabled",
       familyToggle: "familyEnabled",
-      speedColoredToggle: "speedColoredRoutesEnabled",
+      speedColoredToggle: "speedColoredRoutes",
       tracksToggle: "tracksEnabled",
     }
 
@@ -1138,18 +1138,20 @@ export class SettingsController {
       }
     }
 
-    // Apply settings to current map
+    // Update controller settings and dataLoader BEFORE applying,
+    // so that loadMapData() sees the new values
+    this.controller.settings = { ...this.controller.settings, ...settings }
+    this.settings = this.controller.settings
+    if (this.controller.dataLoader) {
+      this.controller.dataLoader.updateSettings(this.controller.settings)
+    }
+
+    // Apply settings to current map (may trigger loadMapData)
     await this.applySettingsToMap(settings)
 
     // Save to backend
     for (const [key, value] of Object.entries(settings)) {
       await SettingsManager.updateSetting(key, value)
-    }
-
-    // Update controller settings and dataLoader
-    this.controller.settings = { ...this.controller.settings, ...settings }
-    if (this.controller.dataLoader) {
-      this.controller.dataLoader.updateSettings(this.controller.settings)
     }
 
     Toast.success("Settings updated successfully")

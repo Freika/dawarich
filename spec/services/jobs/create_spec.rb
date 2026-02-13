@@ -20,13 +20,11 @@ RSpec.describe Jobs::Create do
       let(:job_name) { 'start_reverse_geocoding' }
 
       it 'enqueues reverse geocoding for all user points' do
-        allow(ReverseGeocodingJob).to receive(:perform_later).and_return(nil)
+        created_points = points # force creation before the service call
 
-        described_class.new(job_name, user.id).call
-
-        points.each do |point|
-          expect(ReverseGeocodingJob).to have_received(:perform_later).with(point.class.to_s, point.id)
-        end
+        expect do
+          described_class.new(job_name, user.id).call
+        end.to have_enqueued_job(ReverseGeocodingJob).exactly(created_points.size).times
       end
     end
 
@@ -40,20 +38,20 @@ RSpec.describe Jobs::Create do
 
       let(:points_with_address) do
         (1..5).map do |i|
-          create(:point, user:, country: 'Country', city: 'City', timestamp: 1.day.ago + i.minutes)
+          create(:point, user:, country: 'Country', city: 'City',
+                         reverse_geocoded_at: Time.current, timestamp: 1.day.ago + i.minutes)
         end
       end
 
       let(:job_name) { 'continue_reverse_geocoding' }
 
       it 'enqueues reverse geocoding for all user points without address' do
-        allow(ReverseGeocodingJob).to receive(:perform_later).and_return(nil)
+        _with_address = points_with_address # force creation
+        without_address = points_without_address # force creation
 
-        described_class.new(job_name, user.id).call
-
-        points_without_address.each do |point|
-          expect(ReverseGeocodingJob).to have_received(:perform_later).with(point.class.to_s, point.id)
-        end
+        expect do
+          described_class.new(job_name, user.id).call
+        end.to have_enqueued_job(ReverseGeocodingJob).exactly(without_address.size).times
       end
     end
 

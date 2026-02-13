@@ -17,9 +17,9 @@ RSpec.describe Users::TransportationThresholdsUpdater do
       end
 
       it 'does not trigger recalculation' do
-        expect(Tracks::TransportationModeRecalculationJob).not_to receive(:perform_later)
-
-        result = described_class.new(user, params).call
+        result = nil
+        expect { result = described_class.new(user, params).call }
+          .not_to have_enqueued_job(Tracks::TransportationModeRecalculationJob)
         expect(result.recalculation_triggered?).to be false
       end
     end
@@ -42,9 +42,9 @@ RSpec.describe Users::TransportationThresholdsUpdater do
       end
 
       it 'triggers recalculation job' do
-        expect(Tracks::TransportationModeRecalculationJob).to receive(:perform_later).with(user.id)
-
-        result = described_class.new(user, params).call
+        result = nil
+        expect { result = described_class.new(user, params).call }
+          .to have_enqueued_job(Tracks::TransportationModeRecalculationJob).with(user.id)
         expect(result.recalculation_triggered?).to be true
       end
     end
@@ -68,9 +68,9 @@ RSpec.describe Users::TransportationThresholdsUpdater do
       end
 
       it 'does not trigger recalculation when values unchanged' do
-        expect(Tracks::TransportationModeRecalculationJob).not_to receive(:perform_later)
-
-        result = described_class.new(user, params).call
+        result = nil
+        expect { result = described_class.new(user, params).call }
+          .not_to have_enqueued_job(Tracks::TransportationModeRecalculationJob)
         expect(result.recalculation_triggered?).to be false
       end
     end
@@ -108,8 +108,10 @@ RSpec.describe Users::TransportationThresholdsUpdater do
       let(:params) { { 'route_opacity' => 0.5 } }
 
       before do
-        allow(user).to receive(:save).and_return(false)
-        allow(user).to receive_message_chain(:errors, :full_messages, :join).and_return('Validation failed')
+        allow(user).to receive(:save) do
+          user.errors.add(:base, 'Validation failed')
+          false
+        end
       end
 
       it 'returns failure result' do

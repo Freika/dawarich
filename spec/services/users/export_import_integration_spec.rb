@@ -82,7 +82,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
         export_record.file.download { |chunk| file.write(chunk) }
       end
 
-      first_import_stats = Users::ImportData.new(target_user, temp_archive_path).import
+      Users::ImportData.new(target_user, temp_archive_path).import
       first_counts = calculate_user_entity_counts(target_user)
 
       second_import_stats = Users::ImportData.new(target_user, temp_archive_path).import
@@ -110,15 +110,15 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
     end
 
     it 'does not trigger background processing for imported imports' do
-      expect(Import::ProcessJob).not_to receive(:perform_later)
+      expect do
+        export_record = Users::ExportData.new(original_user).export
 
-      export_record = Users::ExportData.new(original_user).export
+        File.open(temp_archive_path, 'wb') do |file|
+          export_record.file.download { |chunk| file.write(chunk) }
+        end
 
-      File.open(temp_archive_path, 'wb') do |file|
-        export_record.file.download { |chunk| file.write(chunk) }
-      end
-
-      Users::ImportData.new(target_user, temp_archive_path).import
+        Users::ImportData.new(target_user, temp_archive_path).import
+      end.not_to have_enqueued_job(Import::ProcessJob)
     end
   end
 
@@ -354,26 +354,32 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
   end
 
   def verify_files_restored(original_user, target_user)
-    original_imports_with_files = original_user.imports.joins(:file_attachment).count
-    target_imports_with_files = target_user.imports.joins(:file_attachment).count
-    expect(target_imports_with_files).to eq(original_imports_with_files)
+    verify_import_files_restored(original_user, target_user)
+    verify_export_files_restored(original_user, target_user)
+  end
 
-    target_exports_with_files = target_user.exports.joins(:file_attachment).count
-    expect(target_exports_with_files).to be >= 2
+  def verify_import_files_restored(original_user, target_user)
+    original_count = original_user.imports.joins(:file_attachment).count
+    target_count = target_user.imports.joins(:file_attachment).count
+    expect(target_count).to eq(original_count)
 
     original_import = original_user.imports.find_by(name: 'March 2024 Data')
     target_import = target_user.imports.find_by(name: 'March 2024 Data')
 
-    if original_import&.file&.attached? && target_import&.file&.attached?
-      expect(target_import.file.filename.to_s).to eq(original_import.file.filename.to_s)
-      expect(target_import.file.content_type).to eq(original_import.file.content_type)
-    end
+    return unless original_import&.file&.attached? && target_import&.file&.attached?
+
+    expect(target_import.file.filename.to_s).to eq(original_import.file.filename.to_s)
+    expect(target_import.file.content_type).to eq(original_import.file.content_type)
+  end
+
+  def verify_export_files_restored(original_user, target_user)
+    target_count = target_user.exports.joins(:file_attachment).count
+    expect(target_count).to be >= 2
 
     original_export = original_user.exports.find_by(name: 'Q1 2024 Export')
-    target_export = target_user.exports.find_by(name: 'Q1 2024 Export')
-
     return unless original_export&.file&.attached?
 
+    target_export = target_user.exports.find_by(name: 'Q1 2024 Export')
     expect(target_export).to be_present
     expect(target_export.file).to be_attached
   end

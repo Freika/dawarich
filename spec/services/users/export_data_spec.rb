@@ -10,7 +10,7 @@ RSpec.describe Users::ExportData, type: :service do
   let(:files_directory) { export_directory.join('files') }
 
   before do
-    allow(Time).to receive(:current).and_return(Time.new(2024, 12, 1, 12, 30, 0))
+    allow(Time).to receive(:current).and_return(Time.zone.local(2024, 12, 1, 12, 30, 0))
     allow(FileUtils).to receive(:mkdir_p)
     allow(FileUtils).to receive(:rm_rf)
     allow(File).to receive(:open).and_call_original
@@ -21,7 +21,9 @@ RSpec.describe Users::ExportData, type: :service do
     context 'when export is successful' do
       let(:zip_file_path) { export_directory.join('export.zip') }
       let(:zip_file_double) { double('ZipFile') }
-      let(:export_record) { double('Export', id: 1, name: 'test.zip', update!: true, file: double('File', attach: true)) }
+      let(:export_record) do
+        double('Export', id: 1, name: 'test.zip', update!: true, file: double('File', attach: true))
+      end
       let(:notification_service_double) { double('Notifications::Create', call: true) }
 
       before do
@@ -45,7 +47,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points_count).and_return(15000)
+        allow(user).to receive(:points_count).and_return(15_000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:visited_places).and_return(double(count: 20))
 
@@ -54,7 +56,6 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:exports).and_return(exports_double)
         allow(exports_double).to receive(:create!).and_return(export_record)
         allow(export_record).to receive(:update!)
-        allow(export_record).to receive_message_chain(:file, :attach)
 
         # Mock Zip file creation
         allow(Zip::File).to receive(:open).with(zip_file_path, create: true).and_yield(zip_file_double)
@@ -65,7 +66,7 @@ RSpec.describe Users::ExportData, type: :service do
 
         # Mock file operations - return a File instance for the zip file
         allow(File).to receive(:open).with(export_directory.join('data.json'), 'w').and_yield(StringIO.new)
-        zip_file_io = File.new(__FILE__)  # Use current file as a placeholder
+        zip_file_io = File.new(__FILE__) # Use current file as a placeholder
         allow(File).to receive(:open).with(zip_file_path).and_return(zip_file_io)
 
         # Mock notifications service - prevent actual notification creation
@@ -109,9 +110,9 @@ RSpec.describe Users::ExportData, type: :service do
 
       it 'creates a zip file with proper compression settings' do
         expect(Zip::File).to receive(:open).with(zip_file_path, create: true)
-        expect(Zip).to receive(:default_compression).and_return(-1)  # Mock original compression
+        expect(Zip).to receive(:default_compression).and_return(-1) # Mock original compression
         expect(Zip).to receive(:default_compression=).with(Zip::Entry::DEFLATED)
-        expect(Zip).to receive(:default_compression=).with(-1)  # Restoration
+        expect(Zip).to receive(:default_compression=).with(-1) # Restoration
 
         service.export
       end
@@ -153,16 +154,16 @@ RSpec.describe Users::ExportData, type: :service do
         counts = service.send(:calculate_entity_counts)
 
         expect(counts).to eq({
-          areas: 5,
+                               areas: 5,
           imports: 12,
           exports: 3,
           trips: 8,
           stats: 24,
           notifications: 10,
-          points: 15000,
+          points: 15_000,
           visits: 45,
           places: 20
-        })
+                             })
       end
     end
 
@@ -187,12 +188,13 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points_count).and_return(15000)
+        allow(user).to receive(:points_count).and_return(15_000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
 
         # Then set up the error condition - make it happen during the JSON writing step
-        allow(File).to receive(:open).with(export_directory.join('data.json'), 'w').and_raise(StandardError, error_message)
+        allow(File).to receive(:open).with(export_directory.join('data.json'), 'w').and_raise(StandardError,
+                                                                                              error_message)
 
         allow(ExceptionReporter).to receive(:call)
 
@@ -236,8 +238,10 @@ RSpec.describe Users::ExportData, type: :service do
       end
     end
 
-        context 'with file compression scenarios' do
-      let(:export_record) { double('Export', id: 1, name: 'test.zip', update!: true, file: double('File', attach: true)) }
+    context 'with file compression scenarios' do
+      let(:export_record) do
+        double('Export', id: 1, name: 'test.zip', update!: true, file: double('File', attach: true))
+      end
 
       before do
         # Mock Export creation
@@ -245,7 +249,6 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:exports).and_return(exports_double)
         allow(exports_double).to receive(:create!).and_return(export_record)
         allow(export_record).to receive(:update!)
-        allow(export_record).to receive_message_chain(:file, :attach)
 
         # Mock all export services to prevent actual calls
         allow(Users::ExportData::Areas).to receive(:new).and_return(double(call: []))
@@ -267,7 +270,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points_count).and_return(15000)
+        allow(user).to receive(:points_count).and_return(15_000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:places).and_return(double(count: 20))
 
@@ -297,10 +300,10 @@ RSpec.describe Users::ExportData, type: :service do
   describe 'private methods' do
     describe '#export_directory' do
       it 'generates correct directory path' do
-        allow(Time).to receive_message_chain(:current, :strftime).with('%Y%m%d_%H%M%S').and_return(timestamp)
-
+        # Time.current is already stubbed in the parent before block to Time.new(2024, 12, 1, 12, 30, 0)
         # Call export to initialize the directory paths
-        service.instance_variable_set(:@export_directory, Rails.root.join('tmp', "#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{timestamp}"))
+        service.instance_variable_set(:@export_directory,
+                                      Rails.root.join('tmp', "#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{timestamp}"))
 
         expect(service.send(:export_directory).to_s).to include(user.email.gsub(/[^0-9A-Za-z._-]/, '_'))
         expect(service.send(:export_directory).to_s).to include(timestamp)
@@ -310,8 +313,9 @@ RSpec.describe Users::ExportData, type: :service do
     describe '#files_directory' do
       it 'returns files subdirectory of export directory' do
         # Initialize the export directory first
-        service.instance_variable_set(:@export_directory, Rails.root.join('tmp', "test_export"))
-        service.instance_variable_set(:@files_directory, service.instance_variable_get(:@export_directory).join('files'))
+        service.instance_variable_set(:@export_directory, Rails.root.join('tmp/test_export'))
+        service.instance_variable_set(:@files_directory,
+                                      service.instance_variable_get(:@export_directory).join('files'))
 
         files_dir = service.send(:files_directory)
         expect(files_dir.to_s).to end_with('files')
@@ -346,7 +350,8 @@ RSpec.describe Users::ExportData, type: :service do
         end
 
         it 'reports the error via ExceptionReporter but does not re-raise' do
-          expect(ExceptionReporter).to receive(:call).with(an_instance_of(StandardError), 'Failed to cleanup temporary files')
+          expect(ExceptionReporter).to receive(:call).with(an_instance_of(StandardError),
+                                                           'Failed to cleanup temporary files')
 
           expect { service.send(:cleanup_temporary_files, export_directory) }.not_to raise_error
         end
@@ -374,7 +379,7 @@ RSpec.describe Users::ExportData, type: :service do
         allow(user).to receive(:trips).and_return(double(count: 8))
         allow(user).to receive(:stats).and_return(double(count: 24))
         allow(user).to receive(:notifications).and_return(double(count: 10))
-        allow(user).to receive(:points_count).and_return(15000)
+        allow(user).to receive(:points_count).and_return(15_000)
         allow(user).to receive(:visits).and_return(double(count: 45))
         allow(user).to receive(:visited_places).and_return(double(count: 20))
         allow(Rails.logger).to receive(:info)
@@ -384,20 +389,20 @@ RSpec.describe Users::ExportData, type: :service do
         counts = service.send(:calculate_entity_counts)
 
         expect(counts).to eq({
-          areas: 5,
+                               areas: 5,
           imports: 12,
           exports: 3,
           trips: 8,
           stats: 24,
           notifications: 10,
-          points: 15000,
+          points: 15_000,
           visits: 45,
           places: 20
-        })
+                             })
       end
 
       it 'logs the calculation process' do
-        expect(Rails.logger).to receive(:info).with("Calculating entity counts for export")
+        expect(Rails.logger).to receive(:info).with('Calculating entity counts for export')
         expect(Rails.logger).to receive(:info).with(/Entity counts:/)
 
         service.send(:calculate_entity_counts)

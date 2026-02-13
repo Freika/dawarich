@@ -12,6 +12,9 @@
      data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"
      style="width: 100%; height: 100%; position: relative;">
 
+  <!-- WebGL error (hidden by default, shown if WebGL unavailable) -->
+  <%= render 'map/maplibre/webgl_error' %>
+
   <!-- Map container takes full width and height -->
   <div data-maps--maplibre-target="container" class="maps-maplibre-container" style="width: 100%; height: 100%;"></div>
 

@@ -1,4 +1,5 @@
 <% content_for :title, "Statistics for #{@year} year" %>
+<%= render 'shared/chartkick_scripts' %>
 
 <div class="w-full my-5">
   <%= render partial: 'stats/year', locals: { year: @year, stats: @stats } %>

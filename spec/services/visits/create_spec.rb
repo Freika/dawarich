@@ -60,7 +60,7 @@ RSpec.describe Visits::Create do
       subject(:service) { described_class.new(user, valid_params) }
 
       it 'reuses the existing place' do
-        expect { service.call }.not_to change { Place.count }
+        expect { service.call }.not_to(change { Place.count })
         expect(service.visit.place).to eq(existing_place)
       end
 
@@ -88,7 +88,7 @@ RSpec.describe Visits::Create do
       end
 
       it 'does not create a visit' do
-        expect { service.call }.not_to change { Visit.count }
+        expect { service.call }.not_to(change { Visit.count })
       end
     end
 
@@ -96,7 +96,9 @@ RSpec.describe Visits::Create do
       subject(:service) { described_class.new(user, valid_params) }
 
       before do
-        allow_any_instance_of(User).to receive_message_chain(:visits, :create!).and_raise(ActiveRecord::RecordInvalid.new(Visit.new))
+        visits_association = user.visits
+        allow(user).to receive(:visits).and_return(visits_association)
+        allow(visits_association).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new(Visit.new))
       end
 
       it 'returns false' do

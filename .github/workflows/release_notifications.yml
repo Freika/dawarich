@@ -1,8 +1,9 @@
 name: Release Notifications
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Docker image build and push"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -10,19 +11,43 @@ permissions:
 jobs:
   notify:
     runs-on: ubuntu-latest
-    # Only notify for stable releases, not RCs or prereleases
-    if: ${{ !github.event.release.prerelease }}
+    # Only run when build succeeded and was triggered by a release
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'release'
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set version
+      - name: Get release info
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          REPO: ${{ github.repository }}
         run: |
-          echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-          echo "url=${{ github.event.release.html_url }}" >> $GITHUB_OUTPUT
+          # The head_branch of a release-triggered workflow is the tag name
+          TAG="$HEAD_BRANCH"
+
+          # Fetch release details by tag
+          RELEASE_JSON=$(gh api "repos/$REPO/releases/tags/$TAG" 2>/dev/null || true)
+
+          if [ -z "$RELEASE_JSON" ]; then
+            echo "Could not find release for tag $TAG, trying latest"
+            RELEASE_JSON=$(gh api "repos/$REPO/releases/latest")
+            TAG=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
+          fi
+
+          URL=$(echo "$RELEASE_JSON" | jq -r '.html_url')
+          PRERELEASE=$(echo "$RELEASE_JSON" | jq -r '.prerelease')
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          echo "Release: $TAG (prerelease: $PRERELEASE)"
 
       - name: Extract changelog for version
+        if: steps.version.outputs.prerelease != 'true'
         id: changelog
         env:
           VERSION: ${{ steps.version.outputs.tag }}
@@ -40,6 +65,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Generate summary
+        if: steps.version.outputs.prerelease != 'true'
         id: summary
         env:
           NOTES: ${{ steps.changelog.outputs.notes }}
@@ -63,6 +89,7 @@ jobs:
           echo "summary=$PARTS" >> $GITHUB_OUTPUT
 
       - name: Post to Discord
+        if: steps.version.outputs.prerelease != 'true'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
           VERSION: ${{ steps.version.outputs.tag }}
@@ -85,6 +112,7 @@ jobs:
                "$DISCORD_WEBHOOK"
 
       - name: Post to Mastodon
+        if: steps.version.outputs.prerelease != 'true'
         env:
           MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
           VERSION: ${{ steps.version.outputs.tag }}

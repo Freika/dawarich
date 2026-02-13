@@ -42,9 +42,7 @@ RSpec.describe Imports::Watcher do
 
     context 'when user does not exist' do
       it 'does not call Import::ProcessJob' do
-        expect(Import::ProcessJob).not_to receive(:perform_later)
-
-        service
+        expect { service }.not_to have_enqueued_job(Import::ProcessJob)
       end
 
       it 'does not create an import' do

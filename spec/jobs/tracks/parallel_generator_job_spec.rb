@@ -3,15 +3,17 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::ParallelGeneratorJob do
-  let(:user) { create(:user) }
+  let(:user) do
+    create(:user, settings: {
+             'minutes_between_routes' => 30,
+             'meters_between_routes' => 500,
+             'live_map_enabled' => false
+           })
+  end
   let(:job) { described_class.new }
 
   before do
     Rails.cache.clear
-    # Stub user settings that might be called during point creation or track processing
-    allow_any_instance_of(User).to receive_message_chain(:safe_settings, :minutes_between_routes).and_return(30)
-    allow_any_instance_of(User).to receive_message_chain(:safe_settings, :meters_between_routes).and_return(500)
-    allow_any_instance_of(User).to receive_message_chain(:safe_settings, :live_map_enabled).and_return(false)
   end
 
   describe 'queue configuration' do

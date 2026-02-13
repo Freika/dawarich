@@ -26,11 +26,6 @@ RSpec.describe Users::ImportData::Trips, type: :service do
   end
   let(:service) { described_class.new(user, trips_data) }
 
-  before do
-    # Mock the job enqueuing to avoid it interfering with tests
-    allow(Trips::CalculateAllJob).to receive(:perform_later)
-  end
-
   describe '#call' do
     context 'with valid trips data' do
       it 'creates new trips for the user' do
@@ -64,7 +59,7 @@ RSpec.describe Users::ImportData::Trips, type: :service do
 
       it 'logs the import process' do
         expect(Rails.logger).to receive(:info).with("Importing 2 trips for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Trips import completed. Created: 2")
+        expect(Rails.logger).to receive(:info).with('Trips import completed. Created: 2')
 
         service.call
       end
@@ -87,7 +82,7 @@ RSpec.describe Users::ImportData::Trips, type: :service do
 
       it 'logs when skipping duplicates' do
         allow(Rails.logger).to receive(:debug) # Allow any debug logs
-        expect(Rails.logger).to receive(:debug).with("Trip already exists: Business Trip to NYC")
+        expect(Rails.logger).to receive(:debug).with('Trip already exists: Business Trip to NYC')
 
         service.call
       end
@@ -103,7 +98,8 @@ RSpec.describe Users::ImportData::Trips, type: :service do
         [
           { 'name' => 'Valid Trip', 'started_at' => '2024-01-15T08:00:00Z', 'ended_at' => '2024-01-18T20:00:00Z' },
           'invalid_data',
-          { 'name' => 'Another Valid Trip', 'started_at' => '2024-02-10T09:00:00Z', 'ended_at' => '2024-02-12T18:00:00Z' }
+          { 'name' => 'Another Valid Trip', 'started_at' => '2024-02-10T09:00:00Z',
+'ended_at' => '2024-02-12T18:00:00Z' }
         ]
       end
 
@@ -135,7 +131,7 @@ RSpec.describe Users::ImportData::Trips, type: :service do
       let(:trips_data) { nil }
 
       it 'does not create any trips' do
-        expect { service.call }.not_to change { user.trips.count }
+        expect { service.call }.not_to(change { user.trips.count })
       end
 
       it 'returns 0' do
@@ -148,7 +144,7 @@ RSpec.describe Users::ImportData::Trips, type: :service do
       let(:trips_data) { 'invalid_data' }
 
       it 'does not create any trips' do
-        expect { service.call }.not_to change { user.trips.count }
+        expect { service.call }.not_to(change { user.trips.count })
       end
 
       it 'returns 0' do
@@ -161,12 +157,12 @@ RSpec.describe Users::ImportData::Trips, type: :service do
       let(:trips_data) { [] }
 
       it 'does not create any trips' do
-        expect { service.call }.not_to change { user.trips.count }
+        expect { service.call }.not_to(change { user.trips.count })
       end
 
       it 'logs the import process with 0 count' do
         expect(Rails.logger).to receive(:info).with("Importing 0 trips for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Trips import completed. Created: 0")
+        expect(Rails.logger).to receive(:info).with('Trips import completed. Created: 0')
 
         service.call
       end

@@ -35,4 +35,4 @@ jobs:
       - name: Run Biome
         env:
           BASE: ${{ steps.base.outputs.ref }}
-        run: biome ci . --reporter=github --changed --since="$BASE"
+        run: biome ci . --reporter=github --changed --since="$BASE" --no-errors-on-unmatched

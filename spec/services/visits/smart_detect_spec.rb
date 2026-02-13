@@ -21,9 +21,8 @@ RSpec.describe Visits::SmartDetect do
       let(:visit_detector) { instance_double(Visits::Detector) }
       let(:visit_merger) { instance_double(Visits::Merger) }
       let(:visit_creator) { instance_double(Visits::Creator) }
-      let(:potential_visits) { [{ id: 1 }] }
-      let(:merged_visits) { [{ id: 2 }] }
-      let(:grouped_visits) { [[{ id: 3 }]] }
+      let(:potential_visits) { [{ id: 1, center_lat: 40.7128, center_lon: -74.0060 }] }
+      let(:merged_visits) { [{ id: 2, center_lat: 40.7128, center_lon: -74.0060 }] }
       let(:created_visits) { [instance_double(Visit)] }
 
       before do
@@ -33,8 +32,7 @@ RSpec.describe Visits::SmartDetect do
         allow(Visits::Creator).to receive(:new).with(user).and_return(visit_creator)
         allow(visit_detector).to receive(:detect_potential_visits).and_return(potential_visits)
         allow(visit_merger).to receive(:merge_visits).with(potential_visits).and_return(merged_visits)
-        allow(subject).to receive(:group_nearby_visits).with(merged_visits).and_return(grouped_visits)
-        allow(visit_creator).to receive(:create_visits).with([{ id: 3 }]).and_return(created_visits)
+        allow(visit_creator).to receive(:create_visits).with(merged_visits).and_return(created_visits)
       end
 
       it 'delegates to the appropriate services' do

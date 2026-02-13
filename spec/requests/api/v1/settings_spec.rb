@@ -70,9 +70,9 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       end
 
       it 'triggers recalculation when thresholds change' do
-        expect(Tracks::TransportationModeRecalculationJob).to receive(:perform_later).with(user.id)
-
-        patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
+        expect do
+          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
+        end.to have_enqueued_job(Tracks::TransportationModeRecalculationJob).with(user.id)
 
         expect(response).to have_http_status(:success)
         expect(response.parsed_body['recalculation_triggered']).to be true

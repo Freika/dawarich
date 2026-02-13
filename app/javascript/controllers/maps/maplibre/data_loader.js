@@ -2,6 +2,7 @@ import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { createCircle } from "maps_maplibre/utils/geometry"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import { applySpeedColors } from "maps_maplibre/utils/speed_colors"
 
 /**
  * Tracks loading counts across multiple data sources
@@ -81,11 +82,22 @@ export class DataLoader {
       end_at: endDate,
     })
     const pointsGeoJSON = pointsToGeoJSON(points)
-    const routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
+    let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
       distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
       timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
     })
-    return { points, pointsGeoJSON, routesGeoJSON }
+
+    // Keep original routes before speed coloring for low-zoom rendering
+    const routesBaseGeoJSON = routesGeoJSON
+
+    if (this.settings.speedColoredRoutes) {
+      const speedColorScale =
+        this.settings.speedColorScale ||
+        "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
+      routesGeoJSON = applySpeedColors(routesGeoJSON, points, speedColorScale)
+    }
+
+    return { points, pointsGeoJSON, routesGeoJSON, routesBaseGeoJSON }
   }
 
   /**
@@ -237,11 +249,26 @@ export class DataLoader {
         distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
         timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
       })
+
+      // Keep original routes before speed coloring for low-zoom rendering
+      data.routesBaseGeoJSON = data.routesGeoJSON
+
+      if (this.settings.speedColoredRoutes) {
+        const speedColorScale =
+          this.settings.speedColorScale ||
+          "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
+        data.routesGeoJSON = applySpeedColors(
+          data.routesGeoJSON,
+          data.points,
+          speedColorScale,
+        )
+      }
       performanceMonitor.measure("transform-geojson")
 
       // Update routes layer now that all points are available
       if (onLayerData) {
         onLayerData("routes", data.routesGeoJSON)
+        onLayerData("routes-base", data.routesBaseGeoJSON)
         // Final points/heatmap update with complete dataset
         onLayerData("points", data.pointsGeoJSON)
         onLayerData("heatmap", data.pointsGeoJSON)
@@ -253,6 +280,7 @@ export class DataLoader {
       data.points = []
       data.pointsGeoJSON = emptyGeoJSON
       data.routesGeoJSON = emptyGeoJSON
+      data.routesBaseGeoJSON = emptyGeoJSON
     }
 
     data.visits = visits

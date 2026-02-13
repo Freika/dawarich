@@ -1,4 +1,7 @@
 <% content_for :title, 'Insights' %>
+<%= render 'shared/chartkick_scripts' %>
+
+<% insights_cache_key = [current_user.id, "insights", @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
 
 <div class="w-full my-5">
   <%= render 'header' %>
@@ -6,27 +9,18 @@
 
   <!-- Heatmap and Streak Row -->
   <div class="flex flex-col lg:flex-row gap-6">
-    <%= render 'activity_heatmap' %>
-    <%= render 'activity_streak' %>
+    <% cache insights_cache_key + ["activity_heatmap"], expires_in: 24.hours do %>
+      <%= render 'activity_heatmap' %>
+    <% end %>
+    <% cache insights_cache_key + ["activity_streak"], expires_in: 24.hours do %>
+      <%= render 'activity_streak' %>
+    <% end %>
   </div>
 
-  <!-- Two Column Layout -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <!-- Left Column -->
-    <div class="space-y-6">
-      <%= render 'year_comparison' %>
-      <%= render 'activity_breakdown' %>
-      <%= render 'location_clusters' %>
-    </div>
-
-    <!-- Right Column -->
-    <div class="space-y-6">
-      <%= render 'monthly_digest' %>
-      <%= render 'travel_patterns' %>
-    </div>
-  </div>
-
-  <%= render 'movement_wellness' %>
+  <!-- Lazy-loaded below-the-fold details -->
+  <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year), loading: :lazy do %>
+    <%= render 'details_skeleton' %>
+  <% end %>
 
   <!-- Footer -->
   <div class="text-center text-sm text-base-content/50 py-4">

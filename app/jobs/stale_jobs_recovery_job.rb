@@ -24,6 +24,8 @@ class StaleJobsRecoveryJob < ApplicationJob
         title: 'Export failed',
         content: "Export \"#{export.name}\" was stuck in processing and has been marked as failed."
       ).call
+    rescue StandardError => e
+      Rails.logger.error("Failed to recover stale export #{export.id}: #{e.message}")
     end
   end
 
@@ -37,6 +39,8 @@ class StaleJobsRecoveryJob < ApplicationJob
         title: 'Import failed',
         content: "Import \"#{import.name}\" was stuck in processing and has been marked as failed."
       ).call
+    rescue StandardError => e
+      Rails.logger.error("Failed to recover stale import #{import.id}: #{e.message}")
     end
   end
 end

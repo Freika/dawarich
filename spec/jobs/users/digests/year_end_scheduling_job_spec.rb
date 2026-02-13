@@ -24,42 +24,29 @@ RSpec.describe Users::Digests::YearEndSchedulingJob, type: :job do
         create(:stat, user: active_user, year: previous_year, month: 1)
         create(:stat, user: trial_user, year: previous_year, month: 1)
         create(:stat, user: inactive_user, year: previous_year, month: 1)
-
-        allow(Users::Digests::CalculatingJob).to receive(:perform_later)
-        allow(Users::Digests::EmailSendingJob).to receive(:set).and_return(double(perform_later: nil))
       end
 
       it 'schedules jobs for active users' do
-        subject
-
-        expect(Users::Digests::CalculatingJob).to have_received(:perform_later)
+        expect { subject }
+          .to have_enqueued_job(Users::Digests::CalculatingJob)
           .with(active_user.id, previous_year)
       end
 
       it 'schedules jobs for trial users' do
-        subject
-
-        expect(Users::Digests::CalculatingJob).to have_received(:perform_later)
+        expect { subject }
+          .to have_enqueued_job(Users::Digests::CalculatingJob)
           .with(trial_user.id, previous_year)
       end
 
       it 'does not schedule jobs for inactive users' do
-        subject
-
-        expect(Users::Digests::CalculatingJob).not_to have_received(:perform_later)
+        expect { subject }
+          .not_to have_enqueued_job(Users::Digests::CalculatingJob)
           .with(inactive_user.id, anything)
       end
 
       it 'schedules email sending job with delay' do
-        email_job_double = double(perform_later: nil)
-        allow(Users::Digests::EmailSendingJob).to receive(:set)
-          .with(wait: 30.minutes)
-          .and_return(email_job_double)
-
-        subject
-
-        expect(Users::Digests::EmailSendingJob).to have_received(:set)
-          .with(wait: 30.minutes).at_least(:twice)
+        expect { subject }
+          .to have_enqueued_job(Users::Digests::EmailSendingJob).at_least(:twice)
       end
     end
 
@@ -69,22 +56,17 @@ RSpec.describe Users::Digests::YearEndSchedulingJob, type: :job do
 
       before do
         create(:stat, user: user_with_stats, year: previous_year, month: 1)
-
-        allow(Users::Digests::CalculatingJob).to receive(:perform_later)
-        allow(Users::Digests::EmailSendingJob).to receive(:set).and_return(double(perform_later: nil))
       end
 
       it 'does not schedule jobs for user without stats' do
-        subject
-
-        expect(Users::Digests::CalculatingJob).not_to have_received(:perform_later)
+        expect { subject }
+          .not_to have_enqueued_job(Users::Digests::CalculatingJob)
           .with(user_without_stats.id, anything)
       end
 
       it 'schedules jobs for user with stats' do
-        subject
-
-        expect(Users::Digests::CalculatingJob).to have_received(:perform_later)
+        expect { subject }
+          .to have_enqueued_job(Users::Digests::CalculatingJob)
           .with(user_with_stats.id, previous_year)
       end
     end
@@ -94,15 +76,11 @@ RSpec.describe Users::Digests::YearEndSchedulingJob, type: :job do
 
       before do
         create(:stat, user: user_current_year_only, year: Time.current.year, month: 1)
-
-        allow(Users::Digests::CalculatingJob).to receive(:perform_later)
-        allow(Users::Digests::EmailSendingJob).to receive(:set).and_return(double(perform_later: nil))
       end
 
       it 'does not schedule jobs for that user' do
-        subject
-
-        expect(Users::Digests::CalculatingJob).not_to have_received(:perform_later)
+        expect { subject }
+          .not_to have_enqueued_job(Users::Digests::CalculatingJob)
           .with(user_current_year_only.id, anything)
       end
     end

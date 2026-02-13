@@ -91,7 +91,11 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
-  resources :insights, only: :index
+  resources :insights, only: :index do
+    collection do
+      get :details
+    end
+  end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
   get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
@@ -172,6 +176,13 @@ Rails.application.routes.draw do
         end
       end
       resources :stats, only: :index
+      resources :insights, only: :index do
+        collection do
+          get :details
+        end
+      end
+      resources :digests, only: %i[index show create destroy], param: :year,
+                          constraints: { year: /\d{4}/ }
       resources :tags, only: [] do
         collection do
           get 'privacy_zones'

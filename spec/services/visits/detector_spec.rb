@@ -32,7 +32,8 @@ RSpec.describe Visits::Detector do
   describe '#detect_potential_visits' do
     context 'with valid visit data' do
       before do
-        allow(subject).to receive(:suggest_place_name).and_return('Test Place')
+        allow(Visits::Names::Suggester).to receive(:new).and_return(double(call: 'Test Place'))
+        allow(Visits::Names::Fetcher).to receive(:new).and_return(double(call: 'Test Place'))
       end
 
       it 'identifies separate visits based on time gaps and location changes' do
@@ -113,7 +114,8 @@ RSpec.describe Visits::Detector do
       subject { described_class.new(multi_visit_points) }
 
       before do
-        allow(subject).to receive(:suggest_place_name).and_return('Test Place')
+        allow(Visits::Names::Suggester).to receive(:new).and_return(double(call: 'Test Place'))
+        allow(Visits::Names::Fetcher).to receive(:new).and_return(double(call: 'Test Place'))
       end
 
       it 'correctly identifies all valid visits' do
@@ -141,7 +143,8 @@ RSpec.describe Visits::Detector do
       subject { described_class.new(same_area_points) }
 
       before do
-        allow(subject).to receive(:suggest_place_name).and_return('Test Place')
+        allow(Visits::Names::Suggester).to receive(:new).and_return(double(call: 'Test Place'))
+        allow(Visits::Names::Fetcher).to receive(:new).and_return(double(call: 'Test Place'))
       end
 
       it 'groups points into a single visit despite small gaps' do

@@ -48,9 +48,7 @@ RSpec.describe Trip, type: :model do
       let(:trip) { build(:trip, :with_points, user:) }
 
       it 'enqueues the calculation jobs' do
-        expect(Trips::CalculateAllJob).to receive(:perform_later)
-
-        trip.save
+        expect { trip.save }.to have_enqueued_job(Trips::CalculateAllJob)
       end
     end
   end

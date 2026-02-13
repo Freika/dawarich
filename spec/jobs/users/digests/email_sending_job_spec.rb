@@ -10,9 +10,11 @@ RSpec.describe Users::Digests::EmailSendingJob, type: :job do
 
     subject { described_class.perform_now(user.id, year) }
 
+    let(:mail_message) { double('MailMessage', deliver_later: true) }
+    let(:mailer_with_params) { double('MailerWithParams', year_end_digest: mail_message) }
+
     before do
-      # Mock the mailer
-      allow(Users::DigestsMailer).to receive_message_chain(:with, :year_end_digest, :deliver_later)
+      allow(Users::DigestsMailer).to receive(:with).and_return(mailer_with_params)
     end
 
     it 'enqueues to the mailers queue' do

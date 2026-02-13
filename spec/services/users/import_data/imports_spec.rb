@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Users::ImportData::Imports, type: :service do
   let(:user) { create(:user) }
-  let(:files_directory) { Rails.root.join('tmp', 'test_files') }
+  let(:files_directory) { Rails.root.join('tmp/test_files') }
   let(:imports_data) do
     [
       {
@@ -15,7 +15,7 @@ RSpec.describe Users::ImportData::Imports, type: :service do
         'processed' => true,
         'file_name' => 'import_1_2023_MARCH.json',
         'original_filename' => '2023_MARCH.json',
-        'file_size' => 2048576,
+        'file_size' => 2_048_576,
         'content_type' => 'application/json'
       },
       {
@@ -26,7 +26,7 @@ RSpec.describe Users::ImportData::Imports, type: :service do
         'processed' => false,
         'file_name' => 'import_2_2023_APRIL.json',
         'original_filename' => '2023_APRIL.json',
-        'file_size' => 1048576,
+        'file_size' => 1_048_576,
         'content_type' => 'application/json'
       }
     ]
@@ -91,15 +91,13 @@ RSpec.describe Users::ImportData::Imports, type: :service do
       it 'logs the import process' do
         allow(Rails.logger).to receive(:info) # Allow all info logs (including ActiveStorage)
         expect(Rails.logger).to receive(:info).with("Importing 2 imports for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Imports import completed. Created: 2, Files restored: 2")
+        expect(Rails.logger).to receive(:info).with('Imports import completed. Created: 2, Files restored: 2')
 
         service.call
       end
 
       it 'does not trigger background processing jobs' do
-        expect(Import::ProcessJob).not_to receive(:perform_later)
-
-        service.call
+        expect { service.call }.not_to have_enqueued_job(Import::ProcessJob)
       end
 
       it 'sets skip_background_processing flag on created imports' do
@@ -127,7 +125,7 @@ RSpec.describe Users::ImportData::Imports, type: :service do
 
       it 'logs when skipping duplicates' do
         allow(Rails.logger).to receive(:debug) # Allow any debug logs
-        expect(Rails.logger).to receive(:debug).with("Import already exists: 2023_MARCH.json")
+        expect(Rails.logger).to receive(:debug).with('Import already exists: 2023_MARCH.json')
 
         service.call
       end
@@ -236,7 +234,7 @@ RSpec.describe Users::ImportData::Imports, type: :service do
       let(:imports_data) { nil }
 
       it 'does not create any imports' do
-        expect { service.call }.not_to change { user.imports.count }
+        expect { service.call }.not_to(change { user.imports.count })
       end
 
       it 'returns [0, 0]' do
@@ -249,7 +247,7 @@ RSpec.describe Users::ImportData::Imports, type: :service do
       let(:imports_data) { 'invalid_data' }
 
       it 'does not create any imports' do
-        expect { service.call }.not_to change { user.imports.count }
+        expect { service.call }.not_to(change { user.imports.count })
       end
 
       it 'returns [0, 0]' do
@@ -262,12 +260,12 @@ RSpec.describe Users::ImportData::Imports, type: :service do
       let(:imports_data) { [] }
 
       it 'does not create any imports' do
-        expect { service.call }.not_to change { user.imports.count }
+        expect { service.call }.not_to(change { user.imports.count })
       end
 
       it 'logs the import process with 0 count' do
         expect(Rails.logger).to receive(:info).with("Importing 0 imports for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Imports import completed. Created: 0, Files restored: 0")
+        expect(Rails.logger).to receive(:info).with('Imports import completed. Created: 0, Files restored: 0')
 
         service.call
       end

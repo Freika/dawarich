@@ -278,12 +278,10 @@ RSpec.describe Tracks::ParallelGenerator do
       end
 
       it 'passes correct parameters to each job' do
-        expect(Tracks::TimeChunkProcessorJob).to receive(:perform_later)
-          .with(user.id, session_id, chunks[0])
-        expect(Tracks::TimeChunkProcessorJob).to receive(:perform_later)
-          .with(user.id, session_id, chunks[1])
-
         generator.send(:enqueue_chunk_jobs, session_id, chunks)
+
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(user.id, session_id, chunks[0])
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(user.id, session_id, chunks[1])
       end
     end
 

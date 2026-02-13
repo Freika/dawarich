@@ -22,13 +22,11 @@ RSpec.describe Families::Invite do
       end
 
       it 'enqueues invitation sending job' do
-        expect(Family::Invitations::SendingJob).to receive(:perform_later).with(an_instance_of(Integer))
-        service.call
+        expect { service.call }.to have_enqueued_job(Family::Invitations::SendingJob).with(an_instance_of(Integer))
       end
 
       it 'sends invitation email' do
-        expect(Family::Invitations::SendingJob).to receive(:perform_later).and_call_original
-        service.call
+        expect { service.call }.to have_enqueued_job(Family::Invitations::SendingJob)
       end
 
       it 'sends notification to inviter' do

@@ -26,28 +26,33 @@ export class VisitsManager {
     if (!visitsLayer) return
 
     if (enabled) {
-      if (!visitsLayer.data?.features?.length) {
-        this.controller.showProgress()
-        this.controller.updateLoadingCounts({
-          counts: { visits: 0 },
-          isComplete: false,
-        })
+      try {
+        if (!visitsLayer.data?.features?.length) {
+          this.controller.showProgress()
+          this.controller.updateLoadingCounts({
+            counts: { visits: 0 },
+            isComplete: false,
+          })
 
-        const visits = await this.api.fetchVisits({
-          start_at: this.controller.startDateValue,
-          end_at: this.controller.endDateValue,
-        })
-        this.filterManager.setAllVisits(visits)
-        visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
+          const visits = await this.api.fetchVisits({
+            start_at: this.controller.startDateValue,
+            end_at: this.controller.endDateValue,
+          })
+          this.filterManager.setAllVisits(visits)
+          visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
 
-        this.controller.updateLoadingCounts({
-          counts: { visits: visits.length },
-          isComplete: true,
-        })
-      }
-      visitsLayer.show()
-      if (this.controller.hasVisitsSearchTarget) {
-        this.controller.visitsSearchTarget.style.display = "block"
+          this.controller.updateLoadingCounts({
+            counts: { visits: visits.length },
+            isComplete: true,
+          })
+        }
+        visitsLayer.show()
+        if (this.controller.hasVisitsSearchTarget) {
+          this.controller.visitsSearchTarget.style.display = "block"
+        }
+      } catch (error) {
+        console.error("Failed to toggle visits layer:", error)
+        this.controller.hideProgress()
       }
     } else {
       visitsLayer.hide()

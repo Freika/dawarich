@@ -84,8 +84,8 @@ RSpec.describe Visits::MergeService do
 
     context 'when a database error occurs' do
       before do
+        visit1.errors.add(:base, 'Error message')
         allow(visit1).to receive(:update!).and_raise(ActiveRecord::RecordInvalid.new(visit1))
-        allow(visit1).to receive_message_chain(:errors, :full_messages, :join).and_return('Error message')
       end
 
       it 'handles ActiveRecord errors' do

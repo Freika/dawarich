@@ -114,6 +114,38 @@ bundle exec rspec spec/models/       # Model specs only
 npx playwright test                  # E2E tests
 ```
 
+### Testing Best Practices — Test Behavior, Not Implementation
+
+When writing or modifying tests, always test **observable behavior** (return values, state changes, side effects) rather than **implementation details** (which internal methods are called, in what order, with what exact arguments).
+
+**Anti-patterns to AVOID:**
+
+1. **Never mock the object under test** — `allow(subject).to receive(:internal_method)` makes the test a tautology
+2. **Never test private methods via `send()`** — test through the public interface instead; if creating a user triggers a trial, test by creating the user and checking `user.trial?`, not by calling `user.send(:start_trial)`
+3. **Never use `receive_message_chain`** — `allow(x).to receive_message_chain(:a, :b, :c)` breaks on any scope reorder; use real data instead
+4. **Avoid over-stubbing** — if every collaborator is mocked, the test proves nothing; mock only at external boundaries (HTTP, geocoder, external APIs)
+5. **Don't test wiring without outcomes** — `expect(Service).to receive(:new).with(args)` only proves a method was called, not that it works; verify the returned data or state change instead
+6. **Prefer `have_enqueued_job` over `expect(Job).to receive(:perform_later)`** — the former tests real ActiveJob integration; the latter just tests a mock
+7. **Don't assert on cache key formats or internal metric JSON shapes** — test that caching works (2nd call doesn't requery) or that metrics fire, not exact internal formats
+8. **Use real factory data over `allow(user).to receive(:active?).and_return(true)`** — set the actual user state: `create(:user, status: :active)`
+
+**Good test pattern:**
+```ruby
+# Test behavior: creating an export enqueues processing
+it 'enqueues processing job' do
+  expect { create(:export, file_type: :points) }.to have_enqueued_job(ExportJob)
+end
+```
+
+**Bad test pattern:**
+```ruby
+# Tests implementation: mocks the callback interaction
+it 'enqueues processing job' do
+  expect(ExportJob).to receive(:perform_later)  # mock, not real
+  build(:export).save!
+end
+```
+
 ## Background Jobs
 
 ### Sidekiq Jobs

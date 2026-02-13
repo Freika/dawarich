@@ -8,9 +8,8 @@ RSpec.describe Tasks::Imports::GoogleRecords do
     let(:file_path) { Rails.root.join('spec/fixtures/files/google/records.json').to_s }
 
     it 'schedules the Import::GoogleTakeoutJob' do
-      expect(Import::GoogleTakeoutJob).to receive(:perform_later).exactly(1).time
-
-      described_class.new(file_path, user.email).call
+      expect { described_class.new(file_path, user.email).call }
+        .to have_enqueued_job(Import::GoogleTakeoutJob).exactly(1).times
     end
   end
 end
