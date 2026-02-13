@@ -284,14 +284,18 @@ export class MapDataManager {
       await addAllLayers()
     } else {
       await new Promise((resolve, reject) => {
-        this.map.once("idle", async () => {
-          try {
-            await addAllLayers()
-            resolve()
-          } catch (e) {
-            reject(e)
+        const onIdle = async () => {
+          if (this.map.isStyleLoaded()) {
+            this.map.off("idle", onIdle)
+            try {
+              await addAllLayers()
+              resolve()
+            } catch (e) {
+              reject(e)
+            }
           }
-        })
+        }
+        this.map.on("idle", onIdle)
       })
     }
   }

@@ -161,68 +161,77 @@ export function applySpeedColors(routesGeoJSON, points, speedColorScale) {
   const features = []
 
   for (const feature of routesGeoJSON.features) {
-    const startIdx = points.findIndex(
-      (p) => p.timestamp === feature.properties.startTime,
-    )
-    const endIdx = points.findIndex(
-      (p) => p.timestamp === feature.properties.endTime,
-    )
+    try {
+      const startIdx = points.findIndex(
+        (p) => p.timestamp === feature.properties.startTime,
+      )
+      const endIdx = points.findIndex(
+        (p) => p.timestamp === feature.properties.endTime,
+      )
 
-    if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) {
-      // Can't match points — keep original feature with default color
-      features.push(feature)
-      continue
-    }
-
-    const segment = points.slice(startIdx, endIdx + 1)
-
-    // Build segments by merging consecutive pairs that share the same color
-    let currentColor = null
-    let currentCoords = []
-    let segIdx = 0
-
-    for (let i = 0; i < segment.length - 1; i++) {
-      const p1 = segment[i]
-      const p2 = segment[i + 1]
-      const speed = calculateSpeed(p1, p2)
-      const color = getSpeedColor(speed, true, speedColorScale)
-
-      if (color !== currentColor) {
-        // Flush previous segment
-        if (currentCoords.length >= 2) {
-          features.push({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: currentCoords },
-            properties: {
-              ...feature.properties,
-              id: `${feature.properties.id}-seg-${segIdx++}`,
-              color: currentColor,
-            },
-          })
-        }
-        // Start new segment — include p1 so the line connects seamlessly
-        currentColor = color
-        currentCoords = [
-          [p1.longitude, p1.latitude],
-          [p2.longitude, p2.latitude],
-        ]
-      } else {
-        // Same color — extend current segment with p2
-        currentCoords.push([p2.longitude, p2.latitude])
+      if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) {
+        // Can't match points — keep original feature with default color
+        features.push(feature)
+        continue
       }
-    }
 
-    // Flush last segment
-    if (currentCoords.length >= 2) {
-      features.push({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: currentCoords },
-        properties: {
-          ...feature.properties,
-          id: `${feature.properties.id}-seg-${segIdx}`,
-          color: currentColor,
-        },
-      })
+      const segment = points.slice(startIdx, endIdx + 1)
+
+      // Build segments by merging consecutive pairs that share the same color
+      let currentColor = null
+      let currentCoords = []
+      let segIdx = 0
+
+      for (let i = 0; i < segment.length - 1; i++) {
+        const p1 = segment[i]
+        const p2 = segment[i + 1]
+        const speed = calculateSpeed(p1, p2)
+        const color = getSpeedColor(speed, true, speedColorScale)
+
+        if (color !== currentColor) {
+          // Flush previous segment
+          if (currentCoords.length >= 2) {
+            features.push({
+              type: "Feature",
+              geometry: { type: "LineString", coordinates: currentCoords },
+              properties: {
+                ...feature.properties,
+                id: `${feature.properties.id}-seg-${segIdx++}`,
+                color: currentColor,
+              },
+            })
+          }
+          // Start new segment — include p1 so the line connects seamlessly
+          currentColor = color
+          currentCoords = [
+            [p1.longitude, p1.latitude],
+            [p2.longitude, p2.latitude],
+          ]
+        } else {
+          // Same color — extend current segment with p2
+          currentCoords.push([p2.longitude, p2.latitude])
+        }
+      }
+
+      // Flush last segment
+      if (currentCoords.length >= 2) {
+        features.push({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: currentCoords },
+          properties: {
+            ...feature.properties,
+            id: `${feature.properties.id}-seg-${segIdx}`,
+            color: currentColor,
+          },
+        })
+      }
+    } catch (error) {
+      console.warn(
+        "Failed to apply speed colors to route:",
+        feature.properties?.id,
+        error,
+      )
+      features.push(feature)
     }
   }
 

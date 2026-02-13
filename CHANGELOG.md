@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Overall app performance in browser was improved
+- Docker images are now being built in parallel for both amd64 and arm64 architectures to speed up the build process. Thank you @rtuszik!
 
 ## Added
 
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Scratch map layer is now working again on Map v2.
 - Colored routes on Map v2 are now working correctly. Zoom in closer to see colored segments. #2254
+- Frontend was sped by optimizing loaded assets and lazy-loading parts of the UI.
 
 # [1.1.0] - Unreleased
 

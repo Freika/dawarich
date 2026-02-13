@@ -17,6 +17,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
       platforms: ${{ steps.meta.outputs.platforms }}
+      matrix: ${{ steps.meta.outputs.matrix }}
     steps:
       - name: Compute version and platforms
         id: meta
@@ -32,27 +33,18 @@ jobs:
 
           IS_PRERELEASE="${{ github.event.release.prerelease }}"
           PLATFORMS="linux/amd64,linux/arm64,linux/arm/v7"
-
-          if [ "$IS_PRERELEASE" = "true" ]; then
-            PLATFORMS="linux/amd64"
-          fi
+          MATRIX='{"include":[{"platform":"linux/amd64","runner":"ubuntu-22.04"},{"platform":"linux/arm64","runner":"ubuntu-22.04-arm"},{"platform":"linux/arm/v7","runner":"ubuntu-22.04-arm"}]}'
 
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT
           echo "platforms=${PLATFORMS}" >> $GITHUB_OUTPUT
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
 
   build-and-push-docker:
     needs: prepare
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-22.04
-          - platform: linux/arm64
-            runner: ubuntu-22.04-arm
-          - platform: linux/arm/v7
-            runner: ubuntu-22.04-arm
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
@@ -93,25 +85,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check if platform should build
-        id: should_build
-        run: |
-          PLATFORMS="${{ needs.prepare.outputs.platforms }}"
-          if echo "$PLATFORMS" | tr ',' '\n' | grep -qx "${{ matrix.platform }}"; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-          else
-            echo "skip=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: Prepare platform pair
-        if: steps.should_build.outputs.skip == 'false'
         id: platform
         run: |
           PAIR=$(echo "${{ matrix.platform }}" | tr '/' '-')
           echo "pair=${PAIR}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push by digest
-        if: steps.should_build.outputs.skip == 'false'
         id: build
         uses: docker/build-push-action@v5
         with:
@@ -121,17 +101,20 @@ jobs:
           outputs: type=image,name=${{ secrets.DOCKERHUB_USERNAME }}/dawarich,push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Rotate cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Export digest
-        if: steps.should_build.outputs.skip == 'false'
         run: |
           mkdir -p "${{ runner.temp }}/digests"
           DIGEST="${{ steps.build.outputs.digest }}"
           touch "${{ runner.temp }}/digests/${DIGEST#sha256:}"
 
       - name: Upload digest
-        if: steps.should_build.outputs.skip == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: digest-${{ steps.platform.outputs.pair }}
