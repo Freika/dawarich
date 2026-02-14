@@ -99,6 +99,38 @@
             </div>
           </div>
 
+          <% if DawarichSettings.google_photos_available? %>
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'camera', class: 'mr-2 text-primary' %> Google Photos Integration
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <% if current_user.google_photos_integration_configured? %>
+                  <div class="alert alert-success">
+                    <%= icon 'circle-check', class: 'mr-2' %>
+                    <span>Google Photos is connected</span>
+                  </div>
+                  <p class="text-sm text-base-content/70">
+                    Your Google Photos account is linked. Photos with location data will appear on maps and in trips.
+                  </p>
+                  <%= link_to google_photos_oauth_disconnect_path,
+                      data: { turbo_method: :delete, turbo_confirm: 'Are you sure you want to disconnect Google Photos?' },
+                      class: 'btn btn-error btn-sm' do %>
+                    <%= icon 'x', class: 'mr-1' %> Disconnect
+                  <% end %>
+                <% else %>
+                  <p class="text-sm text-base-content/70 mb-4">
+                    Connect your Google Photos to display photos on maps and in trips.
+                    Only photos with GPS location data will be shown.
+                  </p>
+                  <%= link_to google_photos_oauth_authorize_path, class: 'btn btn-primary' do %>
+                    <%= icon 'link', class: 'mr-1' %> Connect Google Photos
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
           <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
             <div class="lg:col-span-2">
               <h2 class="text-2xl font-bold mb-4 flex items-center">

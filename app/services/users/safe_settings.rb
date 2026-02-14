@@ -47,7 +47,10 @@ class Users::SafeSettings
     },
     'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
-    'max_gap_minutes_in_city' => 120
+    'max_gap_minutes_in_city' => 120,
+    'google_photos_access_token' => nil,
+    'google_photos_refresh_token' => nil,
+    'google_photos_token_expires_at' => nil
   }.freeze
 
   def initialize(settings = {})
@@ -225,5 +228,17 @@ class Users::SafeSettings
 
   def max_gap_minutes_in_city
     (settings['max_gap_minutes_in_city'] || DEFAULT_VALUES['max_gap_minutes_in_city']).to_i
+  end
+
+  def google_photos_access_token
+    settings['google_photos_access_token']
+  end
+
+  def google_photos_refresh_token
+    settings['google_photos_refresh_token']
+  end
+
+  def google_photos_token_expires_at
+    settings['google_photos_token_expires_at']
   end
 end

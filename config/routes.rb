@@ -34,6 +34,14 @@ Rails.application.routes.draw do
                         '/'
                       }, via: :get
 
+  namespace :google_photos do
+    namespace :oauth do
+      get :authorize
+      get :callback
+      delete :disconnect
+    end
+  end
+
   namespace :settings do
     resources :general, only: [:index]
     patch 'general', to: 'general#update'

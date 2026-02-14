@@ -60,5 +60,11 @@ class DawarichSettings
     def archive_raw_data_enabled?
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
     end
+
+    def google_photos_available?
+      !self_hosted? &&
+        ENV['GOOGLE_OAUTH_CLIENT_ID'].present? &&
+        ENV['GOOGLE_OAUTH_CLIENT_SECRET'].present?
+    end
   end
 end

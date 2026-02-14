@@ -86,6 +86,11 @@ class User < ApplicationRecord
     settings['photoprism_url'].present? && settings['photoprism_api_key'].present?
   end
 
+  def google_photos_integration_configured?
+    settings['google_photos_access_token'].present? &&
+      settings['google_photos_refresh_token'].present?
+  end
+
   def years_tracked
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
       # Use select_all for better performance with large datasets

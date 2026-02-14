@@ -17,7 +17,13 @@ class Trips::Photos
   attr_reader :trip, :user
 
   def can_fetch_photos?
-    user.immich_integration_configured? || user.photoprism_integration_configured?
+    user.immich_integration_configured? ||
+      user.photoprism_integration_configured? ||
+      google_photos_configured?
+  end
+
+  def google_photos_configured?
+    DawarichSettings.google_photos_available? && user.google_photos_integration_configured?
   end
 
   def photos
