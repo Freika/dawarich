@@ -39,6 +39,20 @@ class User < ApplicationRecord
 
   enum :status, { inactive: 0, active: 1, trial: 2 }
 
+  PLANS = %w[self_hosted personal family].freeze
+
+  def family_plan?
+    plan_name == 'family'
+  end
+
+  def self_hosted_plan?
+    plan_name == 'self_hosted'
+  end
+
+  def family_feature_available?
+    self_hosted_plan? || family_plan?
+  end
+
   def safe_settings
     Users::SafeSettings.new(settings)
   end
@@ -213,7 +227,7 @@ class User < ApplicationRecord
   end
 
   def activate
-    update(status: :active, active_until: 1000.years.from_now)
+    update(status: :active, active_until: 1000.years.from_now, plan_name: 'self_hosted')
   end
 
   def sanitize_input
@@ -223,7 +237,7 @@ class User < ApplicationRecord
   end
 
   def start_trial
-    update(status: :trial, active_until: 7.days.from_now)
+    update(status: :trial, active_until: 7.days.from_now, plan_name: 'personal')
     schedule_welcome_emails
 
     Users::TrialWebhookJob.perform_later(id)

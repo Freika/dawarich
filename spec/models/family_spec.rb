@@ -26,9 +26,9 @@ RSpec.describe Family, type: :model do
   describe '#can_add_members?' do
     let(:family) { create(:family, creator: user) }
 
-    context 'when not in self-hosted mode' do
+    context 'when creator is on personal plan' do
       before do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan_name: 'personal')
       end
 
       context 'when family has fewer than max members' do
@@ -72,9 +72,9 @@ RSpec.describe Family, type: :model do
       end
     end
 
-    context 'when in self-hosted mode' do
+    context 'when creator is on self_hosted plan' do
       before do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        user.update!(plan_name: 'self_hosted')
       end
 
       context 'when family has fewer than max members' do
@@ -94,7 +94,7 @@ RSpec.describe Family, type: :model do
           create_list(:family_membership, 4, family: family, role: :member)
         end
 
-        it 'returns true (no limit in self-hosted mode)' do
+        it 'returns true (no limit on self_hosted plan)' do
           expect(family.can_add_members?).to be true
         end
       end
@@ -105,7 +105,7 @@ RSpec.describe Family, type: :model do
           create_list(:family_membership, 10, family: family, role: :member)
         end
 
-        it 'returns true (no limit in self-hosted mode)' do
+        it 'returns true (no limit on self_hosted plan)' do
           expect(family.can_add_members?).to be true
         end
       end
@@ -117,7 +117,7 @@ RSpec.describe Family, type: :model do
           create_list(:family_invitation, 5, family: family, invited_by: user, status: :pending)
         end
 
-        it 'returns true (no limit in self-hosted mode)' do
+        it 'returns true (no limit on self_hosted plan)' do
           expect(family.can_add_members?).to be true
         end
       end
@@ -195,9 +195,9 @@ RSpec.describe Family, type: :model do
   describe '#full?' do
     let(:family) { create(:family, creator: user) }
 
-    context 'when not in self-hosted mode' do
+    context 'when creator is on personal plan' do
       before do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan_name: 'personal')
       end
 
       context 'when family has fewer than max members' do
@@ -235,9 +235,9 @@ RSpec.describe Family, type: :model do
       end
     end
 
-    context 'when in self-hosted mode' do
+    context 'when creator is on self_hosted plan' do
       before do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        user.update!(plan_name: 'self_hosted')
       end
 
       context 'when family has fewer than max members' do
@@ -257,7 +257,7 @@ RSpec.describe Family, type: :model do
           create_list(:family_membership, 4, family: family, role: :member)
         end
 
-        it 'returns false (no limit in self-hosted mode)' do
+        it 'returns false (no limit on self_hosted plan)' do
           expect(family.full?).to be false
         end
       end
@@ -268,7 +268,7 @@ RSpec.describe Family, type: :model do
           create_list(:family_membership, 10, family: family, role: :member)
         end
 
-        it 'returns false (no limit in self-hosted mode)' do
+        it 'returns false (no limit on self_hosted plan)' do
           expect(family.full?).to be false
         end
       end
@@ -280,7 +280,7 @@ RSpec.describe Family, type: :model do
           create_list(:family_invitation, 5, family: family, invited_by: user, status: :pending)
         end
 
-        it 'returns false (no limit in self-hosted mode)' do
+        it 'returns false (no limit on self_hosted plan)' do
           expect(family.full?).to be false
         end
       end

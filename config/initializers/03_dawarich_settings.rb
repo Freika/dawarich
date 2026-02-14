@@ -40,7 +40,7 @@ class DawarichSettings
     end
 
     def family_feature_enabled?
-      @family_feature_enabled ||= self_hosted?
+      true
     end
 
     # Returns true only for self-hosted OIDC (OpenID Connect) setups.
@@ -52,8 +52,7 @@ class DawarichSettings
 
     def features
       @features ||= {
-        reverse_geocoding: reverse_geocoding_enabled?,
-        family: family_feature_enabled?
+        reverse_geocoding: reverse_geocoding_enabled?
       }
     end
 
