@@ -1,0 +1,34 @@
+# this file is used by systemd, do not use $VAR as it won't be expanded!
+
+# set PATH and GEM_HOME for locally installed ruby
+PATH=/service/dawarich/ruby/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+GEM_HOME=/service/dawarich/ruby/lib/ruby/gems/3.4.0
+
+# from docker/Dockerfile.dev
+APP_PATH=/service/dawarich/dawarich
+BUNDLE_VERSION=2.5.21
+RAILS_LOG_TO_STDOUT=true
+RAILS_PORT=3000
+RAILS_ENV=development
+SELF_HOSTED=true
+
+# from docker/docker-compose.yml
+RAILS_ENV=development
+REDIS_URL=redis://localhost:6379/0
+DATABASE_HOST=localhost
+DATABASE_USERNAME=dawarich
+DATABASE_PASSWORD=ayophaing8bafohnoeGa
+DATABASE_NAME=dawarich
+MIN_MINUTES_SPENT_IN_CITY=60
+APPLICATION_HOSTS=localhost
+TIME_ZONE=Europe/London
+APPLICATION_PROTOCOL=http
+DISTANCE_UNIT=km
+PROMETHEUS_EXPORTER_ENABLED=false
+PROMETHEUS_EXPORTER_HOST=0.0.0.0
+PROMETHEUS_EXPORTER_PORT=9394
+SELF_HOSTED=true
+
+# Local variables:
+# mode: sh
+# End:
