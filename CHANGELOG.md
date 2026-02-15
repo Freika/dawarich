@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.1.1] - Unreleased
+## [1.2.0] - 2026-02-15
 
 ### Changed
 
@@ -22,7 +22,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Scratch map layer is now working again on Map v2.
 - Colored routes on Map v2 are now working correctly. Zoom in closer to see colored segments. #2254
-- Frontend was sped by optimizing loaded assets and lazy-loading parts of the UI.
 - Live mode on Map v2 is now working again.
 
 ## [1.1.0] - 2026-02-08

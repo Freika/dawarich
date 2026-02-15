@@ -7,11 +7,13 @@ class Points::CreateJob < ApplicationJob
     data = Points::Params.new(params, user_id).call
 
     data.each_slice(1000) do |location_batch|
+      # rubocop:disable Rails/SkipsModelValidations
       Point.upsert_all(
         location_batch,
         unique_by: %i[lonlat timestamp user_id],
         returning: false
       )
+      # rubocop:enable Rails/SkipsModelValidations
     end
   end
 end

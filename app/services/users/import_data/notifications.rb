@@ -64,9 +64,7 @@ class Users::ImportData::Notifications
 
     attributes['user_id'] = user.id
 
-    unless attributes['created_at'].present?
-      attributes['created_at'] = Time.current
-    end
+    attributes['created_at'] = Time.current unless attributes['created_at'].present?
 
     attributes['updated_at'] = Time.current
 
@@ -90,7 +88,7 @@ class Users::ImportData::Notifications
       existing_notifications_lookup[exact_key] = true
     end
 
-    filtered_notifications = notifications.reject do |notification|
+    notifications.reject do |notification|
       title = notification[:title]&.strip
       content = notification[:content]&.strip
 
@@ -104,8 +102,6 @@ class Users::ImportData::Notifications
         false
       end
     end
-
-    filtered_notifications
   end
 
   def normalize_timestamp(timestamp)
@@ -124,23 +120,22 @@ class Users::ImportData::Notifications
     total_created = 0
 
     notifications.each_slice(BATCH_SIZE) do |batch|
-      begin
-        result = Notification.upsert_all(
-          batch,
-          returning: %w[id],
-          on_duplicate: :skip
-        )
+      # rubocop:disable Rails/SkipsModelValidations
+      result = Notification.upsert_all(
+        batch,
+        returning: %w[id],
+        on_duplicate: :skip
+      )
+      # rubocop:enable Rails/SkipsModelValidations
 
-        batch_created = result.count
-        total_created += batch_created
+      batch_created = result.count
+      total_created += batch_created
 
-        Rails.logger.debug "Processed batch of #{batch.size} notifications, created #{batch_created}, total created: #{total_created}"
-
-      rescue StandardError => e
-        Rails.logger.error "Failed to process notification batch: #{e.message}"
-        Rails.logger.error "Batch size: #{batch.size}"
-        Rails.logger.error "Backtrace: #{e.backtrace.first(3).join('\n')}"
-      end
+      Rails.logger.debug "Processed batch of #{batch.size} notifications, created #{batch_created}, total created: #{total_created}"
+    rescue StandardError => e
+      Rails.logger.error "Failed to process notification batch: #{e.message}"
+      Rails.logger.error "Batch size: #{batch.size}"
+      Rails.logger.error "Backtrace: #{e.backtrace.first(3).join('\n')}"
     end
 
     total_created
