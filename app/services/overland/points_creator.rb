@@ -23,6 +23,7 @@ class Overland::PointsCreator
     if result.any?
       User.reset_counters(user_id, :points)
       Tracks::RealtimeDebouncer.new(user_id).trigger
+      Points::LiveBroadcaster.new(user_id, result, payload).call
     end
 
     result
@@ -34,11 +35,13 @@ class Overland::PointsCreator
     created_points = []
 
     locations.each_slice(1000) do |batch|
+      # rubocop:disable Rails/SkipsModelValidations
       result = Point.upsert_all(
         batch,
         unique_by: %i[lonlat timestamp user_id],
         returning: Arel.sql(RETURNING_COLUMNS)
       )
+      # rubocop:enable Rails/SkipsModelValidations
       created_points.concat(result) if result
     end
 

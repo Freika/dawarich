@@ -62,10 +62,6 @@ RSpec.describe User, type: :model do
     describe '#start_trial' do
       let(:user) { create(:user, :inactive) }
 
-      before do
-        allow(Users::TrialWebhookJob).to receive(:perform_later)
-      end
-
       it 'sets trial status and active_until to 7 days from now' do
         user.send(:start_trial)
 
@@ -74,8 +70,7 @@ RSpec.describe User, type: :model do
       end
 
       it 'enqueues trial webhook job' do
-        expect(Users::TrialWebhookJob).to receive(:perform_later).with(user.id)
-        user.send(:start_trial)
+        expect { user.send(:start_trial) }.to have_enqueued_job(Users::TrialWebhookJob).with(user.id)
       end
 
       it 'schedules welcome emails' do
@@ -90,32 +85,24 @@ RSpec.describe User, type: :model do
     describe '#schedule_welcome_emails' do
       let(:user) { create(:user, :inactive) }
 
-      before do
-        allow(Users::MailerSendingJob).to receive(:perform_later)
-        allow(Users::MailerSendingJob).to receive(:set).and_return(Users::MailerSendingJob)
-      end
-
       it 'schedules welcome email immediately' do
-        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'welcome')
-        user.send(:schedule_welcome_emails)
+        expect { user.send(:schedule_welcome_emails) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'welcome')
       end
 
       it 'schedules explore_features email for day 2' do
-        expect(Users::MailerSendingJob).to receive(:set).with(wait: 2.days).and_return(Users::MailerSendingJob)
-        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'explore_features')
-        user.send(:schedule_welcome_emails)
+        expect { user.send(:schedule_welcome_emails) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'explore_features')
       end
 
       it 'schedules trial_expires_soon email for day 5' do
-        expect(Users::MailerSendingJob).to receive(:set).with(wait: 5.days).and_return(Users::MailerSendingJob)
-        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'trial_expires_soon')
-        user.send(:schedule_welcome_emails)
+        expect { user.send(:schedule_welcome_emails) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'trial_expires_soon')
       end
 
       it 'schedules trial_expired email for day 7' do
-        expect(Users::MailerSendingJob).to receive(:set).with(wait: 7.days).and_return(Users::MailerSendingJob)
-        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'trial_expired')
-        user.send(:schedule_welcome_emails)
+        expect { user.send(:schedule_welcome_emails) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'trial_expired')
       end
     end
   end

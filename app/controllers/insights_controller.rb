@@ -12,8 +12,19 @@ class InsightsController < ApplicationController
 
     load_year_stats
     load_year_totals
-    load_comparison_data if @previous_year_stats&.any?
     load_activity_heatmap
+  end
+
+  def details
+    authorize :insights, :details?
+
+    @available_years = current_user.stats.distinct.pluck(:year).sort.reverse
+    @selected_year = params[:year] || @available_years.first&.to_s || Time.current.year.to_s
+    @all_time = @selected_year == 'all'
+
+    load_year_stats
+    load_year_totals
+    load_comparison_data if @previous_year_stats&.any?
 
     if @all_time
       set_default_patterns
@@ -176,6 +187,7 @@ class InsightsController < ApplicationController
   end
 
   def set_default_patterns
+    @selected_month = 'all'
     @available_months = []
     @time_of_day = {}
     @day_of_week = Array.new(7, 0)
