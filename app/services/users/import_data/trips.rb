@@ -52,7 +52,7 @@ class Users::ImportData::Trips
       valid_trips << prepared_attributes if prepared_attributes
     end
 
-    Rails.logger.warn "Skipped #{skipped_count} trips with invalid or missing required data" if skipped_count > 0
+    Rails.logger.warn "Skipped #{skipped_count} trips with invalid or missing required data" if skipped_count.positive?
 
     valid_trips
   end
@@ -119,7 +119,9 @@ class Users::ImportData::Trips
       batch_created = result.count
       total_created += batch_created
 
-      Rails.logger.debug "Processed batch of #{batch.size} trips, created #{batch_created}, total created: #{total_created}"
+      Rails.logger.debug(
+        "Processed batch of #{batch.size} trips, created #{batch_created}, total created: #{total_created}"
+      )
     rescue StandardError => e
       ExceptionReporter.call(e, 'Failed to process trip batch')
     end

@@ -52,7 +52,7 @@ class Users::ImportData::Stats
       valid_stats << prepared_attributes if prepared_attributes
     end
 
-    Rails.logger.warn "Skipped #{skipped_count} stats with invalid or missing required data" if skipped_count > 0
+    Rails.logger.warn "Skipped #{skipped_count} stats with invalid or missing required data" if skipped_count.positive?
 
     valid_stats
   end
@@ -107,7 +107,9 @@ class Users::ImportData::Stats
       batch_created = result.count
       total_created += batch_created
 
-      Rails.logger.debug "Processed batch of #{batch.size} stats, created #{batch_created}, total created: #{total_created}"
+      Rails.logger.debug(
+        "Processed batch of #{batch.size} stats, created #{batch_created}, total created: #{total_created}"
+      )
     rescue StandardError => e
       ExceptionReporter.call(e, 'Failed to process stat batch')
     end
@@ -118,17 +120,17 @@ class Users::ImportData::Stats
   def valid_stat_data?(stat_data)
     return false unless stat_data.is_a?(Hash)
 
-    unless stat_data['year'].present?
+    if stat_data['year'].blank?
       Rails.logger.error "Failed to create stat: Validation failed: Year can't be blank"
       return false
     end
 
-    unless stat_data['month'].present?
+    if stat_data['month'].blank?
       Rails.logger.error "Failed to create stat: Validation failed: Month can't be blank"
       return false
     end
 
-    unless stat_data['distance'].present?
+    if stat_data['distance'].blank?
       Rails.logger.error "Failed to create stat: Validation failed: Distance can't be blank"
       return false
     end

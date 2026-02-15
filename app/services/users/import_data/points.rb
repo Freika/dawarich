@@ -59,7 +59,10 @@ class Users::ImportData::Points
     preload_reference_data unless @preloaded
     flush_batch
 
-    logger.info "Points import completed. Created: #{@total_created}. Processed #{@processed_count} valid points, skipped #{@skipped_count}."
+    logger.info(
+      "Points import completed. Created: #{@total_created}. " \
+      "Processed #{@processed_count} valid points, skipped #{@skipped_count}."
+    )
     @total_created
   end
 
@@ -98,7 +101,9 @@ class Users::ImportData::Points
       batch_created = result&.count.to_i
       @total_created += batch_created
 
-      logger.debug "Processed batch of #{@buffer.size} points, created #{batch_created}, total created: #{@total_created}"
+      logger.debug(
+        "Processed batch of #{@buffer.size} points, created #{batch_created}, total created: #{@total_created}"
+      )
     rescue StandardError => e
       logger.error "Failed to process point batch: #{e.message}"
       logger.error "Batch size: #{@buffer.size}"
@@ -125,7 +130,7 @@ class Users::ImportData::Points
     logger.debug "Loaded #{user.imports.size} imports with #{@imports_lookup.size} lookup keys"
 
     @countries_lookup = {}
-    Country.all.each do |country|
+    Country.all.find_each do |country|
       @countries_lookup[[country.name, country.iso_a2, country.iso_a3]] = country
       @countries_lookup[country.name] = country
     end
@@ -143,17 +148,19 @@ class Users::ImportData::Points
     all_keys = points.flat_map(&:keys).uniq
 
     points.map do |point|
-      all_keys.each_with_object({}) do |key, normalized|
-        normalized[key] = point[key]
+      all_keys.index_with do |key|
+        point[key]
       end
     end
   end
 
   def valid_point_data?(point_data)
     return false unless point_data.is_a?(Hash)
-    return false unless point_data['timestamp'].present?
+    return false if point_data['timestamp'].blank?
 
-    has_lonlat = point_data['lonlat'].present? && point_data['lonlat'].is_a?(String) && point_data['lonlat'].start_with?('POINT(')
+    has_lonlat = point_data['lonlat'].present? &&
+                 point_data['lonlat'].is_a?(String) &&
+                 point_data['lonlat'].start_with?('POINT(')
     has_coordinates = point_data['longitude'].present? && point_data['latitude'].present?
 
     has_lonlat || has_coordinates

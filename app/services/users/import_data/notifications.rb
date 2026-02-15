@@ -52,7 +52,7 @@ class Users::ImportData::Notifications
       valid_notifications << prepared_attributes if prepared_attributes
     end
 
-    if skipped_count > 0
+    if skipped_count.positive?
       Rails.logger.warn "Skipped #{skipped_count} notifications with invalid or missing required data"
     end
 
@@ -64,7 +64,7 @@ class Users::ImportData::Notifications
 
     attributes['user_id'] = user.id
 
-    attributes['created_at'] = Time.current unless attributes['created_at'].present?
+    attributes['created_at'] = Time.current if attributes['created_at'].blank?
 
     attributes['updated_at'] = Time.current
 
@@ -78,15 +78,7 @@ class Users::ImportData::Notifications
   def filter_existing_notifications(notifications)
     return notifications if notifications.empty?
 
-    existing_notifications_lookup = {}
-    user.notifications.select(:title, :content, :created_at, :kind).each do |notification|
-      primary_key = [notification.title.strip, notification.content.strip]
-
-      exact_key = [notification.title.strip, notification.content.strip, normalize_timestamp(notification.created_at)]
-
-      existing_notifications_lookup[primary_key] = true
-      existing_notifications_lookup[exact_key] = true
-    end
+    lookup = build_existing_notifications_lookup
 
     notifications.reject do |notification|
       title = notification[:title]&.strip
@@ -95,13 +87,25 @@ class Users::ImportData::Notifications
       primary_key = [title, content]
       exact_key = [title, content, normalize_timestamp(notification[:created_at])]
 
-      if existing_notifications_lookup[primary_key] || existing_notifications_lookup[exact_key]
+      if lookup[primary_key] || lookup[exact_key]
         Rails.logger.debug "Notification already exists: #{notification[:title]}"
         true
       else
         false
       end
     end
+  end
+
+  def build_existing_notifications_lookup
+    lookup = {}
+    user.notifications.select(:title, :content, :created_at, :kind).each do |notification|
+      title = notification.title.strip
+      content = notification.content.strip
+
+      lookup[[title, content]] = true
+      lookup[[title, content, normalize_timestamp(notification.created_at)]] = true
+    end
+    lookup
   end
 
   def normalize_timestamp(timestamp)
@@ -131,7 +135,9 @@ class Users::ImportData::Notifications
       batch_created = result.count
       total_created += batch_created
 
-      Rails.logger.debug "Processed batch of #{batch.size} notifications, created #{batch_created}, total created: #{total_created}"
+      Rails.logger.debug(
+        "Processed batch of #{batch.size} notifications, created #{batch_created}, total: #{total_created}"
+      )
     rescue StandardError => e
       Rails.logger.error "Failed to process notification batch: #{e.message}"
       Rails.logger.error "Batch size: #{batch.size}"
@@ -144,12 +150,12 @@ class Users::ImportData::Notifications
   def valid_notification_data?(notification_data)
     return false unless notification_data.is_a?(Hash)
 
-    unless notification_data['title'].present?
+    if notification_data['title'].blank?
       Rails.logger.error "Failed to create notification: Validation failed: Title can't be blank"
       return false
     end
 
-    unless notification_data['content'].present?
+    if notification_data['content'].blank?
       Rails.logger.error "Failed to create notification: Validation failed: Content can't be blank"
       return false
     end

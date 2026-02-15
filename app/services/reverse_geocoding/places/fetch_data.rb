@@ -134,7 +134,7 @@ class ReverseGeocoding::Places::FetchData
           updated_at: Time.current
         }
       end
-      Place.insert_all(place_attributes)
+      Place.insert_all(place_attributes) # rubocop:disable Rails/SkipsModelValidations
     end
 
     return unless places_to_update.any?

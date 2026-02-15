@@ -53,7 +53,7 @@ class Users::ImportData::Areas
       valid_areas << prepared_attributes if prepared_attributes
     end
 
-    Rails.logger.warn "Skipped #{skipped_count} areas with invalid or missing required data" if skipped_count > 0
+    Rails.logger.warn "Skipped #{skipped_count} areas with invalid or missing required data" if skipped_count.positive?
 
     valid_areas
   end
@@ -108,7 +108,9 @@ class Users::ImportData::Areas
       batch_created = result.count
       total_created += batch_created
 
-      Rails.logger.debug "Processed batch of #{batch.size} areas, created #{batch_created}, total created: #{total_created}"
+      Rails.logger.debug(
+        "Processed batch of #{batch.size} areas, created #{batch_created}, total created: #{total_created}"
+      )
     rescue StandardError => e
       Rails.logger.error "Failed to process area batch: #{e.message}"
       Rails.logger.error "Batch size: #{batch.size}"
@@ -120,9 +122,9 @@ class Users::ImportData::Areas
 
   def valid_area_data?(area_data)
     return false unless area_data.is_a?(Hash)
-    return false unless area_data['name'].present?
-    return false unless area_data['latitude'].present?
-    return false unless area_data['longitude'].present?
+    return false if area_data['name'].blank?
+    return false if area_data['latitude'].blank?
+    return false if area_data['longitude'].blank?
 
     true
   rescue StandardError => e
