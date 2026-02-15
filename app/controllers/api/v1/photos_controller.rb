@@ -52,7 +52,13 @@ class Api::V1::PhotosController < ApiController
   end
 
   def integration_configured?
-    current_api_user.immich_integration_configured? || current_api_user.photoprism_integration_configured?
+    current_api_user.immich_integration_configured? ||
+      current_api_user.photoprism_integration_configured? ||
+      google_photos_configured?
+  end
+
+  def google_photos_configured?
+    DawarichSettings.google_photos_available? && current_api_user.google_photos_integration_configured?
   end
 
   def check_integration_configured
@@ -60,7 +66,9 @@ class Api::V1::PhotosController < ApiController
   end
 
   def check_source
-    unauthorized_integration unless %w[immich photoprism].include?(params[:source])
+    allowed_sources = %w[immich photoprism]
+    allowed_sources << 'google_photos' if DawarichSettings.google_photos_available?
+    unauthorized_integration unless allowed_sources.include?(params[:source])
   end
 
   def unauthorized_integration

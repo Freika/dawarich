@@ -15,6 +15,13 @@
     <% else %>
       <a href='' class="rounded-lg py-3 px-5 bg-blue-900 text-gray-500 block font-medium tooltip cursor-not-allowed" data-tip="You need to provide your Photoprism instance data in the Settings">Import Photoprism data</a>
     <% end %>
+    <% if DawarichSettings.google_photos_available? %>
+      <% if current_user.google_photos_integration_configured? %>
+        <%= link_to 'Import Google Photos data', settings_background_jobs_path(job_name: 'start_google_photos_import'), method: :post, data: { turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium' %>
+      <% else %>
+        <a href='' class="rounded-lg py-3 px-5 bg-blue-900 text-gray-500 block font-medium tooltip cursor-not-allowed" data-tip="You need to connect Google Photos in the Settings">Import Google Photos data</a>
+      <% end %>
+    <% end %>
   </div>
 
   <div id="imports" class="min-w-full">

@@ -116,7 +116,8 @@ RSpec.describe Import, type: :model do
         geojson: 6,
         photoprism_api: 7,
         user_data_archive: 8,
-        kml: 9
+        kml: 9,
+        google_photos_api: 10
       )
     end
   end

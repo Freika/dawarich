@@ -55,6 +55,46 @@ RSpec.describe '/settings/background_jobs', type: :request do
             end.to have_enqueued_job(EnqueueBackgroundJob)
           end
         end
+
+        context 'when job name is start_google_photos_import' do
+          it 'redirects to imports page' do
+            post settings_background_jobs_url, params: { job_name: 'start_google_photos_import' }
+
+            expect(response).to redirect_to(imports_url)
+          end
+
+          it 'enqueues a new job' do
+            expect do
+              post settings_background_jobs_url, params: { job_name: 'start_google_photos_import' }
+            end.to have_enqueued_job(EnqueueBackgroundJob)
+          end
+        end
+
+        context 'when job is submitted twice quickly (debounce)' do
+          it 'blocks the second request' do
+            post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
+            expect(response).to redirect_to(imports_url)
+            expect(flash[:notice]).to eq('Job was successfully created.')
+
+            post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
+            expect(response).to redirect_to(imports_url)
+            expect(flash[:alert]).to eq('Please wait before starting another import job.')
+          end
+
+          it 'only enqueues one job' do
+            expect do
+              post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
+              post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
+            end.to have_enqueued_job(EnqueueBackgroundJob).exactly(:once)
+          end
+
+          it 'allows different job types to be submitted' do
+            expect do
+              post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
+              post settings_background_jobs_url, params: { job_name: 'start_photoprism_import' }
+            end.to have_enqueued_job(EnqueueBackgroundJob).exactly(:twice)
+          end
+        end
       end
 
       context 'when user is an admin' do

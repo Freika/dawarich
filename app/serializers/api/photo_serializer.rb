@@ -27,39 +27,79 @@ class Api::PhotoSerializer
   attr_reader :photo, :source
 
   def id
-    photo['id'] || photo['Hash']
+    case source
+    when 'google_photos'
+      # For Google Photos, use baseUrl as the ID since it's needed for thumbnails
+      photo['baseUrl']
+    else
+      photo['id'] || photo['Hash']
+    end
   end
 
   def latitude
-    photo.dig('exifInfo', 'latitude') || photo['Lat']
+    case source
+    when 'google_photos'
+      photo.dig('mediaMetadata', 'location', 'latitude')
+    else
+      photo.dig('exifInfo', 'latitude') || photo['Lat']
+    end
   end
 
   def longitude
-    photo.dig('exifInfo', 'longitude') || photo['Lng']
+    case source
+    when 'google_photos'
+      photo.dig('mediaMetadata', 'location', 'longitude')
+    else
+      photo.dig('exifInfo', 'longitude') || photo['Lng']
+    end
   end
 
   def local_date_time
-    photo['localDateTime'] || photo['TakenAtLocal']
+    case source
+    when 'google_photos'
+      photo.dig('mediaMetadata', 'creationTime')
+    else
+      photo['localDateTime'] || photo['TakenAtLocal']
+    end
   end
 
   def original_file_name
-    photo['originalFileName'] || photo['OriginalName']
+    case source
+    when 'google_photos'
+      photo['filename']
+    else
+      photo['originalFileName'] || photo['OriginalName']
+    end
   end
 
   def city
+    # Google Photos API doesn't provide reverse geocoded location names
+    return nil if source == 'google_photos'
+
     photo.dig('exifInfo', 'city') || photo['PlaceCity']
   end
 
   def state
+    # Google Photos API doesn't provide reverse geocoded location names
+    return nil if source == 'google_photos'
+
     photo.dig('exifInfo', 'state') || photo['PlaceState']
   end
 
   def country
+    # Google Photos API doesn't provide reverse geocoded location names
+    return nil if source == 'google_photos'
+
     photo.dig('exifInfo', 'country') || photo['PlaceCountry']
   end
 
   def type
-    (photo['type'] || photo['Type']).downcase
+    case source
+    when 'google_photos'
+      'image' # Google Photos API filters for PHOTO type only
+    else
+      (photo['type'] || photo['Type'])&.downcase || 'image'
+    end
   end
 
   def orientation
@@ -68,8 +108,17 @@ class Api::PhotoSerializer
       photo.dig('exifInfo', 'orientation') == '6' ? 'portrait' : 'landscape'
     when 'photoprism'
       photo['Portrait'] ? 'portrait' : 'landscape'
+    when 'google_photos'
+      google_photos_orientation
     else
       'landscape' # default orientation for nil or unknown source
     end
+  end
+
+  def google_photos_orientation
+    width = photo.dig('mediaMetadata', 'width')&.to_i || 0
+    height = photo.dig('mediaMetadata', 'height')&.to_i || 0
+
+    height > width ? 'portrait' : 'landscape'
   end
 end
