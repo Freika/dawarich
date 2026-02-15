@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { createMapChannel } from "maps_maplibre/channels/map_channel"
 import { Toast } from "maps_maplibre/components/toast"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
  * Real-time controller
@@ -26,8 +27,6 @@ export default class extends Controller {
       this.connectedChannels = new Set()
       this.liveModeEnabled = this.liveModeValue
 
-      // Delay channel setup to ensure ActionCable is ready
-      // This prevents race condition with page initialization
       setTimeout(() => {
         try {
           this.setupChannels()
@@ -40,13 +39,11 @@ export default class extends Controller {
         }
       }, 1000)
 
-      // Initialize toggle state from settings
       if (this.hasLiveModeToggleTarget) {
         this.liveModeToggleTarget.checked = this.liveModeEnabled
       }
     } catch (error) {
       console.error("[Realtime Controller] Failed to initialize:", error)
-      // Don't throw - allow page to continue loading
     }
   }
 
@@ -66,14 +63,13 @@ export default class extends Controller {
         connected: this.handleConnected.bind(this),
         disconnected: this.handleDisconnected.bind(this),
         received: this.handleReceived.bind(this),
-        enableLiveMode: this.liveModeEnabled, // Control points channel
+        enableLiveMode: this.liveModeEnabled,
       })
       console.log("[Realtime Controller] Channels setup complete")
     } catch (error) {
       console.error("[Realtime Controller] Failed to setup channels:", error)
       console.error("[Realtime Controller] Error stack:", error.stack)
       this.updateConnectionIndicator(false)
-      // Don't throw - page should continue to work
     }
   }
 
@@ -83,14 +79,14 @@ export default class extends Controller {
   toggleLiveMode(event) {
     this.liveModeEnabled = event.target.checked
 
-    // Update recent point layer visibility
     this.updateRecentPointLayerVisibility()
 
-    // Reconnect channels with new settings
     if (this.channels) {
       this.channels.unsubscribeAll()
     }
     this.setupChannels()
+
+    SettingsManager.updateSetting("liveMapEnabled", this.liveModeEnabled)
 
     const message = this.liveModeEnabled
       ? "Live mode enabled"
@@ -127,7 +123,6 @@ export default class extends Controller {
   handleConnected(channelName) {
     this.connectedChannels.add(channelName)
 
-    // Only show toast when at least one channel is connected
     if (this.connectedChannels.size === 1) {
       Toast.success("Connected to real-time updates")
       this.updateConnectionIndicator(true)
@@ -140,7 +135,6 @@ export default class extends Controller {
   handleDisconnected(channelName) {
     this.connectedChannels.delete(channelName)
 
-    // Show warning only when all channels are disconnected
     if (this.connectedChannels.size === 0) {
       Toast.warning("Disconnected from real-time updates")
       this.updateConnectionIndicator(false)
@@ -186,25 +180,21 @@ export default class extends Controller {
 
     console.log("[Realtime Controller] Received point data:", pointData)
 
-    // Parse point data from array format
     const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
 
-    // Get points layer from layer manager
     const pointsLayer = mapsController.layerManager?.getLayer("points")
     if (!pointsLayer) {
       console.warn("[Realtime Controller] Points layer not found")
       return
     }
 
-    // Get current data
     const currentData = pointsLayer.data || {
       type: "FeatureCollection",
       features: [],
     }
     const features = [...(currentData.features || [])]
 
-    // Add new point
     features.push({
       type: "Feature",
       geometry: {
@@ -223,7 +213,6 @@ export default class extends Controller {
       },
     })
 
-    // Update layer with new data
     pointsLayer.update({
       type: "FeatureCollection",
       features,
@@ -231,7 +220,6 @@ export default class extends Controller {
 
     console.log("[Realtime Controller] Added new point to map:", id)
 
-    // Update recent point marker (always visible in live mode)
     this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
       id: parseInt(id, 10),
       battery: parseFloat(battery) || null,
@@ -241,7 +229,6 @@ export default class extends Controller {
       country_name: countryName || null,
     })
 
-    // Zoom to the new point
     this.zoomToPoint(parseFloat(lon), parseFloat(lat))
 
     Toast.info("New location recorded")
@@ -280,7 +267,6 @@ export default class extends Controller {
       return
     }
 
-    // Show the layer if live mode is enabled and update with new point
     if (this.liveModeEnabled) {
       recentPointLayer.show()
       recentPointLayer.updateRecentPoint(longitude, latitude, properties)
@@ -304,12 +290,11 @@ export default class extends Controller {
 
     const map = mapsController.map
 
-    // Fly to the new point with a smooth animation
     map.flyTo({
       center: [longitude, latitude],
-      zoom: Math.max(map.getZoom(), 14), // Zoom to at least level 14, or keep current zoom if higher
-      duration: 2000, // 2 second animation
-      essential: true, // This animation is considered essential with respect to prefers-reduced-motion
+      zoom: Math.max(map.getZoom(), 14),
+      duration: 2000,
+      essential: true,
     })
 
     console.log("[Realtime Controller] Zoomed to point:", longitude, latitude)

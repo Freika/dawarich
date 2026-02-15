@@ -5,8 +5,7 @@
 
 const DEFAULT_SETTINGS = {
   mapStyle: "light",
-  enabledMapLayers: ["Points", "Routes"], // Compatible with v1 map
-  // Advanced settings (matching v1 naming)
+  enabledMapLayers: ["Points", "Routes"],
   routeOpacity: 0.6,
   fogOfWarRadius: 100,
   fogOfWarThreshold: 1,
@@ -16,10 +15,8 @@ const DEFAULT_SETTINGS = {
   speedColoredRoutes: false,
   speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
   globeProjection: false,
-  // City statistics thresholds
   minMinutesSpentInCity: 60,
   maxGapMinutesInCity: 120,
-  // Transportation mode thresholds (speeds in km/h, distances in km)
   transportationExpertMode: false,
   transportationThresholds: {
     walkingMaxSpeed: 7,
@@ -38,7 +35,6 @@ const DEFAULT_SETTINGS = {
   },
 }
 
-// Mapping between v2 layer names and v1 layer names in enabled_map_layers array
 const LAYER_NAME_MAP = {
   Points: "pointsVisible",
   Routes: "routesVisible",
@@ -53,7 +49,6 @@ const LAYER_NAME_MAP = {
   Places: "placesEnabled",
 }
 
-// Mapping between frontend settings and backend API keys
 const BACKEND_SETTINGS_MAP = {
   mapStyle: "maps_maplibre_style",
   enabledMapLayers: "enabled_map_layers",
@@ -72,9 +67,9 @@ const BACKEND_SETTINGS_MAP = {
   transportationThresholds: "transportation_thresholds",
   transportationExpertThresholds: "transportation_expert_thresholds",
   distance_unit: "distance_unit",
+  liveMapEnabled: "live_map_enabled",
 }
 
-// Mapping for nested transportation threshold keys (frontend camelCase to backend snake_case)
 const TRANSPORTATION_THRESHOLD_MAP = {
   walkingMaxSpeed: "walking_max_speed",
   cyclingMaxSpeed: "cycling_max_speed",
@@ -102,7 +97,7 @@ export class SettingsManager {
    */
   static initialize(apiKey) {
     SettingsManager.apiKey = apiKey
-    SettingsManager.cachedSettings = null // Clear cache on initialization
+    SettingsManager.cachedSettings = null
   }
 
   /**
@@ -111,12 +106,10 @@ export class SettingsManager {
    * @returns {Object} Settings object
    */
   static getSettings() {
-    // Return cached settings if available
     if (SettingsManager.cachedSettings) {
       return { ...SettingsManager.cachedSettings }
     }
 
-    // Convert enabled_map_layers array to individual boolean flags
     const expandedSettings =
       SettingsManager._expandLayerSettings(DEFAULT_SETTINGS)
     SettingsManager.cachedSettings = expandedSettings
@@ -132,7 +125,6 @@ export class SettingsManager {
   static _expandLayerSettings(settings) {
     const enabledLayers = settings.enabledMapLayers || []
 
-    // Set boolean flags based on array contents
     Object.entries(LAYER_NAME_MAP).forEach(([layerName, settingKey]) => {
       settings[settingKey] = enabledLayers.includes(layerName)
     })
@@ -173,14 +165,12 @@ export class SettingsManager {
 
     const converted = {}
     if (toFrontend) {
-      // backend (snake_case) to frontend (camelCase)
       Object.entries(keyMap).forEach(([frontendKey, backendKey]) => {
         if (backendKey in thresholds) {
           converted[frontendKey] = parseFloat(thresholds[backendKey])
         }
       })
     } else {
-      // frontend (camelCase) to backend (snake_case)
       Object.entries(keyMap).forEach(([frontendKey, backendKey]) => {
         if (frontendKey in thresholds) {
           converted[backendKey] = thresholds[frontendKey]
@@ -225,15 +215,12 @@ export class SettingsManager {
       const data = await response.json()
       const backendSettings = data.settings
 
-      // Convert backend settings to frontend format
       const frontendSettings = {}
       Object.entries(BACKEND_SETTINGS_MAP).forEach(
         ([frontendKey, backendKey]) => {
           if (backendKey in backendSettings) {
             let value = backendSettings[backendKey]
 
-            // Convert backend values to correct types
-            // Use _parseIntOr / _parseFloatOr to preserve valid 0 values
             if (frontendKey === "routeOpacity") {
               value = SettingsManager._parseFloatOr(
                 value,
@@ -275,8 +262,9 @@ export class SettingsManager {
               value = value === true || value === "true"
             } else if (frontendKey === "transportationExpertMode") {
               value = value === true || value === "true"
+            } else if (frontendKey === "liveMapEnabled") {
+              value = value === true || value === "true"
             } else if (frontendKey === "transportationThresholds" && value) {
-              // Convert backend snake_case keys to frontend camelCase
               value = SettingsManager._convertTransportationThresholds(
                 value,
                 TRANSPORTATION_THRESHOLD_MAP,
@@ -286,7 +274,6 @@ export class SettingsManager {
               frontendKey === "transportationExpertThresholds" &&
               value
             ) {
-              // Convert backend snake_case keys to frontend camelCase
               value = SettingsManager._convertTransportationThresholds(
                 value,
                 TRANSPORTATION_EXPERT_THRESHOLD_MAP,
@@ -299,19 +286,15 @@ export class SettingsManager {
         },
       )
 
-      // Merge with defaults
       const mergedSettings = { ...DEFAULT_SETTINGS, ...frontendSettings }
 
-      // If backend has enabled_map_layers, use it as-is
       if (backendSettings.enabled_map_layers) {
         mergedSettings.enabledMapLayers = backendSettings.enabled_map_layers
       }
 
-      // Convert enabled_map_layers array to individual boolean flags
       const expandedSettings =
         SettingsManager._expandLayerSettings(mergedSettings)
 
-      // Cache the settings
       SettingsManager.cachedSettings = expandedSettings
 
       return expandedSettings
@@ -341,20 +324,16 @@ export class SettingsManager {
     }
 
     try {
-      // Convert individual layer booleans to enabled_map_layers array
       const enabledMapLayers = SettingsManager._collapseLayerSettings(settings)
 
-      // Convert frontend settings to backend format
       const backendSettings = {}
       Object.entries(BACKEND_SETTINGS_MAP).forEach(
         ([frontendKey, backendKey]) => {
           if (frontendKey === "enabledMapLayers") {
-            // Use the collapsed array
             backendSettings[backendKey] = enabledMapLayers
           } else if (frontendKey in settings) {
             let value = settings[frontendKey]
 
-            // Convert frontend values to backend format
             if (frontendKey === "routeOpacity") {
               value = parseFloat(value).toString()
             } else if (
@@ -372,8 +351,9 @@ export class SettingsManager {
               value = Boolean(value)
             } else if (frontendKey === "transportationExpertMode") {
               value = Boolean(value)
+            } else if (frontendKey === "liveMapEnabled") {
+              value = Boolean(value)
             } else if (frontendKey === "transportationThresholds" && value) {
-              // Convert frontend camelCase keys to backend snake_case
               value = SettingsManager._convertTransportationThresholds(
                 value,
                 TRANSPORTATION_THRESHOLD_MAP,
@@ -383,7 +363,6 @@ export class SettingsManager {
               frontendKey === "transportationExpertThresholds" &&
               value
             ) {
-              // Convert frontend camelCase keys to backend snake_case
               value = SettingsManager._convertTransportationThresholds(
                 value,
                 TRANSPORTATION_EXPERT_THRESHOLD_MAP,
@@ -408,7 +387,6 @@ export class SettingsManager {
       const data = await response.json()
 
       if (!response.ok) {
-        // Return the response data even on error so we can check for locked status
         return data
       }
 
@@ -438,18 +416,14 @@ export class SettingsManager {
     const settings = SettingsManager.getSettings()
     settings[key] = value
 
-    // If this is a layer visibility setting, also update the enabledMapLayers array
-    // This ensures the array is in sync before backend save
     const isLayerSetting = Object.values(LAYER_NAME_MAP).includes(key)
     if (isLayerSetting) {
       settings.enabledMapLayers =
         SettingsManager._collapseLayerSettings(settings)
     }
 
-    // Update cache immediately
     SettingsManager.updateCache(settings)
 
-    // Save to backend and return response
     return await SettingsManager.saveToBackend(settings)
   }
 
@@ -458,9 +432,8 @@ export class SettingsManager {
    */
   static async resetToDefaults() {
     try {
-      SettingsManager.cachedSettings = null // Clear cache
+      SettingsManager.cachedSettings = null
 
-      // Reset on backend
       if (SettingsManager.apiKey) {
         await SettingsManager.saveToBackend(DEFAULT_SETTINGS)
       }

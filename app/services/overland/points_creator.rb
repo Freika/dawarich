@@ -23,6 +23,7 @@ class Overland::PointsCreator
     if result.any?
       User.reset_counters(user_id, :points)
       Tracks::RealtimeDebouncer.new(user_id).trigger
+      Points::LiveBroadcaster.new(user_id, result, payload).call
     end
 
     result
