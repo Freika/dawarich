@@ -153,9 +153,16 @@ export default class extends Controller {
     "timelineSpeedLabel",
     // Timeline speed display (velocity)
     "timelineSpeedDisplay",
+    // WebGL error
+    "webglError",
   ]
 
   async connect() {
+    if (!this.isWebGLSupported()) {
+      this.showWebGLError()
+      return
+    }
+
     this.cleanup = new CleanupHelper()
 
     // Initialize API and settings
@@ -248,6 +255,20 @@ export default class extends Controller {
     this.cleanup.cleanup()
     this.map?.remove()
     performanceMonitor.logReport()
+  }
+
+  isWebGLSupported() {
+    try {
+      const canvas = document.createElement("canvas")
+      return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"))
+    } catch {
+      return false
+    }
+  }
+
+  showWebGLError() {
+    this.containerTarget.classList.add("hidden")
+    this.webglErrorTarget.classList.remove("hidden")
   }
 
   /**
@@ -613,15 +634,13 @@ export default class extends Controller {
         isComplete: false,
       })
 
-      const response = await fetch(
-        `/api/v1/families/locations?api_key=${this.apiKeyValue}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
+      const response = await fetch("/api/v1/families/locations", {
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKeyValue}`,
         },
-      )
+      })
 
       if (!response.ok) {
         if (response.status === 403) {

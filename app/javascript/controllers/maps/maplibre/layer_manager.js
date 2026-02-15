@@ -277,6 +277,7 @@ export class LayerManager {
           id: "routes-hit",
           type: "line",
           source: "routes-source",
+          minzoom: 8, // Match main routes layer visibility
           layout: {
             "line-join": "round",
             "line-cap": "round",

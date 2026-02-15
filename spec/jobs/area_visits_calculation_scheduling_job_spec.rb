@@ -4,14 +4,11 @@ require 'rails_helper'
 
 RSpec.describe AreaVisitsCalculationSchedulingJob, type: :job do
   describe '#perform' do
-    let(:user) { create(:user) }
+    let!(:user) { create(:user) }
     let(:area) { create(:area, user: user) }
 
-    it 'calls the AreaVisitsCalculationService' do
-      allow(User).to receive(:find_each).and_yield(user)
-      expect(AreaVisitsCalculatingJob).to receive(:perform_later).with(user.id).and_call_original
-
-      described_class.new.perform
+    it 'enqueues the AreaVisitsCalculatingJob' do
+      expect { described_class.new.perform }.to have_enqueued_job(AreaVisitsCalculatingJob).with(user.id)
     end
   end
 end

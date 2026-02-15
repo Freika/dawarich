@@ -19,7 +19,7 @@ class Api::V1::Tracks::PointsController < ApiController
 
     # Support optional pagination (backward compatible - returns all if no page param)
     if params[:page].present?
-      per_page = [params[:per_page]&.to_i || 1000, 1000].min
+      per_page = (params[:per_page].presence&.to_i || 1000).clamp(1, 1000)
       points = points.page(params[:page]).per(per_page)
       response.set_header('X-Current-Page', points.current_page.to_s)
       response.set_header('X-Total-Pages', points.total_pages.to_s)

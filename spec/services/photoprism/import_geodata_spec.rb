@@ -156,9 +156,7 @@ RSpec.describe Photoprism::ImportGeodata do
     end
 
     it 'enqueues Import::ProcessJob' do
-      expect(Import::ProcessJob).to receive(:perform_later)
-
-      service
+      expect { service }.to have_enqueued_job(Import::ProcessJob)
     end
 
     context 'when import already exists' do
@@ -169,9 +167,7 @@ RSpec.describe Photoprism::ImportGeodata do
       end
 
       it 'does not enqueue Import::ProcessJob' do
-        expect(Import::ProcessJob).to_not receive(:perform_later)
-
-        service
+        expect { service }.not_to have_enqueued_job(Import::ProcessJob)
       end
     end
   end
