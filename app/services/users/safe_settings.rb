@@ -48,7 +48,7 @@ class Users::SafeSettings
     'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
-    'timezone' => 'UTC'
+    'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
   }.freeze
 
   def initialize(settings = {})
