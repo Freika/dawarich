@@ -160,6 +160,29 @@ RSpec.describe GoogleMaps::RecordsImporter do
       end
     end
 
+    context 'with activity data' do
+      let(:locations) do
+        [
+          {
+            'timestamp' => time.iso8601,
+            'latitudeE7' => 123_456_789,
+            'longitudeE7' => 123_456_789,
+            'activity' => [
+              { 'timestampMs' => (time.to_f * 1000).to_i.to_s,
+                'activity' => [{ 'type' => 'STILL', 'confidence' => 100 }] }
+            ]
+          }
+        ]
+      end
+
+      it 'extracts motion_data from activity field' do
+        parser
+        created_point = Point.last
+
+        expect(created_point.motion_data).to include('activity')
+      end
+    end
+
     context 'with batteryCharging false' do
       let(:locations) do
         [

@@ -161,5 +161,39 @@ RSpec.describe Points::RawData::Clearer do
       expect(result[:cleared]).to eq(5)
       expect(Point.where(raw_data: {}).count).to eq(5)
     end
+
+    it 'does not clear points that were restored between pluck and update' do
+      # Archive and verify first
+      test_date = 3.months.ago.beginning_of_month.utc
+      points = create_list(:point, 3, user: user,
+                                      timestamp: test_date.to_i,
+                                      raw_data: { lon: 10.0, lat: 50.0 })
+
+      archiver = Points::RawData::Archiver.new
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      verifier = Points::RawData::Verifier.new
+      verifier.verify_month(user.id, test_date.year, test_date.month)
+
+      # Simulate a concurrent restore: after the clearer plucks IDs but before
+      # it runs update_all, a restore sets raw_data_archived back to false.
+      original_clear = clearer.method(:clear_points_in_batches).unbind
+
+      allow(clearer).to receive(:clear_points_in_batches).and_wrap_original do |_method, point_ids|
+        # Simulate restore happening between pluck and update
+        Point.where(id: points.map(&:id)).update_all(
+          raw_data_archived: false,
+          raw_data: { 'restored' => true }
+        )
+
+        original_clear.bind(clearer).call(point_ids)
+      end
+
+      clearer.call
+
+      # Points should NOT have been cleared because raw_data_archived was false
+      points.each(&:reload)
+      expect(points.map(&:raw_data)).to all(eq({ 'restored' => true }))
+    end
   end
 end

@@ -65,6 +65,12 @@ RSpec.describe Gpx::TrackImporter do
         expect(point.timestamp).to eq(Time.zone.parse('2024-04-21T10:19:55Z').to_i)
         expect(point.velocity).to eq('2.9')
       end
+
+      it 'stores empty raw_data' do
+        parser
+
+        expect(user.points.first.raw_data).to eq({})
+      end
     end
 
     context 'when file exported from Garmin' do

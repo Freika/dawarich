@@ -25,7 +25,6 @@ class GoogleMaps::RecordsImporter
 
   private
 
-  # rubocop:disable Metrics/MethodLength
   def prepare_location_data(location)
     {
       lonlat: "POINT(#{location['longitudeE7'].to_f / 10**7} #{location['latitudeE7'].to_f / 10**7})",
@@ -36,6 +35,7 @@ class GoogleMaps::RecordsImporter
       vertical_accuracy: location['verticalAccuracy'],
       course: location['heading'],
       battery: parse_battery_charging(location['batteryCharging']),
+      motion_data: extract_motion_data(location),
       raw_data: location,
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
@@ -45,7 +45,6 @@ class GoogleMaps::RecordsImporter
       updated_at: Time.current
     }
   end
-  # rubocop:enable Metrics/MethodLength
 
   def bulk_insert_points(batch)
     unique_batch = deduplicate_batch(batch)
@@ -76,6 +75,13 @@ class GoogleMaps::RecordsImporter
     Timestamps.parse_timestamp(
       location['timestamp'] || location['timestampMs']
     )
+  end
+
+  def extract_motion_data(location)
+    activity = location['activity'] || location['activityRecord']
+    return {} unless activity
+
+    { 'activity' => activity }.compact
   end
 
   def parse_battery_charging(battery_charging)

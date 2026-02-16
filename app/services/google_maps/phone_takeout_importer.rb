@@ -65,11 +65,23 @@ class GoogleMaps::PhoneTakeoutImporter
     {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
+      motion_data: extract_motion_data(raw_data),
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
       altitude: raw_data['altitudeMeters'],
       velocity: raw_data['speedMetersPerSecond']
     }
+  end
+
+  def extract_motion_data(raw_data)
+    activity_record = raw_data['activityRecord']
+    activities = activity_record&.dig('probableActivities') if activity_record
+    activity = raw_data['activity']
+
+    data = {}
+    data['activityRecord'] = { 'probableActivities' => activities } if activities
+    data['activity'] = activity if activity
+    data
   end
 
   def parse_visit_place_location(data_point)

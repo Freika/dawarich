@@ -26,7 +26,12 @@ class Points::Params
         vertical_accuracy:  point[:properties][:vertical_accuracy],
         course_accuracy:    point[:properties][:course_accuracy],
         course:             point[:properties][:course],
-        raw_data:           point,
+        motion_data:        {
+          motion: point.dig(:properties, :motion),
+          activity: point.dig(:properties, :activity),
+          action: point.dig(:properties, :action)
+        }.compact,
+        raw_data:           {},
         user_id:            user_id
       }
     end.compact

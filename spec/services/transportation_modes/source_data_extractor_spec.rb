@@ -293,6 +293,48 @@ RSpec.describe TransportationModes::SourceDataExtractor do
       end
     end
 
+    context 'when motion_data is present' do
+      let(:points) do
+        [
+          build(:point, user: user, timestamp: 1000,
+                        motion_data: { 'properties' => { 'motion' => ['walking'] } },
+                        raw_data: { 'properties' => { 'motion' => ['driving'] } }),
+          build(:point, user: user, timestamp: 1060,
+                        motion_data: { 'properties' => { 'motion' => ['walking'] } },
+                        raw_data: { 'properties' => { 'motion' => ['driving'] } })
+        ]
+      end
+
+      it 'prefers motion_data over raw_data' do
+        extractor = described_class.new(points)
+        segments = extractor.call
+
+        expect(segments.length).to eq(1)
+        expect(segments[0][:mode]).to eq(:walking)
+      end
+    end
+
+    context 'when motion_data is empty and raw_data has data' do
+      let(:points) do
+        [
+          build(:point, user: user, timestamp: 1000,
+                        motion_data: {},
+                        raw_data: { 'properties' => { 'motion' => ['cycling'] } }),
+          build(:point, user: user, timestamp: 1060,
+                        motion_data: {},
+                        raw_data: { 'properties' => { 'motion' => ['cycling'] } })
+        ]
+      end
+
+      it 'falls back to raw_data' do
+        extractor = described_class.new(points)
+        segments = extractor.call
+
+        expect(segments.length).to eq(1)
+        expect(segments[0][:mode]).to eq(:cycling)
+      end
+    end
+
     context 'with contiguous segments ensuring no gaps' do
       let(:points) do
         [

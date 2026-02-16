@@ -44,6 +44,7 @@ class GoogleMaps::SemanticHistoryImporter
       lonlat: point_data[:lonlat],
       timestamp: point_data[:timestamp],
       accuracy: point_data[:accuracy],
+      motion_data: point_data[:motion_data],
       raw_data: point_data[:raw_data],
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
@@ -138,7 +139,16 @@ class GoogleMaps::SemanticHistoryImporter
       lonlat: "POINT(#{longitude.to_f / 10**7} #{latitude.to_f / 10**7})",
       timestamp: Timestamps.parse_timestamp(timestamp),
       accuracy: accuracy,
+      motion_data: extract_motion_data(raw_data),
       raw_data: raw_data
     }
+  end
+
+  def extract_motion_data(raw_data)
+    data = {}
+    data['activities'] = raw_data['activities'] if raw_data['activities']
+    data['activityType'] = raw_data['activityType'] if raw_data['activityType']
+    data['travelMode'] = raw_data.dig('waypointPath', 'travelMode') if raw_data.dig('waypointPath', 'travelMode')
+    data
   end
 end
