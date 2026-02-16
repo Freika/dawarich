@@ -192,8 +192,8 @@ RSpec.describe '/api/v1/tracks', type: :request do
       properties = json['features'].first['properties']
       expect(properties['id']).to eq(track.id)
       expect(properties['color']).to eq('#6366F1')
-      expect(properties['start_at']).to eq(track.start_at.iso8601)
-      expect(properties['end_at']).to eq(track.end_at.iso8601)
+      expect(properties['start_at']).to eq(track.start_at.utc.iso8601)
+      expect(properties['end_at']).to eq(track.end_at.utc.iso8601)
       expect(properties['distance']).to eq(5000)
       expect(properties['avg_speed']).to eq(30.5)
       expect(properties['duration']).to eq(3600)

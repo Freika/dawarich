@@ -50,7 +50,8 @@ RSpec.describe Users::SafeSettings do
             },
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
-            max_gap_minutes_in_city: 120
+            max_gap_minutes_in_city: 120,
+            timezone: 'UTC'
           }
         )
       end
@@ -125,7 +126,8 @@ RSpec.describe Users::SafeSettings do
             },
             'transportation_expert_mode' => false,
             'min_minutes_spent_in_city' => 60,
-            'max_gap_minutes_in_city' => 120
+            'max_gap_minutes_in_city' => 120,
+            'timezone' => 'UTC'
           }
         )
       end
@@ -172,9 +174,38 @@ RSpec.describe Users::SafeSettings do
             },
             transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
-            max_gap_minutes_in_city: 120
+            max_gap_minutes_in_city: 120,
+            timezone: 'UTC'
           }
         )
+      end
+    end
+  end
+
+  describe '#timezone' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'when timezone is not set' do
+      let(:settings) { {} }
+
+      it 'returns default UTC timezone' do
+        expect(safe_settings.timezone).to eq('UTC')
+      end
+    end
+
+    context 'when timezone is explicitly set' do
+      let(:settings) { { 'timezone' => 'America/New_York' } }
+
+      it 'returns the custom timezone' do
+        expect(safe_settings.timezone).to eq('America/New_York')
+      end
+    end
+
+    context 'when timezone is set to Tokyo' do
+      let(:settings) { { 'timezone' => 'Asia/Tokyo' } }
+
+      it 'returns the Tokyo timezone' do
+        expect(safe_settings.timezone).to eq('Asia/Tokyo')
       end
     end
   end
@@ -203,6 +234,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.maps).to eq({ 'distance_unit' => 'km' })
         expect(safe_settings.visits_suggestions_enabled?).to be true
         expect(safe_settings.enabled_map_layers).to eq(%w[Routes Heatmap])
+        expect(safe_settings.timezone).to eq('UTC')
       end
     end
 

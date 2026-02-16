@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.2.1] - 2026-02-16
+## [1.3.0] - Unreleased
+
+### Added
+
+- Per-user timezone setting. Users can now select their timezone from Settings > General, and all dates/times across the app (including background jobs and API responses) will respect it. Defaults to the server's `TIME_ZONE` environment variable for existing users.
+- `motion_data` JSONB column on the `points` table for storing transportation-relevant fields separately from `raw_data`.
+- Background job (`DataMigrations::BackfillMotionDataJob`) to backfill `motion_data` from `raw_data` for existing points.
 
 ### Changed
 
@@ -14,10 +20,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The `STORE_GEODATA` setting now correctly controls whether geodata is written during reverse geocoding.
 - Dropped unused `idx_points_user_city` database index (304 MB) and replaced the full `reverse_geocoded_at` index (1,149 MB) with a smaller partial index covering only un-geocoded rows.
 
-### Added
-
-- `motion_data` JSONB column on the `points` table for storing transportation-relevant fields separately from `raw_data`.
-- Background job (`DataMigrations::BackfillMotionDataJob`) to backfill `motion_data` from `raw_data` for existing points.
 
 ## [1.2.0] - 2026-02-15
 

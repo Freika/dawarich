@@ -44,6 +44,27 @@
               </div>
             </div>
 
+            <!-- Timezone Section -->
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'clock', class: "text-primary mr-2" %> Timezone
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">Your timezone</span>
+                  </label>
+                  <%= f.select :timezone,
+                               ActiveSupport::TimeZone.all.map { |tz| ["(GMT#{tz.formatted_offset}) #{tz.name}", tz.name] },
+                               { selected: current_user.timezone },
+                               class: "select select-bordered w-full" %>
+                  <p class="text-sm text-base-content/70 mt-1">
+                    All dates and times will be displayed in this timezone
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <% if DawarichSettings.self_hosted? && current_user.supporter? %>
               <!-- Badge Toggle (only for verified supporters) -->
               <div>
