@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
+  around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   protected
@@ -71,6 +72,16 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def set_user_time_zone(&block)
+    if current_user
+      Time.use_zone(current_user.timezone, &block)
+    else
+      yield
+    end
+  rescue ArgumentError
+    yield
+  end
 
   def set_self_hosted_status
     @self_hosted = DawarichSettings.self_hosted?

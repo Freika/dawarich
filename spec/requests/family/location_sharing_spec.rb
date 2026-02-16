@@ -28,7 +28,7 @@ RSpec.describe 'Family::LocationSharing', type: :request do
         expect(json_response['enabled']).to be true
         expect(json_response['duration']).to eq('1h')
         expect(json_response['message']).to eq('Location sharing enabled for 1 hour')
-        expect(json_response['expires_at']).to eq(1.hour.from_now.iso8601)
+        expect(json_response['expires_at']).to eq(1.hour.from_now.utc.iso8601)
       end
 
       it 'enables location sharing permanently' do
