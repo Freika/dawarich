@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_08_223255) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_06_202634) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -173,22 +173,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_08_223255) do
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
-  end
-
-  create_table "notes", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.string "title"
-    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
-    t.string "attachable_type"
-    t.bigint "attachable_id"
-    t.datetime "noted_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index "attachable_type, attachable_id, ((noted_at)::date)", name: "index_notes_on_attachable_and_noted_date", unique: true, where: "(attachable_id IS NOT NULL)"
-    t.index ["attachable_type", "attachable_id"], name: "index_notes_on_attachable_type_and_attachable_id"
-    t.index ["lonlat"], name: "index_notes_on_lonlat", using: :gist
-    t.index ["user_id", "noted_at"], name: "index_notes_on_user_id_and_noted_at"
-    t.index ["user_id"], name: "index_notes_on_user_id"
   end
 
   create_table "notifications", force: :cascade do |t|
@@ -561,7 +545,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_08_223255) do
   add_foreign_key "family_invitations", "users", column: "invited_by_id"
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
-  add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
