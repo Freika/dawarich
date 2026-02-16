@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.3.0] - Unreleased
+
+### Added
+
+- Per-user timezone setting. Users can now select their timezone from Settings > General, and all dates/times across the app (including background jobs and API responses) will respect it. Defaults to the server's `TIME_ZONE` environment variable for existing users.
+
+
 ## [1.2.0] - 2026-02-15
 
 ### Changed
