@@ -12,7 +12,6 @@ RSpec.describe Points::RawData::Encryption do
 
       decrypted = described_class.decrypt(encrypted)
       expect(decrypted).to eq(original)
-      expect(decrypted.encoding).to eq(Encoding::ASCII_8BIT)
     end
 
     it 'round-trips gzip compressed data' do

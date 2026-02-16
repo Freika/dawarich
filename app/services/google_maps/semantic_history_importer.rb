@@ -148,7 +148,8 @@ class GoogleMaps::SemanticHistoryImporter
     data = {}
     data['activities'] = raw_data['activities'] if raw_data['activities']
     data['activityType'] = raw_data['activityType'] if raw_data['activityType']
-    data['travelMode'] = raw_data.dig('waypointPath', 'travelMode') if raw_data.dig('waypointPath', 'travelMode')
+    travel_mode = raw_data.dig('waypointPath', 'travelMode')
+    data['travelMode'] = travel_mode if travel_mode
     data
   end
 end

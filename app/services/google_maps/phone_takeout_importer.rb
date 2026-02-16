@@ -75,7 +75,7 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def extract_motion_data(raw_data)
     activity_record = raw_data['activityRecord']
-    activities = activity_record&.dig('probableActivities') if activity_record
+    activities = activity_record['probableActivities'] if activity_record
     activity = raw_data['activity']
 
     data = {}

@@ -102,8 +102,7 @@ module Points
           return { success: false, error: 'Content checksum mismatch' } if actual_checksum != stored_checksum
         end
 
-        # Decrypt if encrypted (format_version >= 2)
-        compressed_content = decrypt_if_needed(raw_content, archive)
+        compressed_content = Encryption.decrypt_if_needed(raw_content, archive)
 
         # Phase 1: Stream-parse JSONL to collect point IDs (lightweight — no raw_data in memory).
         # Also collect raw_data only for sampled indices to verify data integrity.
@@ -213,13 +212,6 @@ module Points
         end
 
         { success: true }
-      end
-
-      def decrypt_if_needed(content, archive)
-        format_version = archive.metadata&.dig('format_version').to_i
-        return content unless format_version >= 2
-
-        Encryption.decrypt(content)
       end
 
       def calculate_checksum(point_ids)

@@ -39,11 +39,12 @@ class DataMigrations::BackfillMotionDataJob < ApplicationJob
   end
 
   def extract_motion_data(raw)
-    extract_overland_motion(raw) || extract_google_motion(raw) || extract_owntracks_motion(raw) || {}
+    symbolized = raw.deep_symbolize_keys
+    extract_overland_motion(symbolized) || extract_google_motion(raw) || extract_owntracks_motion(symbolized) || {}
   end
 
-  def extract_overland_motion(raw)
-    props = raw.deep_symbolize_keys[:properties] || {}
+  def extract_overland_motion(symbolized)
+    props = symbolized[:properties] || {}
     return unless props[:motion] || props[:activity] || props[:action]
 
     { motion: props[:motion], activity: props[:activity], action: props[:action] }.compact
@@ -60,10 +61,9 @@ class DataMigrations::BackfillMotionDataJob < ApplicationJob
     result.presence
   end
 
-  def extract_owntracks_motion(raw)
-    data = raw.deep_symbolize_keys
-    return unless data[:m] || data[:_type]
+  def extract_owntracks_motion(symbolized)
+    return unless symbolized[:_type] == 'location' && symbolized[:m]
 
-    { m: data[:m], _type: data[:_type] }.compact
+    { m: symbolized[:m], _type: symbolized[:_type] }.compact
   end
 end

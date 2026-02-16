@@ -128,24 +128,14 @@ module Points
       end
 
       def batch_update_points(entries)
-        # Build a single UPDATE using a VALUES list joined to the points table.
-        # This replaces N individual UPDATE queries with 1 query per batch.
-        conn = ActiveRecord::Base.connection
+        updates = entries.map do |id, raw_data|
+          { id: id, raw_data: raw_data, raw_data_archived: false, raw_data_archive_id: nil }
+        end
 
-        values_sql = entries.map do |id, raw_data|
-          "(#{conn.quote(id)}, #{conn.quote(raw_data.to_json)}::jsonb)"
-        end.join(', ')
-
-        sql = <<~SQL.squish
-          UPDATE points
-          SET raw_data = v.raw_data,
-              raw_data_archived = false,
-              raw_data_archive_id = NULL
-          FROM (VALUES #{values_sql}) AS v(id, raw_data)
-          WHERE points.id = v.id
-        SQL
-
-        conn.execute(sql)
+        # rubocop:disable Rails/SkipsModelValidations
+        Point.upsert_all(updates, unique_by: :id,
+                                  update_only: %i[raw_data raw_data_archived raw_data_archive_id])
+        # rubocop:enable Rails/SkipsModelValidations
       end
 
       def restore_archive_to_cache(archive, cache_key_prefix)
@@ -170,8 +160,7 @@ module Points
       def download_and_decompress(archive)
         raw_content = archive.file.blob.download
 
-        # Decrypt if encrypted (format_version >= 2)
-        compressed_content = decrypt_if_needed(raw_content, archive)
+        compressed_content = Encryption.decrypt_if_needed(raw_content, archive)
 
         io = StringIO.new(compressed_content)
         gz = Zlib::GzipReader.new(io)
@@ -182,13 +171,6 @@ module Points
       rescue StandardError => e
         Rails.logger.error("Failed to download/decrypt/decompress archive #{archive.id}: #{e.message}")
         raise
-      end
-
-      def decrypt_if_needed(content, archive)
-        format_version = archive.metadata&.dig('format_version').to_i
-        return content unless format_version >= 2
-
-        Encryption.decrypt(content)
       end
     end
   end
