@@ -139,17 +139,8 @@ class GoogleMaps::SemanticHistoryImporter
       lonlat: "POINT(#{longitude.to_f / 10**7} #{latitude.to_f / 10**7})",
       timestamp: Timestamps.parse_timestamp(timestamp),
       accuracy: accuracy,
-      motion_data: extract_motion_data(raw_data),
+      motion_data: Points::MotionDataExtractor.from_google_semantic_history(raw_data),
       raw_data: raw_data
     }
-  end
-
-  def extract_motion_data(raw_data)
-    data = {}
-    data['activities'] = raw_data['activities'] if raw_data['activities']
-    data['activityType'] = raw_data['activityType'] if raw_data['activityType']
-    travel_mode = raw_data.dig('waypointPath', 'travelMode')
-    data['travelMode'] = travel_mode if travel_mode
-    data
   end
 end

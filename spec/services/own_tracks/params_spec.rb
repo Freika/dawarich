@@ -30,7 +30,7 @@ RSpec.describe OwnTracks::Params do
         battery_status: 'charging',
         connection: 'wifi',
         trigger: 'background_event',
-        motion_data: { m: 1, _type: 'location' },
+        motion_data: { 'm' => 1, '_type' => 'location' },
         raw_data:   {}
       }
     end

@@ -28,7 +28,7 @@ class OwnTracks::Params
       battery_status:,
       connection:,
       trigger:,
-      motion_data:        { m: params[:m], _type: params[:_type] }.compact,
+      motion_data:        Points::MotionDataExtractor.from_owntracks(params),
       raw_data:           {}
     }
   end

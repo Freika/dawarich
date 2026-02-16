@@ -32,38 +32,9 @@ class DataMigrations::BackfillMotionDataJob < ApplicationJob
     raw = point.raw_data
     return unless raw.is_a?(Hash) && raw.present?
 
-    motion = extract_motion_data(raw)
+    motion = Points::MotionDataExtractor.from_raw_data(raw)
     return if motion.blank?
 
     { id: point.id, motion_data: motion }
-  end
-
-  def extract_motion_data(raw)
-    symbolized = raw.deep_symbolize_keys
-    extract_overland_motion(symbolized) || extract_google_motion(raw) || extract_owntracks_motion(symbolized) || {}
-  end
-
-  def extract_overland_motion(symbolized)
-    props = symbolized[:properties] || {}
-    return unless props[:motion] || props[:activity] || props[:action]
-
-    { motion: props[:motion], activity: props[:activity], action: props[:action] }.compact
-  end
-
-  def extract_google_motion(raw)
-    result = {}
-    result['activity'] = raw['activity'] if raw['activity']
-    result['activityRecord'] = raw['activityRecord'] if raw['activityRecord']
-    result['activities'] = raw['activities'] if raw['activities']
-    result['activityType'] = raw['activityType'] if raw['activityType']
-    travel_mode = raw.dig('waypointPath', 'travelMode')
-    result['travelMode'] = travel_mode if travel_mode
-    result.presence
-  end
-
-  def extract_owntracks_motion(symbolized)
-    return unless symbolized[:_type] == 'location' && symbolized[:m]
-
-    { m: symbolized[:m], _type: symbolized[:_type] }.compact
   end
 end

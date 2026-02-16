@@ -26,11 +26,7 @@ class Points::Params
         vertical_accuracy:  point[:properties][:vertical_accuracy],
         course_accuracy:    point[:properties][:course_accuracy],
         course:             point[:properties][:course],
-        motion_data:        {
-          motion: point.dig(:properties, :motion),
-          activity: point.dig(:properties, :activity),
-          action: point.dig(:properties, :action)
-        }.compact,
+        motion_data:        Points::MotionDataExtractor.from_overland_properties(point[:properties]),
         raw_data:           {},
         user_id:            user_id
       }

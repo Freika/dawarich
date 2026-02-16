@@ -35,7 +35,7 @@ class GoogleMaps::RecordsImporter
       vertical_accuracy: location['verticalAccuracy'],
       course: location['heading'],
       battery: parse_battery_charging(location['batteryCharging']),
-      motion_data: extract_motion_data(location),
+      motion_data: Points::MotionDataExtractor.from_google_records(location),
       raw_data: location,
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
@@ -75,13 +75,6 @@ class GoogleMaps::RecordsImporter
     Timestamps.parse_timestamp(
       location['timestamp'] || location['timestampMs']
     )
-  end
-
-  def extract_motion_data(location)
-    activity = location['activity'] || location['activityRecord']
-    return {} unless activity
-
-    { 'activity' => activity }.compact
   end
 
   def parse_battery_charging(battery_charging)
