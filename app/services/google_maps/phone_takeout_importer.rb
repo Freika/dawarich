@@ -65,6 +65,7 @@ class GoogleMaps::PhoneTakeoutImporter
     {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
+      motion_data: Points::MotionDataExtractor.from_google_phone_takeout(raw_data),
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
       altitude: raw_data['altitudeMeters'],

@@ -22,25 +22,8 @@ RSpec.describe Points::Params do
         vertical_accuracy:  -1,
         course_accuracy:    0,
         course:             27.07,
-        raw_data:           {
-          type:               'Feature',
-          geometry:           {
-            type:             'Point',
-            coordinates:      [-122.40530871, 37.74430413]
-          },
-          properties:         {
-            horizontal_accuracy: 5,
-            track_id:            '799F32F5-89BB-45FB-A639-098B1B95B09F',
-            speed_accuracy:      0,
-            vertical_accuracy:   -1,
-            course_accuracy:    0,
-            altitude:           0,
-            speed:              92.088,
-            course:             27.07,
-            timestamp:          '2025-01-17T21:03:01Z',
-            device_id:          '8D5D4197-245B-4619-A88B-2049100ADE46'
-          }
-        }.with_indifferent_access,
+        motion_data:        {},
+        raw_data:           {},
         user_id:            user.id
       }
     end

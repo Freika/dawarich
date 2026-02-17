@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Per-user timezone setting. Users can now select their timezone from Settings > General, and all dates/times across the app (including background jobs and API responses) will respect it. Defaults to the server's `TIME_ZONE` environment variable for existing users.
+- `motion_data` JSONB column on the `points` table for storing transportation-relevant fields separately from `raw_data`.
+- Background job (`DataMigrations::BackfillMotionDataJob`) to backfill `motion_data` from `raw_data` for existing points.
+
+### Changed
+
+- New points from OwnTracks, Overland, GPX, GeoJSON, Photos, and KML sources no longer store full `raw_data`, significantly reducing per-point storage (~500 bytes saved per point).
+- Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column, keeping transportation mode detection working while dropping redundant data.
+- Google imports continue storing full `raw_data` (rich metadata) and additionally write to `motion_data`.
+- The `STORE_GEODATA` setting now correctly controls whether geodata is written during reverse geocoding.
+- Dropped unused `idx_points_user_city` database index (304 MB) and replaced the full `reverse_geocoded_at` index (1,149 MB) with a smaller partial index covering only un-geocoded rows.
 
 
 ## [1.2.0] - 2026-02-15
