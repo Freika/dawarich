@@ -22,16 +22,16 @@ class Stats::DailyDistanceQuery
     Stat.connection.select_all(<<-SQL.squish)
       WITH points_with_distances AS (
         SELECT
-          EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}')) as day_of_month,
+          EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE '#{timezone}')) as day_of_month,
           CASE
             WHEN LAG(lonlat) OVER (
-              PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}'))
+              PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE '#{timezone}'))
               ORDER BY timestamp
             ) IS NOT NULL THEN
               ST_Distance(
                 lonlat::geography,
                 LAG(lonlat) OVER (
-                  PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE '#{timezone}'))
+                  PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE '#{timezone}'))
                   ORDER BY timestamp
                 )::geography
               )
@@ -64,8 +64,11 @@ class Stats::DailyDistanceQuery
   end
 
   def validate_timezone(timezone)
-    return timezone if ActiveSupport::TimeZone.all.any? { |tz| tz.name == timezone }
+    return 'Etc/UTC' if timezone.blank?
 
-    'UTC'
+    tz = ActiveSupport::TimeZone[timezone]
+    return tz.tzinfo.name if tz
+
+    'Etc/UTC'
   end
 end

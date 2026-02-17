@@ -20,6 +20,14 @@
 
     <button class="tab-btn"
             data-action="click->map-panel#switchTab"
+            data-tab="timeline-feed"
+            data-map-panel-target="tabButton"
+            title="Timeline">
+      <%= icon 'calendar-clock' %>
+    </button>
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
             data-tab="tools"
             data-map-panel-target="tabButton"
             title="Tools">
@@ -136,6 +144,20 @@
               </button>
               <input type="hidden" data-maps--maplibre-target="speedColorScaleInput" value="" />
             </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Tracks Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="tracksToggle"
+                     data-action="change->maps--maplibre#toggleTracks" />
+              <span class="label-text font-medium">Tracks</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show backend-calculated tracks</p>
           </div>
 
           <div class="divider"></div>
@@ -273,20 +295,6 @@
               <span class="label-text font-medium">Areas</span>
             </label>
             <p class="text-sm text-base-content/60 ml-14">Show defined areas</p>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Tracks Layer -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     class="toggle toggle-primary"
-                     data-maps--maplibre-target="tracksToggle"
-                     data-action="change->maps--maplibre#toggleTracks" />
-              <span class="label-text font-medium">Tracks</span>
-            </label>
-            <p class="text-sm text-base-content/60 ml-14">Show backend-calculated tracks in red</p>
           </div>
 
           <div class="divider"></div>
@@ -920,6 +928,16 @@
         </form>
       </div>
 
+      <!-- Timeline Feed Tab -->
+      <div class="tab-content" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
+        <turbo-frame id="timeline-feed-frame"
+                     data-maps--maplibre-target="timelineFeedContainer">
+          <div class="text-center text-base-content/60 py-8">
+            <p class="text-sm">Select a date range to see your day-by-day timeline.</p>
+          </div>
+        </turbo-frame>
+      </div>
+
       <!-- Tools Tab -->
       <div class="tab-content" data-tab-content="tools" data-map-panel-target="tabContent">
         <div class="space-y-4">
@@ -958,12 +976,12 @@
               Create an Area
             </button>
 
-            <!-- Timeline Button -->
+            <!-- Replay Button -->
             <button type="button"
                     class="btn btn-sm btn-outline"
-                    data-action="click->maps--maplibre#toggleTimeline">
+                    data-action="click->maps--maplibre#toggleReplay">
               <%= icon 'clock' %>
-              Timeline
+              Replay
             </button>
           </div>
 

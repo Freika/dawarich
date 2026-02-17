@@ -21,17 +21,54 @@ export class EventHandlers {
     this.routeMarkers = [] // Store start/end markers for routes
     this.trackMarkers = [] // Store segment markers for tracks
     this._infoPanelDelegationSetup = false // Track if delegation is setup
+
+    // Bound handler for track point clicks — stored so the same reference can be
+    // used for both map.on() and map.off() during toggle cleanup
+    this._handleTrackPointClick = this.handleTrackPointClick.bind(this)
   }
 
   /**
    * Handle point click
    */
   handlePointClick(e) {
-    const feature = e.features[0]
-    const properties = feature.properties
-    const distanceUnit = this.controller.settings.distance_unit || "km"
+    const properties = e.features[0].properties
+    this.controller.showInfo(
+      "Location Point",
+      this._buildPointInfoContent(properties),
+    )
+  }
 
-    const content = `
+  /**
+   * Handle track point click — injects point info into the existing track info panel.
+   * Suppresses the event if the user just finished dragging (justDragged flag).
+   */
+  handleTrackPointClick(e) {
+    // Check if the click is a follow-on event from a drag operation
+    const trackPointsLayer =
+      this.controller.layerManager.getLayer("track-points")
+    if (trackPointsLayer?.justDragged) return
+
+    const container = document.getElementById("track-point-info-container")
+    if (!container) return
+
+    const properties = e.features[0].properties
+    container.innerHTML = `
+      <div class="mt-3 pt-3 border-t border-base-300">
+        <div class="text-sm font-semibold mb-1">Selected Point</div>
+        ${this._buildPointInfoContent(properties)}
+      </div>
+    `
+  }
+
+  /**
+   * Build HTML content for point info display (shared by regular and track points)
+   * @param {Object} properties - GeoJSON feature properties
+   * @returns {string} HTML content string
+   * @private
+   */
+  _buildPointInfoContent(properties) {
+    const distanceUnit = this.controller.settings.distance_unit || "km"
+    return `
       <div class="space-y-2">
         <div><span class="font-semibold">Time:</span> ${formatTimestamp(properties.timestamp, this.controller.timezoneValue)}</div>
         ${properties.battery ? `<div><span class="font-semibold">Battery:</span> ${properties.battery}%</div>` : ""}
@@ -39,8 +76,6 @@ export class EventHandlers {
         ${properties.velocity ? `<div><span class="font-semibold">Speed:</span> ${formatSpeed(properties.velocity, distanceUnit)}</div>` : ""}
       </div>
     `
-
-    this.controller.showInfo("Location Point", content)
   }
 
   /**
@@ -375,6 +410,14 @@ export class EventHandlers {
    * Handle route click
    */
   handleRouteClick(e) {
+    // Points take priority — if a point exists at this location, let handlePointClick handle it
+    if (this.map.getLayer("points")) {
+      const pointFeatures = this.map.queryRenderedFeatures(e.point, {
+        layers: ["points"],
+      })
+      if (pointFeatures.length > 0) return
+    }
+
     const clickedFeature = e.features[0]
     const properties = clickedFeature.properties
 
@@ -452,6 +495,30 @@ export class EventHandlers {
    * Handle track click - shows segment visualization with lazy loading
    */
   handleTrackClick(e) {
+    // Points take priority over tracks
+    if (this.map.getLayer("points")) {
+      const pointFeatures = this.map.queryRenderedFeatures(e.point, {
+        layers: ["points"],
+      })
+      if (pointFeatures.length > 0) return
+    }
+
+    // Routes take priority over tracks
+    if (this.map.getLayer("routes-hit")) {
+      const routeFeatures = this.map.queryRenderedFeatures(e.point, {
+        layers: ["routes-hit"],
+      })
+      if (routeFeatures.length > 0) return
+    }
+
+    // Track points take priority over tracks — clicking a point shows point info, not track info
+    if (this.map.getLayer("track-points")) {
+      const trackPointFeatures = this.map.queryRenderedFeatures(e.point, {
+        layers: ["track-points"],
+      })
+      if (trackPointFeatures.length > 0) return
+    }
+
     const clickedFeature = e.features[0]
     if (!clickedFeature) return
 
@@ -463,10 +530,14 @@ export class EventHandlers {
     // Store selected track
     this.selectedTrackFeature = fullFeature
 
-    // Update selection layer to highlight selected track
-    const tracksLayer = this.controller.layerManager.getLayer("tracks")
-    if (tracksLayer?.setSelectedTrack) {
-      tracksLayer.setSelectedTrack(fullFeature)
+    // Update selection layer to highlight selected track (non-critical — don't block info panel)
+    try {
+      const tracksLayer = this.controller.layerManager.getLayer("tracks")
+      if (tracksLayer?.setSelectedTrack) {
+        tracksLayer.setSelectedTrack(fullFeature)
+      }
+    } catch (e) {
+      console.warn("[EventHandlers] Failed to highlight track:", e)
     }
 
     // Show basic info panel immediately with loading indicator for segments
@@ -616,6 +687,7 @@ export class EventHandlers {
         <div><span class="font-semibold">Avg Speed:</span> ${formatSpeed(properties.avg_speed || 0, distanceUnit)}</div>
         ${properties.dominant_mode ? `<div><span class="font-semibold">Mode:</span> ${properties.dominant_mode_emoji} ${properties.dominant_mode}</div>` : ""}
         ${showPointsToggle}
+        <div id="track-point-info-container"></div>
         ${replayButton}
         <div id="track-segments-container" class="mt-2">
           <div class="flex items-center gap-2 text-sm text-base-content/60">
@@ -764,6 +836,9 @@ export class EventHandlers {
 
       // Load track points
       await trackPointsLayer.loadTrackPoints(trackId)
+
+      // Register click handler for track points (shows point info on click)
+      this.map.on("click", "track-points", this._handleTrackPointClick)
     } else {
       // Clear track points layer
       this._clearTrackPointsLayer()
@@ -774,9 +849,12 @@ export class EventHandlers {
   }
 
   /**
-   * Clear the track points layer
+   * Clear the track points layer and remove its click handler
    */
   _clearTrackPointsLayer() {
+    // Remove the click handler before clearing the layer
+    this.map.off("click", "track-points", this._handleTrackPointClick)
+
     const trackPointsLayer =
       this.controller.layerManager.getLayer("track-points")
     if (trackPointsLayer) {

@@ -1,0 +1,37 @@
+<%
+  date_obj = Date.parse(day[:date])
+  day_label = date_obj.strftime('%A, %B %-d')
+  distance_badge = day[:summary][:total_distance_km] > 0 ? "#{day[:summary][:total_distance_km]} km" : nil
+  bounds_json = day[:bounds]&.to_json
+%>
+<details class="collapse collapse-arrow bg-base-200 rounded-lg mb-2 timeline-day-accordion"
+         data-day="<%= day[:date] %>"
+         data-timeline-feed-target="dayDetails"
+         data-bounds="<%= bounds_json %>"
+         data-action="toggle->timeline-feed#dayToggled">
+  <summary class="collapse-title font-medium py-3 min-h-0 cursor-pointer">
+    <div class="flex justify-between items-center">
+      <span class="text-sm"><%= day_label %></span>
+      <% if distance_badge %>
+        <span class="badge badge-sm badge-ghost"><%= distance_badge %></span>
+      <% end %>
+    </div>
+  </summary>
+  <div class="collapse-content px-3">
+    <%= render partial: 'map/timeline_feeds/day_summary', locals: { summary: day[:summary] } %>
+    <div class="divider my-1"></div>
+    <% if day[:entries].present? %>
+      <div class="timeline-rail">
+        <% day[:entries].each do |entry| %>
+          <% if entry[:type] == 'visit' %>
+            <%= render partial: 'map/timeline_feeds/visit_entry', locals: { entry: entry } %>
+          <% else %>
+            <%= render partial: 'map/timeline_feeds/journey_entry', locals: { entry: entry } %>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="timeline-empty">No activity recorded.</p>
+    <% end %>
+  </div>
+</details>

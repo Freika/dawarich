@@ -6,11 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.3.0] - Unreleased
 
+The Storage & Timeline Interaction Release
+
+This release significantly reduces database storage for new points by separating transportation-relevant fields into a dedicated `motion_data` column and dropping redundant raw data from most import sources. Users can now set their timezone for accurate date/time display across the app. The Timeline feed in Map v2 gains richer map interaction: hovering a journey highlights its track with an animated border, clicking zooms to fit and selects it, and expanding a day shows visit markers even when the Visits layer is off.
+
 ### Added
 
 - Per-user timezone setting. Users can now select their timezone from Settings > General, and all dates/times across the app (including background jobs and API responses) will respect it. Defaults to the server's `TIME_ZONE` environment variable for existing users.
 - `motion_data` JSONB column on the `points` table for storing transportation-relevant fields separately from `raw_data`.
 - Background job (`DataMigrations::BackfillMotionDataJob`) to backfill `motion_data` from `raw_data` for existing points.
+- New Timeline feed in Map v2 Tools panel for browsing daily location history.
+- Clicking a track point (when "Show Points" is enabled) now displays point info (timestamp, battery, altitude, speed) in the track info panel instead of triggering a position update. Dragging a point still updates its position and triggers track recalculation.
+- Timeline-map interaction: hovering a journey entry in the Timeline feed now highlights the matching track on the map with the animated border and flow effect. Clicking a journey entry zooms the map to fit the track and keeps it selected. Expanding a day in the Timeline now temporarily shows visit markers for that day, even if the Visits layer is disabled.
 
 ### Changed
 
@@ -19,6 +26,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Google imports continue storing full `raw_data` (rich metadata) and additionally write to `motion_data`.
 - The `STORE_GEODATA` setting now correctly controls whether geodata is written during reverse geocoding.
 - Dropped unused `idx_points_user_city` database index (304 MB) and replaced the full `reverse_geocoded_at` index (1,149 MB) with a smaller partial index covering only un-geocoded rows.
+- Selecting a track on Map v2 now always dims other tracks, regardless of whether the track has transportation mode segments.
+
+### Fixed
+
+- Stats queries (daily distance, time of day) now correctly handle timezone conversion without double-converting from UTC.
+- Timezone validation in stats queries now properly resolves Rails timezone names to IANA identifiers.
 
 
 ## [1.2.0] - 2026-02-15
