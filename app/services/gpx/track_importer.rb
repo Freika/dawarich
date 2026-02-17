@@ -47,7 +47,7 @@ class Gpx::TrackImporter
       timestamp: Time.parse(point['time']).utc.to_i,
       import_id: import.id,
       velocity: speed(point),
-      raw_data: point,
+      raw_data: {},
       user_id: user_id,
       created_at: Time.current,
       updated_at: Time.current

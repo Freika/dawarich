@@ -52,7 +52,7 @@ class Users::DigestsController < ApplicationController
   end
 
   def valid_year?(year)
-    return false if year < 2000 || year > Time.current.year
+    return false if year < 1970 || year > Time.current.year
 
     current_user.stats.exists?(year: year)
   end

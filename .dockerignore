@@ -6,3 +6,11 @@
 !/public/exports/.keep
 /public/imports/*
 !/public/imports/.keep
+
+.git/
+.github/
+docs/
+.circleci/
+.devcontainer/
+screenshots/
+.ruby-lsp/

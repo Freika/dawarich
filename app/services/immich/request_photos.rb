@@ -7,7 +7,7 @@ class Immich::RequestPhotos
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
     @user = user
-    @immich_api_base_url = URI.parse("#{user.safe_settings.immich_url}/api/search/metadata")
+    @immich_api_base_url = "#{user.safe_settings.immich_url}/api/search/metadata"
     @immich_api_key = user.safe_settings.immich_api_key
     @start_date = start_date
     @end_date = end_date
@@ -37,13 +37,14 @@ class Immich::RequestPhotos
         http_options_with_ssl(
           @user, :immich, {
             headers: headers,
-            body: request_body(page),
+            body: request_body(page).to_json,
             timeout: 10
           }
         )
       )
 
       result = Immich::ResponseValidator.validate_and_parse(response)
+
       unless result[:success]
         Rails.logger.error("Immich photo fetch failed: #{result[:error]}")
         return nil
@@ -109,7 +110,7 @@ class Immich::RequestPhotos
   def parse_time(value)
     return if value.blank?
 
-    Time.iso8601(value.to_s)
+    Time.parse(value.to_s).utc
   rescue ArgumentError, TypeError
     nil
   end

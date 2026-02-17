@@ -494,6 +494,51 @@
 
           <div class="divider"></div>
 
+          <!-- City Statistics Settings -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Min Minutes in City</span>
+              <span class="label-text-alt" data-maps--maplibre-target="minMinutesInCityValue">60 min</span>
+            </label>
+            <input type="range"
+                   name="minMinutesSpentInCity"
+                   min="5"
+                   max="120"
+                   step="5"
+                   value="60"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateMinMinutesInCityDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>5min</span>
+              <span>60min</span>
+              <span>120min</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">How long you must stay for a city to count in statistics</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Max Gap Between Points</span>
+              <span class="label-text-alt" data-maps--maplibre-target="maxGapMinutesValue">120 min</span>
+            </label>
+            <input type="range"
+                   name="maxGapMinutesInCity"
+                   min="30"
+                   max="360"
+                   step="15"
+                   value="120"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateMaxGapMinutesDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>30min</span>
+              <span>195min</span>
+              <span>360min</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Max gap between points before assuming you left the city</p>
+          </div>
+
+          <div class="divider"></div>
+
           <!-- Transportation Mode Detection Thresholds -->
           <details class="collapse collapse-arrow bg-base-200 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
@@ -911,6 +956,14 @@
                     data-action="click->maps--maplibre#startCreateArea">
               <%= icon 'circle-plus' %>
               Create an Area
+            </button>
+
+            <!-- Timeline Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    data-action="click->maps--maplibre#toggleTimeline">
+              <%= icon 'clock' %>
+              Timeline
             </button>
           </div>
 

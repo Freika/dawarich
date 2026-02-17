@@ -65,7 +65,11 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    CountriesAndCities.new(points).call
+    CountriesAndCities.new(
+      points,
+      min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
+      max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
+    ).call
   end
 
   def create_stats_update_failed_notification(user, error)

@@ -76,7 +76,7 @@ RSpec.describe Tracks::Merger do
         create(:track_segment, track: newer_track, start_index: 0, end_index: 1)
 
         expect { merger.call }.to change { TrackSegment.count }
-        expect(newer_track.track_segments).to be_empty
+        expect(Track.exists?(newer_track.id)).to be false
         expect(older_track.reload.track_segments.count).to be >= 0
       end
     end

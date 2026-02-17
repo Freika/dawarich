@@ -12,8 +12,9 @@
 }
 
 */
-@import 'actiontext.css';
-@import 'leaflet_theme.css';
+@import "actiontext.css";
+@import "leaflet_theme.css";
+@import "maps_maplibre_timeline.css";
 
 @layer components {
   .fade-out {
@@ -37,7 +38,7 @@
 
 /* Add Visit Marker Styles */
 .add-visit-marker {
-  display: flex !important;
+  display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
@@ -65,6 +66,25 @@
   }
 }
 
+/* Supporter Badge Animation */
+@keyframes supporter-rainbow-glow {
+  0% {
+    filter: hue-rotate(0deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4));
+  }
+  25% {
+    filter: hue-rotate(90deg) drop-shadow(0 0 8px rgba(236, 72, 153, 0.8));
+  }
+  50% {
+    filter: hue-rotate(180deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4));
+  }
+  75% {
+    filter: hue-rotate(270deg) drop-shadow(0 0 8px rgba(236, 72, 153, 0.8));
+  }
+  100% {
+    filter: hue-rotate(360deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4));
+  }
+}
+
 /* Visit Form Popup Styles */
 .visit-form-popup .leaflet-popup-content-wrapper {
   border-radius: 8px;
@@ -74,7 +94,6 @@
 .leaflet-right-panel.controls-shifted {
   right: 310px;
 }
-
 
 /* Drawer Panel Styles */
 .leaflet-drawer {
@@ -89,7 +108,10 @@
   opacity: 0;
   visibility: hidden;
   transform: scale(0.95);
-  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s;
+  transition:
+    opacity 0.2s ease-in-out,
+    transform 0.2s ease-in-out,
+    visibility 0.2s;
   z-index: 450;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   height: auto;
@@ -155,7 +177,9 @@
 em-emoji-picker {
   --color-border-over: rgba(0, 0, 0, 0.1);
   --color-border: rgba(0, 0, 0, 0.05);
-  --font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
   --rgb-accent: 96, 165, 250;
   /* Blue accent to match application */
   position: absolute;

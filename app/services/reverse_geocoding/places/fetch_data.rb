@@ -134,12 +134,12 @@ class ReverseGeocoding::Places::FetchData
           updated_at: Time.current
         }
       end
-      Place.insert_all(place_attributes)
+      Place.insert_all(place_attributes) # rubocop:disable Rails/SkipsModelValidations
     end
 
     return unless places_to_update.any?
 
-    update_attributes = places_to_update.map do |place|
+    update_attributes = places_to_update.uniq(&:id).map do |place|
       {
         id: place.id,
         name: place.name,
@@ -153,7 +153,9 @@ class ReverseGeocoding::Places::FetchData
         updated_at: Time.current
       }
     end
+    # rubocop:disable Rails/SkipsModelValidations
     Place.upsert_all(update_attributes, unique_by: :id)
+    # rubocop:enable Rails/SkipsModelValidations
   end
 
   def build_point_coordinates(coordinates)

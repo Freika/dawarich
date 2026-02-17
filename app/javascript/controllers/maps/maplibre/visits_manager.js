@@ -1,5 +1,5 @@
-import { SettingsManager } from 'maps_maplibre/utils/settings_manager'
-import { Toast } from 'maps_maplibre/components/toast'
+import { Toast } from "maps_maplibre/components/toast"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages visits-related operations for Maps V2
@@ -16,23 +16,48 @@ export class VisitsManager {
 
   /**
    * Toggle visits layer
+   * Fetches visits from backend on first enable (lazy-load pattern)
    */
-  toggleVisits(event) {
+  async toggleVisits(event) {
     const enabled = event.target.checked
-    SettingsManager.updateSetting('visitsEnabled', enabled)
+    SettingsManager.updateSetting("visitsEnabled", enabled)
 
-    const visitsLayer = this.layerManager.getLayer('visits')
-    if (visitsLayer) {
-      if (enabled) {
+    const visitsLayer = this.layerManager.getLayer("visits")
+    if (!visitsLayer) return
+
+    if (enabled) {
+      try {
+        if (!visitsLayer.data?.features?.length) {
+          this.controller.showProgress()
+          this.controller.updateLoadingCounts({
+            counts: { visits: 0 },
+            isComplete: false,
+          })
+
+          const visits = await this.api.fetchVisits({
+            start_at: this.controller.startDateValue,
+            end_at: this.controller.endDateValue,
+          })
+          this.filterManager.setAllVisits(visits)
+          visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
+
+          this.controller.updateLoadingCounts({
+            counts: { visits: visits.length },
+            isComplete: true,
+          })
+        }
         visitsLayer.show()
         if (this.controller.hasVisitsSearchTarget) {
-          this.controller.visitsSearchTarget.style.display = 'block'
+          this.controller.visitsSearchTarget.style.display = "block"
         }
-      } else {
-        visitsLayer.hide()
-        if (this.controller.hasVisitsSearchTarget) {
-          this.controller.visitsSearchTarget.style.display = 'none'
-        }
+      } catch (error) {
+        console.error("Failed to toggle visits layer:", error)
+        this.controller.hideProgress()
+      }
+    } else {
+      visitsLayer.hide()
+      if (this.controller.hasVisitsSearchTarget) {
+        this.controller.visitsSearchTarget.style.display = "none"
       }
     }
   }
@@ -42,11 +67,11 @@ export class VisitsManager {
    */
   searchVisits(event) {
     const searchTerm = event.target.value.toLowerCase()
-    const visitsLayer = this.layerManager.getLayer('visits')
+    const visitsLayer = this.layerManager.getLayer("visits")
     this.filterManager.filterAndUpdateVisits(
       searchTerm,
       this.filterManager.getCurrentVisitFilter(),
-      visitsLayer
+      visitsLayer,
     )
   }
 
@@ -56,8 +81,9 @@ export class VisitsManager {
   filterVisits(event) {
     const filter = event.target.value
     this.filterManager.setCurrentVisitFilter(filter)
-    const searchTerm = document.getElementById('visits-search')?.value.toLowerCase() || ''
-    const visitsLayer = this.layerManager.getLayer('visits')
+    const searchTerm =
+      document.getElementById("visits-search")?.value.toLowerCase() || ""
+    const visitsLayer = this.layerManager.getLayer("visits")
     this.filterManager.filterAndUpdateVisits(searchTerm, filter, visitsLayer)
   }
 
@@ -65,70 +91,80 @@ export class VisitsManager {
    * Start create visit mode
    */
   startCreateVisit() {
-    if (this.controller.hasSettingsPanelTarget && this.controller.settingsPanelTarget.classList.contains('open')) {
+    if (
+      this.controller.hasSettingsPanelTarget &&
+      this.controller.settingsPanelTarget.classList.contains("open")
+    ) {
       this.controller.toggleSettings()
     }
 
-    this.controller.map.getCanvas().style.cursor = 'crosshair'
-    Toast.info('Click on the map to place a visit')
+    this.controller.map.getCanvas().style.cursor = "crosshair"
+    Toast.info("Click on the map to place a visit")
 
     this.handleCreateVisitClick = (e) => {
       const { lng, lat } = e.lngLat
       this.openVisitCreationModal(lat, lng)
-      this.controller.map.getCanvas().style.cursor = ''
+      this.controller.map.getCanvas().style.cursor = ""
     }
 
-    this.controller.map.once('click', this.handleCreateVisitClick)
+    this.controller.map.once("click", this.handleCreateVisitClick)
   }
 
   /**
    * Open visit creation modal
    */
   openVisitCreationModal(lat, lng) {
-    const modalElement = document.querySelector('[data-controller="visit-creation-v2"]')
+    const modalElement = document.querySelector(
+      '[data-controller="visit-creation-v2"]',
+    )
 
     if (!modalElement) {
-      Toast.error('Visit creation modal not available')
+      Toast.error("Visit creation modal not available")
       return
     }
 
-    const controller = this.controller.application.getControllerForElementAndIdentifier(
-      modalElement,
-      'visit-creation-v2'
-    )
+    const controller =
+      this.controller.application.getControllerForElementAndIdentifier(
+        modalElement,
+        "visit-creation-v2",
+      )
 
     if (controller) {
       controller.open(lat, lng, this.controller)
     } else {
-      Toast.error('Visit creation controller not available')
+      Toast.error("Visit creation controller not available")
     }
   }
 
   /**
    * Handle visit creation event - reload visits and update layer
    */
-  async handleVisitCreated(event) {
+  async handleVisitCreated(_event) {
     try {
       const visits = await this.api.fetchVisits({
         start_at: this.controller.startDateValue,
-        end_at: this.controller.endDateValue
+        end_at: this.controller.endDateValue,
       })
 
-      console.log('[Maps V2] Fetched visits:', visits.length)
+      console.log("[Maps V2] Fetched visits:", visits.length)
 
       this.filterManager.setAllVisits(visits)
       const visitsGeoJSON = this.dataLoader.visitsToGeoJSON(visits)
 
-      console.log('[Maps V2] Converted to GeoJSON:', visitsGeoJSON.features.length, 'features')
+      console.log(
+        "[Maps V2] Converted to GeoJSON:",
+        visitsGeoJSON.features.length,
+        "features",
+      )
 
-      const visitsLayer = this.layerManager.getLayer('visits')
+      const visitsLayer = this.layerManager.getLayer("visits")
       if (visitsLayer) {
         visitsLayer.update(visitsGeoJSON)
       } else {
-        console.warn('[Maps V2] Visits layer not found, cannot update')
+        console.warn("[Maps V2] Visits layer not found, cannot update")
       }
     } catch (error) {
-      console.error('[Maps V2] Failed to reload visits:', error)
+      console.error("[Maps V2] Failed to reload visits:", error)
     }
   }
 

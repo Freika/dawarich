@@ -266,7 +266,7 @@ namespace :points do
         puts ''
         puts '⚠ Some archives failed verification. Data NOT cleared for safety.'
         puts 'Please investigate failed archives before running clear_verified.'
-        exit 1
+        raise "Verification failed for #{verifier_stats[:failed]} archives. Aborting to prevent data loss."
       end
       puts ''
 

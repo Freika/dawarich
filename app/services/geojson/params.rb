@@ -43,7 +43,8 @@ class Geojson::Params
       ssid:               feature[:properties][:wifi],
       accuracy:           accuracy(feature),
       vertical_accuracy:  feature[:properties][:vertical_accuracy],
-      raw_data:           feature
+      motion_data:        Points::MotionDataExtractor.from_overland_properties(feature[:properties]),
+      raw_data:           {}
     }
   end
 
@@ -65,7 +66,7 @@ class Geojson::Params
     {
       lonlat: "POINT(#{point[0]} #{point[1]})",
       timestamp: timestamp(point),
-      raw_data:  point
+      raw_data:  {}
     }
   end
 

@@ -50,7 +50,7 @@ RSpec.describe '/digests', type: :request do
       end
 
       it 'displays existing digests' do
-        digest = create(:users_digest, user:, year: 2024)
+        create(:users_digest, user:, year: 2024)
 
         get users_digests_url
 
@@ -116,8 +116,8 @@ RSpec.describe '/digests', type: :request do
           expect(flash[:alert]).to eq('Invalid year selected')
         end
 
-        it 'redirects with alert for year before 2000' do
-          post users_digests_url, params: { year: 1999 }
+        it 'redirects with alert for year before 1970' do
+          post users_digests_url, params: { year: 1969 }
 
           expect(response).to redirect_to(users_digests_path)
           expect(flash[:alert]).to eq('Invalid year selected')

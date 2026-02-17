@@ -22,7 +22,7 @@ export function pointsToGeoJSON(points) {
         country_name: point.country_name,
       },
     })),
-  };
+  }
 }
 
 /**
@@ -33,26 +33,28 @@ export function pointsToGeoJSON(points) {
  */
 export function formatTimestamp(timestamp, timezone = "UTC") {
   // Handle different timestamp formats
-  let date;
+  let date
   if (typeof timestamp === "string") {
     // ISO 8601 string
-    date = new Date(timestamp);
+    date = new Date(timestamp)
   } else if (timestamp < 10000000000) {
     // Unix timestamp in seconds
-    date = new Date(timestamp * 1000);
+    date = new Date(timestamp * 1000)
   } else {
     // Unix timestamp in milliseconds
-    date = new Date(timestamp);
+    date = new Date(timestamp)
   }
 
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
+  return date.toLocaleString("en-GB", {
     day: "numeric",
+    month: "short",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
     timeZone: timezone,
-  });
+  })
 }
 
 /**
@@ -62,17 +64,17 @@ export function formatTimestamp(timestamp, timezone = "UTC") {
  * @returns {string} Formatted time (e.g., "14:30")
  */
 export function formatTimeOnly(timestamp, timezone = "UTC") {
-  if (!timestamp) return "--:--";
+  if (!timestamp) return "--:--"
 
-  let date;
+  let date
   if (typeof timestamp === "string") {
-    date = new Date(timestamp);
+    date = new Date(timestamp)
   } else if (timestamp < 10000000000) {
     // Unix timestamp in seconds
-    date = new Date(timestamp * 1000);
+    date = new Date(timestamp * 1000)
   } else {
     // Unix timestamp in milliseconds
-    date = new Date(timestamp);
+    date = new Date(timestamp)
   }
 
   return date.toLocaleTimeString("en-US", {
@@ -80,5 +82,5 @@ export function formatTimeOnly(timestamp, timezone = "UTC") {
     minute: "2-digit",
     hour12: false,
     timeZone: timezone,
-  });
+  })
 }

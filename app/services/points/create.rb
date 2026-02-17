@@ -30,6 +30,7 @@ class Points::Create
     if created_points.any?
       User.reset_counters(user.id, :points)
       Tracks::RealtimeDebouncer.new(user.id).trigger
+      Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
     end
 
     created_points

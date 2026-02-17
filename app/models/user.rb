@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
+class User < ApplicationRecord
   include UserFamily
   include Omniauthable
 
@@ -132,9 +132,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     (points_count || 0).zero? && trial?
   end
 
-  def timezone
-    Time.zone.name
-  end
+  delegate :timezone, to: :safe_settings
 
   # Aggregate countries from all stats' toponyms
   # This is more accurate than raw point queries as it uses processed data
@@ -156,7 +154,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   # Aggregate cities from all stats' toponyms
-  # This respects MIN_MINUTES_SPENT_IN_CITY since toponyms are already filtered
+  # This respects min_minutes_spent_in_city since toponyms are already filtered
   def cities_visited_uncached
     cities = Set.new
 
@@ -188,6 +186,20 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     return nil unless home_place
 
     [home_place.latitude, home_place.longitude]
+  end
+
+  def supporter?
+    supporter_info[:supporter] == true
+  end
+
+  def supporter_platform
+    supporter_info[:platform]
+  end
+
+  def supporter_info
+    return { supporter: false } if safe_settings.supporter_email.blank?
+
+    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
   end
 
   private

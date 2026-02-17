@@ -25,7 +25,10 @@ class Users::SafeSettings
     'enabled_map_layers' => %w[Routes Heatmap],
     'maps_maplibre_style' => 'light',
     'digest_emails_enabled' => true,
+    'news_emails_enabled' => true,
     'globe_projection' => false,
+    'supporter_email' => nil,
+    'show_supporter_badge' => true,
     # Transportation mode thresholds (speeds in km/h, distances in km)
     'transportation_thresholds' => {
       'walking_max_speed' => 7,
@@ -50,13 +53,15 @@ class Users::SafeSettings
     'visit_detection_extended_merge_hours' => 2,
     'visit_detection_travel_threshold_meters' => 200,
     'visit_detection_default_accuracy' => 50
+    'min_minutes_spent_in_city' => 60,
+    'max_gap_minutes_in_city' => 120,
+    'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
   }.freeze
 
   def initialize(settings = {})
-    @settings = DEFAULT_VALUES.dup.merge(settings)
+    @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def config
     {
       fog_of_war_meters: fog_of_war_meters,
@@ -83,10 +88,12 @@ class Users::SafeSettings
       globe_projection: globe_projection,
       transportation_thresholds: transportation_thresholds,
       transportation_expert_thresholds: transportation_expert_thresholds,
-      transportation_expert_mode: transportation_expert_mode?
+      transportation_expert_mode: transportation_expert_mode?,
+      min_minutes_spent_in_city: min_minutes_spent_in_city,
+      max_gap_minutes_in_city: max_gap_minutes_in_city,
+      timezone: timezone
     }
   end
-  # rubocop:enable Metrics/MethodLength
 
   def fog_of_war_meters
     settings['fog_of_war_meters']
@@ -113,11 +120,11 @@ class Users::SafeSettings
   end
 
   def time_threshold_minutes
-    settings['time_threshold_minutes']
+    settings['time_threshold_minutes'].to_i
   end
 
   def merge_threshold_minutes
-    settings['merge_threshold_minutes']
+    settings['merge_threshold_minutes'].to_i
   end
 
   def live_map_enabled
@@ -145,11 +152,11 @@ class Users::SafeSettings
   end
 
   def immich_skip_ssl_verification
-    settings['immich_skip_ssl_verification']
+    ActiveModel::Type::Boolean.new.cast(settings['immich_skip_ssl_verification'])
   end
 
   def photoprism_skip_ssl_verification
-    settings['photoprism_skip_ssl_verification']
+    ActiveModel::Type::Boolean.new.cast(settings['photoprism_skip_ssl_verification'])
   end
 
   def maps
@@ -157,7 +164,7 @@ class Users::SafeSettings
   end
 
   def distance_unit
-    settings.dig('maps', 'distance_unit')
+    settings.dig('maps', 'distance_unit') || DEFAULT_VALUES.dig('maps', 'distance_unit')
   end
 
   def visits_suggestions_enabled?
@@ -186,6 +193,24 @@ class Users::SafeSettings
 
   def digest_emails_enabled?
     value = settings['digest_emails_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def news_emails_enabled?
+    value = settings['news_emails_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def supporter_email
+    settings['supporter_email']
+  end
+
+  def show_supporter_badge?
+    value = settings['show_supporter_badge']
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
@@ -226,5 +251,17 @@ class Users::SafeSettings
 
   def visit_detection_default_accuracy
     settings['visit_detection_default_accuracy']
+  end
+
+  def min_minutes_spent_in_city
+    (settings['min_minutes_spent_in_city'] || DEFAULT_VALUES['min_minutes_spent_in_city']).to_i
+  end
+
+  def max_gap_minutes_in_city
+    (settings['max_gap_minutes_in_city'] || DEFAULT_VALUES['max_gap_minutes_in_city']).to_i
+  end
+
+  def timezone
+    settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 end

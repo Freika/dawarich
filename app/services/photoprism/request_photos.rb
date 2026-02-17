@@ -11,7 +11,7 @@ class Photoprism::RequestPhotos
 
   def initialize(user, start_date: '1970-01-01', end_date: nil)
     @user = user
-    @photoprism_api_base_url = URI.parse("#{user.safe_settings.photoprism_url}/api/v1/photos")
+    @photoprism_api_base_url = "#{user.safe_settings.photoprism_url}/api/v1/photos"
     @photoprism_api_key = user.safe_settings.photoprism_api_key
     @start_date = start_date
     @end_date = end_date

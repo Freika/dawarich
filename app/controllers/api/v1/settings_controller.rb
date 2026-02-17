@@ -47,6 +47,7 @@ class Api::V1::SettingsController < ApiController
 
   def settings_params
     params.require(:settings).permit(
+      :timezone,
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,
@@ -54,6 +55,7 @@ class Api::V1::SettingsController < ApiController
       :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold,
       :maps_v2_style, :maps_maplibre_style, :globe_projection,
       :transportation_expert_mode,
+      :min_minutes_spent_in_city, :max_gap_minutes_in_city,
       enabled_map_layers: [],
       transportation_thresholds: %i[walking_max_speed cycling_max_speed driving_max_speed flying_min_speed],
       transportation_expert_thresholds: %i[stationary_max_speed running_vs_cycling_accel cycling_vs_driving_accel

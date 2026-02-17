@@ -55,16 +55,18 @@ module TransportationModes
         return
       end
 
-      track.track_segments.destroy_all
+      Track.transaction do
+        track.track_segments.destroy_all
 
-      detector = TransportationModes::Detector.new(
-        track, points,
-        user_thresholds: @user_thresholds,
-        user_expert_thresholds: @expert_thresholds
-      )
-      segment_data = detector.call
+        detector = TransportationModes::Detector.new(
+          track, points,
+          user_thresholds: @user_thresholds,
+          user_expert_thresholds: @expert_thresholds
+        )
+        segment_data = detector.call
 
-      create_segments(track, segment_data)
+        create_segments(track, segment_data)
+      end
 
       Rails.logger.debug "Processed track #{track.id}: #{track.dominant_mode}"
     rescue StandardError => e
@@ -87,7 +89,7 @@ module TransportationModes
           confidence: data[:confidence],
           source: data[:source]
         )
-      end.compact
+      end.select(&:persisted?)
 
       dominant_segment = segments.max_by { |s| s.duration || 0 }
       track.update_column(:dominant_mode, dominant_segment&.transportation_mode || :unknown)

@@ -114,6 +114,38 @@ bundle exec rspec spec/models/       # Model specs only
 npx playwright test                  # E2E tests
 ```
 
+### Testing Best Practices — Test Behavior, Not Implementation
+
+When writing or modifying tests, always test **observable behavior** (return values, state changes, side effects) rather than **implementation details** (which internal methods are called, in what order, with what exact arguments).
+
+**Anti-patterns to AVOID:**
+
+1. **Never mock the object under test** — `allow(subject).to receive(:internal_method)` makes the test a tautology
+2. **Never test private methods via `send()`** — test through the public interface instead; if creating a user triggers a trial, test by creating the user and checking `user.trial?`, not by calling `user.send(:start_trial)`
+3. **Never use `receive_message_chain`** — `allow(x).to receive_message_chain(:a, :b, :c)` breaks on any scope reorder; use real data instead
+4. **Avoid over-stubbing** — if every collaborator is mocked, the test proves nothing; mock only at external boundaries (HTTP, geocoder, external APIs)
+5. **Don't test wiring without outcomes** — `expect(Service).to receive(:new).with(args)` only proves a method was called, not that it works; verify the returned data or state change instead
+6. **Prefer `have_enqueued_job` over `expect(Job).to receive(:perform_later)`** — the former tests real ActiveJob integration; the latter just tests a mock
+7. **Don't assert on cache key formats or internal metric JSON shapes** — test that caching works (2nd call doesn't requery) or that metrics fire, not exact internal formats
+8. **Use real factory data over `allow(user).to receive(:active?).and_return(true)`** — set the actual user state: `create(:user, status: :active)`
+
+**Good test pattern:**
+```ruby
+# Test behavior: creating an export enqueues processing
+it 'enqueues processing job' do
+  expect { create(:export, file_type: :points) }.to have_enqueued_job(ExportJob)
+end
+```
+
+**Bad test pattern:**
+```ruby
+# Tests implementation: mocks the callback interaction
+it 'enqueues processing job' do
+  expect(ExportJob).to receive(:perform_later)  # mock, not real
+  build(:export).save!
+end
+```
+
 ## Background Jobs
 
 ### Sidekiq Jobs
@@ -211,17 +243,29 @@ See `.env.template` for available configuration options including:
 ## Code Quality
 
 ### Tools
-- **Linting**: RuboCop with Rails extensions
+- **Ruby Linting**: RuboCop with Rails extensions
+- **JS/CSS Linting**: Biome (formatting, lint, import sorting)
 - **Security**: Brakeman, bundler-audit
 - **Dependencies**: Strong Migrations for safe database changes
 - **Performance**: Stackprof for profiling
 
 ### Commands
 ```bash
-bundle exec rubocop                  # Code linting
+bundle exec rubocop                  # Ruby linting
+npx @biomejs/biome check --write .   # JS/CSS auto-fix (safe fixes)
+npx @biomejs/biome check --write --unsafe .  # JS/CSS auto-fix (all fixes)
+npx @biomejs/biome ci .              # JS/CSS CI check (read-only)
 bundle exec brakeman                 # Security scan
 bundle exec bundle-audit             # Dependency security
 ```
+
+### Lint Rules
+- **Always run RuboCop** on modified Ruby files before committing: `bundle exec rubocop <files>`
+- **Always run Biome** on modified JS/CSS files before committing: `npx @biomejs/biome check --write <files>`
+- If Biome `--write` leaves remaining errors, use `--write --unsafe` to apply fixes like `parseInt` radix and `Number.isNaN`
+- CI runs `biome ci --changed --since=dev` — it compares against the `dev` branch, not `master`
+- The `noStaticOnlyClass` warning is acceptable and does not fail CI
+- Tailwind CSS files (`*.tailwind.css`) have `@import` position rules disabled in `biome.json` because `@tailwind` directives must come first
 
 ## Important Notes for Development
 

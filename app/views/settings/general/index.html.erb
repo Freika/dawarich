@@ -1,0 +1,101 @@
+<% content_for :title, "General settings" %>
+
+<div class="min-h-content w-full my-5">
+  <h1 class="text-3xl font-bold mb-6">General settings</h1>
+  <%= render 'settings/navigation' %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card bg-base-200 shadow-xl">
+      <%= form_with url: settings_general_path, method: :patch, data: { turbo: false } do |f| %>
+        <div class="card-body">
+          <div class="space-y-8 animate-fade-in">
+            <!-- Email Preferences Section -->
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'mail', class: "text-primary mr-2" %> Email Preferences
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
+                    <%= f.check_box :digest_emails_enabled,
+                                    checked: current_user.safe_settings.digest_emails_enabled?,
+                                    class: "toggle toggle-primary" %>
+                    <div>
+                      <span class="label-text font-medium">Year-End Digest Emails</span>
+                      <p class="text-sm text-base-content/70 mt-1">
+                        Receive an annual summary email on January 1st with your year in review
+                      </p>
+                    </div>
+                  </label>
+                </div>
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
+                    <%= f.check_box :news_emails_enabled,
+                                    checked: current_user.safe_settings.news_emails_enabled?,
+                                    class: "toggle toggle-primary" %>
+                    <div>
+                      <span class="label-text font-medium">News & Updates</span>
+                      <p class="text-sm text-base-content/70 mt-1">
+                        Receive occasional emails about new features and important updates
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timezone Section -->
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'clock', class: "text-primary mr-2" %> Timezone
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">Your timezone</span>
+                  </label>
+                  <%= f.select :timezone,
+                               ActiveSupport::TimeZone.all.map { |tz| ["(GMT#{tz.formatted_offset}) #{tz.name}", tz.name] },
+                               { selected: current_user.timezone },
+                               class: "select select-bordered w-full" %>
+                  <p class="text-sm text-base-content/70 mt-1">
+                    All dates and times will be displayed in this timezone
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <% if DawarichSettings.self_hosted? && current_user.supporter? %>
+              <!-- Badge Toggle (only for verified supporters) -->
+              <div>
+                <h2 class="text-2xl font-bold mb-4 flex items-center">
+                  <%= icon 'gem', class: 'mr-2 text-sky-400' %> Supporter Badge
+                </h2>
+                <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :show_supporter_badge,
+                                      checked: current_user.safe_settings.show_supporter_badge?,
+                                      class: "toggle toggle-primary" %>
+                      <div>
+                        <span class="label-text font-medium">Show supporter badge in navbar</span>
+                        <p class="text-sm text-base-content/70 mt-1">
+                          Display a gem icon next to your profile to show your supporter status
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          <div class="card-actions justify-end mt-6">
+            <%= f.submit 'Save changes', class: "btn btn-primary" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%= render 'settings/general/supporter_status' %>
+  </div>
+</div>

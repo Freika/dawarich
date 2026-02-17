@@ -39,17 +39,18 @@ RSpec.describe Visits::PlaceFinder do
       end
 
       it 'finds an existing place by name within search radius' do
+        # Place is outside the global proximity radius (50m) but within the name search radius (100m)
+        offset = 0.0006 # ~67m offset
         similar_named_place = create(:place,
                                      name: 'Test Place',
-                                     latitude: latitude + 0.0001,
-                                     longitude: longitude + 0.0001,
-                                     lonlat: "POINT(#{longitude + 0.0001} #{latitude + 0.0001})")
-
-        allow(subject).to receive(:find_existing_place).and_return(similar_named_place)
+                                     latitude: latitude + offset,
+                                     longitude: longitude + offset,
+                                     lonlat: "POINT(#{longitude + offset} #{latitude + offset})")
 
         modified_visit_data = visit_data.merge(
-          center_lat: latitude + 0.0002,
-          center_lon: longitude + 0.0002
+          suggested_name: 'Test Place',
+          center_lat: latitude + offset + 0.0001,
+          center_lon: longitude + offset + 0.0001
         )
 
         result = subject.find_or_create_place(modified_visit_data)
@@ -77,18 +78,13 @@ RSpec.describe Visits::PlaceFinder do
 
       before do
         allow(Geocoder).to receive(:search).and_return([])
-        allow(subject).to receive(:reverse_geocoded_places).and_return([])
       end
 
       it 'extracts and creates places from point geodata' do
-        allow(subject).to receive(:create_place_from_point).and_call_original
-
         expect do
           result = subject.find_or_create_place(visit_data_with_points)
           expect(result[:main_place].name).to include('POI from Point')
         end.to change(Place, :count).by(1)
-
-        expect(subject).to have_received(:create_place_from_point)
       end
     end
 
@@ -133,7 +129,7 @@ RSpec.describe Visits::PlaceFinder do
           expect(result[:main_place].name).to include('Test Location')
         end.to change(Place, :count).by(2)
 
-        place = Place.find_by_name('Test Location, Test Street, Test City')
+        place = Place.find_by(name: 'Test Location, Test Street, Test City')
 
         expect(place.city).to eq('Test City')
         expect(place.country).to eq('Test Country')
@@ -206,8 +202,6 @@ RSpec.describe Visits::PlaceFinder do
       it 'may include places with the same name' do
         create(:place, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
 
-        allow(subject).to receive(:place_name_exists?).and_return(false)
-
         result = subject.find_or_create_place(visit_data)
 
         names = result[:suggested_places].map(&:name)
@@ -233,8 +227,6 @@ RSpec.describe Visits::PlaceFinder do
       end
 
       it 'gracefully handles errors in place creation' do
-        allow(subject).to receive(:create_place_from_api_result).and_call_original
-
         result = subject.find_or_create_place(visit_data)
 
         # Should create the default place

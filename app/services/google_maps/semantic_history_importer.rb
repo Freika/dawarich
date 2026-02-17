@@ -44,6 +44,7 @@ class GoogleMaps::SemanticHistoryImporter
       lonlat: point_data[:lonlat],
       timestamp: point_data[:timestamp],
       accuracy: point_data[:accuracy],
+      motion_data: point_data[:motion_data],
       raw_data: point_data[:raw_data],
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
@@ -138,6 +139,7 @@ class GoogleMaps::SemanticHistoryImporter
       lonlat: "POINT(#{longitude.to_f / 10**7} #{latitude.to_f / 10**7})",
       timestamp: Timestamps.parse_timestamp(timestamp),
       accuracy: accuracy,
+      motion_data: Points::MotionDataExtractor.from_google_semantic_history(raw_data),
       raw_data: raw_data
     }
   end

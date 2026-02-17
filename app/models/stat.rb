@@ -146,10 +146,6 @@ class Stat < ApplicationRecord
   end
 
   def user_timezone
-    # Future: Once user.timezone column exists, uncomment the line below
-    # user.timezone.presence || Time.zone.name
-
-    # For now, use application timezone
-    Time.zone.name
+    user.timezone.presence || Time.zone.name
   end
 end

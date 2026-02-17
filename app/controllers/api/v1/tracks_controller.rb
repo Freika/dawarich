@@ -13,4 +13,11 @@ class Api::V1::TracksController < ApiController
 
     render json: geojson
   end
+
+  def show
+    track = current_api_user.tracks.includes(:track_segments).find(params[:id])
+    geojson = Tracks::GeojsonSerializer.new(track, include_segments: true).call
+
+    render json: geojson
+  end
 end

@@ -43,6 +43,11 @@ export default class extends BaseController {
   }
 
   prependNotification(notification) {
+    if (!this.hasListTarget) {
+      this.updateBadge()
+      return
+    }
+
     const existingNotification = this.listTarget.querySelector(`a[href="/notifications/${notification.id}"]`)
     if (existingNotification) {
       return
@@ -108,8 +113,12 @@ export default class extends BaseController {
   }
 
   updateBadge() {
-    const badgeCount = this.listTarget.querySelectorAll(".notification-item").length
-    this.badgeTarget.textContent = badgeCount
-    this.badgeTarget.classList.toggle("hidden", badgeCount === 0)
+    if (!this.hasBadgeTarget) return
+
+    if (this.hasListTarget) {
+      const badgeCount = this.listTarget.querySelectorAll(".notification-item").length
+      this.badgeTarget.textContent = badgeCount
+      this.badgeTarget.classList.toggle("hidden", badgeCount === 0)
+    }
   }
 }

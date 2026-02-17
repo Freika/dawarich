@@ -68,7 +68,8 @@ RSpec.describe Tracks::ParallelGenerator do
         expect(session_data['metadata']['chunk_size']).to eq('1 day')
         expect(session_data['metadata']['user_settings']['time_threshold_minutes']).to eq(30)
         expect(session_data['metadata']['user_settings']['distance_threshold_meters']).to eq(500)
-        expect(session_data['metadata']['user_settings']['distance_threshold_behavior']).to eq('ignored_for_frontend_parity')
+        expect(session_data['metadata']['user_settings']['distance_threshold_behavior'])
+          .to eq('ignored_for_frontend_parity')
       end
 
       it 'marks session as started with chunk count' do
@@ -132,16 +133,15 @@ RSpec.describe Tracks::ParallelGenerator do
       end
 
       context 'daily mode' do
-        let(:options) { { mode: :daily, start_at: 1.day.ago.beginning_of_day } }
+        let(:options) { { mode: :daily, start_at: 1.day.ago.beginning_of_day, end_at: Time.current } }
 
-        it 'preserves existing tracks' do
+        it 'cleans overlapping tracks in the time range' do
           expect(user.tracks.count).to eq(2)
 
           generator.call
 
-          # Daily mode should preserve all existing tracks
-          remaining_tracks = user.tracks.count
-          expect(remaining_tracks).to eq(2)
+          # Daily mode now cleans overlapping tracks to prevent duplicates
+          expect(user.tracks.count).to eq(0)
         end
       end
 
@@ -278,12 +278,10 @@ RSpec.describe Tracks::ParallelGenerator do
       end
 
       it 'passes correct parameters to each job' do
-        expect(Tracks::TimeChunkProcessorJob).to receive(:perform_later)
-          .with(user.id, session_id, chunks[0])
-        expect(Tracks::TimeChunkProcessorJob).to receive(:perform_later)
-          .with(user.id, session_id, chunks[1])
-
         generator.send(:enqueue_chunk_jobs, session_id, chunks)
+
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(user.id, session_id, chunks[0])
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(user.id, session_id, chunks[1])
       end
     end
 
