@@ -2,28 +2,134 @@
 
 <%= turbo_stream_from "trip_#{@trip.id}" %>
 
-<div class="container mx-auto px-4 my-5">
-  <div class="bg-base-100 p-4">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="w-full block" id="trip_path">
-        <%= render "trips/path", trip: @trip, current_user: current_user %>
+<div class="container mx-auto px-4 my-5" data-controller="trip-maplibre"
+     data-trip-maplibre-api-key-value="<%= current_user.api_key %>"
+     data-trip-maplibre-timezone-value="<%= current_user.timezone %>"
+     data-trip-maplibre-started-at-value="<%= @trip.started_at.iso8601 %>"
+     data-trip-maplibre-ended-at-value="<%= @trip.ended_at.iso8601 %>"
+     data-trip-maplibre-trip-id-value="<%= @trip.id %>"
+     data-trip-maplibre-path-data-value="<%= @trip.path&.coordinates&.to_json %>"
+     data-trip-maplibre-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
+
+  <%# Side-by-side layout: map left, content right %>
+  <div class="flex flex-col lg:flex-row gap-6">
+    <%# Left: Map (sticky on desktop) %>
+    <div class="w-full lg:w-3/5 lg:sticky lg:top-4 lg:self-start">
+      <% if @trip.path.present? %>
+        <div class="w-full h-[50vh] lg:h-[calc(100vh-3rem)] rounded-lg overflow-hidden relative"
+             data-trip-maplibre-target="map">
+          <div data-trip-maplibre-target="loadingIndicator"
+               class="absolute bottom-4 left-4 z-10 bg-base-100/80 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2 hidden">
+            <span class="loading loading-spinner loading-sm"></span>
+            <span class="text-sm">Loading route data...</span>
+          </div>
+          <%= render "trips/timeline_panel" %>
+        </div>
+      <% else %>
+        <div class="flex items-center justify-center h-[50vh] lg:h-[calc(100vh-3rem)] rounded-lg bg-base-200">
+          <div class="text-center">
+            <p class="text-base-content/60">Trip path is being calculated...</p>
+            <div class="loading loading-spinner loading-lg mt-4"></div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Right: Scrollable content panel %>
+    <div class="w-full lg:w-2/5">
+      <%# Trip header %>
+      <div class="mb-6">
+        <h1 class="text-3xl font-bold mb-1"><%= @trip.name %></h1>
+        <p class="text-md text-base-content/60 mb-4">
+          <%= human_date(@trip.started_at) %> - <%= human_date(@trip.ended_at) %>
+        </p>
+
+        <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
       </div>
-      <div class="w-full">
-        <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold mb-2"><%= @trip.name %></h1>
-          <p class="text-md text-base-content/60 mb-4">
-            <%= human_date(@trip.started_at) %> - <%= human_date(@trip.ended_at) %>
-          </p>
 
-          <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
+      <%# Map tools toolbar %>
+      <div class="flex items-center gap-2 mb-4">
+        <% if current_user.immich_integration_configured? || current_user.photoprism_integration_configured? %>
+          <button type="button"
+                  class="btn btn-sm btn-outline gap-1"
+                  data-trip-maplibre-target="photosToggleBtn"
+                  data-action="click->trip-maplibre#togglePhotos">
+            <%= icon 'camera' %>
+            <span class="hidden sm:inline">Photos</span>
+          </button>
+        <% end %>
+
+        <button type="button"
+                class="btn btn-sm btn-outline gap-1"
+                data-trip-maplibre-target="timelineToggleBtn"
+                data-action="click->trip-maplibre#toggleTimeline">
+          <%= icon 'clock' %>
+          <span class="hidden sm:inline">Replay</span>
+        </button>
+
+        <button class="btn btn-sm btn-outline gap-1"
+                data-trip-maplibre-target="expandAllBtn"
+                data-action="click->trip-maplibre#expandAllDays">
+          Show all days
+        </button>
+      </div>
+
+      <%# Accordion days %>
+      <div data-trip-maplibre-target="daysAccordion" class="space-y-1 mb-6">
+
+        <% (@trip.started_at.in_time_zone(@timezone).to_date..@trip.ended_at.in_time_zone(@timezone).to_date).each do |date| %>
+          <% day_key = date.strftime('%Y-%m-%d') %>
+          <% stats = @day_stats[date] %>
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg"
+                   data-day-key="<%= day_key %>">
+            <summary class="collapse-title flex items-center gap-2 text-sm font-medium min-h-0 cursor-pointer"
+                     data-action="click->trip-maplibre#toggleDay"
+                     data-trip-maplibre-day-key-param="<%= day_key %>">
+              <span class="inline-block w-3 h-3 rounded-full flex-shrink-0 bg-base-content/30"
+                    data-day-dot="<%= day_key %>"></span>
+              <span><%= date.strftime('%b %-d, %A') %></span>
+              <% if stats %>
+                <span class="text-base-content/50 text-xs">
+                  <%= stats[:first_time].strftime('%H:%M') %> – <%= stats[:last_time].strftime('%H:%M') %>
+                </span>
+                <span class="text-base-content/50 ml-auto mr-6 text-xs">
+                  <% day_distance = Trip.convert_distance(stats[:distance_m], @distance_unit) %>
+                  <% if day_distance < 1 %>
+                    &lt; 1 <%= @distance_unit %>
+                  <% else %>
+                    <%= number_with_precision(day_distance, precision: 1) %> <%= @distance_unit %>
+                  <% end %>
+                </span>
+              <% else %>
+                <span class="text-base-content/50 ml-auto mr-6 text-xs">No data</span>
+              <% end %>
+            </summary>
+            <div class="collapse-content">
+              <% note = @day_notes[date] %>
+              <% if note %>
+                <%= render "trips/notes/note", note: note, trip: @trip %>
+              <% else %>
+                <%= render "trips/notes/empty", trip: @trip, date: date %>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
+      </div>
+
+      <%# Trip description %>
+      <% if @trip.description.body.present? %>
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold mb-2">Trip Notes</h3>
+          <div class="prose max-w-none">
+            <%= @trip.description.body %>
+          </div>
         </div>
+      <% end %>
 
-        <div>
-          <%= @trip.notes.body %>
-        </div>
-
-        <!-- Photos Grid Section -->
-        <% if @photo_previews.any? %>
+      <%# Photos %>
+      <% if @photo_previews.any? %>
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold mb-2">Photos</h3>
           <% @photo_previews.each_slice(3) do |slice| %>
             <div class="h-48 flex gap-4 mt-4 justify-center">
               <% slice.each do |photo| %>
@@ -37,31 +143,29 @@
               <% end %>
             </div>
           <% end %>
-        <% end %>
+        </div>
+      <% end %>
 
-        <% if @photo_sources.any? %>
-          <div class="text-center mt-6">
-            <% @photo_sources.each do |source| %>
-              <%= link_to "More photos on #{source}", photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at), class: "btn btn-primary mt-2", target: '_blank' %>
-            <% end %>
-          </div>
-        <% end %>
+      <% if @photo_sources.any? %>
+        <div class="mb-6">
+          <% @photo_sources.each do |source| %>
+            <%= link_to "More photos on #{source}", photo_search_url(source, current_user.settings, @trip.started_at, @trip.ended_at), class: "btn btn-primary mt-2", target: '_blank' %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%# Action buttons %>
+      <div class="flex flex-wrap gap-2 mb-6">
+        <%= link_to "Edit this trip", edit_trip_path(@trip), class: "btn" %>
+        <%= link_to "Destroy this trip",
+            trip_path(@trip),
+            data: {
+              turbo_confirm: "Are you sure?",
+              turbo_method: :delete
+            },
+            class: "btn" %>
+        <%= link_to "Back to trips", trips_path, class: "btn" %>
       </div>
-    </div>
-  </div>
-
-  <!-- Action Buttons Section -->
-  <div class="bg-base-100 items-center">
-    <div class="flex flex-wrap gap-2 justify-center">
-      <%= link_to "Edit this trip", edit_trip_path(@trip), class: "btn" %>
-      <%= link_to "Destroy this trip",
-          trip_path(@trip),
-          data: {
-            turbo_confirm: "Are you sure?",
-            turbo_method: :delete
-          },
-          class: "btn" %>
-      <%= link_to "Back to trips", trips_path, class: "btn" %>
     </div>
   </div>
 </div>

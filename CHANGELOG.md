@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.3.0] - Unreleased
 
+The Trips Update Release
+
+Trips are now using MapLibre instead of Leaflet to provide same smooth experience as the Map V2.
+
+Each day of a trip now has its own card on the trip page with where user can leave a note for that day. Each day is colored in different color on the map to easily distinguish them. Timeline and Replay functionality is now available on the trip page as well, so you can easily see how your location changed during the trip and replay it if you want.
+
 ### Added
 
 - Per-user timezone setting. Users can now select their timezone from Settings > General, and all dates/times across the app (including background jobs and API responses) will respect it. Defaults to the server's `TIME_ZONE` environment variable for existing users.
@@ -20,6 +26,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The `STORE_GEODATA` setting now correctly controls whether geodata is written during reverse geocoding.
 - Dropped unused `idx_points_user_city` database index (304 MB) and replaced the full `reverse_geocoded_at` index (1,149 MB) with a smaller partial index covering only un-geocoded rows.
 
+### Fixed
+
+- Countries that were not showed as flags before now fixed.
+
 
 ## [1.2.0] - 2026-02-15
 
@@ -30,6 +40,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Countries flags as SVGs instead of emojis.
 - Map v2 requires WebGL support, so if user's browser doesn't support it or it's disabled, they will see a warning message with a link to the list of supported browsers.
 - New **Insights API** (`GET /api/v1/insights`) returning year overview with totals, activity heatmap, and streak data for the mobile app.
 - New **Insights Details API** (`GET /api/v1/insights/details`) returning year-over-year comparison and travel patterns for the mobile app.
@@ -68,6 +79,11 @@ In Map V2 Tools, user can now enable Timeline tool, which allows to quickly navi
 
 - Zooming animation is disabled on Map V2 loading #2219
 - Exporting points to GPX and GeoJSON now works better and faster for large numbers of points by processing the export in chunks to reduce memory usage. #2161
+- Default color for Tracks layer on Map V2 is now set to blue instead of red.
+
+## Removed
+
+- `MIN_MINUTES_SPENT_IN_CITY` env variable is removed. It is now user-configurable in the Map v2 Settings panel. You can safely remove the `MIN_MINUTES_SPENT_IN_CITY` variable from your environment variables if you had it set before.
 
 
 ## [1.0.4] - 2026-02-01

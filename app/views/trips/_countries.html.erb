@@ -1,51 +1,20 @@
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-  <div class="card bg-base-200 shadow-lg">
-    <div class="card-body p-4">
-      <div class="stat-title text-xs">Distance</div>
-      <div class="stat-value text-lg"><%= trip.distance_in_unit(distance_unit).round %> <%= distance_unit %></div>
-    </div>
-  </div>
-  <div class="card bg-base-200 shadow-lg">
-    <div class="card-body p-4">
-      <div class="stat-title text-xs">Duration</div>
-      <div class="stat-value text-lg"><%= trip_duration(trip) %></div>
-    </div>
-  </div>
-  <div class="card bg-base-200 shadow-lg cursor-pointer hover:bg-base-300 transition-colors"
-       onclick="countries_modal_<%= trip.id %>.showModal()">
-    <div class="card-body p-4">
-      <div class="stat-title text-xs">Countries</div>
-      <div class="stat-value text-lg">
-        <% if trip.visited_countries.any? %>
-          <%= trip.visited_countries.count %>
-        <% else %>
-          <span class="loading loading-dots loading-sm"></span>
-        <% end %>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Countries Modal -->
-<dialog id="countries_modal_<%= trip.id %>" class="modal">
-  <div class="modal-box">
-    <form method="dialog">
-      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-    </form>
-    <h3 class="font-bold text-lg mb-4">Visited Countries</h3>
+<div class="mb-4">
+  <p class="text-base-content/60 text-sm">
+    <%= trip.distance_in_unit(distance_unit).round %> <%= distance_unit %>
+    &middot;
+    <%= trip_duration(trip) %>
+    &middot;
     <% if trip.visited_countries.any? %>
-      <div class="space-y-2">
-        <% trip.visited_countries.sort.each do |country| %>
-          <div class="p-3 bg-base-200 rounded-lg">
-            <%= country %>
-          </div>
-        <% end %>
-      </div>
+      <%= pluralize(trip.visited_countries.count, 'country', 'countries') %>
     <% else %>
-      <p class="text-base-content/70">No countries data available yet.</p>
+      <span class="loading loading-dots loading-xs"></span>
     <% end %>
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button>close</button>
-  </form>
-</dialog>
+  </p>
+  <% if trip.visited_countries.any? %>
+    <div class="flex flex-wrap items-center gap-1.5 mt-2">
+      <% trip.visited_countries.sort.each do |country| %>
+        <%= country_flag(country) %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
