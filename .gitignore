@@ -86,4 +86,4 @@ node_modules/
 /playwright/.cache/
 /e2e/temp/
 
-.claude
+.claude/

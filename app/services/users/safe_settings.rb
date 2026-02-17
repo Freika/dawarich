@@ -46,6 +46,13 @@ class Users::SafeSettings
       'min_flight_distance_km' => 100
     },
     'transportation_expert_mode' => false,
+    # Visit detection settings
+    'visit_detection_eps_meters' => 50,
+    'visit_detection_min_points' => 2,
+    'visit_detection_time_gap_minutes' => 30,
+    'visit_detection_extended_merge_hours' => 2,
+    'visit_detection_travel_threshold_meters' => 200,
+    'visit_detection_default_accuracy' => 50,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
@@ -219,6 +226,32 @@ class Users::SafeSettings
 
   def transportation_expert_mode?
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
+  end
+
+  # Visit detection settings (coerced to numeric for SQL safety)
+  def visit_detection_eps_meters
+    (settings['visit_detection_eps_meters'] || DEFAULT_VALUES['visit_detection_eps_meters']).to_f
+  end
+
+  def visit_detection_min_points
+    (settings['visit_detection_min_points'] || DEFAULT_VALUES['visit_detection_min_points']).to_i
+  end
+
+  def visit_detection_time_gap_minutes
+    (settings['visit_detection_time_gap_minutes'] || DEFAULT_VALUES['visit_detection_time_gap_minutes']).to_i
+  end
+
+  def visit_detection_extended_merge_hours
+    (settings['visit_detection_extended_merge_hours'] || DEFAULT_VALUES['visit_detection_extended_merge_hours']).to_i
+  end
+
+  def visit_detection_travel_threshold_meters
+    key = 'visit_detection_travel_threshold_meters'
+    (settings[key] || DEFAULT_VALUES[key]).to_f
+  end
+
+  def visit_detection_default_accuracy
+    (settings['visit_detection_default_accuracy'] || DEFAULT_VALUES['visit_detection_default_accuracy']).to_f
   end
 
   def min_minutes_spent_in_city

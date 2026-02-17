@@ -125,6 +125,12 @@ RSpec.describe Users::SafeSettings do
               'min_flight_distance_km' => 100
             },
             'transportation_expert_mode' => false,
+            'visit_detection_eps_meters' => 50,
+            'visit_detection_min_points' => 2,
+            'visit_detection_time_gap_minutes' => 30,
+            'visit_detection_extended_merge_hours' => 2,
+            'visit_detection_travel_threshold_meters' => 200,
+            'visit_detection_default_accuracy' => 50,
             'min_minutes_spent_in_city' => 60,
             'max_gap_minutes_in_city' => 120,
             'timezone' => 'UTC'
