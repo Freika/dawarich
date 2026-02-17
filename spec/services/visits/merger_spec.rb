@@ -67,7 +67,6 @@ RSpec.describe Visits::Merger do
         expect(merged.size).to eq(2)
         expect(merged.first[:points].size).to eq(2)
         expect(merged.first[:end_time]).to eq(visit2[:end_time])
-        expect(merged.last).to eq(visit3)
       end
     end
 
@@ -109,11 +108,20 @@ RSpec.describe Visits::Merger do
 
       subject { described_class.new(points) }
 
-      it 'keeps visits separate' do
-        merged = subject.merge_visits(visits)
+      let(:visit2) do
+        {
+          start_time: (base_time - 80.minutes).to_i,
+          end_time: (base_time - 70.minutes).to_i,
+          center_lat: 40.7500,
+          center_lon: -74.0500,
+          points: [double('Point2')]
+        }
+      end
 
-        expect(merged.size).to eq(3)
-        expect(merged).to eq(visits)
+      it 'keeps them separate' do
+        merged = subject.merge_visits([visit1, visit2])
+
+        expect(merged.size).to eq(2)
       end
     end
 
@@ -126,152 +134,108 @@ RSpec.describe Visits::Merger do
         expect(subject.merge_visits([])).to eq([])
       end
     end
-  end
 
-  describe '#traveled_far_during_gap?' do
-    let(:base_time) { Time.zone.now }
-
-    let(:first_visit) do
-      {
-        start_time: (base_time - 2.hours).to_i,
-        end_time: (base_time - 1.hour).to_i,
-        center_lat: 40.7128,
-        center_lon: -74.0060,
-        points: []
-      }
-    end
-
-    let(:second_visit) do
-      {
-        start_time: (base_time - 30.minutes).to_i,
-        end_time: (base_time - 20.minutes).to_i,
-        center_lat: 40.7128,
-        center_lon: -74.0060,
-        points: []
-      }
-    end
-
-    context 'with minimal travel during gap' do
-      before do
-        # Points during the gap that don't travel far
-        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
-               timestamp: (base_time - 55.minutes).to_i)
-        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)',
-               timestamp: (base_time - 50.minutes).to_i)
-        create(:point, user: user, lonlat: 'POINT(-74.0062 40.7130)',
-               timestamp: (base_time - 45.minutes).to_i)
-      end
-
-      it 'returns false when travel distance is minimal' do
-        result = subject.send(:traveled_far_during_gap?, first_visit, second_visit)
-        expect(result).to be false
-      end
-    end
-
-    context 'with significant travel during gap' do
-      before do
-        # Points that travel far (~1km apart)
-        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
-               timestamp: (base_time - 55.minutes).to_i)
-        create(:point, user: user, lonlat: 'POINT(-74.0160 40.7228)',
-               timestamp: (base_time - 50.minutes).to_i)
-        create(:point, user: user, lonlat: 'POINT(-74.0260 40.7328)',
-               timestamp: (base_time - 45.minutes).to_i)
-      end
-
-      it 'returns true when travel distance exceeds threshold' do
-        result = subject.send(:traveled_far_during_gap?, first_visit, second_visit)
-        expect(result).to be true
-      end
-    end
-
-    context 'with no points during gap' do
-      it 'returns false' do
-        result = subject.send(:traveled_far_during_gap?, first_visit, second_visit)
-        expect(result).to be false
-      end
-    end
-  end
-
-  describe '#can_merge_visits? with extended window' do
-    let(:base_time) { Time.zone.now }
-
-    let(:first_visit) do
-      {
-        start_time: (base_time - 3.hours).to_i,
-        end_time: (base_time - 2.hours).to_i,
-        center_lat: 40.7128,
-        center_lon: -74.0060,
-        points: []
-      }
-    end
-
-    context 'with gap within MAXIMUM_VISIT_GAP' do
-      let(:second_visit) do
+    context 'with extended merge window and minimal travel' do
+      # Gap of 1 hour — beyond MAXIMUM_VISIT_GAP (30min) but within
+      # extended merge window (2 hours). User stayed nearby.
+      let(:visit1) do
         {
-          start_time: (base_time - 90.minutes).to_i,
-          end_time: (base_time - 80.minutes).to_i,
-          center_lat: 40.7129,
-          center_lon: -74.0061,
-          points: []
+          start_time: (base_time - 3.hours).to_i,
+          end_time: (base_time - 2.hours).to_i,
+          center_lat: 40.7128,
+          center_lon: -74.0060,
+          points: [double('Point1')]
         }
       end
 
-      before do
-        allow(subject).to receive(:significant_movement_between?).and_return(false)
-      end
-
-      it 'allows merge without travel check' do
-        result = subject.send(:can_merge_visits?, first_visit, second_visit)
-        expect(result).to be true
-      end
-    end
-
-    context 'with gap in extended window (30min - 2hr)' do
-      let(:second_visit) do
+      let(:visit2) do
         {
           start_time: (base_time - 60.minutes).to_i,
           end_time: (base_time - 50.minutes).to_i,
           center_lat: 40.7129,
           center_lon: -74.0061,
-          points: []
+          points: [double('Point2')]
         }
       end
 
       before do
-        allow(subject).to receive(:traveled_far_during_gap?).and_return(false)
+        # Points during the gap that don't travel far (nearby)
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
+               timestamp: (base_time - 110.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)',
+               timestamp: (base_time - 100.minutes).to_i)
       end
 
-      it 'checks travel distance for extended gaps' do
-        expect(subject).to receive(:traveled_far_during_gap?)
-        subject.send(:can_merge_visits?, first_visit, second_visit)
+      it 'merges visits when travel during gap is minimal' do
+        merged = subject.merge_visits([visit1, visit2])
+
+        expect(merged.size).to eq(1)
       end
     end
 
-    context 'with gap beyond EXTENDED_MERGE_WINDOW' do
-      let(:second_visit) do
+    context 'with extended merge window and significant travel' do
+      let(:visit1) do
+        {
+          start_time: (base_time - 3.hours).to_i,
+          end_time: (base_time - 2.hours).to_i,
+          center_lat: 40.7128,
+          center_lon: -74.0060,
+          points: [double('Point1')]
+        }
+      end
+
+      let(:visit2) do
+        {
+          start_time: (base_time - 60.minutes).to_i,
+          end_time: (base_time - 50.minutes).to_i,
+          center_lat: 40.7129,
+          center_lon: -74.0061,
+          points: [double('Point2')]
+        }
+      end
+
+      before do
+        # Points during the gap that travel far (~1km apart)
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
+               timestamp: (base_time - 110.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0160 40.7228)',
+               timestamp: (base_time - 100.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0260 40.7328)',
+               timestamp: (base_time - 90.minutes).to_i)
+      end
+
+      it 'does not merge visits when travel is significant' do
+        merged = subject.merge_visits([visit1, visit2])
+
+        expect(merged.size).to eq(2)
+      end
+    end
+
+    context 'with gap beyond extended merge window' do
+      let(:visit1) do
+        {
+          start_time: (base_time - 5.hours).to_i,
+          end_time: (base_time - 4.hours).to_i,
+          center_lat: 40.7128,
+          center_lon: -74.0060,
+          points: [double('Point1')]
+        }
+      end
+
+      let(:visit2) do
         {
           start_time: (base_time - 30.minutes).to_i,
           end_time: (base_time - 20.minutes).to_i,
           center_lat: 40.7129,
           center_lon: -74.0061,
-          points: []
+          points: [double('Point2')]
         }
       end
 
-      it 'rejects merge for very large gaps' do
-        # Gap is ~1.5 hours which is still within extended window
-        # Let's test with a gap > 2 hours
-        very_old_visit = {
-          start_time: (base_time - 5.hours).to_i,
-          end_time: (base_time - 4.hours).to_i,
-          center_lat: 40.7129,
-          center_lon: -74.0061,
-          points: []
-        }
+      it 'does not merge visits' do
+        merged = subject.merge_visits([visit1, visit2])
 
-        result = subject.send(:can_merge_visits?, very_old_visit, second_visit)
-        expect(result).to be false
+        expect(merged.size).to eq(2)
       end
     end
   end

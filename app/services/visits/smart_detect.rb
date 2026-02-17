@@ -7,20 +7,19 @@ module Visits
     MAXIMUM_VISIT_GAP = 30.minutes
     MINIMUM_POINTS_FOR_VISIT = 3
     BATCH_THRESHOLD_DAYS = 31 # Process in monthly batches if range exceeds this
+    # Overlap batches by 1 hour to avoid splitting visits at month boundaries
+    BATCH_OVERLAP_SECONDS = 1.hour.to_i
 
-    attr_reader :user, :start_at, :end_at, :points
+    attr_reader :user, :start_at, :end_at
 
     def initialize(user, start_at:, end_at:)
       @user = user
       @start_at = start_at.to_i
       @end_at = end_at.to_i
-      @points = user.points.not_visited
-                    .order(timestamp: :asc)
-                    .where(timestamp: start_at..end_at)
     end
 
     def call
-      return [] if points.empty?
+      return [] unless user.points.not_visited.where(timestamp: start_at..end_at).exists?
 
       if should_batch?
         process_in_batches
@@ -51,7 +50,11 @@ module Visits
 
       while current_start.to_i < end_at
         batch_start = [current_start.to_i, start_at].max
-        batch_end = [(current_start.end_of_month + 1.day).beginning_of_day.to_i - 1, end_at].min
+        batch_end_raw = (current_start.end_of_month + 1.day).beginning_of_day.to_i - 1
+        # Add overlap to avoid splitting visits at month boundaries.
+        # Points already assigned to a visit in a previous batch are excluded
+        # by the not_visited scope, so the overlap is safe.
+        batch_end = [batch_end_raw + BATCH_OVERLAP_SECONDS, end_at].min
         ranges << [batch_start, batch_end]
         current_start = current_start.next_month
       end

@@ -3,8 +3,13 @@
 module Visits
   # Uses PostGIS DBSCAN for efficient spatial clustering of GPS points.
   # This replaces the O(n²) Ruby iteration with database-level clustering.
+  #
+  # NOTE: Uses EPSG:3857 (Web Mercator) projection for DBSCAN clustering.
+  # This introduces distance distortion at higher latitudes — e.g., at 60°N
+  # (Oslo, Helsinki), the effective clustering distance is ~half the configured
+  # eps_meters value. For most use cases this is acceptable, but users at extreme
+  # latitudes may need to increase their clustering distance setting.
   class DbscanClusterer
-    # Default values (used if user settings not available)
     DEFAULT_EPS_METERS = 50
     DEFAULT_MIN_POINTS = 2
     DEFAULT_TIME_GAP_MINUTES = 30
@@ -26,9 +31,16 @@ module Visits
     private
 
     def execute_dbscan_query
-      Point.connection.execute("SET LOCAL statement_timeout = '#{QUERY_TIMEOUT_MS}ms'")
-      result = Point.connection.execute(dbscan_sql)
-      parse_results(result)
+      # Wrap in transaction so SET LOCAL applies to the DBSCAN query
+      Point.transaction do
+        Point.connection.execute(
+          ActiveRecord::Base.sanitize_sql_array(
+            ['SET LOCAL statement_timeout = ?', "#{QUERY_TIMEOUT_MS}ms"]
+          )
+        )
+        result = Point.connection.execute(dbscan_sql)
+        parse_results(result)
+      end
     rescue ActiveRecord::StatementInvalid => e
       raise e unless e.message.include?('canceling statement due to statement timeout')
 
@@ -57,30 +69,32 @@ module Visits
     end
 
     def eps_meters
-      user.safe_settings.visit_detection_eps_meters || DEFAULT_EPS_METERS
+      user.safe_settings.visit_detection_eps_meters
     end
 
     def min_points
-      user.safe_settings.visit_detection_min_points || DEFAULT_MIN_POINTS
+      user.safe_settings.visit_detection_min_points
     end
 
     def time_gap_seconds
-      (user.safe_settings.visit_detection_time_gap_minutes || DEFAULT_TIME_GAP_MINUTES) * 60
+      user.safe_settings.visit_detection_time_gap_minutes * 60
     end
 
-    def dbscan_sql
-      <<-SQL.squish
+    def dbscan_sql # rubocop:disable Metrics/MethodLength
+      params = [eps_meters, min_points, user.id, start_at, end_at,
+                time_gap_seconds, min_points, MIN_DURATION_SECONDS]
+      ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, *params])
         WITH clustered_points AS (
           SELECT
             id, lonlat, timestamp, accuracy,
             ST_ClusterDBSCAN(
               ST_Transform(lonlat::geometry, 3857),
-              eps := #{eps_meters},
-              minpoints := #{min_points}
+              eps := ?,
+              minpoints := ?
             ) OVER (ORDER BY timestamp) as spatial_cluster
           FROM points
-          WHERE user_id = #{user.id}
-            AND timestamp BETWEEN #{start_at} AND #{end_at}
+          WHERE user_id = ?
+            AND timestamp BETWEEN ? AND ?
             AND visit_id IS NULL
             AND lonlat IS NOT NULL
           ORDER BY timestamp
@@ -89,7 +103,7 @@ module Visits
           SELECT *,
             CASE
               WHEN LAG(timestamp) OVER (PARTITION BY spatial_cluster ORDER BY timestamp) IS NULL THEN 0
-              WHEN timestamp - LAG(timestamp) OVER (PARTITION BY spatial_cluster ORDER BY timestamp) > #{time_gap_seconds} THEN 1
+              WHEN timestamp - LAG(timestamp) OVER (PARTITION BY spatial_cluster ORDER BY timestamp) > ? THEN 1
               ELSE 0
             END as new_segment
           FROM clustered_points
@@ -108,8 +122,8 @@ module Visits
           COUNT(*) as point_count
         FROM visit_groups
         GROUP BY visit_id
-        HAVING COUNT(*) >= #{min_points}
-          AND MAX(timestamp) - MIN(timestamp) >= #{MIN_DURATION_SECONDS}
+        HAVING COUNT(*) >= ?
+          AND MAX(timestamp) - MIN(timestamp) >= ?
         ORDER BY MIN(timestamp)
       SQL
     end

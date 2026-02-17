@@ -103,20 +103,18 @@ module Visits
     # Calculate cumulative travel distance during the gap using PostGIS.
     # This helps detect if user actually traveled somewhere and came back.
     def traveled_far_during_gap?(first_visit, second_visit)
-      return false unless points.respond_to?(:first) && points.first.respond_to?(:user_id)
+      return false unless user
 
-      user_id = points.first.user_id
       start_time = first_visit[:end_time]
       end_time = second_visit[:start_time]
 
-      # Use PostGIS for efficient consecutive distance calculation
-      total_distance = Point.connection.select_value(<<-SQL.squish)
+      sql = ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, user.id, start_time, end_time])
         WITH ordered_points AS (
           SELECT lonlat, ROW_NUMBER() OVER (ORDER BY timestamp) as rn
           FROM points
-          WHERE user_id = #{user_id}
-            AND timestamp > #{start_time}
-            AND timestamp < #{end_time}
+          WHERE user_id = ?
+            AND timestamp > ?
+            AND timestamp < ?
             AND lonlat IS NOT NULL
         )
         SELECT COALESCE(SUM(
@@ -126,6 +124,7 @@ module Visits
         JOIN ordered_points p2 ON p2.rn = p1.rn + 1
       SQL
 
+      total_distance = Point.connection.select_value(sql)
       total_distance.to_f > travel_merge_threshold
     end
   end

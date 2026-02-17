@@ -72,10 +72,10 @@
           <div class="form-control mb-3">
             <label class="label">
               <span class="label-text">Clustering distance (meters)</span>
-              <span class="label-text-alt" title="Points within this distance are grouped together">?</span>
+              <span class="label-text-alt tooltip" data-tip="Points within this distance are grouped together">?</span>
             </label>
             <%= f.number_field 'settings[visit_detection_eps_meters]',
-                value: current_user.safe_settings.visit_detection_eps_meters,
+                value: current_user.safe_settings.visit_detection_eps_meters.to_i,
                 min: 10, max: 500, step: 10,
                 class: 'input input-bordered input-sm w-full' %>
           </div>
@@ -83,7 +83,7 @@
           <div class="form-control mb-3">
             <label class="label">
               <span class="label-text">Min points per visit</span>
-              <span class="label-text-alt" title="Minimum number of points required to form a visit">?</span>
+              <span class="label-text-alt tooltip" data-tip="Minimum number of points required to form a visit">?</span>
             </label>
             <%= f.number_field 'settings[visit_detection_min_points]',
                 value: current_user.safe_settings.visit_detection_min_points,
@@ -94,7 +94,7 @@
           <div class="form-control mb-3">
             <label class="label">
               <span class="label-text">Time gap threshold (minutes)</span>
-              <span class="label-text-alt" title="Split visits when gap exceeds this">?</span>
+              <span class="label-text-alt tooltip" data-tip="Split visits when gap exceeds this">?</span>
             </label>
             <%= f.number_field 'settings[visit_detection_time_gap_minutes]',
                 value: current_user.safe_settings.visit_detection_time_gap_minutes,
@@ -105,7 +105,7 @@
           <div class="form-control mb-3">
             <label class="label">
               <span class="label-text">Extended merge window (hours)</span>
-              <span class="label-text-alt" title="Check travel distance for gaps up to this duration">?</span>
+              <span class="label-text-alt tooltip" data-tip="Check travel distance for gaps up to this duration">?</span>
             </label>
             <%= f.number_field 'settings[visit_detection_extended_merge_hours]',
                 value: current_user.safe_settings.visit_detection_extended_merge_hours,
@@ -116,10 +116,10 @@
           <div class="form-control mb-3">
             <label class="label">
               <span class="label-text">Travel merge threshold (meters)</span>
-              <span class="label-text-alt" title="Max travel distance to still merge visits">?</span>
+              <span class="label-text-alt tooltip" data-tip="Max travel distance to still merge visits">?</span>
             </label>
             <%= f.number_field 'settings[visit_detection_travel_threshold_meters]',
-                value: current_user.safe_settings.visit_detection_travel_threshold_meters,
+                value: current_user.safe_settings.visit_detection_travel_threshold_meters.to_i,
                 min: 50, max: 1000, step: 50,
                 class: 'input input-bordered input-sm w-full' %>
           </div>
@@ -127,10 +127,10 @@
           <div class="form-control mb-3">
             <label class="label">
               <span class="label-text">Default GPS accuracy (meters)</span>
-              <span class="label-text-alt" title="Used when point accuracy is unknown">?</span>
+              <span class="label-text-alt tooltip" data-tip="Used when point accuracy is unknown">?</span>
             </label>
             <%= f.number_field 'settings[visit_detection_default_accuracy]',
-                value: current_user.safe_settings.visit_detection_default_accuracy,
+                value: current_user.safe_settings.visit_detection_default_accuracy.to_i,
                 min: 5, max: 200, step: 5,
                 class: 'input input-bordered input-sm w-full' %>
           </div>
