@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_08_223255) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_17_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -270,16 +270,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_08_223255) do
     t.string "country_name"
     t.boolean "raw_data_archived", default: false, null: false
     t.bigint "raw_data_archive_id"
+    t.jsonb "motion_data", default: {}, null: false
     t.index ["country_id"], name: "index_points_on_country_id"
+    t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
     t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
+    t.index ["raw_data_archived", "user_id", "timestamp"], name: "index_points_on_archivable", where: "((raw_data_archived = false) AND (raw_data IS NOT NULL) AND (raw_data <> '{}'::jsonb))"
     t.index ["raw_data_archived"], name: "index_points_on_archived_true", where: "(raw_data_archived = true)"
-    t.index ["reverse_geocoded_at"], name: "index_points_on_reverse_geocoded_at"
     t.index ["timestamp"], name: "index_points_on_timestamp"
     t.index ["track_id"], name: "index_points_on_track_id"
-    t.index ["user_id", "city"], name: "idx_points_user_city"
     t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
     t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
     t.index ["user_id", "reverse_geocoded_at"], name: "index_points_on_user_id_and_reverse_geocoded_at", where: "(reverse_geocoded_at IS NOT NULL)"
@@ -303,6 +304,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_08_223255) do
     t.datetime "updated_at", null: false
     t.datetime "verified_at"
     t.index ["archived_at"], name: "index_points_raw_data_archives_on_archived_at"
+    t.index ["user_id", "year", "month", "chunk_number"], name: "index_raw_data_archives_uniqueness", unique: true
     t.index ["user_id", "year", "month"], name: "index_points_raw_data_archives_on_user_id_and_year_and_month"
     t.index ["user_id"], name: "index_points_raw_data_archives_on_user_id"
   end

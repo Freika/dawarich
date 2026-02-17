@@ -16,7 +16,7 @@ class Users::ImportData::Stats
     valid_stats = filter_and_prepare_stats
 
     if valid_stats.empty?
-      Rails.logger.info "Stats import completed. Created: 0"
+      Rails.logger.info 'Stats import completed. Created: 0'
       return 0
     end
 
@@ -52,9 +52,7 @@ class Users::ImportData::Stats
       valid_stats << prepared_attributes if prepared_attributes
     end
 
-    if skipped_count > 0
-      Rails.logger.warn "Skipped #{skipped_count} stats with invalid or missing required data"
-    end
+    Rails.logger.warn "Skipped #{skipped_count} stats with invalid or missing required data" if skipped_count.positive?
 
     valid_stats
   end
@@ -83,7 +81,7 @@ class Users::ImportData::Stats
       existing_stats_lookup[key] = true
     end
 
-    filtered_stats = stats.reject do |stat|
+    stats.reject do |stat|
       key = [stat[:year], stat[:month]]
       if existing_stats_lookup[key]
         Rails.logger.debug "Stat already exists: #{stat[:year]}-#{stat[:month]}"
@@ -92,29 +90,28 @@ class Users::ImportData::Stats
         false
       end
     end
-
-    filtered_stats
   end
 
   def bulk_import_stats(stats)
     total_created = 0
 
     stats.each_slice(BATCH_SIZE) do |batch|
-      begin
-        result = Stat.upsert_all(
-          batch,
-          returning: %w[id],
-          on_duplicate: :skip
-        )
+      # rubocop:disable Rails/SkipsModelValidations
+      result = Stat.upsert_all(
+        batch,
+        returning: %w[id],
+        on_duplicate: :skip
+      )
+      # rubocop:enable Rails/SkipsModelValidations
 
-        batch_created = result.count
-        total_created += batch_created
+      batch_created = result.count
+      total_created += batch_created
 
-        Rails.logger.debug "Processed batch of #{batch.size} stats, created #{batch_created}, total created: #{total_created}"
-
-      rescue StandardError => e
-        ExceptionReporter.call(e, 'Failed to process stat batch')
-      end
+      Rails.logger.debug(
+        "Processed batch of #{batch.size} stats, created #{batch_created}, total created: #{total_created}"
+      )
+    rescue StandardError => e
+      ExceptionReporter.call(e, 'Failed to process stat batch')
     end
 
     total_created
@@ -123,17 +120,17 @@ class Users::ImportData::Stats
   def valid_stat_data?(stat_data)
     return false unless stat_data.is_a?(Hash)
 
-    unless stat_data['year'].present?
+    if stat_data['year'].blank?
       Rails.logger.error "Failed to create stat: Validation failed: Year can't be blank"
       return false
     end
 
-    unless stat_data['month'].present?
+    if stat_data['month'].blank?
       Rails.logger.error "Failed to create stat: Validation failed: Month can't be blank"
       return false
     end
 
-    unless stat_data['distance'].present?
+    if stat_data['distance'].blank?
       Rails.logger.error "Failed to create stat: Validation failed: Distance can't be blank"
       return false
     end

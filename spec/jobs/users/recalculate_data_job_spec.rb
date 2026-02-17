@@ -38,10 +38,11 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       it 'recalculates tracks for the specified year' do
         subject
 
+        # Job now runs in user's timezone (UTC by default), so times are in UTC
         expect(Tracks::ParallelGenerator).to have_received(:new).with(
           user,
-          start_at: Time.zone.local(year, 1, 1).beginning_of_day,
-          end_at: Time.zone.local(year, 12, 31).end_of_day,
+          start_at: Time.use_zone('UTC') { Time.zone.local(year, 1, 1).beginning_of_day },
+          end_at: Time.use_zone('UTC') { Time.zone.local(year, 12, 31).end_of_day },
           mode: :bulk
         )
       end
@@ -83,11 +84,12 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       it 'recalculates tracks for all tracked years' do
         subject
 
+        # Job now runs in user's timezone (UTC by default), so times are in UTC
         [2023, 2024].each do |y|
           expect(Tracks::ParallelGenerator).to have_received(:new).with(
             user,
-            start_at: Time.zone.local(y, 1, 1).beginning_of_day,
-            end_at: Time.zone.local(y, 12, 31).end_of_day,
+            start_at: Time.use_zone('UTC') { Time.zone.local(y, 1, 1).beginning_of_day },
+            end_at: Time.use_zone('UTC') { Time.zone.local(y, 12, 31).end_of_day },
             mode: :bulk
           )
         end

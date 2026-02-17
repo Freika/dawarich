@@ -188,6 +188,7 @@ class InsightsController < ApplicationController
   end
 
   def set_default_patterns
+    @selected_month = 'all'
     @available_months = []
     @time_of_day = {}
     @day_of_week = Array.new(7, 0)

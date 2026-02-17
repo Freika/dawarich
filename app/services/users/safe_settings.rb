@@ -47,7 +47,8 @@ class Users::SafeSettings
     },
     'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
-    'max_gap_minutes_in_city' => 120
+    'max_gap_minutes_in_city' => 120,
+    'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
   }.freeze
 
   def initialize(settings = {})
@@ -82,7 +83,8 @@ class Users::SafeSettings
       transportation_expert_thresholds: transportation_expert_thresholds,
       transportation_expert_mode: transportation_expert_mode?,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
-      max_gap_minutes_in_city: max_gap_minutes_in_city
+      max_gap_minutes_in_city: max_gap_minutes_in_city,
+      timezone: timezone
     }
   end
 
@@ -225,5 +227,9 @@ class Users::SafeSettings
 
   def max_gap_minutes_in_city
     (settings['max_gap_minutes_in_city'] || DEFAULT_VALUES['max_gap_minutes_in_city']).to_i
+  end
+
+  def timezone
+    settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 end

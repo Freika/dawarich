@@ -1,14 +1,16 @@
-<div data-maps--maplibre-target="webglError" class="hidden flex items-center justify-center h-full bg-base-200 text-center p-8">
-  <div>
-    <h3 class="text-lg font-bold mb-2">WebGL is not available</h3>
-    <p class="text-sm text-base-content/70">
-      Map v2 requires WebGL to render maps. Please enable hardware acceleration
-      in your browser settings or try a different browser.
-    </p>
-    <p class="text-sm text-base-content/50 mt-2">
-      Map v1 (Leaflet) is available at
-      <%= link_to '/map/v1', map_v1_path, class: 'link link-primary' %>
-      but will be deprecated and removed in one of future releases.
-    </p>
+<div data-maps--maplibre-target="webglError" class="hidden">
+  <div class="flex items-center justify-center h-full bg-base-200 text-center p-8">
+    <div>
+      <h3 class="text-lg font-bold mb-2">WebGL is not available</h3>
+      <p class="text-sm text-base-content/70">
+        Map v2 requires WebGL to render maps. Please enable hardware acceleration
+        in your browser settings or try a different browser.
+      </p>
+      <p class="text-sm text-base-content/50 mt-2">
+        Map v1 (Leaflet) is available at
+        <%= link_to '/map/v1', map_v1_path, class: 'link link-primary' %>
+        but will be deprecated and removed in one of future releases.
+      </p>
+    </div>
   </div>
 </div>

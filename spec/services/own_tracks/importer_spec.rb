@@ -46,29 +46,8 @@ RSpec.describe OwnTracks::Importer do
           'visit_id' => nil,
           'user_id' => user.id,
           'country' => nil,
-          'raw_data' => {
-            'm' => 1,
-            'p' => 100.266,
-            't' => 'p',
-            'bs' => 2,
-            'acc' => 10,
-            'alt' => 36,
-            'lat' => 52.225,
-            'lon' => 13.332,
-            'tid' => 'RO',
-            'tst' => 1_709_283_789,
-            'vac' => 4,
-            'vel' => 5,
-            'SSID' => 'Home Wifi',
-            'batt' => 94,
-            'conn' => 'w',
-            'BSSID' => 'b0:f2:8:45:94:33',
-            '_http' => true,
-            '_type' => 'location',
-            'topic' => 'owntracks/test/iPhone 12 Pro',
-            'inrids' => ['5f1d1b'],
-            'inregions' => ['home']
-          }
+          'motion_data' => { 'm' => 1, '_type' => 'location' },
+          'raw_data' => {}
         )
       end
 

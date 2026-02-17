@@ -28,41 +28,8 @@ RSpec.describe Geojson::Params do
         ssid: nil,
         accuracy: 1,
         vertical_accuracy: 1,
-        raw_data: {
-          'type' => 'Feature',
-          'geometry' => {
-            'type' => 'Point',
-            'coordinates' => [
-              '0.1',
-              '0.1'
-            ]
-          },
-          'properties' => {
-            'battery_status' => 'unplugged',
-            'ping' => 'MyString',
-            'battery' => 1,
-            'tracker_id' => 'MyString',
-            'topic' => 'MyString',
-            'altitude' => 1,
-            'longitude' => '0.1',
-            'velocity' => 1.5,
-            'trigger' => 'background_event',
-            'bssid' => 'MyString',
-            'ssid' => 'MyString',
-            'connection' => 'wifi',
-            'vertical_accuracy' => 1,
-            'accuracy' => 1,
-            'timestamp' => 1_609_459_201,
-            'latitude' => '0.1',
-            'mode' => 1,
-            'inrids' => [],
-            'in_regions' => [],
-            'raw_data' => '',
-            'city' => nil,
-            'country' => nil,
-            'geodata' => {}
-          }
-        }
+        motion_data: {},
+        raw_data: {}
       )
     end
 
@@ -81,24 +48,8 @@ RSpec.describe Geojson::Params do
           ssid: nil,
           accuracy: 4.7551565,
           vertical_accuracy: nil,
-          raw_data: {
-            'geometry' => {
-              'coordinates' => [
-                106.64234449272531,
-                10.758321212464024
-              ],
-              'type' => 'Point'
-            },
-            'properties' => {
-              'accuracy' => 4.7551565,
-              'altitude' => 17.634344400269068,
-              'provider' => 'gps',
-              'speed' => 1.2,
-              'time' => '2024-11-03T16:30:11.331+07:00',
-              'time_long' => 1_730_626_211_331
-            },
-            'type' => 'Feature'
-          }
+          motion_data: {},
+          raw_data: {}
         )
       end
     end
@@ -118,19 +69,8 @@ RSpec.describe Geojson::Params do
           ssid: nil,
           accuracy: nil,
           vertical_accuracy: nil,
-          raw_data: {
-            'geometry' => {
-              'coordinates' => [
-                28,
-                36
-              ],
-              'type' => 'Point'
-            },
-            'properties' => {
-              'date' => '2016-06-21T06:09:33Z'
-            },
-            'type' => 'Feature'
-          }
+          motion_data: {},
+          raw_data: {}
         )
       end
     end

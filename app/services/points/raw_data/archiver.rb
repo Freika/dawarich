@@ -26,10 +26,14 @@ module Points
       end
 
       def archive_specific_month(user_id, year, month)
-        # Direct call without error handling - allows errors to propagate
-        # This is intended for use in tests and manual operations where
-        # we want to know immediately if something went wrong
-        archive_month(user_id, year, month)
+        lock_key = "archive_points:#{user_id}:#{year}:#{month}"
+
+        lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
+          archive_month(user_id, year, month)
+          true
+        end
+
+        raise "Could not acquire lock for #{lock_key} — archival already in progress" unless lock_acquired
       end
 
       private
@@ -195,32 +199,38 @@ module Points
 
         Rails.logger.info("✓ Compression validated: #{actual_count}/#{expected_count} points")
 
+        # Encrypt compressed data (pipeline: JSONL → gzip → encrypt)
+        encrypted_data = Encryption.encrypt(compressed_data)
+        content_checksum = Digest::SHA256.hexdigest(encrypted_data)
+
         # Create archive record
+        chunk_filename = "#{format('%03d', chunk_number)}.jsonl.gz.enc"
         archive = Points::RawDataArchive.create!(
           user_id: user_id,
           year: year,
           month: month,
           chunk_number: chunk_number,
-          point_count: actual_count, # Use actual count, not assumed
+          point_count: actual_count,
           point_ids_checksum: calculate_checksum(point_ids),
           archived_at: Time.current,
           metadata: {
-            format_version: 1,
+            format_version: 2,
             compression: 'gzip',
+            encryption: 'aes-256-gcm',
+            content_checksum: content_checksum,
             archived_by: 'Points::RawData::Archiver',
             expected_count: expected_count,
             actual_count: actual_count
           }
         )
 
-        # Attach compressed file via ActiveStorage
-        # Uses directory structure: raw_data_archives/:user_id/:year/:month/:chunk.jsonl.gz
-        # The key parameter controls the actual storage path
+        # Attach encrypted file via ActiveStorage
+        storage_key = "raw_data_archives/#{user_id}/#{year}/#{format('%02d', month)}/#{chunk_filename}"
         archive.file.attach(
-          io: StringIO.new(compressed_data),
-          filename: "#{format('%03d', chunk_number)}.jsonl.gz",
-          content_type: 'application/gzip',
-          key: "raw_data_archives/#{user_id}/#{year}/#{format('%02d', month)}/#{format('%03d', chunk_number)}.jsonl.gz"
+          io: StringIO.new(encrypted_data),
+          filename: chunk_filename,
+          content_type: 'application/octet-stream',
+          key: storage_key
         )
 
         # Report archive size
@@ -246,67 +256,76 @@ module Points
       end
 
       def verify_archive_immediately(archive, expected_point_ids)
-        # Lightweight verification immediately after archiving
-        # Ensures archive is valid before marking points as archived
         start_time = Time.current
 
-        # 1. Verify file is attached
+        result = download_and_decrypt_archive(archive, start_time)
+        return result unless result[:success]
+
+        result = parse_and_verify_point_ids(result[:content], expected_point_ids, start_time)
+        return result unless result[:success]
+
+        Rails.logger.info("✓ Immediate verification passed for archive #{archive.id}")
+        report_verification_metric(start_time, 'success')
+        { success: true }
+      end
+
+      def download_and_decrypt_archive(archive, start_time)
         unless archive.file.attached?
           report_verification_metric(start_time, 'failure', 'file_not_attached')
           return { success: false, error: 'File not attached' }
         end
 
-        # 2. Verify file can be downloaded
-        begin
-          compressed_content = archive.file.blob.download
-        rescue StandardError => e
-          report_verification_metric(start_time, 'failure', 'download_failed')
-          return { success: false, error: "File download failed: #{e.message}" }
-        end
-
-        # 3. Verify file size is reasonable
-        if compressed_content.bytesize.zero?
+        encrypted_content = archive.file.blob.download
+        if encrypted_content.bytesize.zero?
           report_verification_metric(start_time, 'failure', 'empty_file')
           return { success: false, error: 'File is empty' }
         end
 
-        # 4. Verify file can be decompressed and parse JSONL
-        begin
-          io = StringIO.new(compressed_content)
-          gz = Zlib::GzipReader.new(io)
-          archived_point_ids = []
+        verify_content_checksum!(encrypted_content, archive.metadata)
+        compressed = Encryption.decrypt(encrypted_content)
+        { success: true, content: compressed }
+      rescue StandardError => e
+        report_verification_metric(start_time, 'failure', 'download_or_decrypt_failed')
+        { success: false, error: "Download/decrypt failed: #{e.message}" }
+      end
 
-          gz.each_line do |line|
-            data = JSON.parse(line)
-            archived_point_ids << data['id']
-          end
+      def parse_and_verify_point_ids(compressed_content, expected_point_ids, start_time)
+        archived_point_ids = extract_point_ids(compressed_content)
 
-          gz.close
-        rescue StandardError => e
-          report_verification_metric(start_time, 'failure', 'decompression_failed')
-          return { success: false, error: "Decompression/parsing failed: #{e.message}" }
-        end
-
-        # 5. Verify point count matches
         if archived_point_ids.count != expected_point_ids.count
           report_verification_metric(start_time, 'failure', 'count_mismatch')
           return {
             success: false,
-            error: "Point count mismatch in archive: expected #{expected_point_ids.count}, found #{archived_point_ids.count}"
+            error: "Point count mismatch: expected #{expected_point_ids.count}, " \
+                   "found #{archived_point_ids.count}"
           }
         end
 
-        # 6. Verify point IDs checksum matches
-        archived_checksum = calculate_checksum(archived_point_ids)
-        expected_checksum = calculate_checksum(expected_point_ids)
-        if archived_checksum != expected_checksum
+        if calculate_checksum(archived_point_ids) != calculate_checksum(expected_point_ids)
           report_verification_metric(start_time, 'failure', 'checksum_mismatch')
           return { success: false, error: 'Point IDs checksum mismatch in archive' }
         end
 
-        Rails.logger.info("✓ Immediate verification passed for archive #{archive.id}")
-        report_verification_metric(start_time, 'success')
         { success: true }
+      rescue StandardError => e
+        report_verification_metric(start_time, 'failure', 'decompression_failed')
+        { success: false, error: "Decompression/parsing failed: #{e.message}" }
+      end
+
+      def extract_point_ids(compressed_content)
+        io = StringIO.new(compressed_content)
+        gz = Zlib::GzipReader.new(io)
+        ids = gz.each_line.map { |line| JSON.parse(line)['id'] }
+        gz.close
+        ids
+      end
+
+      def verify_content_checksum!(content, metadata)
+        expected = metadata&.dig('content_checksum')
+        return if expected.blank?
+
+        actual = Digest::SHA256.hexdigest(content)
+        raise 'Content checksum mismatch' unless actual == expected
       end
 
       def report_verification_metric(start_time, status, check_name = nil)

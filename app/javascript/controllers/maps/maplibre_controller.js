@@ -634,15 +634,13 @@ export default class extends Controller {
         isComplete: false,
       })
 
-      const response = await fetch(
-        `/api/v1/families/locations?api_key=${this.apiKeyValue}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
+      const response = await fetch("/api/v1/families/locations", {
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKeyValue}`,
         },
-      )
+      })
 
       if (!response.ok) {
         if (response.status === 403) {

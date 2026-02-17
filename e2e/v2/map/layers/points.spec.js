@@ -429,7 +429,7 @@ test.describe("Points Layer", () => {
       )
 
       // At least some routes should now reference the new position
-      expect(updatedConnectedRoutes.length).toBeGreaterThanOrEqual(0)
+      expect(updatedConnectedRoutes.length).toBeGreaterThanOrEqual(1)
     })
 
     test("persists point position after page reload", async ({ page }) => {

@@ -7,11 +7,12 @@ class Api::SlimPointSerializer
 
   def call
     {
-      id:        point.id,
-      latitude:  point.lat.to_s,
-      longitude: point.lon.to_s,
-      timestamp: point.timestamp,
-      velocity:  point.velocity
+      id:           point.id,
+      latitude:     point.lat.to_s,
+      longitude:    point.lon.to_s,
+      timestamp:    point.timestamp,
+      velocity:     point.velocity,
+      country_name: point.country_name
     }
   end
 
