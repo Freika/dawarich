@@ -71,14 +71,17 @@ RSpec.describe Timeline::DayAssembler do
         entries = subject.first[:entries]
         journey = entries.find { |e| e[:type] == 'journey' }
         expect(journey[:track_id]).to eq(track1.id)
-        expect(journey[:avg_speed_kmh]).to be_a(Float)
+        expect(journey[:avg_speed]).to be_a(Float)
+        expect(journey[:distance_unit]).to eq('km')
+        expect(journey[:speed_unit]).to eq('km/h')
         expect(journey).to have_key(:elevation_gain)
         expect(journey).to have_key(:elevation_loss)
       end
 
       it 'calculates summary with distance and places' do
         summary = subject.first[:summary]
-        expect(summary[:total_distance_km]).to eq(8.5)
+        expect(summary[:total_distance]).to eq(8.5)
+        expect(summary[:distance_unit]).to eq('km')
         expect(summary[:places_visited]).to eq(2)
       end
 
@@ -122,7 +125,7 @@ RSpec.describe Timeline::DayAssembler do
 
       it 'reports zero moving time' do
         expect(subject.first[:summary][:time_moving_minutes]).to eq(0)
-        expect(subject.first[:summary][:total_distance_km]).to eq(0.0)
+        expect(subject.first[:summary][:total_distance]).to eq(0.0)
       end
     end
 
@@ -147,7 +150,7 @@ RSpec.describe Timeline::DayAssembler do
         entries = subject.first[:entries]
         expect(entries.length).to eq(1)
         expect(entries.first[:type]).to eq('journey')
-        expect(entries.first[:distance_km]).to eq(15.0)
+        expect(entries.first[:distance]).to eq(15.0)
       end
 
       it 'reports zero stationary time' do
@@ -231,6 +234,163 @@ RSpec.describe Timeline::DayAssembler do
         expect(entry[:type]).to eq('visit')
         expect(entry[:name]).to eq('Unknown')
         expect(entry[:place]).to be_nil
+      end
+    end
+
+    context 'with timezone boundary — event near midnight UTC' do
+      # A visit that starts at 23:30 UTC is still Jan 15 in UTC,
+      # but already Jan 16 in UTC+1 (Europe/Berlin).
+      # DayAssembler groups by `visit.started_at.to_date`, which depends
+      # on Time.zone, so the grouping must reflect the configured timezone.
+
+      let(:utc_late) { Time.utc(2025, 1, 15, 23, 30, 0) }
+
+      let!(:late_visit) do
+        create(:visit,
+               user: user,
+               place: place,
+               name: 'Late Visit',
+               started_at: utc_late,
+               ended_at: utc_late + 1.hour,
+               duration: 3600)
+      end
+
+      context 'when Time.zone is UTC' do
+        around do |example|
+          Time.use_zone('UTC') { example.run }
+        end
+
+        subject do
+          described_class.new(
+            user,
+            start_at: '2025-01-15T00:00:00Z',
+            end_at: '2025-01-16T23:59:59Z'
+          ).call
+        end
+
+        it 'groups the visit on January 15' do
+          dates = subject.map { |d| d[:date] }
+          visit_day = subject.find { |d| d[:entries].any? { |e| e[:name] == 'Late Visit' } }
+          expect(visit_day[:date]).to eq('2025-01-15')
+        end
+      end
+
+      context 'when Time.zone is UTC+1 (Europe/Berlin)' do
+        around do |example|
+          Time.use_zone('Europe/Berlin') { example.run }
+        end
+
+        subject do
+          described_class.new(
+            user,
+            start_at: '2025-01-15T00:00:00+01:00',
+            end_at: '2025-01-17T00:00:00+01:00'
+          ).call
+        end
+
+        it 'groups the visit on January 16 (next day in Berlin)' do
+          visit_day = subject.find { |d| d[:entries].any? { |e| e[:name] == 'Late Visit' } }
+          expect(visit_day[:date]).to eq('2025-01-16')
+        end
+      end
+    end
+
+    context 'with timezone boundary — track spanning midnight' do
+      let(:before_midnight) { Time.utc(2025, 1, 15, 23, 0, 0) }
+
+      let!(:midnight_track) do
+        create(:track,
+               user: user,
+               start_at: before_midnight,
+               end_at: before_midnight + 2.hours,
+               distance: 5000,
+               duration: 7200,
+               dominant_mode: :driving)
+      end
+
+      context 'when Time.zone is US Eastern (UTC-5)' do
+        around do |example|
+          Time.use_zone('Eastern Time (US & Canada)') { example.run }
+        end
+
+        subject do
+          described_class.new(
+            user,
+            start_at: '2025-01-15T00:00:00-05:00',
+            end_at: '2025-01-16T23:59:59-05:00'
+          ).call
+        end
+
+        it 'groups the track by its start_at date in Eastern time (Jan 15)' do
+          track_day = subject.find { |d| d[:entries].any? { |e| e[:type] == 'journey' } }
+          # 23:00 UTC = 18:00 Eastern, still Jan 15
+          expect(track_day[:date]).to eq('2025-01-15')
+        end
+      end
+
+      context 'when Time.zone is UTC+9 (Tokyo)' do
+        around do |example|
+          Time.use_zone('Tokyo') { example.run }
+        end
+
+        subject do
+          described_class.new(
+            user,
+            start_at: '2025-01-15T00:00:00+09:00',
+            end_at: '2025-01-17T00:00:00+09:00'
+          ).call
+        end
+
+        it 'groups the track on January 16 (next day in Tokyo)' do
+          track_day = subject.find { |d| d[:entries].any? { |e| e[:type] == 'journey' } }
+          # 23:00 UTC = 08:00+1 JST = Jan 16
+          expect(track_day[:date]).to eq('2025-01-16')
+        end
+      end
+    end
+
+    context 'with distance_unit parameter' do
+      let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+
+      let!(:track) do
+        create(:track,
+               user: user,
+               start_at: day + 9.hours,
+               end_at: day + 10.hours,
+               distance: 16_093,
+               duration: 3600,
+               dominant_mode: :driving)
+      end
+
+      it 'converts distance to miles when distance_unit is mi' do
+        result = described_class.new(
+          user,
+          start_at: day.iso8601,
+          end_at: (day + 1.day).iso8601,
+          distance_unit: 'mi'
+        ).call
+
+        journey = result.first[:entries].first
+        expect(journey[:distance_unit]).to eq('mi')
+        expect(journey[:distance]).to eq(10.0) # 16093m ≈ 10.0 mi
+        expect(journey[:speed_unit]).to eq('mph')
+
+        summary = result.first[:summary]
+        expect(summary[:distance_unit]).to eq('mi')
+        expect(summary[:total_distance]).to eq(10.0)
+      end
+
+      it 'defaults to km' do
+        result = described_class.new(
+          user,
+          start_at: day.iso8601,
+          end_at: (day + 1.day).iso8601
+        ).call
+
+        journey = result.first[:entries].first
+        expect(journey[:distance_unit]).to eq('km')
+        expect(journey[:distance]).to eq(16.1) # 16093m ≈ 16.1 km
+        expect(journey[:speed_unit]).to eq('km/h')
       end
     end
 

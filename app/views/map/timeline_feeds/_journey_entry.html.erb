@@ -14,7 +14,7 @@
   mode = entry[:dominant_mode].presence || 'unknown'
   config = mode_config[mode] || mode_config['unknown']
   duration = format_duration_short(entry[:duration])
-  distance_text = entry[:distance_km] > 0 ? "#{entry[:distance_km]} km" : nil
+  distance_text = entry[:distance] > 0 ? "#{entry[:distance]} #{entry[:distance_unit]}" : nil
   track_id = entry[:track_id]
   frame_id = "track-info-#{track_id}"
 %>

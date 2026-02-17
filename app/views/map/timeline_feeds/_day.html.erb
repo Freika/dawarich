@@ -1,7 +1,7 @@
 <%
   date_obj = Date.parse(day[:date])
   day_label = date_obj.strftime('%A, %B %-d')
-  distance_badge = day[:summary][:total_distance_km] > 0 ? "#{day[:summary][:total_distance_km]} km" : nil
+  distance_badge = day[:summary][:total_distance] > 0 ? "#{day[:summary][:total_distance]} #{day[:summary][:distance_unit]}" : nil
   bounds_json = day[:bounds]&.to_json
 %>
 <details class="collapse collapse-arrow bg-base-200 rounded-lg mb-2 timeline-day-accordion"

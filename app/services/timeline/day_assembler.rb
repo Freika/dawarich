@@ -2,10 +2,11 @@
 
 module Timeline
   class DayAssembler
-    def initialize(user, start_at:, end_at:)
+    def initialize(user, start_at:, end_at:, distance_unit: 'km')
       @user = user
       @start_at = Time.zone.parse(start_at)
       @end_at = Time.zone.parse(end_at)
+      @distance_unit = distance_unit
     end
 
     def call
@@ -20,7 +21,7 @@ module Timeline
 
     private
 
-    attr_reader :user, :start_at, :end_at
+    attr_reader :user, :start_at, :end_at, :distance_unit
 
     def fetch_visits
       user.visits
@@ -93,9 +94,11 @@ module Timeline
         started_at: track.start_at.iso8601,
         ended_at: track.end_at.iso8601,
         duration: track.duration,
-        distance_km: (track.distance / 1000.0).round(1),
+        distance: convert_distance(track.distance),
+        distance_unit: distance_unit,
         dominant_mode: track.dominant_mode,
-        avg_speed_kmh: track.avg_speed.to_f.round(1),
+        avg_speed: convert_speed(track.avg_speed.to_f),
+        speed_unit: speed_unit_label,
         elevation_gain: track.elevation_gain,
         elevation_loss: track.elevation_loss
       }
@@ -117,7 +120,8 @@ module Timeline
       stationary_seconds = visits.sum(&:duration)
 
       {
-        total_distance_km: (total_distance_m / 1000.0).round(1),
+        total_distance: convert_distance(total_distance_m),
+        distance_unit: distance_unit,
         places_visited: visits.flat_map(&:place_id).compact.uniq.length,
         time_moving_minutes: (moving_seconds / 60.0).round,
         time_stationary_minutes: (stationary_seconds / 60.0).round
@@ -169,6 +173,26 @@ module Timeline
 
       match[1].split(',').map do |pair|
         pair.strip.split(/\s+/).map(&:to_f)
+      end
+    end
+
+    def convert_distance(meters)
+      Stat.convert_distance(meters, distance_unit).round(1)
+    end
+
+    def convert_speed(kmh)
+      return 0.0 if kmh.zero?
+
+      case distance_unit
+      when 'mi' then (kmh * 0.621371).round(1)
+      else kmh.round(1)
+      end
+    end
+
+    def speed_unit_label
+      case distance_unit
+      when 'mi' then 'mph'
+      else 'km/h'
       end
     end
   end

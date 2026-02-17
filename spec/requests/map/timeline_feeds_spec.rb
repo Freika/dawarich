@@ -57,7 +57,7 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
           expect(response).to have_http_status(:success)
           expect(response.body).to include('Wednesday, January 15')
           expect(response.body).to include('Home')
-          expect(response.body).to include('cycling')
+          expect(response.body).to include('cycled')
           expect(response.body).to include('8.5 km')
         end
 

@@ -11,12 +11,15 @@ module Map
       @days = Timeline::DayAssembler.new(
         current_user,
         start_at: parsed_start_at.iso8601,
-        end_at: parsed_end_at.iso8601
+        end_at: parsed_end_at.iso8601,
+        distance_unit: current_user.safe_settings.distance_unit
       ).call
+      @distance_unit = current_user.safe_settings.distance_unit
     end
 
     def track_info
       @track = current_user.tracks.find(params[:id])
+      @distance_unit = current_user.safe_settings.distance_unit
     end
 
     private

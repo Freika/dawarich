@@ -1,7 +1,10 @@
 <%
+  unit = local_assigns[:distance_unit] || @distance_unit || 'km'
   mode_label = track.dominant_mode&.titleize || 'Unknown'
-  distance_km = (track.distance / 1000.0).round(1)
-  avg_speed = track.avg_speed.to_f.round(1)
+  distance_val = Stat.convert_distance(track.distance, unit).round(1)
+  speed_kmh = track.avg_speed.to_f
+  avg_speed = unit == 'mi' ? (speed_kmh * 0.621371).round(1) : speed_kmh.round(1)
+  speed_label = unit == 'mi' ? 'mph' : 'km/h'
   elev_gain = track.elevation_gain
   elev_loss = track.elevation_loss
 %>
@@ -9,11 +12,11 @@
   <div class="grid grid-cols-2 gap-2">
     <div>
       <div class="text-base-content/60">Distance</div>
-      <div class="font-semibold"><%= distance_km %> km</div>
+      <div class="font-semibold"><%= distance_val %> <%= unit %></div>
     </div>
     <div>
       <div class="text-base-content/60">Avg Speed</div>
-      <div class="font-semibold"><%= avg_speed %> km/h</div>
+      <div class="font-semibold"><%= avg_speed %> <%= speed_label %></div>
     </div>
     <% if elev_gain.present? && elev_gain > 0 %>
       <div>

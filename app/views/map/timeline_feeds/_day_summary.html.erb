@@ -7,7 +7,7 @@
 %>
 <div class="space-y-2 py-1">
   <div class="timeline-summary-stats">
-    <span class="badge badge-sm badge-ghost"><%= summary[:total_distance_km] %> km</span>
+    <span class="badge badge-sm badge-ghost"><%= summary[:total_distance] %> <%= summary[:distance_unit] %></span>
     <span class="badge badge-sm badge-ghost"><%= summary[:places_visited] %> places</span>
     <span class="badge badge-sm badge-ghost"><%= format_duration_short(moving * 60) %> moving</span>
   </div>

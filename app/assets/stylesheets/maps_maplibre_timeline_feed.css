@@ -1,5 +1,28 @@
 /* Timeline Feed — Vertical timeline with rail, nodes, and connectors */
 
+/* Loading state: Turbo adds [busy] while fetching a frame's src */
+#timeline-feed-frame[busy] .timeline-feed-placeholder {
+  display: none;
+}
+
+#timeline-feed-frame[busy]::after {
+  content: "";
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 2rem auto;
+  border: 2px solid oklch(var(--bc) / 0.15);
+  border-top-color: oklch(var(--p));
+  border-radius: 50%;
+  animation: timeline-spin 0.6s linear infinite;
+}
+
+@keyframes timeline-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Tighter padding for the timeline tab (panel-body has 24px by default) */
 .tab-content[data-tab-content="timeline-feed"] {
   margin: -24px;
