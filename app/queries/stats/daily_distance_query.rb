@@ -19,19 +19,19 @@ class Stats::DailyDistanceQuery
   attr_reader :monthly_points, :timespan, :timezone
 
   def daily_distances(monthly_points)
-    Stat.connection.select_all(<<-SQL.squish)
+    sql = <<-SQL.squish
       WITH points_with_distances AS (
         SELECT
-          EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE '#{timezone}')) as day_of_month,
+          EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1)) as day_of_month,
           CASE
             WHEN LAG(lonlat) OVER (
-              PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE '#{timezone}'))
+              PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1))
               ORDER BY timestamp
             ) IS NOT NULL THEN
               ST_Distance(
                 lonlat::geography,
                 LAG(lonlat) OVER (
-                  PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE '#{timezone}'))
+                  PARTITION BY EXTRACT(day FROM (to_timestamp(timestamp) AT TIME ZONE $1))
                   ORDER BY timestamp
                 )::geography
               )
@@ -46,6 +46,12 @@ class Stats::DailyDistanceQuery
       GROUP BY day_of_month
       ORDER BY day_of_month
     SQL
+
+    binds = [
+      ActiveRecord::Relation::QueryAttribute.new('timezone', timezone, ActiveRecord::Type::String.new)
+    ]
+
+    Stat.connection.exec_query(sql, 'DailyDistanceQuery', binds).to_a
   end
 
   def distance_by_day_map(daily_distances)

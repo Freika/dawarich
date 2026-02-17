@@ -507,6 +507,11 @@ export default class extends Controller {
     const url = `/map/timeline_feeds?start_at=${encodeURIComponent(this.startDateValue)}&end_at=${encodeURIComponent(this.endDateValue)}`
 
     if (frame.getAttribute("src") !== url) {
+      // Show skeleton while loading
+      const skeleton = document.getElementById("timeline-feed-skeleton")
+      if (skeleton) {
+        frame.innerHTML = skeleton.innerHTML
+      }
       frame.src = url
     }
   }

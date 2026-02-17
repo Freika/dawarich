@@ -936,6 +936,38 @@
             <p class="text-sm">Select a date range to see your day-by-day timeline.</p>
           </div>
         </turbo-frame>
+        <template id="timeline-feed-skeleton">
+          <div class="timeline-feed-skeleton space-y-2 p-2 animate-pulse">
+            <% 3.times do %>
+              <div class="bg-base-200 rounded-lg p-3">
+                <div class="flex justify-between items-center">
+                  <div class="h-4 bg-base-300 rounded w-36"></div>
+                  <div class="h-4 bg-base-300 rounded w-16"></div>
+                </div>
+                <div class="mt-3 space-y-2">
+                  <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
+                    <div class="h-3 bg-base-300 rounded w-28"></div>
+                  </div>
+                  <div class="ml-1 border-l-2 border-base-300 pl-3 py-1">
+                    <div class="h-3 bg-base-300 rounded w-40"></div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
+                    <div class="h-3 bg-base-300 rounded w-32"></div>
+                  </div>
+                  <div class="ml-1 border-l-2 border-base-300 pl-3 py-1">
+                    <div class="h-3 bg-base-300 rounded w-36"></div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
+                    <div class="h-3 bg-base-300 rounded w-24"></div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </template>
       </div>
 
       <!-- Tools Tab -->

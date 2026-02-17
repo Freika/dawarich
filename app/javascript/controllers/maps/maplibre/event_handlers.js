@@ -5,6 +5,7 @@ import {
   minutesToDaysHoursMinutes,
 } from "maps/helpers"
 import {
+  escapeHtml,
   formatTimeOnly,
   formatTimestamp,
 } from "maps_maplibre/utils/geojson_transformers"
@@ -101,7 +102,7 @@ export class EventHandlers {
 
     const content = `
       <div class="space-y-2">
-        <div class="badge badge-sm ${properties.status === "confirmed" ? "badge-success" : "badge-warning"}">${properties.status}</div>
+        <div class="badge badge-sm ${properties.status === "confirmed" ? "badge-success" : "badge-warning"}">${escapeHtml(properties.status)}</div>
         <div><span class="font-semibold">Arrived:</span> ${startTime}</div>
         <div><span class="font-semibold">Left:</span> ${endTime}</div>
         <div><span class="font-semibold">Duration:</span> ${durationDisplay}</div>
@@ -119,7 +120,7 @@ export class EventHandlers {
     ]
 
     this.controller.showInfo(
-      properties.name || properties.place_name || "Visit",
+      escapeHtml(properties.name || properties.place_name || "Visit"),
       content,
       actions,
     )
@@ -134,7 +135,7 @@ export class EventHandlers {
 
     const content = `
       <div class="space-y-2">
-        ${properties.photo_url ? `<img src="${properties.photo_url}" alt="Photo" class="w-full rounded-lg mb-2" />` : ""}
+        ${properties.photo_url ? `<img src="${escapeHtml(properties.photo_url)}" alt="Photo" class="w-full rounded-lg mb-2" />` : ""}
         ${properties.taken_at ? `<div><span class="font-semibold">Taken:</span> ${formatTimestamp(properties.taken_at, this.controller.timezoneValue)}</div>` : ""}
       </div>
     `
@@ -151,8 +152,8 @@ export class EventHandlers {
 
     const content = `
       <div class="space-y-2">
-        ${properties.tag ? `<div class="badge badge-sm badge-primary">${properties.tag}</div>` : ""}
-        ${properties.description ? `<div>${properties.description}</div>` : ""}
+        ${properties.tag ? `<div class="badge badge-sm badge-primary">${escapeHtml(properties.tag)}</div>` : ""}
+        ${properties.description ? `<div>${escapeHtml(properties.description)}</div>` : ""}
       </div>
     `
 
@@ -168,7 +169,11 @@ export class EventHandlers {
         ]
       : []
 
-    this.controller.showInfo(properties.name || "Place", content, actions)
+    this.controller.showInfo(
+      escapeHtml(properties.name) || "Place",
+      content,
+      actions,
+    )
   }
 
   /**
@@ -197,7 +202,11 @@ export class EventHandlers {
         ]
       : []
 
-    this.controller.showInfo(properties.name || "Area", content, actions)
+    this.controller.showInfo(
+      escapeHtml(properties.name) || "Area",
+      content,
+      actions,
+    )
   }
 
   /**
@@ -685,7 +694,7 @@ export class EventHandlers {
         <div><span class="font-semibold">Duration:</span> ${minutesToDaysHoursMinutes(durationMinutes)}</div>
         <div><span class="font-semibold">Distance:</span> ${formatDistance(trackDistanceKm, distanceUnit)}</div>
         <div><span class="font-semibold">Avg Speed:</span> ${formatSpeed(properties.avg_speed || 0, distanceUnit)}</div>
-        ${properties.dominant_mode ? `<div><span class="font-semibold">Mode:</span> ${properties.dominant_mode_emoji} ${properties.dominant_mode}</div>` : ""}
+        ${properties.dominant_mode ? `<div><span class="font-semibold">Mode:</span> ${escapeHtml(properties.dominant_mode_emoji)} ${escapeHtml(properties.dominant_mode)}</div>` : ""}
         ${showPointsToggle}
         <div id="track-point-info-container"></div>
         ${replayButton}
@@ -725,8 +734,8 @@ export class EventHandlers {
             data-segment-index="${idx}"
             data-segment-mode="${s.mode}">
           <span class="text-xs opacity-60 font-mono w-24">${formatTimeOnly(s.start_time, this.controller.timezoneValue)} - ${formatTimeOnly(s.end_time, this.controller.timezoneValue)}</span>
-          <span>${s.emoji}</span>
-          <span class="capitalize flex-1">${s.mode}</span>
+          <span>${escapeHtml(s.emoji)}</span>
+          <span class="capitalize flex-1">${escapeHtml(s.mode)}</span>
           <span class="text-xs opacity-70">${formatDistance((s.distance || 0) / 1000, distanceUnit)}</span>
         </li>
       `,
