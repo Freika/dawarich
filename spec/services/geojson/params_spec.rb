@@ -30,7 +30,6 @@ RSpec.describe Geojson::Params do
         ssid: nil,
         accuracy: 1,
         vertical_accuracy: 1,
-<<<<<<< HEAD
         motion_data: {},
         raw_data: {
           'type' => 'Feature',
@@ -64,9 +63,6 @@ RSpec.describe Geojson::Params do
             'geodata' => {}
           }
         }
-=======
-        motion_data: {}
->>>>>>> c9591e73 (Fix specs)
       )
       expect(first[:raw_data]).to be_a(Hash)
       expect(first[:raw_data]['type']).to eq('Feature')
@@ -89,7 +85,6 @@ RSpec.describe Geojson::Params do
           ssid: nil,
           accuracy: 4.7551565,
           vertical_accuracy: nil,
-<<<<<<< HEAD
           motion_data: {},
           raw_data: {
             'geometry' => {
@@ -106,9 +101,6 @@ RSpec.describe Geojson::Params do
             },
             'type' => 'Feature'
           }
-=======
-          motion_data: {}
->>>>>>> c9591e73 (Fix specs)
         )
         expect(first[:raw_data]).to be_a(Hash)
         expect(first[:raw_data]['type']).to eq('Feature')
@@ -132,7 +124,6 @@ RSpec.describe Geojson::Params do
           ssid: nil,
           accuracy: nil,
           vertical_accuracy: nil,
-<<<<<<< HEAD
           motion_data: {},
           raw_data: {
             'geometry' => {
@@ -144,9 +135,6 @@ RSpec.describe Geojson::Params do
             },
             'type' => 'Feature'
           }
-=======
-          motion_data: {}
->>>>>>> c9591e73 (Fix specs)
         )
         expect(first[:raw_data]).to be_a(Hash)
         expect(first[:raw_data]['type']).to eq('Feature')
