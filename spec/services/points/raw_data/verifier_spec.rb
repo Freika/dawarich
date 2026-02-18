@@ -40,7 +40,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
 
     it 'detects point count mismatch' do
@@ -49,7 +49,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
 
     it 'detects checksum mismatch' do
@@ -58,7 +58,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
 
     it 'still verifies successfully when points are deleted from database' do
@@ -84,7 +84,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive_id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
 
     it 'verifies raw_data matches between archive and database' do
@@ -94,6 +94,40 @@ RSpec.describe Points::RawData::Verifier do
       verifier.verify_specific_archive(archive.id)
 
       expect(archive.reload.verified_at).to be_present
+    end
+  end
+
+  describe 'encryption support' do
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+    let!(:points) do
+      create_list(:point, 3, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+    end
+
+    let(:archive) do
+      archiver = Points::RawData::Archiver.new
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      Points::RawDataArchive.last
+    end
+
+    it 'verifies encrypted archives (format_version 2)' do
+      expect(archive.metadata['format_version']).to eq(2)
+      expect(archive.metadata['encryption']).to eq('aes-256-gcm')
+
+      verifier.verify_specific_archive(archive.id)
+      archive.reload
+
+      expect(archive.verified_at).to be_present
+    end
+
+    it 'detects content checksum tampering' do
+      archive.metadata['content_checksum'] = 'tampered_checksum'
+      archive.save!
+
+      expect do
+        verifier.verify_specific_archive(archive.id)
+      end.not_to(change { archive.reload.verified_at })
     end
   end
 

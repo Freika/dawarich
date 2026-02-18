@@ -1,8 +1,8 @@
 /**
- * TimelineManager - Core business logic for timeline feature
+ * ReplayManager - Core business logic for replay feature
  * Manages point data grouping by day, indexing by minute, and navigation state
  */
-export class TimelineManager {
+export class ReplayManager {
   constructor(options = {}) {
     this.timezone = options.timezone || "UTC"
     this.points = []
@@ -370,7 +370,7 @@ export class TimelineManager {
   }
 
   /**
-   * Check if timeline has data
+   * Check if replay has data
    * @returns {boolean}
    */
   hasData() {
@@ -407,10 +407,10 @@ export class TimelineManager {
   static findTransportationEmoji(point, tracksGeoJSON) {
     if (!tracksGeoJSON?.features?.length) return null
 
-    const timestamp = TimelineManager._getTimestampStatic(point)
+    const timestamp = ReplayManager._getTimestampStatic(point)
     if (!timestamp) return null
 
-    const pointTime = TimelineManager._parseTimestampStatic(timestamp)
+    const pointTime = ReplayManager._parseTimestampStatic(timestamp)
     if (!pointTime) return null
 
     // Convert pointTime to seconds for segment matching

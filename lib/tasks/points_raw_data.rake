@@ -50,7 +50,9 @@ namespace :points do
       puts ''
       puts 'You can now run your data migration.'
       puts 'Example:'
-      puts "  rails runner \"Point.where(user_id: #{user_id}, timestamp_year: #{year}, timestamp_month: #{month}).find_each { |p| p.fix_coordinates_from_raw_data }\""
+      puts '  rails runner "Point.where(user_id: ' \
+           "#{user_id}, timestamp_year: #{year}, timestamp_month: #{month}" \
+           ').find_each { |p| p.fix_coordinates_from_raw_data }"'
       puts ''
       puts 'Cache will expire in 1 hour automatically.'
     end
@@ -113,7 +115,10 @@ namespace :points do
 
       # Storage size via ActiveStorage
       total_blob_size = ActiveStorage::Blob
-                        .joins('INNER JOIN active_storage_attachments ON active_storage_attachments.blob_id = active_storage_blobs.id')
+                        .joins(
+                          'INNER JOIN active_storage_attachments ' \
+                          'ON active_storage_attachments.blob_id = active_storage_blobs.id'
+                        )
                         .where("active_storage_attachments.record_type = 'Points::RawDataArchive'")
                         .sum(:byte_size)
 
@@ -134,9 +139,12 @@ namespace :points do
                             .order('archive_count DESC')
                             .limit(10)
                             .each_with_index do |stat, idx|
-        user = User.find(stat.user_id)
-        puts "#{idx + 1}. #{user.email.ljust(30)} #{stat.archive_count.to_s.rjust(3)} archives, #{stat.total_points.to_s.rjust(8)} points"
-      end
+                              user = User.find(stat.user_id)
+                              email = user.email.ljust(30)
+                              archives = stat.archive_count.to_s.rjust(3)
+                              points = stat.total_points.to_s.rjust(8)
+                              puts "#{idx + 1}. #{email} #{archives} archives, #{points} points"
+                            end
 
       puts ''
     end
@@ -266,7 +274,7 @@ namespace :points do
         puts ''
         puts '⚠ Some archives failed verification. Data NOT cleared for safety.'
         puts 'Please investigate failed archives before running clear_verified.'
-        exit 1
+        raise "Verification failed for #{verifier_stats[:failed]} archives. Aborting to prevent data loss."
       end
       puts ''
 

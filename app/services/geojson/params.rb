@@ -43,6 +43,7 @@ class Geojson::Params
       ssid:               feature[:properties][:wifi],
       accuracy:           accuracy(feature),
       vertical_accuracy:  feature[:properties][:vertical_accuracy],
+      motion_data:        Points::MotionDataExtractor.from_overland_properties(feature[:properties]),
       raw_data:           feature
     }
   end

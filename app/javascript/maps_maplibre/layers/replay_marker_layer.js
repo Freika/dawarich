@@ -2,14 +2,14 @@ import maplibregl from "maplibre-gl"
 import { BaseLayer } from "./base_layer"
 
 /**
- * Timeline marker layer for displaying a pulsing marker at timeline position
+ * Replay marker layer for displaying a pulsing marker at replay position
  * Supports both circle markers (default) and transportation mode emojis
  * Uses an HTML marker for emoji rendering (MapLibre SDF fonts can't render emoji)
  * Uses orange color to distinguish from recent point (red)
  */
-export class TimelineMarkerLayer extends BaseLayer {
+export class ReplayMarkerLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: "timeline-marker", visible: false, ...options })
+    super(map, { id: "replay-marker", visible: false, ...options })
     this._currentEmoji = null
     this._htmlMarker = null
   }
@@ -65,7 +65,7 @@ export class TimelineMarkerLayer extends BaseLayer {
       Number.isNaN(lon) ||
       Number.isNaN(lat)
     ) {
-      console.warn("[TimelineMarker] Invalid coordinates:", lon, lat)
+      console.warn("[ReplayMarker] Invalid coordinates:", lon, lat)
       return
     }
 
@@ -141,7 +141,7 @@ export class TimelineMarkerLayer extends BaseLayer {
       this._htmlMarker.getElement().textContent = emoji
     } else {
       const el = document.createElement("div")
-      el.className = "timeline-emoji-marker"
+      el.className = "replay-emoji-marker"
       el.textContent = emoji
       this._htmlMarker = new maplibregl.Marker({
         element: el,

@@ -1,23 +1,24 @@
-import { Controller } from '@hotwired/stimulus'
+import { Controller } from "@hotwired/stimulus"
 
 /**
  * Map Panel Controller
  * Handles tab switching in the map control panel
  */
 export default class extends Controller {
-  static targets = ['tabButton', 'tabContent', 'title']
+  static targets = ["tabButton", "tabContent", "title"]
 
   // Tab title mappings
   static titles = {
-    search: 'Search',
-    layers: 'Map Layers',
-    tools: 'Tools',
-    links: 'Links',
-    settings: 'Settings'
+    search: "Search",
+    layers: "Map Layers",
+    "timeline-feed": "Timeline",
+    tools: "Tools",
+    links: "Links",
+    settings: "Settings",
   }
 
   connect() {
-    console.log('[Map Panel] Connected')
+    console.log("[Map Panel] Connected")
   }
 
   /**
@@ -42,27 +43,34 @@ export default class extends Controller {
    */
   activateTab(tabName) {
     // Find the button for this tab
-    const button = this.tabButtonTargets.find(btn => btn.dataset.tab === tabName)
+    const button = this.tabButtonTargets.find(
+      (btn) => btn.dataset.tab === tabName,
+    )
 
     // Update active button
-    this.tabButtonTargets.forEach(btn => {
-      btn.classList.remove('active')
+    this.tabButtonTargets.forEach((btn) => {
+      btn.classList.remove("active")
     })
     if (button) {
-      button.classList.add('active')
+      button.classList.add("active")
     }
 
     // Update tab content
-    this.tabContentTargets.forEach(content => {
+    this.tabContentTargets.forEach((content) => {
       const contentTab = content.dataset.tabContent
       if (contentTab === tabName) {
-        content.classList.add('active')
+        content.classList.add("active")
       } else {
-        content.classList.remove('active')
+        content.classList.remove("active")
       }
     })
 
     // Update title
     this.titleTarget.textContent = this.constructor.titles[tabName] || tabName
+
+    // Dispatch event for other controllers to react
+    document.dispatchEvent(
+      new CustomEvent("map-panel:tab-changed", { detail: { tab: tabName } }),
+    )
   }
 }

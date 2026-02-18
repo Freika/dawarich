@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module TransportationModes
-  # Extracts activity data from import files and updates points' raw_data.
+  # Extracts activity data from import files and updates points' motion_data.
   # Supports Google Semantic History and Google Phone Takeout formats.
   class ActivityBackfiller
     SUPPORTED_SOURCES = %w[
@@ -103,10 +103,10 @@ module TransportationModes
     def update_point_activity(point, activity_data)
       return if activity_data.blank?
 
-      current_raw = point.raw_data || {}
-      merged_raw = current_raw.merge('activityRecord' => activity_data)
+      current_motion = point.motion_data || {}
+      merged_motion = current_motion.merge('activityRecord' => activity_data)
 
-      point.update_column(:raw_data, merged_raw)
+      point.update_column(:motion_data, merged_motion) # rubocop:disable Rails/SkipsModelValidations
     end
 
     def download_file
@@ -121,14 +121,14 @@ module TransportationModes
       parse_timestamp_value(ts)
     end
 
-    def parse_segment_timestamp(ts)
-      parse_timestamp_value(ts)
+    def parse_segment_timestamp(timestamp)
+      parse_timestamp_value(timestamp)
     end
 
-    def parse_timestamp_value(ts)
-      return nil unless ts
+    def parse_timestamp_value(timestamp)
+      return nil unless timestamp
 
-      Timestamps.parse_timestamp(ts)
+      Timestamps.parse_timestamp(timestamp)
     end
   end
 end

@@ -44,7 +44,7 @@ describe 'Users API', type: :request do
                          photoprism_url: { type: :string, nullable: true },
                          visits_suggestions_enabled: { type: :boolean },
                          speed_color_scale: { type: :string, nullable: true },
-                         fog_of_war_threshold: { type: :string, nullable: true }
+                         fog_of_war_threshold: { type: :integer }
                        }
                      },
                      admin: { type: :boolean }

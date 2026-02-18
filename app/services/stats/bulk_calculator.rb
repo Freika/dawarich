@@ -16,6 +16,10 @@ module Stats
 
     attr_reader :user_id
 
+    def user
+      @user ||= User.find(user_id)
+    end
+
     def fetch_timestamps
       last_calculated_at = Stat.where(user_id:).maximum(:updated_at)
       last_calculated_at ||= DateTime.new(1970, 1, 1)
@@ -25,10 +29,12 @@ module Stats
     end
 
     def extract_months(timestamps)
-      timestamps.group_by do |timestamp|
-        time = Time.zone.at(timestamp)
-        [time.year, time.month]
-      end.keys
+      Time.use_zone(user.timezone) do
+        timestamps.group_by do |timestamp|
+          time = Time.zone.at(timestamp)
+          [time.year, time.month]
+        end.keys
+      end
     end
 
     def schedule_calculations(months)

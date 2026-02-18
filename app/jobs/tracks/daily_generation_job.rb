@@ -17,6 +17,8 @@
 # ensuring consistency with bulk operations while providing automatic daily processing.
 
 class Tracks::DailyGenerationJob < ApplicationJob
+  include UserTimezone
+
   queue_as :tracks
 
   def perform
@@ -32,16 +34,18 @@ class Tracks::DailyGenerationJob < ApplicationJob
   private
 
   def process_user_daily_tracks(user)
-    start_timestamp = start_timestamp(user)
+    with_user_timezone(user) do
+      start_timestamp = start_timestamp(user)
 
-    return unless user.points.where('timestamp >= ?', start_timestamp).exists?
+      return unless user.points.where('timestamp >= ?', start_timestamp).exists?
 
-    Tracks::ParallelGeneratorJob.perform_later(
-      user.id,
-      start_at: Time.zone.at(start_timestamp),
-      end_at: Time.current,
-      mode: 'daily'
-    )
+      Tracks::ParallelGeneratorJob.perform_later(
+        user.id,
+        start_at: Time.zone.at(start_timestamp),
+        end_at: Time.current,
+        mode: 'daily'
+      )
+    end
   end
 
   def start_timestamp(user)

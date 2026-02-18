@@ -46,6 +46,7 @@ RSpec.describe OwnTracks::Importer do
           'visit_id' => nil,
           'user_id' => user.id,
           'country' => nil,
+          'motion_data' => { 'm' => 1, '_type' => 'location' },
           'raw_data' => {
             'm' => 1,
             'p' => 100.266,

@@ -29,9 +29,9 @@ module Stats
       sql = <<~SQL
         SELECT
           CASE
-            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE $1)) BETWEEN 0 AND 5 THEN 'night'
-            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE $1)) BETWEEN 6 AND 11 THEN 'morning'
-            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE 'UTC' AT TIME ZONE $1)) BETWEEN 12 AND 17 THEN 'afternoon'
+            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE $1)) BETWEEN 0 AND 5 THEN 'night'
+            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE $1)) BETWEEN 6 AND 11 THEN 'morning'
+            WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp) AT TIME ZONE $1)) BETWEEN 12 AND 17 THEN 'afternoon'
             ELSE 'evening'
           END as time_period,
           COUNT(*) as point_count
@@ -83,7 +83,12 @@ module Stats
     end
 
     def validate_timezone(timezone_name)
-      ActiveSupport::TimeZone.all.any? { |zone| zone.name == timezone_name } ? timezone_name : 'UTC'
+      return 'Etc/UTC' if timezone_name.blank?
+
+      tz = ActiveSupport::TimeZone[timezone_name]
+      return tz.tzinfo.name if tz
+
+      'Etc/UTC'
     end
   end
 end

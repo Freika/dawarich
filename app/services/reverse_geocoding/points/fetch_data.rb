@@ -29,7 +29,7 @@ class ReverseGeocoding::Points::FetchData
       city: response.city,
       country_name: response.country,
       country_id: country_record&.id,
-      geodata: response.data,
+      geodata: DawarichSettings.store_geodata? ? response.data : {},
       reverse_geocoded_at: Time.current
     )
   rescue StandardError => e
