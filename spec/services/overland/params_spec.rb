@@ -22,7 +22,7 @@ RSpec.describe Overland::Params do
         tracker_id: '',
         timestamp: DateTime.parse('2015-10-01T08:00:00-0700'),
         motion_data: {
-          'motion' => ['driving', 'stationary'],
+          'motion' => %w[driving stationary],
           'activity' => 'other_navigation'
         },
         raw_data: {}

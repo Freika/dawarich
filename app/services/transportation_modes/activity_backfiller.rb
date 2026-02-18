@@ -106,7 +106,7 @@ module TransportationModes
       current_motion = point.motion_data || {}
       merged_motion = current_motion.merge('activityRecord' => activity_data)
 
-      point.update_column(:motion_data, merged_motion)
+      point.update_column(:motion_data, merged_motion) # rubocop:disable Rails/SkipsModelValidations
     end
 
     def download_file
@@ -121,14 +121,14 @@ module TransportationModes
       parse_timestamp_value(ts)
     end
 
-    def parse_segment_timestamp(ts)
-      parse_timestamp_value(ts)
+    def parse_segment_timestamp(timestamp)
+      parse_timestamp_value(timestamp)
     end
 
-    def parse_timestamp_value(ts)
-      return nil unless ts
+    def parse_timestamp_value(timestamp)
+      return nil unless timestamp
 
-      Timestamps.parse_timestamp(ts)
+      Timestamps.parse_timestamp(timestamp)
     end
   end
 end

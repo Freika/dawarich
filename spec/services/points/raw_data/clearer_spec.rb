@@ -135,7 +135,7 @@ RSpec.describe Points::RawData::Clearer do
 
       # Unverified month should still have raw_data
       unverified_points = Point.where(user: user)
-                               .where("timestamp >= ? AND timestamp < ?",
+                               .where('timestamp >= ? AND timestamp < ?',
                                       new_date.to_i,
                                       (new_date + 1.month).to_i)
       expect(unverified_points.pluck(:raw_data)).to all(eq({ 'lon' => 14.0, 'lat' => 53.0 }))
