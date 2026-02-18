@@ -71,7 +71,9 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
     context 'when point has city and country' do
       let(:country) { create(:country, name: 'Test Country') }
-      let(:point) { create(:point, :with_geodata, city: 'Test City', country_id: country.id, reverse_geocoded_at: Time.current) }
+      let(:point) do
+        create(:point, :with_geodata, city: 'Test City', country_id: country.id, reverse_geocoded_at: Time.current)
+      end
 
       before do
         allow(Geocoder).to receive(:search).and_return(

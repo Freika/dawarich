@@ -80,9 +80,9 @@ RSpec.describe Points::MotionDataExtractor do
       result = described_class.from_google_semantic_history(raw)
 
       expect(result).to eq({
-        'activities' => [{ 'activityType' => 'WALKING' }],
+                             'activities' => [{ 'activityType' => 'WALKING' }],
         'activityType' => 'WALKING'
-      })
+                           })
     end
 
     it 'extracts travelMode from waypointPath' do

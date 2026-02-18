@@ -75,7 +75,7 @@ class Api::V1::InsightsController < ApiController
   def calculate_yearly_day_of_week
     digests = current_api_user.digests.monthly
                               .where(year: @selected_year)
-                              .select(:id, :year, :month, :daily_distances)
+                              .select(:id, :year, :month, :monthly_distances)
 
     digests.each_with_object(Array.new(7, 0)) do |digest, weekly_totals|
       pattern = digest.weekly_pattern

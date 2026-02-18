@@ -22,9 +22,14 @@ This release significantly reduces database storage for new points by separating
 
 ### Changed
 
+<<<<<<< feature/timeline
 - **Breaking (non-Google imports):** New points from OwnTracks, Overland, GPX, GeoJSON, Photos, and KML sources no longer store full `raw_data`, significantly reducing per-point storage (~500 bytes saved per point). Existing raw data is preserved; only new imports are affected. If you rely on custom fields from `raw_data` for non-Google sources, those fields will no longer be available on newly imported points.
 - Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column, keeping transportation mode detection working while dropping redundant data.
 - Google imports continue storing full `raw_data` (rich metadata) and additionally write to `motion_data`.
+=======
+- Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column alongside `raw_data`, enabling efficient transportation mode detection.
+- All import sources now write both `raw_data` (full original payload) and `motion_data` (transportation-relevant fields).
+>>>>>>> dev
 - The `STORE_GEODATA` setting now correctly controls whether geodata is written during reverse geocoding.
 - Dropped unused `idx_points_user_city` database index (304 MB) and replaced the full `reverse_geocoded_at` index (1,149 MB) with a smaller partial index covering only un-geocoded rows.
 - Selecting a track on Map v2 now always dims other tracks, regardless of whether the track has transportation mode segments.
