@@ -241,11 +241,8 @@ module Points
             size_bytes: archive.file.blob.byte_size
           ).call
 
-          # Report compression ratio (estimate original size from JSON)
-          # Rough estimate: each point as JSON ~100-200 bytes
-          estimated_original_size = actual_count * 150
           Metrics::Archives::CompressionRatio.new(
-            original_size: estimated_original_size,
+            original_size: compression_result[:uncompressed_size],
             compressed_size: archive.file.blob.byte_size
           ).call
         end

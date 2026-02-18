@@ -736,6 +736,25 @@ export class ApiClient {
     return pageResults.flatMap((r) => r.points)
   }
 
+  /**
+   * Fetch timeline day feed for date range
+   * @param {Object} options - { start_at, end_at }
+   * @returns {Promise<Object>} { days: [...] }
+   */
+  async fetchTimeline({ start_at, end_at }) {
+    const params = new URLSearchParams({ start_at, end_at })
+
+    const response = await fetch(`${this.baseURL}/timeline?${params}`, {
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch timeline: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
   getHeaders() {
     return {
       Authorization: `Bearer ${this.apiKey}`,

@@ -1,0 +1,12 @@
+<div data-controller="timeline-feed">
+  <% if days.empty? %>
+    <div class="text-center text-base-content/60 py-8">
+      <p class="text-sm">No visits or journeys found for this date range.</p>
+      <p class="text-xs mt-1">Visits are auto-detected daily from your location data.</p>
+    </div>
+  <% else %>
+    <% days.each do |day| %>
+      <%= render partial: 'map/timeline_feeds/day', locals: { day: day } %>
+    <% end %>
+  <% end %>
+</div>
