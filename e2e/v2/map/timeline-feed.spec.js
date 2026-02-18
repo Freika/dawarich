@@ -13,10 +13,10 @@ async function openTimelineFeedTab(page) {
   // Open settings panel
   const settingsButton = page.locator('button[title="Open map settings"]')
   await settingsButton.click()
-  await page.waitForSelector(
-    '[data-maps--maplibre-target="settingsPanel"]',
-    { state: "visible", timeout: 5000 },
-  )
+  await page.waitForSelector('[data-maps--maplibre-target="settingsPanel"]', {
+    state: "visible",
+    timeout: 5000,
+  })
 
   // Click the timeline-feed tab
   const tabButton = page.locator('button[data-tab="timeline-feed"]')
@@ -43,9 +43,7 @@ async function waitForTimelineFeedLoaded(page, timeout = 10000) {
 
 test.describe("Timeline Feed Panel", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(
-      "/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-16T23:59",
-    )
+    await page.goto("/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-16T23:59")
     await closeOnboardingModal(page)
     await waitForMapLibre(page)
     await waitForLoadingComplete(page)
@@ -53,12 +51,8 @@ test.describe("Timeline Feed Panel", () => {
   })
 
   test.describe("Tab and Loading", () => {
-    test("timeline-feed tab exists in the settings panel", async ({
-      page,
-    }) => {
-      const settingsButton = page.locator(
-        'button[title="Open map settings"]',
-      )
+    test("timeline-feed tab exists in the settings panel", async ({ page }) => {
+      const settingsButton = page.locator('button[title="Open map settings"]')
       await settingsButton.click()
       await page.waitForTimeout(300)
 
@@ -76,7 +70,7 @@ test.describe("Timeline Feed Panel", () => {
       await page.waitForFunction(
         () => {
           const el = document.getElementById("timeline-feed-frame")
-          return el && el.getAttribute("src")
+          return el?.getAttribute("src")
         },
         { timeout: 5000 },
       )
@@ -161,9 +155,7 @@ test.describe("Timeline Feed Panel", () => {
       await page.waitForTimeout(300)
 
       // Verify first is open
-      const firstOpen = await accordions
-        .nth(0)
-        .evaluate((el) => el.open)
+      const firstOpen = await accordions.nth(0).evaluate((el) => el.open)
       expect(firstOpen).toBe(true)
 
       // Open the second day
@@ -171,12 +163,8 @@ test.describe("Timeline Feed Panel", () => {
       await page.waitForTimeout(300)
 
       // First should now be closed, second open
-      const firstAfter = await accordions
-        .nth(0)
-        .evaluate((el) => el.open)
-      const secondAfter = await accordions
-        .nth(1)
-        .evaluate((el) => el.open)
+      const firstAfter = await accordions.nth(0).evaluate((el) => el.open)
+      const secondAfter = await accordions.nth(1).evaluate((el) => el.open)
       expect(firstAfter).toBe(false)
       expect(secondAfter).toBe(true)
     })
@@ -226,7 +214,7 @@ test.describe("Timeline Feed Panel", () => {
 
       // Find a journey entry with a track-id
       const journeyWithTrack = firstDay.locator(
-        '.timeline-journey-content[data-track-id]',
+        ".timeline-journey-content[data-track-id]",
       )
       const count = await journeyWithTrack.count()
 

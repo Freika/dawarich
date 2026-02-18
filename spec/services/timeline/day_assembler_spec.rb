@@ -269,7 +269,7 @@ RSpec.describe Timeline::DayAssembler do
         end
 
         it 'groups the visit on January 15' do
-          dates = subject.map { |d| d[:date] }
+          subject.map { |d| d[:date] }
           visit_day = subject.find { |d| d[:entries].any? { |e| e[:name] == 'Late Visit' } }
           expect(visit_day[:date]).to eq('2025-01-15')
         end

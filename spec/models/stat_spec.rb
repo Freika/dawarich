@@ -407,9 +407,9 @@ RSpec.describe Stat, type: :model do
         context 'when expiration is present but expires_at is blank' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h'
-            })
+                        })
           end
 
           it 'returns true' do
@@ -420,10 +420,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is in the future' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.hour.from_now.iso8601
-            })
+                        })
           end
 
           it 'returns false' do
@@ -434,10 +434,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is in the past' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.hour.ago.iso8601
-            })
+                        })
           end
 
           it 'returns true' do
@@ -448,10 +448,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is 1 second in the future' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.second.from_now.iso8601
-            })
+                        })
           end
 
           it 'returns false (not yet expired)' do
@@ -462,10 +462,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is invalid date string' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 'invalid-date'
-            })
+                        })
           end
 
           it 'returns true (treats as expired)' do
@@ -476,10 +476,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is nil' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => nil
-            })
+                        })
           end
 
           it 'returns true' do
@@ -490,10 +490,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is empty string' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => ''
-            })
+                        })
           end
 
           it 'returns true' do
@@ -522,10 +522,10 @@ RSpec.describe Stat, type: :model do
         context 'when sharing is enabled but expired' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.hour.ago.iso8601
-            })
+                        })
           end
 
           it 'returns false' do
@@ -536,10 +536,10 @@ RSpec.describe Stat, type: :model do
         context 'when sharing is enabled and not expired' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.hour.from_now.iso8601
-            })
+                        })
           end
 
           it 'returns true' do
