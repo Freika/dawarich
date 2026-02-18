@@ -96,12 +96,13 @@ RSpec.describe Kml::Importer do
         expect(point.velocity).to eq('5.5')
       end
 
-      it 'stores empty raw_data' do
+      it 'stores extended data in raw_data' do
         parser
 
         point = user.points.first
 
-        expect(point.raw_data).to eq({})
+        expect(point.raw_data['name']).to eq('Location with Speed')
+        expect(point.raw_data['description']).to eq('A location with extended data including speed')
       end
     end
 

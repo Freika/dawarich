@@ -25,7 +25,7 @@ RSpec.describe Overland::Params do
           'motion' => %w[driving stationary],
           'activity' => 'other_navigation'
         },
-        raw_data: {}
+        raw_data: json['locations'][0]
       }
     end
 
