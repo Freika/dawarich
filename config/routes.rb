@@ -62,6 +62,7 @@ Rails.application.routes.draw do
   resources :visits, only: %i[index update]
   resources :places, only: %i[index destroy]
   resources :exports, only: %i[index create destroy]
+  resources :video_exports, only: %i[index destroy]
   resources :trips
   resources :tags, except: [:show]
 
@@ -229,6 +230,12 @@ Rails.application.routes.draw do
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
+
+      resources :video_exports, only: %i[index show create destroy] do
+        member do
+          post :callback
+        end
+      end
     end
   end
 end

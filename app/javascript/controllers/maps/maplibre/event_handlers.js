@@ -617,6 +617,7 @@ export class EventHandlers {
         ${properties.dominant_mode ? `<div><span class="font-semibold">Mode:</span> ${properties.dominant_mode_emoji} ${properties.dominant_mode}</div>` : ""}
         ${showPointsToggle}
         ${replayButton}
+        ${this._buildGenerateVideoButton(properties)}
         <div id="track-segments-container" class="mt-2">
           <div class="flex items-center gap-2 text-sm text-base-content/60">
             <span class="loading loading-spinner loading-xs"></span>
@@ -1055,5 +1056,30 @@ export class EventHandlers {
     listItems.forEach((item) => {
       item.classList.remove("bg-primary", "bg-opacity-20", "opacity-50")
     })
+  }
+
+  /**
+   * Build Generate Video button HTML if video service is configured
+   * @private
+   */
+  _buildGenerateVideoButton(properties) {
+    // Only show if VIDEO_SERVICE_URL is configured (indicated by a data attribute on the map controller)
+    if (!this.controller.videoServiceEnabledValue) return ""
+
+    return `
+      <div class="mt-2">
+        <button id="track-generate-video-button"
+                class="btn btn-sm btn-secondary gap-2"
+                data-action="click->maps--maplibre#openVideoExportModal"
+                data-track-id="${properties.id}"
+                data-track-start="${properties.start_at}"
+                data-track-end="${properties.end_at}">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+          </svg>
+          Generate Video
+        </button>
+      </div>
+    `
   }
 }

@@ -60,5 +60,30 @@ class DawarichSettings
     def archive_raw_data_enabled?
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
     end
+
+    def video_service_enabled?
+      return @video_service_enabled if defined?(@video_service_enabled)
+
+      @video_service_enabled = video_service_healthy?
+    end
+
+    private
+
+    def video_service_healthy?
+      url = ENV['VIDEO_SERVICE_URL']
+      return false if url.blank?
+
+      uri = URI.parse("#{url}/health")
+      response = Net::HTTP.start(uri.host, uri.port, open_timeout: 3, read_timeout: 3) do |http|
+        http.get(uri.path)
+      end
+
+      return false unless response.is_a?(Net::HTTPSuccess)
+
+      body = JSON.parse(response.body)
+      body['status'] == 'ok'
+    rescue StandardError
+      false
+    end
   end
 end
