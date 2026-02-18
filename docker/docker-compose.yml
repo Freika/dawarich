@@ -77,6 +77,7 @@ services:
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
+      VIDEO_SERVICE_URL: ${VIDEO_SERVICE_URL:-}
     logging:
       driver: "json-file"
       options:
@@ -133,6 +134,7 @@ services:
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
+      VIDEO_SERVICE_URL: ${VIDEO_SERVICE_URL:-}
     logging:
       driver: "json-file"
       options:
@@ -154,6 +156,38 @@ services:
       dawarich_app:
         condition: service_healthy
         restart: true
+
+  # Optional: Video rendering service for route replay video exports
+  # Enable by setting VIDEO_SERVICE_URL=http://dawarich_video:3100 in your .env
+  dawarich_video:
+    build: ../video-service
+    container_name: dawarich_video
+    networks:
+      - dawarich
+    ports:
+      - "${VIDEO_SERVICE_PORT:-3100}:3100"
+    environment:
+      PORT: 3100
+      NODE_ENV: production
+      RENDER_TIMEOUT_MS: ${VIDEO_RENDER_TIMEOUT_MS:-600000}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: ${LOG_MAX_SIZE:-100m}
+        max-file: ${LOG_MAX_FILE:-5}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3100/health | grep -q ok" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: ${VIDEO_CPU_LIMIT:-2.0}
+          memory: ${VIDEO_MEMORY_LIMIT:-4G}
+    profiles:
+      - video
 
 volumes:
   dawarich_db_data:

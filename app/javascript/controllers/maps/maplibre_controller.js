@@ -17,6 +17,7 @@ import { MapInitializer } from "./maplibre/map_initializer"
 import { PlacesManager } from "./maplibre/places_manager"
 import { RoutesManager } from "./maplibre/routes_manager"
 import { SettingsController } from "./maplibre/settings_manager"
+import { VideoExportModal } from "./maplibre/video_export_modal"
 import { VisitsManager } from "./maplibre/visits_manager"
 
 /**
@@ -29,6 +30,7 @@ export default class extends Controller {
     startDate: String,
     endDate: String,
     timezone: String,
+    videoServiceEnabled: Boolean,
   }
 
   static targets = [
@@ -1081,6 +1083,25 @@ export default class extends Controller {
     // Start replay and update card button to Pause
     this._startTimelineReplay()
     this._updateTrackReplayButton(true)
+  }
+
+  /**
+   * Open the video export configuration modal for a track
+   */
+  openVideoExportModal(event) {
+    const trackId = event.currentTarget.dataset.trackId
+    const trackStart = event.currentTarget.dataset.trackStart
+    const trackEnd = event.currentTarget.dataset.trackEnd
+
+    if (!this._videoExportModal) {
+      this._videoExportModal = new VideoExportModal(this.apiKeyValue)
+    }
+
+    this._videoExportModal.open({
+      trackId: trackId ? parseInt(trackId, 10) : null,
+      startAt: trackStart,
+      endAt: trackEnd,
+    })
   }
 
   /**

@@ -34,6 +34,9 @@
               <li><%= link_to 'Visits&nbsp;&amp;&nbsp;Places<sup>α</sup>'.html_safe, visits_url(status: :confirmed), class: "#{active_class?(visits_url)}" %></li>
               <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
               <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
+              <% if DawarichSettings.video_service_enabled? %>
+                <li><%= link_to 'Video Exports', video_exports_url, class: "#{active_class?(video_exports_url)}" %></li>
+              <% end %>
               <li><%= link_to 'Tags', tags_url, class: "#{active_class?(tags_url)}" %></li>
             </ul>
           </details>
@@ -108,6 +111,7 @@
             <li><%= link_to 'Visits&nbsp;&amp;&nbsp;Places<sup>α</sup>'.html_safe, visits_url(status: :confirmed), class: "mx-1 #{active_class?(visits_url)}" %></li>
             <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
             <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
+            <li><%= link_to 'Video Exports', video_exports_url, class: "#{active_class?(video_exports_url)}" %></li>
             <li><%= link_to 'Tags', tags_url, class: "#{active_class?(tags_url)}" %></li>
           </ul>
         </details>

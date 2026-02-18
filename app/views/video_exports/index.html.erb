@@ -1,0 +1,94 @@
+<% content_for :title, "Video Exports" %>
+
+<div class="w-full my-5" data-controller="video-exports">
+  <div class="flex justify-center">
+    <h1 class="font-bold text-4xl">Video Exports</h1>
+  </div>
+
+  <div id="video_exports" class="min-w-full">
+    <% if @video_exports.empty? %>
+      <div class="hero min-h-80 bg-base-200">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-5xl font-bold">Hello there!</h1>
+            <p class="py-6">
+              Here you'll find your video exports. You can generate videos from the map by clicking on a track and selecting "Generate Video". But now there are none.
+            </p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="flex justify-center my-5">
+        <div class='flex'>
+          <%= paginate @video_exports %>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="table overflow-x-auto" data-video-exports-target="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>File size</th>
+              <th>Created at</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @video_exports.each do |video_export| %>
+              <tr data-video-export-id="<%= video_export.id %>">
+                <td><%= video_export.display_name %></td>
+                <td><%= video_export.completed? && video_export.file.attached? ? number_to_human_size(video_export.file.byte_size) : 'N/A' %></td>
+                <td><%= human_datetime(video_export.created_at) %></td>
+                <td data-status>
+                  <% case video_export.status %>
+                  <% when 'created' %>
+                    <span class="badge badge-info">Created</span>
+                  <% when 'processing' %>
+                    <span class="badge badge-warning">Processing</span>
+                  <% when 'completed' %>
+                    <span class="badge badge-success">Completed</span>
+                  <% when 'failed' %>
+                    <span class="badge badge-error" title="<%= video_export.error_message %>">Failed</span>
+                  <% end %>
+                </td>
+                <td class="whitespace-nowrap" data-actions>
+                  <% if video_export.completed? && video_export.file.attached? %>
+                    <button
+                      type="button"
+                      class="px-4 py-2 bg-purple-500 text-white rounded-md"
+                      data-action="click->video-exports#preview"
+                      data-video-url="<%= rails_blob_path(video_export.file, disposition: 'inline') %>"
+                      data-video-name="<%= video_export.display_name %>"
+                      data-preview-link
+                    >Preview</button>
+                    <%= link_to 'Download', rails_blob_path(video_export.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", data: { download_link: "" }, download: video_export.download_filename %>
+                  <% end %>
+                  <%= link_to 'Delete', video_export_path(video_export), data: { turbo_confirm: "Are you sure?", turbo_method: :delete, delete_link: "" }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+
+  <dialog id="video-preview-modal" class="modal" data-video-exports-target="modal">
+    <div class="modal-box w-11/12 max-w-3xl">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+      </form>
+      <h3 class="font-bold text-lg mb-4" data-video-exports-target="modalTitle">Video Preview</h3>
+      <video
+        controls
+        playsinline
+        class="w-full rounded-lg bg-black"
+        data-video-exports-target="videoPlayer"
+      >
+        Your browser does not support video playback.
+      </video>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+</div>

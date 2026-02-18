@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_17_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_18_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -537,6 +537,23 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_17_000001) do
 
   add_check_constraint "users", "admin IS NOT NULL", name: "users_admin_null", validate: false
 
+  create_table "video_exports", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "track_id"
+    t.datetime "start_at", null: false
+    t.datetime "end_at", null: false
+    t.integer "status", default: 0, null: false
+    t.jsonb "config", default: {}, null: false
+    t.string "error_message"
+    t.datetime "processing_started_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_video_exports_on_status"
+    t.index ["track_id"], name: "index_video_exports_on_track_id"
+    t.index ["user_id", "status"], name: "index_video_exports_on_user_id_and_status"
+    t.index ["user_id"], name: "index_video_exports_on_user_id"
+  end
+
   create_table "visits", force: :cascade do |t|
     t.bigint "area_id"
     t.bigint "user_id", null: false
@@ -580,6 +597,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_17_000001) do
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
   add_foreign_key "trips", "users"
+  add_foreign_key "video_exports", "tracks"
+  add_foreign_key "video_exports", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
