@@ -428,5 +428,22 @@ RSpec.describe Timeline::DayAssembler do
         expect(entries.first[:name]).to eq('My Visit')
       end
     end
+
+    context 'when start_at or end_at is nil' do
+      it 'returns empty array when start_at is nil' do
+        result = described_class.new(user, start_at: nil, end_at: '2025-01-16T00:00:00Z').call
+        expect(result).to eq([])
+      end
+
+      it 'returns empty array when end_at is nil' do
+        result = described_class.new(user, start_at: '2025-01-15T00:00:00Z', end_at: nil).call
+        expect(result).to eq([])
+      end
+
+      it 'returns empty array when both are nil' do
+        result = described_class.new(user, start_at: nil, end_at: nil).call
+        expect(result).to eq([])
+      end
+    end
   end
 end

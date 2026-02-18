@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 The Storage & Timeline Interaction Release
 
-This release significantly reduces database storage for new points by separating transportation-relevant fields into a dedicated `motion_data` column and dropping redundant raw data from most import sources. Users can now set their timezone for accurate date/time display across the app. The Timeline feed in Map v2 gains richer map interaction: hovering a journey highlights its track with an animated border, clicking zooms to fit and selects it, and expanding a day shows visit markers even when the Visits layer is off.
+This release adds a dedicated `motion_data` column for transportation-relevant fields alongside the existing `raw_data`. Users can now set their timezone for accurate date/time display across the app. The Timeline feed in Map v2 gains richer map interaction: hovering a journey highlights its track with an animated border, clicking zooms to fit and selects it, and expanding a day shows visit markers even when the Visits layer is off.
 
 ### Added
 
@@ -22,6 +22,7 @@ This release significantly reduces database storage for new points by separating
 
 ### Changed
 
+<<<<<<< HEAD
 <<<<<<< feature/timeline
 - **Breaking (non-Google imports):** New points from OwnTracks, Overland, GPX, GeoJSON, Photos, and KML sources no longer store full `raw_data`, significantly reducing per-point storage (~500 bytes saved per point). Existing raw data is preserved; only new imports are affected. If you rely on custom fields from `raw_data` for non-Google sources, those fields will no longer be available on newly imported points.
 - Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column, keeping transportation mode detection working while dropping redundant data.
@@ -30,6 +31,10 @@ This release significantly reduces database storage for new points by separating
 - Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column alongside `raw_data`, enabling efficient transportation mode detection.
 - All import sources now write both `raw_data` (full original payload) and `motion_data` (transportation-relevant fields).
 >>>>>>> dev
+=======
+- Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column alongside `raw_data`, enabling efficient transportation mode detection.
+- All import sources now write both `raw_data` (full original payload) and `motion_data` (transportation-relevant fields).
+>>>>>>> c9591e73 (Fix specs)
 - The `STORE_GEODATA` setting now correctly controls whether geodata is written during reverse geocoding.
 - Dropped unused `idx_points_user_city` database index (304 MB) and replaced the full `reverse_geocoded_at` index (1,149 MB) with a smaller partial index covering only un-geocoded rows.
 - Selecting a track on Map v2 now always dims other tracks, regardless of whether the track has transportation mode segments.

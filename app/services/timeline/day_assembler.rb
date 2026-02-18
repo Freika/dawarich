@@ -4,12 +4,14 @@ module Timeline
   class DayAssembler
     def initialize(user, start_at:, end_at:, distance_unit: 'km')
       @user = user
-      @start_at = Time.zone.parse(start_at)
-      @end_at = Time.zone.parse(end_at)
+      @start_at = start_at.present? ? Time.zone.parse(start_at) : nil
+      @end_at = end_at.present? ? Time.zone.parse(end_at) : nil
       @distance_unit = distance_unit
     end
 
     def call
+      return [] if start_at.nil? || end_at.nil?
+
       visits = fetch_visits
       tracks = fetch_tracks
 

@@ -32,6 +32,7 @@ RSpec.describe OwnTracks::Params do
         trigger: 'background_event',
         motion_data: { 'm' => 1, '_type' => 'location' },
         raw_data:   {
+<<<<<<< HEAD
           'bs' => 2,
           'p' => 100.266,
           'batt' => 94,
@@ -53,6 +54,15 @@ RSpec.describe OwnTracks::Params do
           'inrids' => ['5f1d1b'],
           'inregions' => ['home'],
           '_http' => true
+=======
+          'bs' => 2, 'p' => 100.266, 'batt' => 94, '_type' => 'location',
+          'tid' => 'RO', 'topic' => 'owntracks/test/iPhone 12 Pro',
+          'alt' => 36, 'lon' => 13.332, 'vel' => 5, 't' => 'p',
+          'BSSID' => 'b0:f2:8:45:94:33', 'SSID' => 'Home Wifi',
+          'conn' => 'w', 'vac' => 4, 'acc' => 10, 'tst' => 1_709_283_789,
+          'lat' => 52.225, 'm' => 1, 'inrids' => ['5f1d1b'],
+          'inregions' => ['home'], '_http' => true
+>>>>>>> c9591e73 (Fix specs)
         }
       }
     end
