@@ -31,6 +31,7 @@ RSpec.describe Visits::Creator do
           :visit,
           user: user,
           place: place,
+          area: nil,
           status: :confirmed,
           started_at: 1.5.hours.ago,
           ended_at: 45.minutes.ago,
@@ -41,9 +42,7 @@ RSpec.describe Visits::Creator do
       it 'returns the existing confirmed visit instead of creating a duplicate suggested visit' do
         visits = subject.create_visits([visit_data])
 
-        expect(visits.size).to eq(1)
-        expect(visits.first).to eq(existing_visit)
-        expect(visits.first.status).to eq('confirmed')
+        expect(visits).to be_empty
 
         # Verify no new visits were created
         expect(user.visits.reload.count).to eq(1)
@@ -57,6 +56,170 @@ RSpec.describe Visits::Creator do
         # Points should remain unassociated
         expect(point1.reload.visit_id).to eq(original_visit_id)
         expect(point2.reload.visit_id).to eq(nil)
+      end
+    end
+
+    context 'when an existing visit fully contains the candidate interval' do
+      let(:visit_data) do
+        {
+          start_time: 4.hours.ago.to_i,
+          end_time: 3.hours.ago.to_i,
+          duration: 60.minutes.to_i,
+          center_lat: 40.7128,
+          center_lon: -74.0060,
+          radius: 50,
+          suggested_name: 'Contained Visit',
+          points: [point1, point2]
+        }
+      end
+      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place', latitude: 40.7128, longitude: -74.0060, user_id: nil) }
+      let!(:existing_visit) do
+        create(
+          :visit,
+          user: user,
+          place: place,
+          area: nil,
+          status: :confirmed,
+          started_at: 6.hours.ago,
+          ended_at: 1.hour.ago,
+          duration: 300
+        )
+      end
+
+      it 'does not create a duplicate when existing visit overlaps by containment' do
+        visits = subject.create_visits([visit_data])
+
+        expect(visits).to be_empty
+        expect(user.visits.reload.count).to eq(1)
+      end
+    end
+
+    context 'when a suggested visit already exists at the same location' do
+      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place', latitude: 40.7128, longitude: -74.0060, user_id: nil) }
+      let!(:existing_visit) do
+        create(
+          :visit,
+          user: user,
+          place: place,
+          area: nil,
+          status: :suggested,
+          started_at: 1.5.hours.ago,
+          ended_at: 45.minutes.ago,
+          duration: 45
+        )
+      end
+
+      it 'returns the existing suggested visit instead of creating a duplicate' do
+        visits = subject.create_visits([visit_data])
+
+        expect(visits).to be_empty
+
+        # Verify no new visits were created
+        expect(user.visits.reload.count).to eq(1)
+      end
+    end
+
+    context 'when a declined visit already exists at the same location' do
+      let(:place) { create(:place, lonlat: 'POINT(-74.0060 40.7128)', name: 'Existing Place', latitude: 40.7128, longitude: -74.0060, user_id: nil) }
+      let!(:existing_visit) do
+        create(
+          :visit,
+          user: user,
+          place: place,
+          area: nil,
+          status: :declined,
+          started_at: 1.5.hours.ago,
+          ended_at: 45.minutes.ago,
+          duration: 45
+        )
+      end
+
+      it 'returns the existing declined visit instead of creating a duplicate' do
+        visits = subject.create_visits([visit_data])
+
+        expect(visits).to be_empty
+
+        # Verify no new visits were created
+        expect(user.visits.reload.count).to eq(1)
+      end
+    end
+
+    # Not 100% sure why a visit exists without place or area, but it is possible (verified in author's DB)
+    context 'when a confirmed visit without place/area exists at the same location' do
+      let!(:existing_visit) do
+        create(
+          :visit,
+          user: user,
+          place: nil,
+          area: nil,
+          status: :confirmed,
+          started_at: 1.5.hours.ago,
+          ended_at: 45.minutes.ago,
+          duration: 45
+        )
+      end
+
+      # Mock center_from_points since the visit has no points/place/area
+      before do
+        allow_any_instance_of(Visit).to receive(:center).and_return([40.7128, -74.0060])
+      end
+
+      it 'returns the existing confirmed visit' do
+        visits = subject.create_visits([visit_data])
+
+        expect(visits).to be_empty
+      end
+    end
+
+    context 'when an existing visit has both area and place, area takes precedence' do
+      let(:place) {
+        create(
+          :place,
+          lonlat: 'POINT(-74.0060 40.7128)',
+          name: 'New York Place',
+          latitude: 40.7128,
+          longitude: -74.0060,
+          user_id: nil
+        )
+      }
+      let(:area) { # Berlin
+        create(
+          :area,
+          user: user,
+          latitude: 52.5200,
+          longitude: 13.4050,
+          radius: 100
+        )
+      }
+      let!(:existing_visit) do
+        create(
+          :visit,
+          user: user,
+          place: place,
+          area: area,
+          status: :confirmed,
+          started_at: 1.5.hours.ago,
+          ended_at: 45.minutes.ago,
+          duration: 45
+        )
+      end
+      let(:place_finder) { instance_double(Visits::PlaceFinder) }
+
+      before do
+        allow(Visits::PlaceFinder).to receive(:new).with(user).and_return(place_finder)
+        allow(place_finder).to receive(:find_or_create_place).and_return({ main_place: place, suggested_places: [] })
+      end
+
+      it 'creates a new visit because existing visit location is determined by area (far away)' do
+        # Existing visit has place at New York (match) but area at Berlin (mismatch).
+        # Since area takes precedence, existing visit is considered at Berlin.
+        # So it should NOT be detected as a duplicate of the new visit at New York.
+
+        visits = subject.create_visits([visit_data])
+
+        expect(visits.size).to eq(1)
+        expect(visits.first.place).to eq(place)
+        expect(user.visits.reload.count).to eq(2)
       end
     end
 

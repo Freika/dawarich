@@ -11,9 +11,9 @@ module Visits
 
     def create_visits(visits)
       visits.map do |visit_data|
-        # Check for existing confirmed visits at this location
-        existing_confirmed = find_existing_confirmed_visit(visit_data)
-        next existing_confirmed if existing_confirmed
+        # Check for existing visits at this location
+        existing_visit = find_existing_visit(visit_data)
+        next nil if existing_visit
 
         # Variables to store data outside the transaction
         visit_instance = nil
@@ -21,7 +21,7 @@ module Visits
 
         # First transaction to create the visit
         ActiveRecord::Base.transaction do
-          # Try to find matching area or place
+          # Try to find matching area
           area = find_matching_area(visit_data)
 
           # Only find/create place if no area was found
@@ -55,25 +55,21 @@ module Visits
 
     private
 
-    # Find if there's already a confirmed visit at this location within a similar time
-    def find_existing_confirmed_visit(visit_data)
+    # Find if there's already a confirmed/suggested/declined visit at this location within a similar time
+    def find_existing_visit(visit_data)
       # Define time window to look for existing visits (slightly wider than the visit)
       start_time = Time.zone.at(visit_data[:start_time]) - 1.hour
       end_time = Time.zone.at(visit_data[:end_time]) + 1.hour
 
-      # Look for confirmed visits with a similar location
+      # Look for visits with a similar location
       user.visits
-          .confirmed
-          .where('(started_at BETWEEN ? AND ?) OR (ended_at BETWEEN ? AND ?)',
-                 start_time, end_time, start_time, end_time)
+          .where(
+            'started_at <= :end AND ended_at >= :start',
+            start: start_time, end: end_time
+          )
           .find_each do |visit|
-        # Skip if the visit doesn't have place or area coordinates
-        next unless visit.place || visit.area
 
-        # Get coordinates to compare
-        visit_lat = visit.place&.lat || visit.area&.latitude
-        visit_lon = visit.place&.lon || visit.area&.longitude
-
+        visit_lat, visit_lon = visit.center
         next unless visit_lat && visit_lon
 
         # Calculate distance between centers
@@ -83,7 +79,7 @@ module Visits
           units: :km
         )
 
-        # If this confirmed visit is within 100 meters of the new suggestion
+        # If this visit is within 100 meters of the new suggestion
         return visit if distance <= 0.1
       end
 
