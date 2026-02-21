@@ -6,7 +6,148 @@ export class RouteSegmenter {
   /**
    * Calculate haversine distance between two points in kilometers
    * @param {number} lat1 - First point latitude
+/**
+ * RouteSegmenter - Utility for converting points into route segments
+ * Handles route splitting based on time/distance thresholds and IDL crossings
+ */
+export class RouteSegmenter {
+  /**
+   * Calculate haversine distance between two points in kilometers
+   * @param {number} lat1 - First point latitude
    * @param {number} lon1 - First point longitude
+   * @param {number} lat2 - Second point latitude
+   * @param {number} lon2 - Second point longitude
+   * @returns {number} Distance in kilometers
+   */
+  static haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371 // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLon = (lon2 - lon1) * Math.PI / 180
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+
+   /**
+ * Calculates the interpolated latitude for a given longitude on a Great Circle path.
+ * Unlike linear interpolation, this accounts for the Earth's spherical shape.
+ * * @param {number} lat1 - Latitude of the first point.
+ * @param {number} lon1 - Longitude of the first point.
+ * @param {number} lat2 - Latitude of the second point.
+ * @param {number} lon2 - Longitude of the second point.
+ * @param {number} interpLon - The longitude at which to find the latitude.
+ * @returns {number|null} - The interpolated latitude or null if inputs are invalid.
+ */
+static getInterpolatedLat(lat1, lon1, lat2, lon2, interpLon) {
+    // 1. Force all inputs to numbers
+    const nLat1 = Number(lat1);
+    const nLon1 = Number(lon1);
+    const nLat2 = Number(lat2);
+    const nLon2 = Number(lon2);
+    const nInterpLon = Number(interpLon);
+
+    // 2. Validate that none of the inputs are NaN
+    const inputs = [nLat1, nLon1, nLat2, nLon2, nInterpLon];
+    if (inputs.some(isNaN)) {
+        console.error("Invalid input: All parameters must be numbers.", { lat1, lon1, lat2, lon2, interpLon });
+        return null;
+    }
+
+    // 3. Handle the vertical line case (avoiding Division by Zero)
+    // In spherical geometry, if longitudes are identical, any point on that meridian is valid.
+    if (Math.abs(nLon1 - nLon2) < 0.0000001) {
+        // If we are on the same longitude, we can't interpolate latitude based on longitude.
+        // We return nLat1 as a fallback.
+        return nLat1;
+    }
+
+    // 4. Convert Degrees to Radians for Trigonometry
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const toDeg = (rad) => (rad * 180) / Math.PI;
+
+    const φ1 = toRad(nLat1);
+    const λ1 = toRad(nLon1);
+    const φ2 = toRad(nLat2);
+    const λ2 = toRad(nLon2);
+    const λ3 = toRad(nInterpLon);
+
+    /**
+     * 5. Spherical Interpolation Formula
+     * Based on the intersection of a great circle and a meridian:
+     * tan(φ) = [tan(φ1) * sin(λ2 - λ3) + tan(φ2) * sin(λ3 - λ1)] / sin(λ2 - λ1)
+     */
+    try {
+        const sinDeltaL = Math.sin(λ2 - λ1);
+        const term1 = Math.tan(φ1) * Math.sin(λ2 - λ3);
+        const term2 = Math.tan(φ2) * Math.sin(λ3 - λ1);
+
+        const tanPhi = (term1 + term2) / sinDeltaL;
+        const interpLatRad = Math.atan(tanPhi);
+
+        return typeof interpLatRad === 'number' ? toDeg(interpLatRad) : null;
+    } catch (e) {
+        console.error("Math error during spherical interpolation", e);
+        return null;
+    }
+}
+
+  /**
+ * Detects indices where the path crosses the International Date Line.
+ * @param {Array<Object>} coords - Array of objects with 'latitude' and 'longitude' strings.
+ * @returns {Array<number>} - Indices of the elements that represent the start of a crossing.
+ */
+static findIDLCrossings(coords) {
+  const crossings = [0];
+
+  // We loop to length - 1 because we are comparing current to next
+  for (let i = 0; i < coords.length - 1; i++) {
+    const currentLng = parseFloat(coords[i].longitude);
+    const nextLng = parseFloat(coords[i + 1].longitude);
+
+    // Check for NaN to prevent errors with malformed data
+    if (isNaN(currentLng) || isNaN(nextLng)) continue;
+
+    // A jump of more than 180 degrees indicates a wrap-around
+    if (Math.abs(currentLng - nextLng) > 180) {
+      crossings.push(i+1);
+    }
+  }
+  crossings.push(coords.length)
+
+  return crossings;
+}
+  
+  /**
+   * Unwrap coordinates to handle International Date Line (IDL) crossings
+   * This ensures routes draw the short way across IDL instead of wrapping around globe
+   * @param {Array} segment - Array of points with longitude and latitude properties
+   * @returns {Array} Array of [lon, lat] coordinate pairs with IDL unwrapping applied
+   */
+  static unwrapCoordinates(segment) {
+    let crossingIndices = this.findIDLCrossings(segment)
+    if (crossingIndices.length > 2) {
+      console.log("IDL crossing logic.");
+    }
+    const coordsList = []
+    for (let i = 0; i < crossingIndices.length - 1; i++) {
+      let subsegment = segment.slice(crossingIndices[i], crossingIndices[i+1])
+      const coords = []
+      for (let j = 0; j < subsegment.length; j++) {
+        coords.push([subsegment[j].longitude, subsegment[j].latitude])
+      }
+      coordsList.push(coords)
+    }
+
+    if (coordsList.length > 1) {
+      // Logic for seamless join between IDL crossing segments
+      for (let i = 0; i < coordsList.length - 1; i++) {
+        let lastPoint = coordsList[i].at(-1)
+        let nextPoint = coordsList[i+1][0]
+        let interpLat = this.getInterpolatedLat(lastPoint[1], lastPoint[0], nextPoint[1], nextPoint[0], 180)
+
    * @param {number} lat2 - Second point latitude
    * @param {number} lon2 - Second point longitude
    * @returns {number} Distance in kilometers
