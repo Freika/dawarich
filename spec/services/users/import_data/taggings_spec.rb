@@ -22,7 +22,7 @@ RSpec.describe Users::ImportData::Taggings, type: :service do
 
     context 'with valid taggings data' do
       let!(:tag) { create(:tag, user: user, name: 'Home') }
-      let!(:place) { create(:place, name: 'My House', latitude: 40.7128, longitude: -74.006) }
+      let!(:place) { create(:place, user: user, name: 'My House', latitude: 40.7128, longitude: -74.006) }
 
       let(:taggings_data) do
         [
@@ -59,7 +59,7 @@ RSpec.describe Users::ImportData::Taggings, type: :service do
     end
 
     context 'when tag does not exist' do
-      let!(:place) { create(:place, name: 'My House', latitude: 40.7128, longitude: -74.006) }
+      let!(:place) { create(:place, user: user, name: 'My House', latitude: 40.7128, longitude: -74.006) }
 
       let(:taggings_data) do
         [
@@ -105,7 +105,7 @@ RSpec.describe Users::ImportData::Taggings, type: :service do
 
     context 'with duplicate taggings' do
       let!(:tag) { create(:tag, user: user, name: 'Home') }
-      let!(:place) { create(:place, name: 'My House', latitude: 40.7128, longitude: -74.006) }
+      let!(:place) { create(:place, user: user, name: 'My House', latitude: 40.7128, longitude: -74.006) }
       let!(:existing_tagging) { Tagging.create!(tag: tag, taggable: place) }
 
       let(:taggings_data) do

@@ -72,8 +72,8 @@ class Users::ImportData::Taggings
 
     return nil unless name.present? && latitude.present? && longitude.present?
 
-    Place.find_by(name: name, latitude: latitude, longitude: longitude) ||
-      Place.where(
+    user.places.find_by(name: name, latitude: latitude, longitude: longitude) ||
+      user.places.where(
         'latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?',
         latitude - 0.0001, latitude + 0.0001,
         longitude - 0.0001, longitude + 0.0001

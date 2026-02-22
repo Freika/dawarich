@@ -55,7 +55,7 @@ class Users::ImportData::Exports
 
   def valid_export_data?(export_data)
     # Minimum required fields for a valid export
-    export_data['name'].present? || export_data['file_format'].present? || export_data['status'].present?
+    export_data['name'].present? && export_data['file_format'].present? && export_data['status'].present?
   end
 
   def create_export_record(export_data)

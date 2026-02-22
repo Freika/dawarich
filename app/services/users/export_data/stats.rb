@@ -40,9 +40,9 @@ class Users::ExportData::Stats
       count += 1
     end
 
-    close_all_writers
-
     Rails.logger.info "Exported #{count} stats to #{@monthly_file_paths.size} monthly files"
+  ensure
+    close_all_writers
   end
 
   def extract_month_key(stat)

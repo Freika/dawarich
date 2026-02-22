@@ -34,6 +34,7 @@ This release adds a dedicated `motion_data` column for transportation-relevant f
 - Selecting a track on Map v2 now always dims other tracks, regardless of whether the track has transportation mode segments.
 - Default map layers for new users changed from Routes + Heatmap to Tracks + Heatmap. Existing users' settings are unaffected.
 - Renamed the bottom-panel "Timeline" feature to "Replay" to avoid naming collision with the new Timeline feed sidebar.
+- Default value for `RAILS_ENV` in `docker-compose.yml` is now `production` instead of `development`
 
 ### Fixed
 

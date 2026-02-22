@@ -57,10 +57,10 @@ class Users::ExportData::Points
       Rails.logger.debug "Exported #{processed}/#{total_count} points (#{percentage}%)"
     end
 
-    close_all_writers
-
     Rails.logger.info "Completed streaming #{processed} points to #{@monthly_file_paths.size} monthly files"
     Rails.logger.debug "Export completed: #{processed} points written to #{@monthly_file_paths.size} files"
+  ensure
+    close_all_writers
   end
 
   def extract_month_key(row)

@@ -25,10 +25,7 @@ class Users::ImportData::Tags
       end
 
       begin
-        user.tags.create!(tag_data.except('created_at', 'updated_at').merge(
-                            'created_at' => tag_data['created_at'],
-                            'updated_at' => tag_data['updated_at']
-                          ))
+        user.tags.create!(tag_data)
         tags_created += 1
       rescue ActiveRecord::RecordInvalid => e
         Rails.logger.warn "Skipping invalid tag: #{tag_data['name']}, error: #{e.message}"

@@ -39,9 +39,9 @@ class Users::ExportData::Tracks
       count += 1
     end
 
-    close_all_writers
-
     Rails.logger.info "Exported #{count} tracks to #{@monthly_file_paths.size} monthly files"
+  ensure
+    close_all_writers
   end
 
   def build_track_hash(track)

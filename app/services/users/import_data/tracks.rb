@@ -55,9 +55,7 @@ class Users::ImportData::Tracks
   end
 
   def create_track_record(track_data)
-    attributes = track_data.except('segments', 'created_at', 'updated_at')
-    attributes['created_at'] = track_data['created_at']
-    attributes['updated_at'] = track_data['updated_at']
+    attributes = track_data.except('segments')
 
     user.tracks.create!(attributes)
   end
