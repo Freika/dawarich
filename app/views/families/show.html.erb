@@ -94,46 +94,7 @@
                   <!-- Location Sharing Controls - More Compact -->
                   <div class="ml-auto flex items-center gap-4">
                     <% if member == current_user %>
-                      <!-- Own toggle - interactive (consolidated controller) -->
-                      <div data-controller="location-sharing-toggle"
-                           data-location-sharing-toggle-member-id-value="<%= member.id %>"
-                           data-location-sharing-toggle-enabled-value="<%= member.family_sharing_enabled? %>"
-                           data-location-sharing-toggle-family-id-value="<%= @family.id %>"
-                           data-location-sharing-toggle-duration-value="<%= member.family_sharing_duration %>"
-                           data-location-sharing-toggle-expires-at-value="<%= member.family_sharing_expires_at&.iso8601 %>"
-                           class="flex items-center gap-3">
-
-                        <span class="text-sm opacity-60">Location sharing:</span>
-
-                        <!-- Toggle Switch -->
-                        <input type="checkbox"
-                               class="toggle toggle-primary toggle-sm"
-                               <%= 'checked' if member.family_sharing_enabled? %>
-                               data-location-sharing-toggle-target="checkbox"
-                               data-action="change->location-sharing-toggle#toggle">
-
-                        <!-- Duration Dropdown (only visible when enabled) -->
-                        <div class="<%= 'hidden' unless member.family_sharing_enabled? %>"
-                             data-location-sharing-toggle-target="durationContainer">
-                          <select class="select select-bordered select-xs w-28 h-full"
-                                  data-location-sharing-toggle-target="durationSelect"
-                                  data-action="change->location-sharing-toggle#changeDuration">
-                            <option value="permanent" <%= 'selected' if member.family_sharing_duration == 'permanent' %>>Always</option>
-                            <option value="1h" <%= 'selected' if member.family_sharing_duration == '1h' %>>1 hour</option>
-                            <option value="6h" <%= 'selected' if member.family_sharing_duration == '6h' %>>6 hours</option>
-                            <option value="12h" <%= 'selected' if member.family_sharing_duration == '12h' %>>12 hours</option>
-                            <option value="24h" <%= 'selected' if member.family_sharing_duration == '24h' %>>24 hours</option>
-                          </select>
-                        </div>
-
-                        <!-- Expiration Info (inline) -->
-                        <% if member.family_sharing_enabled? && member.family_sharing_expires_at.present? %>
-                          <div class="text-xs opacity-50"
-                               data-location-sharing-toggle-target="expirationInfo">
-                            • Expires <%= time_ago_in_words(member.family_sharing_expires_at) %> from now
-                          </div>
-                        <% end %>
-                      </div>
+                      <%= render 'families/location_sharing_toggle', member: member %>
 
                     <% else %>
                       <!-- Other member's status - read-only indicator -->

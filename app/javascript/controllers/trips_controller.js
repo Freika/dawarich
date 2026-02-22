@@ -7,7 +7,7 @@ import BaseController from "./base_controller"
 import L from "leaflet"
 import { createAllMapLayers } from "../maps/layers"
 import { createPopupContent } from "../maps/popups"
-import { showFlashMessage } from "../maps/helpers"
+import Flash from "./flash_controller"
 import { fetchAndDisplayPhotos } from "../maps/photos"
 
 export default class extends BaseController {
@@ -84,7 +84,7 @@ export default class extends BaseController {
       });
 
       if ((!this.userSettings.immich_url || !this.userSettings.immich_api_key) && (!this.userSettings.photoprism_url || !this.userSettings.photoprism_api_key)) {
-        showFlashMessage(
+        Flash.show(
           'error',
           'Photos integration is not configured. Please check your integrations settings.'
         );
@@ -105,7 +105,7 @@ export default class extends BaseController {
         endDate = new Date(endedAt).toISOString().split('T')[0];
       } else {
         console.log('No date range available for photos');
-        showFlashMessage(
+        Flash.show(
           'error',
           'No date range available for photos. Please ensure the trip has start and end dates.'
         );

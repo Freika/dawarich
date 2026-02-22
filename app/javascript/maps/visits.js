@@ -1,5 +1,5 @@
 import L from "leaflet";
-import { showFlashMessage } from "./helpers";
+import Flash from "controllers/flash_controller";
 import { createPolylinesLayer } from "./polylines";
 
 /**
@@ -96,7 +96,7 @@ export class VisitsManager {
       this.map.dragging.disable();
       this.map.on('mousedown', this.onMouseDown, this);
 
-      showFlashMessage('info', 'Selection mode enabled. Click and drag to select an area.');
+      Flash.show('info', 'Selection mode enabled. Click and drag to select an area.');
     }
   }
 
@@ -237,7 +237,7 @@ export class VisitsManager {
 
     } catch (error) {
       console.error('Error fetching visits in selection:', error);
-      showFlashMessage('error', 'Failed to load visits in selected area');
+      Flash.show('error', 'Failed to load visits in selected area');
     }
   }
 
@@ -449,7 +449,7 @@ export class VisitsManager {
    */
   async deleteSelectedPoints() {
     if (!this.selectedPoints || this.selectedPoints.length === 0) {
-      showFlashMessage('warning', 'No points selected');
+      Flash.show('warning', 'No points selected');
       return;
     }
 
@@ -476,7 +476,7 @@ export class VisitsManager {
       console.log('Point IDs to delete:', pointIds);
 
       if (pointIds.length === 0) {
-        showFlashMessage('error', 'No valid point IDs found');
+        Flash.show('error', 'No valid point IDs found');
         return;
       }
 
@@ -503,13 +503,13 @@ export class VisitsManager {
 
       // Check if any points were actually deleted
       if (result.count === 0) {
-        showFlashMessage('warning', 'No points were deleted. They may have already been removed.');
+        Flash.show('warning', 'No points were deleted. They may have already been removed.');
         this.clearSelection();
         return;
       }
 
       // Show success message
-      showFlashMessage('notice', `Successfully deleted ${result.count} point${result.count > 1 ? 's' : ''}`);
+      Flash.show('notice', `Successfully deleted ${result.count} point${result.count > 1 ? 's' : ''}`);
 
       // Remove deleted points from the map
       pointIds.forEach(id => {
@@ -540,7 +540,7 @@ export class VisitsManager {
 
     } catch (error) {
       console.error('Error deleting points:', error);
-      showFlashMessage('error', 'Failed to delete points. Please try again.');
+      Flash.show('error', 'Failed to delete points. Please try again.');
     }
   }
 
@@ -1178,7 +1178,7 @@ export class VisitsManager {
    */
   async mergeVisits(visitIds) {
     if (!visitIds || visitIds.length < 2) {
-      showFlashMessage('error', 'At least 2 visits must be selected for merging');
+      Flash.show('error', 'At least 2 visits must be selected for merging');
       return;
     }
 
@@ -1198,13 +1198,13 @@ export class VisitsManager {
         throw new Error('Failed to merge visits');
       }
 
-      showFlashMessage('notice', 'Visits merged successfully');
+      Flash.show('notice', 'Visits merged successfully');
 
       // Refresh the visits list
       this.fetchAndDisplayVisits();
     } catch (error) {
       console.error('Error merging visits:', error);
-      showFlashMessage('error', 'Failed to merge visits');
+      Flash.show('error', 'Failed to merge visits');
     }
   }
 
@@ -1215,7 +1215,7 @@ export class VisitsManager {
    */
   async bulkUpdateVisitStatus(visitIds, status) {
     if (!visitIds || visitIds.length === 0) {
-      showFlashMessage('error', 'No visits selected');
+      Flash.show('error', 'No visits selected');
       return;
     }
 
@@ -1236,13 +1236,13 @@ export class VisitsManager {
         throw new Error(`Failed to ${status} visits`);
       }
 
-      showFlashMessage('notice', `${visitIds.length} visits ${status === 'confirmed' ? 'confirmed' : 'declined'} successfully`);
+      Flash.show('notice', `${visitIds.length} visits ${status === 'confirmed' ? 'confirmed' : 'declined'} successfully`);
 
       // Refresh the visits list
       this.fetchAndDisplayVisits();
     } catch (error) {
       console.error(`Error ${status}ing visits:`, error);
-      showFlashMessage('error', `Failed to ${status} visits`);
+      Flash.show('error', `Failed to ${status} visits`);
     }
   }
 
@@ -1304,10 +1304,10 @@ export class VisitsManager {
 
           // Refresh visits list
           this.fetchAndDisplayVisits();
-          showFlashMessage('notice', 'Visit confirmed successfully');
+          Flash.show('notice', 'Visit confirmed successfully');
         } catch (error) {
           console.error('Error confirming visit:', error);
-          showFlashMessage('error', 'Failed to confirm visit');
+          Flash.show('error', 'Failed to confirm visit');
         }
       });
 
@@ -1334,10 +1334,10 @@ export class VisitsManager {
 
           // Refresh visits list
           this.fetchAndDisplayVisits();
-          showFlashMessage('notice', 'Visit declined successfully');
+          Flash.show('notice', 'Visit declined successfully');
         } catch (error) {
           console.error('Error declining visit:', error);
-          showFlashMessage('error', 'Failed to decline visit');
+          Flash.show('error', 'Failed to decline visit');
         }
       });
     });
@@ -1581,7 +1581,7 @@ export class VisitsManager {
       this.addPopupFormEventListeners(visit);
     } catch (error) {
       console.error('Error fetching possible places:', error);
-      showFlashMessage('error', 'Failed to load possible places');
+      Flash.show('error', 'Failed to load possible places');
     }
   }
 
@@ -1600,7 +1600,7 @@ export class VisitsManager {
 
         // Validate that we have a valid place_id
         if (!selectedPlaceId || selectedPlaceId === '') {
-          showFlashMessage('error', 'Please select a valid location');
+          Flash.show('error', 'Please select a valid location');
           return;
         }
 
@@ -1660,10 +1660,10 @@ export class VisitsManager {
           // Close the popup
           this.map.closePopup(this.currentPopup);
           this.currentPopup = null;
-          showFlashMessage('notice', 'Visit updated successfully');
+          Flash.show('notice', 'Visit updated successfully');
         } catch (error) {
           console.error('Error updating visit:', error);
-          showFlashMessage('error', 'Failed to update visit');
+          Flash.show('error', 'Failed to update visit');
         }
       });
 
@@ -1709,10 +1709,10 @@ export class VisitsManager {
       }
 
       this.fetchAndDisplayVisits();
-      showFlashMessage('notice', `Visit ${status}d successfully`);
+      Flash.show('notice', `Visit ${status}d successfully`);
     } catch (error) {
       console.error(`Error ${status}ing visit:`, error);
-      showFlashMessage('error', `Failed to ${status} visit`);
+      Flash.show('error', `Failed to ${status} visit`);
     }
   }
 
@@ -1749,15 +1749,15 @@ export class VisitsManager {
 
         // Refresh the visits list
         this.fetchAndDisplayVisits();
-        showFlashMessage('notice', 'Visit deleted successfully');
+        Flash.show('notice', 'Visit deleted successfully');
       } else {
         const errorData = await response.json();
         const errorMessage = errorData.error || 'Failed to delete visit';
-        showFlashMessage('error', errorMessage);
+        Flash.show('error', errorMessage);
       }
     } catch (error) {
       console.error('Error deleting visit:', error);
-      showFlashMessage('error', 'Failed to delete visit');
+      Flash.show('error', 'Failed to delete visit');
     }
   }
 

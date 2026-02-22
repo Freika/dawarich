@@ -1,6 +1,6 @@
 import BaseController from "./base_controller"
 import L from "leaflet"
-import { showFlashMessage } from "../maps/helpers"
+import Flash from "./flash_controller"
 
 export default class extends BaseController {
   static targets = ["urlInput", "mapContainer", "saveButton"]
@@ -52,7 +52,7 @@ export default class extends BaseController {
       }).addTo(this.map)
     } catch (e) {
       console.error('Invalid tile URL:', e)
-      showFlashMessage('error', 'Invalid tile URL. Reverting to OpenStreetMap.')
+      Flash.show('error', 'Invalid tile URL. Reverting to OpenStreetMap.')
 
       // Reset input to default OSM URL
       this.urlInputTarget.value = this.DEFAULT_TILE_URL

@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
-import { showFlashMessage } from "../maps/helpers";
+import Flash from "./flash_controller";
 import {
   setAddVisitButtonActive,
   setAddVisitButtonInactive
@@ -123,7 +123,7 @@ export default class extends Controller {
       }
     }, 100);
 
-    showFlashMessage('notice', 'Click on the map to place a visit');
+    Flash.show('notice', 'Click on the map to place a visit');
   }
 
   exitAddVisitMode(button) {
@@ -305,7 +305,7 @@ export default class extends Controller {
     const endTime = new Date(visitData.visit.ended_at);
 
     if (endTime <= startTime) {
-      showFlashMessage('error', 'End time must be after start time');
+      Flash.show('error', 'End time must be after start time');
       return;
     }
 
@@ -329,7 +329,7 @@ export default class extends Controller {
       const data = await response.json();
 
       if (response.ok) {
-        showFlashMessage('notice', `Visit "${visitData.visit.name}" created successfully!`);
+        Flash.show('notice', `Visit "${visitData.visit.name}" created successfully!`);
 
         // Store the created visit data
         const createdVisit = data;
@@ -340,11 +340,11 @@ export default class extends Controller {
         this.addCreatedVisitToMap(createdVisit, visitData.visit.latitude, visitData.visit.longitude);
       } else {
         const errorMessage = data.error || data.message || 'Failed to create visit';
-        showFlashMessage('error', errorMessage);
+        Flash.show('error', errorMessage);
       }
     } catch (error) {
       console.error('Error creating visit:', error);
-      showFlashMessage('error', 'Network error: Failed to create visit');
+      Flash.show('error', 'Network error: Failed to create visit');
     } finally {
       // Re-enable form
       submitButton.disabled = false;

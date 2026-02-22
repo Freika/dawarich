@@ -1,4 +1,4 @@
-import { showFlashMessage } from "./helpers";
+import Flash from "controllers/flash_controller";
 
 // Add custom CSS for popup styling
 const addPopupStyles = () => {
@@ -255,7 +255,7 @@ export function deleteArea(id, areasLayer, layer, apiKey) {
   .then(data => {
     areasLayer.removeLayer(layer); // Remove the layer from the areas layer group
 
-    showFlashMessage('notice', `Area was successfully deleted!`);
+    Flash.show('notice', `Area was successfully deleted!`);
   })
   .catch(error => {
     console.error('There was a problem with the delete request:', error);

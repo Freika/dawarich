@@ -17,6 +17,7 @@ class Users::ImportData::Exports
 
     exports_data.each do |export_data|
       next unless export_data.is_a?(Hash)
+      next unless valid_export_data?(export_data)
 
       existing_export = user.exports.find_by(
         name: export_data['name'],
@@ -28,14 +29,17 @@ class Users::ImportData::Exports
         next
       end
 
-      export_record = create_export_record(export_data)
-      exports_created += 1
+      begin
+        export_record = create_export_record(export_data)
+        exports_created += 1
 
-      if export_data['file_name'] && restore_export_file(export_record, export_data)
-        files_restored += 1
+        files_restored += 1 if export_data['file_name'] && restore_export_file(export_record, export_data)
+
+        Rails.logger.debug "Created export: #{export_record.name}"
+      rescue ArgumentError, ActiveModel::UnknownAttributeError, ActiveRecord::RecordInvalid => e
+        Rails.logger.warn "Skipping invalid export data: #{e.message}"
+        next
       end
-
-      Rails.logger.debug "Created export: #{export_record.name}"
     end
 
     Rails.logger.info "Exports import completed. Created: #{exports_created}, Files: #{files_restored}"
@@ -45,6 +49,11 @@ class Users::ImportData::Exports
   private
 
   attr_reader :user, :exports_data, :files_directory
+
+  def valid_export_data?(export_data)
+    # Minimum required fields for a valid export
+    export_data['name'].present? || export_data['file_format'].present? || export_data['status'].present?
+  end
 
   def create_export_record(export_data)
     export_attributes = prepare_export_attributes(export_data)
@@ -80,7 +89,7 @@ class Users::ImportData::Exports
 
       true
     rescue StandardError => e
-      ExceptionReporter.call(e, "Export file restoration failed")
+      ExceptionReporter.call(e, 'Export file restoration failed')
 
       false
     end

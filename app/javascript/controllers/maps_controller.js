@@ -4,7 +4,7 @@ import "leaflet.control.layers.tree"
 import consumer from "../channels/consumer"
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas"
 import { countryCodesMap } from "../maps/country_codes"
-import { showFlashMessage } from "../maps/helpers"
+import Flash from "./flash_controller"
 import { LiveMapHandler } from "../maps/live_map_handler"
 import { LocationSearch } from "../maps/location_search"
 import { createMarkersArray } from "../maps/markers"
@@ -841,12 +841,12 @@ export default class extends BaseController {
       .then((response) => response.json())
       .then((data) => {
         if (data.status === "success") {
-          showFlashMessage(
+          Flash.show(
             "notice",
             `Preferred map layer updated to: ${selectedLayerName}`,
           )
         } else {
-          showFlashMessage("error", data.message)
+          Flash.show("error", data.message)
         }
       })
   }
@@ -918,10 +918,10 @@ export default class extends BaseController {
       .then((data) => {
         if (data.status === "success") {
           console.log("Enabled layers saved:", enabledLayers)
-          // showFlashMessage('notice', 'Map layer preferences saved');
+          // Flash.show('notice', 'Map layer preferences saved');
         } else {
           console.error("Failed to save enabled layers:", data.message)
-          showFlashMessage(
+          Flash.show(
             "error",
             `Failed to save layer preferences: ${data.message}`,
           )
@@ -929,7 +929,7 @@ export default class extends BaseController {
       })
       .catch((error) => {
         console.error("Error saving enabled layers:", error)
-        showFlashMessage("error", "Error saving layer preferences")
+        Flash.show("error", "Error saving layer preferences")
       })
   }
 
@@ -996,11 +996,11 @@ export default class extends BaseController {
         }
 
         // Show success message
-        showFlashMessage("notice", "Point deleted successfully")
+        Flash.show("notice", "Point deleted successfully")
       })
       .catch((error) => {
         console.error("There was a problem with the delete request:", error)
-        showFlashMessage("error", "Failed to delete point")
+        Flash.show("error", "Failed to delete point")
       })
   }
 
@@ -1463,7 +1463,7 @@ export default class extends BaseController {
       .then((data) => {
         console.log("Settings update response:", data)
         if (data.status === "success") {
-          showFlashMessage("notice", data.message)
+          Flash.show("notice", data.message)
           this.updateMapWithNewSettings(data.settings)
 
           if (data.settings.live_map_enabled) {
@@ -1477,12 +1477,12 @@ export default class extends BaseController {
             }
           }
         } else {
-          showFlashMessage("error", data.message)
+          Flash.show("error", data.message)
         }
       })
       .catch((error) => {
         console.error("Settings update error:", error)
-        showFlashMessage("error", "Failed to update settings")
+        Flash.show("error", "Failed to update settings")
       })
   }
 
@@ -2545,7 +2545,7 @@ export default class extends BaseController {
         if (gradientContainer.childElementCount > 1) {
           gradientContainer.removeChild(row)
         } else {
-          showFlashMessage("error", "At least one gradient stop is required.")
+          Flash.show("error", "At least one gradient stop is required.")
         }
       })
 

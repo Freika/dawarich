@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { showFlashMessage } from "../maps/helpers"
+import Flash from "./flash_controller"
 
 export default class extends Controller {
   static values = {
@@ -11,10 +11,10 @@ export default class extends Controller {
   copy() {
     navigator.clipboard.writeText(this.textValue).then(() => {
       this.showButtonFeedback()
-      showFlashMessage('notice', 'Link copied to clipboard!')
+      Flash.show('notice', 'Link copied to clipboard!')
     }).catch(err => {
       console.error('Failed to copy text: ', err)
-      showFlashMessage('error', 'Failed to copy link')
+      Flash.show('error', 'Failed to copy link')
     })
   }
 

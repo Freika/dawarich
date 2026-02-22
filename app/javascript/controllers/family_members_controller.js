@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import L from "leaflet";
-import { showFlashMessage } from "../maps/helpers";
+import Flash from "./flash_controller";
 
 export default class extends Controller {
   static targets = [];
@@ -504,7 +504,7 @@ export default class extends Controller {
 
   // Helper method to show flash messages using the imported helper
   showFlashMessageToUser(type, message) {
-    showFlashMessage(type, message);
+    Flash.show(type, message);
   }
 
   // Method for manual refresh with user feedback

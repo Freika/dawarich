@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 The Storage & Timeline Interaction Release
 
-This release adds a dedicated `motion_data` column for transportation-relevant fields alongside the existing `raw_data`. Users can now set their timezone for accurate date/time display across the app. The Timeline feed in Map v2 gains richer map interaction: hovering a journey highlights its track with an animated border, clicking zooms to fit and selects it, and expanding a day shows visit markers even when the Visits layer is off.
+This release adds a dedicated `motion_data` column for transportation-relevant fields alongside the existing `raw_data`. Users can now set their timezone for accurate date/time display across the app. The Timeline feed in Map v2 gains richer map interaction: hovering a journey highlights its track with an animated border, clicking zooms to fit and selects it, and expanding a day shows visit markers even when the Visits layer is off. User data export/import is enhanced with a new v2 format using JSONL files and monthly splitting for large datasets, while remaining backward-compatible with the old format.
 
 ### Added
 
@@ -19,6 +19,11 @@ This release adds a dedicated `motion_data` column for transportation-relevant f
 - Clicking a track point (when "Show Points" is enabled) now displays point info (timestamp, battery, altitude, speed) in the track info panel instead of triggering a position update. Dragging a point still updates its position and triggers track recalculation.
 - Timeline-map interaction: hovering a journey entry in the Timeline feed now highlights the matching track on the map with the animated border and flow effect. Clicking a journey entry zooms the map to fit the track and keeps it selected. Expanding a day in the Timeline now temporarily shows visit markers for that day, even if the Visits layer is disabled.
 - AES-256-GCM encryption for raw data archives (format version 2). Set `ARCHIVE_ENCRYPTION_KEY` to use a custom key; otherwise derives from `SECRET_KEY_BASE`. Existing unencrypted archives (format version 1) are read transparently.
+- v2 export/import format with JSONL files and monthly splitting for large entities (points, visits, stats, tracks, digests). The new format streams data to avoid memory issues with large datasets, while remaining backward-compatible with v1 archives (`data.json`).
+- User data export now includes Tags, Taggings, Tracks (with embedded TrackSegments), Digests, and Raw Data Archives — previously missing from export/import, meaning users who exported and re-imported would lose these entities.
+- Tracks are exported with their `original_path` serialized as WKT and `track_segments` embedded as a nested array, preserving transportation mode detection data across export/import cycles.
+- Digests get a fresh `sharing_uuid` on import for security — old share links from the original user won't work for the importing user.
+- Raw Data Archives are exported with their attached gzip files, enabling full data restoration.
 
 ### Changed
 

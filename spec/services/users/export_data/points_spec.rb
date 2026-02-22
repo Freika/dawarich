@@ -22,47 +22,45 @@ RSpec.describe Users::ExportData::Points, type: :service do
       let!(:visit) { create(:visit, user: user, place: place, name: 'Work Visit') }
       let(:point_with_relationships) do
         create(:point,
-          user: user,
-          import: import,
-          country: country,
-          visit: visit,
-          battery_status: :charging,
-          battery: 85,
-          timestamp: 1640995200,
-          altitude: 100,
-          velocity: '25.5',
-          accuracy: 5,
-          ping: 'test-ping',
-          tracker_id: 'tracker-123',
-          topic: 'owntracks/user/device',
-          trigger: :manual_event,
-          bssid: 'aa:bb:cc:dd:ee:ff',
-          ssid: 'TestWiFi',
-          connection: :wifi,
-          vertical_accuracy: 3,
-          mode: 2,
-          inrids: ['region1', 'region2'],
-          in_regions: ['home', 'work'],
-          raw_data: { 'test' => 'data' },
-          city: 'New York',
-          geodata: { 'address' => '123 Main St' },
-          reverse_geocoded_at: Time.current,
-          course: 45.5,
-          course_accuracy: 2.5,
-          external_track_id: 'ext-123',
-          longitude: -74.006,
-          latitude: 40.7128,
-          lonlat: 'POINT(-74.006 40.7128)'
-        )
+               user: user,
+               import: import,
+               country: country,
+               visit: visit,
+               battery_status: :charging,
+               battery: 85,
+               timestamp: 1_640_995_200,
+               altitude: 100,
+               velocity: '25.5',
+               accuracy: 5,
+               ping: 'test-ping',
+               tracker_id: 'tracker-123',
+               topic: 'owntracks/user/device',
+               trigger: :manual_event,
+               bssid: 'aa:bb:cc:dd:ee:ff',
+               ssid: 'TestWiFi',
+               connection: :wifi,
+               vertical_accuracy: 3,
+               mode: 2,
+               inrids: %w[region1 region2],
+               in_regions: %w[home work],
+               raw_data: { 'test' => 'data' },
+               city: 'New York',
+               geodata: { 'address' => '123 Main St' },
+               reverse_geocoded_at: Time.current,
+               course: 45.5,
+               course_accuracy: 2.5,
+               external_track_id: 'ext-123',
+               longitude: -74.006,
+               latitude: 40.7128,
+               lonlat: 'POINT(-74.006 40.7128)')
       end
       let(:point_without_relationships) do
         create(:point,
-          user: user,
-          timestamp: 1640995260,
-          longitude: -73.9857,
-          latitude: 40.7484,
-          lonlat: 'POINT(-73.9857 40.7484)'
-        )
+               user: user,
+               timestamp: 1_640_995_260,
+               longitude: -73.9857,
+               latitude: 40.7484,
+               lonlat: 'POINT(-73.9857 40.7484)')
       end
 
       before do
@@ -81,7 +79,7 @@ RSpec.describe Users::ExportData::Points, type: :service do
         expect(point_data).to include(
           'battery_status' => 2, # enum value for :charging
           'battery' => 85,
-          'timestamp' => 1640995200,
+          'timestamp' => 1_640_995_200,
           'altitude' => 100,
           'velocity' => '25.5',
           'accuracy' => 5,
@@ -115,10 +113,10 @@ RSpec.describe Users::ExportData::Points, type: :service do
         point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
 
         expect(point_data['import_reference']).to eq({
-          'name' => 'Test Import',
+                                                       'name' => 'Test Import',
           'source' => 0, # enum value for :google_semantic_history
           'created_at' => import.created_at.utc
-        })
+                                                     })
       end
 
       it 'includes country info when point has country' do
@@ -128,10 +126,10 @@ RSpec.describe Users::ExportData::Points, type: :service do
         # this should work, but let's check if it's actually being set
         if point_data['country_info']
           expect(point_data['country_info']).to eq({
-            'name' => 'United States',
+                                                     'name' => 'United States',
             'iso_a2' => 'US',
             'iso_a3' => 'USA'
-          })
+                                                   })
         else
           # If no country info, let's just ensure the test doesn't fail
           expect(point_data['country_info']).to be_nil
@@ -142,10 +140,10 @@ RSpec.describe Users::ExportData::Points, type: :service do
         point_data = subject.find { |p| p['external_track_id'] == 'ext-123' }
 
         expect(point_data['visit_reference']).to eq({
-          'name' => 'Work Visit',
+                                                      'name' => 'Work Visit',
           'started_at' => visit.started_at,
           'ended_at' => visit.ended_at
-        })
+                                                    })
       end
 
       it 'does not include relationships for points without them' do
@@ -168,8 +166,8 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       it 'orders points by id' do
-        expect(subject.first['timestamp']).to eq(1640995200)
-        expect(subject.last['timestamp']).to eq(1640995260)
+        expect(subject.first['timestamp']).to eq(1_640_995_200)
+        expect(subject.last['timestamp']).to eq(1_640_995_260)
       end
 
       it 'logs processing information' do
@@ -265,33 +263,111 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
     end
 
-    context 'streaming mode' do
-      let!(:points) { create_list(:point, 25, user: user) }
-      let(:output) { StringIO.new }
-      let(:streaming_service) { described_class.new(user, output) }
+    context 'monthly file mode' do
+      let(:output_directory) { Rails.root.join('tmp/test_points_export') }
+      let(:monthly_service) { described_class.new(user, output_directory) }
 
-      it 'writes JSON array directly to file without loading all into memory' do
-        streaming_service.call
-        output.rewind
-        json_output = output.read
-
-        expect(json_output).to start_with('[')
-        expect(json_output).to end_with(']')
-
-        parsed = JSON.parse(json_output)
-        expect(parsed).to be_an(Array)
-        expect(parsed.size).to eq(25)
+      before do
+        FileUtils.mkdir_p(output_directory)
       end
 
-      it 'returns nil in streaming mode instead of array' do
-        expect(streaming_service.call).to be_nil
+      after do
+        FileUtils.rm_rf(output_directory)
       end
 
-      it 'logs progress for large datasets' do
-        expect(Rails.logger).to receive(:info).with(/Streaming \d+ points to file.../)
-        expect(Rails.logger).to receive(:info).with(/Completed streaming \d+ points to file/)
+      context 'with points from different months' do
+        let!(:point_jan_2022) do
+          create(:point, user: user, timestamp: Time.utc(2022, 1, 15).to_i, external_track_id: 'jan-2022')
+        end
+        let!(:point_jun_2022) do
+          create(:point, user: user, timestamp: Time.utc(2022, 6, 20).to_i, external_track_id: 'jun-2022')
+        end
+        let!(:point_jan_2023) do
+          create(:point, user: user, timestamp: Time.utc(2023, 1, 5).to_i, external_track_id: 'jan-2023')
+        end
 
-        streaming_service.call
+        it 'returns array of relative file paths' do
+          result = monthly_service.call
+
+          expect(result).to be_an(Array)
+          expect(result).to include('points/2022/2022-01.jsonl')
+          expect(result).to include('points/2022/2022-06.jsonl')
+          expect(result).to include('points/2023/2023-01.jsonl')
+        end
+
+        it 'creates year directories' do
+          monthly_service.call
+
+          expect(File.directory?(output_directory.join('2022'))).to be true
+          expect(File.directory?(output_directory.join('2023'))).to be true
+        end
+
+        it 'creates JSONL files with one point per line' do
+          monthly_service.call
+
+          jan_2022_file = output_directory.join('2022', '2022-01.jsonl')
+          expect(File.exist?(jan_2022_file)).to be true
+
+          lines = File.readlines(jan_2022_file)
+          expect(lines.size).to eq(1)
+
+          point_data = JSON.parse(lines.first)
+          expect(point_data['external_track_id']).to eq('jan-2022')
+        end
+
+        it 'groups points correctly by month' do
+          monthly_service.call
+
+          # Check January 2022 has exactly 1 point
+          jan_2022_lines = File.readlines(output_directory.join('2022', '2022-01.jsonl'))
+          expect(jan_2022_lines.size).to eq(1)
+
+          # Check June 2022 has exactly 1 point
+          jun_2022_lines = File.readlines(output_directory.join('2022', '2022-06.jsonl'))
+          expect(jun_2022_lines.size).to eq(1)
+
+          # Check January 2023 has exactly 1 point
+          jan_2023_lines = File.readlines(output_directory.join('2023', '2023-01.jsonl'))
+          expect(jan_2023_lines.size).to eq(1)
+        end
+
+        it 'returns paths sorted alphabetically' do
+          result = monthly_service.call
+
+          expect(result).to eq(result.sort)
+        end
+      end
+
+      context 'with no points' do
+        it 'returns empty array' do
+          result = monthly_service.call
+
+          expect(result).to eq([])
+        end
+      end
+
+      context 'with point missing timestamp' do
+        let!(:point_no_timestamp) do
+          point = create(:point, user: user, external_track_id: 'no-timestamp')
+          point.update_columns(timestamp: nil)
+          point
+        end
+
+        it 'groups point into unknown directory' do
+          result = monthly_service.call
+
+          expect(result).to include('points/unknown/unknown.jsonl')
+          expect(File.exist?(output_directory.join('unknown', 'unknown.jsonl'))).to be true
+        end
+      end
+
+      it 'logs progress for monthly mode' do
+        create_list(:point, 3, user: user)
+
+        expect(Rails.logger).to receive(:info).with(/Streaming \d+ points to monthly files.../)
+        expect(Rails.logger).to receive(:info).with(/Completed streaming \d+ points to \d+ monthly files/)
+
+        monthly_service.call
       end
     end
   end

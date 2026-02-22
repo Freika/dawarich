@@ -1,0 +1,20 @@
+<div id="sharing-link-display" class="form-control mb-4">
+  <label class="label">
+    <span class="label-text font-medium">Sharing link</span>
+  </label>
+  <div class="join w-full">
+    <input type="text"
+           readonly
+           class="input input-bordered join-item flex-1"
+           data-sharing-modal-target="sharingLink"
+           value="<%= sharing_url %>" />
+    <button type="button"
+            class="btn btn-outline join-item"
+            data-action="click->sharing-modal#copyLink">
+      <%= icon 'copy' %> Copy
+    </button>
+  </div>
+  <div class="label">
+    <span class="label-text-alt text-gray-500">Share this link to allow others to view your stats</span>
+  </div>
+</div>

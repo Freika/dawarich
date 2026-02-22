@@ -2,7 +2,7 @@
 // Handles displaying user places with tag icons and colors on the map
 
 import L from 'leaflet';
-import { showFlashMessage } from './helpers';
+import Flash from "controllers/flash_controller";
 
 export class PlacesManager {
   constructor(map, apiKey) {
@@ -36,7 +36,7 @@ export class PlacesManager {
       const { place } = event.detail;
 
       // Show success message
-      showFlashMessage('success', `Place "${place.name}" created successfully!`);
+      Flash.show('success', `Place "${place.name}" created successfully!`);
 
       // Add the place to our local array
       this.places.push(place);
@@ -77,7 +77,7 @@ export class PlacesManager {
       const { place } = event.detail;
 
       // Show success message
-      showFlashMessage('success', `Place "${place.name}" updated successfully!`);
+      Flash.show('success', `Place "${place.name}" updated successfully!`);
 
       // Update the place in our local array
       const index = this.places.findIndex(p => p.id === place.id);
@@ -362,10 +362,10 @@ export class PlacesManager {
       // Remove from places array
       this.places = this.places.filter(p => p.id !== parseInt(placeId));
       
-      showFlashMessage('success', 'Place deleted successfully');
+      Flash.show('success', 'Place deleted successfully');
     } catch (error) {
       console.error('Error deleting place:', error);
-      showFlashMessage('error', 'Failed to delete place');
+      Flash.show('error', 'Failed to delete place');
     }
   }
 
@@ -498,10 +498,6 @@ export class PlacesManager {
   }
 
   showNotification(message, type = 'info') {
-    const event = new CustomEvent('notification:show', {
-      detail: { message, type },
-      bubbles: true
-    });
-    document.dispatchEvent(event);
+    Flash.show(type, message);
   }
 }

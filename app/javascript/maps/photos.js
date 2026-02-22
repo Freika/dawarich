@@ -1,6 +1,6 @@
 // javascript/maps/photos.js
 import L from "leaflet";
-import { showFlashMessage } from "./helpers";
+import Flash from "controllers/flash_controller";
 
 export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDate, endDate, userSettings }, retryCount = 0) {
   const MAX_RETRIES = 3;
@@ -84,7 +84,7 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
 
   } catch (error) {
     console.error('Error fetching photos:', error);
-    showFlashMessage('error', 'Failed to fetch photos');
+    Flash.show('error', 'Failed to fetch photos');
 
     if (retryCount < MAX_RETRIES) {
       console.log(`Retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
@@ -92,7 +92,7 @@ export async function fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDa
         fetchAndDisplayPhotos({ map, photoMarkers, apiKey, startDate, endDate, userSettings }, retryCount + 1);
       }, RETRY_DELAY);
     } else {
-      showFlashMessage('error', 'Failed to fetch photos after multiple attempts');
+      Flash.show('error', 'Failed to fetch photos after multiple attempts');
     }
   } finally {
     map.removeControl(loadingControl);

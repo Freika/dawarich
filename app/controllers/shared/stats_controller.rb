@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Shared::StatsController < ApplicationController
+  include FlashStreamable
+
   before_action :authenticate_user!, except: [:show]
   before_action :authenticate_active_user!, only: [:update]
 
@@ -31,25 +33,36 @@ class Shared::StatsController < ApplicationController
 
     if params[:enabled] == '1'
       @stat.enable_sharing!(expiration: params[:expiration] || '24h')
-      sharing_url = shared_stat_url(@stat.sharing_uuid)
-
-      render json: {
-        success: true,
-        sharing_url: sharing_url,
-        message: 'Sharing enabled successfully'
-      }
+      @sharing_url = shared_stat_url(@stat.sharing_uuid)
+      @message = 'Sharing enabled successfully'
     else
       @stat.disable_sharing!
+      @sharing_url = ''
+      @message = 'Sharing disabled successfully'
+    end
 
-      render json: {
-        success: true,
-        message: 'Sharing disabled successfully'
-      }
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.replace('sharing-link-display',
+                               partial: 'shared/sharing_link',
+                               locals: { sharing_url: @sharing_url }),
+          stream_flash(:success, 'Auto-saved')
+        ]
+      end
+      format.json do
+        render json: { success: true, sharing_url: @sharing_url, message: @message }
+      end
     end
   rescue StandardError
-    render json: {
-      success: false,
-      message: 'Failed to update sharing settings'
-    }, status: :unprocessable_content
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: stream_flash(:error, 'Failed to update sharing settings')
+      end
+      format.json do
+        render json: { success: false, message: 'Failed to update sharing settings' },
+               status: :unprocessable_content
+      end
+    end
   end
 end
