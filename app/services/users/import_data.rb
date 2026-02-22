@@ -90,8 +90,10 @@ class Users::ImportData
 
         extraction_path = File.expand_path(File.join(@import_directory, sanitized_name))
         safe_import_dir = File.expand_path(@import_directory) + File::SEPARATOR
-        unless extraction_path.start_with?(safe_import_dir) || extraction_path == File.expand_path(@import_directory)
-          Rails.logger.warn "Skipping potentially malicious ZIP entry: #{entry.name} (would extract to #{extraction_path})"
+        unless extraction_path.start_with?(safe_import_dir) ||
+               extraction_path == File.expand_path(@import_directory)
+          Rails.logger.warn \
+            "Skipping potentially malicious ZIP entry: #{entry.name} (would extract to #{extraction_path})"
           next
         end
 
@@ -99,7 +101,8 @@ class Users::ImportData
 
         # Validate entry size before extraction
         if entry.size > MAX_ENTRY_SIZE
-          Rails.logger.error "Skipping oversized entry: #{entry.name} (#{entry.size} bytes exceeds #{MAX_ENTRY_SIZE} bytes)"
+          Rails.logger.error \
+            "Skipping oversized entry: #{entry.name} (#{entry.size} bytes exceeds #{MAX_ENTRY_SIZE} bytes)"
           raise "Archive entry #{entry.name} exceeds maximum allowed size"
         end
 
@@ -225,7 +228,8 @@ class Users::ImportData
 
       next unless actual_count < expected_count
 
-      discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{expected_count - actual_count} missing)"
+      missing = expected_count - actual_count
+      discrepancy = "#{entity}: expected #{expected_count}, got #{actual_count} (#{missing} missing)"
       discrepancies << discrepancy
       Rails.logger.warn "Import discrepancy - #{discrepancy}"
     end

@@ -64,7 +64,7 @@ export function formatDate(timestamp, timezone) {
     // Check if string is a numeric timestamp
     if (/^\d+$/.test(timestamp)) {
       // String representation of Unix timestamp in seconds
-      date = new Date(parseInt(timestamp) * 1000)
+      date = new Date(parseInt(timestamp, 10) * 1000)
     } else {
       // Assume it's an ISO8601 string, parse directly
       date = new Date(timestamp)
@@ -75,7 +75,7 @@ export function formatDate(timestamp, timezone) {
   }
 
   // Check if date is valid
-  if (isNaN(date.getTime())) {
+  if (Number.isNaN(date.getTime())) {
     return "Invalid Date"
   }
 

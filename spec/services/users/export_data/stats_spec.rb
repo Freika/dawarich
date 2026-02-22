@@ -69,9 +69,9 @@ RSpec.describe Users::ExportData::Stats, type: :service do
       end
 
       context 'with stats from different months' do
-        let!(:stat_jan_2022) { create(:stat, user: user, year: 2022, month: 1, distance: 100) }
-        let!(:stat_jun_2022) { create(:stat, user: user, year: 2022, month: 6, distance: 200) }
-        let!(:stat_jan_2023) { create(:stat, user: user, year: 2023, month: 1, distance: 150) }
+        let!(:stat_jan2022) { create(:stat, user: user, year: 2022, month: 1, distance: 100) }
+        let!(:stat_jun2022) { create(:stat, user: user, year: 2022, month: 6, distance: 200) }
+        let!(:stat_jan2023) { create(:stat, user: user, year: 2023, month: 1, distance: 150) }
 
         it 'returns array of relative file paths' do
           result = monthly_service.call

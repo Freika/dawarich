@@ -4,7 +4,6 @@ import "leaflet.control.layers.tree"
 import consumer from "../channels/consumer"
 import { fetchAndDrawAreas, handleAreaCreated } from "../maps/areas"
 import { countryCodesMap } from "../maps/country_codes"
-import Flash from "./flash_controller"
 import { LiveMapHandler } from "../maps/live_map_handler"
 import { LocationSearch } from "../maps/location_search"
 import { createMarkersArray } from "../maps/markers"
@@ -28,6 +27,7 @@ import {
   toggleTracksVisibility,
 } from "../maps/tracks"
 import { VisitsManager } from "../maps/visits"
+import Flash from "./flash_controller"
 
 import "leaflet-draw"
 import {

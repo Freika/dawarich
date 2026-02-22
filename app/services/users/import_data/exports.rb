@@ -16,30 +16,11 @@ class Users::ImportData::Exports
     files_restored = 0
 
     exports_data.each do |export_data|
-      next unless export_data.is_a?(Hash)
-      next unless valid_export_data?(export_data)
+      result = import_single_export(export_data)
+      next unless result
 
-      existing_export = user.exports.find_by(
-        name: export_data['name'],
-        created_at: export_data['created_at']
-      )
-
-      if existing_export
-        Rails.logger.debug "Export already exists: #{export_data['name']}"
-        next
-      end
-
-      begin
-        export_record = create_export_record(export_data)
-        exports_created += 1
-
-        files_restored += 1 if export_data['file_name'] && restore_export_file(export_record, export_data)
-
-        Rails.logger.debug "Created export: #{export_record.name}"
-      rescue ArgumentError, ActiveModel::UnknownAttributeError, ActiveRecord::RecordInvalid => e
-        Rails.logger.warn "Skipping invalid export data: #{e.message}"
-        next
-      end
+      exports_created += 1
+      files_restored += result[:file_restored] ? 1 : 0
     end
 
     Rails.logger.info "Exports import completed. Created: #{exports_created}, Files: #{files_restored}"
@@ -49,6 +30,28 @@ class Users::ImportData::Exports
   private
 
   attr_reader :user, :exports_data, :files_directory
+
+  def import_single_export(export_data)
+    return unless export_data.is_a?(Hash) && valid_export_data?(export_data)
+    return if already_imported?(export_data)
+
+    export_record = create_export_record(export_data)
+    file_restored = export_data['file_name'] && restore_export_file(export_record, export_data)
+
+    Rails.logger.debug "Created export: #{export_record.name}"
+    { file_restored: file_restored }
+  rescue ArgumentError, ActiveModel::UnknownAttributeError, ActiveRecord::RecordInvalid => e
+    Rails.logger.warn "Skipping invalid export data: #{e.message}"
+    nil
+  end
+
+  def already_imported?(export_data)
+    existing = user.exports.find_by(name: export_data['name'], created_at: export_data['created_at'])
+    return false unless existing
+
+    Rails.logger.debug "Export already exists: #{export_data['name']}"
+    true
+  end
 
   def valid_export_data?(export_data)
     # Minimum required fields for a valid export

@@ -2,11 +2,17 @@ import BaseController from "./base_controller"
 
 export default class extends BaseController {
   connect() {
-    document.addEventListener("turbo:before-stream-render", this.enforceLimit.bind(this))
+    document.addEventListener(
+      "turbo:before-stream-render",
+      this.enforceLimit.bind(this),
+    )
   }
 
   disconnect() {
-    document.removeEventListener("turbo:before-stream-render", this.enforceLimit.bind(this))
+    document.removeEventListener(
+      "turbo:before-stream-render",
+      this.enforceLimit.bind(this),
+    )
   }
 
   enforceLimit() {

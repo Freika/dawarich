@@ -55,9 +55,9 @@ RSpec.describe Users::ExportData::Digests, type: :service do
       end
 
       context 'with digests from different months' do
-        let!(:digest_jan_2022) { create(:users_digest, :monthly, user: user, year: 2022, month: 1) }
-        let!(:digest_jun_2022) { create(:users_digest, :monthly, user: user, year: 2022, month: 6) }
-        let!(:digest_yearly_2023) { create(:users_digest, user: user, year: 2023) }
+        let!(:digest_jan2022) { create(:users_digest, :monthly, user: user, year: 2022, month: 1) }
+        let!(:digest_jun2022) { create(:users_digest, :monthly, user: user, year: 2022, month: 6) }
+        let!(:digest_yearly2023) { create(:users_digest, user: user, year: 2023) }
 
         it 'returns array of relative file paths' do
           result = monthly_service.call

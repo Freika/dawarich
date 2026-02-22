@@ -98,7 +98,7 @@ class Users::ExportData
 
       export_record
     rescue StandardError => e
-      export_record.update!(status: :failed) if export_record
+      export_record&.update!(status: :failed)
 
       ExceptionReporter.call(e, 'Export failed')
 

@@ -276,13 +276,13 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
 
       context 'with points from different months' do
-        let!(:point_jan_2022) do
+        let!(:point_jan2022) do
           create(:point, user: user, timestamp: Time.utc(2022, 1, 15).to_i, external_track_id: 'jan-2022')
         end
-        let!(:point_jun_2022) do
+        let!(:point_jun2022) do
           create(:point, user: user, timestamp: Time.utc(2022, 6, 20).to_i, external_track_id: 'jun-2022')
         end
-        let!(:point_jan_2023) do
+        let!(:point_jan2023) do
           create(:point, user: user, timestamp: Time.utc(2023, 1, 5).to_i, external_track_id: 'jan-2023')
         end
 

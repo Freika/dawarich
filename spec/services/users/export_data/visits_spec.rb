@@ -135,7 +135,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
 
       context 'with visits from different months' do
         let(:place) { create(:place, name: 'Office') }
-        let!(:visit_jan_2022) do
+        let!(:visit_jan2022) do
           create(:visit,
                  user: user,
                  place: place,
@@ -143,7 +143,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
                  started_at: Time.zone.parse('2022-01-15 08:00:00'),
                  ended_at: Time.zone.parse('2022-01-15 17:00:00'))
         end
-        let!(:visit_jun_2022) do
+        let!(:visit_jun2022) do
           create(:visit,
                  user: user,
                  place: place,
@@ -151,7 +151,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
                  started_at: Time.zone.parse('2022-06-20 08:00:00'),
                  ended_at: Time.zone.parse('2022-06-20 17:00:00'))
         end
-        let!(:visit_jan_2023) do
+        let!(:visit_jan2023) do
           create(:visit,
                  user: user,
                  place: nil,

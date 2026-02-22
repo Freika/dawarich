@@ -10,7 +10,7 @@ RSpec.describe Users::ExportData, type: :service do
   let(:files_directory) { export_directory.join('files') }
 
   before do
-    allow(Time).to receive(:current).and_return(Time.new(2024, 12, 1, 12, 30, 0))
+    allow(Time).to receive(:current).and_return(Time.zone.local(2024, 12, 1, 12, 30, 0))
   end
 
   describe '#export' do

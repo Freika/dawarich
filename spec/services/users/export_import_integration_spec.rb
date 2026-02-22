@@ -390,26 +390,32 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
   end
 
   def verify_files_restored(original_user, target_user)
+    verify_import_files_restored(original_user, target_user)
+    verify_export_files_restored(original_user, target_user)
+  end
+
+  def verify_import_files_restored(original_user, target_user)
     original_imports_with_files = original_user.imports.joins(:file_attachment).count
     target_imports_with_files = target_user.imports.joins(:file_attachment).count
     expect(target_imports_with_files).to eq(original_imports_with_files)
 
-    target_exports_with_files = target_user.exports.joins(:file_attachment).count
-    expect(target_exports_with_files).to be >= 2
-
     original_import = original_user.imports.find_by(name: 'March 2024 Data')
     target_import = target_user.imports.find_by(name: 'March 2024 Data')
 
-    if original_import&.file&.attached? && target_import&.file&.attached?
-      expect(target_import.file.filename.to_s).to eq(original_import.file.filename.to_s)
-      expect(target_import.file.content_type).to eq(original_import.file.content_type)
-    end
+    return unless original_import&.file&.attached? && target_import&.file&.attached?
+
+    expect(target_import.file.filename.to_s).to eq(original_import.file.filename.to_s)
+    expect(target_import.file.content_type).to eq(original_import.file.content_type)
+  end
+
+  def verify_export_files_restored(original_user, target_user)
+    target_exports_with_files = target_user.exports.joins(:file_attachment).count
+    expect(target_exports_with_files).to be >= 2
 
     original_export = original_user.exports.find_by(name: 'Q1 2024 Export')
-    target_export = target_user.exports.find_by(name: 'Q1 2024 Export')
-
     return unless original_export&.file&.attached?
 
+    target_export = target_user.exports.find_by(name: 'Q1 2024 Export')
     expect(target_export).to be_present
     expect(target_export.file).to be_attached
   end

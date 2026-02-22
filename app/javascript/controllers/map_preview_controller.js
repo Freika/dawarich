@@ -1,18 +1,18 @@
-import BaseController from "./base_controller"
 import L from "leaflet"
+import BaseController from "./base_controller"
 import Flash from "./flash_controller"
 
 export default class extends BaseController {
   static targets = ["urlInput", "mapContainer", "saveButton"]
 
-  DEFAULT_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+  DEFAULT_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 
   connect() {
     console.log("Controller connected!")
     // Wait for the next frame to ensure the DOM is ready
     requestAnimationFrame(() => {
       // Force container height
-      this.mapContainerTarget.style.height = '500px'
+      this.mapContainerTarget.style.height = "500px"
       this.initializeMap()
     })
   }
@@ -35,9 +35,9 @@ export default class extends BaseController {
 
     // Only animate if save button target exists
     if (this.hasSaveButtonTarget) {
-      this.saveButtonTarget.classList.add('btn-animate')
+      this.saveButtonTarget.classList.add("btn-animate")
       setTimeout(() => {
-        this.saveButtonTarget.classList.remove('btn-animate')
+        this.saveButtonTarget.classList.remove("btn-animate")
       }, 1000)
     }
 
@@ -48,11 +48,12 @@ export default class extends BaseController {
     try {
       this.currentLayer = L.tileLayer(url, {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(this.map)
     } catch (e) {
-      console.error('Invalid tile URL:', e)
-      Flash.show('error', 'Invalid tile URL. Reverting to OpenStreetMap.')
+      console.error("Invalid tile URL:", e)
+      Flash.show("error", "Invalid tile URL. Reverting to OpenStreetMap.")
 
       // Reset input to default OSM URL
       this.urlInputTarget.value = this.DEFAULT_TILE_URL
@@ -60,7 +61,8 @@ export default class extends BaseController {
       // Create default layer
       this.currentLayer = L.tileLayer(this.DEFAULT_TILE_URL, {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(this.map)
     }
   }

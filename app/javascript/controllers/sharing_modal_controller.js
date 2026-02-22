@@ -45,7 +45,7 @@ export default class extends Controller {
         button.innerHTML = originalText
         button.classList.remove("btn-success")
       }, 2000)
-    } catch (err) {
+    } catch (_err) {
       this.sharingLinkTarget.select()
       this.sharingLinkTarget.setSelectionRange(0, 99999)
     }

@@ -34,7 +34,7 @@ class Users::ExportData::Points
     processed = 0
 
     Rails.logger.info "Streaming #{total_count} points to monthly files..."
-    puts "Starting export of #{total_count} points..."
+    Rails.logger.debug "Starting export of #{total_count} points..."
 
     user.points.find_in_batches(batch_size: BATCH_SIZE).with_index do |batch, _batch_index|
       batch_sql = build_batch_query(batch.map(&:id))
@@ -54,13 +54,13 @@ class Users::ExportData::Points
 
       # Show progress after each batch
       percentage = (processed.to_f / total_count * 100).round(1)
-      puts "Exported #{processed}/#{total_count} points (#{percentage}%)"
+      Rails.logger.debug "Exported #{processed}/#{total_count} points (#{percentage}%)"
     end
 
     close_all_writers
 
     Rails.logger.info "Completed streaming #{processed} points to #{@monthly_file_paths.size} monthly files"
-    puts "Export completed: #{processed} points written to #{@monthly_file_paths.size} files"
+    Rails.logger.debug "Export completed: #{processed} points written to #{@monthly_file_paths.size} files"
   end
 
   def extract_month_key(row)

@@ -71,17 +71,17 @@ RSpec.describe Users::ExportData::Tracks, type: :service do
       end
 
       context 'with tracks from different months' do
-        let!(:track_jan_2022) do
+        let!(:track_jan2022) do
           create(:track, user: user,
                          start_at: Time.utc(2022, 1, 15, 8),
                          end_at: Time.utc(2022, 1, 15, 9))
         end
-        let!(:track_jun_2022) do
+        let!(:track_jun2022) do
           create(:track, user: user,
                          start_at: Time.utc(2022, 6, 20, 8),
                          end_at: Time.utc(2022, 6, 20, 9))
         end
-        let!(:track_jan_2023) do
+        let!(:track_jan2023) do
           create(:track, user: user,
                          start_at: Time.utc(2023, 1, 5, 8),
                          end_at: Time.utc(2023, 1, 5, 9))
