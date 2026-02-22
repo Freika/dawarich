@@ -13,7 +13,7 @@ class ImportsController < ApplicationController
 
   def index
     @imports = policy_scope(Import)
-               .select(:id, :name, :source, :created_at, :processed, :status)
+               .select(:id, :name, :source, :created_at, :processed, :status, :error_message)
                .with_attached_file
                .order(created_at: :desc)
                .page(params[:page])

@@ -215,38 +215,35 @@ test.describe('Areas Layer', () => {
         await dialog.accept()
       })
 
-      // Wait for API response
+      // Wait for Turbo form submission response (posts to /areas, not /api/v1/areas)
       const [response] = await Promise.all([
         page.waitForResponse(
-          response => response.url().includes('/api/v1/areas') && response.request().method() === 'POST',
+          response => response.url().endsWith('/areas') && response.request().method() === 'POST',
           { timeout: 10000 }
         ),
-        page.locator('button[type="submit"]:has-text("Create Area")').click()
+        page.locator('[data-area-creation-v2-target="submitButton"]').click()
       ])
 
       const status = response.status()
       console.log('API response status:', status)
 
-      if (status >= 200 && status < 300) {
-        // Success - verify modal closes (modal-open class is removed)
-        await expect(areaModal).not.toHaveClass(/modal-open/, { timeout: 5000 })
+      expect(status).toBeGreaterThanOrEqual(200)
+      expect(status).toBeLessThan(300)
 
-        // Wait for area:created event to be processed
-        await page.waitForTimeout(1000)
+      // Verify modal closes (modal-open class is removed)
+      await expect(areaModal).not.toHaveClass(/modal-open/, { timeout: 5000 })
 
-        // Verify areas layer is now enabled
-        await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
-        await page.waitForTimeout(200)
-        await page.locator('button[data-tab="layers"]').click()
-        await page.waitForTimeout(200)
+      // Wait for area:created event to be processed
+      await page.waitForTimeout(1000)
 
-        const areasToggle = page.locator('label:has-text("Areas")').first().locator('input.toggle')
-        await expect(areasToggle).toBeChecked({ timeout: 3000 })
-      } else {
-        // API failed - log the error and fail the test with helpful info
-        const responseBody = await response.text()
-        throw new Error(`API call failed with status ${status}: ${responseBody}`)
-      }
+      // Verify areas layer is now enabled
+      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page.waitForTimeout(200)
+      await page.locator('button[data-tab="layers"]').click()
+      await page.waitForTimeout(200)
+
+      const areasToggle = page.locator('label:has-text("Areas")').first().locator('input.toggle')
+      await expect(areasToggle).toBeChecked({ timeout: 3000 })
     })
   })
 
@@ -358,8 +355,8 @@ test.describe('Areas Layer', () => {
       // Click the submit button specifically in the area creation modal
       await page.locator('[data-area-creation-v2-target="submitButton"]').click()
 
-      // Wait for creation success
-      await expect(page.locator('.toast:has-text("successfully")')).toBeVisible({ timeout: 10000 })
+      // Wait for creation success (Turbo form uses server-side flash, not client-side Toast)
+      await expect(page.locator('#flash-messages .alert:has-text("successfully")')).toBeVisible({ timeout: 10000 })
       await page.waitForTimeout(2000)
 
       // Get the created area ID

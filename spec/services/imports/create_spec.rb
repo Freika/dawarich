@@ -52,6 +52,11 @@ RSpec.describe Imports::Create do
           service.call
           expect(import.reload.status).to eq('failed')
         end
+
+        it 'sets the error message' do
+          service.call
+          expect(import.reload.error_message).to eq('StandardError')
+        end
       end
     end
 

@@ -133,7 +133,7 @@ module ApplicationHelper
 
   def trial_days_remaining_compact(user)
     expiry = user.active_until
-    return "Expired" if expiry.blank? || expiry.past?
+    return 'Expired' if expiry.blank? || expiry.past?
 
     days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max
     "#{days_left}d left"
@@ -159,11 +159,11 @@ module ApplicationHelper
     ALLOW_EMAIL_PASSWORD_REGISTRATION
   end
 
-  def preferred_map_path
-    return map_v2_path unless user_signed_in?
+  def preferred_map_path(params = {})
+    return map_v2_path(params) unless user_signed_in?
 
     preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
-    preferred_version == 'v1' ? map_v1_path : map_v2_path
+    preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
   end
 
   def format_duration_short(seconds)

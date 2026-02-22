@@ -122,7 +122,7 @@ module StatsHelper
     distance_value = Stat.convert_distance(peak[1], distance_unit).round
     text = "#{date.strftime('%B %d')} (#{distance_value} #{distance_unit})"
 
-    link_to text, map_url(start_at: date.beginning_of_day, end_at: date.end_of_day), class: 'underline'
+    link_to text, preferred_map_path(start_at: date.beginning_of_day, end_at: date.end_of_day), class: 'underline'
   end
 
   def quietest_week(stat)

@@ -31,7 +31,7 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def recover_stale_imports
     Import.processing.where(processing_started_at: ...IMPORT_TIMEOUT.ago).find_each do |import|
-      import.update!(status: :failed)
+      import.update!(status: :failed, error_message: 'Import timed out after being stuck in processing')
 
       Notifications::Create.new(
         user: import.user,

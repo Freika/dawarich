@@ -30,7 +30,7 @@ class Imports::Create
     update_import_points_count(import)
     User.reset_counters(user.id, :points)
   rescue StandardError => e
-    import.update!(status: :failed)
+    import.update!(status: :failed, error_message: e.message)
     broadcast_status_update
 
     ExceptionReporter.call(e, 'Import failed')

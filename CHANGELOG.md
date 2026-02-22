@@ -24,6 +24,7 @@ This release adds a dedicated `motion_data` column for transportation-relevant f
 - Tracks are exported with their `original_path` serialized as WKT and `track_segments` embedded as a nested array, preserving transportation mode detection data across export/import cycles.
 - Digests get a fresh `sharing_uuid` on import for security — old share links from the original user won't work for the importing user.
 - Raw Data Archives are exported with their attached gzip files, enabling full data restoration.
+- Failed imports now will have an error message shown to the user.
 
 ### Changed
 
@@ -40,6 +41,7 @@ This release adds a dedicated `motion_data` column for transportation-relevant f
 
 - Stats queries (daily distance, time of day) now correctly handle timezone conversion without double-converting from UTC.
 - Timezone validation in stats queries now properly resolves Rails timezone names to IANA identifiers.
+- Clicking on [Map] on Stats page now correctly respects the user's preferred map version (v1 or v2) instead of always linking to Map v1. #2281
 
 
 ## [1.2.0] - 2026-02-15

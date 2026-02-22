@@ -28,6 +28,7 @@ class Users::ImportDataJob < ApplicationJob
     user_id = user&.id || import&.user_id || 'unknown'
     ExceptionReporter.call(e, "Import job failed for user #{user_id}")
 
+    import&.update!(status: :failed, error_message: e.message)
     create_import_failed_notification(user, e)
 
     raise e

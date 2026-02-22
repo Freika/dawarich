@@ -193,6 +193,32 @@ RSpec.describe ApplicationHelper, type: :helper do
           expect(helper.preferred_map_path).to eq(helper.map_v2_path)
         end
       end
+
+      context 'when called with query params' do
+        let(:params) { { start_at: '2025-01-01T00:00', end_at: '2025-12-31T23:59' } }
+
+        context 'when preferred version is v1' do
+          before do
+            user.settings['maps'] = { 'preferred_version' => 'v1' }
+            user.save
+          end
+
+          it 'returns map_v1_path with query params' do
+            expect(helper.preferred_map_path(params)).to eq(helper.map_v1_path(params))
+          end
+        end
+
+        context 'when preferred version is v2' do
+          before do
+            user.settings['maps'] = { 'preferred_version' => 'v2' }
+            user.save
+          end
+
+          it 'returns map_v2_path with query params' do
+            expect(helper.preferred_map_path(params)).to eq(helper.map_v2_path(params))
+          end
+        end
+      end
     end
   end
 end

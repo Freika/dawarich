@@ -14,7 +14,14 @@
   <td data-points-count>
     <%= number_with_delimiter import.processed %>
   </td>
-  <td data-status-display><%= import.status %></td>
+  <td data-status-display>
+    <%= import.status %>
+    <% if import.failed? %>
+      <span class="tooltip tooltip-left cursor-help" data-tip="<%= import.error_message.presence || 'Import failed' %>">
+        ⚠
+      </span>
+    <% end %>
+  </td>
   <td><%= human_datetime(import.created_at) %></td>
   <td class="whitespace-nowrap">
     <% if import.deleting? %>
