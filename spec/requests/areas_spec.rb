@@ -32,22 +32,11 @@ RSpec.describe '/areas', type: :request do
             end.to change(Area, :count).by(1)
           end
 
-          it 'returns turbo_stream replacing area-creation-data with flash' do
+          it 'returns turbo_stream with flash' do
             post areas_url, params: valid_params, as: :turbo_stream
 
             expect_turbo_stream_response
-            expect_turbo_stream_action('replace', 'area-creation-data')
             expect_flash_stream('Area created successfully!')
-          end
-
-          it 'includes serialized area data attributes' do
-            post areas_url, params: valid_params, as: :turbo_stream
-
-            expect(response.body).to include('data-created="true"')
-            area = Area.last
-            decoded_body = CGI.unescapeHTML(response.body)
-            expect(decoded_body).to include("\"id\":#{area.id}")
-            expect(decoded_body).to include('"name":"Test Area"')
           end
         end
 

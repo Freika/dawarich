@@ -38,16 +38,7 @@ export default class extends Controller {
 
   onSubmitEnd(event) {
     if (event.detail.success) {
-      const dataEl = document.getElementById("area-creation-data")
-      if (dataEl?.dataset.created === "true") {
-        const area = JSON.parse(dataEl.dataset.area)
-        document.dispatchEvent(
-          new CustomEvent("area:created", { detail: { area } }),
-        )
-        // Reset data element for next creation
-        delete dataEl.dataset.created
-        delete dataEl.dataset.area
-      }
+      document.dispatchEvent(new CustomEvent("area:created"))
       this.close()
     }
   }
