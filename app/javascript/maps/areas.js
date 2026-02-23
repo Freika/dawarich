@@ -178,7 +178,7 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
 export function saveArea(formData, areasLayer, layer, apiKey) {
   const data = {}
   formData.forEach((value, key) => {
-    const keys = key.split("[").map((k) => k.replace("]", ""))
+    const keys = key.split("[").map((k) => k.replaceAll("]", ""))
     if (keys.length > 1) {
       if (!data[keys[0]]) data[keys[0]] = {}
       data[keys[0]][keys[1]] = value

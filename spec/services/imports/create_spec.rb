@@ -35,7 +35,6 @@ RSpec.describe Imports::Create do
         expect(User).to have_received(:reset_counters).with(user.id, :points)
       end
 
-
       context 'when import succeeds' do
         it 'sets status to completed' do
           service.call
