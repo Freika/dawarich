@@ -184,27 +184,17 @@
           </div>
         <% end %>
 
-        <li data-controller="notifications"
-            data-notifications-user-id-value="<%= current_user.id %>">
+        <%= turbo_stream_from current_user, :notifications %>
+        <li data-controller="notifications">
           <details>
             <summary class="relative">
               <%= icon 'bell' %>
-              <% if @unread_notifications.present? %>
-                <span class="badge badge-xs badge-primary absolute top-0 right-0" data-notifications-target="badge">
-                  <%= @unread_notifications.size %>
-                </span>
-              <% end %>
+              <%= render 'notifications/badge', count: @unread_notifications&.size || 0 %>
             </summary>
-            <ul class="p-2 bg-base-100 rounded-t-none z-10 min-w-52" data-notifications-target="list">
+            <ul class="p-2 bg-base-100 rounded-t-none z-10 min-w-52" id="notifications-list">
               <li><%= link_to 'See all', notifications_path %></li>
-              <% @unread_notifications.first(10).each do |notification| %>
-                <div class="divider p-0 m-0"></div>
-                <li class='notification-item'>
-                  <%= link_to notification do %>
-                    <%= notification.title %>
-                    <div class="badge badge-xs justify-self-end badge-<%= notification.kind %>"></div>
-                  <% end %>
-                </li>
+              <% @unread_notifications&.first(10)&.each do |notification| %>
+                <%= render 'notifications/navbar_item', notification: notification %>
               <% end %>
             </ul>
           </details>

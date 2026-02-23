@@ -1,36 +1,39 @@
-<div data-controller="place-creation" data-place-creation-api-key-value="<%= current_user.api_key %>">
+<div data-controller="place-creation">
   <div class="modal z-[10000]" data-place-creation-target="modal">
     <div class="modal-box max-w-2xl">
       <h3 class="font-bold text-lg mb-4" data-place-creation-target="modalTitle">Create New Place</h3>
 
-      <form data-place-creation-target="form" data-action="submit->place-creation#submit">
-        <input type="hidden" name="latitude" data-place-creation-target="latitudeInput">
-        <input type="hidden" name="longitude" data-place-creation-target="longitudeInput">
+      <%= form_with scope: :place, url: places_path, method: :post, data: {
+        place_creation_target: "form",
+        action: "turbo:submit-end->place-creation#onSubmitEnd"
+      } do |f| %>
+        <%# Hidden fields for coordinates and editing state %>
+        <%= f.hidden_field :latitude, data: { place_creation_target: "latitudeInput" } %>
+        <%= f.hidden_field :longitude, data: { place_creation_target: "longitudeInput" } %>
+        <%= f.hidden_field :source, value: "manual" %>
+        <input type="hidden" name="_method_url" data-place-creation-target="placeIdInput">
 
         <div class="space-y-4">
           <div class="form-control">
             <label class="label">
               <span class="label-text font-semibold">Place Name *</span>
             </label>
-            <input
-              type="text"
-              name="name"
-              placeholder="Enter place name..."
-              class="input input-bordered w-full"
-              data-place-creation-target="nameInput"
-              required>
+            <%= f.text_field :name,
+                placeholder: "Enter place name...",
+                class: "input input-bordered w-full",
+                data: { place_creation_target: "nameInput" },
+                required: true %>
           </div>
 
           <div class="form-control">
             <label class="label">
               <span class="label-text font-semibold">Note</span>
             </label>
-            <textarea
-              name="note"
-              placeholder="Add a personal note about this place..."
-              class="textarea textarea-bordered w-full bg-base-100"
-              rows="3"
-              data-place-creation-target="noteInput"></textarea>
+            <%= f.text_area :note,
+                placeholder: "Add a personal note about this place...",
+                class: "textarea textarea-bordered w-full bg-base-100",
+                rows: 3,
+                data: { place_creation_target: "noteInput" } %>
             <label class="label">
               <span class="label-text-alt">Optional - Add any notes or details about this place</span>
             </label>
@@ -43,7 +46,7 @@
             <div class="flex flex-wrap gap-2" data-place-creation-target="tagCheckboxes">
               <% current_user.tags.ordered.each do |tag| %>
                 <label class="cursor-pointer">
-                  <input type="checkbox" name="tag_ids[]" value="<%= tag.id %>" class="checkbox checkbox-sm hidden peer">
+                  <input type="checkbox" name="place[tag_ids][]" value="<%= tag.id %>" class="checkbox checkbox-sm hidden peer">
                   <span class="badge badge-lg badge-outline transition-all peer-checked:scale-105" style="border-color: <%= tag.color %>; color: <%= tag.color %>;" data-color="<%= tag.color %>">
                     <%= tag.icon %> #<%= tag.name %>
                   </span>
@@ -62,28 +65,24 @@
               <span class="label-text font-semibold">Nearby Places</span>
             </label>
             <div class="relative">
-              <div class="loading loading-spinner loading-sm absolute top-2 right-2 hidden" data-place-creation-target="loadingSpinner"></div>
-              <div class="space-y-2 max-h-48 overflow-y-auto" data-place-creation-target="nearbyList">
-              </div>
-              <div class="mt-2 text-center hidden" data-place-creation-target="loadMoreContainer">
-                <button
-                  type="button"
-                  class="btn btn-sm btn-ghost"
-                  data-action="click->place-creation#loadMore"
-                  data-place-creation-target="loadMoreButton">
-                  Load More (expand search radius)
-                </button>
-              </div>
+              <%# Turbo Frame for server-rendered nearby places %>
+              <%= turbo_frame_tag "nearby-places", data: { place_creation_target: "nearbyFrame" } do %>
+                <p class="text-sm text-gray-500">Open modal to load nearby suggestions</p>
+              <% end %>
             </div>
           </div>
         </div>
 
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" data-action="click->place-creation#close">Cancel</button>
-          <button type="submit" class="btn btn-primary" data-place-creation-target="submitButton">Create Place</button>
+          <%= f.submit "Create Place", class: "btn btn-primary",
+              data: { place_creation_target: "submitButton", disable_with: "Saving..." } %>
         </div>
-      </form>
+      <% end %>
     </div>
     <div class="modal-backdrop" data-action="click->place-creation#close"></div>
   </div>
+
+  <%# Hidden data element for turbo_stream to populate with created/updated place data %>
+  <div id="place-creation-data" class="hidden"></div>
 </div>

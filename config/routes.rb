@@ -60,7 +60,12 @@ Rails.application.routes.draw do
 
   resources :imports
   resources :visits, only: %i[index update]
-  resources :places, only: %i[index destroy]
+  resources :areas, only: [:create]
+  resources :places, only: %i[index destroy create update] do
+    collection do
+      get 'nearby'
+    end
+  end
   resources :exports, only: %i[index create destroy]
   resources :trips
   resources :tags, except: [:show]

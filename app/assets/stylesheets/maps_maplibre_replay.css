@@ -29,6 +29,8 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 6px;
+  position: relative;
+  z-index: 2;
 }
 
 /* Day navigation (left) */
