@@ -1,8 +1,12 @@
-import { test, expect } from '@playwright/test'
-import { closeOnboardingModal } from '../../../helpers/navigation.js'
-import { navigateToMapsV2, waitForMapLibre, waitForLoadingComplete } from '../../helpers/setup.js'
+import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "../../../helpers/navigation.js"
+import {
+  navigateToMapsV2,
+  waitForLoadingComplete,
+  waitForMapLibre,
+} from "../../helpers/setup.js"
 
-test.describe('Areas Layer', () => {
+test.describe("Areas Layer", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToMapsV2(page)
     await closeOnboardingModal(page)
@@ -11,30 +15,42 @@ test.describe('Areas Layer', () => {
     await page.waitForTimeout(1500)
   })
 
-  test.describe('Toggle', () => {
-    test('areas layer toggle exists', async ({ page }) => {
+  test.describe("Toggle", () => {
+    test("areas layer toggle exists", async ({ page }) => {
       // Open settings panel
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
 
       // Click Layers tab
       await page.locator('button[data-tab="layers"]').click()
       await page.waitForTimeout(200)
 
-      const areasToggle = page.locator('label:has-text("Areas")').first().locator('input.toggle')
+      const areasToggle = page
+        .locator('label:has-text("Areas")')
+        .first()
+        .locator("input.toggle")
       await expect(areasToggle).toBeVisible()
     })
 
-    test('can toggle areas layer', async ({ page }) => {
+    test("can toggle areas layer", async ({ page }) => {
       // Open settings panel
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
 
       // Click Layers tab
       await page.locator('button[data-tab="layers"]').click()
       await page.waitForTimeout(200)
 
-      const areasToggle = page.locator('label:has-text("Areas")').first().locator('input.toggle')
+      const areasToggle = page
+        .locator('label:has-text("Areas")')
+        .first()
+        .locator("input.toggle")
       await areasToggle.check()
       await page.waitForTimeout(500)
 
@@ -43,10 +59,13 @@ test.describe('Areas Layer', () => {
     })
   })
 
-  test.describe('Area Creation', () => {
-    test('should have Create an Area button in Tools tab', async ({ page }) => {
+  test.describe("Area Creation", () => {
+    test("should have Create an Area button in Tools tab", async ({ page }) => {
       // Open settings
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
 
       // Click Tools tab
@@ -58,9 +77,14 @@ test.describe('Areas Layer', () => {
       await expect(createAreaButton).toBeVisible()
     })
 
-    test('should change cursor to crosshair when Create an Area is clicked', async ({ page }) => {
+    test("should change cursor to crosshair when Create an Area is clicked", async ({
+      page,
+    }) => {
       // Open settings
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
@@ -71,15 +95,18 @@ test.describe('Areas Layer', () => {
 
       // Verify cursor changed to crosshair
       const cursorStyle = await page.evaluate(() => {
-        const canvas = document.querySelector('.maplibregl-canvas')
+        const canvas = document.querySelector(".maplibregl-canvas")
         return canvas ? window.getComputedStyle(canvas).cursor : null
       })
-      expect(cursorStyle).toBe('crosshair')
+      expect(cursorStyle).toBe("crosshair")
     })
 
-    test('should show area preview while drawing', async ({ page }) => {
+    test("should show area preview while drawing", async ({ page }) => {
       // Enable creation mode
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
@@ -87,7 +114,7 @@ test.describe('Areas Layer', () => {
       await page.waitForTimeout(500)
 
       // First click to set center
-      const mapCanvas = page.locator('.maplibregl-canvas')
+      const mapCanvas = page.locator(".maplibregl-canvas")
       await mapCanvas.click({ position: { x: 400, y: 300 } })
       await page.waitForTimeout(300)
 
@@ -97,18 +124,26 @@ test.describe('Areas Layer', () => {
 
       // Verify draw layers exist
       const hasDrawLayers = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
         const map = controller?.map
-        return map && map.getSource('draw-source') !== undefined
+        return map && map.getSource("draw-source") !== undefined
       })
       expect(hasDrawLayers).toBe(true)
     })
 
-    test('should open modal when area is drawn', async ({ page }) => {
+    test("should open modal when area is drawn", async ({ page }) => {
       // Enable creation mode
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
@@ -116,7 +151,7 @@ test.describe('Areas Layer', () => {
       await page.waitForTimeout(500)
 
       // Draw area: first click for center, second click to finish
-      const mapCanvas = page.locator('.maplibregl-canvas')
+      const mapCanvas = page.locator(".maplibregl-canvas")
       await mapCanvas.click({ position: { x: 400, y: 300 } })
       await page.waitForTimeout(300)
       await mapCanvas.click({ position: { x: 450, y: 350 } })
@@ -126,20 +161,27 @@ test.describe('Areas Layer', () => {
       await expect(areaModal).toHaveClass(/modal-open/, { timeout: 5000 })
 
       // Verify form fields exist
-      await expect(page.locator('[data-area-creation-v2-target="nameInput"]')).toBeVisible()
-      await expect(page.locator('[data-area-creation-v2-target="radiusDisplay"]')).toBeVisible()
+      await expect(
+        page.locator('[data-area-creation-v2-target="nameInput"]'),
+      ).toBeVisible()
+      await expect(
+        page.locator('[data-area-creation-v2-target="radiusDisplay"]'),
+      ).toBeVisible()
     })
 
-    test('should display radius and location in modal', async ({ page }) => {
+    test("should display radius and location in modal", async ({ page }) => {
       // Enable creation mode and draw area
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
       await page.locator('button:has-text("Create an Area")').click()
       await page.waitForTimeout(500)
 
-      const mapCanvas = page.locator('.maplibregl-canvas')
+      const mapCanvas = page.locator(".maplibregl-canvas")
       await mapCanvas.click({ position: { x: 400, y: 300 } })
       await page.waitForTimeout(300)
       await mapCanvas.click({ position: { x: 450, y: 350 } })
@@ -149,21 +191,32 @@ test.describe('Areas Layer', () => {
       await expect(areaModal).toHaveClass(/modal-open/, { timeout: 5000 })
 
       // Wait for fields to be populated
-      const radiusDisplay = page.locator('[data-area-creation-v2-target="radiusDisplay"]')
+      const radiusDisplay = page.locator(
+        '[data-area-creation-v2-target="radiusDisplay"]',
+      )
 
       // Wait for radius to have a non-empty text content (it's a span, not an input)
-      await page.waitForFunction(() => {
-        const elem = document.querySelector('[data-area-creation-v2-target="radiusDisplay"]')
-        return elem && elem.textContent && elem.textContent !== '0'
-      }, { timeout: 3000 })
+      await page.waitForFunction(
+        () => {
+          const elem = document.querySelector(
+            '[data-area-creation-v2-target="radiusDisplay"]',
+          )
+          return elem?.textContent && elem.textContent !== "0"
+        },
+        { timeout: 3000 },
+      )
 
       // Verify radius has a value
       const radiusValue = await radiusDisplay.textContent()
-      expect(parseInt(radiusValue)).toBeGreaterThan(0)
+      expect(parseInt(radiusValue, 10)).toBeGreaterThan(0)
 
       // Verify hidden latitude/longitude inputs are populated
-      const latInput = page.locator('[data-area-creation-v2-target="latitudeInput"]')
-      const lngInput = page.locator('[data-area-creation-v2-target="longitudeInput"]')
+      const latInput = page.locator(
+        '[data-area-creation-v2-target="latitudeInput"]',
+      )
+      const lngInput = page.locator(
+        '[data-area-creation-v2-target="longitudeInput"]',
+      )
 
       const latValue = await latInput.inputValue()
       const lngValue = await lngInput.inputValue()
@@ -172,16 +225,21 @@ test.describe('Areas Layer', () => {
       expect(parseFloat(lngValue)).not.toBeNaN()
     })
 
-    test('should create area and enable layer when submitted', async ({ page }) => {
+    test("should create area and enable layer when submitted", async ({
+      page,
+    }) => {
       // Draw area
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
       await page.locator('button:has-text("Create an Area")').click()
       await page.waitForTimeout(500)
 
-      const mapCanvas = page.locator('.maplibregl-canvas')
+      const mapCanvas = page.locator(".maplibregl-canvas")
       await mapCanvas.click({ position: { x: 400, y: 300 } })
       await page.waitForTimeout(300)
       await mapCanvas.click({ position: { x: 450, y: 350 } })
@@ -191,41 +249,52 @@ test.describe('Areas Layer', () => {
       await expect(areaModal).toHaveClass(/modal-open/, { timeout: 5000 })
 
       // Wait for fields to be populated before filling the form
-      const radiusDisplay = page.locator('[data-area-creation-v2-target="radiusDisplay"]')
+      const _radiusDisplay = page.locator(
+        '[data-area-creation-v2-target="radiusDisplay"]',
+      )
       // Wait for radius to have a non-empty text content (it's a span, not an input)
-      await page.waitForFunction(() => {
-        const elem = document.querySelector('[data-area-creation-v2-target="radiusDisplay"]')
-        return elem && elem.textContent && elem.textContent !== '0'
-      }, { timeout: 3000 })
+      await page.waitForFunction(
+        () => {
+          const elem = document.querySelector(
+            '[data-area-creation-v2-target="radiusDisplay"]',
+          )
+          return elem?.textContent && elem.textContent !== "0"
+        },
+        { timeout: 3000 },
+      )
 
-      await page.locator('[data-area-creation-v2-target="nameInput"]').fill('Test Area E2E')
+      await page
+        .locator('[data-area-creation-v2-target="nameInput"]')
+        .fill("Test Area E2E")
 
       // Listen for console errors
-      page.on('console', msg => {
-        if (msg.type() === 'error') {
-          console.log('Browser console error:', msg.text())
+      page.on("console", (msg) => {
+        if (msg.type() === "error") {
+          console.log("Browser console error:", msg.text())
         }
       })
 
       // Handle potential alert dialog
       let dialogMessage = null
-      page.once('dialog', async dialog => {
+      page.once("dialog", async (dialog) => {
         dialogMessage = dialog.message()
-        console.log('Dialog appeared:', dialogMessage)
+        console.log("Dialog appeared:", dialogMessage)
         await dialog.accept()
       })
 
       // Wait for Turbo form submission response (posts to /areas, not /api/v1/areas)
       const [response] = await Promise.all([
         page.waitForResponse(
-          response => response.url().endsWith('/areas') && response.request().method() === 'POST',
-          { timeout: 10000 }
+          (response) =>
+            response.url().endsWith("/areas") &&
+            response.request().method() === "POST",
+          { timeout: 10000 },
         ),
-        page.locator('[data-area-creation-v2-target="submitButton"]').click()
+        page.locator('[data-area-creation-v2-target="submitButton"]').click(),
       ])
 
       const status = response.status()
-      console.log('API response status:', status)
+      console.log("API response status:", status)
 
       expect(status).toBeGreaterThanOrEqual(200)
       expect(status).toBeLessThan(300)
@@ -237,25 +306,39 @@ test.describe('Areas Layer', () => {
       await page.waitForTimeout(1000)
 
       // Verify areas layer is now enabled
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="layers"]').click()
       await page.waitForTimeout(200)
 
-      const areasToggle = page.locator('label:has-text("Areas")').first().locator('input.toggle')
+      const areasToggle = page
+        .locator('label:has-text("Areas")')
+        .first()
+        .locator("input.toggle")
       await expect(areasToggle).toBeChecked({ timeout: 3000 })
     })
   })
 
-  test.describe('Area Deletion', () => {
-    test('should show Delete button when clicking on an area', async ({ page }) => {
+  test.describe("Area Deletion", () => {
+    test("should show Delete button when clicking on an area", async ({
+      page,
+    }) => {
       // Enable areas layer first
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="layers"]').click()
       await page.waitForTimeout(200)
 
-      const areasToggle = page.locator('label:has-text("Areas")').first().locator('input.toggle')
+      const areasToggle = page
+        .locator('label:has-text("Areas")')
+        .first()
+        .locator("input.toggle")
       await areasToggle.check()
       await page.waitForTimeout(1000)
 
@@ -265,50 +348,67 @@ test.describe('Areas Layer', () => {
 
       // Check if there are any areas
       const hasAreas = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const areasLayer = controller?.layerManager?.getLayer('areas')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const areasLayer = controller?.layerManager?.getLayer("areas")
         return areasLayer?.data?.features?.length > 0
       })
 
       if (!hasAreas) {
-        console.log('No areas found, skipping test')
+        console.log("No areas found, skipping test")
         test.skip()
         return
       }
 
       // Get an area ID
       const areaId = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const areasLayer = controller?.layerManager?.getLayer('areas')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const areasLayer = controller?.layerManager?.getLayer("areas")
         return areasLayer?.data?.features[0]?.properties?.id
       })
 
       if (!areaId) {
-        console.log('No area ID found, skipping test')
+        console.log("No area ID found, skipping test")
         test.skip()
         return
       }
 
       // Simulate clicking on an area
       await page.evaluate((id) => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
 
         const mockEvent = {
-          features: [{
-            properties: {
-              id: id,
-              name: 'Test Area',
-              radius: 500,
-              latitude: 40.7128,
-              longitude: -74.0060
-            }
-          }]
+          features: [
+            {
+              properties: {
+                id: id,
+                name: "Test Area",
+                radius: 500,
+                latitude: 40.7128,
+                longitude: -74.006,
+              },
+            },
+          ],
         }
         controller.eventHandlers.handleAreaClick(mockEvent)
       }, areaId)
@@ -316,7 +416,9 @@ test.describe('Areas Layer', () => {
       await page.waitForTimeout(1000)
 
       // Verify info display is shown
-      const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+      const infoDisplay = page.locator(
+        '[data-maps--maplibre-target="infoDisplay"]',
+      )
       await expect(infoDisplay).toBeVisible({ timeout: 5000 })
 
       // Verify Delete button exists and has error styling (red)
@@ -325,16 +427,21 @@ test.describe('Areas Layer', () => {
       await expect(deleteButton).toHaveClass(/btn-error/)
     })
 
-    test('should delete area with confirmation and update map', async ({ page }) => {
+    test("should delete area with confirmation and update map", async ({
+      page,
+    }) => {
       // First create an area to delete
-      await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+      await page
+        .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+        .first()
+        .click()
       await page.waitForTimeout(200)
       await page.locator('button[data-tab="tools"]').click()
       await page.waitForTimeout(200)
       await page.locator('button:has-text("Create an Area")').click()
       await page.waitForTimeout(500)
 
-      const mapCanvas = page.locator('.maplibregl-canvas')
+      const mapCanvas = page.locator(".maplibregl-canvas")
       await mapCanvas.click({ position: { x: 400, y: 300 } })
       await page.waitForTimeout(300)
       await mapCanvas.click({ position: { x: 450, y: 350 } })
@@ -342,55 +449,82 @@ test.describe('Areas Layer', () => {
       const areaModal = page.locator('[data-area-creation-v2-target="modal"]')
       await expect(areaModal).toHaveClass(/modal-open/, { timeout: 5000 })
 
-      const radiusDisplay = page.locator('[data-area-creation-v2-target="radiusDisplay"]')
+      const _radiusDisplay = page.locator(
+        '[data-area-creation-v2-target="radiusDisplay"]',
+      )
       // Wait for radius to have a non-empty text content (it's a span, not an input)
-      await page.waitForFunction(() => {
-        const elem = document.querySelector('[data-area-creation-v2-target="radiusDisplay"]')
-        return elem && elem.textContent && elem.textContent !== '0'
-      }, { timeout: 3000 })
+      await page.waitForFunction(
+        () => {
+          const elem = document.querySelector(
+            '[data-area-creation-v2-target="radiusDisplay"]',
+          )
+          return elem?.textContent && elem.textContent !== "0"
+        },
+        { timeout: 3000 },
+      )
 
       const areaName = `Delete Test Area ${Date.now()}`
-      await page.locator('[data-area-creation-v2-target="nameInput"]').fill(areaName)
+      await page
+        .locator('[data-area-creation-v2-target="nameInput"]')
+        .fill(areaName)
 
       // Click the submit button specifically in the area creation modal
-      await page.locator('[data-area-creation-v2-target="submitButton"]').click()
+      await page
+        .locator('[data-area-creation-v2-target="submitButton"]')
+        .click()
 
       // Wait for creation success (Turbo form uses server-side flash, not client-side Toast)
-      await expect(page.locator('#flash-messages .alert:has-text("successfully")')).toBeVisible({ timeout: 10000 })
+      await expect(
+        page.locator('#flash-messages .alert:has-text("successfully")'),
+      ).toBeVisible({ timeout: 10000 })
       await page.waitForTimeout(2000)
 
       // Get the created area ID
       const areaId = await page.evaluate((name) => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const areasLayer = controller?.layerManager?.getLayer('areas')
-        const area = areasLayer?.data?.features?.find(f => f.properties.name === name)
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const areasLayer = controller?.layerManager?.getLayer("areas")
+        const area = areasLayer?.data?.features?.find(
+          (f) => f.properties.name === name,
+        )
         return area?.properties?.id
       }, areaName)
 
       if (!areaId) {
-        console.log('Created area not found in layer, skipping delete test')
+        console.log("Created area not found in layer, skipping delete test")
         test.skip()
         return
       }
 
       // Simulate clicking on the area
       await page.evaluate((id) => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
 
         const mockEvent = {
-          features: [{
-            properties: {
-              id: id,
-              name: 'Test Area',
-              radius: 500,
-              latitude: 40.7128,
-              longitude: -74.0060
-            }
-          }]
+          features: [
+            {
+              properties: {
+                id: id,
+                name: "Test Area",
+                radius: 500,
+                latitude: 40.7128,
+                longitude: -74.006,
+              },
+            },
+          ],
         }
         controller.eventHandlers.handleAreaClick(mockEvent)
       }, areaId)
@@ -398,30 +532,41 @@ test.describe('Areas Layer', () => {
       await page.waitForTimeout(1000)
 
       // Setup confirmation dialog handler before clicking delete
-      const dialogPromise = page.waitForEvent('dialog')
+      const dialogPromise = page.waitForEvent("dialog")
 
       // Click Delete button
-      const infoDisplay = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+      const infoDisplay = page.locator(
+        '[data-maps--maplibre-target="infoDisplay"]',
+      )
       const deleteButton = infoDisplay.locator('button:has-text("Delete")')
       await expect(deleteButton).toBeVisible({ timeout: 5000 })
       await deleteButton.click()
 
       // Handle the confirmation dialog
       const dialog = await dialogPromise
-      expect(dialog.message()).toContain('Delete area')
+      expect(dialog.message()).toContain("Delete area")
       await dialog.accept()
 
       // Wait for deletion toast
-      await expect(page.locator('.toast:has-text("deleted successfully")')).toBeVisible({ timeout: 10000 })
+      await expect(
+        page.locator('.toast:has-text("deleted successfully")'),
+      ).toBeVisible({ timeout: 10000 })
 
       // Verify the area was removed from the layer
       await page.waitForTimeout(1500)
       const areaStillExists = await page.evaluate((name) => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        const areasLayer = controller?.layerManager?.getLayer('areas')
-        return areasLayer?.data?.features?.some(f => f.properties.name === name)
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        const areasLayer = controller?.layerManager?.getLayer("areas")
+        return areasLayer?.data?.features?.some(
+          (f) => f.properties.name === name,
+        )
       }, areaName)
 
       expect(areaStillExists).toBe(false)

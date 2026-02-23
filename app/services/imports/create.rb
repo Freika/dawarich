@@ -37,9 +37,7 @@ class Imports::Create
 
     create_import_failed_notification(import, user, e)
   ensure
-    if temp_file_path && File.exist?(temp_file_path)
-      File.unlink(temp_file_path)
-    end
+    File.unlink(temp_file_path) if temp_file_path && File.exist?(temp_file_path)
 
     if import.processing?
       import.update!(status: :completed)
@@ -79,7 +77,7 @@ class Imports::Create
   def schedule_visit_suggesting(user_id, import)
     return unless user.safe_settings.visits_suggestions_enabled?
 
-    min_max = import.points.pluck('MIN(timestamp), MAX(timestamp)').first
+    min_max = import.points.pick('MIN(timestamp), MAX(timestamp)')
     return if min_max.compact.empty?
 
     start_at = Time.zone.at(min_max[0])
