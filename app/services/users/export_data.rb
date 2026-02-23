@@ -62,6 +62,7 @@ class Users::ExportData
   def initialize(user)
     @user = user
     @monthly_files = { points: [], visits: [], stats: [], tracks: [], digests: [] }
+    @entity_counts = nil
   end
 
   def export
@@ -110,7 +111,7 @@ class Users::ExportData
 
   private
 
-  attr_reader :user, :export_directory, :files_directory, :monthly_files
+  attr_reader :user, :export_directory, :files_directory, :monthly_files, :entity_counts
 
   def export_all_data
     Rails.logger.info 'Starting v2 export with JSONL format and monthly splitting'
@@ -320,7 +321,12 @@ class Users::ExportData
           archive_hash['content_type'] = archive.file.content_type
 
           dest_path = files_directory.join(file_name)
-          File.open(dest_path, 'wb') { |f| archive.file.download { |chunk| f.write(chunk) } }
+          begin
+            File.open(dest_path, 'wb') { |f| archive.file.download { |chunk| f.write(chunk) } }
+          rescue StandardError => e
+            FileUtils.rm_f(dest_path)
+            raise e
+          end
         end
 
         file.puts(archive_hash.to_json)
@@ -331,11 +337,13 @@ class Users::ExportData
   end
 
   def write_manifest
+    @entity_counts = calculate_entity_counts
+
     manifest = {
       format_version: FORMAT_VERSION,
       dawarich_version: dawarich_version,
       exported_at: Time.current.utc.iso8601,
-      counts: calculate_entity_counts,
+      counts: entity_counts,
       files: {
         points: monthly_files[:points],
         visits: monthly_files[:visits],
@@ -404,7 +412,7 @@ class Users::ExportData
   end
 
   def create_success_notification
-    counts = calculate_entity_counts
+    counts = entity_counts
     summary = "#{counts[:points]} points, " \
       "#{counts[:visits]} visits, " \
       "#{counts[:places]} places, " \

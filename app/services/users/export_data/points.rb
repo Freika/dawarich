@@ -37,7 +37,8 @@ class Users::ExportData::Points
     Rails.logger.debug "Starting export of #{total_count} points..."
 
     user.points.find_in_batches(batch_size: BATCH_SIZE).with_index do |batch, _batch_index|
-      batch_sql = build_batch_query(batch.map(&:id))
+      point_ids = batch.map(&:id)
+      batch_sql = ActiveRecord::Base.sanitize_sql_array([build_batch_query, point_ids])
       result = ActiveRecord::Base.connection.exec_query(batch_sql, 'Points Export Batch')
 
       result.each do |row|
@@ -130,7 +131,7 @@ class Users::ExportData::Points
     SQL
   end
 
-  def build_batch_query(point_ids)
+  def build_batch_query
     <<-SQL
       SELECT
         p.id, p.battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
@@ -154,7 +155,7 @@ class Users::ExportData::Points
       LEFT JOIN imports i ON p.import_id = i.id
       LEFT JOIN countries c ON p.country_id = c.id
       LEFT JOIN visits v ON p.visit_id = v.id
-      WHERE p.id IN (#{point_ids.join(',')})
+      WHERE p.id IN (?)
       ORDER BY p.id
     SQL
   end

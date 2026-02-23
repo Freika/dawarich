@@ -170,6 +170,8 @@ class Users::ImportData::V1Handler
     end
   end
 
+  # Temp files are written to import_directory, which is cleaned up by
+  # the parent Users::ImportData#cleanup_temporary_files after import completes.
   def stream_temp_path(section)
     @stream_temp_paths[section] ||= import_directory.join("stream_#{section}.ndjson")
   end
