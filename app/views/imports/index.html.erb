@@ -17,6 +17,7 @@
     <% end %>
   </div>
 
+  <%= turbo_stream_from current_user, :imports %>
   <div id="imports" class="min-w-full">
     <% if @imports.empty? %>
       <div class="hero min-h-80 bg-base-200 my-5">
@@ -53,36 +54,7 @@
             data-user-id="<%= current_user.id %>"
           >
             <% @imports.each do |import| %>
-              <tr data-import-id="<%= import.id %>"
-                  id="import-<%= import.id %>"
-                  data-points-total="<%= import.processed %>"
-                  class="hover">
-                <td>
-                  <%= link_to import.name, import, class: 'underline hover:no-underline' %>
-                  (<%= import.source %>)
-                  &nbsp;
-                  <%= link_to '🗺️', map_path(import_id: import.id) %>
-                  &nbsp;
-                  <%= link_to '📋', points_path(import_id: import.id) %>
-                </td>
-                <td><%= number_to_human_size(import.file&.byte_size) || 'N/A' %></td>
-                <td data-points-count>
-                  <%= number_with_delimiter import.processed %>
-                </td>
-                <td data-status-display><%= import.status %></td>
-                <td><%= human_datetime(import.created_at) %></td>
-                <td class="whitespace-nowrap">
-                  <% if import.deleting? %>
-                    <span class="loading loading-spinner loading-sm"></span>
-                    <span class="text-sm text-gray-500">Deleting...</span>
-                  <% else %>
-                    <% if import.file.present? %>
-                      <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-outline btn-sm btn-info", download: import.name %>
-                    <% end %>
-                    <%= link_to 'Delete', import, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "btn btn-outline btn-sm btn-error" %>
-                  <% end %>
-                </td>
-              </tr>
+              <%= render 'imports/table_row', import: import %>
             <% end %>
           </tbody>
         </table>

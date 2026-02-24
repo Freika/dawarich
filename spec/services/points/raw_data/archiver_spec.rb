@@ -126,12 +126,22 @@ RSpec.describe Points::RawData::Archiver do
       expect(archive.chunk_number).to eq(1)
     end
 
-    it 'attaches compressed file' do
+    it 'attaches encrypted file' do
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
 
       archive = user.raw_data_archives.last
       expect(archive.file).to be_attached
-      expect(archive.file.key).to match(%r{raw_data_archives/\d+/\d{4}/\d{2}/001\.jsonl\.gz})
+      expect(archive.file.key).to match(%r{raw_data_archives/\d+/\d{4}/\d{2}/001\.jsonl\.gz\.enc})
+      expect(archive.file.content_type).to eq('application/octet-stream')
+    end
+
+    it 'stores encryption metadata' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      expect(archive.metadata['format_version']).to eq(2)
+      expect(archive.metadata['encryption']).to eq('aes-256-gcm')
+      expect(archive.metadata['content_checksum']).to be_present
     end
   end
 
@@ -190,13 +200,39 @@ RSpec.describe Points::RawData::Archiver do
                             raw_data: { lon: 13.4, lat: 52.5 })
     end
 
-    it 'prevents duplicate processing with advisory locks' do
+    it 'prevents duplicate processing with advisory locks via call' do
       # Simulate lock couldn't be acquired (returns nil/false)
       allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
 
       result = archiver.call
       expect(result[:processed]).to eq(0)
       expect(result[:failed]).to eq(0)
+    end
+
+    it 'prevents duplicate processing with advisory locks via archive_specific_month' do
+      allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
+
+      old_date = 3.months.ago.beginning_of_month
+      expect do
+        archiver.archive_specific_month(user.id, old_date.year, old_date.month)
+      end.to raise_error(RuntimeError, /Could not acquire lock/)
+    end
+
+    it 'uses the same lock key format for both call and archive_specific_month' do
+      old_date = 3.months.ago.beginning_of_month
+      expected_lock_key = "archive_points:#{user.id}:#{old_date.year}:#{old_date.month}"
+
+      # Track the lock key used by archive_specific_month
+      lock_keys = []
+      allow(ActiveRecord::Base).to receive(:with_advisory_lock) do |key, **_opts, &block|
+        lock_keys << key
+        block&.call
+        true
+      end
+
+      archiver.archive_specific_month(user.id, old_date.year, old_date.month)
+
+      expect(lock_keys).to include(expected_lock_key)
     end
   end
 
@@ -245,7 +281,7 @@ RSpec.describe Points::RawData::Archiver do
       fake_compressor = instance_double(Points::RawData::ChunkCompressor)
       allow(Points::RawData::ChunkCompressor).to receive(:new).and_return(fake_compressor)
       allow(fake_compressor).to receive(:compress).and_return(
-        { data: fake_compressed_data, count: 3 }  # Returning 3 instead of 5
+        { data: fake_compressed_data, count: 3 } # Returning 3 instead of 5
       )
 
       expect do
@@ -337,19 +373,25 @@ RSpec.describe Points::RawData::Archiver do
       archive = user.raw_data_archives.last
       expect(archive.point_ids_checksum).to be_present
 
-      # Decompress and verify the archived point IDs match
-      compressed_content = archive.file.blob.download
+      # Decrypt, decompress, and verify the archived point IDs match
+      encrypted_content = archive.file.blob.download
+      compressed_content = Points::RawData::Encryption.decrypt(encrypted_content)
       io = StringIO.new(compressed_content)
       gz = Zlib::GzipReader.new(io)
-      archived_point_ids = []
-
-      gz.each_line do |line|
-        data = JSON.parse(line)
-        archived_point_ids << data['id']
-      end
+      archived_point_ids = gz.each_line.map { |line| JSON.parse(line)['id'] }
       gz.close
 
       expect(archived_point_ids.sort).to eq(test_points.map(&:id).sort)
+    end
+
+    it 'verifies content checksum (SHA256) of encrypted data' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      encrypted_content = archive.file.blob.download
+      actual_checksum = Digest::SHA256.hexdigest(encrypted_content)
+
+      expect(archive.metadata['content_checksum']).to eq(actual_checksum)
     end
   end
 end

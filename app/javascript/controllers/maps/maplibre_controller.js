@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { Toast } from "maps_maplibre/components/toast"
-import { TimelineManager } from "maps_maplibre/managers/timeline_manager"
+import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
@@ -132,27 +132,29 @@ export default class extends Controller {
     // Transportation apply button
     "transportationApplyButton",
     "transportationDirtyMessage",
-    // Timeline
-    "timelinePanel",
-    "timelineScrubber",
-    "timelineScrubberTrack",
-    "timelineDensityContainer",
-    "timelineDayDisplay",
-    "timelineDayCount",
-    "timelineTimeDisplay",
-    "timelineDataIndicator",
-    "timelineCycleControls",
-    "timelinePointCounter",
-    "timelinePrevDayButton",
-    "timelineNextDayButton",
-    // Timeline replay
-    "timelinePlayButton",
-    "timelinePlayIcon",
-    "timelinePauseIcon",
-    "timelineSpeedSlider",
-    "timelineSpeedLabel",
-    // Timeline speed display (velocity)
-    "timelineSpeedDisplay",
+    // Replay
+    "replayPanel",
+    "replayScrubber",
+    "replayScrubberTrack",
+    "replayDensityContainer",
+    "replayDayDisplay",
+    "replayDayCount",
+    "replayTimeDisplay",
+    "replayDataIndicator",
+    "replayCycleControls",
+    "replayPointCounter",
+    "replayPrevDayButton",
+    "replayNextDayButton",
+    // Timeline feed
+    "timelineFeedContainer",
+    // Replay playback
+    "replayPlayButton",
+    "replayPlayIcon",
+    "replayPauseIcon",
+    "replaySpeedSlider",
+    "replaySpeedLabel",
+    // Replay speed display (velocity)
+    "replaySpeedDisplay",
     // WebGL error
     "webglError",
   ]
@@ -189,6 +191,56 @@ export default class extends Controller {
     this.visitsManager = new VisitsManager(this)
     this.placesManager = new PlacesManager(this)
     this.routesManager = new RoutesManager(this)
+
+    // Listen for tab changes to trigger timeline feed loading via Turbo Frame
+    this.boundHandleTabChanged = this.handleTabChanged.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "map-panel:tab-changed",
+      this.boundHandleTabChanged,
+    )
+
+    // Listen for day-expanded/collapsed events from the timeline-feed Stimulus controller
+    this.boundHandleDayExpanded = this.handleDayExpanded.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "timeline-feed:day-expanded",
+      this.boundHandleDayExpanded,
+    )
+    this.boundHandleDayCollapsed = this.handleDayCollapsed.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "timeline-feed:day-collapsed",
+      this.boundHandleDayCollapsed,
+    )
+
+    // Listen for entry hover/unhover events from the timeline-feed controller
+    this.boundHandleEntryHover = this.handleEntryHover.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "timeline-feed:entry-hover",
+      this.boundHandleEntryHover,
+    )
+    this.boundHandleEntryUnhover = this.handleEntryUnhover.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "timeline-feed:entry-unhover",
+      this.boundHandleEntryUnhover,
+    )
+
+    // Listen for entry click/deselect events from the timeline-feed controller
+    this.boundHandleEntryClick = this.handleEntryClick.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "timeline-feed:entry-click",
+      this.boundHandleEntryClick,
+    )
+    this.boundHandleEntryDeselect = this.handleEntryDeselect.bind(this)
+    this.cleanup.addEventListener(
+      document,
+      "timeline-feed:entry-deselect",
+      this.boundHandleEntryDeselect,
+    )
 
     // Initialize search manager
     this.initializeSearch()
@@ -249,7 +301,7 @@ export default class extends Controller {
   }
 
   disconnect() {
-    this._stopTimelineReplay()
+    this._stopReplayPlayback()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.cleanup.cleanup()
@@ -327,7 +379,9 @@ export default class extends Controller {
     this.startDateValue = startDate
     this.endDateValue = endDate
 
+    this._clearDayHighlight()
     this.loadMapData()
+    this.refreshTimelineFeedIfActive()
   }
 
   /**
@@ -427,6 +481,465 @@ export default class extends Controller {
     if (this.hasSettingsPanelTarget) {
       this.settingsPanelTarget.classList.toggle("open")
     }
+  }
+
+  /**
+   * Handle tab change events from the map panel controller
+   */
+  handleTabChanged(event) {
+    const { tab } = event.detail
+    if (tab === "timeline-feed") {
+      this.loadTimelineFeed()
+    } else if (this._highlightedDay) {
+      // Leaving timeline-feed tab — restore full opacity
+      this._clearDayHighlight()
+    }
+  }
+
+  /**
+   * Called when the timeline-feed tab becomes active.
+   * Sets the Turbo Frame src to trigger server-rendered HTML load.
+   */
+  loadTimelineFeed() {
+    if (!this.hasTimelineFeedContainerTarget) return
+
+    const frame = this.timelineFeedContainerTarget
+    const url = `/map/timeline_feeds?start_at=${encodeURIComponent(this.startDateValue)}&end_at=${encodeURIComponent(this.endDateValue)}`
+
+    if (frame.getAttribute("src") !== url) {
+      // Show skeleton while loading
+      const skeleton = document.getElementById("timeline-feed-skeleton")
+      if (skeleton) {
+        frame.innerHTML = skeleton.innerHTML
+      }
+      frame.src = url
+    }
+  }
+
+  /**
+   * Refresh timeline feed if the tab is currently active
+   */
+  refreshTimelineFeedIfActive() {
+    const activeTab = this.element.querySelector(
+      '.tab-content.active[data-tab-content="timeline-feed"]',
+    )
+    if (activeTab && this.hasTimelineFeedContainerTarget) {
+      // Force reload by clearing cached src
+      this.timelineFeedContainerTarget.removeAttribute("src")
+      this.loadTimelineFeed()
+    }
+  }
+
+  /**
+   * Handle day-expanded events from the timeline-feed controller.
+   * Fits the map to the day's bounding box and dims non-matching features.
+   */
+  handleDayExpanded(event) {
+    const { bounds, day } = event.detail
+    if (!this.map) return
+
+    if (bounds) {
+      const { sw_lat, sw_lng, ne_lat, ne_lng } = bounds
+      this.map.fitBounds(
+        [
+          [sw_lng, sw_lat],
+          [ne_lng, ne_lat],
+        ],
+        { padding: 60, maxZoom: 15, duration: 800 },
+      )
+    }
+
+    if (day) {
+      this._applyDayHighlight(day)
+      this._showDayVisits(day)
+    }
+  }
+
+  /**
+   * Handle day-collapsed events — restore full opacity on all layers.
+   */
+  handleDayCollapsed() {
+    this._clearDayHighlight()
+  }
+
+  /**
+   * Dim non-matching features for the selected day.
+   * Routes and points use Unix timestamps (seconds);
+   * visits use ISO 8601 strings (lexicographically sortable).
+   * @param {string} day - Date string "YYYY-MM-DD"
+   * @private
+   */
+  _applyDayHighlight(day) {
+    if (!this.map) return
+
+    this._highlightedDay = day
+    const DIM = 0.04
+    const routeFull = this.settings?.routeOpacity ?? 0.8
+
+    // Compute day boundaries as Unix seconds
+    const dayStart = new Date(`${day}T00:00:00`).getTime() / 1000
+    const dayEnd = new Date(`${day}T23:59:59`).getTime() / 1000
+
+    // ISO boundaries for visit layers (lexicographic comparison)
+    const isoStart = `${day}T00:00:00`
+    const isoEnd = `${day}T23:59:59`
+
+    // Routes: startTime is Unix seconds
+    const routeExpr = this._dayRangeExpr(
+      "startTime",
+      dayStart,
+      dayEnd,
+      routeFull,
+      DIM,
+    )
+    this._safeSetPaint("routes", "line-opacity", routeExpr)
+    this._safeSetPaint("routes-base", "line-opacity", routeExpr)
+
+    // Points: timestamp is Unix seconds
+    const pointExpr = this._dayRangeExpr("timestamp", dayStart, dayEnd, 1, DIM)
+    this._safeSetPaint("points", "circle-opacity", pointExpr)
+    this._safeSetPaint("points", "circle-stroke-opacity", pointExpr)
+
+    // Visits: started_at is ISO 8601 string
+    const visitExpr = this._dayRangeExpr(
+      "started_at",
+      isoStart,
+      isoEnd,
+      0.9,
+      DIM,
+    )
+    this._safeSetPaint("visits", "circle-opacity", visitExpr)
+    this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
+
+    // Visit labels
+    const labelExpr = this._dayRangeExpr("started_at", isoStart, isoEnd, 1, DIM)
+    this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
+
+    // Tracks: start_at is ISO 8601 string
+    const trackExpr = this._dayRangeExpr("start_at", isoStart, isoEnd, 0.7, DIM)
+    this._safeSetPaint("tracks", "line-opacity", trackExpr)
+  }
+
+  /**
+   * Restore default opacity on all layers.
+   * @private
+   */
+  _clearDayHighlight() {
+    if (!this.map) return
+
+    this._highlightedDay = null
+    this._hideDayVisits()
+    const routeOpacity = this.settings?.routeOpacity ?? 0.8
+
+    this._safeSetPaint("routes", "line-opacity", routeOpacity)
+    this._safeSetPaint("routes-base", "line-opacity", routeOpacity)
+    this._safeSetPaint("points", "circle-opacity", 1)
+    this._safeSetPaint("points", "circle-stroke-opacity", 1)
+    this._safeSetPaint("visits", "circle-opacity", 0.9)
+    this._safeSetPaint("visits", "circle-stroke-opacity", 1)
+    this._safeSetPaint("visits-labels", "text-opacity", 1)
+    this._safeSetPaint("tracks", "line-opacity", 0.7)
+  }
+
+  /**
+   * Handle entry-hover events from the timeline feed.
+   * Highlights the matching route/visit on the map by dimming everything else.
+   */
+  handleEntryHover(event) {
+    const { entryType, startedAt, endedAt, trackId } = event.detail
+    if (!this.map || !startedAt || !endedAt) return
+
+    this._entryHighlightActive = true
+
+    const DIM = 0.08
+    const startUnix = new Date(startedAt).getTime() / 1000
+    const endUnix = new Date(endedAt).getTime() / 1000
+    const routeFull = this.settings?.routeOpacity ?? 0.8
+
+    // Routes: startTime is Unix seconds
+    const routeExpr = this._dayRangeExpr(
+      "startTime",
+      startUnix,
+      endUnix,
+      routeFull,
+      DIM,
+    )
+    this._safeSetPaint("routes", "line-opacity", routeExpr)
+    this._safeSetPaint("routes-base", "line-opacity", routeExpr)
+
+    // Points: timestamp is Unix seconds
+    const pointExpr = this._dayRangeExpr(
+      "timestamp",
+      startUnix,
+      endUnix,
+      1,
+      DIM,
+    )
+    this._safeSetPaint("points", "circle-opacity", pointExpr)
+    this._safeSetPaint("points", "circle-stroke-opacity", pointExpr)
+
+    // Visits: started_at is ISO 8601 string
+    const visitExpr = this._dayRangeExpr(
+      "started_at",
+      startedAt,
+      endedAt,
+      0.9,
+      DIM,
+    )
+    this._safeSetPaint("visits", "circle-opacity", visitExpr)
+    this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
+
+    const labelExpr = this._dayRangeExpr(
+      "started_at",
+      startedAt,
+      endedAt,
+      1,
+      DIM,
+    )
+    this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
+
+    // Tracks: start_at is ISO 8601 string
+    const trackExpr = this._dayRangeExpr(
+      "start_at",
+      startedAt,
+      endedAt,
+      0.7,
+      DIM,
+    )
+    this._safeSetPaint("tracks", "line-opacity", trackExpr)
+
+    // Highlight the matching track with border + animation for journey entries
+    if (entryType === "journey") {
+      const feature = this._findTrackFeature(trackId, startedAt)
+      if (feature) {
+        const tracksLayer = this.layerManager.getLayer("tracks")
+        if (tracksLayer?.setSelectedTrack) {
+          tracksLayer.setSelectedTrack(feature)
+          this._hoverHighlightedTrack = true
+        }
+      }
+    }
+  }
+
+  /**
+   * Handle entry-unhover events — restore to day highlight or default opacity.
+   */
+  handleEntryUnhover() {
+    if (!this.map) return
+    this._entryHighlightActive = false
+
+    // Clear track hover highlight unless a track is click-selected
+    if (this._hoverHighlightedTrack && !this._timelineSelectedTrack) {
+      const tracksLayer = this.layerManager.getLayer("tracks")
+      if (tracksLayer?.setSelectedTrack) {
+        tracksLayer.setSelectedTrack(null)
+      }
+      this._hoverHighlightedTrack = false
+    }
+
+    if (this._highlightedDay) {
+      // Restore day-level highlight
+      this._applyDayHighlight(this._highlightedDay)
+    } else {
+      this._clearDayHighlight()
+    }
+  }
+
+  /**
+   * Handle entry-click events from the timeline feed (journey card opened).
+   * Zooms to the track and applies the selection highlight.
+   */
+  handleEntryClick(event) {
+    const { trackId, startedAt } = event.detail
+    if (!this.map) return
+
+    const feature = this._findTrackFeature(trackId, startedAt)
+    if (!feature) return
+
+    // Zoom to track bounding box
+    const coords = feature.geometry?.coordinates
+    if (coords?.length > 0) {
+      let minLng = Infinity
+      let minLat = Infinity
+      let maxLng = -Infinity
+      let maxLat = -Infinity
+      for (const [lng, lat] of coords) {
+        if (lng < minLng) minLng = lng
+        if (lat < minLat) minLat = lat
+        if (lng > maxLng) maxLng = lng
+        if (lat > maxLat) maxLat = lat
+      }
+      this.map.fitBounds(
+        [
+          [minLng, minLat],
+          [maxLng, maxLat],
+        ],
+        { padding: 60, maxZoom: 15, duration: 800 },
+      )
+    }
+
+    // Apply track selection highlight
+    const tracksLayer = this.layerManager.getLayer("tracks")
+    if (tracksLayer?.setSelectedTrack) {
+      tracksLayer.setSelectedTrack(feature)
+      this._timelineSelectedTrack = true
+      this._hoverHighlightedTrack = false
+    }
+  }
+
+  /**
+   * Handle entry-deselect events from the timeline feed (journey card closed).
+   * Clears track selection and restores day highlight if active.
+   */
+  handleEntryDeselect() {
+    if (!this.map) return
+
+    const tracksLayer = this.layerManager.getLayer("tracks")
+    if (tracksLayer?.setSelectedTrack) {
+      tracksLayer.setSelectedTrack(null)
+    }
+    this._timelineSelectedTrack = false
+    this._hoverHighlightedTrack = false
+
+    // Restore day-level highlight or default opacity
+    if (this._highlightedDay) {
+      this._applyDayHighlight(this._highlightedDay)
+    } else {
+      this._clearDayHighlight()
+    }
+  }
+
+  /**
+   * Build a MapLibre expression: full opacity if property is within [start, end], dim otherwise.
+   * @private
+   */
+  _dayRangeExpr(property, rangeStart, rangeEnd, fullOpacity, dimOpacity) {
+    return [
+      "case",
+      [
+        "all",
+        ["has", property],
+        [">=", ["get", property], rangeStart],
+        ["<=", ["get", property], rangeEnd],
+      ],
+      fullOpacity,
+      dimOpacity,
+    ]
+  }
+
+  /**
+   * Safely set a paint property on a MapLibre layer (no-op if layer doesn't exist).
+   * @private
+   */
+  _safeSetPaint(layerId, property, value) {
+    if (this.map.getLayer(layerId)) {
+      this.map.setPaintProperty(layerId, property, value)
+    }
+  }
+
+  /**
+   * Show visit markers for the given day, even if the Visits layer is globally disabled.
+   * @param {string} day - Date string "YYYY-MM-DD"
+   * @private
+   */
+  async _showDayVisits(day) {
+    const visitsLayer = this.layerManager?.getLayer("visits")
+    if (!visitsLayer) return
+
+    const wasHidden = !visitsLayer.visible
+
+    // Only override if the layer is currently hidden
+    if (!wasHidden) return
+
+    // Get visits for this day
+    let dayVisits = []
+    if (this.filterManager?.allVisits?.length > 0) {
+      dayVisits = this.filterManager.allVisits.filter((v) => {
+        const visitDay = v.started_at?.substring(0, 10)
+        return visitDay === day
+      })
+    } else {
+      try {
+        dayVisits = await this.api.fetchVisits({
+          start_at: `${day}T00:00:00`,
+          end_at: `${day}T23:59:59`,
+        })
+      } catch {
+        return
+      }
+    }
+
+    if (dayVisits.length === 0) return
+
+    // Store override state for restoration
+    const source = this.map.getSource(visitsLayer.sourceId)
+    this._visitsOverride = {
+      wasHidden,
+      previousData: source?._data || {
+        type: "FeatureCollection",
+        features: [],
+      },
+    }
+
+    // Update the visits source with the day's visits and show the layer
+    const geoJSON = this.dataLoader.visitsToGeoJSON(dayVisits)
+    visitsLayer.update(geoJSON)
+    visitsLayer.show()
+  }
+
+  /**
+   * Restore the visits layer to its previous state after day collapse.
+   * @private
+   */
+  _hideDayVisits() {
+    if (!this._visitsOverride) return
+
+    const visitsLayer = this.layerManager?.getLayer("visits")
+    if (!visitsLayer) {
+      this._visitsOverride = null
+      return
+    }
+
+    if (this._visitsOverride.wasHidden) {
+      visitsLayer.update(this._visitsOverride.previousData)
+      visitsLayer.hide()
+    }
+
+    this._visitsOverride = null
+  }
+
+  /**
+   * Find a track feature from the tracks source by ID or start time.
+   * @param {string} trackId - Track ID (primary match)
+   * @param {string} startedAt - ISO start time (fallback match)
+   * @returns {Object|null} GeoJSON feature or null
+   * @private
+   */
+  _findTrackFeature(trackId, startedAt) {
+    const tracksLayer = this.layerManager?.getLayer("tracks")
+    if (!tracksLayer) return null
+
+    const source = this.map.getSource(tracksLayer.sourceId)
+    const sourceData = source?._data || tracksLayer.data
+    if (!sourceData?.features) return null
+
+    // Primary: match by track ID
+    if (trackId) {
+      const byId = sourceData.features.find(
+        (f) => String(f.properties?.id) === String(trackId),
+      )
+      if (byId) return byId
+    }
+
+    // Fallback: match by start_at time
+    if (startedAt) {
+      return (
+        sourceData.features.find((f) => f.properties?.start_at === startedAt) ||
+        null
+      )
+    }
+
+    return null
   }
 
   // ===== Delegated Methods to Managers =====
@@ -1002,27 +1515,27 @@ export default class extends Controller {
     }
   }
 
-  // ===== Timeline Methods =====
+  // ===== Replay Methods =====
 
   /**
-   * Toggle timeline panel visibility
+   * Toggle replay panel visibility
    */
-  async toggleTimeline() {
-    if (!this.hasTimelinePanelTarget) return
+  async toggleReplay() {
+    if (!this.hasReplayPanelTarget) return
 
-    const isVisible = !this.timelinePanelTarget.classList.contains("hidden")
+    const isVisible = !this.replayPanelTarget.classList.contains("hidden")
 
     if (isVisible) {
-      // Hide timeline
-      this._stopTimelineReplay()
-      this.timelinePanelTarget.classList.add("hidden")
-      this._clearTimelineMarker()
-      this._clearTimelineRouteHighlight()
-      this._updateTimelineSpeedDisplay(null)
+      // Hide replay
+      this._stopReplayPlayback()
+      this.replayPanelTarget.classList.add("hidden")
+      this._clearReplayMarker()
+      this._clearReplayRouteHighlight()
+      this._updateReplaySpeedDisplay(null)
     } else {
-      // Show timeline and initialize with loaded points
-      await this._initializeTimeline()
-      this.timelinePanelTarget.classList.remove("hidden")
+      // Show replay and initialize with loaded points
+      await this._initializeReplay()
+      this.replayPanelTarget.classList.remove("hidden")
     }
   }
 
@@ -1030,18 +1543,18 @@ export default class extends Controller {
    * Replay a specific track from its start time (triggered from track info card)
    */
   async replayTrack(event) {
-    if (!this.hasTimelinePanelTarget) return
+    if (!this.hasReplayPanelTarget) return
 
     // If replay is already active, pause it
-    if (this.timelineReplayActive) {
-      this._stopTimelineReplay()
+    if (this.replayActive) {
+      this._stopReplayPlayback()
       return
     }
 
-    // If timeline is already visible and initialized, resume from current position
-    const isVisible = !this.timelinePanelTarget.classList.contains("hidden")
-    if (isVisible && this.timelineManager?.hasData()) {
-      this._startTimelineReplay()
+    // If replay is already visible and initialized, resume from current position
+    const isVisible = !this.replayPanelTarget.classList.contains("hidden")
+    if (isVisible && this.replayManager?.hasData()) {
+      this._startReplayPlayback()
       this._updateTrackReplayButton(true)
       return
     }
@@ -1052,78 +1565,78 @@ export default class extends Controller {
     const trackDate = new Date(trackStart)
     if (Number.isNaN(trackDate.getTime())) return
 
-    // First time: initialize timeline and navigate to the track's day
-    await this._initializeTimeline()
-    this.timelinePanelTarget.classList.remove("hidden")
+    // First time: initialize replay and navigate to the track's day
+    await this._initializeReplay()
+    this.replayPanelTarget.classList.remove("hidden")
 
-    if (!this.timelineManager?.hasData()) return
+    if (!this.replayManager?.hasData()) return
 
     // Navigate to the day matching the track's start
     const targetDay = `${trackDate.getFullYear()}-${String(trackDate.getMonth() + 1).padStart(2, "0")}-${String(trackDate.getDate()).padStart(2, "0")}`
-    const dayIndex = this.timelineManager.availableDays.indexOf(targetDay)
+    const dayIndex = this.replayManager.availableDays.indexOf(targetDay)
 
-    if (dayIndex >= 0 && dayIndex !== this.timelineManager.currentDayIndex) {
-      this.timelineManager.currentDayIndex = dayIndex
-      this.timelineManager.buildMinuteIndex()
-      this._updateTimelineDayDisplay()
-      this._updateTimelineDayCount()
-      this._updateTimelineDayButtons()
-      this._renderTimelineDensity()
+    if (dayIndex >= 0 && dayIndex !== this.replayManager.currentDayIndex) {
+      this.replayManager.currentDayIndex = dayIndex
+      this.replayManager.buildMinuteIndex()
+      this._updateReplayDayDisplay()
+      this._updateReplayDayCount()
+      this._updateReplayDayButtons()
+      this._renderReplayDensity()
     }
 
     // Set scrubber to the track's start minute
     const startMinute = trackDate.getHours() * 60 + trackDate.getMinutes()
-    if (this.hasTimelineScrubberTarget) {
-      this.timelineScrubberTarget.value = startMinute
-      this._handleTimelineMinuteChange(startMinute)
+    if (this.hasReplayScrubberTarget) {
+      this.replayScrubberTarget.value = startMinute
+      this._handleReplayMinuteChange(startMinute)
     }
 
     // Start replay and update card button to Pause
-    this._startTimelineReplay()
+    this._startReplayPlayback()
     this._updateTrackReplayButton(true)
   }
 
   /**
-   * Initialize timeline with currently loaded points
+   * Initialize replay with currently loaded points
    * @private
    */
-  async _initializeTimeline() {
+  async _initializeReplay() {
     // Ensure points are loaded (fetches with progress badge if needed, no-op if cached)
     await this.mapDataManager.ensurePointsLoaded()
 
     const points = this._getLoadedPoints()
 
     if (!points || points.length === 0) {
-      Toast.info("No location data loaded for timeline")
+      Toast.info("No location data loaded for replay")
       return
     }
 
-    // Create or reset timeline manager
-    this.timelineManager = new TimelineManager({
+    // Create or reset replay manager
+    this.replayManager = new ReplayManager({
       timezone: this.timezoneValue,
     })
 
-    this.timelineManager.setPoints(points)
+    this.replayManager.setPoints(points)
 
-    if (!this.timelineManager.hasData()) {
-      Toast.info("No location data available for timeline")
+    if (!this.replayManager.hasData()) {
+      Toast.info("No location data available for replay")
       return
     }
 
     // Update UI
-    this._updateTimelineDayDisplay()
-    this._updateTimelineDayCount()
-    this._updateTimelineDayButtons()
-    this._renderTimelineDensity()
+    this._updateReplayDayDisplay()
+    this._updateReplayDayCount()
+    this._updateReplayDayButtons()
+    this._renderReplayDensity()
 
     // Initialize replay controls
-    this._initializeTimelineReplay()
+    this._initializeReplayState()
 
     // Set scrubber to first point's time or noon
     this._setInitialScrubberPosition()
 
     // Hide cycle controls initially
-    this._hideTimelineCycleControls()
+    this._hideReplayCycleControls()
   }
 
   /**
@@ -1150,83 +1663,82 @@ export default class extends Controller {
    * @private
    */
   _setInitialScrubberPosition() {
-    if (!this.hasTimelineScrubberTarget || !this.timelineManager) return
+    if (!this.hasReplayScrubberTarget || !this.replayManager) return
 
     // Find the first minute with data
-    const firstMinute = this.timelineManager.findNearestMinuteWithPoints(0)
+    const firstMinute = this.replayManager.findNearestMinuteWithPoints(0)
     if (firstMinute !== null) {
-      this.timelineScrubberTarget.value = firstMinute
+      this.replayScrubberTarget.value = firstMinute
       // Trigger the minute change handler to show marker and highlight
-      this._handleTimelineMinuteChange(firstMinute)
+      this._handleReplayMinuteChange(firstMinute)
     } else {
-      this.timelineScrubberTarget.value = 720 // Noon
-      this._updateTimelineTimeDisplay(720, true)
+      this.replayScrubberTarget.value = 720 // Noon
+      this._updateReplayTimeDisplay(720, true)
     }
   }
 
   /**
    * Handle scrubber hover/drag - triggers marker and map movement
    */
-  timelineScrubberHover(event) {
+  replayScrubberHover(event) {
     const minute = parseInt(event.target.value, 10)
-    this._handleTimelineMinuteChange(minute)
+    this._handleReplayMinuteChange(minute)
   }
 
   /**
    * Handle minute change from scrubber
    * @private
    */
-  _handleTimelineMinuteChange(minute) {
-    if (!this.timelineManager) return
+  _handleReplayMinuteChange(minute) {
+    if (!this.replayManager) return
 
     // Check if this exact minute has data
-    const hasDataAtMinute = this.timelineManager.hasDataAtMinute(minute)
+    const hasDataAtMinute = this.replayManager.hasDataAtMinute(minute)
 
     // Find nearest minute with points
-    const nearestMinute =
-      this.timelineManager.findNearestMinuteWithPoints(minute)
+    const nearestMinute = this.replayManager.findNearestMinuteWithPoints(minute)
 
     // Update time display to show current scrubber position
-    this._updateTimelineTimeDisplay(minute, !hasDataAtMinute)
+    this._updateReplayTimeDisplay(minute, !hasDataAtMinute)
 
     if (nearestMinute === null) {
-      this._clearTimelineMarker()
-      this._clearTimelineRouteHighlight()
-      this._hideTimelineCycleControls()
-      this._updateTimelineSpeedDisplay(null)
+      this._clearReplayMarker()
+      this._clearReplayRouteHighlight()
+      this._hideReplayCycleControls()
+      this._updateReplaySpeedDisplay(null)
       return
     }
 
     // Reset cycle index when moving to a new minute
     if (!hasDataAtMinute || nearestMinute !== minute) {
-      this.timelineManager.resetCycle()
+      this.replayManager.resetCycle()
     }
 
     // Get point at nearest minute
-    const point = this.timelineManager.getPointAtPosition(nearestMinute)
+    const point = this.replayManager.getPointAtPosition(nearestMinute)
     if (!point) return
 
     // Show marker
-    this._showTimelineMarker(point)
+    this._showReplayMarker(point)
 
     // Update speed display
-    this._updateTimelineSpeedDisplay(this._getPointVelocity(point))
+    this._updateReplaySpeedDisplay(this._getPointVelocity(point))
 
     // Move map to point (use faster animation during replay)
-    this._flyToTimelinePoint(point, this.timelineReplayActive)
+    this._flyToReplayPoint(point, this.replayActive)
 
     // Highlight route segment
-    this._highlightTimelineRouteSegment(point)
+    this._highlightReplayRouteSegment(point)
 
     // Update cycle controls (only if at exact minute with data)
     if (hasDataAtMinute) {
-      this._updateTimelineCycleControls(minute)
+      this._updateReplayCycleControls(minute)
     } else {
-      this._hideTimelineCycleControls()
+      this._hideReplayCycleControls()
     }
 
     // If replay is active, jump to the new position and continue
-    if (this.timelineReplayActive && this.timelineReplayPoints?.length > 0) {
+    if (this.replayActive && this.replayPoints?.length > 0) {
       this._jumpReplayToMinute(minute)
     }
   }
@@ -1236,14 +1748,14 @@ export default class extends Controller {
    * @private
    */
   _jumpReplayToMinute(minute) {
-    const dayPoints = this.timelineReplayPoints
+    const dayPoints = this.replayPoints
     if (!dayPoints || dayPoints.length === 0) return
 
     // Find the point index closest to (or at) the target minute
     let targetIndex = 0
     for (let i = 0; i < dayPoints.length; i++) {
-      const timestamp = this.timelineManager._getTimestamp(dayPoints[i])
-      const pointTime = this._parseTimelineTimestamp(timestamp)
+      const timestamp = this.replayManager._getTimestamp(dayPoints[i])
+      const pointTime = this._parseReplayTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
         const pointMinute = date.getHours() * 60 + date.getMinutes()
@@ -1258,99 +1770,99 @@ export default class extends Controller {
     }
 
     // Update replay state
-    this.timelineReplayPointIndex = targetIndex
+    this.replayPointIndex = targetIndex
 
     const currentPoint = dayPoints[targetIndex]
     const nextPoint = dayPoints[targetIndex + 1]
 
-    this.timelineReplayCurrentCoords = currentPoint
-      ? this.timelineManager.getCoordinates(currentPoint)
+    this.replayCurrentCoords = currentPoint
+      ? this.replayManager.getCoordinates(currentPoint)
       : null
-    this.timelineReplayNextCoords = nextPoint
-      ? this.timelineManager.getCoordinates(nextPoint)
-      : this.timelineReplayCurrentCoords
+    this.replayNextCoords = nextPoint
+      ? this.replayManager.getCoordinates(nextPoint)
+      : this.replayCurrentCoords
 
     // Reset timing so interpolation starts fresh from this point
-    this.timelineReplayLastTime = performance.now()
+    this.replayLastTime = performance.now()
   }
 
   /**
    * Navigate to previous day
    */
-  timelinePrevDay() {
-    if (!this.timelineManager) return
+  replayPrevDay() {
+    if (!this.replayManager) return
 
     // Stop replay when manually changing days
-    this._stopTimelineReplay()
+    this._stopReplayPlayback()
 
-    if (this.timelineManager.prevDay()) {
-      this._updateTimelineDayDisplay()
-      this._updateTimelineDayCount()
-      this._updateTimelineDayButtons()
-      this._renderTimelineDensity()
+    if (this.replayManager.prevDay()) {
+      this._updateReplayDayDisplay()
+      this._updateReplayDayCount()
+      this._updateReplayDayButtons()
+      this._renderReplayDensity()
       this._setInitialScrubberPosition()
-      this._clearTimelineMarker()
-      this._clearTimelineRouteHighlight()
-      this._hideTimelineCycleControls()
+      this._clearReplayMarker()
+      this._clearReplayRouteHighlight()
+      this._hideReplayCycleControls()
     }
   }
 
   /**
    * Navigate to next day
    */
-  timelineNextDay() {
-    if (!this.timelineManager) return
+  replayNextDay() {
+    if (!this.replayManager) return
 
     // Stop replay when manually changing days
-    this._stopTimelineReplay()
+    this._stopReplayPlayback()
 
-    if (this.timelineManager.nextDay()) {
-      this._updateTimelineDayDisplay()
-      this._updateTimelineDayCount()
-      this._updateTimelineDayButtons()
-      this._renderTimelineDensity()
+    if (this.replayManager.nextDay()) {
+      this._updateReplayDayDisplay()
+      this._updateReplayDayCount()
+      this._updateReplayDayButtons()
+      this._renderReplayDensity()
       this._setInitialScrubberPosition()
-      this._clearTimelineMarker()
-      this._clearTimelineRouteHighlight()
-      this._hideTimelineCycleControls()
+      this._clearReplayMarker()
+      this._clearReplayRouteHighlight()
+      this._hideReplayCycleControls()
     }
   }
 
   /**
    * Cycle to previous point at current minute
    */
-  timelineCyclePrev() {
-    if (!this.timelineManager || !this.hasTimelineScrubberTarget) return
+  replayCyclePrev() {
+    if (!this.replayManager || !this.hasReplayScrubberTarget) return
 
-    const minute = parseInt(this.timelineScrubberTarget.value, 10)
-    this.timelineManager.cyclePrev()
+    const minute = parseInt(this.replayScrubberTarget.value, 10)
+    this.replayManager.cyclePrev()
 
-    const point = this.timelineManager.getPointAtPosition(minute)
+    const point = this.replayManager.getPointAtPosition(minute)
     if (point) {
-      this._showTimelineMarker(point)
-      this._updateTimelineSpeedDisplay(this._getPointVelocity(point))
-      this._flyToTimelinePoint(point)
-      this._highlightTimelineRouteSegment(point)
-      this._updateTimelineCycleControls(minute)
+      this._showReplayMarker(point)
+      this._updateReplaySpeedDisplay(this._getPointVelocity(point))
+      this._flyToReplayPoint(point)
+      this._highlightReplayRouteSegment(point)
+      this._updateReplayCycleControls(minute)
     }
   }
 
   /**
    * Cycle to next point at current minute
    */
-  timelineCycleNext() {
-    if (!this.timelineManager || !this.hasTimelineScrubberTarget) return
+  replayCycleNext() {
+    if (!this.replayManager || !this.hasReplayScrubberTarget) return
 
-    const minute = parseInt(this.timelineScrubberTarget.value, 10)
-    this.timelineManager.cycleNext(minute)
+    const minute = parseInt(this.replayScrubberTarget.value, 10)
+    this.replayManager.cycleNext(minute)
 
-    const point = this.timelineManager.getPointAtPosition(minute)
+    const point = this.replayManager.getPointAtPosition(minute)
     if (point) {
-      this._showTimelineMarker(point)
-      this._updateTimelineSpeedDisplay(this._getPointVelocity(point))
-      this._flyToTimelinePoint(point)
-      this._highlightTimelineRouteSegment(point)
-      this._updateTimelineCycleControls(minute)
+      this._showReplayMarker(point)
+      this._updateReplaySpeedDisplay(this._getPointVelocity(point))
+      this._flyToReplayPoint(point)
+      this._highlightReplayRouteSegment(point)
+      this._updateReplayCycleControls(minute)
     }
   }
 
@@ -1358,27 +1870,25 @@ export default class extends Controller {
    * Update day display text
    * @private
    */
-  _updateTimelineDayDisplay() {
-    if (!this.hasTimelineDayDisplayTarget || !this.timelineManager) return
-    this.timelineDayDisplayTarget.textContent =
-      this.timelineManager.getCurrentDayDisplay()
+  _updateReplayDayDisplay() {
+    if (!this.hasReplayDayDisplayTarget || !this.replayManager) return
+    this.replayDayDisplayTarget.textContent =
+      this.replayManager.getCurrentDayDisplay()
   }
 
   /**
    * Update day navigation button states
    * @private
    */
-  _updateTimelineDayButtons() {
-    if (!this.timelineManager) return
+  _updateReplayDayButtons() {
+    if (!this.replayManager) return
 
-    if (this.hasTimelinePrevDayButtonTarget) {
-      this.timelinePrevDayButtonTarget.disabled =
-        !this.timelineManager.canGoPrev()
+    if (this.hasReplayPrevDayButtonTarget) {
+      this.replayPrevDayButtonTarget.disabled = !this.replayManager.canGoPrev()
     }
 
-    if (this.hasTimelineNextDayButtonTarget) {
-      this.timelineNextDayButtonTarget.disabled =
-        !this.timelineManager.canGoNext()
+    if (this.hasReplayNextDayButtonTarget) {
+      this.replayNextDayButtonTarget.disabled = !this.replayManager.canGoNext()
     }
   }
 
@@ -1388,19 +1898,19 @@ export default class extends Controller {
    * @param {number} minute - Minute of day
    * @param {boolean} showNoData - Whether to show "No data" indicator
    */
-  _updateTimelineTimeDisplay(minute, showNoData = false) {
-    if (this.hasTimelineTimeDisplayTarget) {
-      this.timelineTimeDisplayTarget.textContent =
-        TimelineManager.formatMinuteToTime(minute)
+  _updateReplayTimeDisplay(minute, showNoData = false) {
+    if (this.hasReplayTimeDisplayTarget) {
+      this.replayTimeDisplayTarget.textContent =
+        ReplayManager.formatMinuteToTime(minute)
     }
 
     // Show/hide data indicator
-    if (this.hasTimelineDataIndicatorTarget) {
+    if (this.hasReplayDataIndicatorTarget) {
       if (showNoData) {
-        this.timelineDataIndicatorTarget.classList.remove("hidden")
-        this.timelineDataIndicatorTarget.textContent = "No data at this time"
+        this.replayDataIndicatorTarget.classList.remove("hidden")
+        this.replayDataIndicatorTarget.textContent = "No data at this time"
       } else {
-        this.timelineDataIndicatorTarget.classList.add("hidden")
+        this.replayDataIndicatorTarget.classList.add("hidden")
       }
     }
   }
@@ -1429,8 +1939,8 @@ export default class extends Controller {
    * @private
    * @param {string|number|null} velocity - Velocity value in m/s (from API)
    */
-  _updateTimelineSpeedDisplay(velocity) {
-    if (!this.hasTimelineSpeedDisplayTarget) return
+  _updateReplaySpeedDisplay(velocity) {
+    if (!this.hasReplaySpeedDisplayTarget) return
 
     const distanceUnit = this.settings?.distance_unit || "km"
     const unit = distanceUnit === "mi" ? "mph" : "km/h"
@@ -1443,12 +1953,12 @@ export default class extends Controller {
         // Convert km/h to mph if needed (multiply by 0.621371)
         const displaySpeed =
           distanceUnit === "mi" ? speedKmh * 0.621371 : speedKmh
-        this.timelineSpeedDisplayTarget.textContent = `${Math.round(displaySpeed)} ${unit}`
+        this.replaySpeedDisplayTarget.textContent = `${Math.round(displaySpeed)} ${unit}`
       } else {
-        this.timelineSpeedDisplayTarget.textContent = `?? ${unit}`
+        this.replaySpeedDisplayTarget.textContent = `?? ${unit}`
       }
     } else {
-      this.timelineSpeedDisplayTarget.textContent = `?? ${unit}`
+      this.replaySpeedDisplayTarget.textContent = `?? ${unit}`
     }
   }
 
@@ -1456,38 +1966,38 @@ export default class extends Controller {
    * Update day count display
    * @private
    */
-  _updateTimelineDayCount() {
-    if (!this.hasTimelineDayCountTarget || !this.timelineManager) return
+  _updateReplayDayCount() {
+    if (!this.hasReplayDayCountTarget || !this.replayManager) return
 
-    const dayCount = this.timelineManager.getDayCount()
-    const currentIndex = this.timelineManager.currentDayIndex + 1
-    const pointCount = this.timelineManager.getCurrentDayPointCount()
+    const dayCount = this.replayManager.getDayCount()
+    const currentIndex = this.replayManager.currentDayIndex + 1
+    const pointCount = this.replayManager.getCurrentDayPointCount()
 
-    this.timelineDayCountTarget.textContent = `Day ${currentIndex} of ${dayCount} • ${pointCount.toLocaleString()} points`
+    this.replayDayCountTarget.textContent = `Day ${currentIndex} of ${dayCount} • ${pointCount.toLocaleString()} points`
   }
 
   /**
    * Render data density visualization on scrubber track
    * @private
    */
-  _renderTimelineDensity() {
-    if (!this.hasTimelineDensityContainerTarget || !this.timelineManager) return
+  _renderReplayDensity() {
+    if (!this.hasReplayDensityContainerTarget || !this.replayManager) return
 
     // Use 48 segments (30-minute chunks)
     const segments = 48
-    const density = this.timelineManager.getDataDensity(segments)
+    const density = this.replayManager.getDataDensity(segments)
 
     // Clear existing bars using DOM methods
-    while (this.timelineDensityContainerTarget.firstChild) {
-      this.timelineDensityContainerTarget.removeChild(
-        this.timelineDensityContainerTarget.firstChild,
+    while (this.replayDensityContainerTarget.firstChild) {
+      this.replayDensityContainerTarget.removeChild(
+        this.replayDensityContainerTarget.firstChild,
       )
     }
 
     // Create density bars using DOM methods
     density.forEach((value) => {
       const bar = document.createElement("div")
-      bar.className = "timeline-density-bar"
+      bar.className = "replay-density-bar"
 
       if (value > 0) {
         bar.classList.add("has-data")
@@ -1496,7 +2006,7 @@ export default class extends Controller {
         }
       }
 
-      this.timelineDensityContainerTarget.appendChild(bar)
+      this.replayDensityContainerTarget.appendChild(bar)
     })
   }
 
@@ -1504,19 +2014,19 @@ export default class extends Controller {
    * Update cycle controls visibility and count
    * @private
    */
-  _updateTimelineCycleControls(minute) {
-    if (!this.hasTimelineCycleControlsTarget || !this.timelineManager) return
+  _updateReplayCycleControls(minute) {
+    if (!this.hasReplayCycleControlsTarget || !this.replayManager) return
 
-    const count = this.timelineManager.getPointCountAtMinute(minute)
+    const count = this.replayManager.getPointCountAtMinute(minute)
 
     if (count > 1) {
-      this.timelineCycleControlsTarget.classList.remove("hidden")
-      if (this.hasTimelinePointCounterTarget) {
-        const currentIndex = (this.timelineManager.cycleIndex % count) + 1
-        this.timelinePointCounterTarget.textContent = `Point ${currentIndex} of ${count}`
+      this.replayCycleControlsTarget.classList.remove("hidden")
+      if (this.hasReplayPointCounterTarget) {
+        const currentIndex = (this.replayManager.cycleIndex % count) + 1
+        this.replayPointCounterTarget.textContent = `Point ${currentIndex} of ${count}`
       }
     } else {
-      this.timelineCycleControlsTarget.classList.add("hidden")
+      this.replayCycleControlsTarget.classList.add("hidden")
     }
   }
 
@@ -1524,35 +2034,35 @@ export default class extends Controller {
    * Hide cycle controls
    * @private
    */
-  _hideTimelineCycleControls() {
-    if (this.hasTimelineCycleControlsTarget) {
-      this.timelineCycleControlsTarget.classList.add("hidden")
+  _hideReplayCycleControls() {
+    if (this.hasReplayCycleControlsTarget) {
+      this.replayCycleControlsTarget.classList.add("hidden")
     }
   }
 
-  // ===== Timeline Replay Methods =====
+  // ===== Replay Playback Methods =====
 
   /**
    * Toggle replay play/pause
    */
-  timelineToggleReplay() {
-    if (this.timelineReplayActive) {
-      this._stopTimelineReplay()
+  replayTogglePlayback() {
+    if (this.replayActive) {
+      this._stopReplayPlayback()
     } else {
-      this._startTimelineReplay()
+      this._startReplayPlayback()
     }
   }
 
   /**
    * Handle speed slider change
    */
-  timelineSpeedChange(event) {
+  replaySpeedChange(event) {
     const speedIndex = parseInt(event.target.value, 10)
     const speeds = [1, 2, 5, 10]
-    this.timelineReplaySpeed = speeds[speedIndex - 1] || 2
+    this.replaySpeed = speeds[speedIndex - 1] || 2
 
-    if (this.hasTimelineSpeedLabelTarget) {
-      this.timelineSpeedLabelTarget.textContent = `${this.timelineReplaySpeed}x`
+    if (this.hasReplaySpeedLabelTarget) {
+      this.replaySpeedLabelTarget.textContent = `${this.replaySpeed}x`
     }
   }
 
@@ -1560,96 +2070,96 @@ export default class extends Controller {
    * Start replay animation
    * @private
    */
-  _startTimelineReplay() {
-    if (this.timelineReplayActive) return
-    if (!this.timelineManager || !this.hasTimelineScrubberTarget) return
+  _startReplayPlayback() {
+    if (this.replayActive) return
+    if (!this.replayManager || !this.hasReplayScrubberTarget) return
 
     // Get points for current day
-    const currentDay = this.timelineManager.getCurrentDay()
+    const currentDay = this.replayManager.getCurrentDay()
     if (!currentDay) return
 
-    const dayPoints = this.timelineManager.pointsByDay[currentDay]
+    const dayPoints = this.replayManager.pointsByDay[currentDay]
     if (!dayPoints || dayPoints.length === 0) return
 
-    this.timelineReplayActive = true
-    this.timelineReplaySpeed = this.timelineReplaySpeed || 2
-    this.timelineReplayPoints = dayPoints
-    this.timelineReplayPointIndex = 0
+    this.replayActive = true
+    this.replaySpeed = this.replaySpeed || 2
+    this.replayPoints = dayPoints
+    this.replayPointIndex = 0
 
     // Find starting index based on current scrubber position
-    const currentMinute = parseInt(this.timelineScrubberTarget.value, 10)
+    const currentMinute = parseInt(this.replayScrubberTarget.value, 10)
     for (let i = 0; i < dayPoints.length; i++) {
-      const timestamp = this.timelineManager._getTimestamp(dayPoints[i])
-      const pointTime = this._parseTimelineTimestamp(timestamp)
+      const timestamp = this.replayManager._getTimestamp(dayPoints[i])
+      const pointTime = this._parseReplayTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
         const pointMinute = date.getHours() * 60 + date.getMinutes()
         if (pointMinute >= currentMinute) {
-          this.timelineReplayPointIndex = i
+          this.replayPointIndex = i
           break
         }
       }
     }
 
     // Initialize interpolation coordinates
-    const startPoint = dayPoints[this.timelineReplayPointIndex]
-    const nextPoint = dayPoints[this.timelineReplayPointIndex + 1]
-    this.timelineReplayCurrentCoords = startPoint
-      ? this.timelineManager.getCoordinates(startPoint)
+    const startPoint = dayPoints[this.replayPointIndex]
+    const nextPoint = dayPoints[this.replayPointIndex + 1]
+    this.replayCurrentCoords = startPoint
+      ? this.replayManager.getCoordinates(startPoint)
       : null
-    this.timelineReplayNextCoords = nextPoint
-      ? this.timelineManager.getCoordinates(nextPoint)
-      : this.timelineReplayCurrentCoords
+    this.replayNextCoords = nextPoint
+      ? this.replayManager.getCoordinates(nextPoint)
+      : this.replayCurrentCoords
 
     // Show marker at starting point immediately
     if (startPoint) {
-      this._showTimelineMarker(startPoint)
-      this._flyToTimelinePoint(startPoint, true)
-      this._highlightTimelineRouteSegment(startPoint)
+      this._showReplayMarker(startPoint)
+      this._flyToReplayPoint(startPoint, true)
+      this._highlightReplayRouteSegment(startPoint)
     }
 
     // Update UI
-    if (this.hasTimelinePlayButtonTarget) {
-      this.timelinePlayButtonTarget.classList.add("playing")
+    if (this.hasReplayPlayButtonTarget) {
+      this.replayPlayButtonTarget.classList.add("playing")
     }
-    if (this.hasTimelinePlayIconTarget) {
-      this.timelinePlayIconTarget.classList.add("hidden")
+    if (this.hasReplayPlayIconTarget) {
+      this.replayPlayIconTarget.classList.add("hidden")
     }
-    if (this.hasTimelinePauseIconTarget) {
-      this.timelinePauseIconTarget.classList.remove("hidden")
+    if (this.hasReplayPauseIconTarget) {
+      this.replayPauseIconTarget.classList.remove("hidden")
     }
 
-    this.timelineReplayLastTime = performance.now()
+    this.replayLastTime = performance.now()
 
     // Start animation loop
-    this._timelineReplayFrame()
+    this._replayFrame()
   }
 
   /**
    * Stop replay animation
    * @private
    */
-  _stopTimelineReplay() {
+  _stopReplayPlayback() {
     // Guard against early calls before initialization
-    if (this.timelineReplayActive === undefined) return
+    if (this.replayActive === undefined) return
 
-    this.timelineReplayActive = false
+    this.replayActive = false
 
     // Cancel animation frame
-    if (this.timelineReplayAnimationId) {
-      cancelAnimationFrame(this.timelineReplayAnimationId)
-      this.timelineReplayAnimationId = null
+    if (this.replayAnimationId) {
+      cancelAnimationFrame(this.replayAnimationId)
+      this.replayAnimationId = null
     }
 
     // Update UI
-    if (this.hasTimelinePlayButtonTarget) {
-      this.timelinePlayButtonTarget.classList.remove("playing")
+    if (this.hasReplayPlayButtonTarget) {
+      this.replayPlayButtonTarget.classList.remove("playing")
     }
-    if (this.hasTimelinePlayIconTarget) {
-      this.timelinePlayIconTarget.classList.remove("hidden")
+    if (this.hasReplayPlayIconTarget) {
+      this.replayPlayIconTarget.classList.remove("hidden")
     }
-    if (this.hasTimelinePauseIconTarget) {
-      this.timelinePauseIconTarget.classList.add("hidden")
+    if (this.hasReplayPauseIconTarget) {
+      this.replayPauseIconTarget.classList.add("hidden")
     }
 
     // Also reset the track card replay button
@@ -1682,35 +2192,31 @@ export default class extends Controller {
    * Replay animation frame - iterates over points with smooth interpolation
    * @private
    */
-  _timelineReplayFrame() {
-    if (!this.timelineReplayActive) return
+  _replayFrame() {
+    if (!this.replayActive) return
 
     const now = performance.now()
-    const elapsed = now - this.timelineReplayLastTime
+    const elapsed = now - this.replayLastTime
 
     // Calculate interval between points based on speed
     // Speed 1x = 1 point per 500ms, Speed 10x = 1 point per 50ms
-    const intervalMs = 500 / this.timelineReplaySpeed
+    const intervalMs = 500 / this.replaySpeed
 
     // Calculate interpolation progress (0 to 1) - use linear for smooth constant speed
     const progress = Math.min(elapsed / intervalMs, 1)
 
     // Interpolate marker position between current and next point
     let currentLon, currentLat
-    if (this.timelineReplayCurrentCoords && this.timelineReplayNextCoords) {
+    if (this.replayCurrentCoords && this.replayNextCoords) {
       currentLon =
-        this.timelineReplayCurrentCoords.lon +
-        (this.timelineReplayNextCoords.lon -
-          this.timelineReplayCurrentCoords.lon) *
-          progress
+        this.replayCurrentCoords.lon +
+        (this.replayNextCoords.lon - this.replayCurrentCoords.lon) * progress
       currentLat =
-        this.timelineReplayCurrentCoords.lat +
-        (this.timelineReplayNextCoords.lat -
-          this.timelineReplayCurrentCoords.lat) *
-          progress
+        this.replayCurrentCoords.lat +
+        (this.replayNextCoords.lat - this.replayCurrentCoords.lat) * progress
 
       // Update marker position smoothly
-      this._showTimelineMarkerAt(currentLon, currentLat)
+      this._showReplayMarkerAt(currentLon, currentLat)
 
       // Smoothly pan map to keep marker visible (check every frame for smoothness)
       this._panMapToFollowMarker(currentLon, currentLat)
@@ -1718,86 +2224,80 @@ export default class extends Controller {
 
     // When interval is complete, move to next point
     if (elapsed >= intervalMs) {
-      this.timelineReplayLastTime = now
+      this.replayLastTime = now
 
       // Move to next point
-      this.timelineReplayPointIndex++
+      this.replayPointIndex++
 
       // Check if we've reached the end of points for this day
-      if (this.timelineReplayPointIndex >= this.timelineReplayPoints.length) {
+      if (this.replayPointIndex >= this.replayPoints.length) {
         // Try to go to next day
-        if (this.timelineManager.canGoNext()) {
-          this.timelineManager.nextDay()
-          this._updateTimelineDayDisplay()
-          this._updateTimelineDayCount()
-          this._updateTimelineDayButtons()
-          this._renderTimelineDensity()
+        if (this.replayManager.canGoNext()) {
+          this.replayManager.nextDay()
+          this._updateReplayDayDisplay()
+          this._updateReplayDayCount()
+          this._updateReplayDayButtons()
+          this._renderReplayDensity()
 
           // Get points for new day
-          const newDay = this.timelineManager.getCurrentDay()
-          this.timelineReplayPoints =
-            this.timelineManager.pointsByDay[newDay] || []
-          this.timelineReplayPointIndex = 0
+          const newDay = this.replayManager.getCurrentDay()
+          this.replayPoints = this.replayManager.pointsByDay[newDay] || []
+          this.replayPointIndex = 0
 
-          if (this.timelineReplayPoints.length === 0) {
-            this._stopTimelineReplay()
+          if (this.replayPoints.length === 0) {
+            this._stopReplayPlayback()
             return
           }
         } else {
           // End of data, stop replay
-          this._stopTimelineReplay()
+          this._stopReplayPlayback()
           return
         }
       }
 
       // Get current and next points for interpolation
-      const currentPoint =
-        this.timelineReplayPoints[this.timelineReplayPointIndex]
-      const nextPoint =
-        this.timelineReplayPoints[this.timelineReplayPointIndex + 1]
+      const currentPoint = this.replayPoints[this.replayPointIndex]
+      const nextPoint = this.replayPoints[this.replayPointIndex + 1]
 
       if (!currentPoint) {
-        this._stopTimelineReplay()
+        this._stopReplayPlayback()
         return
       }
 
       // Store coordinates for interpolation
-      this.timelineReplayCurrentCoords =
-        this.timelineManager.getCoordinates(currentPoint)
-      this.timelineReplayNextCoords = nextPoint
-        ? this.timelineManager.getCoordinates(nextPoint)
-        : this.timelineReplayCurrentCoords
+      this.replayCurrentCoords = this.replayManager.getCoordinates(currentPoint)
+      this.replayNextCoords = nextPoint
+        ? this.replayManager.getCoordinates(nextPoint)
+        : this.replayCurrentCoords
 
       // Update speed display for current point
-      this._updateTimelineSpeedDisplay(this._getPointVelocity(currentPoint))
+      this._updateReplaySpeedDisplay(this._getPointVelocity(currentPoint))
 
       // Get minute for this point to update scrubber
-      const timestamp = this.timelineManager._getTimestamp(currentPoint)
-      const pointTime = this._parseTimelineTimestamp(timestamp)
+      const timestamp = this.replayManager._getTimestamp(currentPoint)
+      const pointTime = this._parseReplayTimestamp(timestamp)
       if (pointTime) {
         const date = new Date(pointTime)
         const minute = date.getHours() * 60 + date.getMinutes()
 
         // Update scrubber position
-        this.timelineScrubberTarget.value = minute
+        this.replayScrubberTarget.value = minute
 
         // Update time display
-        this._updateTimelineTimeDisplay(minute, false)
+        this._updateReplayTimeDisplay(minute, false)
       }
 
       // Highlight route segment (less frequently to reduce overhead)
-      if (this.timelineReplayPointIndex % 5 === 0) {
-        this._highlightTimelineRouteSegment(currentPoint)
+      if (this.replayPointIndex % 5 === 0) {
+        this._highlightReplayRouteSegment(currentPoint)
       }
 
       // Hide cycle controls during replay
-      this._hideTimelineCycleControls()
+      this._hideReplayCycleControls()
     }
 
     // Continue animation
-    this.timelineReplayAnimationId = requestAnimationFrame(() =>
-      this._timelineReplayFrame(),
-    )
+    this.replayAnimationId = requestAnimationFrame(() => this._replayFrame())
   }
 
   /**
@@ -1828,15 +2328,15 @@ export default class extends Controller {
   }
 
   /**
-   * Show timeline marker at specific coordinates (for interpolation)
+   * Show replay marker at specific coordinates (for interpolation)
    * @private
    */
-  _showTimelineMarkerAt(lon, lat) {
+  _showReplayMarkerAt(lon, lat) {
     if (lon === undefined || lat === undefined) return
 
-    const timelineMarkerLayer = this.layerManager?.getLayer("timelineMarker")
-    if (timelineMarkerLayer) {
-      timelineMarkerLayer.showMarker(lon, lat)
+    const replayMarkerLayer = this.layerManager?.getLayer("replayMarker")
+    if (replayMarkerLayer) {
+      replayMarkerLayer.showMarker(lon, lat)
     }
   }
 
@@ -1844,59 +2344,59 @@ export default class extends Controller {
    * Initialize replay state
    * @private
    */
-  _initializeTimelineReplay() {
-    this.timelineReplayActive = false
-    this.timelineReplaySpeed = 2
-    this.timelineReplayPoints = []
-    this.timelineReplayPointIndex = 0
-    this.timelineReplayLastTime = 0
-    this.timelineReplayAnimationId = null
-    this.timelineReplayCurrentCoords = null
-    this.timelineReplayNextCoords = null
+  _initializeReplayState() {
+    this.replayActive = false
+    this.replaySpeed = 2
+    this.replayPoints = []
+    this.replayPointIndex = 0
+    this.replayLastTime = 0
+    this.replayAnimationId = null
+    this.replayCurrentCoords = null
+    this.replayNextCoords = null
     // Set initial speed label
-    if (this.hasTimelineSpeedLabelTarget) {
-      this.timelineSpeedLabelTarget.textContent = "2x"
+    if (this.hasReplaySpeedLabelTarget) {
+      this.replaySpeedLabelTarget.textContent = "2x"
     }
-    if (this.hasTimelineSpeedSliderTarget) {
-      this.timelineSpeedSliderTarget.value = 2
+    if (this.hasReplaySpeedSliderTarget) {
+      this.replaySpeedSliderTarget.value = 2
     }
   }
 
   /**
-   * Show timeline marker at point location
+   * Show replay marker at point location
    * @private
    */
-  _showTimelineMarker(point) {
-    const coords = this.timelineManager?.getCoordinates(point)
+  _showReplayMarker(point) {
+    const coords = this.replayManager?.getCoordinates(point)
     if (!coords) return
 
-    const timelineMarkerLayer = this.layerManager?.getLayer("timelineMarker")
-    if (timelineMarkerLayer) {
-      timelineMarkerLayer.showMarker(coords.lon, coords.lat, {
-        timestamp: this.timelineManager._getTimestamp(point),
+    const replayMarkerLayer = this.layerManager?.getLayer("replayMarker")
+    if (replayMarkerLayer) {
+      replayMarkerLayer.showMarker(coords.lon, coords.lat, {
+        timestamp: this.replayManager._getTimestamp(point),
       })
     }
   }
 
   /**
-   * Clear timeline marker
+   * Clear replay marker
    * @private
    */
-  _clearTimelineMarker() {
-    const timelineMarkerLayer = this.layerManager?.getLayer("timelineMarker")
-    if (timelineMarkerLayer) {
-      timelineMarkerLayer.clear()
+  _clearReplayMarker() {
+    const replayMarkerLayer = this.layerManager?.getLayer("replayMarker")
+    if (replayMarkerLayer) {
+      replayMarkerLayer.clear()
     }
   }
 
   /**
-   * Fly map to timeline point
+   * Fly map to replay point
    * @private
    * @param {Object} point - Point object
    * @param {boolean} fast - Use faster animation (for replay)
    */
-  _flyToTimelinePoint(point, fast = false) {
-    const coords = this.timelineManager?.getCoordinates(point)
+  _flyToReplayPoint(point, fast = false) {
+    const coords = this.replayManager?.getCoordinates(point)
     if (!coords || !this.map) return
 
     this.map.flyTo({
@@ -1907,14 +2407,14 @@ export default class extends Controller {
   }
 
   /**
-   * Highlight route segment containing the timeline point
+   * Highlight route segment containing the replay point
    * @private
    */
-  _highlightTimelineRouteSegment(point) {
+  _highlightReplayRouteSegment(point) {
     const routesLayer = this.layerManager?.getLayer("routes")
     if (!routesLayer) return
 
-    const coords = this.timelineManager?.getCoordinates(point)
+    const coords = this.replayManager?.getCoordinates(point)
     if (!coords) return
 
     // Query the routes source to find feature containing this point
@@ -1924,14 +2424,14 @@ export default class extends Controller {
       return
     }
 
-    const timestamp = this.timelineManager._getTimestamp(point)
+    const timestamp = this.replayManager._getTimestamp(point)
     if (!timestamp) {
       routesLayer.setHoverRoute(null)
       return
     }
 
     // Parse timestamp consistently (handle both Unix seconds and milliseconds)
-    const pointTime = this._parseTimelineTimestamp(timestamp)
+    const pointTime = this._parseReplayTimestamp(timestamp)
 
     // Find the route segment containing this timestamp
     const matchingFeature = routesSource._data.features.find((feature) => {
@@ -1939,8 +2439,8 @@ export default class extends Controller {
       const endTime = feature.properties?.endTime
 
       if (startTime && endTime) {
-        const start = this._parseTimelineTimestamp(startTime)
-        const end = this._parseTimelineTimestamp(endTime)
+        const start = this._parseReplayTimestamp(startTime)
+        const end = this._parseReplayTimestamp(endTime)
         return pointTime >= start && pointTime <= end
       }
       return false
@@ -1957,7 +2457,7 @@ export default class extends Controller {
    * Parse timestamp to milliseconds, handling various formats
    * @private
    */
-  _parseTimelineTimestamp(timestamp) {
+  _parseReplayTimestamp(timestamp) {
     if (!timestamp) return 0
 
     // Handle ISO 8601 string
@@ -1979,10 +2479,10 @@ export default class extends Controller {
   }
 
   /**
-   * Clear timeline route highlight
+   * Clear replay route highlight
    * @private
    */
-  _clearTimelineRouteHighlight() {
+  _clearReplayRouteHighlight() {
     const routesLayer = this.layerManager?.getLayer("routes")
     if (routesLayer) {
       routesLayer.setHoverRoute(null)

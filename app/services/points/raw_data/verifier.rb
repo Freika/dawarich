@@ -39,7 +39,8 @@ module Points
       end
 
       def verify_archive(archive)
-        Rails.logger.info("Verifying archive #{archive.id} (#{archive.month_display}, chunk #{archive.chunk_number})...")
+        msg = "Verifying archive #{archive.id} (#{archive.month_display}, chunk #{archive.chunk_number})..."
+        Rails.logger.info(msg)
         start_time = Time.current
 
         verification_result = perform_verification(archive)
@@ -85,28 +86,41 @@ module Points
       end
 
       def perform_verification(archive)
+        result = download_and_verify_content(archive)
+        return result unless result[:success]
+
+        compressed_content = result[:compressed_content]
+        result = parse_and_verify_points(archive, compressed_content)
+        return result unless result[:success]
+
+        verify_existing_points(archive, result[:point_ids], result[:sampled_data])
+      end
+
+      def download_and_verify_content(archive)
         return { success: false, error: 'File not attached' } unless archive.file.attached?
 
-        begin
-          compressed_content = archive.file.blob.download
-        rescue StandardError => e
-          return { success: false, error: "File download failed: #{e.message}" }
+        raw_content = archive.file.blob.download
+        return { success: false, error: 'File is empty' } if raw_content.bytesize.zero?
+
+        verify_content_integrity(raw_content, archive)
+      rescue StandardError => e
+        { success: false, error: "File download failed: #{e.message}" }
+      end
+
+      def verify_content_integrity(raw_content, archive)
+        stored_checksum = archive.metadata&.dig('content_checksum')
+        if stored_checksum.present?
+          actual_checksum = Digest::SHA256.hexdigest(raw_content)
+          return { success: false, error: 'Content checksum mismatch' } if actual_checksum != stored_checksum
         end
 
-        return { success: false, error: 'File is empty' } if compressed_content.bytesize.zero?
+        compressed_content = Encryption.decrypt_if_needed(raw_content, archive)
+        { success: true, compressed_content: compressed_content }
+      end
 
-        if archive.file.blob.checksum.present?
-          calculated_checksum = Digest::MD5.base64digest(compressed_content)
-          return { success: false, error: 'MD5 checksum mismatch' } if calculated_checksum != archive.file.blob.checksum
-        end
-
-        begin
-          archived_data = decompress_and_extract_data(compressed_content)
-        rescue StandardError => e
-          return { success: false, error: "Decompression/parsing failed: #{e.message}" }
-        end
-
-        point_ids = archived_data.keys
+      def parse_and_verify_points(archive, compressed_content)
+        parse_result = stream_parse_archive(compressed_content, archive.point_count)
+        point_ids = parse_result[:point_ids]
 
         if point_ids.count != archive.point_count
           return {
@@ -115,11 +129,15 @@ module Points
           }
         end
 
-        calculated_checksum = calculate_checksum(point_ids)
-        if calculated_checksum != archive.point_ids_checksum
-          return { success: false, error: 'Point IDs checksum mismatch' }
-        end
+        id_checksum = calculate_checksum(point_ids)
+        return { success: false, error: 'Point IDs checksum mismatch' } if id_checksum != archive.point_ids_checksum
 
+        { success: true, point_ids: point_ids, sampled_data: parse_result[:sampled_data] }
+      rescue StandardError => e
+        { success: false, error: "Decompression/parsing failed: #{e.message}" }
+      end
+
+      def verify_existing_points(archive, point_ids, sampled_data)
         existing_count = Point.where(id: point_ids).count
         if existing_count != point_ids.count
           Rails.logger.info(
@@ -129,7 +147,7 @@ module Points
         end
 
         if existing_count.positive?
-          verification_result = verify_raw_data_matches(archived_data)
+          verification_result = verify_raw_data_matches(sampled_data)
           return verification_result unless verification_result[:success]
         else
           Rails.logger.info(
@@ -140,51 +158,61 @@ module Points
         { success: true }
       end
 
-      def decompress_and_extract_data(compressed_content)
+      # Stream-parse the archive in a single pass. Collects all point IDs (integers only)
+      # and raw_data only for deterministically sampled indices. This avoids loading the
+      # full raw_data hash into memory (which would ~3x the memory footprint).
+      def stream_parse_archive(compressed_content, expected_count)
+        sample_indices = build_sample_indices(expected_count)
+
         io = StringIO.new(compressed_content)
         gz = Zlib::GzipReader.new(io)
-        archived_data = {}
+
+        point_ids = []
+        sampled_data = {} # Only populated for sampled indices
+        line_index = 0
 
         gz.each_line do |line|
           data = JSON.parse(line)
-          archived_data[data['id']] = data['raw_data']
+          point_id = data['id']
+          point_ids << point_id
+
+          sampled_data[point_id] = data['raw_data'] if sample_indices.include?(line_index)
+
+          line_index += 1
         end
 
         gz.close
-        archived_data
+        { point_ids: point_ids, sampled_data: sampled_data }
       end
 
-      def verify_raw_data_matches(archived_data)
-        # For small archives, verify all points. For large archives, sample up to 100 points.
-        # Always verify all if 100 or fewer points for maximum accuracy
-        point_ids_to_check = if archived_data.size <= 100
-                               archived_data.keys
-                             else
-                               archived_data.keys.sample(100)
-                             end
+      # Deterministic stride-based sampling. Sample size scales with archive size:
+      # sqrt(n) points, clamped to [min 100, max 1000]. Uses evenly spaced indices
+      # so the sample covers the full range of the archive (head, middle, tail),
+      # catching systematic corruption like truncated gzip streams.
+      def build_sample_indices(total_count)
+        return (0...total_count).to_set if total_count <= 100
 
-        # Filter to only check points that still exist in the database
-        existing_point_ids = Point.where(id: point_ids_to_check).pluck(:id)
+        sample_size = [[Math.sqrt(total_count).ceil, 100].max, 1000].min
+        stride = total_count.to_f / sample_size
+
+        (0...sample_size).map { |i| (i * stride).floor }.to_set
+      end
+
+      def verify_raw_data_matches(sampled_data)
+        existing_point_ids = Point.where(id: sampled_data.keys).pluck(:id)
 
         if existing_point_ids.empty?
-          Rails.logger.info('No points remaining to verify raw_data matches')
+          Rails.logger.info('No sampled points remaining to verify raw_data matches')
           return { success: true }
         end
 
         mismatches = []
 
         Point.where(id: existing_point_ids).find_each do |point|
-          archived_raw_data = archived_data[point.id]
-          current_raw_data = point.raw_data
+          archived_raw_data = sampled_data[point.id]
+          next if archived_raw_data.nil?
 
-          # Compare the raw_data (both should be hashes)
-          if archived_raw_data != current_raw_data
-            mismatches << {
-              point_id: point.id,
-              archived: archived_raw_data,
-              current: current_raw_data
-            }
-          end
+          mismatches << { point_id: point.id } if archived_raw_data != point.raw_data
         end
 
         if mismatches.any?
@@ -220,8 +248,8 @@ module Points
           'download_failed'
         when /File is empty/i
           'empty_file'
-        when /MD5 checksum mismatch/i
-          'md5_checksum_mismatch'
+        when /Content checksum mismatch/i
+          'content_checksum_mismatch'
         when %r{Decompression/parsing failed}i
           'decompression_failed'
         when /Point count mismatch/i

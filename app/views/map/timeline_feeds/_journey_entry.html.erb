@@ -1,0 +1,51 @@
+<%
+  mode_config = {
+    'walking'    => { emoji: "\u{1F6B6}", verb: 'walked' },
+    'running'    => { emoji: "\u{1F3C3}", verb: 'ran' },
+    'cycling'    => { emoji: "\u{1F6B4}", verb: 'cycled' },
+    'driving'    => { emoji: "\u{1F697}", verb: 'drove' },
+    'bus'        => { emoji: "\u{1F68C}", verb: 'bus' },
+    'train'      => { emoji: "\u{1F686}", verb: 'train' },
+    'flying'     => { emoji: "\u2708\uFE0F", verb: 'flew' },
+    'boat'       => { emoji: "\u26F5", verb: 'sailed' },
+    'motorcycle' => { emoji: "\u{1F3CD}\uFE0F", verb: 'rode' },
+    'unknown'    => { emoji: "\u2753", verb: 'traveled' }
+  }
+  mode = entry[:dominant_mode].presence || 'unknown'
+  config = mode_config[mode] || mode_config['unknown']
+  duration = format_duration_short(entry[:duration])
+  distance_text = entry[:distance] > 0 ? "#{entry[:distance]} #{entry[:distance_unit]}" : nil
+  track_id = entry[:track_id]
+  frame_id = "track-info-#{track_id}"
+%>
+<div class="timeline-journey-connector"
+     data-action="mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
+     data-entry-type="journey"
+     data-started-at="<%= entry[:started_at] %>"
+     data-ended-at="<%= entry[:ended_at] %>"
+     data-track-id="<%= track_id %>">
+  <div class="timeline-journey-content<%= ' cursor-pointer' if track_id %>"
+       <% if track_id %>
+         data-action="click->timeline-feed#toggleTrackInfo"
+         data-track-id="<%= track_id %>"
+         data-frame-id="<%= frame_id %>"
+         data-track-start="<%= entry[:started_at] %>"
+       <% end %>>
+    <span><%= config[:emoji] %></span>
+    <span class="journey-mode"><%= config[:verb] %></span>
+    <% if distance_text %>
+      <span>&middot; <%= distance_text %></span>
+    <% end %>
+    <span>&middot; <%= duration %></span>
+    <% if track_id %>
+      <svg class="w-3 h-3 transition-transform duration-200 track-info-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    <% end %>
+  </div>
+  <% if track_id %>
+    <turbo-frame id="<%= frame_id %>"
+                 class="hidden track-info-panel"
+                 data-timeline-feed-target="trackInfoFrame"
+                 loading="lazy">
+    </turbo-frame>
+  <% end %>
+</div>

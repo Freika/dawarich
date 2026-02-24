@@ -2,23 +2,22 @@ import { expect, test } from "@playwright/test"
 import { closeOnboardingModal } from "../../helpers/navigation.js"
 import { API_KEYS } from "../helpers/constants.js"
 import {
-  getScrubberValue,
-  getTimelineMarkerState,
-  getTimelineState,
+  getReplayScrubberValue,
+  getReplayState,
   isReplayActive,
-  isTimelinePanelVisible,
-  openTimelinePanel,
-  setScrubberValue,
+  isReplayPanelVisible,
+  openReplayPanel,
+  setReplayScrubberValue,
   waitForLoadingComplete,
   waitForMapLibre,
-  waitForTimelinePanel,
+  waitForReplayPanel,
 } from "../helpers/setup.js"
 
 // Configure tests to run serially to avoid resource contention with MapLibre/WebGL
 // MapLibre canvas rendering is resource-intensive and can cause flaky tests when run in parallel
 test.describe.configure({ mode: "serial" })
 
-test.describe("Timeline Panel", () => {
+test.describe("Replay Panel", () => {
   // Use a multi-day date range with known data for most tests
   test.beforeEach(async ({ page }) => {
     await page.goto("/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-16T23:59")
@@ -30,62 +29,61 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Panel Visibility", () => {
     test("panel is hidden by default", async ({ page }) => {
-      const panel = page.locator('[data-maps--maplibre-target="timelinePanel"]')
+      const panel = page.locator('[data-maps--maplibre-target="replayPanel"]')
       await expect(panel).toHaveClass(/hidden/)
     })
 
-    test("opens from Tools tab button", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("opens from Tools tab Replay button", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      const isVisible = await isTimelinePanelVisible(page)
+      const isVisible = await isReplayPanelVisible(page)
       expect(isVisible).toBe(true)
     })
 
     test("closes with close button", async ({ page }) => {
-      // openTimelinePanel with `true` already closes the settings panel
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      // Click the timeline close button
-      const closeButton = page.locator(".timeline-close")
+      // Click the replay close button
+      const closeButton = page.locator(".replay-close")
       await closeButton.click()
       await page.waitForTimeout(300)
 
-      const isVisible = await isTimelinePanelVisible(page)
+      const isVisible = await isReplayPanelVisible(page)
       expect(isVisible).toBe(false)
     })
 
-    test("toggles with repeated button clicks", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("toggles with repeated Replay button clicks", async ({ page }) => {
+      await openReplayPanel(page)
+      await waitForReplayPanel(page)
 
-      let isVisible = await isTimelinePanelVisible(page)
+      let isVisible = await isReplayPanelVisible(page)
       expect(isVisible).toBe(true)
 
-      // Click Timeline button again (should close)
-      const timelineButton = page.locator(
-        '[data-tab-content="tools"] button:has-text("Timeline")',
+      // Click Replay button again via toggleReplay (should close)
+      const replayButton = page.locator(
+        '[data-tab-content="tools"] button:has-text("Replay")',
       )
-      await timelineButton.click()
+      await replayButton.click()
       await page.waitForTimeout(300)
 
-      isVisible = await isTimelinePanelVisible(page)
+      isVisible = await isReplayPanelVisible(page)
       expect(isVisible).toBe(false)
 
       // Click again (should open)
-      await timelineButton.click()
-      await waitForTimelinePanel(page)
+      await replayButton.click()
+      await waitForReplayPanel(page)
 
-      isVisible = await isTimelinePanelVisible(page)
+      isVisible = await isReplayPanelVisible(page)
       expect(isVisible).toBe(true)
     })
 
     test("has correct CSS styling (positioned at bottom)", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      const panel = page.locator('[data-maps--maplibre-target="timelinePanel"]')
+      const panel = page.locator('[data-maps--maplibre-target="replayPanel"]')
       const boundingBox = await panel.boundingBox()
 
       // Panel should be visible and have reasonable width
@@ -118,20 +116,19 @@ test.describe("Timeline Panel", () => {
       await toolsTab.click()
       await page.waitForTimeout(300)
 
-      // Click Timeline button
-      const timelineButton = page.locator(
-        '[data-tab-content="tools"] button:has-text("Timeline")',
+      // Click Replay button
+      const replayButton = page.locator(
+        '[data-tab-content="tools"] button:has-text("Replay")',
       )
-      await timelineButton.click()
+      await replayButton.click()
       await page.waitForTimeout(500)
 
-      // Should show a toast message (verify panel doesn't open or shows "No data loaded")
+      // Should show a toast message or the panel shows "No data loaded"
       const dayDisplay = page.locator(
-        '[data-maps--maplibre-target="timelineDayDisplay"]',
+        '[data-maps--maplibre-target="replayDayDisplay"]',
       )
       const displayText = await dayDisplay.textContent()
-      // Either the panel doesn't open or it shows "No data loaded"
-      const isVisible = await isTimelinePanelVisible(page)
+      const isVisible = await isReplayPanelVisible(page)
       if (isVisible) {
         expect(displayText).toContain("No data")
       }
@@ -140,11 +137,11 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Day Navigation", () => {
     test("displays formatted date correctly", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const dayDisplay = page.locator(
-        '[data-maps--maplibre-target="timelineDayDisplay"]',
+        '[data-maps--maplibre-target="replayDayDisplay"]',
       )
       const displayText = await dayDisplay.textContent()
 
@@ -153,11 +150,11 @@ test.describe("Timeline Panel", () => {
     })
 
     test("shows day count and point count", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const dayCount = page.locator(
-        '[data-maps--maplibre-target="timelineDayCount"]',
+        '[data-maps--maplibre-target="replayDayCount"]',
       )
       const countText = await dayCount.textContent()
 
@@ -167,12 +164,12 @@ test.describe("Timeline Panel", () => {
     })
 
     test("previous button navigates to earlier day", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // First navigate to day 2 (if possible)
       const nextButton = page.locator(
-        '[data-maps--maplibre-target="timelineNextDayButton"]',
+        '[data-maps--maplibre-target="replayNextDayButton"]',
       )
       const nextDisabled = await nextButton.isDisabled()
 
@@ -183,13 +180,13 @@ test.describe("Timeline Panel", () => {
 
       // Get current day display
       const dayDisplay = page.locator(
-        '[data-maps--maplibre-target="timelineDayDisplay"]',
+        '[data-maps--maplibre-target="replayDayDisplay"]',
       )
       const initialDate = await dayDisplay.textContent()
 
       // Click previous
       const prevButton = page.locator(
-        '[data-maps--maplibre-target="timelinePrevDayButton"]',
+        '[data-maps--maplibre-target="replayPrevDayButton"]',
       )
       const prevDisabled = await prevButton.isDisabled()
 
@@ -203,16 +200,16 @@ test.describe("Timeline Panel", () => {
     })
 
     test("next button navigates to later day", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const dayDisplay = page.locator(
-        '[data-maps--maplibre-target="timelineDayDisplay"]',
+        '[data-maps--maplibre-target="replayDayDisplay"]',
       )
       const initialDate = await dayDisplay.textContent()
 
       const nextButton = page.locator(
-        '[data-maps--maplibre-target="timelineNextDayButton"]',
+        '[data-maps--maplibre-target="replayNextDayButton"]',
       )
       const nextDisabled = await nextButton.isDisabled()
 
@@ -226,12 +223,12 @@ test.describe("Timeline Panel", () => {
     })
 
     test("prev button disabled on first day", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Navigate to first day
       const prevButton = page.locator(
-        '[data-maps--maplibre-target="timelinePrevDayButton"]',
+        '[data-maps--maplibre-target="replayPrevDayButton"]',
       )
 
       // Keep clicking prev until disabled
@@ -248,12 +245,12 @@ test.describe("Timeline Panel", () => {
     })
 
     test("next button disabled on last day", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Navigate to last day
       const nextButton = page.locator(
-        '[data-maps--maplibre-target="timelineNextDayButton"]',
+        '[data-maps--maplibre-target="replayNextDayButton"]',
       )
 
       // Keep clicking next until disabled
@@ -272,11 +269,11 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Scrubber Interaction", () => {
     test("scrubber has correct min and max attributes", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const scrubber = page.locator(
-        '[data-maps--maplibre-target="timelineScrubber"]',
+        '[data-maps--maplibre-target="replayScrubber"]',
       )
       const min = await scrubber.getAttribute("min")
       const max = await scrubber.getAttribute("max")
@@ -286,15 +283,15 @@ test.describe("Timeline Panel", () => {
     })
 
     test("moving scrubber updates time display", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const timeDisplay = page.locator(
-        '[data-maps--maplibre-target="timelineTimeDisplay"]',
+        '[data-maps--maplibre-target="replayTimeDisplay"]',
       )
 
       // Set scrubber to 8:00 AM (480 minutes)
-      await setScrubberValue(page, 480)
+      await setReplayScrubberValue(page, 480)
       await page.waitForTimeout(200)
 
       const displayText = await timeDisplay.textContent()
@@ -303,33 +300,43 @@ test.describe("Timeline Panel", () => {
     })
 
     test("scrubbing shows marker on map", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      // Find a minute with data by checking state
-      const state = await getTimelineState(page)
+      const state = await getReplayState(page)
       if (state?.hasData) {
-        // Move scrubber and check for marker
-        await setScrubberValue(page, 720) // Noon
+        // Move scrubber and check for replay marker layer
+        await setReplayScrubberValue(page, 720) // Noon
         await page.waitForTimeout(500)
 
-        const markerState = await getTimelineMarkerState(page)
-        // Marker might be visible if there's data at that time
-        // Just verify the function doesn't error
-        expect(markerState).toBeDefined()
+        const hasMarkerLayer = await page.evaluate(() => {
+          const el = document.querySelector(
+            '[data-controller*="maps--maplibre"]',
+          )
+          if (!el) return false
+          const app = window.Stimulus || window.Application
+          if (!app) return false
+          const ctrl = app.getControllerForElementAndIdentifier(
+            el,
+            "maps--maplibre",
+          )
+          const layer = ctrl?.layerManager?.getLayer("replayMarker")
+          return layer !== undefined
+        })
+        expect(hasMarkerLayer).toBe(true)
       }
     })
 
-    test("shows no data indicator for empty minutes", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("shows no-data indicator for empty minutes", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const dataIndicator = page.locator(
-        '[data-maps--maplibre-target="timelineDataIndicator"]',
+        '[data-maps--maplibre-target="replayDataIndicator"]',
       )
 
       // Move scrubber to very early morning (likely no data)
-      await setScrubberValue(page, 0)
+      await setReplayScrubberValue(page, 0)
       await page.waitForTimeout(300)
 
       // The indicator may or may not be visible depending on actual data
@@ -337,22 +344,21 @@ test.describe("Timeline Panel", () => {
       await expect(dataIndicator).toBeAttached()
     })
 
-    test("hides no data indicator when data exists", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("hides no-data indicator when data exists", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const dataIndicator = page.locator(
-        '[data-maps--maplibre-target="timelineDataIndicator"]',
+        '[data-maps--maplibre-target="replayDataIndicator"]',
       )
 
-      // Get timeline state to find a good time
-      const state = await getTimelineState(page)
+      const state = await getReplayState(page)
       if (state && state.currentDayPointCount > 0) {
         // Try to find a minute with data by checking various times
-        const testMinutes = [480, 540, 600, 720, 840] // 8am, 9am, 10am, noon, 2pm
+        const testMinutes = [480, 540, 600, 720, 840]
 
         for (const minute of testMinutes) {
-          await setScrubberValue(page, minute)
+          await setReplayScrubberValue(page, minute)
           await page.waitForTimeout(200)
 
           const isHidden = await dataIndicator.evaluate((el) =>
@@ -369,13 +375,13 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Data Density", () => {
     test("displays density segments", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const densityContainer = page.locator(
-        '[data-maps--maplibre-target="timelineDensityContainer"]',
+        '[data-maps--maplibre-target="replayDensityContainer"]',
       )
-      const bars = densityContainer.locator(".timeline-density-bar")
+      const bars = densityContainer.locator(".replay-density-bar")
 
       // Should have 48 segments (30-minute intervals)
       const count = await bars.count()
@@ -383,12 +389,12 @@ test.describe("Timeline Panel", () => {
     })
 
     test("segments with data have has-data class", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      const state = await getTimelineState(page)
+      const state = await getReplayState(page)
       if (state && state.currentDayPointCount > 0) {
-        const barsWithData = page.locator(".timeline-density-bar.has-data")
+        const barsWithData = page.locator(".replay-density-bar.has-data")
         const count = await barsWithData.count()
 
         // If there's data, at least one segment should have data
@@ -397,15 +403,13 @@ test.describe("Timeline Panel", () => {
     })
 
     test("high density segments have high-density class", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      const state = await getTimelineState(page)
+      const state = await getReplayState(page)
       if (state && state.currentDayPointCount > 10) {
         // Check for high-density segments
-        const highDensityBars = page.locator(
-          ".timeline-density-bar.high-density",
-        )
+        const highDensityBars = page.locator(".replay-density-bar.high-density")
         const count = await highDensityBars.count()
 
         // May or may not have high-density segments, just verify no error
@@ -414,21 +418,21 @@ test.describe("Timeline Panel", () => {
     })
 
     test("density updates when changing days", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const densityContainer = page.locator(
-        '[data-maps--maplibre-target="timelineDensityContainer"]',
+        '[data-maps--maplibre-target="replayDensityContainer"]',
       )
 
       // Count bars with data on current day
       const initialDataBars = await densityContainer
-        .locator(".timeline-density-bar.has-data")
+        .locator(".replay-density-bar.has-data")
         .count()
 
       // Navigate to next day if possible
       const nextButton = page.locator(
-        '[data-maps--maplibre-target="timelineNextDayButton"]',
+        '[data-maps--maplibre-target="replayNextDayButton"]',
       )
       if (!(await nextButton.isDisabled())) {
         await nextButton.click()
@@ -436,7 +440,7 @@ test.describe("Timeline Panel", () => {
 
         // Get new count (may be same or different)
         const newDataBars = await densityContainer
-          .locator(".timeline-density-bar.has-data")
+          .locator(".replay-density-bar.has-data")
           .count()
 
         // Just verify counts are valid numbers
@@ -446,21 +450,20 @@ test.describe("Timeline Panel", () => {
     })
   })
 
-  test.describe("Replay Controls", () => {
-    test("play button starts replay", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+  test.describe("Playback Controls", () => {
+    test("play button starts playback", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      // Verify timeline has data before attempting replay
-      const state = await getTimelineState(page)
+      // Verify replay has data before attempting playback
+      const state = await getReplayState(page)
       if (!state || !state.hasData || state.currentDayPointCount === 0) {
-        // No data available for replay — skip assertions that require data
         test.skip()
         return
       }
 
       const playButton = page.locator(
-        '[data-maps--maplibre-target="timelinePlayButton"]',
+        '[data-maps--maplibre-target="replayPlayButton"]',
       )
       await playButton.click()
       await page.waitForTimeout(500)
@@ -470,23 +473,23 @@ test.describe("Timeline Panel", () => {
 
       // Play icon should be hidden, pause icon visible
       const playIcon = page.locator(
-        '[data-maps--maplibre-target="timelinePlayIcon"]',
+        '[data-maps--maplibre-target="replayPlayIcon"]',
       )
       const pauseIcon = page.locator(
-        '[data-maps--maplibre-target="timelinePauseIcon"]',
+        '[data-maps--maplibre-target="replayPauseIcon"]',
       )
 
       await expect(playIcon).toHaveClass(/hidden/)
       await expect(pauseIcon).not.toHaveClass(/hidden/)
     })
 
-    test("pause button stops replay", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("pause button stops playback", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Start replay
       const playButton = page.locator(
-        '[data-maps--maplibre-target="timelinePlayButton"]',
+        '[data-maps--maplibre-target="replayPlayButton"]',
       )
       await playButton.click()
       await page.waitForTimeout(500)
@@ -504,36 +507,36 @@ test.describe("Timeline Panel", () => {
 
       // Play icon should be visible, pause icon hidden
       const playIcon = page.locator(
-        '[data-maps--maplibre-target="timelinePlayIcon"]',
+        '[data-maps--maplibre-target="replayPlayIcon"]',
       )
       const pauseIcon = page.locator(
-        '[data-maps--maplibre-target="timelinePauseIcon"]',
+        '[data-maps--maplibre-target="replayPauseIcon"]',
       )
 
       await expect(playIcon).not.toHaveClass(/hidden/)
       await expect(pauseIcon).toHaveClass(/hidden/)
     })
 
-    test("replay advances scrubber over time", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("playback advances scrubber over time", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Set scrubber to beginning
-      await setScrubberValue(page, 0)
+      await setReplayScrubberValue(page, 0)
       await page.waitForTimeout(200)
 
-      const initialValue = await getScrubberValue(page)
+      const initialValue = await getReplayScrubberValue(page)
 
       // Start replay
       const playButton = page.locator(
-        '[data-maps--maplibre-target="timelinePlayButton"]',
+        '[data-maps--maplibre-target="replayPlayButton"]',
       )
       await playButton.click()
 
       // Wait for some replay advancement
       await page.waitForTimeout(2000)
 
-      const newValue = await getScrubberValue(page)
+      const newValue = await getReplayScrubberValue(page)
 
       // Stop replay
       await playButton.click()
@@ -543,17 +546,17 @@ test.describe("Timeline Panel", () => {
     })
 
     test("speed slider changes speed label", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const speedSlider = page.locator(
-        '[data-maps--maplibre-target="timelineSpeedSlider"]',
+        '[data-maps--maplibre-target="replaySpeedSlider"]',
       )
       const speedLabel = page.locator(
-        '[data-maps--maplibre-target="timelineSpeedLabel"]',
+        '[data-maps--maplibre-target="replaySpeedLabel"]',
       )
 
-      // Test different speed settings
+      // Test different speed settings (slider 1-4 maps to 1x, 2x, 5x, 10x)
       const speedSettings = [1, 2, 3, 4]
       const expectedLabels = ["1x", "2x", "5x", "10x"]
 
@@ -567,15 +570,15 @@ test.describe("Timeline Panel", () => {
       }
     })
 
-    test("replay continues to next day at day end", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("playback continues to next day at day end", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      const state = await getTimelineState(page)
+      const state = await getReplayState(page)
       if (state && state.dayCount > 1) {
         // Navigate to first day
         const prevButton = page.locator(
-          '[data-maps--maplibre-target="timelinePrevDayButton"]',
+          '[data-maps--maplibre-target="replayPrevDayButton"]',
         )
         while (!(await prevButton.isDisabled())) {
           await prevButton.click()
@@ -583,23 +586,22 @@ test.describe("Timeline Panel", () => {
         }
 
         const dayCount = page.locator(
-          '[data-maps--maplibre-target="timelineDayCount"]',
+          '[data-maps--maplibre-target="replayDayCount"]',
         )
-        const _initialDayText = await dayCount.textContent()
 
         // Set speed to maximum and start from end of day
         const speedSlider = page.locator(
-          '[data-maps--maplibre-target="timelineSpeedSlider"]',
+          '[data-maps--maplibre-target="replaySpeedSlider"]',
         )
         await speedSlider.fill("4")
         await speedSlider.dispatchEvent("input")
 
-        await setScrubberValue(page, 1400) // Near end of day
+        await setReplayScrubberValue(page, 1400) // Near end of day
         await page.waitForTimeout(200)
 
         // Start replay and wait for potential day change
         const playButton = page.locator(
-          '[data-maps--maplibre-target="timelinePlayButton"]',
+          '[data-maps--maplibre-target="replayPlayButton"]',
         )
         await playButton.click()
         await page.waitForTimeout(2000) // Wait for potential advancement
@@ -613,13 +615,13 @@ test.describe("Timeline Panel", () => {
       }
     })
 
-    test("replay stops at end of last day", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("playback stops at end of last day", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Navigate to last day
       const nextButton = page.locator(
-        '[data-maps--maplibre-target="timelineNextDayButton"]',
+        '[data-maps--maplibre-target="replayNextDayButton"]',
       )
       while (!(await nextButton.isDisabled())) {
         await nextButton.click()
@@ -628,18 +630,18 @@ test.describe("Timeline Panel", () => {
 
       // Set speed to maximum
       const speedSlider = page.locator(
-        '[data-maps--maplibre-target="timelineSpeedSlider"]',
+        '[data-maps--maplibre-target="replaySpeedSlider"]',
       )
       await speedSlider.fill("4")
       await speedSlider.dispatchEvent("input")
 
       // Set scrubber near end
-      await setScrubberValue(page, 1430)
+      await setReplayScrubberValue(page, 1430)
       await page.waitForTimeout(200)
 
       // Start replay
       const playButton = page.locator(
-        '[data-maps--maplibre-target="timelinePlayButton"]',
+        '[data-maps--maplibre-target="replayPlayButton"]',
       )
       await playButton.click()
       await page.waitForTimeout(2000)
@@ -650,7 +652,7 @@ test.describe("Timeline Panel", () => {
       // If stopped, verify play icon is visible
       if (!isPlaying) {
         const playIcon = page.locator(
-          '[data-maps--maplibre-target="timelinePlayIcon"]',
+          '[data-maps--maplibre-target="replayPlayIcon"]',
         )
         await expect(playIcon).not.toHaveClass(/hidden/)
       }
@@ -659,11 +661,11 @@ test.describe("Timeline Panel", () => {
 
   test.describe("Cycle Controls", () => {
     test("cycle controls hidden by default", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const cycleControls = page.locator(
-        '[data-maps--maplibre-target="timelineCycleControls"]',
+        '[data-maps--maplibre-target="replayCycleControls"]',
       )
       await expect(cycleControls).toHaveClass(/hidden/)
     })
@@ -671,22 +673,21 @@ test.describe("Timeline Panel", () => {
     test("cycle controls appear when multiple points at same minute", async ({
       page,
     }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      // This test requires finding a minute with multiple points
       // Try various minutes to find one with multiple points
       const testMinutes = [480, 540, 600, 660, 720, 780, 840, 900]
       const cycleControls = page.locator(
-        '[data-maps--maplibre-target="timelineCycleControls"]',
+        '[data-maps--maplibre-target="replayCycleControls"]',
       )
       const pointCounter = page.locator(
-        '[data-maps--maplibre-target="timelinePointCounter"]',
+        '[data-maps--maplibre-target="replayPointCounter"]',
       )
 
       let foundMultiple = false
       for (const minute of testMinutes) {
-        await setScrubberValue(page, minute)
+        await setReplayScrubberValue(page, minute)
         await page.waitForTimeout(200)
 
         const isHidden = await cycleControls.evaluate((el) =>
@@ -705,31 +706,29 @@ test.describe("Timeline Panel", () => {
         }
       }
 
-      // If no multiple points found, that's ok - just verify the element exists
+      // If no multiple points found, that's ok - verify the element exists
       if (!foundMultiple) {
         await expect(cycleControls).toBeAttached()
       }
     })
 
     test("next cycle button advances to next point", async ({ page }) => {
-      // Open timeline and close settings panel to avoid click interception
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      // Find a minute with multiple points
       const testMinutes = [
         480, 540, 600, 660, 720, 780, 840, 900, 960, 1020, 1080, 1140,
       ]
       const cycleControls = page.locator(
-        '[data-maps--maplibre-target="timelineCycleControls"]',
+        '[data-maps--maplibre-target="replayCycleControls"]',
       )
       const pointCounter = page.locator(
-        '[data-maps--maplibre-target="timelinePointCounter"]',
+        '[data-maps--maplibre-target="replayPointCounter"]',
       )
 
       let foundMultiPoint = false
       for (const minute of testMinutes) {
-        await setScrubberValue(page, minute)
+        await setReplayScrubberValue(page, minute)
         await page.waitForTimeout(150)
 
         const isHidden = await cycleControls.evaluate((el) =>
@@ -753,7 +752,6 @@ test.describe("Timeline Panel", () => {
             const newMatch = newCounterText.match(/Point (\d+) of (\d+)/)
             if (newMatch) {
               const newPoint = parseInt(newMatch[1], 10)
-              // Should have advanced (or wrapped)
               expect(newPoint).not.toBe(initialPoint)
             }
             break
@@ -762,31 +760,28 @@ test.describe("Timeline Panel", () => {
       }
 
       // If no multi-point minute found in test data, test passes
-      // This is acceptable as the feature works but test data doesn't have this scenario
       if (!foundMultiPoint) {
         expect(true).toBe(true)
       }
     })
 
     test("previous cycle button goes to previous point", async ({ page }) => {
-      // Open timeline and close settings panel to avoid click interception
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      // Find a minute with multiple points
       const testMinutes = [
         480, 540, 600, 660, 720, 780, 840, 900, 960, 1020, 1080, 1140,
       ]
       const cycleControls = page.locator(
-        '[data-maps--maplibre-target="timelineCycleControls"]',
+        '[data-maps--maplibre-target="replayCycleControls"]',
       )
       const pointCounter = page.locator(
-        '[data-maps--maplibre-target="timelinePointCounter"]',
+        '[data-maps--maplibre-target="replayPointCounter"]',
       )
 
       let foundMultiPoint = false
       for (const minute of testMinutes) {
-        await setScrubberValue(page, minute)
+        await setReplayScrubberValue(page, minute)
         await page.waitForTimeout(150)
 
         const isHidden = await cycleControls.evaluate((el) =>
@@ -837,11 +832,11 @@ test.describe("Timeline Panel", () => {
     test("cycle controls hide when moving to single-point minute", async ({
       page,
     }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const cycleControls = page.locator(
-        '[data-maps--maplibre-target="timelineCycleControls"]',
+        '[data-maps--maplibre-target="replayCycleControls"]',
       )
 
       // First, find a minute with multiple points
@@ -849,7 +844,7 @@ test.describe("Timeline Panel", () => {
       let foundMulti = false
 
       for (const minute of testMinutes) {
-        await setScrubberValue(page, minute)
+        await setReplayScrubberValue(page, minute)
         await page.waitForTimeout(200)
 
         const isHidden = await cycleControls.evaluate((el) =>
@@ -863,8 +858,7 @@ test.describe("Timeline Panel", () => {
 
       if (foundMulti) {
         // Now move to a different time and verify controls hide
-        // Try times that are less likely to have multiple points
-        await setScrubberValue(page, 180) // 3 AM
+        await setReplayScrubberValue(page, 180) // 3 AM
         await page.waitForTimeout(300)
 
         const isHidden = await cycleControls.evaluate((el) =>
@@ -876,14 +870,14 @@ test.describe("Timeline Panel", () => {
     })
   })
 
-  test.describe("Timeline Interactions", () => {
-    test("replay stops when closing timeline", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+  test.describe("Replay Interactions", () => {
+    test("playback stops when closing replay panel", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Start replay
       const playButton = page.locator(
-        '[data-maps--maplibre-target="timelinePlayButton"]',
+        '[data-maps--maplibre-target="replayPlayButton"]',
       )
       await playButton.click()
       await page.waitForTimeout(500)
@@ -891,13 +885,8 @@ test.describe("Timeline Panel", () => {
       let isPlaying = await isReplayActive(page)
       expect(isPlaying).toBe(true)
 
-      // Close settings panel first so it doesn't intercept clicks
-      const closeSettingsButton = page.locator('button[title="Close panel"]')
-      await closeSettingsButton.click()
-      await page.waitForTimeout(300)
-
-      // Close the timeline panel
-      const closeButton = page.locator(".timeline-close")
+      // Close the replay panel
+      const closeButton = page.locator(".replay-close")
       await closeButton.click()
       await page.waitForTimeout(500)
 
@@ -905,7 +894,7 @@ test.describe("Timeline Panel", () => {
       expect(isPlaying).toBe(false)
     })
 
-    test("timeline and track selection coexistence", async ({ page }) => {
+    test("replay and track selection coexistence", async ({ page }) => {
       // Collect console errors
       const consoleErrors = []
       page.on("console", (msg) => {
@@ -914,8 +903,8 @@ test.describe("Timeline Panel", () => {
         }
       })
 
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Try clicking on the map where a track might be
       const mapCanvas = page.locator(".maplibregl-canvas")
@@ -933,30 +922,28 @@ test.describe("Timeline Panel", () => {
       )
       expect(relevantErrors).toEqual([])
 
-      // Timeline should still be functional
-      const isVisible = await isTimelinePanelVisible(page)
+      // Replay panel should still be functional
+      const isVisible = await isReplayPanelVisible(page)
       expect(isVisible).toBe(true)
     })
 
     test("day navigation resets scrubber", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Set scrubber to a known position
-      await setScrubberValue(page, 720)
+      await setReplayScrubberValue(page, 720)
       await page.waitForTimeout(200)
-
-      const _initialValue = await getScrubberValue(page)
 
       // Navigate to next day if possible
       const nextButton = page.locator(
-        '[data-maps--maplibre-target="timelineNextDayButton"]',
+        '[data-maps--maplibre-target="replayNextDayButton"]',
       )
       if (!(await nextButton.isDisabled())) {
         await nextButton.click()
         await page.waitForTimeout(500)
 
-        const newValue = await getScrubberValue(page)
+        const newValue = await getReplayScrubberValue(page)
         // After day change the scrubber may reset or change
         // Just verify it's a valid value
         expect(newValue).toBeGreaterThanOrEqual(0)
@@ -965,31 +952,31 @@ test.describe("Timeline Panel", () => {
     })
 
     test("marker source exists after scrub", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
-      const state = await getTimelineState(page)
+      const state = await getReplayState(page)
       if (state?.hasData) {
         // Scrub to noon where data might exist
-        await setScrubberValue(page, 720)
+        await setReplayScrubberValue(page, 720)
         await page.waitForTimeout(500)
 
-        const hasSource = await page.evaluate(() => {
-          const element = document.querySelector(
+        const hasMarkerLayer = await page.evaluate(() => {
+          const el = document.querySelector(
             '[data-controller*="maps--maplibre"]',
           )
-          if (!element) return false
+          if (!el) return false
           const app = window.Stimulus || window.Application
           if (!app) return false
-          const controller = app.getControllerForElementAndIdentifier(
-            element,
+          const ctrl = app.getControllerForElementAndIdentifier(
+            el,
             "maps--maplibre",
           )
-          if (!controller?.map) return false
-          return !!controller.map.getSource("timeline-marker-source")
+          const layer = ctrl?.layerManager?.getLayer("replayMarker")
+          return layer !== undefined
         })
 
-        expect(hasSource).toBe(true)
+        expect(hasMarkerLayer).toBe(true)
       }
     })
   })
@@ -1014,15 +1001,15 @@ test.describe("Timeline Panel", () => {
       await toolsTab.click()
       await page.waitForTimeout(300)
 
-      // Click Timeline button
-      const timelineButton = page.locator(
-        '[data-tab-content="tools"] button:has-text("Timeline")',
+      // Click Replay button
+      const replayButton = page.locator(
+        '[data-tab-content="tools"] button:has-text("Replay")',
       )
-      await timelineButton.click()
+      await replayButton.click()
       await page.waitForTimeout(500)
 
-      // Should not crash - either shows panel with "No data" or doesn't open
-      const panel = page.locator('[data-maps--maplibre-target="timelinePanel"]')
+      // Should not crash - the panel element should exist
+      const panel = page.locator('[data-maps--maplibre-target="replayPanel"]')
       await expect(panel).toBeAttached()
     })
 
@@ -1036,14 +1023,14 @@ test.describe("Timeline Panel", () => {
       await waitForLoadingComplete(page)
       await page.waitForTimeout(500)
 
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       const prevButton = page.locator(
-        '[data-maps--maplibre-target="timelinePrevDayButton"]',
+        '[data-maps--maplibre-target="replayPrevDayButton"]',
       )
       const nextButton = page.locator(
-        '[data-maps--maplibre-target="timelineNextDayButton"]',
+        '[data-maps--maplibre-target="replayNextDayButton"]',
       )
 
       // With single day, both should be disabled
@@ -1054,9 +1041,9 @@ test.describe("Timeline Panel", () => {
       expect(nextDisabled).toBe(true)
     })
 
-    test("timeline survives main date navigation", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("replay survives main date navigation", async ({ page }) => {
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Change the main date range
       const startInput = page.locator(
@@ -1077,38 +1064,36 @@ test.describe("Timeline Panel", () => {
       await waitForLoadingComplete(page)
       await page.waitForTimeout(1000)
 
-      // Timeline panel may be hidden after navigation, open it again
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      // Replay panel may be hidden after navigation, open it again
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Should work without errors
-      const isVisible = await isTimelinePanelVisible(page)
+      const isVisible = await isReplayPanelVisible(page)
       expect(isVisible).toBe(true)
     })
 
-    test("closing settings panel does not affect timeline", async ({
-      page,
-    }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+    test("closing settings panel does not affect replay", async ({ page }) => {
+      await openReplayPanel(page)
+      await waitForReplayPanel(page)
 
       // Close settings panel
       const closeButton = page.locator('button[title="Close panel"]')
       await closeButton.click()
       await page.waitForTimeout(300)
 
-      // Timeline should still be visible
-      const isVisible = await isTimelinePanelVisible(page)
+      // Replay should still be visible
+      const isVisible = await isReplayPanelVisible(page)
       expect(isVisible).toBe(true)
     })
 
     test("rapid scrubber movements handled correctly", async ({ page }) => {
-      await openTimelinePanel(page, true)
-      await waitForTimelinePanel(page)
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page)
 
       // Rapidly move scrubber
       const scrubber = page.locator(
-        '[data-maps--maplibre-target="timelineScrubber"]',
+        '[data-maps--maplibre-target="replayScrubber"]',
       )
 
       for (let i = 0; i < 10; i++) {
@@ -1120,7 +1105,7 @@ test.describe("Timeline Panel", () => {
 
       // Should not crash - verify time display is still updating
       const timeDisplay = page.locator(
-        '[data-maps--maplibre-target="timelineTimeDisplay"]',
+        '[data-maps--maplibre-target="replayTimeDisplay"]',
       )
       const displayText = await timeDisplay.textContent()
       expect(displayText).toBeTruthy()
@@ -1128,11 +1113,11 @@ test.describe("Timeline Panel", () => {
   })
 
   test.describe("On-demand point loading", () => {
-    test("timeline loads points when only tracks layer is enabled", async ({
+    test("replay loads points when only tracks layer is enabled", async ({
       page,
       request,
     }) => {
-      // Step 1: Set enabled_map_layers to only Tracks via API (no point-dependent layers)
+      // Step 1: Set enabled_map_layers to only Tracks via API
       await request.patch("http://localhost:3000/api/v1/settings", {
         headers: {
           Authorization: `Bearer ${API_KEYS.DEMO_USER}`,
@@ -1153,7 +1138,7 @@ test.describe("Timeline Panel", () => {
       await page.waitForTimeout(500)
 
       // Verify points were NOT loaded on initial load
-      const pointsBeforeTimeline = await page.evaluate(() => {
+      const pointsBeforeReplay = await page.evaluate(() => {
         const el = document.querySelector('[data-controller*="maps--maplibre"]')
         if (!el) return null
         const app = window.Stimulus || window.Application
@@ -1164,22 +1149,21 @@ test.describe("Timeline Panel", () => {
         )
         return ctrl?.mapDataManager?.lastLoadedData?.points?.length ?? 0
       })
-      expect(pointsBeforeTimeline).toBe(0)
+      expect(pointsBeforeReplay).toBe(0)
 
-      // Step 3: Open timeline — this should trigger ensurePointsLoaded()
-      await openTimelinePanel(page, true)
-      // Use a longer timeout since points need to be fetched on demand
-      await waitForTimelinePanel(page, 15000)
+      // Step 3: Open replay — this should trigger ensurePointsLoaded()
+      await openReplayPanel(page, true)
+      await waitForReplayPanel(page, 15000)
 
-      // Step 4: Verify timeline has data
-      const state = await getTimelineState(page)
+      // Step 4: Verify replay has data
+      const state = await getReplayState(page)
       expect(state).not.toBeNull()
       expect(state.hasData).toBe(true)
       expect(state.currentDayPointCount).toBeGreaterThan(0)
 
-      // Step 5: Verify replay works
+      // Step 5: Verify playback works
       const playButton = page.locator(
-        '[data-maps--maplibre-target="timelinePlayButton"]',
+        '[data-maps--maplibre-target="replayPlayButton"]',
       )
       await playButton.click()
       await page.waitForTimeout(500)

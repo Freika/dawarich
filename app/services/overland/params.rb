@@ -25,6 +25,7 @@ class Overland::Params
         ssid:               point[:properties][:wifi],
         accuracy:           point[:properties][:horizontal_accuracy],
         vertical_accuracy:  point[:properties][:vertical_accuracy],
+        motion_data:        Points::MotionDataExtractor.from_overland_properties(point[:properties]),
         raw_data:           point
       }
     end.compact

@@ -52,11 +52,28 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
         expect(Geocoder).to have_received(:search).with([point.lat, point.lon])
       end
+
+      context 'when store_geodata? is disabled' do
+        before do
+          allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
+        end
+
+        it 'does not store geodata' do
+          expect { fetch_data }.not_to(change { point.reload.geodata })
+        end
+
+        it 'still updates city and country' do
+          expect { fetch_data }.to change { point.reload.city }
+            .from(nil).to('Berlin')
+        end
+      end
     end
 
     context 'when point has city and country' do
       let(:country) { create(:country, name: 'Test Country') }
-      let(:point) { create(:point, :with_geodata, city: 'Test City', country_id: country.id, reverse_geocoded_at: Time.current) }
+      let(:point) do
+        create(:point, :with_geodata, city: 'Test City', country_id: country.id, reverse_geocoded_at: Time.current)
+      end
 
       before do
         allow(Geocoder).to receive(:search).and_return(

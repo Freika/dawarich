@@ -60,7 +60,12 @@ Rails.application.routes.draw do
 
   resources :imports
   resources :visits, only: %i[index update]
-  resources :places, only: %i[index destroy]
+  resources :areas, only: [:create]
+  resources :places, only: %i[index destroy create update] do
+    collection do
+      get 'nearby'
+    end
+  end
   resources :exports, only: %i[index create destroy]
   resources :trips
   resources :tags, except: [:show]
@@ -137,6 +142,9 @@ Rails.application.routes.draw do
   namespace :map do
     get '/v1', to: 'leaflet#index', as: :v1
     get '/v2', to: 'maplibre#index', as: :v2
+    resources :timeline_feeds, only: [:index] do
+      get :track_info, on: :member
+    end
   end
 
   # Backward compatibility redirects
@@ -215,6 +223,8 @@ Rails.application.routes.draw do
       resources :tracks, only: %i[index show] do
         resources :points, only: [:index], controller: 'tracks/points'
       end
+
+      resources :timeline, only: [:index]
 
       namespace :maps do
         resources :hexagons, only: [:index] do

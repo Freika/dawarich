@@ -4,8 +4,8 @@ module TransportationModes
   # Extracts transportation mode data from source-provided activity information.
   # Supports Overland API motion/activity fields and Google Takeout activity types.
   #
-  # This extractor checks the raw_data field of points to find activity information
-  # that was provided by the original data source (phone sensors, Google, etc.)
+  # This extractor checks the motion_data field of points first (new data),
+  # falling back to raw_data for backward compatibility with existing points.
   #
   class SourceDataExtractor
     # Overland API motion values mapping
@@ -80,9 +80,9 @@ module TransportationModes
 
     def extract_modes_from_points
       @points.map.with_index do |point, index|
-        raw_data = point.raw_data || {}
-        mode = extract_mode_from_raw_data(raw_data)
-        source = detect_source(raw_data)
+        data = point.motion_data.presence || point.raw_data || {}
+        mode = extract_mode_from_raw_data(data)
+        source = detect_source(data)
 
         {
           index: index,
@@ -93,7 +93,7 @@ module TransportationModes
       end
     end
 
-    def extract_mode_from_raw_data(raw_data)
+    def extract_mode_from_raw_data(raw_data) # rubocop:disable Metrics/PerceivedComplexity
       # Handle nil or non-hash raw_data
       return :unknown unless raw_data.is_a?(Hash)
 
@@ -119,7 +119,7 @@ module TransportationModes
       :unknown
     end
 
-    def extract_overland_mode(data)
+    def extract_overland_mode(data) # rubocop:disable Metrics/PerceivedComplexity
       # Skip if data is not a Hash (could be an array from incorrect raw_data format)
       return nil unless data.is_a?(Hash)
 
@@ -149,7 +149,7 @@ module TransportationModes
       nil
     end
 
-    def extract_google_mode(data)
+    def extract_google_mode(data) # rubocop:disable Metrics/PerceivedComplexity
       # Google Phone Takeout format: activityRecord.probableActivities
       activity_record = data[:activityRecord] || data[:activity_record]
       if activity_record
@@ -168,7 +168,7 @@ module TransportationModes
       nil
     end
 
-    def extract_most_probable_google_activity(activities)
+    def extract_most_probable_google_activity(activities) # rubocop:disable Metrics/PerceivedComplexity
       return nil unless activities.is_a?(Array) && activities.any?
 
       # Sort by probability/confidence if available
@@ -196,7 +196,7 @@ module TransportationModes
       OWNTRACKS_MODE_MAP[motion_state.to_i]
     end
 
-    def detect_source(raw_data)
+    def detect_source(raw_data) # rubocop:disable Metrics/PerceivedComplexity
       # Handle nil or non-hash raw_data
       return 'unknown' unless raw_data.is_a?(Hash)
 
@@ -268,7 +268,7 @@ module TransportationModes
     #
     # @param segments [Array<Hash>] Raw segments with :mode, :start_index, :point_indices, etc.
     # @return [Array<Hash>] Segments with unknown points merged into adjacent segments
-    def merge_unknown_into_adjacent_segments(segments)
+    def merge_unknown_into_adjacent_segments(segments) # rubocop:disable Metrics/PerceivedComplexity
       return segments if segments.empty?
       return segments if segments.none? { |s| s[:mode] == :unknown }
 

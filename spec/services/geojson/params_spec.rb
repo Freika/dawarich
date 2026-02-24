@@ -17,7 +17,9 @@ RSpec.describe Geojson::Params do
     end
 
     it 'returns the correct data for each point' do
-      expect(subject.first).to eq(
+      first = subject.first
+
+      expect(first).to include(
         lonlat: 'POINT(0.1 0.1)',
         battery_status: nil,
         battery: nil,
@@ -28,14 +30,12 @@ RSpec.describe Geojson::Params do
         ssid: nil,
         accuracy: 1,
         vertical_accuracy: 1,
+        motion_data: {},
         raw_data: {
           'type' => 'Feature',
           'geometry' => {
             'type' => 'Point',
-            'coordinates' => [
-              '0.1',
-              '0.1'
-            ]
+            'coordinates' => %w[0.1 0.1]
           },
           'properties' => {
             'battery_status' => 'unplugged',
@@ -64,13 +64,17 @@ RSpec.describe Geojson::Params do
           }
         }
       )
+      expect(first[:raw_data]).to be_a(Hash)
+      expect(first[:raw_data]['type']).to eq('Feature')
     end
 
     context 'when the json is exported from GPSLogger' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/geojson/gpslogger_example.json') }
 
       it 'returns the correct data for each point' do
-        expect(subject.first).to eq(
+        first = subject.first
+
+        expect(first).to include(
           lonlat: 'POINT(106.64234449272531 10.758321212464024)',
           battery_status: nil,
           battery: nil,
@@ -81,12 +85,10 @@ RSpec.describe Geojson::Params do
           ssid: nil,
           accuracy: 4.7551565,
           vertical_accuracy: nil,
+          motion_data: {},
           raw_data: {
             'geometry' => {
-              'coordinates' => [
-                106.64234449272531,
-                10.758321212464024
-              ],
+              'coordinates' => [106.64234449272531, 10.758321212464024],
               'type' => 'Point'
             },
             'properties' => {
@@ -100,6 +102,8 @@ RSpec.describe Geojson::Params do
             'type' => 'Feature'
           }
         )
+        expect(first[:raw_data]).to be_a(Hash)
+        expect(first[:raw_data]['type']).to eq('Feature')
       end
     end
 
@@ -107,7 +111,9 @@ RSpec.describe Geojson::Params do
       let(:file_path) { Rails.root.join('spec/fixtures/files/geojson/google_takeout_example.json') }
 
       it 'returns the correct data for each point' do
-        expect(subject.first).to eq(
+        first = subject.first
+
+        expect(first).to include(
           lonlat: 'POINT(28 36)',
           battery_status: nil,
           battery: nil,
@@ -118,12 +124,10 @@ RSpec.describe Geojson::Params do
           ssid: nil,
           accuracy: nil,
           vertical_accuracy: nil,
+          motion_data: {},
           raw_data: {
             'geometry' => {
-              'coordinates' => [
-                28,
-                36
-              ],
+              'coordinates' => [28, 36],
               'type' => 'Point'
             },
             'properties' => {
@@ -132,6 +136,8 @@ RSpec.describe Geojson::Params do
             'type' => 'Feature'
           }
         )
+        expect(first[:raw_data]).to be_a(Hash)
+        expect(first[:raw_data]['type']).to eq('Feature')
       end
     end
   end

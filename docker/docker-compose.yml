@@ -60,7 +60,7 @@ services:
     command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: on-failure
     environment:
-      RAILS_ENV: ${RAILS_ENV:-development}
+      RAILS_ENV: ${RAILS_ENV:-production}
       REDIS_URL: ${REDIS_URL:-redis://dawarich_redis:6379}
       DATABASE_HOST: ${DATABASE_HOST:-dawarich_db}
       DATABASE_PORT: ${DATABASE_PORT:-5432}
@@ -116,7 +116,7 @@ services:
     command: ['sidekiq']
     restart: on-failure
     environment:
-      RAILS_ENV: ${RAILS_ENV:-development}
+      RAILS_ENV: ${RAILS_ENV:-production}
       REDIS_URL: ${REDIS_URL:-redis://dawarich_redis:6379}
       DATABASE_HOST: ${DATABASE_HOST:-dawarich_db}
       DATABASE_PORT: ${DATABASE_PORT:-5432}

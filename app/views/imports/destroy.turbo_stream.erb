@@ -1,24 +1,3 @@
-<%= turbo_stream.replace "import-#{@import.id}" do %>
-  <tr data-import-id="<%= @import.id %>"
-      id="import-<%= @import.id %>"
-      data-points-total="<%= @import.processed %>"
-      class="hover">
-    <td>
-      <%= @import.name %> (<%= @import.source %>)
-      &nbsp;
-      <%= link_to '🗺️', map_path(import_id: @import.id) %>
-      &nbsp;
-      <%= link_to '📋', points_path(import_id: @import.id) %>
-    </td>
-    <td><%= number_to_human_size(@import.file&.byte_size) || 'N/A' %></td>
-    <td data-points-count>
-      <%= number_with_delimiter @import.processed %>
-    </td>
-    <td data-status-display>deleting</td>
-    <td><%= human_datetime(@import.created_at) %></td>
-    <td class="whitespace-nowrap">
-      <span class="loading loading-spinner loading-sm"></span>
-      <span class="text-sm text-gray-500">Deleting...</span>
-    </td>
-  </tr>
+<%= turbo_stream.replace dom_id(@import) do %>
+  <%= render 'imports/table_row', import: @import %>
 <% end %>
