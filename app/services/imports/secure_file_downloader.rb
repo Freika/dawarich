@@ -29,7 +29,7 @@ class Imports::SecureFileDownloader
         temp_file.rewind
 
         # If file is empty, try alternative download method
-        if temp_file.empty?
+        if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
           Rails.logger.warn('No content received from block download, trying alternative method')
           temp_file.write(storage_attachment.blob.download)
           temp_file.rewind
@@ -52,7 +52,7 @@ class Imports::SecureFileDownloader
       raise
     end
 
-    raise 'Download completed but no content was received' if temp_file.empty?
+    raise 'Download completed but no content was received' if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
 
     verify_temp_file_integrity(temp_file)
     temp_file.path
@@ -147,7 +147,7 @@ class Imports::SecureFileDownloader
   end
 
   def verify_temp_file_integrity(temp_file)
-    return if temp_file.blank?
+    return if temp_file.nil? || temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
 
     # Verify file size
     expected_size = storage_attachment.blob.byte_size
