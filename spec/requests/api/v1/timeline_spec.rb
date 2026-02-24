@@ -76,6 +76,46 @@ RSpec.describe 'Api::V1::Timeline', type: :request do
       end
     end
 
+    context 'with missing date params' do
+      it 'returns bad_request when start_at is missing' do
+        get '/api/v1/timeline', params: { end_at: (day + 1.day).iso8601 }, headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        json = JSON.parse(response.body)
+        expect(json['error']).to include('required')
+      end
+
+      it 'returns bad_request when end_at is missing' do
+        get '/api/v1/timeline', params: { start_at: day.iso8601 }, headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        json = JSON.parse(response.body)
+        expect(json['error']).to include('required')
+      end
+    end
+
+    context 'with date range exceeding maximum' do
+      it 'returns bad_request for ranges over 31 days' do
+        get '/api/v1/timeline', params: {
+          start_at: day.iso8601,
+          end_at: (day + 32.days).iso8601
+        }, headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        json = JSON.parse(response.body)
+        expect(json['error']).to include('31 days')
+      end
+
+      it 'allows exactly 31 days' do
+        get '/api/v1/timeline', params: {
+          start_at: day.iso8601,
+          end_at: (day + 31.days).iso8601
+        }, headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
     context 'without authentication' do
       it 'returns unauthorized' do
         get '/api/v1/timeline', params: params

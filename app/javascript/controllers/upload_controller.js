@@ -19,6 +19,8 @@ export default class extends Controller {
 
   connect() {
     this.isUploading = false
+    this.fileProgress = {}
+    this.totalBytes = 0
     this.inputTarget.addEventListener("change", this.upload.bind(this))
     if (this.hasFormTarget) {
       this.formTarget.addEventListener("submit", this.onSubmit.bind(this))
@@ -57,9 +59,20 @@ export default class extends Controller {
     this.createProgressBar()
     this.clearExistingHiddenFields()
 
+    this.totalBytes = filesToUpload.reduce((sum, f) => sum + f.size, 0)
+    this.fileProgress = {}
+
     let completed = 0
-    filesToUpload.forEach((file) => {
-      const upload = new DirectUpload(file, this.urlValue, this)
+    filesToUpload.forEach((file, index) => {
+      this.fileProgress[index] = 0
+      const upload = new DirectUpload(file, this.urlValue, {
+        directUploadWillStoreFileWithXHR: (request) => {
+          request.upload.addEventListener("progress", (event) => {
+            this.fileProgress[index] = event.loaded
+            this.updateAggregateProgress()
+          })
+        },
+      })
       upload.create((error, blob) => {
         completed++
         if (error) {
@@ -68,6 +81,7 @@ export default class extends Controller {
             `Error uploading ${file.name}: ${error.message || "Unknown error"}`,
           )
         } else {
+          this.fileProgress[index] = file.size
           this.addHiddenField(blob.signed_id)
         }
         if (completed === filesToUpload.length) this.uploadComplete()
@@ -166,14 +180,13 @@ export default class extends Controller {
     }
   }
 
-  directUploadWillStoreFileWithXHR(request) {
-    request.upload.addEventListener("progress", (event) => {
-      if (!this.hasProgressTarget) return
-      const progress = (event.loaded / event.total) * 100
-      this.progressTarget.value = progress
-      const pct = this.element.querySelector(".progress-percentage")
-      if (pct) pct.textContent = `${progress.toFixed(1)}%`
-    })
+  updateAggregateProgress() {
+    if (!this.hasProgressTarget) return
+    const loaded = Object.values(this.fileProgress).reduce((a, b) => a + b, 0)
+    const percent = this.totalBytes > 0 ? (loaded / this.totalBytes) * 100 : 0
+    this.progressTarget.value = percent
+    const pct = this.element.querySelector(".progress-percentage")
+    if (pct) pct.textContent = `${percent.toFixed(1)}%`
   }
 
   addHiddenField(signedId) {
