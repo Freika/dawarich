@@ -43,9 +43,9 @@ class Tracks::BoundaryResolverJob < ApplicationJob
     boundary_detector.resolve_cross_chunk_tracks
   end
 
-  def finalize_session(boundary_tracks_resolved)
+  def finalize_session(_boundary_tracks_resolved)
     session_data = session_manager.get_session_data
-    total_tracks = session_data['tracks_created'] + boundary_tracks_resolved
+    session_data['tracks_created']
 
     session_manager.mark_completed
   end

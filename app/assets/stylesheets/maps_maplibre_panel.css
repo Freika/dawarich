@@ -57,7 +57,7 @@
 }
 
 .tab-btn.active::after {
-  content: '';
+  content: "";
   position: absolute;
   right: -1px;
   top: 50%;
@@ -136,22 +136,22 @@
 .toggle:focus,
 .toggle:focus-visible,
 .toggle:focus-within {
-  outline: none !important;
-  box-shadow: none !important;
-  border-color: inherit !important;
+  outline: none;
+  box-shadow: none;
+  border-color: inherit;
 }
 
 /* Override DaisyUI toggle focus styles */
 .toggle:focus-visible:checked,
 .toggle:checked:focus,
 .toggle:checked:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
+  outline: none;
+  box-shadow: none;
 }
 
 /* Ensure no outline on the toggle container */
 .form-control .toggle:focus {
-  outline: none !important;
+  outline: none;
 }
 
 /* Prevent indeterminate visual state on toggles */
@@ -161,18 +161,22 @@
 
 /* Ensure smooth toggle transitions without intermediate states */
 .toggle {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .toggle:checked {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 /* Remove any active/pressed state that might cause intermediate appearance */
 .toggle:active,
 .toggle:active:focus {
-  outline: none !important;
-  box-shadow: none !important;
+  outline: none;
+  box-shadow: none;
 }
 
 /* Responsive Breakpoints */

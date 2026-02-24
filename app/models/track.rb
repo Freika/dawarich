@@ -152,7 +152,7 @@ class Track < ApplicationRecord
 
   # Parse PostgreSQL array format like "{1,2,3}" into Ruby array
   def self.parse_postgres_array(pg_array_string)
-    return [] if pg_array_string.nil? || pg_array_string.empty?
+    return [] if pg_array_string.blank?
 
     # Remove curly braces and split by comma
     pg_array_string.gsub(/[{}]/, '').split(',').map(&:to_i)

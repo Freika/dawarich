@@ -125,7 +125,9 @@ RSpec.describe 'Family::Memberships', type: :request do
         delete "/family/members/#{owner_membership.id}"
         expect(response).to redirect_to(family_path)
         follow_redirect!
-        expect(response.body).to include('Family owners cannot remove their own membership. To leave the family, delete it instead.')
+        expect(response.body).to include(
+          'Family owners cannot remove their own membership. To leave the family, delete it instead.'
+        )
       end
 
       it 'prevents owner removal even when they are the only member' do
@@ -182,7 +184,6 @@ RSpec.describe 'Family::Memberships', type: :request do
         expect(flash[:alert]).to include('not authorized')
       end
     end
-
   end
 
   describe 'member removal workflow' do
@@ -240,7 +241,7 @@ RSpec.describe 'Family::Memberships', type: :request do
       expect(response).to redirect_to(family_path)
       expect(flash[:alert]).to include('Family owners cannot remove their own membership')
 
-      delete "/family"
+      delete '/family'
       expect(response).to redirect_to(new_family_path)
       expect(user.reload.family).to be_nil
     end

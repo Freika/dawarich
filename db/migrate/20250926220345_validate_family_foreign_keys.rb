@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ValidateFamilyForeignKeys < ActiveRecord::Migration[8.0]
   def change
     # No longer needed - foreign keys are now validated immediately in their creation migrations

@@ -43,10 +43,10 @@ module Visits
     end
 
     def find_existing_place
-      Place.joins("JOIN visits ON places.id = visits.place_id")
+      Place.joins('JOIN visits ON places.id = visits.place_id')
            .where(visits: { user: user })
            .where(
-             "ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)",
+             'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)',
              params[:longitude].to_f, params[:latitude].to_f, 0.001 # approximately 100 meters
            ).first
     end
@@ -56,15 +56,13 @@ module Visits
       lat_f = params[:latitude].to_f
       lon_f = params[:longitude].to_f
 
-      place = Place.create!(
+      Place.create!(
         name: place_name,
         latitude: lat_f,
         longitude: lon_f,
         lonlat: "POINT(#{lon_f} #{lat_f})",
         source: :manual
       )
-
-      place
     rescue StandardError => e
       ExceptionReporter.call(e, "Failed to create place: #{e.message}")
       nil

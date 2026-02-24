@@ -49,7 +49,6 @@ class GoogleMaps::RecordsImporter
   def bulk_insert_points(batch)
     unique_batch = deduplicate_batch(batch)
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],

@@ -59,7 +59,7 @@ RSpec.describe Users::ImportData::Areas, type: :service do
 
       it 'logs the import process' do
         expect(Rails.logger).to receive(:info).with("Importing 2 areas for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Areas import completed. Created: 2")
+        expect(Rails.logger).to receive(:info).with('Areas import completed. Created: 2')
 
         service.call
       end
@@ -82,7 +82,7 @@ RSpec.describe Users::ImportData::Areas, type: :service do
 
       it 'logs when skipping duplicates' do
         allow(Rails.logger).to receive(:debug) # Allow any debug logs
-        expect(Rails.logger).to receive(:debug).with("Area already exists: Home")
+        expect(Rails.logger).to receive(:debug).with('Area already exists: Home')
 
         service.call
       end
@@ -116,7 +116,7 @@ RSpec.describe Users::ImportData::Areas, type: :service do
       let(:areas_data) { nil }
 
       it 'does not create any areas' do
-        expect { service.call }.not_to change { user.areas.count }
+        expect { service.call }.not_to(change { user.areas.count })
       end
 
       it 'returns 0' do
@@ -129,7 +129,7 @@ RSpec.describe Users::ImportData::Areas, type: :service do
       let(:areas_data) { 'invalid_data' }
 
       it 'does not create any areas' do
-        expect { service.call }.not_to change { user.areas.count }
+        expect { service.call }.not_to(change { user.areas.count })
       end
 
       it 'returns 0' do
@@ -142,12 +142,12 @@ RSpec.describe Users::ImportData::Areas, type: :service do
       let(:areas_data) { [] }
 
       it 'does not create any areas' do
-        expect { service.call }.not_to change { user.areas.count }
+        expect { service.call }.not_to(change { user.areas.count })
       end
 
       it 'logs the import process with 0 count' do
         expect(Rails.logger).to receive(:info).with("Importing 0 areas for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Areas import completed. Created: 0")
+        expect(Rails.logger).to receive(:info).with('Areas import completed. Created: 0')
 
         service.call
       end

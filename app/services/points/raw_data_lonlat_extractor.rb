@@ -16,7 +16,6 @@ class Points::RawDataLonlatExtractor
 
   private
 
-  # rubocop:disable Metrics/MethodLength
   def extract_lonlat(point)
     if point.raw_data.dig('activitySegment', 'waypointPath', 'waypoints', 0)
       # google_semantic_history_parser

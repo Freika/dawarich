@@ -34,7 +34,7 @@ FactoryBot.define do
 
     # Add transient attribute to handle country strings
     transient do
-      country { nil }  # Allow country to be passed as string
+      country { nil } # Allow country to be passed as string
     end
 
     # Handle country string assignment by creating Country objects
@@ -45,7 +45,7 @@ FactoryBot.define do
           iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(evaluator.country)
           country.iso_a2 = iso_a2
           country.iso_a3 = iso_a3
-          country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
+          country.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
         end
         point.update_columns(
           country: evaluator.country,
@@ -93,7 +93,7 @@ FactoryBot.define do
       city { FFaker::Address.city }
       reverse_geocoded_at { Time.current }
 
-      after(:build) do |point, evaluator|
+      after(:build) do |point, _evaluator|
         # Only set country if not already set by transient attribute
         unless point.read_attribute(:country)
           country_name = FFaker::Address.country
@@ -101,11 +101,11 @@ FactoryBot.define do
             iso_a2, iso_a3 = Countries::IsoCodeMapper.fallback_codes_from_country_name(country_name)
             country.iso_a2 = iso_a2
             country.iso_a3 = iso_a3
-            country.geom = "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))"
+            country.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
           end
-          point.write_attribute(:country, country_name)        # Set the legacy string attribute
-          point.write_attribute(:country_name, country_name)  # Set the new string attribute
-          point.country_id = country_obj.id   # Set the association
+          point.write_attribute(:country, country_name) # Set the legacy string attribute
+          point.write_attribute(:country_name, country_name) # Set the new string attribute
+          point.country_id = country_obj.id # Set the association
         end
       end
     end

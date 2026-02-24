@@ -1,5 +1,5 @@
-import { BaseLayer } from './base_layer'
-import { Toast } from 'maps_maplibre/components/toast'
+import { Toast } from "maps_maplibre/components/toast"
+import { BaseLayer } from "./base_layer"
 
 /**
  * Points layer for displaying individual location points
@@ -7,7 +7,7 @@ import { Toast } from 'maps_maplibre/components/toast'
  */
 export class PointsLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: 'points', ...options })
+    super(map, { id: "points", ...options })
     this.apiClient = options.apiClient
     this.layerManager = options.layerManager
     this.isDragging = false
@@ -24,11 +24,11 @@ export class PointsLayer extends BaseLayer {
 
   getSourceConfig() {
     return {
-      type: 'geojson',
+      type: "geojson",
       data: this.data || {
-        type: 'FeatureCollection',
-        features: []
-      }
+        type: "FeatureCollection",
+        features: [],
+      },
     }
   }
 
@@ -37,15 +37,15 @@ export class PointsLayer extends BaseLayer {
       // Individual points
       {
         id: this.id,
-        type: 'circle',
+        type: "circle",
         source: this.sourceId,
         paint: {
-          'circle-color': '#3b82f6',
-          'circle-radius': 6,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff'
-        }
-      }
+          "circle-color": "#3b82f6",
+          "circle-radius": 6,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+        },
+      },
     ]
   }
 
@@ -59,11 +59,11 @@ export class PointsLayer extends BaseLayer {
     this.canvas = this.map.getCanvasContainer()
 
     // Change cursor to pointer when hovering over points
-    this.map.on('mouseenter', this.id, this._onMouseEnter)
-    this.map.on('mouseleave', this.id, this._onMouseLeave)
+    this.map.on("mouseenter", this.id, this._onMouseEnter)
+    this.map.on("mouseleave", this.id, this._onMouseLeave)
 
     // Handle drag events
-    this.map.on('mousedown', this.id, this._onMouseDown)
+    this.map.on("mousedown", this.id, this._onMouseDown)
   }
 
   /**
@@ -74,18 +74,18 @@ export class PointsLayer extends BaseLayer {
 
     this.draggingEnabled = false
 
-    this.map.off('mouseenter', this.id, this._onMouseEnter)
-    this.map.off('mouseleave', this.id, this._onMouseLeave)
-    this.map.off('mousedown', this.id, this._onMouseDown)
+    this.map.off("mouseenter", this.id, this._onMouseEnter)
+    this.map.off("mouseleave", this.id, this._onMouseLeave)
+    this.map.off("mousedown", this.id, this._onMouseDown)
   }
 
   onMouseEnter() {
-    this.canvas.style.cursor = 'move'
+    this.canvas.style.cursor = "move"
   }
 
   onMouseLeave() {
     if (!this.isDragging) {
-      this.canvas.style.cursor = ''
+      this.canvas.style.cursor = ""
     }
   }
 
@@ -96,11 +96,11 @@ export class PointsLayer extends BaseLayer {
     // Store the feature being dragged
     this.draggedFeature = e.features[0]
     this.isDragging = true
-    this.canvas.style.cursor = 'grabbing'
+    this.canvas.style.cursor = "grabbing"
 
     // Bind mouse move and up events
-    this.map.on('mousemove', this._onMouseMove)
-    this.map.once('mouseup', this._onMouseUp)
+    this.map.on("mousemove", this._onMouseMove)
+    this.map.once("mouseup", this._onMouseUp)
   }
 
   onMouseMove(e) {
@@ -113,7 +113,9 @@ export class PointsLayer extends BaseLayer {
     const source = this.map.getSource(this.sourceId)
     if (source) {
       const data = source._data
-      const feature = data.features.find(f => f.properties.id === this.draggedFeature.properties.id)
+      const feature = data.features.find(
+        (f) => f.properties.id === this.draggedFeature.properties.id,
+      )
       if (feature) {
         feature.geometry.coordinates = [coords.lng, coords.lat]
         source.setData(data)
@@ -130,28 +132,31 @@ export class PointsLayer extends BaseLayer {
 
     // Clean up drag state
     this.isDragging = false
-    this.canvas.style.cursor = ''
-    this.map.off('mousemove', this._onMouseMove)
+    this.canvas.style.cursor = ""
+    this.map.off("mousemove", this._onMouseMove)
 
     // Update the point on the backend
     try {
       await this.updatePointPosition(pointId, coords.lat, coords.lng)
 
       // Update routes after successful point update
-      await this.updateConnectedRoutes(pointId, originalCoords, [coords.lng, coords.lat])
+      await this.updateConnectedRoutes(pointId, originalCoords, [
+        coords.lng,
+        coords.lat,
+      ])
     } catch (error) {
-      console.error('Failed to update point:', error)
+      console.error("Failed to update point:", error)
       // Revert the point position on error
       const source = this.map.getSource(this.sourceId)
       if (source) {
         const data = source._data
-        const feature = data.features.find(f => f.properties.id === pointId)
+        const feature = data.features.find((f) => f.properties.id === pointId)
         if (feature && originalCoords) {
           feature.geometry.coordinates = originalCoords
           source.setData(data)
         }
       }
-      Toast.error('Failed to update point position. Please try again.')
+      Toast.error("Failed to update point position. Please try again.")
     }
 
     this.draggedFeature = null
@@ -162,22 +167,22 @@ export class PointsLayer extends BaseLayer {
    */
   async updatePointPosition(pointId, latitude, longitude) {
     if (!this.apiClient) {
-      throw new Error('API client not configured')
+      throw new Error("API client not configured")
     }
 
     const response = await fetch(`/api/v1/points/${pointId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${this.apiClient.apiKey}`
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${this.apiClient.apiKey}`,
       },
       body: JSON.stringify({
         point: {
           latitude: latitude.toString(),
-          longitude: longitude.toString()
-        }
-      })
+          longitude: longitude.toString(),
+        },
+      }),
     })
 
     if (!response.ok) {
@@ -190,21 +195,21 @@ export class PointsLayer extends BaseLayer {
   /**
    * Update connected route segments when a point is moved
    */
-  async updateConnectedRoutes(pointId, oldCoords, newCoords) {
+  async updateConnectedRoutes(_pointId, oldCoords, newCoords) {
     if (!this.layerManager) {
-      console.warn('LayerManager not configured, cannot update routes')
+      console.warn("LayerManager not configured, cannot update routes")
       return
     }
 
-    const routesLayer = this.layerManager.getLayer('routes')
+    const routesLayer = this.layerManager.getLayer("routes")
     if (!routesLayer) {
-      console.warn('Routes layer not found')
+      console.warn("Routes layer not found")
       return
     }
 
     const routesSource = this.map.getSource(routesLayer.sourceId)
     if (!routesSource) {
-      console.warn('Routes source not found')
+      console.warn("Routes source not found")
       return
     }
 
@@ -218,8 +223,8 @@ export class PointsLayer extends BaseLayer {
     let routesUpdated = false
 
     // Find and update route segments that contain the moved point
-    routesData.features.forEach(feature => {
-      if (feature.geometry.type === 'LineString') {
+    routesData.features.forEach((feature) => {
+      if (feature.geometry.type === "LineString") {
         const coordinates = feature.geometry.coordinates
 
         // Check each coordinate in the line
@@ -227,8 +232,10 @@ export class PointsLayer extends BaseLayer {
           const coord = coordinates[i]
 
           // Check if this coordinate matches the old position
-          if (Math.abs(coord[0] - oldCoords[0]) < tolerance &&
-              Math.abs(coord[1] - oldCoords[1]) < tolerance) {
+          if (
+            Math.abs(coord[0] - oldCoords[0]) < tolerance &&
+            Math.abs(coord[1] - oldCoords[1]) < tolerance
+          ) {
             // Update to new position
             coordinates[i] = newCoords
             routesUpdated = true

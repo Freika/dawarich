@@ -106,7 +106,7 @@ module TransportationModes
       current_motion = point.motion_data || {}
       merged_motion = current_motion.merge('activityRecord' => activity_data)
 
-      point.update_column(:motion_data, merged_motion) # rubocop:disable Rails/SkipsModelValidations
+      point.update_column(:motion_data, merged_motion)
     end
 
     def download_file

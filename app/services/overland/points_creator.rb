@@ -35,7 +35,6 @@ class Overland::PointsCreator
     created_points = []
 
     locations.each_slice(1000) do |batch|
-      # rubocop:disable Rails/SkipsModelValidations
       result = Point.upsert_all(
         batch,
         unique_by: %i[lonlat timestamp user_id],

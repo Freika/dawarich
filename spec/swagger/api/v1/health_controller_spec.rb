@@ -19,7 +19,9 @@ describe 'Health API', type: :request do
                  example: 'Hey, I\'m alive!'
                },
                required: true,
-               description: "Depending on the authentication status of the request, the response will be different. If the request is authenticated, the response will be 'Hey, I'm alive and authenticated!'. If the request is not authenticated, the response will be 'Hey, I'm alive!'."
+               description: 'Depending on the authentication status, the response will differ. ' \
+                            "If authenticated: 'Hey, I'm alive and authenticated!'. " \
+                            "If not: 'Hey, I'm alive!'."
         header 'X-Dawarich-Version',
                schema: {
                  type: :string,

@@ -40,7 +40,7 @@ RSpec.describe GoogleMaps::RecordsStorageImporter do
       context 'when file has more locations than batch size' do
         let(:large_batch) do
           locations = []
-          1001.times do |i|
+          1001.times do |_i|
             locations << {
               latitudeE7: 533_690_550,
               longitudeE7: 836_950_010,

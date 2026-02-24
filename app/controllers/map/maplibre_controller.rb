@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Map
   class MaplibreController < ApplicationController
     include SafeTimestampParser
