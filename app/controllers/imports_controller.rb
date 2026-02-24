@@ -45,19 +45,20 @@ class ImportsController < ApplicationController
       redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_content and return
     end
 
-    created_imports = process_raw_files(raw_files)
+    @created_imports = []
+    process_raw_files(raw_files)
 
-    unless created_imports.any?
+    unless @created_imports.any?
       redirect_to(new_import_path,
                   alert: 'No valid file references were found. Please upload files using the file selector.',
                   status: :unprocessable_content) and return
     end
 
     redirect_to imports_url,
-                notice: "#{created_imports.size} files are queued to be imported in background",
+                notice: "#{@created_imports.size} files are queued to be imported in background",
                 status: :see_other
   rescue StandardError => e
-    cleanup_failed_imports(created_imports)
+    cleanup_failed_imports
     report_import_error(e)
 
     redirect_to new_import_path, alert: e.message, status: :unprocessable_content
@@ -93,17 +94,18 @@ class ImportsController < ApplicationController
   end
 
   def process_raw_files(raw_files)
-    raw_files.filter_map do |item|
+    raw_files.each do |item|
       next if item.is_a?(ActionDispatch::Http::UploadedFile)
 
-      create_import_from_signed_id(item)
+      import = create_import_from_signed_id(item)
+      @created_imports << import if import.present?
     end
   end
 
-  def cleanup_failed_imports(created_imports)
-    return if created_imports.blank?
+  def cleanup_failed_imports
+    return if @created_imports.blank?
 
-    import_ids = created_imports.map(&:id).compact
+    import_ids = @created_imports.map(&:id).compact
     Import.where(id: import_ids).destroy_all if import_ids.any?
   end
 
