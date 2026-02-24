@@ -41,8 +41,8 @@ RSpec.describe Archivable, type: :model do
       before do
         # Mock archive file content with this specific point
         compressed_data = gzip_data([
-          { id: archived_point.id, raw_data: { lon: 14.0, lat: 53.0 } }
-        ])
+                                      { id: archived_point.id, raw_data: { lon: 14.0, lat: 53.0 } }
+                                    ])
         allow(archive.file.blob).to receive(:download).and_return(compressed_data)
       end
 
@@ -61,8 +61,8 @@ RSpec.describe Archivable, type: :model do
       before do
         # Mock archive file with different point
         compressed_data = gzip_data([
-          { id: 999, raw_data: { lon: 14.0, lat: 53.0 } }
-        ])
+                                      { id: 999, raw_data: { lon: 14.0, lat: 53.0 } }
+                                    ])
         allow(archive.file.blob).to receive(:download).and_return(compressed_data)
       end
 

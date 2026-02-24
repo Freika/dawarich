@@ -177,8 +177,10 @@ RSpec.describe Imports::SourceDetector do
     end
 
     # Test various Google Semantic History variations
-    include_examples 'detects format correctly', :google_semantic_history, 'google/location-history/with_activitySegment_with_startLocation.json'
-    include_examples 'detects format correctly', :google_semantic_history, 'google/location-history/with_placeVisit_with_location_with_coordinates.json'
+    include_examples 'detects format correctly', :google_semantic_history,
+                     'google/location-history/with_activitySegment_with_startLocation.json'
+    include_examples 'detects format correctly', :google_semantic_history,
+                     'google/location-history/with_placeVisit_with_location_with_coordinates.json'
 
     # Test GeoJSON variations
     include_examples 'detects format correctly', :geojson, 'geojson/export_same_points.json'

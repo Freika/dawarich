@@ -148,7 +148,6 @@ module Points
 
       def mark_points_as_archived(point_ids, archive_id)
         Point.transaction do
-          # rubocop:disable Rails/SkipsModelValidations
           Point.where(id: point_ids).update_all(
             raw_data_archived: true,
             raw_data_archive_id: archive_id

@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["tooltip", "tooltipDate", "tooltipDistance"]
   static values = {
-    unit: String
+    unit: String,
   }
 
   showTooltip(event) {
@@ -25,7 +25,7 @@ export default class extends Controller {
 
     // Calculate position relative to the container
     let left = rect.left - containerRect.left + rect.width / 2
-    let top = rect.top - containerRect.top - 8
+    const top = rect.top - containerRect.top - 8
 
     // Show tooltip to measure its size
     this.tooltipTarget.classList.remove("hidden")
@@ -34,7 +34,10 @@ export default class extends Controller {
     const tooltipRect = this.tooltipTarget.getBoundingClientRect()
 
     // Adjust horizontal position to keep tooltip within container
-    left = Math.max(tooltipRect.width / 2 + 4, Math.min(left, containerRect.width - tooltipRect.width / 2 - 4))
+    left = Math.max(
+      tooltipRect.width / 2 + 4,
+      Math.min(left, containerRect.width - tooltipRect.width / 2 - 4),
+    )
 
     this.tooltipTarget.style.left = `${left}px`
     this.tooltipTarget.style.top = `${top}px`
@@ -47,8 +50,13 @@ export default class extends Controller {
   }
 
   formatDate(dateStr) {
-    const date = new Date(dateStr + "T00:00:00")
-    const options = { weekday: "short", month: "short", day: "numeric", year: "numeric" }
+    const date = new Date(`${dateStr}T00:00:00`)
+    const options = {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
     return date.toLocaleDateString("en-US", options)
   }
 

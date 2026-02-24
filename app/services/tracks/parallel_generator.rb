@@ -107,7 +107,7 @@ class Tracks::ParallelGenerator
     start_at.present? || end_at.present?
   end
 
-  def time_range # rubocop:disable Metrics/PerceivedComplexity
+  def time_range
     return nil unless time_range_defined?
 
     start_time = start_at&.to_i

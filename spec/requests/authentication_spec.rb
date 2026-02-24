@@ -205,10 +205,10 @@ RSpec.describe 'Authentication', type: :request do
     it 'redirects to iOS success when invitation is expired' do
       # Create an expired invitation
       expired_invitation = create(:family_invitation,
-                                   family: family,
-                                   invited_by: user,
-                                   email: invitee.email,
-                                   expires_at: 1.day.ago)
+                                  family: family,
+                                  invited_by: user,
+                                  email: invitee.email,
+                                  expires_at: 1.day.ago)
 
       # Sign in with iOS header and expired invitation token
       post user_session_path, params: {

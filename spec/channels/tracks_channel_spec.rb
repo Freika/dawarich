@@ -25,9 +25,9 @@ RSpec.describe TracksChannel, type: :channel do
     end
 
     it 'broadcasts track creation' do
-      expect {
+      expect do
         TracksChannel.broadcast_to(user, {
-          action: 'created',
+                                     action: 'created',
           track: {
             id: track.id,
             start_at: track.start_at.iso8601,
@@ -41,14 +41,14 @@ RSpec.describe TracksChannel, type: :channel do
             elevation_min: track.elevation_min,
             original_path: track.original_path.to_s
           }
-        })
-      }.to have_broadcasted_to(user)
+                                   })
+      end.to have_broadcasted_to(user)
     end
 
     it 'broadcasts track updates' do
-      expect {
+      expect do
         TracksChannel.broadcast_to(user, {
-          action: 'updated',
+                                     action: 'updated',
           track: {
             id: track.id,
             start_at: track.start_at.iso8601,
@@ -62,17 +62,17 @@ RSpec.describe TracksChannel, type: :channel do
             elevation_min: track.elevation_min,
             original_path: track.original_path.to_s
           }
-        })
-      }.to have_broadcasted_to(user)
+                                   })
+      end.to have_broadcasted_to(user)
     end
 
     it 'broadcasts track destruction' do
-      expect {
+      expect do
         TracksChannel.broadcast_to(user, {
-          action: 'destroyed',
+                                     action: 'destroyed',
           track_id: track.id
-        })
-      }.to have_broadcasted_to(user)
+                                   })
+      end.to have_broadcasted_to(user)
     end
   end
 end

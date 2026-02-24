@@ -223,11 +223,11 @@ RSpec.describe Tracks::TrackBuilder do
       it 'returns default elevation stats' do
         result = builder.calculate_elevation_stats(points)
         expect(result).to eq({
-          gain: 0,
+                               gain: 0,
           loss: 0,
           max: 0,
           min: 0
-        })
+                             })
       end
     end
 
@@ -254,11 +254,11 @@ RSpec.describe Tracks::TrackBuilder do
     it 'returns hash with zero values' do
       result = builder.default_elevation_stats
       expect(result).to eq({
-        gain: 0,
+                             gain: 0,
         loss: 0,
         max: 0,
         min: 0
-      })
+                           })
     end
   end
 
@@ -274,7 +274,7 @@ RSpec.describe Tracks::TrackBuilder do
       invalid_builder = invalid_class.new
       expect { invalid_builder.send(:user) }.to raise_error(
         NotImplementedError,
-        "Including class must implement user method"
+        'Including class must implement user method'
       )
     end
   end

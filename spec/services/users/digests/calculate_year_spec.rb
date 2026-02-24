@@ -22,19 +22,19 @@ RSpec.describe Users::Digests::CalculateYear do
     context 'when user has stats for the year' do
       let!(:january_stat) do
         create(:stat, user: user, year: 2024, month: 1, distance: 50_000, toponyms: [
-          { 'country' => 'Germany', 'cities' => [
-            { 'city' => 'Berlin', 'stayed_for' => 480 },
-            { 'city' => 'Munich', 'stayed_for' => 240 }
-          ] }
-        ])
+                 { 'country' => 'Germany', 'cities' => [
+                   { 'city' => 'Berlin', 'stayed_for' => 480 },
+                   { 'city' => 'Munich', 'stayed_for' => 240 }
+                 ] }
+               ])
       end
 
       let!(:february_stat) do
         create(:stat, user: user, year: 2024, month: 2, distance: 75_000, toponyms: [
-          { 'country' => 'France', 'cities' => [
-            { 'city' => 'Paris', 'stayed_for' => 360 }
-          ] }
-        ])
+                 { 'country' => 'France', 'cities' => [
+                   { 'city' => 'Paris', 'stayed_for' => 360 }
+                 ] }
+               ])
       end
 
       it 'creates a yearly digest' do
@@ -134,16 +134,16 @@ RSpec.describe Users::Digests::CalculateYear do
 
           # Create the monthly stats
           create(:stat, user: user, year: 2024, month: 3, distance: 10_000, toponyms: [
-            { 'country' => 'Germany', 'cities' => [
-              { 'city' => 'Berlin', 'stayed_for' => 14_400 }
-            ] }
-          ])
+                   { 'country' => 'Germany', 'cities' => [
+                     { 'city' => 'Berlin', 'stayed_for' => 14_400 }
+                   ] }
+                 ])
 
           create(:stat, user: user, year: 2024, month: 7, distance: 15_000, toponyms: [
-            { 'country' => 'Germany', 'cities' => [
-              { 'city' => 'Munich', 'stayed_for' => 14_400 }
-            ] }
-          ])
+                   { 'country' => 'Germany', 'cities' => [
+                     { 'city' => 'Munich', 'stayed_for' => 14_400 }
+                   ] }
+                 ])
 
           digest = calculate_digest
           countries = digest.time_spent_by_location['countries']
@@ -215,7 +215,7 @@ RSpec.describe Users::Digests::CalculateYear do
           # Germany: 10am-11am (1 hour span = 3600 seconds)
           jan_1_8am = Time.zone.local(2024, 1, 1, 8, 0, 0).to_i
           jan_1_9am = Time.zone.local(2024, 1, 1, 9, 0, 0).to_i
-          jan_1_10am = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i  # Border crossing
+          jan_1_10am = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i # Border crossing
           jan_1_11am = Time.zone.local(2024, 1, 1, 11, 0, 0).to_i
 
           create(:point, user: user, timestamp: jan_1_8am, country_name: 'France')
@@ -258,15 +258,15 @@ RSpec.describe Users::Digests::CalculateYear do
     context 'with previous year data for comparison' do
       let!(:previous_year_stat) do
         create(:stat, user: user, year: 2023, month: 1, distance: 100_000, toponyms: [
-          { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
-        ])
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
+               ])
       end
 
       let!(:current_year_stat) do
         create(:stat, user: user, year: 2024, month: 1, distance: 150_000, toponyms: [
-          { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] },
-          { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
-        ])
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] },
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+               ])
       end
 
       it 'calculates year over year comparison' do

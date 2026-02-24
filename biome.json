@@ -13,7 +13,8 @@
       "!!**/node_modules",
       "!!**/vendor",
       "!!app/assets/builds",
-      "!!app/assets/stylesheets/maplibre-gl.css"
+      "!!app/assets/stylesheets/maplibre-gl.css",
+      "!!app/javascript/posthog.js"
     ]
   },
   "formatter": {

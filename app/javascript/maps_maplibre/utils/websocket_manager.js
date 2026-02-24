@@ -40,19 +40,21 @@ export class WebSocketManager {
    */
   attemptReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.onError?.(new Error('Max reconnect attempts reached'))
+      this.onError?.(new Error("Max reconnect attempts reached"))
       return
     }
 
     this.reconnectAttempts++
 
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
+    const delay = this.reconnectDelay * 2 ** (this.reconnectAttempts - 1)
 
-    console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    console.log(
+      `Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+    )
 
     setTimeout(() => {
       if (!this.isConnected) {
-        this.subscription?.perform('reconnect')
+        this.subscription?.perform("reconnect")
       }
     }, delay)
   }
@@ -73,7 +75,7 @@ export class WebSocketManager {
    */
   send(action, data = {}) {
     if (!this.isConnected) {
-      console.warn('Cannot send message: not connected')
+      console.warn("Cannot send message: not connected")
       return
     }
 

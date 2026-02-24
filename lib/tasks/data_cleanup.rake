@@ -49,11 +49,14 @@ namespace :data_cleanup do
     duplicate_count = connection.select_value('SELECT COUNT(*) FROM duplicate_points').to_i
     puts "Found #{duplicate_count} duplicate points"
 
-    if duplicate_count > 0
+    if duplicate_count.positive?
       # Export duplicates to CSV
       puts "Exporting duplicates to #{export_path}..."
 
-      columns = connection.select_values("SELECT column_name FROM information_schema.columns WHERE table_name = 'points' ORDER BY ordinal_position")
+      columns = connection.select_values(
+        'SELECT column_name FROM information_schema.columns ' \
+          "WHERE table_name = 'points' ORDER BY ordinal_position"
+      )
 
       CSV.open(export_path, 'wb') do |csv|
         # Write headers

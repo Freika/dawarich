@@ -34,9 +34,7 @@ class Users::ImportData::Imports
 
       imports_created += 1
 
-      if import_data['file_name'] && restore_import_file(import_record, import_data)
-        files_restored += 1
-      end
+      files_restored += 1 if import_data['file_name'] && restore_import_file(import_record, import_data)
     end
 
     Rails.logger.info "Imports import completed. Created: #{imports_created}, Files restored: #{files_restored}"

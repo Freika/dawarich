@@ -153,7 +153,6 @@ class ReverseGeocoding::Places::FetchData
         updated_at: Time.current
       }
     end
-    # rubocop:disable Rails/SkipsModelValidations
     Place.upsert_all(update_attributes, unique_by: :id)
     # rubocop:enable Rails/SkipsModelValidations
   end

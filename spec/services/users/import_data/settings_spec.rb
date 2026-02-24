@@ -26,7 +26,7 @@ RSpec.describe Users::ImportData::Settings, type: :service do
 
       it 'logs the import process' do
         expect(Rails.logger).to receive(:info).with("Importing settings for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Settings import completed")
+        expect(Rails.logger).to receive(:info).with('Settings import completed')
 
         service.call
       end
@@ -36,7 +36,7 @@ RSpec.describe Users::ImportData::Settings, type: :service do
       let(:settings_data) { nil }
 
       it 'does not change user settings' do
-        expect { service.call }.not_to change { user.reload.settings }
+        expect { service.call }.not_to(change { user.reload.settings })
       end
 
       it 'does not log import process' do
@@ -50,7 +50,7 @@ RSpec.describe Users::ImportData::Settings, type: :service do
       let(:settings_data) { 'invalid_data' }
 
       it 'does not change user settings' do
-        expect { service.call }.not_to change { user.reload.settings }
+        expect { service.call }.not_to(change { user.reload.settings })
       end
 
       it 'does not log import process' do
@@ -73,7 +73,7 @@ RSpec.describe Users::ImportData::Settings, type: :service do
 
       it 'logs the import process' do
         expect(Rails.logger).to receive(:info).with("Importing settings for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Settings import completed")
+        expect(Rails.logger).to receive(:info).with('Settings import completed')
 
         service.call
       end

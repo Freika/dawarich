@@ -57,7 +57,6 @@ class Gpx::TrackImporter
   def bulk_insert_points(batch)
     unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],

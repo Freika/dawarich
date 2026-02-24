@@ -42,9 +42,7 @@ class FamiliesController < ApplicationController
         end
       end
 
-      if service.error_message.present?
-        @family.errors.add(:base, service.error_message)
-      end
+      @family.errors.add(:base, service.error_message) if service.error_message.present?
 
       flash.now[:alert] = service.error_message || 'Failed to create family'
       render :new, status: :unprocessable_content

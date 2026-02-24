@@ -5,8 +5,8 @@ export default class extends Controller {
 
   connect() {
     // Restore panel state from sessionStorage on page load
-    const panelState = sessionStorage.getItem('mapControlsPanelState')
-    if (panelState === 'visible') {
+    const panelState = sessionStorage.getItem("mapControlsPanelState")
+    if (panelState === "visible") {
       this.showPanel()
     }
   }
@@ -16,10 +16,10 @@ export default class extends Controller {
 
     if (isHidden) {
       this.showPanel()
-      sessionStorage.setItem('mapControlsPanelState', 'visible')
+      sessionStorage.setItem("mapControlsPanelState", "visible")
     } else {
       this.hidePanel()
-      sessionStorage.setItem('mapControlsPanelState', 'hidden')
+      sessionStorage.setItem("mapControlsPanelState", "hidden")
     }
   }
 
@@ -27,9 +27,9 @@ export default class extends Controller {
     this.panelTarget.classList.remove("hidden")
 
     // Update icon to chevron-up
-    const currentIcon = this.toggleIconTarget.querySelector('svg')
-    currentIcon.classList.remove('lucide-chevron-down')
-    currentIcon.classList.add('lucide-chevron-up')
+    const currentIcon = this.toggleIconTarget.querySelector("svg")
+    currentIcon.classList.remove("lucide-chevron-down")
+    currentIcon.classList.add("lucide-chevron-up")
     currentIcon.innerHTML = '<path d="m18 15-6-6-6 6"/>'
   }
 
@@ -37,9 +37,9 @@ export default class extends Controller {
     this.panelTarget.classList.add("hidden")
 
     // Update icon to chevron-down
-    const currentIcon = this.toggleIconTarget.querySelector('svg')
-    currentIcon.classList.remove('lucide-chevron-up')
-    currentIcon.classList.add('lucide-chevron-down')
+    const currentIcon = this.toggleIconTarget.querySelector("svg")
+    currentIcon.classList.remove("lucide-chevron-up")
+    currentIcon.classList.add("lucide-chevron-down")
     currentIcon.innerHTML = '<path d="m6 9 6 6 6-6"/>'
   }
 }

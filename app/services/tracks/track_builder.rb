@@ -113,7 +113,7 @@ module Tracks::TrackBuilder
 
     altitudes[1..].each do |altitude|
       diff = altitude - previous_altitude
-      if diff > 0
+      if diff.positive?
         elevation_gain += diff
       else
         elevation_loss += diff.abs

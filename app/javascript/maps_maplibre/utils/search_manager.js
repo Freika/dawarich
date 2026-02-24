@@ -3,7 +3,7 @@
  * Manages location search functionality for Maps V2
  */
 
-import { LocationSearchService } from '../services/location_search_service.js'
+import { LocationSearchService } from "../services/location_search_service.js"
 
 export class SearchManager {
   constructor(map, apiKey) {
@@ -27,7 +27,7 @@ export class SearchManager {
     this.resultsContainer = resultsContainer
 
     if (!this.searchInput || !this.resultsContainer) {
-      console.warn('SearchManager: Missing required DOM elements')
+      console.warn("SearchManager: Missing required DOM elements")
       return
     }
 
@@ -39,18 +39,21 @@ export class SearchManager {
    */
   attachEventListeners() {
     // Input event with debouncing
-    this.searchInput.addEventListener('input', (e) => {
+    this.searchInput.addEventListener("input", (e) => {
       this.handleSearchInput(e.target.value)
     })
 
     // Prevent results from hiding when clicking inside results container
-    this.resultsContainer.addEventListener('mousedown', (e) => {
+    this.resultsContainer.addEventListener("mousedown", (e) => {
       e.preventDefault() // Prevent blur event on search input
     })
 
     // Clear results when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!this.searchInput.contains(e.target) && !this.resultsContainer.contains(e.target)) {
+    document.addEventListener("click", (e) => {
+      if (
+        !this.searchInput.contains(e.target) &&
+        !this.resultsContainer.contains(e.target)
+      ) {
         // Delay to allow animations to complete
         setTimeout(() => {
           this.clearResults()
@@ -59,10 +62,12 @@ export class SearchManager {
     })
 
     // Handle Enter key
-    this.searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+    this.searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
         e.preventDefault()
-        const firstResult = this.resultsContainer.querySelector('.search-result-item')
+        const firstResult = this.resultsContainer.querySelector(
+          ".search-result-item",
+        )
         if (firstResult) {
           firstResult.click()
         }
@@ -88,8 +93,8 @@ export class SearchManager {
         const suggestions = await this.service.fetchSuggestions(query)
         this.displayResults(suggestions)
       } catch (error) {
-        this.showError('Failed to fetch suggestions')
-        console.error('SearchManager: Search error:', error)
+        this.showError("Failed to fetch suggestions")
+        console.error("SearchManager: Search error:", error)
       }
     }, this.debounceDelay)
   }
@@ -106,12 +111,12 @@ export class SearchManager {
       return
     }
 
-    suggestions.forEach(suggestion => {
+    suggestions.forEach((suggestion) => {
       const resultItem = this.createResultItem(suggestion)
       this.resultsContainer.appendChild(resultItem)
     })
 
-    this.resultsContainer.classList.remove('hidden')
+    this.resultsContainer.classList.remove("hidden")
   }
 
   /**
@@ -120,18 +125,19 @@ export class SearchManager {
    * @returns {HTMLElement} Result item element
    */
   createResultItem(suggestion) {
-    const item = document.createElement('div')
-    item.className = 'search-result-item p-3 hover:bg-base-200 cursor-pointer rounded-lg transition-colors'
-    item.setAttribute('data-lat', suggestion.lat)
-    item.setAttribute('data-lon', suggestion.lon)
+    const item = document.createElement("div")
+    item.className =
+      "search-result-item p-3 hover:bg-base-200 cursor-pointer rounded-lg transition-colors"
+    item.setAttribute("data-lat", suggestion.lat)
+    item.setAttribute("data-lon", suggestion.lon)
 
-    const name = document.createElement('div')
-    name.className = 'font-medium text-sm'
-    name.textContent = suggestion.name || 'Unknown location'
+    const name = document.createElement("div")
+    name.className = "font-medium text-sm"
+    name.textContent = suggestion.name || "Unknown location"
 
     if (suggestion.address) {
-      const address = document.createElement('div')
-      address.className = 'text-xs text-base-content/60 mt-1'
+      const address = document.createElement("div")
+      address.className = "text-xs text-base-content/60 mt-1"
       address.textContent = suggestion.address
       item.appendChild(name)
       item.appendChild(address)
@@ -139,7 +145,7 @@ export class SearchManager {
       item.appendChild(name)
     }
 
-    item.addEventListener('click', () => {
+    item.addEventListener("click", () => {
       this.handleResultClick(suggestion)
     })
 
@@ -155,7 +161,7 @@ export class SearchManager {
     this.map.flyTo({
       center: [location.lon, location.lat],
       zoom: 15,
-      duration: 1000
+      duration: 1000,
     })
 
     // Add temporary marker
@@ -163,7 +169,7 @@ export class SearchManager {
 
     // Update search input
     if (this.searchInput) {
-      this.searchInput.value = location.name || ''
+      this.searchInput.value = location.name || ""
     }
 
     // Show loading state in results
@@ -175,14 +181,14 @@ export class SearchManager {
         lat: location.lat,
         lon: location.lon,
         name: location.name,
-        address: location.address || ''
+        address: location.address || "",
       })
 
       // Display visits results
       this.displayVisitsResults(visitsData, location)
     } catch (error) {
-      console.error('SearchManager: Failed to fetch visits:', error)
-      this.showError('Failed to load visits for this location')
+      console.error("SearchManager: Failed to fetch visits:", error)
+      this.showError("Failed to load visits for this location")
     }
 
     // Dispatch custom event for other components
@@ -201,8 +207,8 @@ export class SearchManager {
     }
 
     // Create marker element
-    const el = document.createElement('div')
-    el.className = 'search-marker'
+    const el = document.createElement("div")
+    el.className = "search-marker"
     el.style.cssText = `
       width: 30px;
       height: 30px;
@@ -230,9 +236,9 @@ export class SearchManager {
    * @param {Object} location - Selected location
    */
   dispatchSearchEvent(location) {
-    const event = new CustomEvent('location-search:selected', {
+    const event = new CustomEvent("location-search:selected", {
       detail: { location },
-      bubbles: true
+      bubbles: true,
     })
     document.dispatchEvent(event)
   }
@@ -248,7 +254,7 @@ export class SearchManager {
         Searching...
       </div>
     `
-    this.resultsContainer.classList.remove('hidden')
+    this.resultsContainer.classList.remove("hidden")
   }
 
   /**
@@ -260,7 +266,7 @@ export class SearchManager {
         No locations found
       </div>
     `
-    this.resultsContainer.classList.remove('hidden')
+    this.resultsContainer.classList.remove("hidden")
   }
 
   /**
@@ -273,7 +279,7 @@ export class SearchManager {
         ${message}
       </div>
     `
-    this.resultsContainer.classList.remove('hidden')
+    this.resultsContainer.classList.remove("hidden")
   }
 
   /**
@@ -290,7 +296,7 @@ export class SearchManager {
         <div class="text-xs">${this.escapeHtml(locationName)}</div>
       </div>
     `
-    this.resultsContainer.classList.remove('hidden')
+    this.resultsContainer.classList.remove("hidden")
   }
 
   /**
@@ -310,7 +316,7 @@ export class SearchManager {
           <div class="text-xs mt-1">No visits found for "${this.escapeHtml(location.name)}"</div>
         </div>
       `
-      this.resultsContainer.classList.remove('hidden')
+      this.resultsContainer.classList.remove("hidden")
       return
     }
 
@@ -327,7 +333,7 @@ export class SearchManager {
     })
 
     this.resultsContainer.innerHTML = html
-    this.resultsContainer.classList.remove('hidden')
+    this.resultsContainer.classList.remove("hidden")
 
     // Attach event listeners to year toggles and visit items
     this.attachYearToggleListeners()
@@ -341,24 +347,31 @@ export class SearchManager {
    */
   buildLocationVisitsHtml(location, index) {
     const visits = location.visits || []
-    if (visits.length === 0) return ''
+    if (visits.length === 0) return ""
 
     // Handle case where visits are sorted newest first
-    const sortedVisits = [...visits].sort((a, b) => new Date(a.date) - new Date(b.date))
+    const sortedVisits = [...visits].sort(
+      (a, b) => new Date(a.date) - new Date(b.date),
+    )
     const firstVisit = sortedVisits[0]
     const lastVisit = sortedVisits[sortedVisits.length - 1]
     const visitsByYear = this.groupVisitsByYear(visits)
 
     // Use place_name, address, or coordinates as fallback
-    const displayName = location.place_name || location.address ||
-                       `Location (${location.coordinates?.[0]?.toFixed(4)}, ${location.coordinates?.[1]?.toFixed(4)})`
+    const displayName =
+      location.place_name ||
+      location.address ||
+      `Location (${location.coordinates?.[0]?.toFixed(4)}, ${location.coordinates?.[1]?.toFixed(4)})`
 
     return `
       <div class="location-result border-b" data-location-index="${index}">
         <div class="p-4">
           <div class="font-medium text-sm">${this.escapeHtml(displayName)}</div>
-          ${location.address && location.place_name !== location.address ?
-            `<div class="text-xs text-base-content/60 mt-1">${this.escapeHtml(location.address)}</div>` : ''}
+          ${
+            location.address && location.place_name !== location.address
+              ? `<div class="text-xs text-base-content/60 mt-1">${this.escapeHtml(location.address)}</div>`
+              : ""
+          }
           <div class="flex justify-between items-center mt-3">
             <div class="text-xs text-primary">${location.total_visits} visit(s)</div>
             <div class="text-xs text-base-content/60">
@@ -369,7 +382,9 @@ export class SearchManager {
 
         <!-- Years Section -->
         <div class="border-t bg-base-200">
-          ${Object.entries(visitsByYear).map(([year, yearVisits]) => `
+          ${Object.entries(visitsByYear)
+            .map(
+              ([year, yearVisits]) => `
             <div class="year-section">
               <div class="year-toggle p-3 hover:bg-base-300 cursor-pointer border-b flex justify-between items-center"
                    data-location-index="${index}" data-year="${year}">
@@ -380,18 +395,24 @@ export class SearchManager {
                 </div>
               </div>
               <div class="year-visits hidden" id="year-${index}-${year}">
-                ${yearVisits.map((visit) => `
+                ${yearVisits
+                  .map(
+                    (visit) => `
                   <div class="visit-item text-xs py-2 px-4 border-b hover:bg-base-300 cursor-pointer"
                        data-location-index="${index}" data-visit-index="${visits.indexOf(visit)}">
                     <div class="flex justify-between items-start">
                       <div>📍 ${this.formatDateTime(visit.date)}</div>
-                      <div class="text-xs text-base-content/60">${visit.duration_estimate || 'N/A'}</div>
+                      <div class="text-xs text-base-content/60">${visit.duration_estimate || "N/A"}</div>
                     </div>
                   </div>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
               </div>
             </div>
-          `).join('')}
+          `,
+            )
+            .join("")}
         </div>
       </div>
     `
@@ -404,7 +425,7 @@ export class SearchManager {
    */
   groupVisitsByYear(visits) {
     const groups = {}
-    visits.forEach(visit => {
+    visits.forEach((visit) => {
       const year = new Date(visit.date).getFullYear().toString()
       if (!groups[year]) {
         groups[year] = []
@@ -418,28 +439,32 @@ export class SearchManager {
    * Attach event listeners to year toggle elements
    */
   attachYearToggleListeners() {
-    const toggles = this.resultsContainer.querySelectorAll('.year-toggle')
-    toggles.forEach(toggle => {
-      toggle.addEventListener('click', (e) => {
+    const toggles = this.resultsContainer.querySelectorAll(".year-toggle")
+    toggles.forEach((toggle) => {
+      toggle.addEventListener("click", (e) => {
         const locationIndex = e.currentTarget.dataset.locationIndex
         const year = e.currentTarget.dataset.year
-        const visitsContainer = document.getElementById(`year-${locationIndex}-${year}`)
-        const arrow = e.currentTarget.querySelector('.year-arrow')
+        const visitsContainer = document.getElementById(
+          `year-${locationIndex}-${year}`,
+        )
+        const arrow = e.currentTarget.querySelector(".year-arrow")
 
         if (visitsContainer) {
-          visitsContainer.classList.toggle('hidden')
-          arrow.style.transform = visitsContainer.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)'
+          visitsContainer.classList.toggle("hidden")
+          arrow.style.transform = visitsContainer.classList.contains("hidden")
+            ? "rotate(0deg)"
+            : "rotate(90deg)"
         }
       })
     })
 
     // Attach event listeners to individual visit items
-    const visitItems = this.resultsContainer.querySelectorAll('.visit-item')
-    visitItems.forEach(item => {
-      item.addEventListener('click', (e) => {
+    const visitItems = this.resultsContainer.querySelectorAll(".visit-item")
+    visitItems.forEach((item) => {
+      item.addEventListener("click", (e) => {
         e.stopPropagation()
-        const locationIndex = parseInt(item.dataset.locationIndex)
-        const visitIndex = parseInt(item.dataset.visitIndex)
+        const locationIndex = parseInt(item.dataset.locationIndex, 10)
+        const visitIndex = parseInt(item.dataset.visitIndex, 10)
         this.handleVisitClick(locationIndex, visitIndex)
       })
     })
@@ -464,14 +489,15 @@ export class SearchManager {
     this.map.flyTo({
       center: [lon, lat],
       zoom: 18,
-      duration: 1000
+      duration: 1000,
     })
 
     // Extract visit details
     const visitDetails = visit.visit_details || {}
     const startTime = visitDetails.start_time || visit.date
     const endTime = visitDetails.end_time || visit.date
-    const placeName = location.place_name || location.address || 'Unnamed Location'
+    const placeName =
+      location.place_name || location.address || "Unnamed Location"
 
     // Open create visit modal
     this.openCreateVisitModal({
@@ -479,7 +505,7 @@ export class SearchManager {
       latitude: lat,
       longitude: lon,
       started_at: startTime,
-      ended_at: endTime
+      ended_at: endTime,
     })
   }
 
@@ -489,7 +515,7 @@ export class SearchManager {
    */
   openCreateVisitModal(visitData) {
     // Create modal HTML
-    const modalId = 'create-visit-modal'
+    const modalId = "create-visit-modal"
 
     // Remove existing modal if present
     const existingModal = document.getElementById(modalId)
@@ -497,7 +523,7 @@ export class SearchManager {
       existingModal.remove()
     }
 
-    const modal = document.createElement('div')
+    const modal = document.createElement("div")
     modal.id = modalId
     modal.innerHTML = `
       <input type="checkbox" id="${modalId}-toggle" class="modal-toggle" checked />
@@ -549,22 +575,22 @@ export class SearchManager {
     document.body.appendChild(modal)
 
     // Attach event listeners
-    const form = modal.querySelector('form')
+    const form = modal.querySelector("form")
     const closeBtn = modal.querySelector('[data-action="close"]')
     const modalToggle = modal.querySelector(`#${modalId}-toggle`)
-    const backdrop = modal.querySelector('.modal-backdrop')
+    const backdrop = modal.querySelector(".modal-backdrop")
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener("submit", (e) => {
       e.preventDefault()
       this.submitCreateVisit(form, modal)
     })
 
-    closeBtn.addEventListener('click', () => {
+    closeBtn.addEventListener("click", () => {
       modalToggle.checked = false
       setTimeout(() => modal.remove(), 300)
     })
 
-    backdrop.addEventListener('click', () => {
+    backdrop.addEventListener("click", () => {
       modalToggle.checked = false
       setTimeout(() => modal.remove(), 300)
     })
@@ -577,23 +603,23 @@ export class SearchManager {
    */
   async submitCreateVisit(form, modal) {
     const submitBtn = form.querySelector('button[type="submit"]')
-    const submitText = submitBtn.querySelector('.submit-text')
-    const spinner = submitBtn.querySelector('.loading')
+    const submitText = submitBtn.querySelector(".submit-text")
+    const spinner = submitBtn.querySelector(".loading")
 
     // Disable submit button and show loading
     submitBtn.disabled = true
-    submitText.classList.add('hidden')
-    spinner.classList.remove('hidden')
+    submitText.classList.add("hidden")
+    spinner.classList.remove("hidden")
 
     try {
       const formData = new FormData(form)
       const visitData = {
-        name: formData.get('name'),
-        latitude: parseFloat(formData.get('latitude')),
-        longitude: parseFloat(formData.get('longitude')),
-        started_at: formData.get('started_at'),
-        ended_at: formData.get('ended_at'),
-        status: 'confirmed'
+        name: formData.get("name"),
+        latitude: parseFloat(formData.get("latitude")),
+        longitude: parseFloat(formData.get("longitude")),
+        started_at: formData.get("started_at"),
+        ended_at: formData.get("ended_at"),
+        status: "confirmed",
       }
 
       const response = await this.service.createVisit(visitData)
@@ -603,26 +629,30 @@ export class SearchManager {
       }
 
       // Success - close modal and show success message
-      const modalToggle = modal.querySelector('.modal-toggle')
+      const modalToggle = modal.querySelector(".modal-toggle")
       modalToggle.checked = false
       setTimeout(() => modal.remove(), 300)
 
       // Show success notification
-      this.showSuccessNotification('Visit created successfully!')
+      this.showSuccessNotification("Visit created successfully!")
 
       // Dispatch custom event for other components to react
-      document.dispatchEvent(new CustomEvent('visit:created', {
-        detail: { visit: response, coordinates: [visitData.longitude, visitData.latitude] }
-      }))
-
+      document.dispatchEvent(
+        new CustomEvent("visit:created", {
+          detail: {
+            visit: response,
+            coordinates: [visitData.longitude, visitData.latitude],
+          },
+        }),
+      )
     } catch (error) {
-      console.error('Failed to create visit:', error)
+      console.error("Failed to create visit:", error)
       alert(`Failed to create visit: ${error.message}`)
 
       // Re-enable submit button
       submitBtn.disabled = false
-      submitText.classList.remove('hidden')
-      spinner.classList.add('hidden')
+      submitText.classList.remove("hidden")
+      spinner.classList.add("hidden")
     }
   }
 
@@ -631,8 +661,8 @@ export class SearchManager {
    * @param {string} message - Success message
    */
   showSuccessNotification(message) {
-    const notification = document.createElement('div')
-    notification.className = 'toast toast-top toast-end z-[9999]'
+    const notification = document.createElement("div")
+    notification.className = "toast toast-top toast-end z-[9999]"
     notification.innerHTML = `
       <div class="alert alert-success">
         <span>✓ ${this.escapeHtml(message)}</span>
@@ -653,10 +683,10 @@ export class SearchManager {
   formatDateTimeForInput(dateString) {
     const date = new Date(dateString)
     const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    const hours = String(date.getHours()).padStart(2, "0")
+    const minutes = String(date.getMinutes()).padStart(2, "0")
     return `${year}-${month}-${day}T${hours}:${minutes}`
   }
 
@@ -667,7 +697,11 @@ export class SearchManager {
    */
   formatDateShort(dateString) {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
   }
 
   /**
@@ -677,12 +711,12 @@ export class SearchManager {
    */
   formatDateTime(dateString) {
     const date = new Date(dateString)
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     })
   }
 
@@ -692,8 +726,8 @@ export class SearchManager {
    * @returns {string} Escaped string
    */
   escapeHtml(str) {
-    if (!str) return ''
-    const div = document.createElement('div')
+    if (!str) return ""
+    const div = document.createElement("div")
     div.textContent = str
     return div.innerHTML
   }
@@ -703,8 +737,8 @@ export class SearchManager {
    */
   clearResults() {
     if (this.resultsContainer) {
-      this.resultsContainer.innerHTML = ''
-      this.resultsContainer.classList.add('hidden')
+      this.resultsContainer.innerHTML = ""
+      this.resultsContainer.classList.add("hidden")
     }
   }
 

@@ -18,26 +18,31 @@
   max-width: 33%;
 }
 
-.trix-content .attachment-gallery.attachment-gallery--2 > action-text-attachment,
-.trix-content .attachment-gallery.attachment-gallery--2 > .attachment, .trix-content .attachment-gallery.attachment-gallery--4 > action-text-attachment,
+.trix-content
+  .attachment-gallery.attachment-gallery--2
+  > action-text-attachment,
+.trix-content .attachment-gallery.attachment-gallery--2 > .attachment,
+.trix-content
+  .attachment-gallery.attachment-gallery--4
+  > action-text-attachment,
 .trix-content .attachment-gallery.attachment-gallery--4 > .attachment {
   flex-basis: 50%;
   max-width: 50%;
 }
 
 .trix-content action-text-attachment .attachment {
-  padding: 0 !important;
-  max-width: 100% !important;
+  padding: 0;
+  max-width: 100%;
 }
 
 /* Hide both attach files and attach images buttons in trix editor*/
 .trix-button-group.trix-button-group--file-tools {
-  display:none;
+  display: none;
 }
 
 /* Color buttons in white */
 .trix-button-row button {
-  background-color: white !important;
+  background-color: white;
 }
 
 .trix-content-editor {
