@@ -54,11 +54,4 @@ class Visit < ApplicationRecord
 
     [lat_sum / count, lon_sum / count]
   end
-
-  def async_reverse_geocode
-    return unless DawarichSettings.reverse_geocoding_enabled?
-    return if place.blank?
-
-    ReverseGeocodingJob.perform_later('place', place_id)
-  end
 end
