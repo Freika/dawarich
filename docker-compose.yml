@@ -1,0 +1,91 @@
+version: "3.9"
+
+networks:
+  dawarich:
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: dawarich_redis
+    networks: [dawarich]
+    volumes:
+      - dawarich_shared:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  db:
+    image: postgis/postgis:17-3.5-alpine
+    container_name: dawarich_db
+    shm_size: 1g
+    networks: [dawarich]
+    volumes:
+      - dawarich_db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dawarich_development
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: dawarich:local
+    container_name: dawarich_app
+    networks: [dawarich]
+    ports:
+      - "3000:3000"
+    volumes:
+      - dawarich_public:/var/app/public
+      - dawarich_storage:/var/app/storage
+      - dawarich_watched:/var/app/tmp/imports/watched
+    command: bin/rails server -b 0.0.0.0 -p 3000
+    environment:
+      RAILS_ENV: development
+      REDIS_URL: redis://redis:6379
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: dawarich_development
+      SECRET_KEY_BASE: dev-secret
+      SELF_HOSTED: "true"
+      STORE_GEODATA: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  sidekiq:
+    image: dawarich:local
+    container_name: dawarich_sidekiq
+    networks: [dawarich]
+    volumes:
+      - dawarich_storage:/var/app/storage
+      - dawarich_watched:/var/app/tmp/imports/watched
+    command: bundle exec sidekiq
+    environment:
+      RAILS_ENV: development
+      REDIS_URL: redis://redis:6379
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: dawarich_development
+      SECRET_KEY_BASE: dev-secret
+    depends_on:
+      app:
+        condition: service_started
+
+volumes:
+  dawarich_db_data:
+  dawarich_shared:
+  dawarich_public:
+  dawarich_storage:
+  dawarich_watched:
