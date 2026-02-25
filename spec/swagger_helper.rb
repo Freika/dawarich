@@ -18,8 +18,10 @@ RSpec.configure do |config|
     'v1/swagger.yaml' => {
       openapi: '3.0.1',
       info: {
-        title: 'API V1',
-        version: 'v1'
+        title: 'Dawarich API',
+        version: 'v1',
+        description: 'API for Dawarich, a self-hosted location history tracking application. ' \
+                     'Provides endpoints for managing location data, tracks, visits, statistics, and more.'
       },
       paths: {},
       servers: [
@@ -31,7 +33,22 @@ RSpec.configure do |config|
             }
           }
         }
-      ]
+      ],
+      components: {
+        securitySchemes: {
+          api_key: {
+            type: :apiKey,
+            name: :api_key,
+            in: :query,
+            description: 'API key passed as a query parameter'
+          },
+          bearer_auth: {
+            type: :http,
+            scheme: :bearer,
+            description: 'Bearer token authentication'
+          }
+        }
+      }
     }
   }
 

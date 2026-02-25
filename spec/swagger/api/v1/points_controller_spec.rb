@@ -6,6 +6,7 @@ describe 'Points API', type: :request do
   path '/api/v1/points' do
     get 'Retrieves all points' do
       tags 'Points'
+      description 'Returns paginated location points for the authenticated user, optionally filtered by date range'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
       parameter name: :start_at, in: :query, type: :string,
@@ -16,53 +17,65 @@ describe 'Points API', type: :request do
       parameter name: :per_page, in: :query, type: :integer, required: false, description: 'Number of points per page'
       parameter name: :order, in: :query, type: :string, required: false,
                 description: 'Order of points, valid values are `asc` or `desc`'
+
       response '200', 'points found' do
         schema type: :array,
                items: {
                  type: :object,
                  properties: {
-                   id:                { type: :integer },
-                   battery_status:    { type: :number },
-                   ping:              { type: :number },
-                   battery:           { type: :number },
-                   tracker_id:        { type: :string },
-                   topic:             { type: :string },
-                   altitude:          { type: :number },
-                   longitude:         { type: :number },
-                   velocity:          { type: :number },
-                   trigger:           { type: :string },
-                   bssid:             { type: :string },
-                   ssid:              { type: :string },
-                   connection:        { type: :string },
-                   vertical_accuracy: { type: :number },
-                   accuracy:          { type: :number },
-                   timestamp:         { type: :number },
-                   latitude:          { type: :number },
-                   mode:              { type: :number },
-                   inrids:            { type: :array, items: { type: :string } },
-                   in_regions:        { type: :array, items: { type: :string } },
-                   raw_data:          { type: :string },
-                   import_id:         { type: :string },
-                   city:              { type: :string },
-                   country:           { type: :string },
-                   created_at:        { type: :string },
-                   updated_at:        { type: :string },
-                   user_id:           { type: :integer },
-                   geodata:           { type: :string },
-                   visit_id:          { type: :string }
+                   id: { type: :integer, description: 'Unique point identifier' },
+                   battery_status: { type: :number, description: 'Battery status code' },
+                   ping: { type: :number, description: 'Ping value' },
+                   battery: { type: :number, description: 'Battery level' },
+                   tracker_id: { type: :string, description: 'Tracker identifier' },
+                   topic: { type: :string, description: 'MQTT topic' },
+                   altitude: { type: :number, description: 'Altitude in meters' },
+                   longitude: { type: :number, description: 'Longitude coordinate' },
+                   velocity: { type: :number, description: 'Velocity in km/h' },
+                   trigger: { type: :string, description: 'Trigger type' },
+                   bssid: { type: :string, description: 'WiFi access point MAC address' },
+                   ssid: { type: :string, description: 'WiFi network name' },
+                   connection: { type: :string, description: 'Connection type (w=wifi, m=mobile)' },
+                   vertical_accuracy: { type: :number, description: 'Vertical accuracy in meters' },
+                   accuracy: { type: :number, description: 'Horizontal accuracy in meters' },
+                   timestamp: { type: :number, description: 'Unix timestamp of the point' },
+                   latitude: { type: :number, description: 'Latitude coordinate' },
+                   mode: { type: :number, description: 'Tracking mode' },
+                   inrids: { type: :array, items: { type: :string }, description: 'Region IDs' },
+                   in_regions: { type: :array, items: { type: :string }, description: 'Region names' },
+                   raw_data: { type: :string, nullable: true, description: 'Raw data from the tracking device' },
+                   import_id: { type: :string, nullable: true, description: 'Import ID if point was imported' },
+                   city: { type: :string, nullable: true, description: 'Reverse-geocoded city name' },
+                   country: { type: :string, nullable: true, description: 'Reverse-geocoded country name' },
+                   created_at: { type: :string, description: 'Record creation timestamp' },
+                   updated_at: { type: :string, description: 'Record last update timestamp' },
+                   user_id: { type: :integer, description: 'Owning user ID' },
+                   geodata: { type: :string, nullable: true, description: 'Reverse-geocoded geodata' },
+                   visit_id: { type: :string, nullable: true, description: 'Associated visit ID' }
                  }
                }
 
-        let(:user)      { create(:user) }
-        let(:areas)     { create_list(:area, 3, user:) }
-        let(:api_key)   { user.api_key }
-        let(:start_at)  { Time.zone.now - 1.day }
-        let(:end_at)    { Time.zone.now }
-        let(:points) do
-          (1..10).map do |i|
-            create(:point, user:, timestamp: 2.hours.ago + i.minutes)
-          end
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+        let(:start_at) { Time.zone.now - 1.day }
+        let(:end_at) { Time.zone.now }
+
+        after do |example|
+          content = example.metadata[:response][:content] || {}
+          example.metadata[:response][:content] = content.merge(
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          )
         end
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:start_at) { 1.day.ago.iso8601 }
+        let(:end_at) { Time.zone.now.iso8601 }
 
         run_test!
       end
@@ -190,6 +203,15 @@ describe 'Points API', type: :request do
         let(:locations) { json }
         let(:api_key) { create(:user).api_key }
 
+        after do |example|
+          content = example.metadata[:response][:content] || {}
+          example.metadata[:response][:content] = content.merge(
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          )
+        end
+
         run_test!
       end
 
@@ -213,10 +235,26 @@ describe 'Points API', type: :request do
       parameter name: :id, in: :path, type: :string, required: true, description: 'Point ID'
 
       response '200', 'point deleted' do
-        let(:user)    { create(:user) }
-        let(:point)   { create(:point, user:) }
+        let(:user) { create(:user) }
+        let(:point) { create(:point, user:) }
         let(:api_key) { user.api_key }
-        let(:id)      { point.id }
+        let(:id) { point.id }
+
+        after do |example|
+          content = example.metadata[:response][:content] || {}
+          example.metadata[:response][:content] = content.merge(
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          )
+        end
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:id) { create(:point).id }
 
         run_test!
       end
