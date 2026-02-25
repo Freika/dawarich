@@ -42,6 +42,8 @@ class OwnTracks::Importer
       on_duplicate: :skip
     )
     # rubocop:enable Rails/SkipsModelValidations
+
+    broadcast_import_progress(import, unique_batch.size)
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to bulk insert OwnTracks points for user #{user_id}: #{e.message}")
 

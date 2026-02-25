@@ -78,6 +78,12 @@ RSpec.describe OwnTracks::Importer do
 
         expect(user.points.first.velocity).to eq('1.4')
       end
+
+      it 'updates the import processed counter' do
+        parser
+
+        expect(import.reload.processed).to eq(9)
+      end
     end
 
     context 'when file is old' do
