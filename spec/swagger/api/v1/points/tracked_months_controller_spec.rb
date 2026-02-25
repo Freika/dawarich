@@ -28,14 +28,7 @@ describe 'Points Tracked Months API', type: :request do
 
         let(:api_key) { create(:user).api_key }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

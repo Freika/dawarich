@@ -47,14 +47,7 @@ describe 'Areas API', type: :request do
 
         let(:area) { { area: { name: 'Home', latitude: 40.7128, longitude: -74.0060, radius: 100 } } }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -95,14 +88,7 @@ describe 'Areas API', type: :request do
 
         let!(:areas) { create_list(:area, 3, user:) }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -136,14 +122,7 @@ describe 'Areas API', type: :request do
         let(:area) { create(:area, user:) }
         let(:id) { area.id }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -196,14 +175,7 @@ describe 'Areas API', type: :request do
         let(:id) { existing_area.id }
         let(:area) { { area: { name: 'Updated Name' } } }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -230,17 +202,15 @@ describe 'Areas API', type: :request do
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 
       response '200', 'area deleted' do
+        schema type: :object,
+               properties: {
+                 message: { type: :string, description: 'Confirmation message' }
+               }
+
         let(:area) { create(:area, user:) }
         let(:id) { area.id }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

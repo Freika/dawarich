@@ -45,14 +45,7 @@ RSpec.describe 'Places API', type: :request do
         let(:api_key) { user.api_key }
         let!(:place) { create(:place, user: user) }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -113,14 +106,7 @@ RSpec.describe 'Places API', type: :request do
           }
         end
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -185,14 +171,7 @@ RSpec.describe 'Places API', type: :request do
         let(:radius) { 1.0 }
         let(:limit) { 5 }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -239,14 +218,7 @@ RSpec.describe 'Places API', type: :request do
         let(:place) { create(:place, user: user) }
         let(:id) { place.id }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -302,14 +274,7 @@ RSpec.describe 'Places API', type: :request do
         let(:id) { existing_place.id }
         let(:place) { { name: 'Updated Name' } }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)

@@ -32,14 +32,7 @@ describe 'Health API', type: :request do
                required: true,
                description: 'The version of the application, for example: 1.0.0'
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

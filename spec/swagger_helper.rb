@@ -20,7 +20,7 @@ RSpec.configure do |config|
       info: {
         title: 'Dawarich API',
         version: 'v1',
-        description: 'API for Dawarich, a self-hosted location history tracking application. ' \
+        description: 'API for Dawarich, your favorite alternative to Google Timeline. ' \
                      'Provides endpoints for managing location data, tracks, visits, statistics, and more.'
       },
       paths: {},

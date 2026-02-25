@@ -59,14 +59,7 @@ RSpec.describe 'Insights API', type: :request do
                  }
                }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -129,14 +122,7 @@ RSpec.describe 'Insights API', type: :request do
                  }
                }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

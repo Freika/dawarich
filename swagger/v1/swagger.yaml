@@ -3,9 +3,8 @@ openapi: 3.0.1
 info:
   title: Dawarich API
   version: v1
-  description: API for Dawarich, a self-hosted location history tracking application.
-    Provides endpoints for managing location data, tracks, visits, statistics, and
-    more.
+  description: API for Dawarich, your favorite alternative to Google Timeline. Provides
+    endpoints for managing location data, tracks, visits, statistics, and more.
 paths:
   "/api/v1/areas":
     post:
@@ -280,8 +279,65 @@ paths:
       responses:
         '200':
           description: area deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Confirmation message
         '404':
           description: area not found
+        '401':
+          description: unauthorized
+  "/api/v1/countries/borders":
+    get:
+      summary: Retrieves country borders GeoJSON data
+      tags:
+      - Countries
+      description: Returns GeoJSON FeatureCollection containing country border geometries.
+        Response is cached for 1 day.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: borders found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: FeatureCollection
+                    description: GeoJSON type
+                  features:
+                    type: array
+                    description: Array of GeoJSON Feature objects with country borders
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          example: Feature
+                        properties:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              description: Country name
+                            iso_a3:
+                              type: string
+                              description: ISO 3166-1 alpha-3 country code
+                        geometry:
+                          type: object
+                          description: GeoJSON geometry (Polygon or MultiPolygon)
         '401':
           description: unauthorized
   "/api/v1/countries/visited_cities":
@@ -371,6 +427,8 @@ paths:
                                 example: 24490
                                 description: Number of minutes the user stayed in
                                   the city
+        '401':
+          description: unauthorized
         '400':
           description: bad request - missing parameters
           content:
@@ -611,6 +669,45 @@ paths:
           description: digest deleted
         '404':
           description: digest not found
+        '401':
+          description: unauthorized
+  "/api/v1/families/locations":
+    get:
+      summary: Retrieves family members' locations
+      tags:
+      - Families
+      description: Returns the last known locations of all family members who have
+        enabled location sharing. Requires the family feature to be enabled and the
+        user to be part of a family.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: family locations found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locations:
+                    type: array
+                    description: Array of family member location data
+                    items:
+                      type: object
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: When the data was last updated
+                  sharing_enabled:
+                    type: boolean
+                    description: Whether the current user has sharing enabled
+        '403':
+          description: user not in a family
         '401':
           description: unauthorized
   "/api/v1/health":
@@ -1047,6 +1144,43 @@ paths:
       responses:
         '200':
           description: hexagons found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: FeatureCollection
+                    description: GeoJSON type
+                  features:
+                    type: array
+                    description: Array of GeoJSON hexagon features
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          example: Feature
+                        geometry:
+                          type: object
+                          description: Hexagon polygon geometry
+                        properties:
+                          type: object
+                          description: Hexagon properties including point count
+                  metadata:
+                    type: object
+                    description: Request metadata
+                    properties:
+                      hexagon_count:
+                        type: integer
+                        description: Number of hexagons returned
+                      total_points:
+                        type: integer
+                        description: Total number of points in all hexagons
+                      source:
+                        type: string
+                        description: Data source type
         '401':
           description: unauthorized
   "/api/v1/maps/hexagons/bounds":
@@ -1084,6 +1218,36 @@ paths:
       responses:
         '200':
           description: bounds found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the request was successful
+                  data:
+                    type: object
+                    description: Bounding box coordinates
+                    properties:
+                      south_west:
+                        type: object
+                        properties:
+                          lat:
+                            type: number
+                            description: Southwest latitude
+                          lng:
+                            type: number
+                            description: Southwest longitude
+                      north_east:
+                        type: object
+                        properties:
+                          lat:
+                            type: number
+                            description: Northeast latitude
+                          lng:
+                            type: number
+                            description: Northeast longitude
         '401':
           description: unauthorized
   "/api/v1/overland/batches":
@@ -1469,8 +1633,8 @@ paths:
       summary: Retrieves a photo thumbnail
       tags:
       - Photos
-      description: Returns the thumbnail image data for a specific photo from the
-        configured photo service
+      description: Returns the thumbnail image data for a specific photo. On success
+        returns binary image/jpeg data. On error returns JSON with error details.
       parameters:
       - name: id
         in: path
@@ -1493,63 +1657,23 @@ paths:
       responses:
         '200':
           description: photo found
+        '404':
+          description: photo not found
           content:
+            image/jpeg:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
             application/json:
               schema:
                 type: object
                 properties:
-                  id:
+                  error:
                     type: string
-                    description: Photo ID
-                  latitude:
-                    type: number
-                    format: float
-                    description: Latitude
-                  longitude:
-                    type: number
-                    format: float
-                    description: Longitude
-                  localDateTime:
-                    type: string
-                    format: date-time
-                    description: Local date and time
-                  originalFileName:
-                    type: string
-                    description: Original file name
-                  city:
-                    type: string
-                    description: City
-                  state:
-                    type: string
-                    description: State/region
-                  country:
-                    type: string
-                    description: Country
-                  type:
-                    type: string
-                    enum:
-                    - IMAGE
-                    - VIDEO
-                    - image
-                    - video
-                    - raw
-                    - live
-                    - animated
-                    description: Media type
-                  orientation:
-                    type: string
-                    enum:
-                    - portrait
-                    - landscape
-                    description: Orientation
-                  source:
-                    type: string
-                    enum:
-                    - immich
-                    - photoprism
-                    description: Source service
-        '404':
-          description: photo not found
+                    description: Error message
   "/api/v1/places":
     get:
       summary: Retrieves all places for the authenticated user
@@ -1986,6 +2110,15 @@ paths:
       responses:
         '200':
           description: points found
+          headers:
+            X-Current-Page:
+              schema:
+                type: integer
+              description: Current page number
+            X-Total-Pages:
+              schema:
+                type: integer
+              description: Total number of pages
           content:
             application/json:
               schema:
@@ -1998,45 +2131,58 @@ paths:
                       description: Unique point identifier
                     battery_status:
                       type: number
+                      nullable: true
                       description: Battery status code
                     ping:
                       type: number
+                      nullable: true
                       description: Ping value
                     battery:
                       type: number
+                      nullable: true
                       description: Battery level
                     tracker_id:
                       type: string
+                      nullable: true
                       description: Tracker identifier
                     topic:
                       type: string
+                      nullable: true
                       description: MQTT topic
                     altitude:
                       type: number
+                      nullable: true
                       description: Altitude in meters
                     longitude:
                       type: number
                       description: Longitude coordinate
                     velocity:
                       type: number
+                      nullable: true
                       description: Velocity in km/h
                     trigger:
                       type: string
+                      nullable: true
                       description: Trigger type
                     bssid:
                       type: string
+                      nullable: true
                       description: WiFi access point MAC address
                     ssid:
                       type: string
+                      nullable: true
                       description: WiFi network name
                     connection:
                       type: string
+                      nullable: true
                       description: Connection type (w=wifi, m=mobile)
                     vertical_accuracy:
                       type: number
+                      nullable: true
                       description: Vertical accuracy in meters
                     accuracy:
                       type: number
+                      nullable: true
                       description: Horizontal accuracy in meters
                     timestamp:
                       type: number
@@ -2046,16 +2192,19 @@ paths:
                       description: Latitude coordinate
                     mode:
                       type: number
+                      nullable: true
                       description: Tracking mode
                     inrids:
                       type: array
                       items:
                         type: string
+                      nullable: true
                       description: Region IDs
                     in_regions:
                       type: array
                       items:
                         type: string
+                      nullable: true
                       description: Region names
                     raw_data:
                       type: string
@@ -2075,9 +2224,11 @@ paths:
                       description: Reverse-geocoded country name
                     created_at:
                       type: string
+                      format: date-time
                       description: Record creation timestamp
                     updated_at:
                       type: string
+                      format: date-time
                       description: Record last update timestamp
                     user_id:
                       type: integer
@@ -2206,6 +2357,47 @@ paths:
                       track_id: 799F32F5-89BB-45FB-A639-098B1B95B09F
                       device_id: 8D5D4197-245B-4619-A88B-2049100ADE46
   "/api/v1/points/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Point ID
+      schema:
+        type: string
+    patch:
+      summary: Updates a point
+      tags:
+      - Points
+      description: Updates the latitude and/or longitude of a point
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: point updated
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                point:
+                  type: object
+                  properties:
+                    latitude:
+                      type: number
+                      description: Updated latitude coordinate
+                    longitude:
+                      type: number
+                      description: Updated longitude coordinate
     delete:
       summary: Deletes a point
       tags:
@@ -2217,17 +2409,63 @@ paths:
         description: API Key
         schema:
           type: string
-      - name: id
-        in: path
+      responses:
+        '200':
+          description: point deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Confirmation message
+        '401':
+          description: unauthorized
+  "/api/v1/points/bulk_destroy":
+    delete:
+      summary: Bulk deletes points
+      tags:
+      - Points
+      description: Deletes multiple points by their IDs
+      parameters:
+      - name: api_key
+        in: query
         required: true
-        description: Point ID
+        description: API Key
         schema:
           type: string
       responses:
         '200':
-          description: point deleted
+          description: points deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Confirmation message
+                  count:
+                    type: integer
+                    description: Number of points deleted
+        '422':
+          description: no points selected
         '401':
           description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                point_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: Array of point IDs to delete
+              required:
+              - point_ids
   "/api/v1/settings":
     patch:
       summary: Updates user settings
@@ -2243,6 +2481,8 @@ paths:
       responses:
         '200':
           description: settings updated
+        '401':
+          description: unauthorized
       requestBody:
         content:
           application/json:
@@ -2444,6 +2684,56 @@ paths:
                         - type: 'null'
                         example: 100
                         description: Fog of war threshold value
+        '401':
+          description: unauthorized
+  "/api/v1/settings/transportation_recalculation_status":
+    get:
+      summary: Retrieves transportation mode recalculation status
+      tags:
+      - Settings
+      description: Returns the current status of transportation mode recalculation
+        for all tracks
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: status found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    nullable: true
+                    description: Current recalculation status
+                  total_tracks:
+                    type: integer
+                    nullable: true
+                    description: Total number of tracks to process
+                  processed_tracks:
+                    type: integer
+                    nullable: true
+                    description: Number of tracks processed so far
+                  started_at:
+                    type: string
+                    nullable: true
+                    description: When recalculation started
+                  completed_at:
+                    type: string
+                    nullable: true
+                    description: When recalculation completed
+                  error_message:
+                    type: string
+                    nullable: true
+                    description: Error message if recalculation failed
+        '401':
+          description: unauthorized
   "/api/v1/stats":
     get:
       summary: Retrieves all stats
@@ -2540,6 +2830,151 @@ paths:
                 - totalCountriesVisited
                 - totalCitiesVisited
                 - yearlyStats
+        '401':
+          description: unauthorized
+  "/api/v1/subscriptions/callback":
+    post:
+      summary: Processes a subscription callback
+      tags:
+      - Subscriptions
+      description: Processes a JWT-encoded subscription callback to update user subscription
+        status. This endpoint does not require API key authentication — it uses JWT
+        tokens for verification.
+      security: []
+      parameters: []
+      responses:
+        '200':
+          description: subscription updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Confirmation message
+        '401':
+          description: invalid token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: JWT-encoded subscription token
+              required:
+              - token
+  "/api/v1/tags/privacy_zones":
+    get:
+      summary: Retrieves privacy zone tags
+      tags:
+      - Tags
+      description: Returns all tags configured as privacy zones, including their associated
+        places
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: privacy zones found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tag_id:
+                      type: integer
+                      description: Tag ID
+                    tag_name:
+                      type: string
+                      description: Tag name
+                    tag_icon:
+                      type: string
+                      nullable: true
+                      description: Tag icon
+                    tag_color:
+                      type: string
+                      nullable: true
+                      description: Tag color
+                    radius_meters:
+                      type: integer
+                      nullable: true
+                      description: Privacy zone radius in meters
+                    places:
+                      type: array
+                      description: Places associated with this privacy zone
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            description: Place ID
+                          name:
+                            type: string
+                            description: Place name
+                          latitude:
+                            type: number
+                            description: Latitude coordinate
+                          longitude:
+                            type: number
+                            description: Longitude coordinate
+        '401':
+          description: unauthorized
+  "/api/v1/timeline":
+    get:
+      summary: Retrieves timeline data for a date range
+      tags:
+      - Timeline
+      description: Returns day-by-day timeline data including visits, tracks, and
+        photos for the authenticated user. Maximum date range is 31 days.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        required: true
+        description: Start date (ISO 8601 format, e.g. 2024-01-01)
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        required: true
+        description: End date (ISO 8601 format, e.g. 2024-01-31)
+        schema:
+          type: string
+      - name: distance_unit
+        in: query
+        required: false
+        description: 'Distance unit: km or mi (defaults to user setting)'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: timeline data found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  days:
+                    type: array
+                    description: Array of day objects with timeline data
+                    items:
+                      type: object
+        '400':
+          description: bad request - missing parameters
         '401':
           description: unauthorized
   "/api/v1/tracks/{track_id}/points":

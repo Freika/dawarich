@@ -121,14 +121,7 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
                  required: %w[id latitude longitude localDateTime originalFileName city state country type source]
                }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -141,48 +134,25 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
   path '/api/v1/photos/{id}/thumbnail' do
     get 'Retrieves a photo thumbnail' do
       tags 'Photos'
-      description 'Returns the thumbnail image data for a specific photo from the configured photo service'
-      produces 'application/json'
+      description 'Returns the thumbnail image data for a specific photo. On success returns binary image/jpeg data. On error returns JSON with error details.'
+      produces 'image/jpeg', 'application/json'
       parameter name: :id, in: :path, type: :string, required: true, description: 'Photo ID from the source service'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
       parameter name: :source, in: :query, type: :string, required: true, description: 'Photo source (immich or photoprism)'
 
       response '200', 'photo found' do
-        schema type: :object,
-               properties: {
-                 id: { type: :string, description: 'Photo ID' },
-                 latitude: { type: :number, format: :float, description: 'Latitude' },
-                 longitude: { type: :number, format: :float, description: 'Longitude' },
-                 localDateTime: { type: :string, format: 'date-time', description: 'Local date and time' },
-                 originalFileName: { type: :string, description: 'Original file name' },
-                 city: { type: :string, description: 'City' },
-                 state: { type: :string, description: 'State/region' },
-                 country: { type: :string, description: 'Country' },
-                 type: { type: :string, enum: %w[IMAGE VIDEO image video raw live animated], description: 'Media type' },
-                 orientation: { type: :string, enum: %w[portrait landscape], description: 'Orientation' },
-                 source: { type: :string, enum: %w[immich photoprism], description: 'Source service' }
-               }
-
         let(:id) { '7fe486e3-c3ba-4b54-bbf9-1281b39ed15c' }
         let(:source) { 'immich' }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data).to be_a(Hash)
-          expect(data['id']).to eq(id)
-        end
+        run_test!
       end
 
       response '404', 'photo not found' do
+        schema type: :object,
+               properties: {
+                 error: { type: :string, description: 'Error message' }
+               }
+
         let(:id) { 'nonexistent' }
         let(:api_key) { user.api_key }
         let(:source) { 'immich' }

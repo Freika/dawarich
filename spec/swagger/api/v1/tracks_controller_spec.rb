@@ -62,14 +62,7 @@ RSpec.describe 'Tracks API', type: :request do
 
         let!(:track) { create(:track, user: user) }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -101,14 +94,7 @@ RSpec.describe 'Tracks API', type: :request do
         let!(:track) { create(:track, user: user) }
         let(:id) { track.id }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

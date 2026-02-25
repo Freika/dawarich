@@ -37,14 +37,7 @@ RSpec.describe 'Digests API', type: :request do
                  }
                }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -79,14 +72,7 @@ RSpec.describe 'Digests API', type: :request do
         let!(:stats) { (1..12).each { |m| create(:stat, year: 2024, month: m, user: user) } }
         let(:digest_params) { { year: 2024 } }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -201,14 +187,7 @@ RSpec.describe 'Digests API', type: :request do
         end
         let(:year) { 2024 }
 
-        after do |example|
-          content = example.metadata[:response][:content] || {}
-          example.metadata[:response][:content] = content.merge(
-            'application/json' => {
-              example: JSON.parse(response.body, symbolize_names: true)
-            }
-          )
-        end
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

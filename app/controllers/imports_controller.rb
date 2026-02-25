@@ -12,11 +12,11 @@ class ImportsController < ApplicationController
   after_action :verify_policy_scoped, only: %i[index]
 
   def index
-    @imports = policy_scope(Import)
-               .select(:id, :name, :source, :created_at, :processed, :status, :error_message)
-               .with_attached_file
-               .order(created_at: :desc)
-               .page(params[:page])
+    scope = policy_scope(Import)
+            .select(:id, :name, :source, :created_at, :processed, :status, :error_message)
+            .with_attached_file
+
+    @imports = sorted(scope).page(params[:page])
   end
 
   def show; end
@@ -145,5 +145,21 @@ class ImportsController < ApplicationController
     limit_exceeded = PointsLimitExceeded.new(current_user).call
 
     redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_content if limit_exceeded
+  end
+
+  def sorted(scope)
+    if sort_column == 'byte_size'
+      scope.joins(file_attachment: :blob).order("active_storage_blobs.byte_size #{sort_direction}")
+    else
+      scope.order(sort_column => sort_direction)
+    end
+  end
+
+  def sort_column
+    %w[name status created_at processed byte_size].include?(params[:sort_by]) ? params[:sort_by] : 'created_at'
+  end
+
+  def sort_direction
+    %w[asc desc].include?(params[:order_by]) ? params[:order_by] : 'desc'
   end
 end
