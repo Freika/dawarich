@@ -56,6 +56,8 @@ describe 'Visits API', type: :request do
                  required: %w[id name status started_at ended_at duration]
                }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 
@@ -119,6 +121,8 @@ describe 'Visits API', type: :request do
                    }
                  }
                }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -196,6 +200,8 @@ describe 'Visits API', type: :request do
                  place: { type: :object }
                }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 
@@ -268,6 +274,8 @@ describe 'Visits API', type: :request do
                  }
                }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 
@@ -323,6 +331,8 @@ describe 'Visits API', type: :request do
                  place: { type: :object }
                }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 
@@ -376,6 +386,8 @@ describe 'Visits API', type: :request do
                  message: { type: :string },
                  updated_count: { type: :integer }
                }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

@@ -93,8 +93,9 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
   path '/api/v1/photos' do
     get 'Lists photos' do
       tags 'Photos'
+      description 'Returns photos from connected photo services (Immich, PhotoPrism) within a date range'
       produces 'application/json'
-      parameter name: :api_key, in: :query, type: :string, required: true
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
       parameter name: :start_date, in: :query, type: :string, required: true,
                 description: 'Start date in ISO8601 format, e.g. 2024-01-01'
       parameter name: :end_date, in: :query, type: :string, required: true,
@@ -105,20 +106,23 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
                items: {
                  type: :object,
                  properties: {
-                   id: { type: :string },
-                   latitude: { type: :number, format: :float },
-                   longitude: { type: :number, format: :float },
-                   localDateTime: { type: :string, format: 'date-time' },
-                   originalFileName: { type: :string },
-                   city: { type: :string },
-                   state: { type: :string },
-                   country: { type: :string },
-                   type: { type: :string, enum: %w[image video] },
-                   orientation: { type: :string, enum: %w[portrait landscape] },
-                   source: { type: :string, enum: %w[immich photoprism] }
+                   id: { type: :string, description: 'Photo ID from the source service' },
+                   latitude: { type: :number, format: :float, description: 'Latitude where the photo was taken' },
+                   longitude: { type: :number, format: :float, description: 'Longitude where the photo was taken' },
+                   localDateTime: { type: :string, format: 'date-time',
+description: 'Local date and time the photo was taken' },
+                   originalFileName: { type: :string, description: 'Original file name of the photo' },
+                   city: { type: :string, description: 'City where the photo was taken' },
+                   state: { type: :string, description: 'State/region where the photo was taken' },
+                   country: { type: :string, description: 'Country where the photo was taken' },
+                   type: { type: :string, enum: %w[image video], description: 'Media type' },
+                   orientation: { type: :string, enum: %w[portrait landscape], description: 'Photo orientation' },
+                   source: { type: :string, enum: %w[immich photoprism], description: 'Photo source service' }
                  },
                  required: %w[id latitude longitude localDateTime originalFileName city state country type source]
                }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -129,39 +133,29 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
   end
 
   path '/api/v1/photos/{id}/thumbnail' do
-    get 'Retrieves a photo' do
+    get 'Retrieves a photo thumbnail' do
       tags 'Photos'
-      produces 'application/json'
-      parameter name: :id, in: :path, type: :string, required: true
-      parameter name: :api_key, in: :query, type: :string, required: true
-      parameter name: :source, in: :query, type: :string, required: true
-      response '200', 'photo found' do
-        schema type: :object,
-               properties: {
-                 id: { type: :string },
-                 latitude: { type: :number, format: :float },
-                 longitude: { type: :number, format: :float },
-                 localDateTime: { type: :string, format: 'date-time' },
-                 originalFileName: { type: :string },
-                 city: { type: :string },
-                 state: { type: :string },
-                 country: { type: :string },
-                 type: { type: :string, enum: %w[IMAGE VIDEO image video raw live animated] },
-                 orientation: { type: :string, enum: %w[portrait landscape] },
-                 source: { type: :string, enum: %w[immich photoprism] }
-               }
+      description 'Returns the thumbnail image data for a specific photo. ' \
+                  'On success returns binary image/jpeg data. On error returns JSON with error details.'
+      produces 'image/jpeg', 'application/json'
+      parameter name: :id, in: :path, type: :string, required: true, description: 'Photo ID from the source service'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      parameter name: :source, in: :query, type: :string, required: true,
+                description: 'Photo source (immich or photoprism)'
 
+      response '200', 'photo found' do
         let(:id) { '7fe486e3-c3ba-4b54-bbf9-1281b39ed15c' }
         let(:source) { 'immich' }
 
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data).to be_a(Hash)
-          expect(data['id']).to eq(id)
-        end
+        run_test!
       end
 
       response '404', 'photo not found' do
+        schema type: :object,
+               properties: {
+                 error: { type: :string, description: 'Error message' }
+               }
+
         let(:id) { 'nonexistent' }
         let(:api_key) { user.api_key }
         let(:source) { 'immich' }

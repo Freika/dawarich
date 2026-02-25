@@ -32,19 +32,17 @@
       </div>
     <% else %>
       <div class="flex justify-center my-5">
-        <div class='flex'>
-          <%= paginate @imports %>
-        </div>
+        <%= paginate @imports %>
       </div>
       <div class="overflow-x-auto">
         <table class="table table-zebra overflow-x-auto">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>File size</th>
-              <th>Imported points</th>
-              <th>Status</th>
-              <th>Created at</th>
+              <th><%= sortable_column 'Name', :name, :imports_path %></th>
+              <th><%= sortable_column 'File size', :byte_size, :imports_path %></th>
+              <th><%= sortable_column 'Imported points', :processed, :imports_path %></th>
+              <th><%= sortable_column 'Status', :status, :imports_path %></th>
+              <th><%= sortable_column 'Created at', :created_at, :imports_path %></th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -60,9 +58,7 @@
         </table>
       </div>
       <div class="flex justify-center my-5">
-        <div class='flex'>
-          <%= paginate @imports %>
-        </div>
+        <%= paginate @imports %>
       </div>
     <% end %>
   </div>

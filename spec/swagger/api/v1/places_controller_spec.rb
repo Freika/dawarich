@@ -45,6 +45,8 @@ RSpec.describe 'Places API', type: :request do
         let(:api_key) { user.api_key }
         let!(:place) { create(:place, user: user) }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data).to be_an(Array)
@@ -104,11 +106,11 @@ RSpec.describe 'Places API', type: :request do
           }
         end
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['name']).to eq('Coffee Shop')
-          # NOTE: tags array is expected to be in the response schema but may be empty initially
-          # Tags can be added separately via the update endpoint
           expect(data).to have_key('tags')
         end
       end
@@ -169,6 +171,8 @@ RSpec.describe 'Places API', type: :request do
         let(:radius) { 1.0 }
         let(:limit) { 5 }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data).to have_key('places')
@@ -213,6 +217,8 @@ RSpec.describe 'Places API', type: :request do
         let(:api_key) { user.api_key }
         let(:place) { create(:place, user: user) }
         let(:id) { place.id }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -267,6 +273,8 @@ RSpec.describe 'Places API', type: :request do
         let(:existing_place) { create(:place, user: user) }
         let(:id) { existing_place.id }
         let(:place) { { name: 'Updated Name' } }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test! do |response|
           data = JSON.parse(response.body)

@@ -161,6 +161,8 @@ describe 'Overland Batches API', type: :request do
         let(:locations) { params['locations'] }
         let(:api_key) { create(:user).api_key }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 

@@ -2,6 +2,9 @@
 
 class ImportsController < ApplicationController
   include ActiveStorage::SetCurrent
+  include Sortable
+
+  SORTABLE_COLUMNS = %w[name status created_at processed byte_size].freeze
 
   before_action :authenticate_user!
   before_action :set_import, only: %i[show edit update destroy]
@@ -12,11 +15,11 @@ class ImportsController < ApplicationController
   after_action :verify_policy_scoped, only: %i[index]
 
   def index
-    @imports = policy_scope(Import)
-               .select(:id, :name, :source, :created_at, :processed, :status, :error_message)
-               .with_attached_file
-               .order(created_at: :desc)
-               .page(params[:page])
+    scope = policy_scope(Import)
+            .select(:id, :name, :source, :created_at, :processed, :status, :error_message)
+            .with_attached_file
+
+    @imports = sorted(scope).page(params[:page])
   end
 
   def show; end

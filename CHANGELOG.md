@@ -25,6 +25,8 @@ This release adds a dedicated `motion_data` column for transportation-relevant f
 - Digests get a fresh `sharing_uuid` on import for security — old share links from the original user won't work for the importing user.
 - Raw Data Archives are exported with their attached gzip files, enabling full data restoration.
 - Failed imports now will have an error message shown to the user.
+- Pagination now looks nicer and more informative, indicating current page. #2279
+- Imports and exports now can be sorted by name, file size, number of points, and creation date. #2279
 
 ### Changed
 
