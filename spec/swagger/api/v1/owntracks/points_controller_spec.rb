@@ -76,6 +76,8 @@ description: 'Array of region names device is currently in' },
         let(:point) { json.first }
         let(:api_key) { create(:user).api_key }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 

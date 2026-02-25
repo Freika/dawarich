@@ -104,4 +104,23 @@ module ApplicationHelper
     preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
     preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
   end
+
+  def sortable_column(title, column, path_helper, **path_params)
+    current_sort = params[:sort_by] || 'created_at'
+    current_dir  = params[:order_by] || 'desc'
+    is_active    = current_sort == column.to_s
+    next_dir     = is_active && current_dir == 'asc' ? 'desc' : 'asc'
+
+    sort_icon = if is_active
+                  icon(current_dir == 'asc' ? 'chevron-up' : 'chevron-down', class: 'w-4 h-4 inline-block')
+                else
+                  icon('arrow-down-up', class: 'w-4 h-4 inline-block opacity-30')
+                end
+
+    link_to send(path_helper, **path_params.merge(sort_by: column, order_by: next_dir)),
+            class: "inline-flex items-center gap-1 link link-hover#{' font-bold' if is_active}" do
+      concat title
+      concat sort_icon
+    end
+  end
 end
