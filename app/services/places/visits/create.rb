@@ -9,22 +9,29 @@ class Places::Visits::Create
   def initialize(user, places)
     @user = user
     @places = places
-    @time_threshold_minutes = 30 || user.safe_settings.time_threshold_minutes
-    @merge_threshold_minutes = 15 || user.safe_settings.merge_threshold_minutes
+    @time_threshold_minutes = user.safe_settings.time_threshold_minutes || 30
+    @merge_threshold_minutes = user.safe_settings.merge_threshold_minutes || 15
   end
 
   def call
-    places.map { place_visits(_1) }
+    places.each { place_visits(_1) }
   end
 
   private
 
   def place_visits(place)
-    points_grouped_by_month = place_points(place)
-    visits_by_month = group_points_by_month(points_grouped_by_month)
+    months = distinct_months_for_place(place)
+    Rails.logger.debug(
+      '[Places::Visits::Create] distinct_months_for_place ' \
+        "place_id=#{place.id} months=#{months.inspect} count=#{months.size}"
+    )
 
-    visits_by_month.each do |month, visits|
-      Rails.logger.info("Month: #{month}, Total visits: #{visits.size}")
+    months.each do |month|
+      points = place_points_for_month(place, month)
+      visits = Visits::Group.new(
+        time_threshold_minutes: @time_threshold_minutes,
+        merge_threshold_minutes: @merge_threshold_minutes
+      ).call(points, already_sorted: true)
 
       visits.each do |time_range, visit_points|
         create_or_update_visit(place, time_range, visit_points)
@@ -32,7 +39,21 @@ class Places::Visits::Create
     end
   end
 
-  def place_points(place)
+  def distinct_months_for_place(place)
+    place_radius = DEFAULT_PLACE_RADIUS / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
+
+    relation = Point.where(user_id: user.id)
+                    .near([place.latitude, place.longitude], place_radius, user.safe_settings.distance_unit)
+    sql = <<~SQL.squish
+      SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp), 'YYYY-MM') AS month
+      FROM (#{relation.to_sql}) AS sub
+      ORDER BY month ASC
+    SQL
+    result = ActiveRecord::Base.connection.select_all(sql)
+    result.map { |r| r['month'] }
+  end
+
+  def place_points_for_month(place, month)
     place_radius =
       if user.safe_settings.distance_unit == :km
         DEFAULT_PLACE_RADIUS / ::DISTANCE_UNITS[:km]
@@ -40,24 +61,16 @@ class Places::Visits::Create
         DEFAULT_PLACE_RADIUS / ::DISTANCE_UNITS[user.safe_settings.distance_unit.to_sym]
       end
 
-    points = Point.where(user_id: user.id)
-                  .near([place.latitude, place.longitude], place_radius, user.safe_settings.distance_unit)
-                  .order(timestamp: :asc)
+    year, month_num = month.split('-').map(&:to_i)
+    month_start = Time.utc(year, month_num, 1).to_i
+    month_end = (Time.utc(year, month_num, 1) + 1.month).to_i - 1
 
-    points.group_by { |point| Time.zone.at(point.timestamp).strftime('%Y-%m') }
-  end
-
-  def group_points_by_month(points)
-    visits_by_month = {}
-
-    points.each do |month, points_in_month|
-      visits_by_month[month] = Visits::Group.new(
-        time_threshold_minutes: @time_threshold_minutes,
-        merge_threshold_minutes: @merge_threshold_minutes
-      ).call(points_in_month)
-    end
-
-    visits_by_month
+    Point.where(user_id: user.id)
+         .without_raw_data
+         .near([place.latitude, place.longitude], place_radius, user.safe_settings.distance_unit)
+         .where(timestamp: month_start..month_end)
+         .order(timestamp: :asc)
+         .to_a
   end
 
   def create_or_update_visit(place, time_range, visit_points)

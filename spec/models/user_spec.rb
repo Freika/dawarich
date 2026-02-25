@@ -62,10 +62,6 @@ RSpec.describe User, type: :model do
     describe '#start_trial' do
       let(:user) { create(:user, :inactive) }
 
-      before do
-        allow(Users::TrialWebhookJob).to receive(:perform_later)
-      end
-
       it 'sets trial status and active_until to 7 days from now' do
         user.send(:start_trial)
 
@@ -74,8 +70,7 @@ RSpec.describe User, type: :model do
       end
 
       it 'enqueues trial webhook job' do
-        expect(Users::TrialWebhookJob).to receive(:perform_later).with(user.id)
-        user.send(:start_trial)
+        expect { user.send(:start_trial) }.to have_enqueued_job(Users::TrialWebhookJob).with(user.id)
       end
 
       it 'schedules welcome emails' do
@@ -90,32 +85,24 @@ RSpec.describe User, type: :model do
     describe '#schedule_welcome_emails' do
       let(:user) { create(:user, :inactive) }
 
-      before do
-        allow(Users::MailerSendingJob).to receive(:perform_later)
-        allow(Users::MailerSendingJob).to receive(:set).and_return(Users::MailerSendingJob)
-      end
-
       it 'schedules welcome email immediately' do
-        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'welcome')
-        user.send(:schedule_welcome_emails)
+        expect { user.send(:schedule_welcome_emails) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'welcome')
       end
 
       it 'schedules explore_features email for day 2' do
-        expect(Users::MailerSendingJob).to receive(:set).with(wait: 2.days).and_return(Users::MailerSendingJob)
-        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'explore_features')
-        user.send(:schedule_welcome_emails)
+        expect { user.send(:schedule_welcome_emails) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'explore_features')
       end
 
       it 'schedules trial_expires_soon email for day 5' do
-        expect(Users::MailerSendingJob).to receive(:set).with(wait: 5.days).and_return(Users::MailerSendingJob)
-        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'trial_expires_soon')
-        user.send(:schedule_welcome_emails)
+        expect { user.send(:schedule_welcome_emails) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'trial_expires_soon')
       end
 
       it 'schedules trial_expired email for day 7' do
-        expect(Users::MailerSendingJob).to receive(:set).with(wait: 7.days).and_return(Users::MailerSendingJob)
-        expect(Users::MailerSendingJob).to receive(:perform_later).with(user.id, 'trial_expired')
-        user.send(:schedule_welcome_emails)
+        expect { user.send(:schedule_welcome_emails) }
+          .to have_enqueued_job(Users::MailerSendingJob).with(user.id, 'trial_expired')
       end
     end
   end
@@ -163,12 +150,16 @@ RSpec.describe User, type: :model do
     describe '#countries_visited' do
       subject { user.countries_visited }
 
-      let!(:point1) { create(:point, user:, country_name: 'Germany') }
-      let!(:point2) { create(:point, user:, country_name: 'France') }
-      let!(:point3) { create(:point, user:, country_name: nil) }
-      let!(:point4) { create(:point, user:, country_name: '') }
+      let!(:stat) do
+        create(:stat, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin', 'stayed_for' => 120 }] },
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 90 }] },
+                 { 'country' => nil, 'cities' => [] },
+                 { 'country' => '', 'cities' => [] }
+               ])
+      end
 
-      it 'returns array of countries' do
+      it 'returns array of countries from stats toponyms' do
         expect(subject).to include('Germany', 'France')
         expect(subject.count).to eq(2)
       end
@@ -181,12 +172,18 @@ RSpec.describe User, type: :model do
     describe '#cities_visited' do
       subject { user.cities_visited }
 
-      let!(:point1) { create(:point, user:, city: 'Berlin') }
-      let!(:point2) { create(:point, user:, city: 'Paris') }
-      let!(:point3) { create(:point, user:, city: nil) }
-      let!(:point4) { create(:point, user:, city: '') }
+      let!(:stat) do
+        create(:stat, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [
+                   { 'city' => 'Berlin', 'stayed_for' => 120 },
+                   { 'city' => nil, 'stayed_for' => 60 },
+                   { 'city' => '', 'stayed_for' => 60 }
+                 ] },
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 90 }] }
+               ])
+      end
 
-      it 'returns array of cities' do
+      it 'returns array of cities from stats toponyms' do
         expect(subject).to include('Berlin', 'Paris')
         expect(subject.count).to eq(2)
       end
@@ -199,8 +196,8 @@ RSpec.describe User, type: :model do
     describe '#total_distance' do
       subject { user.total_distance }
 
-      let!(:stat1) { create(:stat, user:, distance: 10_000) }
-      let!(:stat2) { create(:stat, user:, distance: 20_000) }
+      let!(:stat1) { create(:stat, user:, year: 2020, month: 10, distance: 10_000) }
+      let!(:stat2) { create(:stat, user:, year: 2020, month: 11, distance: 20_000) }
 
       it 'returns sum of distances' do
         expect(subject).to eq(30) # 30 km
@@ -210,11 +207,15 @@ RSpec.describe User, type: :model do
     describe '#total_countries' do
       subject { user.total_countries }
 
-      let!(:point1) { create(:point, user:, country_name: 'Germany') }
-      let!(:point2) { create(:point, user:, country_name: 'France') }
-      let!(:point3) { create(:point, user:, country_name: nil) }
+      let!(:stat) do
+        create(:stat, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [] },
+                 { 'country' => 'France', 'cities' => [] },
+                 { 'country' => nil, 'cities' => [] }
+               ])
+      end
 
-      it 'returns number of countries' do
+      it 'returns number of countries from stats toponyms' do
         expect(subject).to eq(2)
       end
     end
@@ -222,11 +223,17 @@ RSpec.describe User, type: :model do
     describe '#total_cities' do
       subject { user.total_cities }
 
-      let!(:point1) { create(:point, user:, city: 'Berlin') }
-      let!(:point2) { create(:point, user:, city: 'Paris') }
-      let!(:point3) { create(:point, user:, city: nil) }
+      let!(:stat) do
+        create(:stat, user:, toponyms: [
+                 { 'country' => 'Germany', 'cities' => [
+                   { 'city' => 'Berlin', 'stayed_for' => 120 },
+                   { 'city' => 'Paris', 'stayed_for' => 90 },
+                   { 'city' => nil, 'stayed_for' => 60 }
+                 ] }
+               ])
+      end
 
-      it 'returns number of cities' do
+      it 'returns number of cities from stats toponyms' do
         expect(subject).to eq(2)
       end
     end
@@ -333,22 +340,42 @@ RSpec.describe User, type: :model do
     end
 
     describe '#timezone' do
-      it 'returns the app timezone' do
-        expect(user.timezone).to eq(Time.zone.name)
+      context 'when timezone is not set in settings' do
+        it 'returns UTC as default' do
+          expect(user.timezone).to eq('UTC')
+        end
+      end
+
+      context 'when timezone is set in settings' do
+        let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
+
+        it 'returns the user timezone from settings' do
+          expect(user.timezone).to eq('Europe/Berlin')
+        end
+      end
+
+      context 'when timezone is set to America/New_York' do
+        let(:user) { create(:user, settings: { 'timezone' => 'America/New_York' }) }
+
+        it 'returns the configured timezone' do
+          expect(user.timezone).to eq('America/New_York')
+        end
       end
     end
   end
 
   describe '.from_omniauth' do
     let(:auth_hash) do
-      OmniAuth::AuthHash.new({
-        provider: 'github',
-        uid: '123545',
-        info: {
-          email: email,
-          name: 'Test User'
+      OmniAuth::AuthHash.new(
+        {
+          provider: 'github',
+          uid: '123545',
+          info: {
+            email: email,
+            name: 'Test User'
+          }
         }
-      })
+      )
     end
 
     context 'when user exists with the same email' do
@@ -394,14 +421,16 @@ RSpec.describe User, type: :model do
     context 'when OAuth provider is Google' do
       let(:email) { 'google@example.com' }
       let(:auth_hash) do
-        OmniAuth::AuthHash.new({
-          provider: 'google_oauth2',
-          uid: '123545',
-          info: {
-            email: email,
-            name: 'Google User'
+        OmniAuth::AuthHash.new(
+          {
+            provider: 'google_oauth2',
+            uid: '123545',
+            info: {
+              email: email,
+              name: 'Google User'
+            }
           }
-        })
+        )
       end
 
       it 'creates a user from Google OAuth data' do

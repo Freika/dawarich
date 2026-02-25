@@ -8,8 +8,8 @@ class Random
     # :stopdoc:
 
     # Implementation using OpenSSL
-    def gen_random_openssl(n)
-      OpenSSL::Random.random_bytes(n)
+    def gen_random_openssl(num_bytes)
+      OpenSSL::Random.random_bytes(num_bytes)
     end
 
     begin

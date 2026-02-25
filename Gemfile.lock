@@ -108,12 +108,12 @@ GEM
       aws-eventstream (~> 1, >= 1.0.2)
     base64 (0.3.0)
     bcrypt (3.1.20)
-    benchmark (0.4.1)
-    bigdecimal (3.3.1)
+    benchmark (0.5.0)
+    bigdecimal (4.0.1)
     bindata (2.5.1)
     bootsnap (1.18.6)
       msgpack (~> 1.2)
-    brakeman (7.1.0)
+    brakeman (7.1.1)
       racc
     builder (3.3.0)
     bundler-audit (0.9.2)
@@ -129,18 +129,19 @@ GEM
       rack-test (>= 0.6.3)
       regexp_parser (>= 1.5, < 3.0)
       xpath (~> 3.2)
-    chartkick (5.2.0)
+    chartkick (5.2.1)
     chunky_png (1.4.0)
     coderay (1.1.3)
-    concurrent-ruby (1.3.5)
-    connection_pool (2.5.4)
-    crack (1.0.0)
+    concurrent-ruby (1.3.6)
+    connection_pool (2.5.5)
+    crack (1.0.1)
       bigdecimal
       rexml
     crass (1.0.6)
     cronex (0.15.0)
       tzinfo
       unicode (>= 0.4.4.5)
+    css-zero (1.1.15)
     csv (3.3.4)
     data_migrate (11.3.1)
       activerecord (>= 6.1)
@@ -166,7 +167,7 @@ GEM
     drb (2.2.3)
     email_validator (2.2.4)
       activemodel
-    erb (5.1.3)
+    erb (6.0.0)
     erubi (1.13.1)
     et-orbi (1.4.0)
       tzinfo
@@ -208,25 +209,25 @@ GEM
       ffi (~> 1.9)
       rgeo-geojson (~> 2.1)
       zeitwerk (~> 2.5)
-    hashdiff (1.1.2)
+    hashdiff (1.2.1)
     hashie (5.0.0)
     httparty (0.23.1)
       csv
       mini_mime (>= 1.0.0)
       multi_xml (>= 0.5.2)
-    i18n (1.14.7)
+    i18n (1.14.8)
       concurrent-ruby (~> 1.0)
     importmap-rails (2.2.2)
       actionpack (>= 6.0.0)
       activesupport (>= 6.0.0)
       railties (>= 6.0.0)
     io-console (0.8.1)
-    irb (1.15.2)
+    irb (1.15.3)
       pp (>= 0.6.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     jmespath (1.6.2)
-    json (2.15.0)
+    json (2.18.0)
     json-jwt (1.17.0)
       activesupport (>= 4.2)
       aes_key_wrap
@@ -272,11 +273,12 @@ GEM
     method_source (1.1.0)
     mini_mime (1.1.5)
     mini_portile2 (2.8.9)
-    minitest (5.26.0)
+    minitest (6.0.1)
+      prism (~> 1.5)
     msgpack (1.7.3)
     multi_json (1.15.0)
-    multi_xml (0.7.1)
-      bigdecimal (~> 3.1)
+    multi_xml (0.8.0)
+      bigdecimal (>= 3.1, < 5)
     net-http (0.6.0)
       uri
     net-imap (0.5.12)
@@ -351,8 +353,11 @@ GEM
     optimist (3.2.1)
     orm_adapter (0.5.0)
     ostruct (0.6.1)
+    pagy (43.2.2)
+      json
+      yaml
     parallel (1.27.0)
-    parser (3.3.9.0)
+    parser (3.3.10.0)
       ast (~> 2.4.1)
       racc
     patience_diff (1.2.0)
@@ -365,7 +370,7 @@ GEM
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
-    prism (1.5.1)
+    prism (1.7.0)
     prometheus_exporter (2.2.0)
       webrick
     pry (0.15.2)
@@ -379,14 +384,14 @@ GEM
     psych (5.2.6)
       date
       stringio
-    public_suffix (6.0.1)
+    public_suffix (6.0.2)
     puma (7.1.0)
       nio4r (~> 2.0)
     pundit (2.5.2)
       activesupport (>= 3.0.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (3.2.3)
+    rack (3.2.4)
     rack-oauth2 (2.3.0)
       activesupport
       attr_required
@@ -429,6 +434,14 @@ GEM
     rails_icons (1.4.0)
       nokogiri (~> 1.16, >= 1.16.4)
       rails (> 6.1)
+    rails_pulse (0.2.4)
+      css-zero (~> 1.1, >= 1.1.4)
+      groupdate (~> 6.0)
+      pagy (>= 8, < 44)
+      rails (>= 7.1.0, < 9.0.0)
+      ransack (~> 4.0)
+      request_store (~> 1.5)
+      turbo-rails (~> 2.0.11)
     railties (8.0.3)
       actionpack (= 8.0.3)
       activesupport (= 8.0.3)
@@ -440,19 +453,26 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.3.1)
-    rdoc (6.15.0)
+    ransack (4.4.1)
+      activerecord (>= 7.2)
+      activesupport (>= 7.2)
+      i18n
+    rdoc (6.16.1)
       erb
       psych (>= 4.0.0)
       tsort
-    redis (5.4.0)
+    redis (5.4.1)
       redis-client (>= 0.22.0)
-    redis-client (0.24.0)
+    redis-client (0.26.2)
       connection_pool
     regexp_parser (2.11.3)
-    reline (0.6.2)
+    reline (0.6.3)
       io-console (~> 0.5)
     request_store (1.7.0)
       rack (>= 1.4)
+    resolv (0.7.0)
+    resolv-replace (0.2.0)
+      resolv
     responders (3.1.1)
       actionpack (>= 5.2)
       railties (>= 5.2)
@@ -496,7 +516,7 @@ GEM
     rswag-ui (2.17.0)
       actionpack (>= 5.2, < 8.2)
       railties (>= 5.2, < 8.2)
-    rubocop (1.81.1)
+    rubocop (1.82.1)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
@@ -504,20 +524,20 @@ GEM
       parser (>= 3.3.0.2)
       rainbow (>= 2.2.2, < 4.0)
       regexp_parser (>= 2.9.3, < 3.0)
-      rubocop-ast (>= 1.47.1, < 2.0)
+      rubocop-ast (>= 1.48.0, < 2.0)
       ruby-progressbar (~> 1.7)
       unicode-display_width (>= 2.4.0, < 4.0)
-    rubocop-ast (1.47.1)
+    rubocop-ast (1.49.0)
       parser (>= 3.3.7.2)
-      prism (~> 1.4)
-    rubocop-rails (2.33.4)
+      prism (~> 1.7)
+    rubocop-rails (2.34.2)
       activesupport (>= 4.2.0)
       lint_roller (~> 1.1)
       rack (>= 1.1)
       rubocop (>= 1.75.0, < 2.0)
       rubocop-ast (>= 1.44.0, < 2.0)
     ruby-progressbar (1.13.0)
-    rubyzip (3.2.0)
+    rubyzip (3.2.2)
     securerandom (0.4.1)
     selenium-webdriver (4.35.0)
       base64 (~> 0.2)
@@ -525,15 +545,15 @@ GEM
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 4.0)
       websocket (~> 1.0)
-    sentry-rails (6.0.0)
+    sentry-rails (6.2.0)
       railties (>= 5.2.0)
-      sentry-ruby (~> 6.0.0)
-    sentry-ruby (6.0.0)
+      sentry-ruby (~> 6.2.0)
+    sentry-ruby (6.2.0)
       bigdecimal
       concurrent-ruby (~> 1.0, >= 1.0.2)
     shoulda-matchers (6.5.0)
       activesupport (>= 5.2.0)
-    sidekiq (8.0.8)
+    sidekiq (8.0.10)
       connection_pool (>= 2.5.0)
       json (>= 2.9.0)
       logger (>= 1.6.2)
@@ -565,9 +585,7 @@ GEM
     stackprof (0.2.27)
     stimulus-rails (1.3.4)
       railties (>= 6.0.0)
-    stringio (3.1.7)
-    strong_migrations (2.5.1)
-      activerecord (>= 7.1)
+    stringio (3.1.8)
     super_diff (0.17.0)
       attr_extras (>= 6.2.4)
       diff-lcs
@@ -589,7 +607,7 @@ GEM
     thor (1.4.0)
     timeout (0.4.4)
     tsort (0.2.0)
-    turbo-rails (2.0.17)
+    turbo-rails (2.0.20)
       actionpack (>= 7.1.0)
       railties (>= 7.1.0)
     tzinfo (2.0.6)
@@ -597,8 +615,8 @@ GEM
     unicode (0.4.4.5)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
-    unicode-emoji (4.1.0)
-    uri (1.0.4)
+    unicode-emoji (4.2.0)
+    uri (1.1.1)
     useragent (0.16.11)
     validate_url (1.0.15)
       activemodel (>= 3.0.0)
@@ -610,7 +628,7 @@ GEM
       activesupport
       faraday (~> 2.0)
       faraday-follow_redirects
-    webmock (3.25.1)
+    webmock (3.26.1)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
       hashdiff (>= 0.4.0, < 2.0.0)
@@ -620,8 +638,12 @@ GEM
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    with_advisory_lock (7.0.2)
+      activerecord (>= 7.2)
+      zeitwerk (>= 2.7)
     xpath (3.2.0)
       nokogiri (~> 1.8)
+    yaml (0.4.0)
     zeitwerk (2.7.3)
 
 PLATFORMS
@@ -642,6 +664,7 @@ DEPENDENCIES
   bundler-audit
   capybara
   chartkick
+  connection_pool (< 3)
   data_migrate
   database_consistency (>= 2.0.5)
   debug
@@ -674,7 +697,9 @@ DEPENDENCIES
   pundit (>= 2.5.1)
   rails (~> 8.0)
   rails_icons
+  rails_pulse
   redis
+  resolv-replace (~> 0.2.0)
   rexml
   rgeo
   rgeo-activerecord (~> 8.0.0)
@@ -690,19 +715,19 @@ DEPENDENCIES
   sentry-rails (>= 5.27.0)
   sentry-ruby
   shoulda-matchers
-  sidekiq (>= 8.0.5)
+  sidekiq (= 8.0.10)
   sidekiq-cron (>= 2.3.1)
   sidekiq-limit_fetch
   simplecov
   sprockets-rails
   stackprof
   stimulus-rails
-  strong_migrations (>= 2.4.0)
   super_diff
   tailwindcss-rails (= 3.3.2)
   turbo-rails (>= 2.0.17)
   tzinfo-data
   webmock
+  with_advisory_lock
 
 RUBY VERSION
    ruby 3.4.6p54

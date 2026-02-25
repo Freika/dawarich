@@ -58,7 +58,9 @@ RSpec.describe '/settings/background_jobs', type: :request do
       end
 
       context 'when user is an admin' do
-        before { sign_in create(:user, :admin) }
+        let(:admin_user) { create(:user, :admin) }
+
+        before { sign_in admin_user }
 
         describe 'GET /index' do
           it 'renders a successful response' do
@@ -84,6 +86,32 @@ RSpec.describe '/settings/background_jobs', type: :request do
               expect(response).to redirect_to(settings_background_jobs_url)
             end
           end
+        end
+
+        describe 'PATCH /update' do
+          it 'enables visits suggestions' do
+            patch settings_background_jobs_url, params: { settings: { 'visits_suggestions_enabled' => 'true' } }
+
+            expect(response).to redirect_to(settings_background_jobs_url)
+            expect(flash[:notice]).to eq('Settings updated')
+            expect(admin_user.reload.settings['visits_suggestions_enabled']).to eq('true')
+          end
+
+          it 'disables visits suggestions' do
+            patch settings_background_jobs_url, params: { settings: { 'visits_suggestions_enabled' => 'false' } }
+
+            expect(response).to redirect_to(settings_background_jobs_url)
+            expect(admin_user.reload.settings['visits_suggestions_enabled']).to eq('false')
+          end
+        end
+      end
+
+      context 'when non-admin user patches update' do
+        it 'rejects the request' do
+          patch settings_background_jobs_url, params: { settings: { 'visits_suggestions_enabled' => 'true' } }
+
+          expect(response).to redirect_to(root_url)
+          expect(flash[:alert]).to eq('You are not authorized to perform this action.')
         end
       end
     end

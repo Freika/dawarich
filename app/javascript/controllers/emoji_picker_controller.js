@@ -6,7 +6,7 @@ import { Picker } from "emoji-mart"
 export default class extends Controller {
   static targets = ["input", "button", "pickerContainer"]
   static values = {
-    autoSubmit: { type: Boolean, default: true }
+    autoSubmit: { type: Boolean, default: true },
   }
 
   connect() {
@@ -62,8 +62,8 @@ export default class extends Controller {
         "places",
         "objects",
         "symbols",
-        "flags"
-      ]
+        "flags",
+      ],
     })
 
     this.pickerContainerTarget.appendChild(this.picker)
@@ -78,7 +78,9 @@ export default class extends Controller {
     // Update button to show selected emoji
     if (this.hasButtonTarget) {
       // Find the display element (could be a span or the button itself)
-      const display = this.buttonTarget.querySelector('[data-emoji-picker-display]') || this.buttonTarget
+      const display =
+        this.buttonTarget.querySelector("[data-emoji-picker-display]") ||
+        this.buttonTarget
       display.textContent = emoji.native
     }
 
@@ -109,7 +111,9 @@ export default class extends Controller {
     this.inputTarget.value = ""
 
     if (this.hasButtonTarget) {
-      const display = this.buttonTarget.querySelector('[data-emoji-picker-display]') || this.buttonTarget
+      const display =
+        this.buttonTarget.querySelector("[data-emoji-picker-display]") ||
+        this.buttonTarget
       // Reset to default emoji or icon
       const defaultIcon = this.buttonTarget.dataset.defaultIcon || "😀"
       display.textContent = defaultIcon
@@ -120,11 +124,13 @@ export default class extends Controller {
 
   getTheme() {
     // Detect dark mode from document
-    if (document.documentElement.getAttribute('data-theme') === 'dark' ||
-      document.documentElement.classList.contains('dark')) {
-      return 'dark'
+    if (
+      document.documentElement.getAttribute("data-theme") === "dark" ||
+      document.documentElement.classList.contains("dark")
+    ) {
+      return "dark"
     }
-    return 'light'
+    return "light"
   }
 
   setupKeyboardListeners() {
@@ -138,14 +144,19 @@ export default class extends Controller {
 
   handleKeydown(event) {
     // Close on Escape
-    if (event.key === "Escape" && !this.pickerContainerTarget.classList.contains("hidden")) {
+    if (
+      event.key === "Escape" &&
+      !this.pickerContainerTarget.classList.contains("hidden")
+    ) {
       this.close()
     }
 
     // Clear on Delete/Backspace (when picker is open)
-    if ((event.key === "Delete" || event.key === "Backspace") &&
+    if (
+      (event.key === "Delete" || event.key === "Backspace") &&
       !this.pickerContainerTarget.classList.contains("hidden") &&
-      event.target === this.inputTarget) {
+      event.target === this.inputTarget
+    ) {
       event.preventDefault()
       this.clearEmoji()
     }
@@ -172,7 +183,7 @@ export default class extends Controller {
   }
 
   removePicker() {
-    if (this.picker && this.picker.remove) {
+    if (this.picker?.remove) {
       this.picker.remove()
     }
     this.picker = null

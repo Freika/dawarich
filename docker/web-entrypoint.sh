@@ -10,18 +10,11 @@ echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
   # Extract components from DATABASE_URL
-  DATABASE_HOST=$(echo $DATABASE_URL | awk -F[@/] '{print $4}')
-  DATABASE_PORT=$(echo $DATABASE_URL | awk -F[@/:] '{print $5}')
-  DATABASE_USERNAME=$(echo $DATABASE_URL | awk -F[:/@] '{print $4}')
-  DATABASE_PASSWORD=$(echo $DATABASE_URL | awk -F[:/@] '{print $5}')
-  DATABASE_NAME=$(echo $DATABASE_URL | awk -F[@/] '{print $5}')
-else
-  # Use existing environment variables
-  DATABASE_HOST=${DATABASE_HOST}
-  DATABASE_PORT=${DATABASE_PORT}
-  DATABASE_USERNAME=${DATABASE_USERNAME}
-  DATABASE_PASSWORD=${DATABASE_PASSWORD}
-  DATABASE_NAME=${DATABASE_NAME}
+  DATABASE_HOST="$(echo "$DATABASE_URL" | awk -F[@/] '{print $4}')"
+  DATABASE_PORT="$(echo "$DATABASE_URL" | awk -F[@/:] '{print $5}')"
+  DATABASE_USERNAME="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $4}')"
+  DATABASE_PASSWORD="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $5}')"
+  DATABASE_NAME="$(echo "$DATABASE_URL" | awk -F[@/] '{print $5}')"
 fi
 
 # Export main database variables to ensure they're available
@@ -32,13 +25,15 @@ export DATABASE_PASSWORD
 export DATABASE_NAME
 
 # Remove pre-existing puma/passenger server.pid
-rm -f $APP_PATH/tmp/pids/server.pid
+rm -f "$APP_PATH/tmp/pids/server.pid"
 
 # Sync static assets from image to volume
-# This ensures new files (like maps_maplibre styles) are copied to the persistent volume
+# This ensures new and updated files are copied to the persistent volume
 if [ -d "/tmp/public_assets" ]; then
-  echo "📦 Syncing new static assets to public volume..."
-  cp -rn /tmp/public_assets/* $APP_PATH/public/ 2>/dev/null || true
+  echo "📦 Syncing static assets to public volume..."
+  # Remove old compiled assets to prevent stale files from persisting
+  rm -rf $APP_PATH/public/assets
+  cp -r /tmp/public_assets/* $APP_PATH/public/
   echo "✅ Static assets synced!"
 fi
 
@@ -81,6 +76,33 @@ bundle exec rake data:migrate
 
 echo "Running seeds..."
 bundle exec rails db:seed
+
+# Optionally start prometheus exporter alongside the web process
+PROMETHEUS_EXPORTER_PID=""
+if [ "$PROMETHEUS_EXPORTER_ENABLED" = "true" ]; then
+  PROM_HOST=${PROMETHEUS_EXPORTER_HOST:-0.0.0.0}
+  PROM_PORT=${PROMETHEUS_EXPORTER_PORT:-9394}
+
+  case "$PROM_HOST" in
+    ""|"0.0.0.0"|"::"|"127.0.0.1"|"localhost"|"ANY")
+      echo "📈 Starting Prometheus exporter on ${PROM_HOST:-0.0.0.0}:${PROM_PORT}..."
+      bundle exec prometheus_exporter -b "${PROM_HOST:-ANY}" -p "${PROM_PORT}" &
+      PROMETHEUS_EXPORTER_PID=$!
+
+      cleanup() {
+        if [ -n "$PROMETHEUS_EXPORTER_PID" ] && kill -0 "$PROMETHEUS_EXPORTER_PID" 2>/dev/null; then
+          echo "🛑 Stopping Prometheus exporter (PID $PROMETHEUS_EXPORTER_PID)..."
+          kill "$PROMETHEUS_EXPORTER_PID"
+          wait "$PROMETHEUS_EXPORTER_PID" 2>/dev/null || true
+        fi
+      }
+      trap cleanup EXIT INT TERM
+      ;;
+    *)
+      echo "ℹ️ PROMETHEUS_EXPORTER_HOST is set to $PROM_HOST, skipping embedded exporter startup."
+      ;;
+  esac
+fi
 
 # run passed commands
 exec bundle exec ${@}

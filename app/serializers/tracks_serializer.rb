@@ -10,8 +10,8 @@ class TracksSerializer
     return [] if track_ids.empty?
 
     tracks = user.tracks
-      .where(id: track_ids)
-      .order(start_at: :asc)
+                 .where(id: track_ids)
+                 .order(start_at: :asc)
 
     tracks.map { |track| TrackSerializer.new(track).call }
   end

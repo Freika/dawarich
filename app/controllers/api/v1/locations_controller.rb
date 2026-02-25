@@ -72,7 +72,7 @@ class Api::V1::LocationsController < ApiController
     lon = params[:lon]&.to_f
 
     if lat.abs > 90 || lon.abs > 180
-      render json: { error: 'Invalid coordinates: latitude must be between -90 and 90, longitude between -180 and 180' },
+      render json: { error: 'Invalid coordinates: lat must be -90..90, lon must be -180..180' },
              status: :bad_request
       return false
     end

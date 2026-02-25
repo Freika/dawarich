@@ -1,3 +1,5 @@
+<%= render 'shared/chartkick_scripts' %>
+
 <div class="container mx-auto px-4 py-8">
   <!-- Monthly Digest Header -->
   <div class="hero text-white rounded-lg shadow-lg mb-8" style="background-image: url('<%= month_bg_image(@stat) %>');">
@@ -63,7 +65,8 @@
               data-public-stat-map-uuid-value="<%= @stat.sharing_uuid %>"
               data-public-stat-map-data-bounds-value="<%= @data_bounds.to_json if @data_bounds %>"
               data-public-stat-map-hexagons-available-value="<%= @hexagons_available.to_s %>"
-              data-public-stat-map-self-hosted-value="<%= @self_hosted %>"></div>
+              data-public-stat-map-self-hosted-value="<%= @self_hosted %>"
+              data-public-stat-map-timezone-value="<%= @user.timezone %>"></div>
 
         <!-- Loading overlay -->
         <div id="map-loading" class="absolute inset-0 bg-base-200 bg-opacity-80 flex items-center justify-center z-50">

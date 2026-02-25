@@ -68,12 +68,14 @@ class Stat < ApplicationRecord
 
   def enable_sharing!(expiration: '1h')
     # Default to 24h if an invalid expiration is provided
-    expiration = '24h' unless %w[1h 12h 24h].include?(expiration)
+    expiration = '24h' unless %w[1h 12h 24h 1w 1m].include?(expiration)
 
     expires_at = case expiration
                  when '1h' then 1.hour.from_now
                  when '12h' then 12.hours.from_now
                  when '24h' then 24.hours.from_now
+                 when '1w' then 1.week.from_now
+                 when '1m' then 1.month.from_now
                  end
 
     update!(
@@ -144,10 +146,6 @@ class Stat < ApplicationRecord
   end
 
   def user_timezone
-    # Future: Once user.timezone column exists, uncomment the line below
-    # user.timezone.presence || Time.zone.name
-
-    # For now, use application timezone
-    Time.zone.name
+    user.timezone.presence || Time.zone.name
   end
 end

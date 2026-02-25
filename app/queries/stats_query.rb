@@ -11,31 +11,44 @@ class StatsQuery
     end
 
     {
-      total: user.points_count,
+      total: user.points_count.to_i,
       geocoded: cached_stats[:geocoded],
       without_data: cached_stats[:without_data]
     }
   end
 
   def cached_points_geocoded_stats
-    sql = ActiveRecord::Base.sanitize_sql_array(
+    # Split into two queries to leverage partial indexes:
+    # - index_points_on_user_id_and_reverse_geocoded_at
+    # - index_points_on_user_id_and_empty_geodata
+    geocoded_sql = ActiveRecord::Base.sanitize_sql_array(
       [
         <<~SQL.squish,
-          SELECT
-            COUNT(reverse_geocoded_at) as geocoded,
-            COUNT(CASE WHEN geodata = '{}'::jsonb THEN 1 END) as without_data
+          SELECT COUNT(*) as geocoded
           FROM points
-          WHERE user_id = ?
+          WHERE user_id = ? AND reverse_geocoded_at IS NOT NULL
         SQL
         user.id
       ]
     )
 
-    result = Point.connection.select_one(sql)
+    without_data_sql = ActiveRecord::Base.sanitize_sql_array(
+      [
+        <<~SQL.squish,
+          SELECT COUNT(*) as without_data
+          FROM points
+          WHERE user_id = ? AND geodata = '{}'::jsonb
+        SQL
+        user.id
+      ]
+    )
+
+    geocoded_result = Point.connection.select_value(geocoded_sql)
+    without_data_result = Point.connection.select_value(without_data_sql)
 
     {
-      geocoded: result['geocoded'].to_i,
-      without_data: result['without_data'].to_i
+      geocoded: geocoded_result.to_i,
+      without_data: without_data_result.to_i
     }
   end
 

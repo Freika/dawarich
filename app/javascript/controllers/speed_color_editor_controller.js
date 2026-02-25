@@ -1,13 +1,13 @@
-import { Controller } from '@hotwired/stimulus'
+import { Controller } from "@hotwired/stimulus"
 
 /**
  * Speed Color Editor Controller
  * Manages the gradient editor modal for speed-colored routes
  */
 export default class extends Controller {
-  static targets = ['modal', 'stopsList', 'preview']
+  static targets = ["modal", "stopsList", "preview"]
   static values = {
-    colorStops: String
+    colorStops: String,
   }
 
   connect() {
@@ -15,27 +15,31 @@ export default class extends Controller {
   }
 
   loadColorStops() {
-    const stopsString = this.colorStopsValue || '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300'
+    const stopsString =
+      this.colorStopsValue ||
+      "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
     this.stops = this.parseColorStops(stopsString)
     this.renderStops()
     this.updatePreview()
   }
 
   parseColorStops(stopsString) {
-    return stopsString.split('|').map(segment => {
-      const [speed, color] = segment.split(':')
+    return stopsString.split("|").map((segment) => {
+      const [speed, color] = segment.split(":")
       return { speed: Number(speed), color }
     })
   }
 
   serializeColorStops() {
-    return this.stops.map(stop => `${stop.speed}:${stop.color}`).join('|')
+    return this.stops.map((stop) => `${stop.speed}:${stop.color}`).join("|")
   }
 
   renderStops() {
     if (!this.hasStopsListTarget) return
 
-    this.stopsListTarget.innerHTML = this.stops.map((stop, index) => `
+    this.stopsListTarget.innerHTML = this.stops
+      .map(
+        (stop, index) => `
       <div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg" data-index="${index}">
         <div class="flex-1">
           <label class="label">
@@ -73,28 +77,31 @@ export default class extends Controller {
                 class="btn btn-sm btn-ghost btn-circle text-error mt-6"
                 data-action="click->speed-color-editor#removeStop"
                 data-index="${index}"
-                ${this.stops.length <= 2 ? 'disabled' : ''}>
+                ${this.stops.length <= 2 ? "disabled" : ""}>
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-    `).join('')
+    `,
+      )
+      .join("")
   }
 
   updateSpeed(event) {
-    const index = parseInt(event.target.dataset.index)
+    const index = parseInt(event.target.dataset.index, 10)
     this.stops[index].speed = Number(event.target.value)
     this.updatePreview()
   }
 
   updateColor(event) {
-    const index = parseInt(event.target.dataset.index)
+    const index = parseInt(event.target.dataset.index, 10)
     const color = event.target.value
     this.stops[index].color = color
 
     // Update text input
-    const textInput = event.target.parentElement.querySelector('input[type="text"]')
+    const textInput =
+      event.target.parentElement.querySelector('input[type="text"]')
     if (textInput) {
       textInput.value = color
     }
@@ -103,14 +110,16 @@ export default class extends Controller {
   }
 
   updateColorText(event) {
-    const index = parseInt(event.target.dataset.index)
+    const index = parseInt(event.target.dataset.index, 10)
     const color = event.target.value
 
     if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
       this.stops[index].color = color
 
       // Update color picker
-      const colorInput = event.target.parentElement.querySelector('input[type="color"]')
+      const colorInput = event.target.parentElement.querySelector(
+        'input[type="color"]',
+      )
       if (colorInput) {
         colorInput.value = color
       }
@@ -126,7 +135,7 @@ export default class extends Controller {
 
     this.stops.push({
       speed: newSpeed,
-      color: '#ff0000'
+      color: "#ff0000",
     })
 
     // Sort by speed
@@ -137,7 +146,7 @@ export default class extends Controller {
   }
 
   removeStop(event) {
-    const index = parseInt(event.target.dataset.index)
+    const index = parseInt(event.target.dataset.index, 10)
 
     if (this.stops.length > 2) {
       this.stops.splice(index, 1)
@@ -149,10 +158,12 @@ export default class extends Controller {
   updatePreview() {
     if (!this.hasPreviewTarget) return
 
-    const gradient = this.stops.map((stop, index) => {
-      const percentage = (index / (this.stops.length - 1)) * 100
-      return `${stop.color} ${percentage}%`
-    }).join(', ')
+    const gradient = this.stops
+      .map((stop, index) => {
+        const percentage = (index / (this.stops.length - 1)) * 100
+        return `${stop.color} ${percentage}%`
+      })
+      .join(", ")
 
     this.previewTarget.style.background = `linear-gradient(to right, ${gradient})`
   }
@@ -161,8 +172,8 @@ export default class extends Controller {
     const serialized = this.serializeColorStops()
 
     // Dispatch event with the new color stops
-    this.dispatch('save', {
-      detail: { colorStops: serialized }
+    this.dispatch("save", {
+      detail: { colorStops: serialized },
     })
 
     this.close()
@@ -170,7 +181,7 @@ export default class extends Controller {
 
   close() {
     if (this.hasModalTarget) {
-      const checkbox = this.modalTarget.querySelector('.modal-toggle')
+      const checkbox = this.modalTarget.querySelector(".modal-toggle")
       if (checkbox) {
         checkbox.checked = false
       }
@@ -178,7 +189,8 @@ export default class extends Controller {
   }
 
   resetToDefault() {
-    this.colorStopsValue = '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300'
+    this.colorStopsValue =
+      "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
     this.loadColorStops()
   }
 }

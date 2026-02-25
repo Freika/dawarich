@@ -20,9 +20,7 @@ RSpec.describe Import::ProcessJob, type: :job do
 
     it 'calls Stats::CalculatingJob' do
       # Timestamp of the first point in the "2024-03.rec" fixture file
-      expect(Stats::CalculatingJob).to receive(:perform_later).with(user.id, 2024, 3)
-
-      perform
+      expect { perform }.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
     end
 
     context 'when there is an error' do

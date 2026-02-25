@@ -35,7 +35,6 @@ class OwnTracks::Importer
   def bulk_insert_points(batch)
     unique_batch = batch.compact.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],
@@ -43,6 +42,8 @@ class OwnTracks::Importer
       on_duplicate: :skip
     )
     # rubocop:enable Rails/SkipsModelValidations
+
+    broadcast_import_progress(import, unique_batch.size)
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to bulk insert OwnTracks points for user #{user_id}: #{e.message}")
 

@@ -2,14 +2,15 @@
 
 [![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika)
 
-[![CircleCI](https://circleci.com/gh/Freika/dawarich.svg?style=svg)](https://app.circleci.com/pipelines/github/Freika/dawarich)
-
 ---
 
 ## 📸 Screenshots
 
 ![Map](screenshots/map.png)
 *Map View*
+
+![Insights](screenshots/insights.png)
+*Insights Page*
 
 ![Family](screenshots/family.png)
 *Family Page*
@@ -36,6 +37,7 @@ It enables you to:
 - Integrate with photo management apps like Immich and Photoprism to visualize geotagged photos.
 - Import your location history from Google Maps Timeline, OwnTracks, GPX, GeoJSON and some other sources
 - Explore statistics like the number of countries and cities visited, total distance traveled, and more!
+- Share your location with family members.
 
 📄 **Changelog**: Find the latest updates [here](CHANGELOG.md).
 
@@ -44,12 +46,13 @@ It enables you to:
 
 ## ⚠️ Disclaimer
 
+### Updating strategy
+
 - 💔 **DO NOT UPDATE AUTOMATICALLY**: Read release notes before updating. Automatic updates may break your setup.
 - 🛠️ **Under active development**: Expect frequent updates, bugs, and breaking changes.
 - ❌ **Do not delete your original data** after importing into Dawarich.
 - 📦 **Backup before updates**: Always [backup your data](https://dawarich.app/docs/tutorials/backup-and-restore) before upgrading.
 - 🔄 **Stay up-to-date**: Make sure you're running the latest version for the best experience.
-- ⚠️ **DO NOT USE PRODUCTION ENVIRONMENT**: Dawarich is not yet ready for production.
 
 ---
 

@@ -101,8 +101,8 @@ RSpec.describe Kml::Importer do
 
         point = user.points.first
 
-        expect(point.raw_data['name']).to be_present
-        expect(point.raw_data['description']).to be_present
+        expect(point.raw_data['name']).to eq('Location with Speed')
+        expect(point.raw_data['description']).to eq('A location with extended data including speed')
       end
     end
 
@@ -139,6 +139,31 @@ RSpec.describe Kml::Importer do
 
       it 'processes points' do
         expect { parser }.to change(Point, :count).by(20)
+      end
+    end
+
+    context 'when importing KMZ file (compressed KML)' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/kml/points_with_timestamps.kmz').to_s }
+
+      it 'extracts and processes KML from KMZ archive' do
+        expect { parser }.to change(Point, :count).by(3)
+      end
+
+      it 'creates points with correct data from extracted KML' do
+        parser
+
+        point = user.points.order(:timestamp).first
+
+        expect(point.lat).to eq(37.4220)
+        expect(point.lon).to eq(-122.0841)
+        expect(point.altitude).to eq(10)
+        expect(point.timestamp).to eq(Time.zone.parse('2024-01-15T12:00:00Z').to_i)
+      end
+
+      it 'broadcasts importing progress' do
+        expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).at_least(1).time
+
+        parser
       end
     end
 

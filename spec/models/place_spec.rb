@@ -55,8 +55,8 @@ RSpec.describe Place, type: :model do
       end
 
       it 'handles case-insensitive ordering' do
-        place_lower = create(:place, user: user1, name: 'airport')
-        place_upper = create(:place, user: user1, name: 'BEACH')
+        create(:place, user: user1, name: 'airport')
+        create(:place, user: user1, name: 'BEACH')
 
         ordered = Place.for_user(user1).ordered
         # The ordered scope orders by name alphabetically (case-sensitive in most DBs)

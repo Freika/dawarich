@@ -1,0 +1,29 @@
+<% content_for :title, 'Insights' %>
+<%= render 'shared/chartkick_scripts' %>
+
+<% insights_cache_key = [current_user.id, "insights", @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
+
+<div class="w-full my-5">
+  <%= render 'header' %>
+  <%= render 'stats_row' %>
+
+  <!-- Heatmap and Streak Row -->
+  <div class="flex flex-col lg:flex-row gap-6">
+    <% cache insights_cache_key + ["activity_heatmap"], expires_in: 24.hours do %>
+      <%= render 'activity_heatmap' %>
+    <% end %>
+    <% cache insights_cache_key + ["activity_streak"], expires_in: 24.hours do %>
+      <%= render 'activity_streak' %>
+    <% end %>
+  </div>
+
+  <!-- Lazy-loaded below-the-fold details -->
+  <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year), loading: :lazy do %>
+    <%= render 'details_skeleton' %>
+  <% end %>
+
+  <!-- Footer -->
+  <div class="text-center text-sm text-base-content/50 py-4">
+    Geodata Insights &bull; Powered by your location history
+  </div>
+</div>

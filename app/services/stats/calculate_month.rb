@@ -26,7 +26,7 @@ class Stats::CalculateMonth
   def start_timestamp = DateTime.new(year, month, 1).to_i
 
   def end_timestamp
-    DateTime.new(year, month, -1).to_i # -1 returns last day of month
+    DateTime.new(year, month, -1).to_i
   end
 
   def update_month_stats(year, month)
@@ -42,17 +42,21 @@ class Stats::CalculateMonth
       )
 
       stat.save!
+
+      Cache::InvalidateUserCaches.new(user.id, year: year).call
     end
   end
 
   def points
     return @points if defined?(@points)
 
+    # Select all needed columns to avoid duplicate queries
+    # Used for both distance calculation and toponyms extraction
     @points = user
               .points
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:lonlat, :timestamp)
+              .select(:lonlat, :timestamp, :city, :country_name)
               .order(timestamp: :asc)
   end
 
@@ -61,15 +65,11 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    toponym_points =
-      user
-      .points
-      .without_raw_data
-      .where(timestamp: start_timestamp..end_timestamp)
-      .select(:city, :country_name)
-      .distinct
-
-    CountriesAndCities.new(toponym_points).call
+    CountriesAndCities.new(
+      points,
+      min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
+      max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
+    ).call
   end
 
   def create_stats_update_failed_notification(user, error)

@@ -4,216 +4,48 @@ require 'zip'
 
 # Users::ExportData - Exports complete user data with preserved relationships
 #
-# Output JSON Structure Example:
+# Export Format v2 (JSONL with monthly splitting):
+#
+# export.zip/
+# ├── manifest.json                 # Format version, counts, file listing
+# ├── files/                        # Attached files (imports, exports, raw data archives)
+# ├── settings.jsonl                # Single line (user settings)
+# ├── areas.jsonl                   # One area per line
+# ├── tags.jsonl                    # One tag per line
+# ├── taggings.jsonl                # One tagging per line (with references)
+# ├── imports.jsonl                 # One import record per line
+# ├── exports.jsonl                 # One export record per line
+# ├── trips.jsonl                   # One trip per line
+# ├── notifications.jsonl           # One notification per line
+# ├── places.jsonl                  # One place per line
+# ├── raw_data_archives.jsonl       # One archive record per line
+# ├── points/                       # Points split by year/month
+# │   └── YYYY/
+# │       └── YYYY-MM.jsonl
+# ├── visits/                       # Visits split by started_at year/month
+# │   └── YYYY/
+# │       └── YYYY-MM.jsonl
+# ├── stats/                        # Stats split by their year/month fields
+# │   └── YYYY/
+# │       └── YYYY-MM.jsonl
+# ├── tracks/                       # Tracks split by start_at year/month
+# │   └── YYYY/
+# │       └── YYYY-MM.jsonl
+# └── digests/                      # Digests split by year/month fields
+#     └── YYYY/
+#         └── YYYY-MM.jsonl
+#
+# manifest.json structure:
 # {
-#   "counts": {
-#     "areas": 5,
-#     "imports": 12,
-#     "exports": 3,
-#     "trips": 8,
-#     "stats": 24,
-#     "notifications": 10,
-#     "points": 15000,
-#     "visits": 45,
-#     "places": 20
-#   },
-#   "settings": {
-#     "distance_unit": "km",
-#     "timezone": "UTC",
-#     "immich_url": "https://immich.example.com",
-#     // ... other user settings (exported via user.safe_settings.settings)
-#   },
-#   "areas": [
-#     {
-#       "name": "Home",
-#       "latitude": "40.7128",
-#       "longitude": "-74.0060",
-#       "radius": 100,
-#       "created_at": "2024-01-01T00:00:00Z",
-#       "updated_at": "2024-01-01T00:00:00Z"
-#     }
-#   ],
-#   "imports": [
-#     {
-#       "name": "2023_MARCH.json",
-#       "source": "google_semantic_history",
-#       "created_at": "2024-01-01T00:00:00Z",
-#       "updated_at": "2024-01-01T00:00:00Z",
-#       "raw_points": 15432,
-#       "doubles": 23,
-#       "processed": 15409,
-#       "points_count": 15409,
-#       "status": "completed",
-#       "file_name": "import_1_2023_MARCH.json",
-#       "original_filename": "2023_MARCH.json",
-#       "file_size": 2048576,
-#       "content_type": "application/json"
-#       // Note: file_error may be present if file download fails
-#       // Note: file_name and original_filename will be null if no file attached
-#     }
-#   ],
-#   "exports": [
-#     {
-#       "name": "export_2024-01-01_to_2024-01-31.json",
-#       "url": null,
-#       "status": "completed",
-#       "file_format": "json",
-#       "file_type": "points",
-#       "start_at": "2024-01-01T00:00:00Z",
-#       "end_at": "2024-01-31T23:59:59Z",
-#       "created_at": "2024-02-01T00:00:00Z",
-#       "updated_at": "2024-02-01T00:00:00Z",
-#       "file_name": "export_1_export_2024-01-01_to_2024-01-31.json",
-#       "original_filename": "export_2024-01-01_to_2024-01-31.json",
-#       "file_size": 1048576,
-#       "content_type": "application/json"
-#       // Note: file_error may be present if file download fails
-#       // Note: file_name and original_filename will be null if no file attached
-#     }
-#   ],
-#   "trips": [
-#     {
-#       "name": "Business Trip to NYC",
-#       "started_at": "2024-01-15T08:00:00Z",
-#       "ended_at": "2024-01-18T20:00:00Z",
-#       "distance": 1245,
-#       "path": null, // PostGIS LineString geometry
-#       "visited_countries": {"US": "United States", "CA": "Canada"},
-#       "created_at": "2024-01-19T00:00:00Z",
-#       "updated_at": "2024-01-19T00:00:00Z"
-#     }
-#   ],
-#   "stats": [
-#     {
-#       "year": 2024,
-#       "month": 1,
-#       "distance": 456, // Note: integer, not float
-#       "daily_distance": {"1": 15.2, "2": 23.5}, // jsonb object
-#       "toponyms": [
-#         {"country": "United States", "cities": [{"city": "New York"}]}
-#       ],
-#       "created_at": "2024-02-01T00:00:00Z",
-#       "updated_at": "2024-02-01T00:00:00Z"
-#     }
-#   ],
-#   "notifications": [
-#     {
-#       "kind": "info",
-#       "title": "Import completed",
-#       "content": "Your data import has been processed successfully",
-#       "read_at": "2024-01-01T12:30:00Z", // null if unread
-#       "created_at": "2024-01-01T12:00:00Z",
-#       "updated_at": "2024-01-01T12:30:00Z"
-#     }
-#   ],
-#   "points": [
-#     {
-#       "battery_status": "charging",
-#       "battery": 85,
-#       "timestamp": 1704067200,
-#       "altitude": 15.5,
-#       "velocity": 25.5,
-#       "accuracy": 5.0,
-#       "ping": "test-ping",
-#       "tracker_id": "tracker-123",
-#       "topic": "owntracks/user/device",
-#       "trigger": "manual_event",
-#       "bssid": "aa:bb:cc:dd:ee:ff",
-#       "ssid": "TestWiFi",
-#       "connection": "wifi",
-#       "vertical_accuracy": 3.0,
-#       "mode": 2,
-#       "inrids": ["region1", "region2"],
-#       "in_regions": ["home", "work"],
-#       "raw_data": {"test": "data"},
-#       "city": "New York",
-#       "country": "United States",
-#       "geodata": {"address": "123 Main St"},
-#       "reverse_geocoded_at": "2024-01-01T00:00:00Z",
-#       "course": 45.5,
-#       "course_accuracy": 2.5,
-#       "external_track_id": "ext-123",
-#       "lonlat": "POINT(-74.006 40.7128)",
-#       "longitude": -74.006,
-#       "latitude": 40.7128,
-#       "created_at": "2024-01-01T00:00:00Z",
-#       "updated_at": "2024-01-01T00:00:00Z",
-#       "import_reference": {
-#         "name": "2023_MARCH.json",
-#         "source": "google_semantic_history",
-#         "created_at": "2024-01-01T00:00:00Z"
-#       },
-#       "country_info": {
-#         "name": "United States",
-#         "iso_a2": "US",
-#         "iso_a3": "USA"
-#       },
-#       "visit_reference": {
-#         "name": "Work Visit",
-#         "started_at": "2024-01-01T08:00:00Z",
-#         "ended_at": "2024-01-01T17:00:00Z"
-#       }
-#     },
-#     {
-#       // Example of point without relationships (edge cases)
-#       "timestamp": 1704070800,
-#       "altitude": 10.0,
-#       "longitude": -73.9857,
-#       "latitude": 40.7484,
-#       "lonlat": "POINT(-73.9857 40.7484)",
-#       "created_at": "2024-01-01T00:05:00Z",
-#       "updated_at": "2024-01-01T00:05:00Z",
-#       "import_reference": null,     // Orphaned point
-#       "country_info": null,         // No country data
-#       "visit_reference": null       // Not part of a visit
-#       // ... other point fields may be null
-#     }
-#   ],
-#   "visits": [
-#     {
-#       "area_id": 123,
-#       "started_at": "2024-01-01T08:00:00Z",
-#       "ended_at": "2024-01-01T17:00:00Z",
-#       "duration": 32400,
-#       "name": "Work Visit",
-#       "status": "suggested",
-#       "created_at": "2024-01-01T00:00:00Z",
-#       "updated_at": "2024-01-01T00:00:00Z",
-#       "place_reference": {
-#         "name": "Office Building",
-#         "latitude": "40.7589",
-#         "longitude": "-73.9851",
-#         "source": "manual"
-#       }
-#     },
-#     {
-#       // Example of visit without place
-#       "area_id": null,
-#       "started_at": "2024-01-02T10:00:00Z",
-#       "ended_at": "2024-01-02T12:00:00Z",
-#       "duration": 7200,
-#       "name": "Unknown Location",
-#       "status": "confirmed",
-#       "created_at": "2024-01-02T00:00:00Z",
-#       "updated_at": "2024-01-02T00:00:00Z",
-#       "place_reference": null       // No associated place
-#     }
-#   ],
-#   "places": [
-#     {
-#       "name": "Office Building",
-#       "longitude": "-73.9851",
-#       "latitude": "40.7589",
-#       "city": "New York",
-#       "country": "United States",
-#       "source": "manual",
-#       "geodata": {"properties": {"name": "Office Building"}},
-#       "reverse_geocoded_at": "2024-01-01T00:00:00Z",
-#       "lonlat": "POINT(-73.9851 40.7589)",
-#       "created_at": "2024-01-01T00:00:00Z",
-#       "updated_at": "2024-01-01T00:00:00Z"
-#     }
-#   ]
+#   "format_version": 2,
+#   "dawarich_version": "1.0.0",
+#   "exported_at": "2024-01-15T10:30:00Z",
+#   "counts": { ... },
+#   "files": {
+#     "points": ["points/2024/2024-01.jsonl", ...],
+#     "visits": ["visits/2024/2024-01.jsonl", ...],
+#     "stats": ["stats/2024/2024-01.jsonl", ...]
+#   }
 # }
 #
 # Import Strategy Notes:
@@ -225,8 +57,12 @@ require 'zip'
 # 6. Files: Import files are available in the files/ directory with names from file_name fields
 
 class Users::ExportData
+  FORMAT_VERSION = 2
+
   def initialize(user)
     @user = user
+    @monthly_files = { points: [], visits: [], stats: [], tracks: [], digests: [] }
+    @entity_counts = nil
   end
 
   def export
@@ -244,45 +80,9 @@ class Users::ExportData
     )
 
     begin
-      json_file_path = @export_directory.join('data.json')
+      export_all_data
 
-      # Stream JSON writing instead of building in memory
-      File.open(json_file_path, 'w') do |file|
-        file.write('{"counts":')
-        file.write(calculate_entity_counts.to_json)
-
-        file.write(',"settings":')
-        file.write(user.safe_settings.settings.to_json)
-
-        file.write(',"areas":')
-        file.write(Users::ExportData::Areas.new(user).call.to_json)
-
-        file.write(',"imports":')
-        file.write(Users::ExportData::Imports.new(user, @files_directory).call.to_json)
-
-        file.write(',"exports":')
-        file.write(Users::ExportData::Exports.new(user, @files_directory).call.to_json)
-
-        file.write(',"trips":')
-        file.write(Users::ExportData::Trips.new(user).call.to_json)
-
-        file.write(',"stats":')
-        file.write(Users::ExportData::Stats.new(user).call.to_json)
-
-        file.write(',"notifications":')
-        file.write(Users::ExportData::Notifications.new(user).call.to_json)
-
-        file.write(',"points":')
-        Users::ExportData::Points.new(user, file).call
-
-        file.write(',"visits":')
-        file.write(Users::ExportData::Visits.new(user).call.to_json)
-
-        file.write(',"places":')
-        file.write(Users::ExportData::Places.new(user).call.to_json)
-
-        file.write('}')
-      end
+      write_manifest
 
       zip_file_path = @export_directory.join('export.zip')
       create_zip_archive(@export_directory, zip_file_path)
@@ -299,7 +99,7 @@ class Users::ExportData
 
       export_record
     rescue StandardError => e
-      export_record.update!(status: :failed) if export_record
+      export_record&.update!(status: :failed)
 
       ExceptionReporter.call(e, 'Export failed')
 
@@ -311,7 +111,256 @@ class Users::ExportData
 
   private
 
-  attr_reader :user, :export_directory, :files_directory
+  attr_reader :user, :export_directory, :files_directory, :monthly_files, :entity_counts
+
+  def export_all_data
+    Rails.logger.info 'Starting v2 export with JSONL format and monthly splitting'
+
+    # Export simple entities as JSONL files
+    export_settings
+    export_areas
+    export_places
+    export_tags
+    export_taggings
+    export_imports
+    export_exports
+    export_trips
+    export_notifications
+
+    # Export monthly-split entities
+    export_points_by_month
+    export_visits_by_month
+    export_stats_by_month
+    export_tracks_by_month
+    export_digests_by_month
+
+    # Export entities with files
+    export_raw_data_archives
+  end
+
+  def export_settings
+    settings_path = export_directory.join('settings.jsonl')
+    File.open(settings_path, 'w') do |file|
+      file.puts(user.safe_settings.settings.to_json)
+    end
+    Rails.logger.info 'Exported settings'
+  end
+
+  def export_areas
+    areas_path = export_directory.join('areas.jsonl')
+    count = 0
+    File.open(areas_path, 'w') do |file|
+      user.areas.find_each do |area|
+        file.puts(area.as_json(except: %w[user_id id]).to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} areas"
+  end
+
+  def export_places
+    places_path = export_directory.join('places.jsonl')
+    count = 0
+    File.open(places_path, 'w') do |file|
+      user.places.find_each do |place|
+        file.puts(place.as_json(except: %w[user_id id]).to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} places"
+  end
+
+  def export_imports
+    imports_path = export_directory.join('imports.jsonl')
+    count = 0
+    File.open(imports_path, 'w') do |file|
+      Users::ExportData::Imports.new(user, files_directory).call.each do |import_hash|
+        file.puts(import_hash.to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} imports"
+  end
+
+  def export_exports
+    exports_path = export_directory.join('exports.jsonl')
+    count = 0
+    File.open(exports_path, 'w') do |file|
+      Users::ExportData::Exports.new(user, files_directory).call.each do |export_hash|
+        file.puts(export_hash.to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} exports"
+  end
+
+  def export_trips
+    trips_path = export_directory.join('trips.jsonl')
+    count = 0
+    File.open(trips_path, 'w') do |file|
+      user.trips.find_each do |trip|
+        file.puts(trip.as_json(except: %w[user_id id]).to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} trips"
+  end
+
+  def export_notifications
+    notifications_path = export_directory.join('notifications.jsonl')
+    count = 0
+    File.open(notifications_path, 'w') do |file|
+      user.notifications.find_each do |notification|
+        file.puts(notification.as_json(except: %w[user_id id]).to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} notifications"
+  end
+
+  def export_tags
+    tags_path = export_directory.join('tags.jsonl')
+    count = 0
+    File.open(tags_path, 'w') do |file|
+      user.tags.find_each do |tag|
+        file.puts(tag.as_json(except: %w[user_id id]).to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} tags"
+  end
+
+  def export_taggings
+    taggings_path = export_directory.join('taggings.jsonl')
+    count = 0
+    File.open(taggings_path, 'w') do |file|
+      user.tags.includes(taggings: :taggable).find_each do |tag|
+        tag.taggings.each do |tagging|
+          tagging_hash = build_tagging_hash(tag, tagging)
+          file.puts(tagging_hash.to_json)
+          count += 1
+        end
+      end
+    end
+    Rails.logger.info "Exported #{count} taggings"
+  end
+
+  def build_tagging_hash(tag, tagging)
+    hash = {
+      'tag_name' => tag.name,
+      'taggable_type' => tagging.taggable_type,
+      'created_at' => tagging.created_at,
+      'updated_at' => tagging.updated_at
+    }
+
+    if tagging.taggable.present?
+      hash['taggable_name'] = tagging.taggable.try(:name)
+      hash['taggable_latitude'] = tagging.taggable.try(:latitude)&.to_s
+      hash['taggable_longitude'] = tagging.taggable.try(:longitude)&.to_s
+    end
+
+    hash
+  end
+
+  def export_points_by_month
+    points_dir = export_directory.join('points')
+    FileUtils.mkdir_p(points_dir)
+
+    exporter = Users::ExportData::Points.new(user, points_dir)
+    @monthly_files[:points] = exporter.call
+    Rails.logger.info "Exported points to #{@monthly_files[:points].size} monthly files"
+  end
+
+  def export_visits_by_month
+    visits_dir = export_directory.join('visits')
+    FileUtils.mkdir_p(visits_dir)
+
+    exporter = Users::ExportData::Visits.new(user, visits_dir)
+    @monthly_files[:visits] = exporter.call
+    Rails.logger.info "Exported visits to #{@monthly_files[:visits].size} monthly files"
+  end
+
+  def export_stats_by_month
+    stats_dir = export_directory.join('stats')
+    FileUtils.mkdir_p(stats_dir)
+
+    exporter = Users::ExportData::Stats.new(user, stats_dir)
+    @monthly_files[:stats] = exporter.call
+    Rails.logger.info "Exported stats to #{@monthly_files[:stats].size} monthly files"
+  end
+
+  def export_tracks_by_month
+    tracks_dir = export_directory.join('tracks')
+    FileUtils.mkdir_p(tracks_dir)
+
+    exporter = Users::ExportData::Tracks.new(user, tracks_dir)
+    @monthly_files[:tracks] = exporter.call
+    Rails.logger.info "Exported tracks to #{@monthly_files[:tracks].size} monthly files"
+  end
+
+  def export_digests_by_month
+    digests_dir = export_directory.join('digests')
+    FileUtils.mkdir_p(digests_dir)
+
+    exporter = Users::ExportData::Digests.new(user, digests_dir)
+    @monthly_files[:digests] = exporter.call
+    Rails.logger.info "Exported digests to #{@monthly_files[:digests].size} monthly files"
+  end
+
+  def export_raw_data_archives
+    archives_path = export_directory.join('raw_data_archives.jsonl')
+    count = 0
+    File.open(archives_path, 'w') do |file|
+      user.raw_data_archives.find_each do |archive|
+        archive_hash = archive.as_json(except: %w[user_id id])
+
+        if archive.file.attached?
+          file_name = "raw_data_archive_#{archive.year}_#{format('%02d', archive.month)}_#{archive.chunk_number}.gz"
+          archive_hash['file_name'] = file_name
+          archive_hash['original_filename'] = archive.file.filename.to_s
+          archive_hash['content_type'] = archive.file.content_type
+
+          dest_path = files_directory.join(file_name)
+          begin
+            File.open(dest_path, 'wb') { |f| archive.file.download { |chunk| f.write(chunk) } }
+          rescue StandardError => e
+            FileUtils.rm_f(dest_path)
+            raise e
+          end
+        end
+
+        file.puts(archive_hash.to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} raw data archives"
+  end
+
+  def write_manifest
+    @entity_counts = calculate_entity_counts
+
+    manifest = {
+      format_version: FORMAT_VERSION,
+      dawarich_version: dawarich_version,
+      exported_at: Time.current.utc.iso8601,
+      counts: entity_counts,
+      files: {
+        points: monthly_files[:points],
+        visits: monthly_files[:visits],
+        stats: monthly_files[:stats],
+        tracks: monthly_files[:tracks],
+        digests: monthly_files[:digests]
+      }
+    }
+
+    manifest_path = export_directory.join('manifest.json')
+    File.write(manifest_path, JSON.pretty_generate(manifest))
+    Rails.logger.info "Wrote manifest.json with format_version #{FORMAT_VERSION}"
+  end
+
+  def dawarich_version
+    defined?(APP_VERSION) ? APP_VERSION : 'unknown'
+  end
 
   def calculate_entity_counts
     Rails.logger.info 'Calculating entity counts for export'
@@ -323,9 +372,13 @@ class Users::ExportData
       trips: user.trips.count,
       stats: user.stats.count,
       notifications: user.notifications.count,
-      points: user.points_count,
+      points: user.points_count.to_i,
       visits: user.visits.count,
-      places: user.visited_places.count
+      places: user.visited_places.count,
+      tags: user.tags.count,
+      tracks: user.tracks.count,
+      digests: user.digests.count,
+      raw_data_archives: user.raw_data_archives.count
     }
 
     Rails.logger.info "Entity counts: #{counts}"
@@ -359,21 +412,25 @@ class Users::ExportData
   end
 
   def create_success_notification
-    counts = calculate_entity_counts
+    counts = entity_counts
     summary = "#{counts[:points]} points, " \
-    "#{counts[:visits]} visits, " \
-    "#{counts[:places]} places, " \
-    "#{counts[:trips]} trips, " \
-    "#{counts[:areas]} areas, " \
-    "#{counts[:imports]} imports, " \
-    "#{counts[:exports]} exports, " \
-    "#{counts[:stats]} stats, " \
-    "#{counts[:notifications]} notifications"
+      "#{counts[:visits]} visits, " \
+      "#{counts[:places]} places, " \
+      "#{counts[:trips]} trips, " \
+      "#{counts[:areas]} areas, " \
+      "#{counts[:imports]} imports, " \
+      "#{counts[:exports]} exports, " \
+      "#{counts[:stats]} stats, " \
+      "#{counts[:tags]} tags, " \
+      "#{counts[:tracks]} tracks, " \
+      "#{counts[:digests]} digests, " \
+      "#{counts[:notifications]} notifications"
 
     ::Notifications::Create.new(
       user: user,
       title: 'Export completed',
-      content: "Your data export has been processed successfully (#{summary}). You can download it from the exports page.",
+      content: "Your data export has been processed successfully (#{summary}). " \
+               'You can download it from the exports page.',
       kind: :info
     ).call
   end

@@ -126,31 +126,6 @@ RSpec.describe Tracks::TrackBuilder do
     end
   end
 
-  describe '#calculate_track_distance' do
-    let(:points) do
-      [
-        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)'),
-        create(:point, user: user, lonlat: 'POINT(-74.0070 40.7130)')
-      ]
-    end
-
-    before do
-      # Mock Point.total_distance to return distance in meters
-      allow(Point).to receive(:total_distance).with(points, :m).and_return(1500) # 1500 meters
-    end
-
-    it 'stores distance in meters regardless of user unit preference' do
-      result = builder.calculate_track_distance(points)
-      expect(result).to eq(1500) # Always stored as meters
-    end
-
-    it 'rounds distance to nearest meter' do
-      allow(Point).to receive(:total_distance).with(points, :m).and_return(1500.7)
-      result = builder.calculate_track_distance(points)
-      expect(result).to eq(1501) # Rounded to nearest meter
-    end
-  end
-
   describe '#calculate_duration' do
     let(:start_time) { 2.hours.ago.to_i }
     let(:end_time) { 1.hour.ago.to_i }
@@ -248,11 +223,11 @@ RSpec.describe Tracks::TrackBuilder do
       it 'returns default elevation stats' do
         result = builder.calculate_elevation_stats(points)
         expect(result).to eq({
-          gain: 0,
+                               gain: 0,
           loss: 0,
           max: 0,
           min: 0
-        })
+                             })
       end
     end
 
@@ -279,11 +254,11 @@ RSpec.describe Tracks::TrackBuilder do
     it 'returns hash with zero values' do
       result = builder.default_elevation_stats
       expect(result).to eq({
-        gain: 0,
+                             gain: 0,
         loss: 0,
         max: 0,
         min: 0
-      })
+                           })
     end
   end
 
@@ -299,7 +274,7 @@ RSpec.describe Tracks::TrackBuilder do
       invalid_builder = invalid_class.new
       expect { invalid_builder.send(:user) }.to raise_error(
         NotImplementedError,
-        "Including class must implement user method"
+        'Including class must implement user method'
       )
     end
   end

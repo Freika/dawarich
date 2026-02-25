@@ -90,12 +90,12 @@
                       </svg>Preferred Map Version </span>
                     <div class="flex items-center space-x-2">
                       <%= f.label :preferred_version_v1, 'V1 (Leaflet)', class: 'cursor-pointer' %>
-                      <%= f.radio_button :preferred_version, 'v1', id: 'maps_preferred_version_v1', class: 'radio radio-primary ml-1 mr-4', checked: @maps['preferred_version'] != 'v2' %>
+                      <%= f.radio_button :preferred_version, 'v1', id: 'maps_preferred_version_v1', class: 'radio radio-primary ml-1 mr-4', checked: @maps['preferred_version'] == 'v1' %>
                       <%= f.label :preferred_version_v2, 'V2 (MapLibre)', class: 'cursor-pointer' %>
-                      <%= f.radio_button :preferred_version, 'v2', id: 'maps_preferred_version_v2', class: 'radio radio-primary ml-1', checked: @maps['preferred_version'] == 'v2' %>
+                      <%= f.radio_button :preferred_version, 'v2', id: 'maps_preferred_version_v2', class: 'radio radio-primary ml-1', checked: @maps['preferred_version'] != 'v1' %>
                     </div>
                   </label>
-                  <span class="label-text-alt mt-1">Choose which map version to use by default. V1 uses Leaflet, V2 uses MapLibre with enhanced features.</span>
+                  <span class="label-text-alt mt-1">Choose which map version to use by default. V2 (MapLibre with enhanced features) is the default for new users, V1 (Leaflet) is available for compatibility.</span>
                 </div>
               </div>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm">
@@ -111,24 +111,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          <div class="bg-base-100 p-5 mt-5 rounded-lg shadow-sm">
-            <h3 class="font-semibold mb-4">Tile Usage (Last 7 Days)</h3>
-            <div class="h-[250px]">
-              <%= line_chart(
-                @tile_usage,
-                height: '200px',
-                xtitle: 'Days',
-                ytitle: 'Tiles',
-                suffix: ' tiles loaded'
-              ) %>
-            </div>
-            <div class="mt-4 text-sm text-base-content/70">
-              <p>Total usage this week: <span class="font-semibold"><%= @tile_usage.sum { |_, count| count } %> tiles</span>
-              </p>
-              <!--p>Monthly quota: <span class="font-semibold">100,000 tiles</span-->
-              </p>
             </div>
           </div>
         </div>

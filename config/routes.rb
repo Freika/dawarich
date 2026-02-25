@@ -26,6 +26,7 @@ Rails.application.routes.draw do
   } do
     mount Sidekiq::Web => '/sidekiq'
   end
+  mount RailsPulse::Engine => '/rails_pulse'
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq
   match '/sidekiq' => redirect { |_, request|
@@ -33,9 +34,16 @@ Rails.application.routes.draw do
                         '/'
                       }, via: :get
 
-  resources :settings, only: :index
   namespace :settings do
+    resources :general, only: [:index]
+    patch 'general', to: 'general#update'
+    post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+
+    resources :integrations, only: [:index]
+    patch 'integrations', to: 'integrations#update'
+
     resources :background_jobs, only: %i[index create]
+    patch 'background_jobs', to: 'background_jobs#update'
     resources :users, only: %i[index create destroy edit update] do
       collection do
         get 'export'
@@ -47,13 +55,17 @@ Rails.application.routes.draw do
     patch 'maps', to: 'maps#update'
   end
 
-  patch 'settings', to: 'settings#update'
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
   resources :imports
   resources :visits, only: %i[index update]
-  resources :places, only: %i[index destroy]
+  resources :areas, only: [:create]
+  resources :places, only: %i[index destroy create update] do
+    collection do
+      get 'nearby'
+    end
+  end
   resources :exports, only: %i[index create destroy]
   resources :trips
   resources :tags, except: [:show]
@@ -84,6 +96,11 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  resources :insights, only: :index do
+    collection do
+      get :details
+    end
+  end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
   get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
@@ -97,6 +114,17 @@ Rails.application.routes.draw do
         to: 'shared/stats#update',
         as: :sharing_stats,
         constraints: { year: /\d{4}/, month: /\d{1,2}/ }
+
+  # User digests routes (yearly/monthly digest reports)
+  scope module: 'users' do
+    resources :digests, only: %i[index create show destroy], param: :year, as: :users_digests,
+                        constraints: { year: /\d{4}/ }
+  end
+  get 'shared/digest/:uuid', to: 'shared/digests#show', as: :shared_users_digest
+  patch 'digests/:year/sharing',
+        to: 'shared/digests#update',
+        as: :sharing_users_digest,
+        constraints: { year: /\d{4}/ }
 
   root to: 'home#index'
 
@@ -114,6 +142,9 @@ Rails.application.routes.draw do
   namespace :map do
     get '/v1', to: 'leaflet#index', as: :v1
     get '/v2', to: 'maplibre#index', as: :v2
+    resources :timeline_feeds, only: [:index] do
+      get :track_info, on: :member
+    end
   end
 
   # Backward compatibility redirects
@@ -126,6 +157,7 @@ Rails.application.routes.draw do
       get   'health', to: 'health#index'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'users/me', to: 'users#me'
 
       resources :areas,     only: %i[index show create update destroy]
@@ -152,6 +184,13 @@ Rails.application.routes.draw do
         end
       end
       resources :stats, only: :index
+      resources :insights, only: :index do
+        collection do
+          get :details
+        end
+      end
+      resources :digests, only: %i[index show create destroy], param: :year,
+                          constraints: { year: /\d{4}/ }
       resources :tags, only: [] do
         collection do
           get 'privacy_zones'
@@ -181,8 +220,13 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :tracks, only: %i[index show] do
+        resources :points, only: [:index], controller: 'tracks/points'
+      end
+
+      resources :timeline, only: [:index]
+
       namespace :maps do
-        resources :tile_usage, only: [:create]
         resources :hexagons, only: [:index] do
           collection do
             get :bounds

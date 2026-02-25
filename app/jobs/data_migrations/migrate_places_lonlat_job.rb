@@ -14,9 +14,7 @@ class DataMigrations::MigratePlacesLonlatJob < ApplicationJob
       next if place.longitude.nil? || place.latitude.nil?
 
       # Set the lonlat to a PostGIS point with the proper SRID
-      # rubocop:disable Rails/SkipsModelValidations
       place.update_column(:lonlat, "SRID=4326;POINT(#{place.longitude} #{place.latitude})")
-      # rubocop:enable Rails/SkipsModelValidations
     end
 
     # Double check if there are any remaining places without lonlat
@@ -24,6 +22,9 @@ class DataMigrations::MigratePlacesLonlatJob < ApplicationJob
     return unless remaining.exists?
 
     # Log an error for these places
-    Rails.logger.error("Places with ID #{remaining.pluck(:id).join(', ')} for user #{user.id} could not be updated with lonlat values")
+    Rails.logger.error(
+      "Places with ID #{remaining.pluck(:id).join(', ')} for user #{user.id} " \
+        'could not be updated with lonlat values'
+    )
   end
 end

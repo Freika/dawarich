@@ -1,0 +1,122 @@
+<% content_for :title, 'Settings' %>
+
+<div class="min-h-content w-full my-5">
+  <h1 class="text-3xl font-bold mb-6">User Settings</h1>
+  <%= render 'settings/navigation' %>
+
+  <div class="card bg-base-200 shadow-xl">
+    <%= form_for :settings, url: settings_integrations_path, method: :patch, data: { turbo_method: :patch, turbo: false } do |f| %>
+      <div class="card-body">
+        <div class="space-y-8 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 animate-fade-in">
+          <div>
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+              <%= icon 'camera', class: 'mr-2 text-primary' %> Immich Integration
+            </h2>
+            <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+              <div class="form-control w-full">
+                <%= f.label :immich_url, class: 'label' do %>
+                  <span class="label-text font-medium">Immich URL</span>
+                <% end %>
+                <%= f.url_field :immich_url, value: current_user.safe_settings.immich_url, class: "input input-bordered w-full pr-10", placeholder: 'http://192.168.0.1:2283' %>
+                <span class="label-text-alt mt-1">The base URL of your Immich instance</span>
+              </div>
+              <div class="form-control w-full">
+                <%= f.label :immich_api_key, class: 'label' do %>
+                  <span class="label-text font-medium">Immich API Key</span>
+                <% end %>
+                <div class="relative">
+                  <%= f.password_field :immich_api_key, value: current_user.safe_settings.immich_api_key, class: "input input-bordered w-full pr-10", placeholder: 'xxxxxxxxxxxxxx' %>
+                </div>
+                <span class="label-text-alt mt-1">Found in your Immich admin panel under API settings. Required permissions: <code class="text-xs">asset.read</code> and <code class="text-xs">asset.view</code>.</span>
+              </div>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <%= f.check_box :immich_skip_ssl_verification,
+                      checked: current_user.safe_settings.immich_skip_ssl_verification,
+                      class: "toggle toggle-warning",
+                      onchange: "document.getElementById('immich-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+                  <span class="label-text">Skip SSL certificate verification (self-signed certificates)</span>
+                </label>
+                <div id="immich-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.immich_skip_ssl_verification %>">
+                  <%= icon 'triangle-alert'%>
+                  <span>
+                    <strong>Security Warning:</strong> Disabling SSL verification makes your connection vulnerable to man-in-the-middle attacks.
+                    Only enable this for self-signed certificates you trust on your local network.
+                  </span>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <%= button_tag 'Refresh photo cache',
+                  name: 'refresh_photos_cache',
+                  value: '1',
+                  class: 'btn btn-sm btn-outline' %>
+                <span class="label-text-alt">Clears cached photo metadata and thumbnails for all integrations.</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+              <%= icon 'camera', class: 'mr-2 text-primary' %> Photoprism Integration
+            </h2>
+            <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+              <div class="form-control w-full">
+                <%= f.label :photoprism_url, class: 'label' do %>
+                  <span class="label-text font-medium">Photoprism URL</span>
+                <% end %>
+                <div class="relative">
+                  <%= f.url_field :photoprism_url, value: current_user.safe_settings.photoprism_url, class: "input input-bordered w-full pr-10", placeholder: 'http://192.168.0.1:2342' %>
+                </div>
+                <span class="label-text-alt mt-1">The base URL of your Photoprism instance</span>
+              </div>
+              <div class="form-control w-full">
+                <%= f.label :photoprism_api_key, class: 'label' do %>
+                  <span class="label-text font-medium">Photoprism API Key</span>
+                <% end %>
+                <div class="relative">
+                  <%= f.password_field :photoprism_api_key, value: current_user.safe_settings.photoprism_api_key, class: "input input-bordered w-full pr-10", placeholder: 'xxxxxxxxxxxxxx' %>
+                </div>
+                <span class="label-text-alt mt-1">Found in your Photoprism settings under Library</span>
+              </div>
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <%= f.check_box :photoprism_skip_ssl_verification,
+                      checked: current_user.safe_settings.photoprism_skip_ssl_verification,
+                      class: "toggle toggle-warning",
+                      onchange: "document.getElementById('photoprism-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+                  <span class="label-text">Skip SSL certificate verification (self-signed certificates)</span>
+                </label>
+                <div id="photoprism-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.photoprism_skip_ssl_verification %>">
+                  <%= icon 'triangle-alert'%>
+                  <span>
+                    <strong>Security Warning:</strong> Disabling SSL verification makes your connection vulnerable to man-in-the-middle attacks.
+                    Only enable this for self-signed certificates you trust on your local network.
+                  </span>
+                </div>
+              </div>
+              <%# <div class="flex justify-end">
+                <button class="btn btn-sm btn-outline">Test Connection</button>
+              </div> %>
+            </div>
+          </div>
+
+          <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
+            <div class="lg:col-span-2">
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'link', class: "text-primary mr-1" %> Connected Accounts
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <p class="text-sm text-base-content/70">
+                  You've connected your account using the following OAuth provider:
+                  <strong><%= current_user.provider.capitalize %></strong>
+                </p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <div class="card-actions justify-end mt-6">
+          <%= f.submit "Save & Test Connection", class: "btn btn-primary" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

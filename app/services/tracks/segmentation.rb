@@ -3,22 +3,26 @@
 # Track segmentation logic for splitting GPS points into meaningful track segments.
 #
 # This module provides the core algorithm for determining where one track ends
-# and another begins, based on time gaps and distance jumps between consecutive points.
+# and another begins, based primarily on time gaps between consecutive points.
 #
 # How it works:
 # 1. Analyzes consecutive GPS points to detect gaps that indicate separate journeys
-# 2. Uses configurable time and distance thresholds to identify segment boundaries
+# 2. Uses configurable time thresholds to identify segment boundaries
 # 3. Splits large arrays of points into smaller arrays representing individual tracks
 # 4. Provides utilities for handling both Point objects and hash representations
 #
 # Segmentation criteria:
 # - Time threshold: Gap longer than X minutes indicates a new track
-# - Distance threshold: Jump larger than X meters indicates a new track
 # - Minimum segment size: Segments must have at least 2 points to form a track
 #
+# ❗️ Frontend Parity (see CLAUDE.md "Route Drawing Implementation")
+# The maps intentionally ignore the distance threshold because haversineDistance()
+# returns kilometers while the UI exposes a value in meters. That unit mismatch
+# effectively disables distance-based splitting, so we mirror that behavior on the
+# backend to keep server-generated tracks identical to what users see on the map.
+#
 # The module is designed to be included in classes that need segmentation logic
-# and requires the including class to implement distance_threshold_meters and
-# time_threshold_minutes methods.
+# and requires the including class to implement time_threshold_minutes methods.
 #
 # Used by:
 # - Tracks::ParallelGenerator and related jobs for splitting points during parallel track generation
@@ -28,7 +32,6 @@
 #   class MyTrackProcessor
 #     include Tracks::Segmentation
 #
-#     def distance_threshold_meters; 500; end
 #     def time_threshold_minutes; 60; end
 #
 #     def process_points(points)
@@ -64,121 +67,23 @@ module Tracks::Segmentation
     segments
   end
 
-  # Alternative segmentation using Geocoder (no SQL dependency)
-  def split_points_into_segments_geocoder(points)
-    return [] if points.empty?
-
-    segments = []
-    current_segment = []
-
-    points.each do |point|
-      if should_start_new_segment_geocoder?(point, current_segment.last)
-        # Finalize current segment if it has enough points
-        segments << current_segment if current_segment.size >= 2
-        current_segment = [point]
-      else
-        current_segment << point
-      end
-    end
-
-    # Don't forget the last segment
-    segments << current_segment if current_segment.size >= 2
-
-    segments
-  end
+  # Alias for backwards compatibility with TimeChunkProcessorJob
+  alias split_points_into_segments_geocoder split_points_into_segments
 
   def should_start_new_segment?(current_point, previous_point)
     return false if previous_point.nil?
 
-    # Check time threshold (convert minutes to seconds)
-    current_timestamp = current_point.timestamp
-    previous_timestamp = previous_point.timestamp
+    time_gap_exceeded?(current_point.timestamp, previous_point.timestamp)
+  end
 
+  def time_gap_exceeded?(current_timestamp, previous_timestamp)
     time_diff_seconds = current_timestamp - previous_timestamp
     time_threshold_seconds = time_threshold_minutes.to_i * 60
 
-    return true if time_diff_seconds > time_threshold_seconds
-
-    # Check distance threshold - convert km to meters to match frontend logic
-    distance_km = calculate_km_distance_between_points(previous_point, current_point)
-    distance_meters = distance_km * 1000 # Convert km to meters
-
-    return true if distance_meters > distance_threshold_meters
-
-    false
-  end
-
-  # Alternative segmentation logic using Geocoder (no SQL dependency)
-  def should_start_new_segment_geocoder?(current_point, previous_point)
-    return false if previous_point.nil?
-
-    # Check time threshold (convert minutes to seconds)
-    current_timestamp = current_point.timestamp
-    previous_timestamp = previous_point.timestamp
-
-    time_diff_seconds = current_timestamp - previous_timestamp
-    time_threshold_seconds = time_threshold_minutes.to_i * 60
-
-    return true if time_diff_seconds > time_threshold_seconds
-
-    # Check distance threshold using Geocoder
-    distance_km = calculate_km_distance_between_points_geocoder(previous_point, current_point)
-    distance_meters = distance_km * 1000 # Convert km to meters
-
-    return true if distance_meters > distance_threshold_meters
-
-    false
-  end
-
-  def calculate_km_distance_between_points(point1, point2)
-    distance_meters = Point.connection.select_value(
-      'SELECT ST_Distance(ST_GeomFromEWKT($1)::geography, ST_GeomFromEWKT($2)::geography)',
-      nil,
-      [point1.lonlat, point2.lonlat]
-    )
-
-    distance_meters.to_f / 1000.0 # Convert meters to kilometers
-  end
-
-  # In-memory distance calculation using Geocoder (no SQL dependency)
-  def calculate_km_distance_between_points_geocoder(point1, point2)
-    begin
-      distance = point1.distance_to_geocoder(point2, :km)
-
-      # Validate result
-      if !distance.finite? || distance < 0
-        return 0
-      end
-
-      distance
-    rescue StandardError => e
-      0
-    end
-  end
-
-  def should_finalize_segment?(segment_points, grace_period_minutes = 5)
-    return false if segment_points.size < 2
-
-    last_point = segment_points.last
-    last_timestamp = last_point.timestamp
-    current_time = Time.current.to_i
-
-    # Don't finalize if the last point is too recent (within grace period)
-    time_since_last_point = current_time - last_timestamp
-    grace_period_seconds = grace_period_minutes * 60
-
-    time_since_last_point > grace_period_seconds
-  end
-
-  def point_coordinates(point)
-    [point.lat, point.lon]
-  end
-
-  def distance_threshold_meters
-    raise NotImplementedError, "Including class must implement distance_threshold_meters"
+    time_diff_seconds > time_threshold_seconds
   end
 
   def time_threshold_minutes
-    raise NotImplementedError, "Including class must implement time_threshold_minutes"
+    raise NotImplementedError, 'Including class must implement time_threshold_minutes'
   end
 end

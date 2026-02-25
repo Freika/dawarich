@@ -46,6 +46,7 @@ RSpec.describe OwnTracks::Importer do
           'visit_id' => nil,
           'user_id' => user.id,
           'country' => nil,
+          'motion_data' => { 'm' => 1, '_type' => 'location' },
           'raw_data' => {
             'm' => 1,
             'p' => 100.266,
@@ -76,6 +77,12 @@ RSpec.describe OwnTracks::Importer do
         parser
 
         expect(user.points.first.velocity).to eq('1.4')
+      end
+
+      it 'updates the import processed counter' do
+        parser
+
+        expect(import.reload.processed).to eq(9)
       end
     end
 

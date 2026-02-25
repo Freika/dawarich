@@ -92,8 +92,6 @@ spec:
               value: Password123!
             - name: DATABASE_NAME
               value: dawarich_development
-            - name: MIN_MINUTES_SPENT_IN_CITY
-              value: "60"
             - name: APPLICATION_HOST
               value: localhost
             - name: APPLICATION_HOSTS

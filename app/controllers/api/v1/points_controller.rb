@@ -1,19 +1,21 @@
 # frozen_string_literal: true
 
 class Api::V1::PointsController < ApiController
+  include SafeTimestampParser
+
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy]
   before_action :validate_points_limit, only: %i[create]
 
   def index
-    start_at = params[:start_at]&.to_datetime&.to_i
-    end_at   = params[:end_at]&.to_datetime&.to_i || Time.zone.now.to_i
+    start_at = params[:start_at].present? ? safe_timestamp(params[:start_at]) : nil
+    end_at   = params[:end_at].present? ? safe_timestamp(params[:end_at]) : Time.zone.now.to_i
     order    = params[:order] || 'desc'
 
     points = current_api_user
              .points
+             .without_raw_data
              .where(timestamp: start_at..end_at)
 
-    # Filter by geographic bounds if provided
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
       min_lng = params[:min_longitude].to_f
@@ -21,7 +23,6 @@ class Api::V1::PointsController < ApiController
       min_lat = params[:min_latitude].to_f
       max_lat = params[:max_latitude].to_f
 
-      # Use PostGIS to filter points within bounding box
       points = points.where(
         'ST_X(lonlat::geometry) BETWEEN ? AND ? AND ST_Y(lonlat::geometry) BETWEEN ? AND ?',
         min_lng, max_lng, min_lat, max_lat
@@ -50,9 +51,18 @@ class Api::V1::PointsController < ApiController
   def update
     point = current_api_user.points.find(params[:id])
 
-    point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+    if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+      if point.track_id.present?
+        Rails.logger.info(
+          "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
+        )
+        Tracks::RecalculateJob.perform_later(point.track_id)
+      end
 
-    render json: point_serializer.new(point).call
+      render json: point_serializer.new(point.reload).call
+    else
+      render json: { error: point.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
   end
 
   def destroy

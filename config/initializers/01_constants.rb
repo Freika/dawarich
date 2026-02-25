@@ -2,8 +2,6 @@
 
 SELF_HOSTED = ENV.fetch('SELF_HOSTED', 'true') == 'true'
 
-MIN_MINUTES_SPENT_IN_CITY = ENV.fetch('MIN_MINUTES_SPENT_IN_CITY', 60).to_i
-
 DISTANCE_UNITS = {
   km: 1000,    # to meters
   mi: 1609.34, # to meters
@@ -62,3 +60,6 @@ OIDC_AUTO_REGISTER = ENV.fetch('OIDC_AUTO_REGISTER', 'true') == 'true'
 
 # Email/password registration setting (default: false for self-hosted, true for cloud)
 ALLOW_EMAIL_PASSWORD_REGISTRATION = ENV.fetch('ALLOW_EMAIL_PASSWORD_REGISTRATION', 'false') == 'true'
+
+# Raw data archival setting
+ARCHIVE_RAW_DATA = ENV.fetch('ARCHIVE_RAW_DATA', 'false') == 'true'

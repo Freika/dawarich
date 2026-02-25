@@ -1,3 +1,4 @@
+<%= render 'shared/trix_scripts' %>
 <%= form_with(model: trip, class: "contents") do |form| %>
   <% if trip.errors.any? %>
     <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
@@ -22,7 +23,7 @@
         data-path="<%= trip.path.to_json %>"
         data-started_at="<%= trip.started_at %>"
         data-ended_at="<%= trip.ended_at %>"
-        data-timezone="<%= Rails.configuration.time_zone %>">
+        data-timezone="<%= current_user.timezone %>">
       </div>
     </div>
 

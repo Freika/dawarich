@@ -67,6 +67,10 @@ COPY ../. ./
 RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
     && rm -rf node_modules tmp/cache
 
+# Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
+RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
+    && chmod -R 777 tmp
+
 # Copy public directory to temp location for syncing with volume at runtime
 # This allows new static files to be added to the persistent volume
 RUN cp -r public /tmp/public_assets

@@ -43,11 +43,22 @@ class DawarichSettings
       @family_feature_enabled ||= self_hosted?
     end
 
+    # Returns true only for self-hosted OIDC (OpenID Connect) setups.
+    # Cloud mode OAuth (GitHub, Google) is always supplementary to email/password
+    # and should not trigger OIDC-only mode restrictions.
+    def oidc_enabled?
+      @oidc_enabled ||= self_hosted? && OMNIAUTH_PROVIDERS.include?(:openid_connect)
+    end
+
     def features
       @features ||= {
         reverse_geocoding: reverse_geocoding_enabled?,
         family: family_feature_enabled?
       }
+    end
+
+    def archive_raw_data_enabled?
+      @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
     end
   end
 end

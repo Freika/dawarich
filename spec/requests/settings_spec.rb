@@ -69,36 +69,6 @@ RSpec.describe 'Settings', type: :request do
     end
   end
 
-  describe 'PATCH /settings' do
-    let(:user) { create(:user) }
-    let(:params) { { settings: { 'meters_between_routes' => '1000', 'minutes_between_routes' => '10' } } }
-
-    before do
-      sign_in user
-    end
-
-    it 'updates the user settings' do
-      patch '/settings', params: params
-
-      user.reload
-      expect(user.settings['meters_between_routes']).to eq('1000')
-      expect(user.settings['minutes_between_routes']).to eq('10')
-    end
-
-    context 'when user is inactive' do
-      before do
-        user.update(status: :inactive, active_until: 1.day.ago)
-      end
-
-      it 'redirects to the root path' do
-        patch '/settings', params: params
-
-        expect(response).to redirect_to(root_path)
-        expect(flash[:notice]).to eq('Your account is not active.')
-      end
-    end
-  end
-
   describe 'GET /settings/users' do
     let!(:user) { create(:user, admin: true) }
 

@@ -5,18 +5,23 @@
 <div id="maps-maplibre-container"
      data-controller="maps--maplibre area-drawer maps--maplibre-realtime"
      data-maps--maplibre-api-key-value="<%= current_user.api_key %>"
-     data-maps--maplibre-start-date-value="<%= @start_at.to_s %>"
-     data-maps--maplibre-end-date-value="<%= @end_at.to_s %>"
+     data-maps--maplibre-start-date-value="<%= @start_at.iso8601 %>"
+     data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
+     data-maps--maplibre-timezone-value="<%= current_user.timezone %>"
      data-maps--maplibre-realtime-enabled-value="true"
+     data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"
      style="width: 100%; height: 100%; position: relative;">
+
+  <!-- WebGL error (hidden by default, shown if WebGL unavailable) -->
+  <%= render 'map/maplibre/webgl_error' %>
 
   <!-- Map container takes full width and height -->
   <div data-maps--maplibre-target="container" class="maps-maplibre-container" style="width: 100%; height: 100%;"></div>
 
-  <!-- Connection indicator -->
-  <div class="connection-indicator disconnected">
-    <span class="indicator-dot"></span>
-    <span class="indicator-text"></span>
+  <!-- Loading progress badge -->
+  <div data-maps--maplibre-target="progressBadge" class="map-progress-badge">
+    <span class="map-progress-badge-dot"></span>
+    <span data-maps--maplibre-target="progressBadgeText">Loading...</span>
   </div>
 
   <!-- Settings button (top-left corner) -->
@@ -29,14 +34,11 @@
     </button>
   </div>
 
-  <!-- Loading overlay -->
-  <div data-maps--maplibre-target="loading" class="loading-overlay hidden">
-    <div class="loading-spinner"></div>
-    <div class="loading-text" data-maps--maplibre-target="loadingText">Loading points...</div>
-  </div>
-
   <!-- Settings panel -->
   <%= render 'map/maplibre/settings_panel' %>
+
+  <!-- Replay panel -->
+  <%= render 'map/maplibre/replay_panel' %>
 
   <!-- Visit creation modal -->
   <%= render 'map/maplibre/visit_creation_modal' %>

@@ -127,6 +127,15 @@ class Imports::SourceDetector
       else
         file_content
       end
+
+    # Check if it's a KMZ file (ZIP archive)
+    if filename&.downcase&.end_with?('.kmz')
+      # KMZ files are ZIP archives, check for ZIP signature
+      # ZIP files start with "PK" (0x50 0x4B)
+      return content_to_check[0..1] == 'PK'
+    end
+
+    # For KML files, check XML structure
     (
       content_to_check.strip.start_with?('<?xml') ||
       content_to_check.strip.start_with?('<kml')
@@ -168,8 +177,6 @@ class Imports::SourceDetector
       rescue Oj::ParseError, JSON::ParserError
         nil
       end
-    else
-      nil
     end
   end
 

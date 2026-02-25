@@ -37,6 +37,6 @@ module Dawarich
 
     config.active_job.queue_adapter = :sidekiq
 
-    config.action_mailer.preview_paths << "#{Rails.root}/spec/mailers/previews"
+    config.action_mailer.preview_paths << Rails.root.join('spec/mailers/previews').to_s
   end
 end

@@ -43,6 +43,7 @@ class Geojson::Params
       ssid:               feature[:properties][:wifi],
       accuracy:           accuracy(feature),
       vertical_accuracy:  feature[:properties][:vertical_accuracy],
+      motion_data:        Points::MotionDataExtractor.from_overland_properties(feature[:properties]),
       raw_data:           feature
     }
   end
@@ -80,18 +81,35 @@ class Geojson::Params
   end
 
   def timestamp(feature)
-    return Time.zone.at(feature[3]) if feature.is_a?(Array)
+    if feature.is_a?(Array)
+      return parse_array_timestamp(feature[3]) if feature[3].present?
 
+      return nil
+    end
+
+    numeric_timestamp(feature) || parse_string_timestamp(feature)
+  end
+
+  def parse_array_timestamp(value)
+    return value.to_i if value.is_a?(Numeric)
+
+    Time.zone.parse(value.to_s)&.utc&.to_i if value.present?
+  end
+
+  def numeric_timestamp(feature)
     value = feature.dig(:properties, :timestamp) ||
             feature.dig(:geometry, :coordinates, 3)
 
-    return Time.zone.at(value.to_i) if value.is_a?(Numeric)
+    value.to_i if value.is_a?(Numeric)
+  end
 
-    ### GPSLogger for Android case ###
-    time = feature.dig(:properties, :time)
+  def parse_string_timestamp(feature)
+    ### GPSLogger for Android / Google Takeout case ###
+    time = feature.dig(:properties, :time) ||
+           feature.dig(:properties, :date)
+    ### /GPSLogger for Android / Google Takeout case ###
 
-    Time.zone.parse(time).to_i if time.present?
-    ### /GPSLogger for Android case ###
+    Time.zone.parse(time).utc.to_i if time.present?
   end
 
   def speed(feature)

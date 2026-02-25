@@ -5,11 +5,27 @@ require 'rails_helper'
 RSpec.describe 'Users::OmniauthCallbacks', type: :request do
   let(:email) { 'oauth_user@example.com' }
 
+  before(:all) do
+    # Add OpenID Connect callback route for testing
+    # This is needed because OMNIAUTH_PROVIDERS may be empty in test environment
+    Rails.application.routes.append do
+      devise_scope :user do
+        get 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
+        post 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
+      end
+    end
+  end
+
+  after(:all) do
+    # Restore original routes
+    Rails.application.reload_routes!
+  end
+
   before do
     Rails.application.env_config['devise.mapping'] = Devise.mappings[:user]
   end
 
-  shared_examples 'successful OAuth authentication' do |provider, provider_name|
+  shared_examples 'successful OAuth authentication' do |provider, _provider_name|
     context "when user doesn't exist" do
       it 'creates a new user and signs them in' do
         expect do

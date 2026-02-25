@@ -48,7 +48,6 @@ class ReverseGeocoding::Places::FetchData
     )
   end
 
-
   def find_place(place_data, existing_places)
     osm_id = place_data['properties']['osm_id'].to_s
 
@@ -82,9 +81,9 @@ class ReverseGeocoding::Places::FetchData
 
   def find_existing_places(osm_ids)
     Place.where("geodata->'properties'->>'osm_id' IN (?)", osm_ids)
-      .global
-      .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
-      .compact
+         .global
+         .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
+         .compact
   end
 
   def prepare_places_for_bulk_operations(places, existing_places)
@@ -114,9 +113,9 @@ class ReverseGeocoding::Places::FetchData
     place.geodata = data
     place.source = :photon
 
-    if place.lonlat.blank?
-      place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
-    end
+    return if place.lonlat.present?
+
+    place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
   end
 
   def save_places(places_to_create, places_to_update)
@@ -135,11 +134,27 @@ class ReverseGeocoding::Places::FetchData
           updated_at: Time.current
         }
       end
-      Place.insert_all(place_attributes)
+      Place.insert_all(place_attributes) # rubocop:disable Rails/SkipsModelValidations
     end
 
-    # Individual updates for existing places
-    places_to_update.each(&:save!) if places_to_update.any?
+    return unless places_to_update.any?
+
+    update_attributes = places_to_update.uniq(&:id).map do |place|
+      {
+        id: place.id,
+        name: place.name,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        lonlat: place.lonlat,
+        city: place.city,
+        country: place.country,
+        geodata: place.geodata,
+        source: place.source,
+        updated_at: Time.current
+      }
+    end
+    Place.upsert_all(update_attributes, unique_by: :id)
+    # rubocop:enable Rails/SkipsModelValidations
   end
 
   def build_point_coordinates(coordinates)
@@ -147,12 +162,16 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def geocoder_places
-    data = Geocoder.search(
+    Geocoder.search(
       [place.lat, place.lon],
       limit: 10,
       distance_sort: true,
       radius: 1,
       units: :km
     )
+  rescue StandardError => e
+    Rails.logger.error("Reverse geocoding error for place #{place.id}: #{e.message}")
+    ExceptionReporter.call(e)
+    []
   end
 end

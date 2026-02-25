@@ -1,0 +1,103 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "dev"
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": [
+      "**",
+      "!!**/node_modules",
+      "!!**/vendor",
+      "!!app/assets/builds",
+      "!!app/assets/stylesheets/maplibre-gl.css",
+      "!!app/javascript/posthog.js"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "semicolons": "asNeeded",
+      "expand": "auto",
+      "quoteStyle": "double"
+    }
+  },
+  "css": {
+    "linter": {
+      "enabled": true
+    },
+    "parser": {
+      "tailwindDirectives": true
+    },
+    "formatter": {
+      "enabled": true,
+      "quoteStyle": "double"
+    }
+  },
+  "html": {
+    "formatter": {
+      "enabled": true
+    },
+    "linter": {
+      "enabled": true
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.tailwind.css"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAtRules": "off"
+          },
+          "correctness": {
+            "noInvalidPositionAtImportRule": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "app/assets/stylesheets/leaflet_theme.css",
+        "app/assets/stylesheets/leaflet.control.layers.tree.css",
+        "app/assets/stylesheets/application.css",
+        "app/assets/stylesheets/actiontext.css",
+        "app/assets/stylesheets/maps_maplibre_panel.css",
+        "app/javascript/styles/visits.css"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      }
+    }
+  ]
+}

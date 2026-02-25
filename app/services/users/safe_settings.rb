@@ -5,6 +5,7 @@ class Users::SafeSettings
 
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
+    'fog_of_war_threshold' => 50,
     'meters_between_routes' => 500,
     'preferred_map_layer' => 'OpenStreetMap',
     'speed_colored_routes' => false,
@@ -16,19 +17,45 @@ class Users::SafeSettings
     'route_opacity' => 60,
     'immich_url' => nil,
     'immich_api_key' => nil,
+    'immich_skip_ssl_verification' => false,
     'photoprism_url' => nil,
     'photoprism_api_key' => nil,
+    'photoprism_skip_ssl_verification' => false,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
-    'enabled_map_layers' => ['Routes', 'Heatmap'],
-    'maps_maplibre_style' => 'light'
+    'enabled_map_layers' => %w[Tracks Heatmap],
+    'maps_maplibre_style' => 'light',
+    'digest_emails_enabled' => true,
+    'news_emails_enabled' => true,
+    'globe_projection' => false,
+    'supporter_email' => nil,
+    'show_supporter_badge' => true,
+    # Transportation mode thresholds (speeds in km/h, distances in km)
+    'transportation_thresholds' => {
+      'walking_max_speed' => 7,
+      'cycling_max_speed' => 45,
+      'driving_max_speed' => 220,
+      'flying_min_speed' => 150
+    },
+    'transportation_expert_thresholds' => {
+      'stationary_max_speed' => 1,
+      'running_vs_cycling_accel' => 0.25,
+      'cycling_vs_driving_accel' => 0.4,
+      'train_min_speed' => 80,
+      'min_segment_duration' => 60,
+      'time_gap_threshold' => 180,
+      'min_flight_distance_km' => 100
+    },
+    'transportation_expert_mode' => false,
+    'min_minutes_spent_in_city' => 60,
+    'max_gap_minutes_in_city' => 120,
+    'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
   }.freeze
 
   def initialize(settings = {})
-    @settings = DEFAULT_VALUES.dup.merge(settings)
+    @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def config
     {
       fog_of_war_meters: fog_of_war_meters,
@@ -51,10 +78,16 @@ class Users::SafeSettings
       speed_color_scale: speed_color_scale,
       fog_of_war_threshold: fog_of_war_threshold,
       enabled_map_layers: enabled_map_layers,
-      maps_maplibre_style: maps_maplibre_style
+      maps_maplibre_style: maps_maplibre_style,
+      globe_projection: globe_projection,
+      transportation_thresholds: transportation_thresholds,
+      transportation_expert_thresholds: transportation_expert_thresholds,
+      transportation_expert_mode: transportation_expert_mode?,
+      min_minutes_spent_in_city: min_minutes_spent_in_city,
+      max_gap_minutes_in_city: max_gap_minutes_in_city,
+      timezone: timezone
     }
   end
-  # rubocop:enable Metrics/MethodLength
 
   def fog_of_war_meters
     settings['fog_of_war_meters']
@@ -81,11 +114,11 @@ class Users::SafeSettings
   end
 
   def time_threshold_minutes
-    settings['time_threshold_minutes']
+    settings['time_threshold_minutes'].to_i
   end
 
   def merge_threshold_minutes
-    settings['merge_threshold_minutes']
+    settings['merge_threshold_minutes'].to_i
   end
 
   def live_map_enabled
@@ -112,12 +145,20 @@ class Users::SafeSettings
     settings['photoprism_api_key']
   end
 
+  def immich_skip_ssl_verification
+    ActiveModel::Type::Boolean.new.cast(settings['immich_skip_ssl_verification'])
+  end
+
+  def photoprism_skip_ssl_verification
+    ActiveModel::Type::Boolean.new.cast(settings['photoprism_skip_ssl_verification'])
+  end
+
   def maps
     settings['maps']
   end
 
   def distance_unit
-    settings.dig('maps', 'distance_unit')
+    settings.dig('maps', 'distance_unit') || DEFAULT_VALUES.dig('maps', 'distance_unit')
   end
 
   def visits_suggestions_enabled?
@@ -138,5 +179,58 @@ class Users::SafeSettings
 
   def maps_maplibre_style
     settings['maps_maplibre_style']
+  end
+
+  def globe_projection
+    ActiveModel::Type::Boolean.new.cast(settings['globe_projection'])
+  end
+
+  def digest_emails_enabled?
+    value = settings['digest_emails_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def news_emails_enabled?
+    value = settings['news_emails_enabled']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def supporter_email
+    settings['supporter_email']
+  end
+
+  def show_supporter_badge?
+    value = settings['show_supporter_badge']
+    return true if value.nil?
+
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def transportation_thresholds
+    settings['transportation_thresholds'] || DEFAULT_VALUES['transportation_thresholds']
+  end
+
+  def transportation_expert_thresholds
+    settings['transportation_expert_thresholds'] || DEFAULT_VALUES['transportation_expert_thresholds']
+  end
+
+  def transportation_expert_mode?
+    ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
+  end
+
+  def min_minutes_spent_in_city
+    (settings['min_minutes_spent_in_city'] || DEFAULT_VALUES['min_minutes_spent_in_city']).to_i
+  end
+
+  def max_gap_minutes_in_city
+    (settings['max_gap_minutes_in_city'] || DEFAULT_VALUES['max_gap_minutes_in_city']).to_i
+  end
+
+  def timezone
+    settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 end

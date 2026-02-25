@@ -36,7 +36,7 @@ class ImportPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      return scope.none unless user.present?
+      return scope.none if user.blank?
 
       # Users can only see their own imports
       scope.where(user: user)

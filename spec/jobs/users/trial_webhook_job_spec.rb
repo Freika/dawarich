@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Users::TrialWebhookJob, type: :job do
@@ -47,9 +49,9 @@ RSpec.describe Users::TrialWebhookJob, type: :job do
       it 'raises ActiveRecord::RecordNotFound' do
         user.destroy
 
-        expect {
+        expect do
           described_class.perform_now(user.id)
-        }.to raise_error(ActiveRecord::RecordNotFound)
+        end.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
   end

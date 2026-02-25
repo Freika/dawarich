@@ -16,7 +16,7 @@ class Users::ImportData::Areas
     valid_areas = filter_and_prepare_areas
 
     if valid_areas.empty?
-      Rails.logger.info "Areas import completed. Created: 0"
+      Rails.logger.info 'Areas import completed. Created: 0'
       return 0
     end
 
@@ -53,9 +53,7 @@ class Users::ImportData::Areas
       valid_areas << prepared_attributes if prepared_attributes
     end
 
-    if skipped_count > 0
-      Rails.logger.warn "Skipped #{skipped_count} areas with invalid or missing required data"
-    end
+    Rails.logger.warn "Skipped #{skipped_count} areas with invalid or missing required data" if skipped_count.positive?
 
     valid_areas
   end
@@ -84,7 +82,7 @@ class Users::ImportData::Areas
       existing_areas_lookup[key] = true
     end
 
-    filtered_areas = areas.reject do |area|
+    areas.reject do |area|
       key = [area[:name], area[:latitude].to_f, area[:longitude].to_f]
       if existing_areas_lookup[key]
         Rails.logger.debug "Area already exists: #{area[:name]}"
@@ -93,31 +91,29 @@ class Users::ImportData::Areas
         false
       end
     end
-
-    filtered_areas
   end
 
   def bulk_import_areas(areas)
     total_created = 0
 
     areas.each_slice(BATCH_SIZE) do |batch|
-      begin
-        result = Area.upsert_all(
-          batch,
-          returning: %w[id],
-          on_duplicate: :skip
-        )
+      result = Area.upsert_all(
+        batch,
+        returning: %w[id],
+        on_duplicate: :skip
+      )
+      # rubocop:enable Rails/SkipsModelValidations
 
-        batch_created = result.count
-        total_created += batch_created
+      batch_created = result.count
+      total_created += batch_created
 
-        Rails.logger.debug "Processed batch of #{batch.size} areas, created #{batch_created}, total created: #{total_created}"
-
-      rescue StandardError => e
-        Rails.logger.error "Failed to process area batch: #{e.message}"
-        Rails.logger.error "Batch size: #{batch.size}"
-        Rails.logger.error "Backtrace: #{e.backtrace.first(3).join('\n')}"
-      end
+      Rails.logger.debug(
+        "Processed batch of #{batch.size} areas, created #{batch_created}, total created: #{total_created}"
+      )
+    rescue StandardError => e
+      Rails.logger.error "Failed to process area batch: #{e.message}"
+      Rails.logger.error "Batch size: #{batch.size}"
+      Rails.logger.error "Backtrace: #{e.backtrace.first(3).join('\n')}"
     end
 
     total_created
@@ -125,9 +121,9 @@ class Users::ImportData::Areas
 
   def valid_area_data?(area_data)
     return false unless area_data.is_a?(Hash)
-    return false unless area_data['name'].present?
-    return false unless area_data['latitude'].present?
-    return false unless area_data['longitude'].present?
+    return false if area_data['name'].blank?
+    return false if area_data['latitude'].blank?
+    return false if area_data['longitude'].blank?
 
     true
   rescue StandardError => e

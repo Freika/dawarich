@@ -6,8 +6,7 @@ RSpec.describe 'Users', type: :request do
   describe 'GET /users/sign_up' do
     context 'when self-hosted' do
       before do
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('SELF_HOSTED').and_return('true')
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       end
 
       it 'redirects to root path' do
@@ -19,8 +18,7 @@ RSpec.describe 'Users', type: :request do
 
     context 'when not self-hosted' do
       before do
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('SELF_HOSTED').and_return(nil)
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
 
       it 'returns http success' do

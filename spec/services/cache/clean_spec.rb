@@ -12,10 +12,10 @@ RSpec.describe Cache::Clean do
     let(:user_2_years_tracked_key) { "dawarich/user_#{user2.id}_years_tracked" }
     let(:user_1_points_geocoded_stats_key) { "dawarich/user_#{user1.id}_points_geocoded_stats" }
     let(:user_2_points_geocoded_stats_key) { "dawarich/user_#{user2.id}_points_geocoded_stats" }
-    let(:user_1_countries_key) { "dawarich/user_#{user1.id}_countries" }
-    let(:user_2_countries_key) { "dawarich/user_#{user2.id}_countries" }
-    let(:user_1_cities_key) { "dawarich/user_#{user1.id}_cities" }
-    let(:user_2_cities_key) { "dawarich/user_#{user2.id}_cities" }
+    let(:user_1_countries_key) { "dawarich/user_#{user1.id}_countries_visited" }
+    let(:user_2_countries_key) { "dawarich/user_#{user2.id}_countries_visited" }
+    let(:user_1_cities_key) { "dawarich/user_#{user1.id}_cities_visited" }
+    let(:user_2_cities_key) { "dawarich/user_#{user2.id}_cities_visited" }
 
     before do
       # Set up cache entries that should be cleaned
@@ -93,14 +93,15 @@ RSpec.describe Cache::Clean do
       # Create a user that will be found during the cleaning process
       user3 = nil
 
-      allow(User).to receive(:find_each).and_yield(user1).and_yield(user2) do |&block|
+      allow(User).to receive(:find_each) do |&block|
+        # Yield existing users
+        block.call(user1)
+        block.call(user2)
+
         # Create a new user while iterating - this should not cause errors
         user3 = create(:user)
         Rails.cache.write("dawarich/user_#{user3.id}_years_tracked", { 2023 => ['May'] })
         Rails.cache.write("dawarich/user_#{user3.id}_points_geocoded_stats", { geocoded: 1, without_data: 0 })
-
-        # Continue with the original block
-        [user1, user2].each(&block)
       end
 
       expect { described_class.call }.not_to raise_error

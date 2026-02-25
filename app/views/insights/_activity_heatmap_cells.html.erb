@@ -1,0 +1,31 @@
+<%
+  weeks = heatmap_week_columns(@selected_year)
+  daily_data = @activity_heatmap.daily_data
+  levels = @activity_heatmap.activity_levels
+%>
+
+<% weeks.each do |week_start| %>
+  <div class="flex flex-col gap-0.5">
+    <% 7.times do |day_offset| %>
+      <%
+        date = week_start + day_offset
+        date_key = date.strftime('%Y-%m-%d')
+        distance = daily_data[date_key] || 0
+        level = calculate_activity_level(distance, levels)
+        is_in_year = date.year == @selected_year
+        is_future = date > Date.current
+      %>
+
+      <% if is_in_year && !is_future %>
+        <div class="w-3 h-3 rounded-sm cursor-pointer transition-opacity hover:opacity-80 <%= activity_level_class(level) %>"
+             data-date="<%= date_key %>"
+             data-distance="<%= distance %>"
+             data-action="mouseenter->activity-heatmap#showTooltip mouseleave->activity-heatmap#hideTooltip">
+        </div>
+      <% else %>
+        <!-- Empty placeholder for days outside the year or in the future -->
+        <div class="w-3 h-3 rounded-sm <%= is_future && is_in_year ? 'bg-base-300/30' : '' %>"></div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

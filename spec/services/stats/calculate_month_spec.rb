@@ -93,6 +93,146 @@ RSpec.describe Stats::CalculateMonth do
           expect(user.stats.last.distance).to be_within(1000).of(340_000)
         end
       end
+
+      context 'when calculating visited cities and countries' do
+        let(:timestamp_base) { DateTime.new(year, month, 1, 12).to_i }
+        let!(:import) { create(:import, user:) }
+
+        context 'when user spent more than min_minutes_spent_in_city in a city' do
+          let!(:berlin_points) do
+            [
+              create(:point, user:, import:, timestamp: timestamp_base,
+                     city: 'Berlin', country_name: 'Germany',
+                     lonlat: 'POINT(13.404954 52.520008)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 30.minutes,
+                     city: 'Berlin', country_name: 'Germany',
+                     lonlat: 'POINT(13.404954 52.520008)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 70.minutes,
+                     city: 'Berlin', country_name: 'Germany',
+                     lonlat: 'POINT(13.404954 52.520008)')
+            ]
+          end
+
+          it 'includes the city in toponyms' do
+            calculate_stats
+
+            stat = user.stats.last
+            expect(stat.toponyms).not_to be_empty
+            expect(stat.toponyms.first['country']).to eq('Germany')
+            expect(stat.toponyms.first['cities']).not_to be_empty
+            expect(stat.toponyms.first['cities'].first['city']).to eq('Berlin')
+          end
+        end
+
+        context 'when user spent less than min_minutes_spent_in_city in a city' do
+          let!(:prague_points) do
+            [
+              create(:point, user:, import:, timestamp: timestamp_base,
+                     city: 'Prague', country_name: 'Czech Republic',
+                     lonlat: 'POINT(14.4378 50.0755)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 10.minutes,
+                     city: 'Prague', country_name: 'Czech Republic',
+                     lonlat: 'POINT(14.4378 50.0755)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 20.minutes,
+                     city: 'Prague', country_name: 'Czech Republic',
+                     lonlat: 'POINT(14.4378 50.0755)')
+            ]
+          end
+
+          it 'excludes the city from toponyms' do
+            calculate_stats
+
+            stat = user.stats.last
+            expect(stat.toponyms).not_to be_empty
+
+            # Country should be listed but with no cities
+            czech_country = stat.toponyms.find { |t| t['country'] == 'Czech Republic' }
+            expect(czech_country).not_to be_nil
+            expect(czech_country['cities']).to be_empty
+          end
+        end
+
+        context 'when user visited multiple cities with mixed durations' do
+          let!(:mixed_points) do
+            [
+              # Berlin: 70 minutes with continuous presence (should be included)
+              # Points every 35 minutes: 0, 35, 70 = 70 min total
+              create(:point, user:, import:, timestamp: timestamp_base,
+                     city: 'Berlin', country_name: 'Germany',
+                     lonlat: 'POINT(13.404954 52.520008)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 35.minutes,
+                     city: 'Berlin', country_name: 'Germany',
+                     lonlat: 'POINT(13.404954 52.520008)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 70.minutes,
+                     city: 'Berlin', country_name: 'Germany',
+                     lonlat: 'POINT(13.404954 52.520008)'),
+
+              # Prague: 20 minutes (should be excluded)
+              create(:point, user:, import:, timestamp: timestamp_base + 100.minutes,
+                     city: 'Prague', country_name: 'Czech Republic',
+                     lonlat: 'POINT(14.4378 50.0755)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 120.minutes,
+                     city: 'Prague', country_name: 'Czech Republic',
+                     lonlat: 'POINT(14.4378 50.0755)'),
+
+              # Vienna: 90 minutes with continuous presence (should be included)
+              # Points every 30 minutes: 150, 180, 210, 240 = 90 min total
+              create(:point, user:, import:, timestamp: timestamp_base + 150.minutes,
+                     city: 'Vienna', country_name: 'Austria',
+                     lonlat: 'POINT(16.3738 48.2082)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 180.minutes,
+                     city: 'Vienna', country_name: 'Austria',
+                     lonlat: 'POINT(16.3738 48.2082)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 210.minutes,
+                     city: 'Vienna', country_name: 'Austria',
+                     lonlat: 'POINT(16.3738 48.2082)'),
+              create(:point, user:, import:, timestamp: timestamp_base + 240.minutes,
+                     city: 'Vienna', country_name: 'Austria',
+                     lonlat: 'POINT(16.3738 48.2082)')
+            ]
+          end
+
+          it 'only includes cities where user spent >= min_minutes_spent_in_city' do
+            calculate_stats
+
+            stat = user.stats.last
+            expect(stat.toponyms).not_to be_empty
+
+            # Get all cities from all countries
+            all_cities = stat.toponyms.flat_map { |t| t['cities'].map { |c| c['city'] } }
+
+            # Berlin and Vienna should be included
+            expect(all_cities).to include('Berlin', 'Vienna')
+
+            # Prague should NOT be included
+            expect(all_cities).not_to include('Prague')
+
+            # Should have exactly 2 cities
+            expect(all_cities.size).to eq(2)
+          end
+        end
+      end
+
+      context 'when invalidating caches' do
+        it 'invalidates user caches after updating stats' do
+          cache_service = instance_double(Cache::InvalidateUserCaches)
+          allow(Cache::InvalidateUserCaches).to receive(:new).with(user.id, year: year).and_return(cache_service)
+          allow(cache_service).to receive(:call)
+
+          calculate_stats
+
+          expect(cache_service).to have_received(:call)
+        end
+
+        it 'does not invalidate caches when there are no points' do
+          new_user = create(:user)
+          service = described_class.new(new_user.id, year, month)
+
+          expect(Cache::InvalidateUserCaches).not_to receive(:new)
+
+          service.call
+        end
+      end
     end
   end
 end

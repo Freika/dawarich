@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .header {
+      background: linear-gradient(135deg, #0f766e, #0284c7);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+      border-radius: 8px 8px 0 0;
+    }
+    .header h1 {
+      margin: 0 0 10px 0;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .header p {
+      margin: 0;
+      opacity: 0.9;
+      font-size: 16px;
+    }
+    .content {
+      padding: 30px;
+      background: #ffffff;
+    }
+    .stat-card {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+      border: 1px solid #e2e8f0;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #2563eb;
+      margin: 0;
+    }
+    .stat-label {
+      color: #64748b;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .stat-description {
+      color: #475569;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+    .first-time-badge {
+      display: inline-block;
+      background: #10b981;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-right: 8px;
+    }
+    .comparison {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .comparison.positive {
+      color: #10b981;
+    }
+    .comparison.negative {
+      color: #ef4444;
+    }
+    .chart-container {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+    .chart-container img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    .location-list {
+      margin: 10px 0;
+      padding: 0;
+      list-style: none;
+    }
+    .location-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+    }
+    .location-list li:last-child {
+      border-bottom: none;
+    }
+    .all-time-footer {
+      background: #1e293b;
+      color: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .all-time-footer h3 {
+      color: white;
+      margin: 0 0 16px 0;
+      font-size: 18px;
+    }
+    .all-time-stat {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .all-time-stat:last-child {
+      border-bottom: none;
+    }
+    .all-time-stat .label {
+      opacity: 0.8;
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .all-time-stat .value {
+      font-weight: 600;
+      font-size: 24px;
+    }
+    .footer {
+      text-align: center;
+      padding: 30px;
+      color: #64748b;
+      font-size: 12px;
+      background: #ffffff;
+      border-radius: 0 0 8px 8px;
+    }
+    .footer a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    .unsubscribe {
+      color: #94a3b8;
+      font-size: 11px;
+      margin-top: 16px;
+    }
+    .unsubscribe a {
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1><%= @digest.year %> Year in Review</h1>
+    <p>Your journey, by the numbers</p>
+  </div>
+
+  <div class="content">
+    <p>
+      Hi, this is Evgenii from Dawarich! Pretty wild journey last year, huh? Let's take a look back at all the places you explored in <strong><%= @digest.year %></strong>.
+    </p>
+  </div>
+
+  <div class="content">
+    <!-- Distance Traveled -->
+    <div class="stat-card">
+      <div class="stat-label">Distance Traveled</div>
+      <p class="stat-value"><%= distance_with_unit(@digest.distance, @distance_unit) %></p>
+      <p class="stat-description"><%= distance_comparison_text(@digest.distance) %></p>
+      <% if @digest.yoy_distance_change %>
+        <p class="comparison <%= yoy_change_class(@digest.yoy_distance_change) %>">
+          <%= yoy_change_text(@digest.yoy_distance_change) %> compared to <%= @digest.previous_year %>
+        </p>
+      <% end %>
+    </div>
+
+    <!-- Countries Visited -->
+    <div class="stat-card">
+      <div class="stat-label">Countries Visited</div>
+      <p class="stat-value"><%= @digest.countries_count %></p>
+      <% if @digest.first_time_countries.any? %>
+        <p class="stat-description">
+          <span class="first-time-badge">New</span>
+          First time in: <%= @digest.first_time_countries.join(', ') %>
+        </p>
+      <% end %>
+    </div>
+
+    <!-- Cities Visited -->
+    <div class="stat-card">
+      <div class="stat-label">Cities Explored</div>
+      <p class="stat-value"><%= @digest.cities_count %></p>
+      <% if @digest.first_time_cities.any? %>
+        <p class="stat-description">
+          <span class="first-time-badge">New</span>
+          <% cities_to_show = @digest.first_time_cities.take(5) %>
+          First time in: <%= cities_to_show.join(', ') %>
+          <% if @digest.first_time_cities.count > 5 %>
+            and <%= @digest.first_time_cities.count - 5 %> more
+          <% end %>
+        </p>
+      <% end %>
+    </div>
+
+    <!-- Monthly Distance Chart -->
+    <% if @digest.monthly_distances.present? %>
+      <div class="chart-container">
+        <h3 style="margin: 0 0 16px 0; color: #1e293b;">Your Year, Month by Month</h3>
+        <% max_distance = @digest.monthly_distances.values.map(&:to_i).max %>
+        <% max_distance = 1 if max_distance.zero? %>
+        <% chart_height = 120 %>
+        <% bar_colors = ['#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'] %>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+          <!-- Bars row -->
+          <tr>
+            <% (1..12).each do |month| %>
+              <% distance = @digest.monthly_distances[month.to_s].to_i %>
+              <% bar_height = (distance.to_f / max_distance * chart_height).round %>
+              <% bar_height = 3 if bar_height < 3 && distance > 0 %>
+              <td style="vertical-align: bottom; text-align: center; padding: 0 2px;">
+                <div style="background: <%= bar_colors[month - 1] %>; width: 100%; height: <%= bar_height %>px; border-radius: 3px 3px 0 0; min-height: 3px;"></div>
+              </td>
+            <% end %>
+          </tr>
+          <!-- Labels row -->
+          <tr>
+            <% (1..12).each do |month| %>
+              <td style="text-align: center; padding-top: 6px; font-size: 11px; color: #64748b;">
+                <%= Date::ABBR_MONTHNAMES[month][0..0] %>
+              </td>
+            <% end %>
+          </tr>
+        </table>
+      </div>
+    <% end %>
+
+    <!-- Top Locations by Time Spent -->
+    <% if @digest.top_countries_by_time.any? %>
+      <div class="stat-card">
+        <div class="stat-label">Where You Spent the Most Time</div>
+        <ul class="location-list">
+          <% @digest.top_countries_by_time.take(5).each do |country| %>
+            <li>
+              <span><%= country_flag(country['name']) %> <%= country['name'] %></span>
+              <span><%= format_time_spent(country['minutes']) %></span>
+            </li>
+          <% end %>
+          <% if @digest.untracked_days > 0 %>
+            <li style="border-top: 2px dashed #e2e8f0; padding-top: 12px; margin-top: 4px;">
+              <span style="color: #94a3b8; font-style: italic;">No tracking data</span>
+              <span style="color: #94a3b8;"><%= pluralize(@digest.untracked_days.round, 'day') %></span>
+            </li>
+          <% end %>
+        </ul>
+        <% if @digest.untracked_days > 0 %>
+          <p style="color: #64748b; font-size: 13px; margin-top: 12px;">
+            💡 Track more in <%= @digest.year + 1 %> to see a fuller picture of your travels!
+          </p>
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- All-Time Stats Footer -->
+    <div class="all-time-footer">
+      <h3>All-Time Stats</h3>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+        <tr>
+          <td width="50%" style="text-align: center; padding: 8px;">
+            <div class="label" style="opacity: 0.8; font-size: 12px; margin-bottom: 4px;">Countries visited</div>
+            <div class="value" style="font-weight: 600; font-size: 24px;"><%= @digest.total_countries_all_time %></div>
+          </td>
+          <td width="50%" style="text-align: center; padding: 8px;">
+            <div class="label" style="opacity: 0.8; font-size: 12px; margin-bottom: 4px;">Cities explored</div>
+            <div class="value" style="font-weight: 600; font-size: 24px;"><%= @digest.total_cities_all_time %></div>
+          </td>
+        </tr>
+      </table>
+      <div class="all-time-stat" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+        <span class="label">Total distance</span>
+        <span class="value"><%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <p>
+      You can open your digest for sharing on its page on Dawarich: <a href="<%= users_digest_url(year: @digest.year) %>"><%= users_digest_url(year: @digest.year) %></a>
+    </p>
+  </div>
+
+  <div class="footer">
+    <p>Powered by <a href="https://dawarich.app">Dawarich</a>, your personal location history.</p>
+    <p class="unsubscribe">
+      You can <a href="<%= settings_general_index_url(host: ENV.fetch('DOMAIN', 'localhost')) %>">manage your email preferences</a> in settings.
+    </p>
+  </div>
+</body>
+</html>

@@ -14,7 +14,7 @@
  *= require_self
  */
 
- .emoji-icon {
+.emoji-icon {
   font-size: 36px; /* Adjust size as needed */
   text-align: center;
   line-height: 36px; /* Same as font-size for perfect centering */
@@ -80,7 +80,7 @@
 .leaflet-loading-control {
   padding: 5px;
   border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
   margin: 10px;
   width: 32px;
   height: 32px;
@@ -96,13 +96,13 @@
 }
 
 .loading-spinner::before {
-  content: '';
+  content: "";
   font-size: 18px;
   animation: spinner 1s linear infinite;
 }
 
 .loading-spinner.done::before {
-  content: '✅';
+  content: "✅";
   animation: none;
 }
 

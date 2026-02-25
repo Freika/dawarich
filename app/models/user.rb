@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
+class User < ApplicationRecord
   include UserFamily
   include Omniauthable
 
@@ -20,6 +20,8 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   has_many :tags,           dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
+  has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
+  has_many :digests, class_name: 'Users::Digest', dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
@@ -43,24 +45,21 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
 
   def countries_visited
     Rails.cache.fetch("dawarich/user_#{id}_countries_visited", expires_in: 1.day) do
-      points
-        .without_raw_data
-        .where.not(country_name: [nil, ''])
-        .distinct
-        .pluck(:country_name)
-        .compact
+      countries_visited_uncached
     end
   end
 
   def cities_visited
     Rails.cache.fetch("dawarich/user_#{id}_cities_visited", expires_in: 1.day) do
-      points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+      cities_visited_uncached
     end
   end
 
   def total_distance
-    total_distance_meters = stats.sum(:distance)
-    Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
+    Rails.cache.fetch("dawarich/user_#{id}_total_distance", expires_in: 1.day) do
+      total_distance_meters = stats.sum(:distance)
+      Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
+    end
   end
 
   def total_countries
@@ -72,7 +71,7 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
   end
 
   def total_reverse_geocoded_points
-    points.where.not(reverse_geocoded_at: nil).count
+    StatsQuery.new(self).points_stats[:geocoded]
   end
 
   def total_reverse_geocoded_points_without_data
@@ -133,21 +132,49 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     (points_count || 0).zero? && trial?
   end
 
-  def timezone
-    Time.zone.name
-  end
+  delegate :timezone, to: :safe_settings
 
+  # Aggregate countries from all stats' toponyms
+  # This is more accurate than raw point queries as it uses processed data
   def countries_visited_uncached
-    points
-      .without_raw_data
-      .where.not(country_name: [nil, ''])
-      .distinct
-      .pluck(:country_name)
-      .compact
+    countries = Set.new
+
+    stats.find_each do |stat|
+      toponyms = stat.toponyms
+      next unless toponyms.is_a?(Array)
+
+      toponyms.each do |toponym|
+        next unless toponym.is_a?(Hash)
+
+        countries.add(toponym['country']) if toponym['country'].present?
+      end
+    end
+
+    countries.to_a.sort
   end
 
+  # Aggregate cities from all stats' toponyms
+  # This respects min_minutes_spent_in_city since toponyms are already filtered
   def cities_visited_uncached
-    points.where.not(city: [nil, '']).distinct.pluck(:city).compact
+    cities = Set.new
+
+    stats.find_each do |stat|
+      toponyms = stat.toponyms
+      next unless toponyms.is_a?(Array)
+
+      toponyms.each do |toponym|
+        next unless toponym.is_a?(Hash)
+        next unless toponym['cities'].is_a?(Array)
+
+        toponym['cities'].each do |city|
+          next unless city.is_a?(Hash)
+
+          cities.add(city['city']) if city['city'].present?
+        end
+      end
+    end
+
+    cities.to_a.sort
   end
 
   def home_place_coordinates
@@ -159,6 +186,20 @@ class User < ApplicationRecord # rubocop:disable Metrics/ClassLength
     return nil unless home_place
 
     [home_place.latitude, home_place.longitude]
+  end
+
+  def supporter?
+    supporter_info[:supporter] == true
+  end
+
+  def supporter_platform
+    supporter_info[:platform]
+  end
+
+  def supporter_info
+    return { supporter: false } if safe_settings.supporter_email.blank?
+
+    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
   end
 
   private

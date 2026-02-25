@@ -10,17 +10,58 @@ on:
   release:
     types: [created]
 
+permissions: {}
+
 jobs:
-  build-and-push-docker:
+  prepare:
     runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+      platforms: ${{ steps.meta.outputs.platforms }}
+      matrix: ${{ steps.meta.outputs.matrix }}
+    steps:
+      - name: Compute version and platforms
+        id: meta
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$GITHUB_REF_NAME
+          fi
+          if [ -z "$VERSION" ]; then
+            VERSION="rc"
+          fi
+
+          IS_PRERELEASE="${{ github.event.release.prerelease }}"
+          PLATFORMS="linux/amd64,linux/arm64,linux/arm/v7"
+          MATRIX='{"include":[{"platform":"linux/amd64","runner":"ubuntu-22.04"},{"platform":"linux/arm64","runner":"ubuntu-22.04-arm"},{"platform":"linux/arm/v7","runner":"ubuntu-22.04-arm"}]}'
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT
+          echo "platforms=${PLATFORMS}" >> $GITHUB_OUTPUT
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+
+  build-and-push-docker:
+    permissions:
+      contents: read
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
+      # QEMU only needed for arm/v7 (armv7 emulated on aarch64 runner)
       - name: Set up QEMU
+        if: matrix.platform == 'linux/arm/v7'
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm/v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -29,9 +70,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.platform }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-${{ matrix.platform }}-buildx-
 
       - name: Install dependencies
         run: npm install
@@ -40,7 +81,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: freikin/dawarich
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/dawarich
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3.1.0
@@ -48,58 +89,104 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set Docker tags
-        id: docker_meta
+      - name: Prepare platform pair
+        id: platform
         run: |
-          # Debug output
-          echo "GITHUB_REF: $GITHUB_REF"
-          echo "GITHUB_REF_NAME: $GITHUB_REF_NAME"
+          PAIR=$(echo "${{ matrix.platform }}" | tr '/' '-')
+          echo "pair=${PAIR}" >> "$GITHUB_OUTPUT"
 
-          # Extract version from GITHUB_REF or use GITHUB_REF_NAME
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          else
-            VERSION=$GITHUB_REF_NAME
-          fi
-
-          # Additional safety check - if VERSION is empty, use a default
-          if [ -z "$VERSION" ]; then
-            VERSION="rc"
-          fi
-
-          echo "Using VERSION: $VERSION"
-
-          TAGS="freikin/dawarich:${VERSION}"
-
-          # Set platforms based on version type and release type
-          PLATFORMS="linux/amd64,linux/arm64,linux/arm/v8,linux/arm/v7"
-
-          # Add :rc tag for pre-releases
-          if [ "${{ github.event.release.prerelease }}" = "true" ]; then
-            TAGS="${TAGS},freikin/dawarich:rc"
-            # For RC builds, only use amd64
-            PLATFORMS="linux/amd64"
-          fi
-
-          # Add :latest tag only if release is not a pre-release
-          if [ "${{ github.event.release.prerelease }}" != "true" ]; then
-            TAGS="${TAGS},freikin/dawarich:latest"
-          fi
-
-          echo "Final TAGS: $TAGS"
-          echo "PLATFORMS: $PLATFORMS"
-
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "platforms=${PLATFORMS}" >> $GITHUB_OUTPUT
-
-      - name: Build and push
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile
-          push: true
-          tags: ${{ steps.docker_meta.outputs.tags }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ secrets.DOCKERHUB_USERNAME }}/dawarich,push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: ${{ steps.docker_meta.outputs.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Rotate cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Export digest
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          DIGEST="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${DIGEST#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ steps.platform.outputs.pair }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    permissions:
+      contents: read
+    needs: [prepare, build-and-push-docker]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3.1.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download all digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Build Docker tags
+        id: docker_tags
+        run: |
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/dawarich"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          IS_PRERELEASE="${{ needs.prepare.outputs.is_prerelease }}"
+
+          TAGS="${IMAGE}:${VERSION}"
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            TAGS="${TAGS},${IMAGE}:rc"
+          else
+            TAGS="${TAGS},${IMAGE}:latest"
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          TAGS="${{ steps.docker_tags.outputs.tags }}"
+
+          TAG_ARGS=""
+          IFS=',' read -ra TAG_LIST <<< "$TAGS"
+          for TAG in "${TAG_LIST[@]}"; do
+            TAG_ARGS="${TAG_ARGS} -t ${TAG}"
+          done
+
+          SOURCES=$(printf "${{ secrets.DOCKERHUB_USERNAME }}/dawarich@sha256:%s " *)
+
+          docker buildx imagetools create ${TAG_ARGS} ${SOURCES}
+
+      - name: Inspect final image
+        run: |
+          TAGS="${{ steps.docker_tags.outputs.tags }}"
+          FIRST_TAG="${TAGS%%,*}"
+          docker buildx imagetools inspect "${FIRST_TAG}"

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Map::LeafletController < ApplicationController
+  include SafeTimestampParser
+
   before_action :authenticate_user!
   layout 'map', only: :index
 
@@ -39,19 +41,34 @@ class Map::LeafletController < ApplicationController
   end
 
   def calculate_distance
-    return 0 if @coordinates.size < 2
+    return 0 if @points.count(:id) < 2
 
-    total_distance = 0
+    # Use PostGIS window function for efficient distance calculation
+    # This is O(1) database operation vs O(n) Ruby iteration
+    import_filter = params[:import_id].present? ? 'AND import_id = :import_id' : ''
 
-    @coordinates.each_cons(2) do
-      distance_km = Geocoder::Calculations.distance_between(
-        [_1[0], _1[1]], [_2[0], _2[1]], units: :km
-      )
+    sql = <<~SQL.squish
+      SELECT COALESCE(SUM(distance_m) / 1000.0, 0) as total_km FROM (
+        SELECT ST_Distance(
+          lonlat::geography,
+          LAG(lonlat::geography) OVER (ORDER BY timestamp)
+        ) as distance_m
+        FROM points
+        WHERE user_id = :user_id
+          AND timestamp >= :start_at
+          AND timestamp <= :end_at
+          #{import_filter}
+      ) distances
+    SQL
 
-      total_distance += distance_km
-    end
+    query_params = { user_id: current_user.id, start_at: start_at, end_at: end_at }
+    query_params[:import_id] = params[:import_id] if params[:import_id].present?
 
-    total_distance.round
+    result = Point.connection.select_value(
+      ActiveRecord::Base.sanitize_sql_array([sql, query_params])
+    )
+
+    result&.to_f&.round || 0
   end
 
   def parsed_start_at
@@ -71,14 +88,14 @@ class Map::LeafletController < ApplicationController
   end
 
   def start_at
-    return Time.zone.parse(params[:start_at]).to_i if params[:start_at].present?
+    return safe_timestamp(params[:start_at]) if params[:start_at].present?
     return Time.zone.at(points.last.timestamp).beginning_of_day.to_i if points.any?
 
     Time.zone.today.beginning_of_day.to_i
   end
 
   def end_at
-    return Time.zone.parse(params[:end_at]).to_i if params[:end_at].present?
+    return safe_timestamp(params[:end_at]) if params[:end_at].present?
     return Time.zone.at(points.last.timestamp).end_of_day.to_i if points.any?
 
     Time.zone.today.end_of_day.to_i

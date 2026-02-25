@@ -10,18 +10,11 @@ echo "⚠️ Starting Sidekiq in $RAILS_ENV environment ⚠️"
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
   # Extract components from DATABASE_URL
-  DATABASE_HOST=$(echo $DATABASE_URL | awk -F[@/] '{print $4}')
-  DATABASE_PORT=$(echo $DATABASE_URL | awk -F[@/:] '{print $5}')
-  DATABASE_USERNAME=$(echo $DATABASE_URL | awk -F[:/@] '{print $4}')
-  DATABASE_PASSWORD=$(echo $DATABASE_URL | awk -F[:/@] '{print $5}')
-  DATABASE_NAME=$(echo $DATABASE_URL | awk -F[@/] '{print $5}')
-else
-  # Use existing environment variables
-  DATABASE_HOST=${DATABASE_HOST}
-  DATABASE_PORT=${DATABASE_PORT}
-  DATABASE_USERNAME=${DATABASE_USERNAME}
-  DATABASE_PASSWORD=${DATABASE_PASSWORD}
-  DATABASE_NAME=${DATABASE_NAME}
+  DATABASE_HOST="$(echo "$DATABASE_URL" | awk -F[@/] '{print $4}')"
+  DATABASE_PORT="$(echo "$DATABASE_URL" | awk -F[@/:] '{print $5}')"
+  DATABASE_USERNAME="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $4}')"
+  DATABASE_PASSWORD="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $5}')"
+  DATABASE_NAME="$(echo "$DATABASE_URL" | awk -F[@/] '{print $5}')"
 fi
 
 # Wait for the database to become available

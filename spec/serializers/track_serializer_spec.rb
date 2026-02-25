@@ -92,7 +92,9 @@ RSpec.describe TrackSerializer do
       let(:track) { create(:track, user: user, original_path: 'LINESTRING(0 0, 1 1, 2 2)') }
 
       it 'converts geometry to WKT string format' do
-        expect(serialized_track[:original_path]).to match(/LINESTRING \(0(\.0)? 0(\.0)?, 1(\.0)? 1(\.0)?, 2(\.0)? 2(\.0)?\)/)
+        expect(serialized_track[:original_path]).to match(
+          /LINESTRING \(0(\.0)? 0(\.0)?, 1(\.0)? 1(\.0)?, 2(\.0)? 2(\.0)?\)/
+        )
         expect(serialized_track[:original_path]).to be_a(String)
       end
     end
