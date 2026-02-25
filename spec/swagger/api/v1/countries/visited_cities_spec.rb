@@ -114,6 +114,16 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
         let(:start_at) { '2023-01-01' }
         let(:end_at) { '2023-12-31' }
         let(:api_key) { create(:user).api_key }
+
+        after do |example|
+          content = example.metadata[:response][:content] || {}
+          example.metadata[:response][:content] = content.merge(
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          )
+        end
+
         run_test!
       end
 

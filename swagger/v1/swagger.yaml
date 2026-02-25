@@ -1,14 +1,18 @@
 ---
 openapi: 3.0.1
 info:
-  title: API V1
+  title: Dawarich API
   version: v1
+  description: API for Dawarich, a self-hosted location history tracking application.
+    Provides endpoints for managing location data, tracks, visits, statistics, and
+    more.
 paths:
   "/api/v1/areas":
     post:
       summary: Creates an area
       tags:
       - Areas
+      description: Creates a new geographic area for the authenticated user
       parameters:
       - name: api_key
         in: query
@@ -19,47 +23,87 @@ paths:
       responses:
         '201':
           description: area created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The ID of the area
+                  name:
+                    type: string
+                    description: The name of the area
+                  latitude:
+                    oneOf:
+                    - type: number
+                    - type: string
+                    description: The latitude of the area center
+                  longitude:
+                    oneOf:
+                    - type: number
+                    - type: string
+                    description: The longitude of the area center
+                  radius:
+                    type: integer
+                    description: The radius of the area in meters
+                  user_id:
+                    type: integer
+                    description: The ID of the owning user
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
         '422':
           description: invalid request
+        '401':
+          description: unauthorized
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                name:
-                  type: string
-                  example: Home
-                  description: The name of the area
-                latitude:
-                  type: number
-                  example: 40.7128
-                  description: The latitude of the area
-                longitude:
-                  type: number
-                  example: -74.006
-                  description: The longitude of the area
-                radius:
-                  type: number
-                  example: 100
-                  description: The radius of the area in meters
-              required:
-              - name
-              - latitude
-              - longitude
-              - radius
+                area:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: Home
+                      description: The name of the area
+                    latitude:
+                      type: number
+                      example: 40.7128
+                      description: The latitude of the area center
+                    longitude:
+                      type: number
+                      example: -74.006
+                      description: The longitude of the area center
+                    radius:
+                      type: number
+                      example: 100
+                      description: The radius of the area in meters
+                  required:
+                  - name
+                  - latitude
+                  - longitude
+                  - radius
             examples:
               '0':
                 summary: Creates an area
                 value:
-                  name: Home
-                  latitude: 40.7128
-                  longitude: -74.006
-                  radius: 100
+                  area:
+                    name: Home
+                    latitude: 40.7128
+                    longitude: -74.006
+                    radius: 100
     get:
       summary: Retrieves all areas
       tags:
       - Areas
+      description: Returns all areas belonging to the authenticated user
       parameters:
       - name: api_key
         in: query
@@ -86,15 +130,19 @@ paths:
                       example: Home
                       description: The name of the area
                     latitude:
-                      type: number
+                      oneOf:
+                      - type: number
+                      - type: string
                       example: 40.7128
-                      description: The latitude of the area
+                      description: The latitude of the area center
                     longitude:
-                      type: number
+                      oneOf:
+                      - type: number
+                      - type: string
                       example: -74.006
-                      description: The longitude of the area
+                      description: The longitude of the area center
                     radius:
-                      type: number
+                      type: integer
                       example: 100
                       description: The radius of the area in meters
                   required:
@@ -103,7 +151,121 @@ paths:
                   - latitude
                   - longitude
                   - radius
+        '401':
+          description: unauthorized
   "/api/v1/areas/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Area ID
+      schema:
+        type: integer
+    get:
+      summary: Retrieves a specific area
+      tags:
+      - Areas
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: area found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The ID of the area
+                  name:
+                    type: string
+                    description: The name of the area
+                  latitude:
+                    oneOf:
+                    - type: number
+                    - type: string
+                    description: The latitude of the area center
+                  longitude:
+                    oneOf:
+                    - type: number
+                    - type: string
+                    description: The longitude of the area center
+                  radius:
+                    type: integer
+                    description: The radius of the area in meters
+        '404':
+          description: area not found
+        '401':
+          description: unauthorized
+    patch:
+      summary: Updates an area
+      tags:
+      - Areas
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: area updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The ID of the area
+                  name:
+                    type: string
+                    description: The name of the area
+                  latitude:
+                    oneOf:
+                    - type: number
+                    - type: string
+                    description: The latitude of the area center
+                  longitude:
+                    oneOf:
+                    - type: number
+                    - type: string
+                    description: The longitude of the area center
+                  radius:
+                    type: integer
+                    description: The radius of the area in meters
+        '404':
+          description: area not found
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                area:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: The name of the area
+                    latitude:
+                      type: number
+                      description: The latitude of the area center
+                    longitude:
+                      type: number
+                      description: The longitude of the area center
+                    radius:
+                      type: number
+                      description: The radius of the area in meters
     delete:
       summary: Deletes an area
       tags:
@@ -115,15 +277,13 @@ paths:
         description: API Key
         schema:
           type: string
-      - name: id
-        in: path
-        required: true
-        description: Area ID
-        schema:
-          type: string
       responses:
         '200':
           description: area deleted
+        '404':
+          description: area not found
+        '401':
+          description: unauthorized
   "/api/v1/countries/visited_cities":
     get:
       summary: Get visited cities by date range
@@ -221,11 +381,245 @@ paths:
                   error:
                     type: string
                     example: 'Missing required parameters: start_at, end_at'
+  "/api/v1/digests":
+    get:
+      summary: Lists all yearly digests
+      tags:
+      - Digests
+      description: Returns all yearly digests for the authenticated user and available
+        years for generation
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: digests found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  digests:
+                    type: array
+                    description: List of yearly digests
+                    items:
+                      type: object
+                      properties:
+                        year:
+                          type: integer
+                          description: The year of the digest
+                        distance:
+                          type: integer
+                          description: Total distance in meters
+                        countriesCount:
+                          type: integer
+                          description: Number of countries visited
+                        citiesCount:
+                          type: integer
+                          description: Number of cities visited
+                        createdAt:
+                          type: string
+                          format: date-time
+                          description: When the digest was generated
+                  availableYears:
+                    type: array
+                    items:
+                      type: integer
+                    description: Years available for digest generation (no existing
+                      digest yet)
+        '401':
+          description: unauthorized
+    post:
+      summary: Generates a yearly digest
+      tags:
+      - Digests
+      description: Queues generation of a yearly digest for the specified year
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '202':
+          description: digest generation queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Confirmation message
+        '422':
+          description: invalid year
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                year:
+                  type: integer
+                  description: Year to generate digest for
+                  example: 2024
+              required:
+              - year
+  "/api/v1/digests/{year}":
+    parameters:
+    - name: year
+      in: path
+      required: true
+      description: Year of the digest
+      schema:
+        type: integer
+    get:
+      summary: Retrieves a yearly digest
+      tags:
+      - Digests
+      description: Returns detailed digest data for a specific year
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: distance_unit
+        in: query
+        required: false
+        description: 'Distance unit: km or mi (defaults to user setting)'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: digest found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  year:
+                    type: integer
+                    description: The year of the digest
+                  distance:
+                    type: object
+                    description: Distance details
+                    properties:
+                      meters:
+                        type: integer
+                        description: Total distance in meters
+                      converted:
+                        type: number
+                        description: Distance in the requested unit
+                      unit:
+                        type: string
+                        description: Distance unit (km or mi)
+                      comparisonText:
+                        type: string
+                        description: Fun comparison text
+                  toponyms:
+                    type: object
+                    description: Countries and cities visited
+                    properties:
+                      countriesCount:
+                        type: integer
+                      citiesCount:
+                        type: integer
+                      countries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            country:
+                              type: string
+                            cities:
+                              type: array
+                              items:
+                                type: string
+                  monthlyDistances:
+                    type: object
+                    description: Distance per month (keyed by month name)
+                  timeSpentByLocation:
+                    type: object
+                    description: Time spent in each location
+                  firstTimeVisits:
+                    type: object
+                    description: First-time country and city visits
+                  yearOverYear:
+                    type: object
+                    nullable: true
+                    description: Year-over-year comparison
+                    properties:
+                      distanceChangePercent:
+                        type: number
+                      countriesChange:
+                        type: integer
+                      citiesChange:
+                        type: integer
+                  allTimeStats:
+                    type: object
+                    description: All-time cumulative stats
+                    properties:
+                      totalCountries:
+                        type: integer
+                      totalCities:
+                        type: integer
+                      totalDistance:
+                        type: string
+                  travelPatterns:
+                    type: object
+                    description: Travel pattern analysis
+                    properties:
+                      timeOfDay:
+                        type: object
+                      seasonality:
+                        type: object
+                      activityBreakdown:
+                        type: object
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+        '404':
+          description: digest not found
+        '401':
+          description: unauthorized
+    delete:
+      summary: Deletes a yearly digest
+      tags:
+      - Digests
+      description: Deletes the digest for the specified year
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '204':
+          description: digest deleted
+        '404':
+          description: digest not found
+        '401':
+          description: unauthorized
   "/api/v1/health":
     get:
       summary: Retrieves application status
       tags:
       - Health
+      description: Returns the health status of the application. No authentication
+        required.
       responses:
         '200':
           description: Healthy
@@ -251,6 +645,447 @@ paths:
                 properties:
                   status:
                     type: string
+                    example: ok
+                    description: Application health status
+  "/api/v1/insights":
+    get:
+      summary: Retrieves insights overview for a year
+      tags:
+      - Insights
+      description: Returns aggregated insights including totals, activity heatmap,
+        and available years
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: year
+        in: query
+        required: false
+        description: Year to get insights for (defaults to most recent year with data)
+        schema:
+          type: integer
+      - name: distance_unit
+        in: query
+        required: false
+        description: 'Distance unit: km or mi (defaults to user setting)'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: insights found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  year:
+                    type: integer
+                    description: The selected year
+                  availableYears:
+                    type: array
+                    items:
+                      type: integer
+                    description: Years with available data
+                  totals:
+                    type: object
+                    description: Aggregated totals for the year
+                    properties:
+                      totalDistance:
+                        type: number
+                        description: Total distance traveled
+                      distanceUnit:
+                        type: string
+                        description: Unit of distance (km or mi)
+                      countriesCount:
+                        type: integer
+                        description: Number of countries visited
+                      citiesCount:
+                        type: integer
+                        description: Number of cities visited
+                      countriesList:
+                        type: array
+                        items:
+                          type: string
+                        description: List of country names
+                      daysTraveling:
+                        type: number
+                        description: Number of days with tracked movement
+                      biggestMonth:
+                        type: object
+                        nullable: true
+                        description: Month with most distance
+                  activityHeatmap:
+                    type: object
+                    nullable: true
+                    description: Activity heatmap data for the year
+                    properties:
+                      dailyData:
+                        type: object
+                        description: Daily activity data keyed by date
+                      activityLevels:
+                        type: object
+                        description: Activity level thresholds
+                      maxDistance:
+                        type: number
+                        description: Maximum daily distance
+                      activeDays:
+                        type: integer
+                        description: Number of active days
+                      currentStreak:
+                        type: integer
+                        description: Current consecutive active days
+                      longestStreak:
+                        type: integer
+                        description: Longest consecutive active days
+                      longestStreakStart:
+                        type: string
+                        nullable: true
+                        description: Start date of longest streak
+                      longestStreakEnd:
+                        type: string
+                        nullable: true
+                        description: End date of longest streak
+        '401':
+          description: unauthorized
+  "/api/v1/insights/details":
+    get:
+      summary: Retrieves detailed insights with comparisons and travel patterns
+      tags:
+      - Insights
+      description: Returns year-over-year comparison and travel pattern analysis
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: year
+        in: query
+        required: false
+        description: Year to get details for
+        schema:
+          type: integer
+      - name: distance_unit
+        in: query
+        required: false
+        description: 'Distance unit: km or mi (defaults to user setting)'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: details found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  year:
+                    type: integer
+                    description: The selected year
+                  comparison:
+                    type: object
+                    nullable: true
+                    description: Year-over-year comparison (null if no previous year
+                      data)
+                    properties:
+                      previousYear:
+                        type: integer
+                        description: The previous year compared against
+                      distanceChangePercent:
+                        type: number
+                        description: Percentage change in distance
+                      countriesChange:
+                        type: integer
+                        description: Change in countries visited
+                      citiesChange:
+                        type: integer
+                        description: Change in cities visited
+                      daysChange:
+                        type: number
+                        description: Change in days traveling
+                  travelPatterns:
+                    type: object
+                    description: Travel pattern analysis
+                    properties:
+                      timeOfDay:
+                        type: object
+                        description: Distance distribution by time of day
+                      dayOfWeek:
+                        type: array
+                        items:
+                          type: integer
+                        description: Distance by day of week (Mon-Sun)
+                      seasonality:
+                        type: object
+                        description: Seasonal travel patterns
+                      activityBreakdown:
+                        type: object
+                        description: Breakdown by transportation mode
+                      topVisitedLocations:
+                        type: array
+                        description: Top 5 most visited locations
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            visitCount:
+                              type: integer
+                            totalDuration:
+                              type: integer
+        '401':
+          description: unauthorized
+  "/api/v1/locations":
+    get:
+      summary: Searches for location history near coordinates
+      tags:
+      - Locations
+      description: Searches for tracked location points near the specified coordinates,
+        optionally filtered by date range
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: lat
+        in: query
+        format: float
+        required: true
+        description: Latitude coordinate to search near
+        schema:
+          type: number
+      - name: lon
+        in: query
+        format: float
+        required: true
+        description: Longitude coordinate to search near
+        schema:
+          type: number
+      - name: limit
+        in: query
+        required: false
+        description: 'Maximum number of results (default: 50)'
+        schema:
+          type: integer
+      - name: date_from
+        in: query
+        required: false
+        description: Start date filter (YYYY-MM-DD)
+        schema:
+          type: string
+      - name: date_to
+        in: query
+        required: false
+        description: End date filter (YYYY-MM-DD)
+        schema:
+          type: string
+      - name: radius_override
+        in: query
+        required: false
+        description: Custom search radius in meters
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: locations found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: object
+                    nullable: true
+                    description: The search query parameters used
+                  locations:
+                    type: array
+                    description: Matching location groups
+                    items:
+                      type: object
+                      properties:
+                        place_name:
+                          type: string
+                          nullable: true
+                          description: Reverse-geocoded place name
+                        coordinates:
+                          type: array
+                          items:
+                            type: number
+                          description: "[latitude, longitude]"
+                        address:
+                          type: string
+                          nullable: true
+                          description: Full address
+                        total_visits:
+                          type: integer
+                          description: Total number of visits
+                        first_visit:
+                          type: string
+                          nullable: true
+                          description: First visit date
+                        last_visit:
+                          type: string
+                          nullable: true
+                          description: Last visit date
+                        visits:
+                          type: array
+                          items:
+                            type: object
+                          description: Individual visit details
+                  total_locations:
+                    type: integer
+                    description: Total matching locations
+                  search_metadata:
+                    type: object
+                    description: Search metadata and statistics
+        '400':
+          description: bad request - missing coordinates
+        '401':
+          description: unauthorized
+  "/api/v1/locations/suggestions":
+    get:
+      summary: Get location suggestions from text search
+      tags:
+      - Locations
+      description: Returns geocoded location suggestions based on a text search query
+        (min 2 characters)
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: true
+        description: Search query (minimum 2 characters)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: suggestions found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    description: Matching location suggestions
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          description: Place name
+                        address:
+                          type: string
+                          nullable: true
+                          description: Full address
+                        coordinates:
+                          type: array
+                          items:
+                            type: number
+                          description: "[latitude, longitude]"
+                        type:
+                          type: string
+                          nullable: true
+                          description: Place type (city, street, etc.)
+        '401':
+          description: unauthorized
+  "/api/v1/maps/hexagons":
+    get:
+      summary: Retrieves hexagon grid data for the map
+      tags:
+      - Maps
+      description: Returns hexagonal grid data for map visualization. Supports both
+        authenticated access and public sharing via UUID.
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        description: API Key (required for authenticated access, omit when using uuid)
+        schema:
+          type: string
+      - name: uuid
+        in: query
+        required: false
+        description: Sharing UUID for public access (alternative to api_key)
+        schema:
+          type: string
+      - name: start_date
+        in: query
+        required: false
+        description: Start date (ISO 8601 format)
+        schema:
+          type: string
+      - name: end_date
+        in: query
+        required: false
+        description: End date (ISO 8601 format)
+        schema:
+          type: string
+      - name: year
+        in: query
+        required: false
+        description: Year filter
+        schema:
+          type: integer
+      - name: month
+        in: query
+        required: false
+        description: Month filter (1-12)
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: hexagons found
+        '401':
+          description: unauthorized
+  "/api/v1/maps/hexagons/bounds":
+    get:
+      summary: Retrieves geographic bounds for hexagon data
+      tags:
+      - Maps
+      description: Returns the geographic bounding box for the user's location data
+        within the specified date range
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        description: API Key (required for authenticated access)
+        schema:
+          type: string
+      - name: uuid
+        in: query
+        required: false
+        description: Sharing UUID for public access
+        schema:
+          type: string
+      - name: start_date
+        in: query
+        required: false
+        description: Start date (ISO 8601 format)
+        schema:
+          type: string
+      - name: end_date
+        in: query
+        required: false
+        description: End date (ISO 8601 format)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: bounds found
+        '401':
+          description: unauthorized
   "/api/v1/overland/batches":
     post:
       summary: Creates a batch of points
@@ -542,10 +1377,13 @@ paths:
       summary: Lists photos
       tags:
       - Photos
+      description: Returns photos from connected photo services (Immich, PhotoPrism)
+        within a date range
       parameters:
       - name: api_key
         in: query
         required: true
+        description: API Key
         schema:
           type: string
       - name: start_date
@@ -572,38 +1410,49 @@ paths:
                   properties:
                     id:
                       type: string
+                      description: Photo ID from the source service
                     latitude:
                       type: number
                       format: float
+                      description: Latitude where the photo was taken
                     longitude:
                       type: number
                       format: float
+                      description: Longitude where the photo was taken
                     localDateTime:
                       type: string
                       format: date-time
+                      description: Local date and time the photo was taken
                     originalFileName:
                       type: string
+                      description: Original file name of the photo
                     city:
                       type: string
+                      description: City where the photo was taken
                     state:
                       type: string
+                      description: State/region where the photo was taken
                     country:
                       type: string
+                      description: Country where the photo was taken
                     type:
                       type: string
                       enum:
                       - image
                       - video
+                      description: Media type
                     orientation:
                       type: string
                       enum:
                       - portrait
                       - landscape
+                      description: Photo orientation
                     source:
                       type: string
                       enum:
                       - immich
                       - photoprism
+                      description: Photo source service
                   required:
                   - id
                   - latitude
@@ -617,23 +1466,28 @@ paths:
                   - source
   "/api/v1/photos/{id}/thumbnail":
     get:
-      summary: Retrieves a photo
+      summary: Retrieves a photo thumbnail
       tags:
       - Photos
+      description: Returns the thumbnail image data for a specific photo from the
+        configured photo service
       parameters:
       - name: id
         in: path
         required: true
+        description: Photo ID from the source service
         schema:
           type: string
       - name: api_key
         in: query
         required: true
+        description: API Key
         schema:
           type: string
       - name: source
         in: query
         required: true
+        description: Photo source (immich or photoprism)
         schema:
           type: string
       responses:
@@ -646,23 +1500,31 @@ paths:
                 properties:
                   id:
                     type: string
+                    description: Photo ID
                   latitude:
                     type: number
                     format: float
+                    description: Latitude
                   longitude:
                     type: number
                     format: float
+                    description: Longitude
                   localDateTime:
                     type: string
                     format: date-time
+                    description: Local date and time
                   originalFileName:
                     type: string
+                    description: Original file name
                   city:
                     type: string
+                    description: City
                   state:
                     type: string
+                    description: State/region
                   country:
                     type: string
+                    description: Country
                   type:
                     type: string
                     enum:
@@ -673,16 +1535,19 @@ paths:
                     - raw
                     - live
                     - animated
+                    description: Media type
                   orientation:
                     type: string
                     enum:
                     - portrait
                     - landscape
+                    description: Orientation
                   source:
                     type: string
                     enum:
                     - immich
                     - photoprism
+                    description: Source service
         '404':
           description: photo not found
   "/api/v1/places":
@@ -1081,6 +1946,8 @@ paths:
       summary: Retrieves all points
       tags:
       - Points
+      description: Returns paginated location points for the authenticated user, optionally
+        filtered by date range
       parameters:
       - name: api_key
         in: query
@@ -1128,66 +1995,103 @@ paths:
                   properties:
                     id:
                       type: integer
+                      description: Unique point identifier
                     battery_status:
                       type: number
+                      description: Battery status code
                     ping:
                       type: number
+                      description: Ping value
                     battery:
                       type: number
+                      description: Battery level
                     tracker_id:
                       type: string
+                      description: Tracker identifier
                     topic:
                       type: string
+                      description: MQTT topic
                     altitude:
                       type: number
+                      description: Altitude in meters
                     longitude:
                       type: number
+                      description: Longitude coordinate
                     velocity:
                       type: number
+                      description: Velocity in km/h
                     trigger:
                       type: string
+                      description: Trigger type
                     bssid:
                       type: string
+                      description: WiFi access point MAC address
                     ssid:
                       type: string
+                      description: WiFi network name
                     connection:
                       type: string
+                      description: Connection type (w=wifi, m=mobile)
                     vertical_accuracy:
                       type: number
+                      description: Vertical accuracy in meters
                     accuracy:
                       type: number
+                      description: Horizontal accuracy in meters
                     timestamp:
                       type: number
+                      description: Unix timestamp of the point
                     latitude:
                       type: number
+                      description: Latitude coordinate
                     mode:
                       type: number
+                      description: Tracking mode
                     inrids:
                       type: array
                       items:
                         type: string
+                      description: Region IDs
                     in_regions:
                       type: array
                       items:
                         type: string
+                      description: Region names
                     raw_data:
                       type: string
+                      nullable: true
+                      description: Raw data from the tracking device
                     import_id:
                       type: string
+                      nullable: true
+                      description: Import ID if point was imported
                     city:
                       type: string
+                      nullable: true
+                      description: Reverse-geocoded city name
                     country:
                       type: string
+                      nullable: true
+                      description: Reverse-geocoded country name
                     created_at:
                       type: string
+                      description: Record creation timestamp
                     updated_at:
                       type: string
+                      description: Record last update timestamp
                     user_id:
                       type: integer
+                      description: Owning user ID
                     geodata:
                       type: string
+                      nullable: true
+                      description: Reverse-geocoded geodata
                     visit_id:
                       type: string
+                      nullable: true
+                      description: Associated visit ID
+        '401':
+          description: unauthorized
     post:
       summary: Creates a batch of points
       tags:
@@ -1322,6 +2226,8 @@ paths:
       responses:
         '200':
           description: point deleted
+        '401':
+          description: unauthorized
   "/api/v1/settings":
     patch:
       summary: Updates user settings
@@ -1543,6 +2449,8 @@ paths:
       summary: Retrieves all stats
       tags:
       - Stats
+      description: Returns aggregated statistics including total distance, points
+        tracked, countries and cities visited, with yearly breakdowns
       parameters:
       - name: api_key
         in: query
@@ -1560,29 +2468,40 @@ paths:
                 properties:
                   totalDistanceKm:
                     type: number
+                    description: Total distance traveled in kilometers
                   totalPointsTracked:
                     type: number
+                    description: Total number of location points tracked
                   totalReverseGeocodedPoints:
                     type: number
+                    description: Total points with reverse geocoding data
                   totalCountriesVisited:
                     type: number
+                    description: Total unique countries visited
                   totalCitiesVisited:
                     type: number
+                    description: Total unique cities visited
                   yearlyStats:
                     type: array
+                    description: Statistics broken down by year
                     items:
                       type: object
                       properties:
                         year:
                           type: integer
+                          description: The year
                         totalDistanceKm:
                           type: number
+                          description: Distance traveled in km for this year
                         totalCountriesVisited:
                           type: number
+                          description: Countries visited this year
                         totalCitiesVisited:
                           type: number
+                          description: Cities visited this year
                         monthlyDistanceKm:
                           type: object
+                          description: Distance traveled per month in km
                           properties:
                             january:
                               type: number
@@ -1621,6 +2540,224 @@ paths:
                 - totalCountriesVisited
                 - totalCitiesVisited
                 - yearlyStats
+        '401':
+          description: unauthorized
+  "/api/v1/tracks/{track_id}/points":
+    parameters:
+    - name: track_id
+      in: path
+      required: true
+      description: Track ID
+      schema:
+        type: integer
+    get:
+      summary: Retrieves points for a track
+      tags:
+      - Tracks
+      description: Returns location points belonging to a specific track, ordered
+        by timestamp ascending
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: Page number (optional pagination)
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: Items per page (max 1000)
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: points found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Point ID
+                    latitude:
+                      type: string
+                      nullable: true
+                      description: Latitude coordinate
+                    longitude:
+                      type: string
+                      nullable: true
+                      description: Longitude coordinate
+                    timestamp:
+                      type: number
+                      description: Unix timestamp
+                    velocity:
+                      type: number
+                      nullable: true
+                      description: Velocity in km/h
+                    country_name:
+                      type: string
+                      nullable: true
+                      description: Country name from reverse geocoding
+        '404':
+          description: track not found
+        '401':
+          description: unauthorized
+  "/api/v1/tracks":
+    get:
+      summary: Retrieves tracks as GeoJSON
+      tags:
+      - Tracks
+      description: Returns paginated tracks as a GeoJSON FeatureCollection with LineString
+        geometries
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        required: false
+        description: Start date filter (ISO 8601 format)
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        required: false
+        description: End date filter (ISO 8601 format)
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: Page number
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: Items per page
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: tracks found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: FeatureCollection
+                    description: GeoJSON type
+                  features:
+                    type: array
+                    description: Array of GeoJSON Feature objects
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          example: Feature
+                        geometry:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              example: LineString
+                            coordinates:
+                              type: array
+                              description: Array of [longitude, latitude] coordinate
+                                pairs
+                              items:
+                                type: array
+                                items:
+                                  type: number
+                        properties:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              description: Track ID
+                            color:
+                              type: string
+                              description: Display color for the track
+                            start_at:
+                              type: string
+                              description: Track start time (ISO 8601)
+                            end_at:
+                              type: string
+                              description: Track end time (ISO 8601)
+                            distance:
+                              type: number
+                              description: Distance in meters
+                            avg_speed:
+                              type: number
+                              description: Average speed in km/h
+                            duration:
+                              type: number
+                              description: Duration in seconds
+                            dominant_mode:
+                              type: string
+                              nullable: true
+                              description: Primary transportation mode
+                            dominant_mode_emoji:
+                              type: string
+                              nullable: true
+                              description: Emoji for transportation mode
+        '401':
+          description: unauthorized
+  "/api/v1/tracks/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Track ID
+      schema:
+        type: integer
+    get:
+      summary: Retrieves a single track as GeoJSON
+      tags:
+      - Tracks
+      description: Returns a single track as a GeoJSON FeatureCollection, including
+        track segment details
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: track found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: FeatureCollection
+                  features:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: track not found
+        '401':
+          description: unauthorized
   "/api/v1/users/me":
     get:
       summary: Returns the current user
@@ -1638,6 +2775,8 @@ paths:
       responses:
         '200':
           description: user found
+        '401':
+          description: unauthorized
   "/api/v1/visits":
     get:
       summary: List visits
@@ -2061,3 +3200,14 @@ servers:
   variables:
     defaultHost:
       default: localhost:3000
+components:
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: api_key
+      in: query
+      description: API key passed as a query parameter
+    bearer_auth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication

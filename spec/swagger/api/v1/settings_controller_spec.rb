@@ -117,6 +117,15 @@ describe 'Settings API', type: :request do
         let(:settings) { { settings: { route_opacity: 60 } } }
         let(:api_key)  { create(:user).api_key }
 
+        after do |example|
+          content = example.metadata[:response][:content] || {}
+          example.metadata[:response][:content] = content.merge(
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          )
+        end
+
         run_test!
       end
     end
@@ -252,6 +261,15 @@ describe 'Settings API', type: :request do
         let(:user)     { create(:user) }
         let(:settings) { { settings: user.settings } }
         let(:api_key)  { user.api_key }
+
+        after do |example|
+          content = example.metadata[:response][:content] || {}
+          example.metadata[:response][:content] = content.merge(
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          )
+        end
 
         run_test!
       end

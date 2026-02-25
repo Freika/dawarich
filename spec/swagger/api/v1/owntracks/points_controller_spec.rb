@@ -76,6 +76,15 @@ description: 'Array of region names device is currently in' },
         let(:point) { json.first }
         let(:api_key) { create(:user).api_key }
 
+        after do |example|
+          content = example.metadata[:response][:content] || {}
+          example.metadata[:response][:content] = content.merge(
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          )
+        end
+
         run_test!
       end
 

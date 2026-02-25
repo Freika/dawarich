@@ -62,6 +62,12 @@ describe 'Users API', type: :request do
 
         run_test!
       end
+
+      response '401', 'unauthorized' do
+        let(:Authorization) { 'Bearer invalid-token' }
+
+        run_test!
+      end
     end
   end
 end

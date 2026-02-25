@@ -6,11 +6,13 @@ describe 'Health API', type: :request do
   path '/api/v1/health' do
     get 'Retrieves application status' do
       tags 'Health'
+      description 'Returns the health status of the application. No authentication required.'
       produces 'application/json'
+
       response '200', 'Healthy' do
         schema type: :object,
                properties: {
-                 status: { type: :string }
+                 status: { type: :string, example: 'ok', description: 'Application health status' }
                }
 
         header 'X-Dawarich-Response',
@@ -29,6 +31,15 @@ describe 'Health API', type: :request do
                },
                required: true,
                description: 'The version of the application, for example: 1.0.0'
+
+        after do |example|
+          content = example.metadata[:response][:content] || {}
+          example.metadata[:response][:content] = content.merge(
+            'application/json' => {
+              example: JSON.parse(response.body, symbolize_names: true)
+            }
+          )
+        end
 
         run_test!
       end
