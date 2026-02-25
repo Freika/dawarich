@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Generated from Rails Pulse schema - automatically loads current schema definition
 class InstallRailsPulseTables < ActiveRecord::Migration[8.0]
   def change

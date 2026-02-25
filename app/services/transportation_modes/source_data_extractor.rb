@@ -93,7 +93,7 @@ module TransportationModes
       end
     end
 
-    def extract_mode_from_raw_data(raw_data) # rubocop:disable Metrics/PerceivedComplexity
+    def extract_mode_from_raw_data(raw_data)
       # Handle nil or non-hash raw_data
       return :unknown unless raw_data.is_a?(Hash)
 
@@ -119,7 +119,7 @@ module TransportationModes
       :unknown
     end
 
-    def extract_overland_mode(data) # rubocop:disable Metrics/PerceivedComplexity
+    def extract_overland_mode(data)
       # Skip if data is not a Hash (could be an array from incorrect raw_data format)
       return nil unless data.is_a?(Hash)
 
@@ -149,7 +149,7 @@ module TransportationModes
       nil
     end
 
-    def extract_google_mode(data) # rubocop:disable Metrics/PerceivedComplexity
+    def extract_google_mode(data)
       # Google Phone Takeout format: activityRecord.probableActivities
       activity_record = data[:activityRecord] || data[:activity_record]
       if activity_record
@@ -168,7 +168,7 @@ module TransportationModes
       nil
     end
 
-    def extract_most_probable_google_activity(activities) # rubocop:disable Metrics/PerceivedComplexity
+    def extract_most_probable_google_activity(activities)
       return nil unless activities.is_a?(Array) && activities.any?
 
       # Sort by probability/confidence if available
@@ -196,7 +196,7 @@ module TransportationModes
       OWNTRACKS_MODE_MAP[motion_state.to_i]
     end
 
-    def detect_source(raw_data) # rubocop:disable Metrics/PerceivedComplexity
+    def detect_source(raw_data)
       # Handle nil or non-hash raw_data
       return 'unknown' unless raw_data.is_a?(Hash)
 
@@ -268,7 +268,7 @@ module TransportationModes
     #
     # @param segments [Array<Hash>] Raw segments with :mode, :start_index, :point_indices, etc.
     # @return [Array<Hash>] Segments with unknown points merged into adjacent segments
-    def merge_unknown_into_adjacent_segments(segments) # rubocop:disable Metrics/PerceivedComplexity
+    def merge_unknown_into_adjacent_segments(segments)
       return segments if segments.empty?
       return segments if segments.none? { |s| s[:mode] == :unknown }
 

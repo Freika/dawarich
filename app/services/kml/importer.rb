@@ -335,7 +335,6 @@ class Kml::Importer
   end
 
   def upsert_points(batch)
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       batch,
       unique_by: %i[lonlat timestamp user_id],

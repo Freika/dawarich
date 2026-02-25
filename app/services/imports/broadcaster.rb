@@ -7,7 +7,7 @@ module Imports::Broadcaster
   def broadcast_import_progress(import, index)
     return unless should_broadcast?(index)
 
-    import.update_column(:processed, index) unless import.processed == index # rubocop:disable Rails/SkipsModelValidations
+    import.update_column(:processed, index) unless import.processed == index
 
     broadcast_replace_to(
       [import.user, :imports],
@@ -21,7 +21,7 @@ module Imports::Broadcaster
   end
 
   def broadcast_status_update
-    import.update_column(:processed, import.processed) # rubocop:disable Rails/SkipsModelValidations
+    import.update_column(:processed, import.processed)
 
     broadcast_replace_to(
       [import.user, :imports],

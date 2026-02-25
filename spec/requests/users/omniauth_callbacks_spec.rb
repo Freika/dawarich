@@ -25,7 +25,7 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
     Rails.application.env_config['devise.mapping'] = Devise.mappings[:user]
   end
 
-  shared_examples 'successful OAuth authentication' do |provider, provider_name|
+  shared_examples 'successful OAuth authentication' do |provider, _provider_name|
     context "when user doesn't exist" do
       it 'creates a new user and signs them in' do
         expect do

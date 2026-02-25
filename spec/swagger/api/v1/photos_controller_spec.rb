@@ -80,7 +80,10 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
     stub_request(:post, "#{user.settings['immich_url']}/api/search/metadata")
       .to_return(status: 200, body: immich_data)
 
-    stub_request(:get, "#{user.settings['immich_url']}/api/assets/7fe486e3-c3ba-4b54-bbf9-1281b39ed15c/thumbnail?size=preview")
+    stub_request(
+      :get,
+      "#{user.settings['immich_url']}/api/assets/7fe486e3-c3ba-4b54-bbf9-1281b39ed15c/thumbnail?size=preview"
+    )
       .to_return(status: 200, body: immich_image.to_json, headers: {})
 
     stub_request(:get, "#{user.settings['immich_url']}/api/assets/nonexistent/thumbnail?size=preview")

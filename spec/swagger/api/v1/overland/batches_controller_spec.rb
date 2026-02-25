@@ -94,7 +94,8 @@ describe 'Overland Batches API', type: :request do
                     activity: {
                       type: :string,
                       example: 'unknown',
-                      description: 'Activity type, for example: automotive_navigation, fitness, other_navigation or other'
+                      description: 'Activity type, e.g.: automotive_navigation, fitness, ' \
+                                   'other_navigation or other'
                     },
                     desired_accuracy: {
                       type: :number,

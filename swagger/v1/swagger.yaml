@@ -235,10 +235,9 @@ paths:
                 type: string
                 example: Hey, I'm alive!
               required: true
-              description: Depending on the authentication status of the request,
-                the response will be different. If the request is authenticated, the
-                response will be 'Hey, I'm alive and authenticated!'. If the request
-                is not authenticated, the response will be 'Hey, I'm alive!'.
+              description: 'Depending on the authentication status, the response will
+                differ. If authenticated: ''Hey, I''m alive and authenticated!''.
+                If not: ''Hey, I''m alive!''.'
             X-Dawarich-Version:
               schema:
                 type: string
@@ -334,7 +333,7 @@ paths:
                           activity:
                             type: string
                             example: unknown
-                            description: 'Activity type, for example: automotive_navigation,
+                            description: 'Activity type, e.g.: automotive_navigation,
                               fitness, other_navigation or other'
                           desired_accuracy:
                             type: number

@@ -1,5 +1,5 @@
-import { formatTimestamp } from '../utils/geojson_transformers'
-import { getCurrentTheme, getThemeColors } from '../utils/popup_theme'
+import { formatTimestamp } from "../utils/geojson_transformers"
+import { getCurrentTheme, getThemeColors } from "../utils/popup_theme"
 
 /**
  * Factory for creating map popups
@@ -27,30 +27,46 @@ export class PopupFactory {
             <span class="label" style="color: ${colors.textMuted};">Time:</span>
             <span class="value" style="color: ${colors.textPrimary};">${formatTimestamp(timestamp)}</span>
           </div>
-          ${altitude ? `
+          ${
+            altitude
+              ? `
             <div class="popup-row">
               <span class="label" style="color: ${colors.textMuted};">Altitude:</span>
               <span class="value" style="color: ${colors.textPrimary};">${Math.round(altitude)}m</span>
             </div>
-          ` : ''}
-          ${battery ? `
+          `
+              : ""
+          }
+          ${
+            battery
+              ? `
             <div class="popup-row">
               <span class="label" style="color: ${colors.textMuted};">Battery:</span>
               <span class="value" style="color: ${colors.textPrimary};">${battery}%</span>
             </div>
-          ` : ''}
-          ${accuracy ? `
+          `
+              : ""
+          }
+          ${
+            accuracy
+              ? `
             <div class="popup-row">
               <span class="label" style="color: ${colors.textMuted};">Accuracy:</span>
               <span class="value" style="color: ${colors.textPrimary};">${Math.round(accuracy)}m</span>
             </div>
-          ` : ''}
-          ${velocity ? `
+          `
+              : ""
+          }
+          ${
+            velocity
+              ? `
             <div class="popup-row">
               <span class="label" style="color: ${colors.textMuted};">Speed:</span>
               <span class="value" style="color: ${colors.textPrimary};">${Math.round(velocity * 3.6)} km/h</span>
             </div>
-          ` : ''}
+          `
+              : ""
+          }
         </div>
       </div>
     `
@@ -70,22 +86,27 @@ export class PopupFactory {
 
     // Parse tags if they're stringified
     let parsedTags = tags
-    if (typeof tags === 'string') {
+    if (typeof tags === "string") {
       try {
         parsedTags = JSON.parse(tags)
-      } catch (e) {
+      } catch (_e) {
         parsedTags = []
       }
     }
 
     // Format tags as badges
-    const tagsHtml = parsedTags && Array.isArray(parsedTags) && parsedTags.length > 0
-      ? parsedTags.map(tag => `
+    const tagsHtml =
+      parsedTags && Array.isArray(parsedTags) && parsedTags.length > 0
+        ? parsedTags
+            .map(
+              (tag) => `
           <span class="badge badge-sm" style="background-color: ${tag.color}; color: white;">
             ${tag.icon} #${tag.name}
           </span>
-        `).join(' ')
-      : `<span class="badge badge-sm badge-outline" style="border-color: ${colors.border}; color: ${colors.textMuted};">Untagged</span>`
+        `,
+            )
+            .join(" ")
+        : `<span class="badge badge-sm badge-outline" style="border-color: ${colors.border}; color: ${colors.textMuted};">Untagged</span>`
 
     return `
       <div class="place-popup" style="color: ${colors.textPrimary};">
@@ -93,12 +114,16 @@ export class PopupFactory {
           <strong>${name || `Place #${id}`}</strong>
         </div>
         <div class="popup-body">
-          ${note ? `
+          ${
+            note
+              ? `
             <div class="popup-row">
               <span class="label" style="color: ${colors.textMuted};">Note:</span>
               <span class="value" style="color: ${colors.textPrimary};">${note}</span>
             </div>
-          ` : ''}
+          `
+              : ""
+          }
           <div class="popup-row">
             <span class="label" style="color: ${colors.textMuted};">Tags:</span>
             <div class="value">${tagsHtml}</div>

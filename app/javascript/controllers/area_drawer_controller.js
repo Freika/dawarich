@@ -1,5 +1,5 @@
-import { Controller } from '@hotwired/stimulus'
-import { createCircle, calculateDistance } from 'maps_maplibre/utils/geometry'
+import { Controller } from "@hotwired/stimulus"
+import { calculateDistance, createCircle } from "maps_maplibre/utils/geometry"
 
 /**
  * Area drawer controller
@@ -23,45 +23,45 @@ export default class extends Controller {
    */
   startDrawing(map) {
     if (!map) {
-      console.error('[Area Drawer] Map instance not provided')
+      console.error("[Area Drawer] Map instance not provided")
       return
     }
 
     this.isDrawing = true
     this.map = map
-    map.getCanvas().style.cursor = 'crosshair'
+    map.getCanvas().style.cursor = "crosshair"
 
     // Add temporary layer
-    if (!map.getSource('draw-source')) {
-      map.addSource('draw-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
+    if (!map.getSource("draw-source")) {
+      map.addSource("draw-source", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
       })
 
       map.addLayer({
-        id: 'draw-fill',
-        type: 'fill',
-        source: 'draw-source',
+        id: "draw-fill",
+        type: "fill",
+        source: "draw-source",
         paint: {
-          'fill-color': '#22c55e',
-          'fill-opacity': 0.2
-        }
+          "fill-color": "#22c55e",
+          "fill-opacity": 0.2,
+        },
       })
 
       map.addLayer({
-        id: 'draw-outline',
-        type: 'line',
-        source: 'draw-source',
+        id: "draw-outline",
+        type: "line",
+        source: "draw-source",
         paint: {
-          'line-color': '#22c55e',
-          'line-width': 2
-        }
+          "line-color": "#22c55e",
+          "line-width": 2,
+        },
       })
     }
 
     // Add event listeners
-    map.on('click', this.onClick)
-    map.on('mousemove', this.onMouseMove)
+    map.on("click", this.onClick)
+    map.on("mousemove", this.onMouseMove)
   }
 
   /**
@@ -74,17 +74,17 @@ export default class extends Controller {
     this.center = null
     this.radius = 0
 
-    this.map.getCanvas().style.cursor = ''
+    this.map.getCanvas().style.cursor = ""
 
     // Clear drawing
-    const source = this.map.getSource('draw-source')
+    const source = this.map.getSource("draw-source")
     if (source) {
-      source.setData({ type: 'FeatureCollection', features: [] })
+      source.setData({ type: "FeatureCollection", features: [] })
     }
 
     // Remove event listeners
-    this.map.off('click', this.onClick)
-    this.map.off('mousemove', this.onMouseMove)
+    this.map.off("click", this.onClick)
+    this.map.off("mousemove", this.onMouseMove)
   }
 
   /**
@@ -98,12 +98,14 @@ export default class extends Controller {
       this.center = [e.lngLat.lng, e.lngLat.lat]
     } else {
       // Second click - finish drawing
-      document.dispatchEvent(new CustomEvent('area:drawn', {
-        detail: {
-          center: this.center,
-          radius: this.radius
-        }
-      }))
+      document.dispatchEvent(
+        new CustomEvent("area:drawn", {
+          detail: {
+            center: this.center,
+            radius: this.radius,
+          },
+        }),
+      )
 
       this.cancelDrawing()
     }
@@ -129,17 +131,19 @@ export default class extends Controller {
 
     const coordinates = createCircle(this.center, this.radius)
 
-    const source = this.map.getSource('draw-source')
+    const source = this.map.getSource("draw-source")
     if (source) {
       source.setData({
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [coordinates]
-          }
-        }]
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "Polygon",
+              coordinates: [coordinates],
+            },
+          },
+        ],
       })
     }
   }

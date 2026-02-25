@@ -8,7 +8,8 @@ RSpec.describe 'Places API', type: :request do
       tags 'Places'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API key for authentication'
-      parameter name: :tag_ids, in: :query, type: :array, items: { type: :integer }, required: false, description: 'Filter places by tag IDs'
+      parameter name: :tag_ids, in: :query, type: :array, items: { type: :integer }, required: false,
+                description: 'Filter places by tag IDs'
 
       response '200', 'places found' do
         schema type: :array,
@@ -106,7 +107,7 @@ RSpec.describe 'Places API', type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['name']).to eq('Coffee Shop')
-          # Note: tags array is expected to be in the response schema but may be empty initially
+          # NOTE: tags array is expected to be in the response schema but may be empty initially
           # Tags can be added separately via the update endpoint
           expect(data).to have_key('tags')
         end
@@ -134,10 +135,14 @@ RSpec.describe 'Places API', type: :request do
       tags 'Places'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API key for authentication'
-      parameter name: :latitude, in: :query, type: :number, format: :float, required: true, description: 'Latitude coordinate'
-      parameter name: :longitude, in: :query, type: :number, format: :float, required: true, description: 'Longitude coordinate'
-      parameter name: :radius, in: :query, type: :number, format: :float, required: false, description: 'Search radius in kilometers (default: 0.5)'
-      parameter name: :limit, in: :query, type: :integer, required: false, description: 'Maximum number of results (default: 10)'
+      parameter name: :latitude, in: :query, type: :number, format: :float, required: true,
+                description: 'Latitude coordinate'
+      parameter name: :longitude, in: :query, type: :number, format: :float, required: true,
+                description: 'Longitude coordinate'
+      parameter name: :radius, in: :query, type: :number, format: :float, required: false,
+                description: 'Search radius in kilometers (default: 0.5)'
+      parameter name: :limit, in: :query, type: :integer, required: false,
+                description: 'Maximum number of results (default: 10)'
 
       response '200', 'nearby places found' do
         schema type: :object,

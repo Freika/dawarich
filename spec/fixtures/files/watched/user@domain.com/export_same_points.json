@@ -5,10 +5,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          "37.6173",
-          "55.755826"
-        ]
+        "coordinates": ["37.6173", "55.755826"]
       },
       "properties": {
         "battery_status": "unplugged",
@@ -39,10 +36,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          "37.6173",
-          "55.755826"
-        ]
+        "coordinates": ["37.6173", "55.755826"]
       },
       "properties": {
         "battery_status": "unplugged",
@@ -73,10 +67,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          "37.6173",
-          "55.755826"
-        ]
+        "coordinates": ["37.6173", "55.755826"]
       },
       "properties": {
         "battery_status": "unplugged",
@@ -107,10 +98,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          "37.6173",
-          "55.755826"
-        ]
+        "coordinates": ["37.6173", "55.755826"]
       },
       "properties": {
         "battery_status": "unplugged",
@@ -141,10 +129,7 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [
-          "37.6173",
-          "55.755826"
-        ]
+        "coordinates": ["37.6173", "55.755826"]
       },
       "properties": {
         "battery_status": "unplugged",

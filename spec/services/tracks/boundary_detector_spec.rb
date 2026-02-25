@@ -56,13 +56,25 @@ RSpec.describe Tracks::BoundaryDetector do
     end
 
     context 'when boundary candidates exist' do
-      let!(:track1) { create(:track, user: user, created_at: 30.minutes.ago, start_at: 2.hours.ago, end_at: 1.5.hours.ago) }
-      let!(:track2) { create(:track, user: user, created_at: 25.minutes.ago, start_at: 1.hour.ago, end_at: 30.minutes.ago) }
+      let!(:track1) do
+        create(:track, user: user, created_at: 30.minutes.ago, start_at: 2.hours.ago, end_at: 1.5.hours.ago)
+      end
+      let!(:track2) do
+        create(:track, user: user, created_at: 25.minutes.ago, start_at: 1.hour.ago, end_at: 30.minutes.ago)
+      end
 
-      let!(:point1_start) { create(:point, user: user, track: track1, latitude: 40.0, longitude: -74.0, timestamp: 2.hours.ago.to_i) }
-      let!(:point1_end) { create(:point, user: user, track: track1, latitude: 40.01, longitude: -74.01, timestamp: 1.5.hours.ago.to_i) }
-      let!(:point2_start) { create(:point, user: user, track: track2, latitude: 40.01, longitude: -74.01, timestamp: 1.hour.ago.to_i) }
-      let!(:point2_end) { create(:point, user: user, track: track2, latitude: 40.02, longitude: -74.02, timestamp: 30.minutes.ago.to_i) }
+      let!(:point1_start) do
+        create(:point, user: user, track: track1, latitude: 40.0, longitude: -74.0, timestamp: 2.hours.ago.to_i)
+      end
+      let!(:point1_end) do
+        create(:point, user: user, track: track1, latitude: 40.01, longitude: -74.01, timestamp: 1.5.hours.ago.to_i)
+      end
+      let!(:point2_start) do
+        create(:point, user: user, track: track2, latitude: 40.01, longitude: -74.01, timestamp: 1.hour.ago.to_i)
+      end
+      let!(:point2_end) do
+        create(:point, user: user, track: track2, latitude: 40.02, longitude: -74.02, timestamp: 30.minutes.ago.to_i)
+      end
 
       before do
         # Mock close distance for connected tracks
@@ -74,10 +86,10 @@ RSpec.describe Tracks::BoundaryDetector do
       end
 
       it 'creates a merged track with all points' do
-        expect {
+        # 2 tracks become 1
+        expect do
           detector.resolve_cross_chunk_tracks
-        }.to change { user.tracks.count }.by(-1) # 2 tracks become 1
-
+        end.to change { user.tracks.count }.by(-1)
         merged_track = user.tracks.first
         expect(merged_track.points.count).to eq(4) # All points from both tracks
       end
@@ -152,9 +164,9 @@ RSpec.describe Tracks::BoundaryDetector do
         track_no_points = create(:track, user: user, start_at: 1.hour.ago, end_at: 30.minutes.ago)
         all_tracks_with_empty = all_tracks + [track_no_points]
 
-        expect {
+        expect do
           detector.send(:find_connected_tracks, base_track, all_tracks_with_empty)
-        }.not_to raise_error
+        end.not_to raise_error
       end
     end
 
@@ -180,7 +192,8 @@ RSpec.describe Tracks::BoundaryDetector do
             # Mock specific point-to-point distance calls that the method will make
             allow(track1_end).to receive(:distance_to_geocoder).with(track2_start, :m).and_return(100) # Connected
             allow(track2_end).to receive(:distance_to_geocoder).with(track1_start, :m).and_return(1000) # Not connected
-            allow(track1_start).to receive(:distance_to_geocoder).with(track2_start, :m).and_return(1000) # Not connected
+            allow(track1_start).to receive(:distance_to_geocoder)
+              .with(track2_start, :m).and_return(1000) # Not connected
             allow(track1_end).to receive(:distance_to_geocoder).with(track2_end, :m).and_return(1000) # Not connected
           end
 
@@ -291,7 +304,7 @@ RSpec.describe Tracks::BoundaryDetector do
 
       it 'sorts points by timestamp' do
         # Create points out of order
-        point_early = create(:point, user: user, track: track2, timestamp: 3.hours.ago.to_i)
+        create(:point, user: user, track: track2, timestamp: 3.hours.ago.to_i)
 
         captured_points = nil
         allow(detector).to receive(:create_track_from_points) do |points, _distance|

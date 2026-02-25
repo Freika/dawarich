@@ -10,22 +10,24 @@ export default class extends BaseController {
 
   connect() {
     console.log("Datetime controller connected")
-    this.debounceTimer = null;
+    this.debounceTimer = null
 
     // Add validation listeners
     if (this.hasStartedAtTarget && this.hasEndedAtTarget) {
       // Validate on change to set validation state
-      this.startedAtTarget.addEventListener('change', () => this.validateDates())
-      this.endedAtTarget.addEventListener('change', () => this.validateDates())
+      this.startedAtTarget.addEventListener("change", () =>
+        this.validateDates(),
+      )
+      this.endedAtTarget.addEventListener("change", () => this.validateDates())
 
       // Validate on blur to set validation state
-      this.startedAtTarget.addEventListener('blur', () => this.validateDates())
-      this.endedAtTarget.addEventListener('blur', () => this.validateDates())
+      this.startedAtTarget.addEventListener("blur", () => this.validateDates())
+      this.endedAtTarget.addEventListener("blur", () => this.validateDates())
 
       // Add form submit validation
-      const form = this.element.closest('form')
+      const form = this.element.closest("form")
       if (form) {
-        form.addEventListener('submit', (e) => {
+        form.addEventListener("submit", (e) => {
           if (!this.validateDates()) {
             e.preventDefault()
             this.endedAtTarget.reportValidity()
@@ -40,17 +42,17 @@ export default class extends BaseController {
     const endDate = new Date(this.endedAtTarget.value)
 
     // Clear any existing custom validity
-    this.startedAtTarget.setCustomValidity('')
-    this.endedAtTarget.setCustomValidity('')
+    this.startedAtTarget.setCustomValidity("")
+    this.endedAtTarget.setCustomValidity("")
 
     // Check if both dates are valid
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
       return true
     }
 
     // Validate that start date is before end date
     if (startDate >= endDate) {
-      const errorMessage = 'Start date must be earlier than end date'
+      const errorMessage = "Start date must be earlier than end date"
       this.endedAtTarget.setCustomValidity(errorMessage)
       if (showPopup) {
         this.endedAtTarget.reportValidity()
@@ -64,7 +66,7 @@ export default class extends BaseController {
   async updateCoordinates() {
     // Clear any existing timeout
     if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+      clearTimeout(this.debounceTimer)
     }
 
     // Set new timeout
@@ -84,43 +86,47 @@ export default class extends BaseController {
             start_at: startedAt,
             end_at: endedAt,
             api_key: apiKey,
-            slim: true
+            slim: true,
           })
-          let allPoints = [];
-          let currentPage = 1;
-          const perPage = 1000;
+          let allPoints = []
+          let currentPage = 1
+          const perPage = 1000
 
-          do {
-            const paginatedParams = `${params}&page=${currentPage}&per_page=${perPage}`;
-            const response = await fetch(`/api/v1/points?${paginatedParams}`);
-            const data = await response.json();
+          let hasMorePages = true
+          while (hasMorePages) {
+            const paginatedParams = `${params}&page=${currentPage}&per_page=${perPage}`
+            const response = await fetch(`/api/v1/points?${paginatedParams}`)
+            const data = await response.json()
 
-            allPoints = [...allPoints, ...data];
+            allPoints = [...allPoints, ...data]
 
-            const totalPages = parseInt(response.headers.get('X-Total-Pages'));
-            currentPage++;
+            const totalPages = parseInt(
+              response.headers.get("X-Total-Pages"),
+              10,
+            )
+            currentPage++
 
-            if (!totalPages || currentPage > totalPages) {
-              break;
-            }
-          } while (true);
+            hasMorePages = totalPages && currentPage <= totalPages
+          }
 
-          const event = new CustomEvent('coordinates-updated', {
+          const event = new CustomEvent("coordinates-updated", {
             detail: { coordinates: allPoints },
             bubbles: true,
-            composed: true
+            composed: true,
           })
 
-          const tripsElement = document.querySelector('[data-controller="trips"]')
+          const tripsElement = document.querySelector(
+            '[data-controller="trips"]',
+          )
           if (tripsElement) {
             tripsElement.dispatchEvent(event)
           } else {
-            console.error('Trips controller element not found')
+            console.error("Trips controller element not found")
           }
         } catch (error) {
-          console.error('Error:', error)
+          console.error("Error:", error)
         }
       }
-    }, 500);
+    }, 500)
   }
 }

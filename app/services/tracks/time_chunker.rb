@@ -46,14 +46,16 @@ class Tracks::TimeChunker
     when end_at
       first_point_time = user.points.minimum(:timestamp)
       return nil unless first_point_time
-      [Time.at(first_point_time), end_at.to_time]
+
+      [Time.zone.at(first_point_time), end_at.to_time]
     else
       # Get full range from user's points
       first_point_time = user.points.minimum(:timestamp)
       last_point_time = user.points.maximum(:timestamp)
 
       return nil unless first_point_time && last_point_time
-      [Time.at(first_point_time), Time.at(last_point_time)]
+
+      [Time.zone.at(first_point_time), Time.zone.at(last_point_time)]
     end
   end
 

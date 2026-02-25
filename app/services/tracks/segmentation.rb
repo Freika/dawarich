@@ -84,6 +84,6 @@ module Tracks::Segmentation
   end
 
   def time_threshold_minutes
-    raise NotImplementedError, "Including class must implement time_threshold_minutes"
+    raise NotImplementedError, 'Including class must implement time_threshold_minutes'
   end
 end
