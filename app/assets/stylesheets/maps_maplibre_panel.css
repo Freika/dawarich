@@ -132,26 +132,26 @@
   background: oklch(var(--bc) / 0.3);
 }
 
-/* Toggle Focus State - Remove all focus indicators */
+/* Toggle Focus State - Remove all focus indicators — !important needed to override DaisyUI */
 .toggle:focus,
 .toggle:focus-visible,
 .toggle:focus-within {
-  outline: none;
-  box-shadow: none;
-  border-color: inherit;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: inherit !important;
 }
 
 /* Override DaisyUI toggle focus styles */
 .toggle:focus-visible:checked,
 .toggle:checked:focus,
 .toggle:checked:focus-visible {
-  outline: none;
-  box-shadow: none;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Ensure no outline on the toggle container */
 .form-control .toggle:focus {
-  outline: none;
+  outline: none !important;
 }
 
 /* Prevent indeterminate visual state on toggles */
@@ -175,8 +175,8 @@
 /* Remove any active/pressed state that might cause intermediate appearance */
 .toggle:active,
 .toggle:active:focus {
-  outline: none;
-  box-shadow: none;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Responsive Breakpoints */

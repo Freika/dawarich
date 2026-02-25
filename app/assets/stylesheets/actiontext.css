@@ -31,8 +31,8 @@
 }
 
 .trix-content action-text-attachment .attachment {
-  padding: 0;
-  max-width: 100%;
+  padding: 0 !important;
+  max-width: 100% !important;
 }
 
 /* Hide both attach files and attach images buttons in trix editor*/
@@ -42,7 +42,7 @@
 
 /* Color buttons in white */
 .trix-button-row button {
-  background-color: white;
+  background-color: white !important;
 }
 
 .trix-content-editor {

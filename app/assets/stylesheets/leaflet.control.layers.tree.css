@@ -32,5 +32,5 @@
   display: none;
 }
 .leaflet-control-layers label {
-  line-height: 1.5rem;
+  line-height: 1.5rem !important;
 }

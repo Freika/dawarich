@@ -7,7 +7,7 @@
   position: relative;
 }
 .visit-item:hover .visit-checkbox-container {
-  opacity: 1;
+  opacity: 1 !important;
 }
 .leaflet-drawer.open {
   transform: translateX(0);
@@ -36,23 +36,24 @@
   border-top-color: hsl(var(--b1));
 }
 
+/* !important needed to override .leaflet-container a.leaflet-popup-close-button (higher specificity) */
 .visit-popup .leaflet-popup-close-button {
-  color: hsl(var(--bc));
-  font-size: 18px;
-  font-weight: bold;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  text-align: center;
-  line-height: 24px;
-  background: hsl(var(--b2));
-  border-radius: 50%;
-  border: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: hsl(var(--bc)) !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 24px !important;
+  height: 24px !important;
+  text-align: center !important;
+  line-height: 24px !important;
+  background: hsl(var(--b2)) !important;
+  border-radius: 50% !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
 .visit-popup .leaflet-popup-close-button:hover {
-  background: hsl(var(--b3));
-  color: hsl(var(--bc));
+  background: hsl(var(--b3)) !important;
+  color: hsl(var(--bc)) !important;
 }

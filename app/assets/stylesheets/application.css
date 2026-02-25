@@ -21,7 +21,7 @@
 }
 
 .timeline-box {
-  overflow: visible;
+  overflow: visible !important;
 }
 
 /* Style for the settings panel */
@@ -29,9 +29,9 @@
   background-color: white;
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  position: absolute;
-  top: 10px;
-  left: 60px;
+  position: absolute !important;
+  top: 10px !important;
+  left: 60px !important;
   transform: none;
   z-index: 1000;
 }
