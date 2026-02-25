@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.3.0] - Unreleased
+## [1.3.0] - 2026-02-25
 
 The Storage & Timeline Interaction Release
 
@@ -27,6 +27,7 @@ This release adds a dedicated `motion_data` column for transportation-relevant f
 - Failed imports now will have an error message shown to the user.
 - Pagination now looks nicer and more informative, indicating current page. #2279
 - Imports and exports now can be sorted by name, file size, number of points, and creation date. #2279
+- Lots of missing Swagger specs for the API endpoints have been added, improving API documentation and enabling better client generation. swagger.yaml is updated.
 
 ### Changed
 
