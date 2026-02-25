@@ -1,19 +1,21 @@
 # frozen_string_literal: true
 
 module Timestamps
-
   def self.parse_timestamp(timestamp)
-    begin
-      # if the timestamp is in ISO 8601 format, try to parse it
-      DateTime.parse(timestamp).to_time.to_i
-    rescue
+    min_timestamp = Time.zone.parse('1970-01-01').to_i
+    max_timestamp = Time.zone.parse('2100-01-01').to_i
+
+    parsed = DateTime.parse(timestamp).to_time.to_i
+
+    parsed.clamp(min_timestamp, max_timestamp)
+  rescue StandardError
+    result =
       if timestamp.to_s.length > 10
-        # If the timestamp is in milliseconds, convert to seconds
         timestamp.to_i / 1000
       else
-        # If the timestamp is in seconds, return it without change
         timestamp.to_i
       end
-    end
+
+    result.clamp(min_timestamp, max_timestamp)
   end
 end

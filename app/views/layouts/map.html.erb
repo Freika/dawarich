@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html data-theme="<%= app_theme %>" data-self-hosted="<%= @self_hosted %>">
+  <head>
+    <title><%= full_title(yield(:title)) %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <%= action_cable_meta_tag %>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+
+    <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    <%= yield :head_scripts %>
+    <%= javascript_include_tag "https://unpkg.com/protomaps-leaflet@5.0.0/dist/protomaps-leaflet.js", defer: true %>
+
+    <%= render 'application/favicon' %>
+    <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
+    <% if !DawarichSettings.self_hosted? %>
+      <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+    <% end %>
+  </head>
+
+  <body class='h-screen overflow-hidden relative'>
+    <!-- Fixed Navbar -->
+    <div class='fixed w-full z-40 bg-base-100 shadow-md h-16'>
+      <div class='container mx-auto h-full w-full flex items-center'>
+        <%= render 'shared/navbar' %>
+      </div>
+    </div>
+
+    <!-- Flash Messages - Fixed below navbar -->
+    <div class='fixed top-16 w-full z-50'>
+      <div class='container mx-auto px-5'>
+        <%= render 'shared/flash' %>
+      </div>
+    </div>
+
+    <!-- Full Screen Map Container -->
+    <div class='absolute top-16 left-0 right-0 bottom-0 w-full z-20 flex flex-col'>
+      <%= yield %>
+    </div>
+
+    <!-- Fixed Footer (hidden by default) -->
+    <div id='map-footer' class='fixed bottom-0 left-0 right-0 z-30 hidden'>
+      <%= render 'shared/legal_footer' %>
+    </div>
+
+    <%= render 'map/onboarding_modal' %>
+  </body>
+</html>

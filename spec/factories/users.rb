@@ -3,7 +3,7 @@
 FactoryBot.define do
   factory :user do
     sequence :email do |n|
-      "user#{n}@example.com"
+      "user#{n}-#{Time.current.to_f}@example.com"
     end
 
     status { :active }
@@ -13,7 +13,7 @@ FactoryBot.define do
 
     settings do
       {
-        'route_opacity' => '0.5',
+        'route_opacity' => 60,
         'meters_between_routes' => '500',
         'minutes_between_routes' => '30',
         'fog_of_war_meters' => '100',
@@ -32,6 +32,11 @@ FactoryBot.define do
     trait :inactive do
       status { :inactive }
       active_until { 1.day.ago }
+    end
+
+    trait :trial do
+      status { :trial }
+      active_until { 7.days.from_now }
     end
 
     trait :with_immich_integration do

@@ -4,16 +4,18 @@ require 'rexml/document'
 
 class Gpx::TrackImporter
   include Imports::Broadcaster
+  include Imports::FileLoader
 
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user_id = user_id
+    @file_path = file_path
   end
 
   def call
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+    file_content = load_file_content
     json = Hash.from_xml(file_content)
 
     tracks = json['gpx']['trk']
@@ -42,7 +44,7 @@ class Gpx::TrackImporter
     {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
       altitude: point['ele'].to_i,
-      timestamp: Time.parse(point['time']).to_i,
+      timestamp: Time.parse(point['time']).utc.to_i,
       import_id: import.id,
       velocity: speed(point),
       raw_data: point,
@@ -55,7 +57,6 @@ class Gpx::TrackImporter
   def bulk_insert_points(batch)
     unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],
@@ -81,8 +82,10 @@ class Gpx::TrackImporter
   def speed(point)
     return if point['extensions'].blank?
 
-    (
-      point.dig('extensions', 'speed') || point.dig('extensions', 'TrackPointExtension', 'speed')
-    ).to_f.round(1)
+    value = point.dig('extensions', 'speed')
+    extensions = point.dig('extensions', 'TrackPointExtension')
+    value ||= extensions.is_a?(Hash) ? extensions['speed'] : nil
+
+    value&.to_f&.round(1) || 0.0
   end
 end

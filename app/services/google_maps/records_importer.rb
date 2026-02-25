@@ -25,13 +25,17 @@ class GoogleMaps::RecordsImporter
 
   private
 
-  # rubocop:disable Metrics/MethodLength
   def prepare_location_data(location)
     {
       lonlat: "POINT(#{location['longitudeE7'].to_f / 10**7} #{location['latitudeE7'].to_f / 10**7})",
       timestamp: parse_timestamp(location),
       altitude: location['altitude'],
       velocity: location['velocity'],
+      accuracy: location['accuracy'],
+      vertical_accuracy: location['verticalAccuracy'],
+      course: location['heading'],
+      battery: parse_battery_charging(location['batteryCharging']),
+      motion_data: Points::MotionDataExtractor.from_google_records(location),
       raw_data: location,
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
@@ -41,12 +45,10 @@ class GoogleMaps::RecordsImporter
       updated_at: Time.current
     }
   end
-  # rubocop:enable Metrics/MethodLength
 
   def bulk_insert_points(batch)
     unique_batch = deduplicate_batch(batch)
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],
@@ -72,6 +74,12 @@ class GoogleMaps::RecordsImporter
     Timestamps.parse_timestamp(
       location['timestamp'] || location['timestampMs']
     )
+  end
+
+  def parse_battery_charging(battery_charging)
+    return nil if battery_charging.nil?
+
+    battery_charging ? 1 : 0
   end
 
   def create_notification(message)

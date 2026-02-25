@@ -2,7 +2,7 @@ import BaseController from "./base_controller"
 
 export default class extends BaseController {
   static values = {
-    timeout: Number
+    timeout: Number,
   }
 
   connect() {
@@ -14,12 +14,12 @@ export default class extends BaseController {
   }
 
   remove() {
-    this.element.classList.add('fade-out')
+    this.element.classList.add("fade-out")
     setTimeout(() => {
       this.element.remove()
 
       // Remove the container if it's empty
-      const container = document.getElementById('flash-messages')
+      const container = document.getElementById("flash-messages")
       if (container && !container.hasChildNodes()) {
         container.remove()
       }

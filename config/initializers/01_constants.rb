@@ -2,14 +2,12 @@
 
 SELF_HOSTED = ENV.fetch('SELF_HOSTED', 'true') == 'true'
 
-MIN_MINUTES_SPENT_IN_CITY = ENV.fetch('MIN_MINUTES_SPENT_IN_CITY', 60).to_i
-
 DISTANCE_UNITS = {
-  km: 1000, # to meters
+  km: 1000,    # to meters
   mi: 1609.34, # to meters
-  m: 1, # already in meters
-  ft: 0.3048, # to meters
-  yd: 0.9144 # to meters
+  m: 1,        # already in meters
+  ft: 0.3048,  # to meters
+  yd: 0.9144   # to meters
 }.freeze
 
 APP_VERSION = File.read('.app_version').strip
@@ -31,3 +29,37 @@ STORE_GEODATA = ENV.fetch('STORE_GEODATA', 'true') == 'true'
 
 SENTRY_DSN = ENV.fetch('SENTRY_DSN', nil)
 MANAGER_URL = SELF_HOSTED ? nil : ENV.fetch('MANAGER_URL', nil)
+
+# Prometheus metrics
+METRICS_USERNAME = ENV.fetch('METRICS_USERNAME', 'prometheus')
+METRICS_PASSWORD = ENV.fetch('METRICS_PASSWORD', 'prometheus')
+# /Prometheus metrics
+
+# Configure OAuth providers based on environment
+# Self-hosted: only OpenID Connect, Cloud: only GitHub and Google
+OMNIAUTH_PROVIDERS =
+  if SELF_HOSTED
+    # Self-hosted: only OpenID Connect
+    ENV['OIDC_CLIENT_ID'].present? && ENV['OIDC_CLIENT_SECRET'].present? ? %i[openid_connect] : []
+  else
+    # Cloud: only GitHub and Google
+    providers = []
+
+    providers << :github if ENV['GITHUB_OAUTH_CLIENT_ID'].present? && ENV['GITHUB_OAUTH_CLIENT_SECRET'].present?
+
+    providers << :google_oauth2 if ENV['GOOGLE_OAUTH_CLIENT_ID'].present? && ENV['GOOGLE_OAUTH_CLIENT_SECRET'].present?
+
+    providers
+  end
+
+# Custom OIDC provider display name
+OIDC_PROVIDER_NAME = ENV.fetch('OIDC_PROVIDER_NAME', 'Openid Connect').freeze
+
+# OIDC auto-registration setting (default: true for backward compatibility)
+OIDC_AUTO_REGISTER = ENV.fetch('OIDC_AUTO_REGISTER', 'true') == 'true'
+
+# Email/password registration setting (default: false for self-hosted, true for cloud)
+ALLOW_EMAIL_PASSWORD_REGISTRATION = ENV.fetch('ALLOW_EMAIL_PASSWORD_REGISTRATION', 'false') == 'true'
+
+# Raw data archival setting
+ARCHIVE_RAW_DATA = ENV.fetch('ARCHIVE_RAW_DATA', 'false') == 'true'

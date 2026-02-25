@@ -96,13 +96,13 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
             JWT.encode({ user_id: 'invalid', status: nil }, jwt_secret, 'HS256')
           end
 
-          it 'returns unprocessable_entity error with invalid data message' do
+          it 'returns unprocessable_content error with invalid data message' do
             allow(Subscription::DecodeJwtToken).to receive(:new).with(token)
                                                                 .and_raise(ArgumentError.new('Invalid token data'))
 
             post '/api/v1/subscriptions/callback', params: { token: token }
 
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
             expect(JSON.parse(response.body)['message']).to eq('Invalid subscription data received.')
           end
         end

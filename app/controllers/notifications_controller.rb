@@ -18,7 +18,6 @@ class NotificationsController < ApplicationController
     redirect_to notifications_url, notice: 'All notifications marked as read.', status: :see_other
   end
 
-
   def destroy_all
     current_user.notifications.destroy_all
     redirect_to notifications_url, notice: 'All notifications where successfully destroyed.', status: :see_other
@@ -32,6 +31,6 @@ class NotificationsController < ApplicationController
   private
 
   def set_notification
-    @notification = Notification.find(params[:id])
+    @notification = current_user.notifications.find(params[:id])
   end
 end

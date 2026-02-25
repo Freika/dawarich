@@ -3,6 +3,8 @@
 # Pin npm packages by running ./bin/importmap
 
 pin_all_from 'app/javascript/channels', under: 'channels'
+pin_all_from 'app/javascript/maps', under: 'maps'
+pin_all_from 'app/javascript/maps_maplibre', under: 'maps_maplibre'
 
 pin 'application', preload: true
 pin '@rails/actioncable', to: 'actioncable.esm.js'
@@ -22,5 +24,9 @@ pin 'leaflet-draw' # @1.0.4
 pin 'notifications_channel', to: 'channels/notifications_channel.js'
 pin 'points_channel', to: 'channels/points_channel.js'
 pin 'imports_channel', to: 'channels/imports_channel.js'
+pin 'family_locations_channel', to: 'channels/family_locations_channel.js'
 pin 'trix'
 pin '@rails/actiontext', to: 'actiontext.esm.js'
+pin 'leaflet.control.layers.tree' # @1.2.0
+pin 'emoji-mart' # @5.6.0
+pin 'maplibre-gl' # @5.12.0

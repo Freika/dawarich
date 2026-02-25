@@ -10,7 +10,7 @@ class StatsSerializer
   def call
     {
       totalDistanceKm: total_distance_km,
-      totalPointsTracked: user.tracked_points.count,
+      totalPointsTracked: user.points_count.to_i,
       totalReverseGeocodedPoints: reverse_geocoded_points,
       totalCountriesVisited: user.countries_visited.count,
       totalCitiesVisited: user.cities_visited.count,
@@ -27,7 +27,7 @@ class StatsSerializer
   end
 
   def reverse_geocoded_points
-    user.tracked_points.reverse_geocoded.count
+    StatsQuery.new(user).points_stats[:geocoded]
   end
 
   def yearly_stats

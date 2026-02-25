@@ -7,6 +7,33 @@ RSpec.describe Trip, type: :model do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:started_at) }
     it { is_expected.to validate_presence_of(:ended_at) }
+
+    context 'date range validation' do
+      let(:user) { create(:user) }
+
+      it 'is valid when started_at is before ended_at' do
+        trip = build(:trip, user: user, started_at: 1.day.ago, ended_at: Time.current)
+        expect(trip).to be_valid
+      end
+
+      it 'is invalid when started_at is after ended_at' do
+        trip = build(:trip, user: user, started_at: Time.current, ended_at: 1.day.ago)
+        expect(trip).not_to be_valid
+        expect(trip.errors[:ended_at]).to include('must be after start date')
+      end
+
+      it 'is invalid when started_at equals ended_at' do
+        time = Time.current
+        trip = build(:trip, user: user, started_at: time, ended_at: time)
+        expect(trip).not_to be_valid
+        expect(trip.errors[:ended_at]).to include('must be after start date')
+      end
+
+      it 'is valid when both dates are blank during initialization' do
+        trip = Trip.new(user: user, name: 'Test Trip')
+        expect(trip.errors[:ended_at]).to be_empty
+      end
+    end
   end
 
   describe 'associations' do
@@ -21,38 +48,8 @@ RSpec.describe Trip, type: :model do
       let(:trip) { build(:trip, :with_points, user:) }
 
       it 'enqueues the calculation jobs' do
-        expect(Trips::CalculateAllJob).to receive(:perform_later)
-
-        trip.save
+        expect { trip.save }.to have_enqueued_job(Trips::CalculateAllJob)
       end
-    end
-
-    context 'when DawarichSettings.store_geodata? is enabled' do
-      before do
-        allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
-      end
-
-      it 'sets the countries' do
-        expect(trip.countries).to eq(trip.points.pluck(:country).uniq.compact)
-      end
-    end
-  end
-
-  describe '#countries' do
-    let(:user) { create(:user) }
-    let(:trip) { create(:trip, user:) }
-    let(:points) do
-      create_list(
-        :point,
-        25,
-        :reverse_geocoded,
-        user:,
-        timestamp: (trip.started_at.to_i..trip.ended_at.to_i).to_a.sample
-      )
-    end
-
-    it 'returns the unique countries of the points' do
-      expect(trip.countries).to eq(trip.points.pluck(:country).uniq.compact)
     end
   end
 
@@ -160,7 +157,7 @@ RSpec.describe Trip, type: :model do
       end
     end
 
-        describe '#recalculate_distance!' do
+    describe '#recalculate_distance!' do
       it 'recalculates and saves the distance' do
         original_distance = trip.distance
 

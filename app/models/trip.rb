@@ -9,6 +9,7 @@ class Trip < ApplicationRecord
   belongs_to :user
 
   validates :name, :started_at, :ended_at, presence: true
+  validate :started_at_before_ended_at
 
   after_create :enqueue_calculation_jobs
   after_update :enqueue_calculation_jobs, if: -> { saved_change_to_started_at? || saved_change_to_ended_at? }
@@ -18,13 +19,7 @@ class Trip < ApplicationRecord
   end
 
   def points
-    user.tracked_points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
-  end
-
-  def countries
-    return points.pluck(:country).uniq.compact if DawarichSettings.store_geodata?
-
-    visited_countries
+    user.points.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
   end
 
   def photo_previews
@@ -35,13 +30,8 @@ class Trip < ApplicationRecord
     @photo_sources ||= photos.map { _1[:source] }.uniq
   end
 
-
-
   def calculate_countries
-    countries =
-      Country.where(id: points.pluck(:country_id).compact.uniq).pluck(:name)
-
-    self.visited_countries = countries
+    self.visited_countries = points.pluck(:country_name).uniq.compact
   end
 
   private
@@ -57,5 +47,12 @@ class Trip < ApplicationRecord
     # this is ridiculous, but I couldn't find my way around frontend
     # to show all photos in the same height
     vertical_photos.count > horizontal_photos.count ? vertical_photos : horizontal_photos
+  end
+
+  def started_at_before_ended_at
+    return if started_at.blank? || ended_at.blank?
+    return unless started_at >= ended_at
+
+    errors.add(:ended_at, 'must be after start date')
   end
 end

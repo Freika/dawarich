@@ -5,12 +5,20 @@
     <div class="text-center lg:text-left">
       <h1 class="text-5xl font-bold mb-5">Edit your account!</h1>
       <%= render 'devise/registrations/api_key' %>
+      <% if current_user.trial? %>
+        <p>Your trial period ends at <%= human_datetime current_user.active_until %>.</p>
+        <p>
+          <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success glass' %> to continue using Dawarich after your trial ends.
+        </p>
+      <% end %>
       <% if !DawarichSettings.self_hosted? %>
         <%= render 'devise/registrations/points_usage' %>
       <% end %>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
       <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', method: :put, data: { turbo_method: :put, turbo: false }) do |f| %>
+        <%= render "devise/shared/error_messages", resource: resource %>
+
         <div class="form-control">
           <%= f.label :email, class: 'label' do %>
             <span class="label-text">Email</span>
@@ -56,11 +64,11 @@
         <div class="form-control mt-6">
           <%= f.submit "Update", class: 'btn btn-primary' %>
         </div>
-
-        <%= render "devise/shared/links" %>
       <% end %>
 
-      <p class='mt-3'>Unhappy? <%= link_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: 'btn' %></p>
+      <%= render "devise/shared/links" %>
+
+      <p class='mt-3'>Unhappy? <%= link_to "Cancel my account", registration_path(resource_name), data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: 'btn' %></p>
       <div class="divider"></div>
       <p class='mt-3 flex flex-col gap-2'>
         <%= link_to "Export my data", export_settings_users_path, class: 'btn btn-primary', data: {
@@ -76,16 +84,38 @@
           <h3 class="font-bold text-lg mb-4">Import your data</h3>
           <p class="mb-4 text-sm text-gray-600">Upload a ZIP file containing your exported Dawarich data to restore your points, trips, and settings.</p>
 
-          <%= form_with url: import_settings_users_path, method: :post, multipart: true, class: 'space-y-4', data: { turbo: false } do |f| %>
+          <%= form_with url: import_settings_users_path, method: :post, multipart: true, class: 'space-y-4', data: {
+            turbo: false,
+            controller: "upload",
+            upload_url_value: rails_direct_uploads_url,
+            upload_field_name_value: "archive",
+            upload_multiple_value: false,
+            upload_validate_zip_value: true,
+            upload_user_trial_value: current_user.trial?,
+            upload_target: "form"
+          } do |f| %>
             <div class="form-control">
               <%= f.label :archive, class: 'label' do %>
                 <span class="label-text">Select ZIP archive</span>
               <% end %>
-              <%= f.file_field :archive, accept: '.zip', required: true, class: 'file-input file-input-bordered w-full' %>
+              <%= f.file_field :archive,
+                  accept: '.zip',
+                  required: true,
+                  direct_upload: true,
+                  class: 'file-input file-input-bordered w-full',
+                  data: { upload_target: "input" } %>
+              <div class="text-sm text-gray-500 mt-2">
+                File will be uploaded directly to storage. Please be patient during upload.
+              </div>
             </div>
 
             <div class="modal-action">
-              <%= f.submit "Import Data", class: 'btn btn-primary', data: { disable_with: 'Importing...' } %>
+              <%= f.submit "Import Data",
+                  class: 'btn btn-primary',
+                  data: {
+                    disable_with: 'Importing...',
+                    upload_target: "submit"
+                  } %>
               <button type="button" class="btn" onclick="import_modal.close()">Cancel</button>
             </div>
           <% end %>

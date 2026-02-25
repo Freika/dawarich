@@ -24,7 +24,7 @@
                 </div>
               </td>
               <td>
-                <%= number_with_delimiter user.tracked_points.count %>
+                <%= number_with_delimiter user.points_count.to_i %>
               </td>
               <td>
                 <%= human_datetime(user.created_at) %>

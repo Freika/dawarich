@@ -47,7 +47,7 @@ module Visits
     # Step 1: Find existing place
     def find_existing_place(lat, lon, name)
       # Try to find existing place by location first
-      existing_by_location = Place.near([lat, lon], SIMILARITY_RADIUS, :m).first
+      existing_by_location = Place.global.near([lat, lon], SIMILARITY_RADIUS, :m).first
       return existing_by_location if existing_by_location
 
       # Then try by name if available
@@ -114,7 +114,7 @@ module Visits
 
       # Look for existing place with this name
       existing = Place.where(name: name)
-                      .near([point.latitude, point.longitude], SIMILARITY_RADIUS, :m)
+                      .near([point.lat, point.lon], SIMILARITY_RADIUS, :m)
                       .first
 
       return existing if existing
@@ -122,9 +122,9 @@ module Visits
       # Create new place
       place = Place.new(
         name: name,
-        lonlat: "POINT(#{point.longitude} #{point.latitude})",
-        latitude: point.latitude,
-        longitude: point.longitude,
+        lonlat: "POINT(#{point.lon} #{point.lat})",
+        latitude: point.lat,
+        longitude: point.lon,
         city: properties['city'],
         country: properties['country'],
         geodata: point.geodata,
@@ -151,6 +151,10 @@ module Visits
       end
 
       places
+    rescue StandardError => e
+      Rails.logger.error("Reverse geocoding error in PlaceFinder: #{e.message}")
+      ExceptionReporter.call(e)
+      []
     end
 
     # Step 6: Create place from API result

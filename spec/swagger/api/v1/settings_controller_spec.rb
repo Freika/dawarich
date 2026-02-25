@@ -21,8 +21,8 @@ describe 'Settings API', type: :request do
           'immich_api_key': 'your-immich-api-key',
           'photoprism_url': 'https://photoprism.example.com',
           'photoprism_api_key': 'your-photoprism-api-key',
-          'maps': { 'distance_unit': 'km' },
-          'visits_suggestions_enabled': true
+          'speed_color_scale': 'viridis',
+          'fog_of_war_threshold': 100
         }
       }
       tags 'Settings'
@@ -100,21 +100,15 @@ describe 'Settings API', type: :request do
             example: 'your-photoprism-api-key',
             description: 'API key for PhotoPrism photo service'
           },
-          maps: {
-            type: :object,
-            properties: {
-              distance_unit: {
-                type: :string,
-                example: 'km',
-                description: 'Distance unit preference (km or miles)'
-              }
-            },
-            description: 'Map-related settings'
+          speed_color_scale: {
+            type: :string,
+            example: 'viridis',
+            description: 'Color scale for speed-colored routes'
           },
-          visits_suggestions_enabled: {
-            type: :boolean,
-            example: true,
-            description: 'Whether visit suggestions are enabled'
+          fog_of_war_threshold: {
+            type: :number,
+            example: 100,
+            description: 'Fog of war threshold value'
           }
         }
       }
@@ -122,6 +116,15 @@ describe 'Settings API', type: :request do
       response '200', 'settings updated' do
         let(:settings) { { settings: { route_opacity: 60 } } }
         let(:api_key)  { create(:user).api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:settings) { { settings: { route_opacity: 60 } } }
 
         run_test!
       end
@@ -138,33 +141,48 @@ describe 'Settings API', type: :request do
                    type: :object,
                    properties: {
                      route_opacity: {
-                       type: :string,
-                       example: '60',
+                       type: :number,
+                       example: 60,
                        description: 'Route opacity percentage (0-100)'
                      },
                      meters_between_routes: {
-                       type: :string,
-                       example: '500',
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
+                       example: 500,
                        description: 'Minimum distance between routes in meters'
                      },
                      minutes_between_routes: {
-                       type: :string,
-                       example: '30',
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
+                       example: 30,
                        description: 'Minimum time between routes in minutes'
                      },
                      fog_of_war_meters: {
-                       type: :string,
-                       example: '50',
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
+                       example: 50,
                        description: 'Fog of war radius in meters'
                      },
                      time_threshold_minutes: {
-                       type: :string,
-                       example: '30',
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
+                       example: 30,
                        description: 'Time threshold for grouping points in minutes'
                      },
                      merge_threshold_minutes: {
-                       type: :string,
-                       example: '15',
+                       oneOf: [
+                         { type: :number },
+                         { type: :string }
+                       ],
+                       example: 15,
                        description: 'Threshold for merging nearby points in minutes'
                      },
                      preferred_map_layer: {
@@ -188,40 +206,53 @@ describe 'Settings API', type: :request do
                        description: 'Whether live map updates are enabled'
                      },
                      immich_url: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'https://immich.example.com',
                        description: 'Immich server URL for photo integration'
                      },
                      immich_api_key: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'your-immich-api-key',
                        description: 'API key for Immich photo service'
                      },
                      photoprism_url: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'https://photoprism.example.com',
                        description: 'PhotoPrism server URL for photo integration'
                      },
                      photoprism_api_key: {
-                       type: :string,
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
                        example: 'your-photoprism-api-key',
                        description: 'API key for PhotoPrism photo service'
                      },
-                     maps: {
-                       type: :object,
-                       properties: {
-                         distance_unit: {
-                           type: :string,
-                           example: 'km',
-                           description: 'Distance unit preference (km or miles)'
-                         }
-                       },
-                       description: 'Map-related settings'
+                     speed_color_scale: {
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
+                       example: 'viridis',
+                       description: 'Color scale for speed-colored routes'
                      },
-                     visits_suggestions_enabled: {
-                       type: :boolean,
-                       example: true,
-                       description: 'Whether visit suggestions are enabled'
+                     fog_of_war_threshold: {
+                       oneOf: [
+                         { type: :number },
+                         { type: :string },
+                         { type: :null }
+                       ],
+                       example: 100,
+                       description: 'Fog of war threshold value'
                      }
                    }
                  }
@@ -230,6 +261,48 @@ describe 'Settings API', type: :request do
         let(:user)     { create(:user) }
         let(:settings) { { settings: user.settings } }
         let(:api_key)  { user.api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+
+        run_test!
+      end
+    end
+  end
+
+  path '/api/v1/settings/transportation_recalculation_status' do
+    get 'Retrieves transportation mode recalculation status' do
+      tags 'Settings'
+      description 'Returns the current status of transportation mode recalculation for all tracks'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+
+      response '200', 'status found' do
+        schema type: :object,
+               properties: {
+                 status: { type: :string, nullable: true, description: 'Current recalculation status' },
+                 total_tracks: { type: :integer, nullable: true, description: 'Total number of tracks to process' },
+                 processed_tracks: { type: :integer, nullable: true, description: 'Number of tracks processed so far' },
+                 started_at: { type: :string, nullable: true, description: 'When recalculation started' },
+                 completed_at: { type: :string, nullable: true, description: 'When recalculation completed' },
+                 error_message: { type: :string, nullable: true, description: 'Error message if recalculation failed' }
+               }
+
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
 
         run_test!
       end

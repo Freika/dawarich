@@ -1,0 +1,47 @@
+name: RuboCop
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rubocop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Determine base ref
+        id: base
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            CURRENT=$(git rev-parse --abbrev-ref HEAD)
+            if [ "$BASE_REF" != "$CURRENT" ]; then
+              git fetch origin "$BASE_REF":"$BASE_REF"
+            fi
+            echo "ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Run RuboCop on changed files
+        env:
+          BASE: ${{ steps.base.outputs.ref }}
+        run: |
+          # Get list of added/modified Ruby files compared to base ref
+          FILES=$(git diff --name-only --diff-filter=AM "$BASE"...HEAD | grep -E '\.(rb|rake)$|^Gemfile$|^Rakefile$' | xargs)
+
+          if [ -n "$FILES" ]; then
+            bundle exec rubocop --force-exclusion --format github $FILES
+          else
+            echo "No Ruby files changed."
+          fi

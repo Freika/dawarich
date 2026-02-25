@@ -2,12 +2,16 @@
 
 class ExportsController < ApplicationController
   include ActiveStorage::SetCurrent
+  include Sortable
+
+  SORTABLE_COLUMNS = %w[name status created_at byte_size].freeze
 
   before_action :authenticate_user!
   before_action :set_export, only: %i[destroy]
 
   def index
-    @exports = current_user.exports.order(created_at: :desc).page(params[:page])
+    scope = current_user.exports.with_attached_file
+    @exports = sorted(scope).page(params[:page])
   end
 
   def create
@@ -27,7 +31,7 @@ class ExportsController < ApplicationController
 
     ExceptionReporter.call(e)
 
-    redirect_to exports_url, alert: "Export failed to initiate: #{e.message}", status: :unprocessable_entity
+    redirect_to exports_url, alert: "Export failed to initiate: #{e.message}", status: :unprocessable_content
   end
 
   def destroy

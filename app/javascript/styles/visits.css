@@ -15,3 +15,45 @@
 .merge-visits-button {
   margin: 8px 0;
 }
+
+/* Visit popup styling */
+.visit-popup .leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+  border: none;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 0;
+  overflow: hidden;
+}
+
+.visit-popup .leaflet-popup-content {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.visit-popup .leaflet-popup-tip {
+  border-top-color: hsl(var(--b1));
+}
+
+/* !important needed to override .leaflet-container a.leaflet-popup-close-button (higher specificity) */
+.visit-popup .leaflet-popup-close-button {
+  color: hsl(var(--bc)) !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 24px !important;
+  height: 24px !important;
+  text-align: center !important;
+  line-height: 24px !important;
+  background: hsl(var(--b2)) !important;
+  border-radius: 50% !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.visit-popup .leaflet-popup-close-button:hover {
+  background: hsl(var(--b3)) !important;
+  color: hsl(var(--bc)) !important;
+}

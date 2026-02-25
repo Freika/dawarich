@@ -2,38 +2,33 @@
 
 class GoogleMaps::PhoneTakeoutImporter
   include Imports::Broadcaster
+  include Imports::FileLoader
 
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import   = import
     @user_id  = user_id
+    @file_path = file_path
   end
 
+  BATCH_SIZE = 1000
+
   def call
-    points_data = parse_json
-
-    points_data.compact.each.with_index(1) do |point_data, index|
-      next if Point.exists?(
-        timestamp:  point_data[:timestamp],
-        lonlat:     point_data[:lonlat],
-        user_id:
-      )
-
-      Point.create(
-        lonlat:     point_data[:lonlat],
-        timestamp:  point_data[:timestamp],
-        raw_data:   point_data[:raw_data],
-        accuracy:   point_data[:accuracy],
-        altitude:   point_data[:altitude],
-        velocity:   point_data[:velocity],
-        import_id:  import.id,
-        topic:      'Google Maps Phone Timeline Export',
+    points_data = parse_json.compact.map do |point_data|
+      point_data.merge(
+        import_id: import.id,
+        topic: 'Google Maps Phone Timeline Export',
         tracker_id: 'google-maps-phone-timeline-export',
-        user_id:
+        user_id: user_id,
+        created_at: Time.current,
+        updated_at: Time.current
       )
+    end
 
-      broadcast_import_progress(import, index)
+    points_data.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
+      bulk_insert_points(batch)
+      broadcast_import_progress(import, (batch_index + 1) * BATCH_SIZE)
     end
   end
 
@@ -46,9 +41,7 @@ class GoogleMaps::PhoneTakeoutImporter
     raw_signals       = []
     raw_array         = []
 
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-
-    json = Oj.load(file_content)
+    json = load_json_data
 
     if json.is_a?(Array)
       raw_array = parse_raw_array(json)
@@ -72,6 +65,7 @@ class GoogleMaps::PhoneTakeoutImporter
     {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
+      motion_data: Points::MotionDataExtractor.from_google_phone_takeout(raw_data),
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
       altitude: raw_data['altitudeMeters'],
@@ -81,17 +75,17 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def parse_visit_place_location(data_point)
     lat, lon = parse_coordinates(data_point['visit']['topCandidate']['placeLocation'])
-    timestamp = DateTime.parse(data_point['startTime']).to_i
+    timestamp = DateTime.parse(data_point['startTime']).utc.to_i
 
     point_hash(lat, lon, timestamp, data_point)
   end
 
   def parse_activity(data_point)
     start_lat, start_lon = parse_coordinates(data_point['activity']['start'])
-    start_timestamp = DateTime.parse(data_point['startTime']).to_i
+    start_timestamp = DateTime.parse(data_point['startTime']).utc.to_i
 
     end_lat, end_lon = parse_coordinates(data_point['activity']['end'])
-    end_timestamp = DateTime.parse(data_point['endTime']).to_i
+    end_timestamp = DateTime.parse(data_point['endTime']).utc.to_i
 
     [
       point_hash(start_lat, start_lon, start_timestamp, data_point),
@@ -114,16 +108,16 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def parse_semantic_visit(segment)
     lat, lon = parse_coordinates(segment['visit']['topCandidate']['placeLocation']['latLng'])
-    timestamp = DateTime.parse(segment['startTime']).to_i
+    timestamp = DateTime.parse(segment['startTime']).utc.to_i
 
     point_hash(lat, lon, timestamp, segment)
   end
 
   def parse_semantic_activity(segment)
     start_lat, start_lon = parse_coordinates(segment['activity']['start']['latLng'])
-    start_timestamp = DateTime.parse(segment['startTime']).to_i
+    start_timestamp = DateTime.parse(segment['startTime']).utc.to_i
     end_lat, end_lon = parse_coordinates(segment['activity']['end']['latLng'])
-    end_timestamp = DateTime.parse(segment['endTime']).to_i
+    end_timestamp = DateTime.parse(segment['endTime']).utc.to_i
 
     [
       point_hash(start_lat, start_lon, start_timestamp, segment),
@@ -134,7 +128,7 @@ class GoogleMaps::PhoneTakeoutImporter
   def parse_semantic_timeline_path(segment)
     segment['timelinePath'].map do |point|
       lat, lon = parse_coordinates(point['point'])
-      timestamp = DateTime.parse(point['time']).to_i
+      timestamp = DateTime.parse(point['time']).utc.to_i
 
       point_hash(lat, lon, timestamp, segment)
     end
@@ -172,9 +166,32 @@ class GoogleMaps::PhoneTakeoutImporter
       next unless segment.dig('position', 'LatLng')
 
       lat, lon = parse_coordinates(segment['position']['LatLng'])
-      timestamp = DateTime.parse(segment['position']['timestamp']).to_i
+      timestamp = DateTime.parse(segment['position']['timestamp']).utc.to_i
 
       point_hash(lat, lon, timestamp, segment)
     end
+  end
+
+  def bulk_insert_points(batch)
+    unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+
+    Point.upsert_all(
+      unique_batch,
+      unique_by: %i[lonlat timestamp user_id],
+      returning: false,
+      on_duplicate: :skip
+    )
+    # rubocop:enable Rails/SkipsModelValidations
+  rescue StandardError => e
+    create_notification("Failed to process phone takeout batch: #{e.message}")
+  end
+
+  def create_notification(message)
+    Notification.create!(
+      user_id: user_id,
+      title: 'Google Maps Phone Takeout Import Error',
+      content: message,
+      kind: :error
+    )
   end
 end

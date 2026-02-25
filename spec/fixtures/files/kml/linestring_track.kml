@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>LineString Track</name>
+    <Placemark>
+      <name>My Track</name>
+      <TimeStamp>
+        <when>2024-01-16T10:00:00Z</when>
+      </TimeStamp>
+      <LineString>
+        <coordinates>
+          -122.0841,37.4220,10
+          -122.0851,37.4230,12
+          -122.0861,37.4240,14
+          -122.0871,37.4250,16
+          -122.0881,37.4260,18
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

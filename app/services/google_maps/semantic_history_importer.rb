@@ -2,13 +2,15 @@
 
 class GoogleMaps::SemanticHistoryImporter
   include Imports::Broadcaster
+  include Imports::FileLoader
 
   BATCH_SIZE = 1000
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user_id = user_id
+    @file_path = file_path
     @current_index = 0
   end
 
@@ -25,7 +27,6 @@ class GoogleMaps::SemanticHistoryImporter
   def process_batch(batch)
     records = batch.map { |point_data| prepare_point_data(point_data) }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       records,
       unique_by: %i[lonlat timestamp user_id],
@@ -41,6 +42,8 @@ class GoogleMaps::SemanticHistoryImporter
     {
       lonlat: point_data[:lonlat],
       timestamp: point_data[:timestamp],
+      accuracy: point_data[:accuracy],
+      motion_data: point_data[:motion_data],
       raw_data: point_data[:raw_data],
       topic: 'Google Maps Timeline Export',
       tracker_id: 'google-maps-timeline-export',
@@ -61,8 +64,7 @@ class GoogleMaps::SemanticHistoryImporter
   end
 
   def points_data
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-    json = Oj.load(file_content)
+    json = load_json_data
 
     json['timelineObjects'].flat_map do |timeline_object|
       parse_timeline_object(timeline_object)
@@ -85,6 +87,7 @@ class GoogleMaps::SemanticHistoryImporter
         longitude: activity['startLocation']['longitudeE7'],
         latitude: activity['startLocation']['latitudeE7'],
         timestamp: activity['duration']['startTimestamp'] || activity['duration']['startTimestampMs'],
+        accuracy: activity.dig('startLocation', 'accuracyMetres'),
         raw_data: activity
       )
     end
@@ -110,6 +113,7 @@ class GoogleMaps::SemanticHistoryImporter
         longitude: place_visit['location']['longitudeE7'],
         latitude: place_visit['location']['latitudeE7'],
         timestamp: place_visit['duration']['startTimestamp'] || place_visit['duration']['startTimestampMs'],
+        accuracy: place_visit.dig('location', 'accuracyMetres'),
         raw_data: place_visit
       )
     elsif (candidate = place_visit.dig('otherCandidateLocations', 0))
@@ -124,14 +128,17 @@ class GoogleMaps::SemanticHistoryImporter
       longitude: candidate['longitudeE7'],
       latitude: candidate['latitudeE7'],
       timestamp: place_visit['duration']['startTimestamp'] || place_visit['duration']['startTimestampMs'],
+      accuracy: candidate['accuracyMetres'],
       raw_data: place_visit
     )
   end
 
-  def build_point_from_location(longitude:, latitude:, timestamp:, raw_data:)
+  def build_point_from_location(longitude:, latitude:, timestamp:, raw_data:, accuracy: nil)
     {
       lonlat: "POINT(#{longitude.to_f / 10**7} #{latitude.to_f / 10**7})",
       timestamp: Timestamps.parse_timestamp(timestamp),
+      accuracy: accuracy,
+      motion_data: Points::MotionDataExtractor.from_google_semantic_history(raw_data),
       raw_data: raw_data
     }
   end

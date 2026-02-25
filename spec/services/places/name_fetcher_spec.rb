@@ -105,13 +105,12 @@ RSpec.describe Places::NameFetcher do
         it 'updates visits with default name to the new place name' do
           expect { service.call }.to \
             change { visit_with_default_name.reload.name }
-              .from(Place::DEFAULT_NAME)
-              .to('Central Park')
+            .from(Place::DEFAULT_NAME)
+            .to('Central Park')
         end
 
         it 'does not update visits with custom names' do
-          expect { service.call }.not_to \
-            change { visit_with_custom_name.reload.name }
+          expect { service.call }.not_to(change { visit_with_custom_name.reload.name })
         end
       end
 
@@ -125,8 +124,11 @@ RSpec.describe Places::NameFetcher do
 
         it 'rolls back changes if save fails' do
           allow(place).to receive(:save!).and_raise(ActiveRecord::RecordInvalid)
+          allow(ExceptionReporter).to receive(:call)
+          allow(Rails.logger).to receive(:error)
 
-          expect { service.call }.to raise_error(ActiveRecord::RecordInvalid)
+          result = service.call
+          expect(result).to be_nil
           expect(place.reload.name).to eq(Place::DEFAULT_NAME)
         end
       end

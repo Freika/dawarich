@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Trips::CalculateAllJob < ApplicationJob
-  queue_as :default
+  queue_as :trips
 
   def perform(trip_id, distance_unit = 'km')
     Trips::CalculatePathJob.perform_later(trip_id)

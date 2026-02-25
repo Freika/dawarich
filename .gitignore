@@ -65,6 +65,7 @@
 .dotnet/
 .cursorrules
 .cursormemory.md
+.serena/**/*
 
 /config/credentials/production.key
 /config/credentials/production.yml.enc
@@ -83,3 +84,7 @@ node_modules/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/e2e/temp/
+
+.claude
+.worktrees/

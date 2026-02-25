@@ -2,9 +2,34 @@
 
 class ApiController < ApplicationController
   skip_before_action :verify_authenticity_token
+  before_action :set_version_header
   before_action :authenticate_api_key
 
+  rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
+
   private
+
+  def set_user_time_zone(&block)
+    if current_api_user
+      timezone = current_api_user.timezone
+      Time.use_zone(timezone, &block)
+    else
+      yield
+    end
+  rescue ArgumentError
+    yield
+  end
+
+  def record_not_found
+    render json: { error: 'Record not found' }, status: :not_found
+  end
+
+  def set_version_header
+    message = "Hey, I\'m alive#{current_api_user ? ' and authenticated' : ''}!"
+
+    response.set_header('X-Dawarich-Response', message)
+    response.set_header('X-Dawarich-Version', APP_VERSION)
+  end
 
   def authenticate_api_key
     return head :unauthorized unless current_api_user

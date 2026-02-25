@@ -11,16 +11,21 @@ class Import < ApplicationRecord
 
   after_commit -> { Import::ProcessJob.perform_later(id) unless skip_background_processing }, on: :create
   after_commit :remove_attached_file, on: :destroy
+  before_commit :recalculate_stats, on: :destroy, if: -> { points.exists? }
+
+  before_save :set_processing_started_at, if: :status_changed_to_processing?
 
   validates :name, presence: true, uniqueness: { scope: :user_id }
+  validate :file_size_within_limit, if: -> { user.trial? }
+  validate :import_count_within_limit, if: -> { user.trial? }
 
-  enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
+  enum :status, { created: 0, processing: 1, completed: 2, failed: 3, deleting: 4 }
 
   enum :source, {
     google_semantic_history: 0, owntracks: 1, google_records: 2,
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
-    user_data_archive: 8
-  }
+    user_data_archive: 8, kml: 9
+  }, allow_nil: true
 
   def process!
     if user_data_archive?
@@ -55,7 +60,38 @@ class Import < ApplicationRecord
 
   private
 
+  def set_processing_started_at
+    self.processing_started_at = Time.current
+  end
+
+  def status_changed_to_processing?
+    status_changed? && processing?
+  end
+
   def remove_attached_file
     file.purge_later
+  end
+
+  def file_size_within_limit
+    return unless file.attached?
+
+    return unless file.blob.byte_size > 11.megabytes
+
+    errors.add(:file, 'is too large. Trial users can only upload files up to 10MB.')
+  end
+
+  def import_count_within_limit
+    return unless new_record?
+
+    existing_imports_count = user.imports.count
+    return unless existing_imports_count >= 5
+
+    errors.add(:base, 'Trial users can only create up to 5 imports. Please subscribe to import more files.')
+  end
+
+  def recalculate_stats
+    years_and_months_tracked.each do |year, month|
+      Stats::CalculatingJob.perform_later(user.id, year, month)
+    end
   end
 end

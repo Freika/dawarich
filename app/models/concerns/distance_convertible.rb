@@ -19,13 +19,12 @@
 #   track.distance                    # => 5000 (meters stored in DB)
 #   track.distance_in_unit('km')      # => 5.0 (converted to km)
 #   track.distance_in_unit('mi')      # => 3.11 (converted to miles)
-#   track.formatted_distance('km')    # => "5.0 km"
 #
 module DistanceConvertible
   extend ActiveSupport::Concern
 
   def distance_in_unit(unit)
-    return 0.0 unless distance.present?
+    return 0.0 if distance.blank?
 
     unit_sym = unit.to_sym
     conversion_factor = ::DISTANCE_UNITS[unit_sym]
@@ -38,24 +37,9 @@ module DistanceConvertible
     distance.to_f / conversion_factor
   end
 
-  def formatted_distance(unit, precision: 2)
-    converted_distance = distance_in_unit(unit)
-    "#{converted_distance.round(precision)} #{unit}"
-  end
-
-  def distance_for_user(user)
-    user_unit = user.safe_settings.distance_unit
-    distance_in_unit(user_unit)
-  end
-
-  def formatted_distance_for_user(user, precision: 2)
-    user_unit = user.safe_settings.distance_unit
-    formatted_distance(user_unit, precision: precision)
-  end
-
   module ClassMethods
     def convert_distance(distance_meters, unit)
-      return 0.0 unless distance_meters.present?
+      return 0.0 if distance_meters.blank?
 
       unit_sym = unit.to_sym
       conversion_factor = ::DISTANCE_UNITS[unit_sym]
@@ -65,11 +49,6 @@ module DistanceConvertible
       end
 
       distance_meters.to_f / conversion_factor
-    end
-
-    def format_distance(distance_meters, unit, precision: 2)
-      converted = convert_distance(distance_meters, unit)
-      "#{converted.round(precision)} #{unit}"
     end
   end
 end

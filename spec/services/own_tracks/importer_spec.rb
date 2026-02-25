@@ -23,7 +23,7 @@ RSpec.describe OwnTracks::Importer do
       it 'correctly writes attributes' do
         parser
 
-        point = Point.first
+        point = user.points.first
         expect(point.lonlat.x).to be_within(0.001).of(13.332)
         expect(point.lonlat.y).to be_within(0.001).of(52.225)
         expect(point.attributes.except('lonlat')).to include(
@@ -46,6 +46,7 @@ RSpec.describe OwnTracks::Importer do
           'visit_id' => nil,
           'user_id' => user.id,
           'country' => nil,
+          'motion_data' => { 'm' => 1, '_type' => 'location' },
           'raw_data' => {
             'm' => 1,
             'p' => 100.266,
@@ -75,7 +76,21 @@ RSpec.describe OwnTracks::Importer do
       it 'correctly converts speed' do
         parser
 
-        expect(Point.first.velocity).to eq('1.4')
+        expect(user.points.first.velocity).to eq('1.4')
+      end
+
+      it 'updates the import processed counter' do
+        parser
+
+        expect(import.reload.processed).to eq(9)
+      end
+    end
+
+    context 'when file is old' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/owntracks/2023-02_old.rec') }
+
+      it 'creates points' do
+        expect { parser }.to change { Point.count }.by(9)
       end
     end
   end

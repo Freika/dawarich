@@ -1,0 +1,164 @@
+<div class="min-h-screen bg-gradient-to-br from-base-100 to-base-200 py-12 px-4 mx-auto">
+  <div class="max-w-4xl mx-auto">
+    <!-- Hero Section -->
+    <div class="text-center mb-12">
+      <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-primary mb-6 shadow-xl">
+        <%= icon 'users', class: "h-12 w-12 text-primary-content" %>
+      </div>
+
+      <h1 class="text-5xl font-bold text-base-content mb-4">
+        Join <%= @invitation.family.name %>!
+      </h1>
+
+      <p class="text-xl text-base-content opacity-80 mb-2">
+        You've been invited by <strong class="text-base-content"><%= @invitation.invited_by.email %></strong> to join their family. Create your account to accept the invitation and start sharing location data.
+      </p>
+
+      <div class="alert alert-info inline-flex items-center rounded-lg px-4 py-3 mt-4 gap-3">
+        <%= icon 'info', class: "h-5 w-5 shrink-0" %>
+        <span class="text-sm font-medium">
+          Your email (<%= @invitation.email %>) will be used for this account
+        </span>
+      </div>
+    </div>
+
+    <!-- Benefits Section -->
+    <div class="bg-base-200 shadow-xl rounded-2xl p-8 mb-8">
+      <h2 class="text-2xl font-bold text-base-content mb-6 text-center">
+        What benefits does joining a family bring?
+      </h2>
+
+      <div class="grid md:grid-cols-2 gap-6 mb-8">
+        <div class="flex items-start space-x-4 p-4 bg-info/10 rounded-lg border border-info/20">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 rounded-full bg-info flex items-center justify-center">
+              <%= icon 'map-pin', class: "h-6 w-6 text-info-content" %>
+            </div>
+          </div>
+          <div>
+            <h3 class="font-semibold text-base-content mb-1">
+              Share Location Data
+            </h3>
+            <p class="text-sm text-base-content opacity-70">
+              Share your location history with family members and see where they are
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start space-x-4 p-4 bg-secondary/10 rounded-lg border border-secondary/20">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
+              <%= icon 'chart-column', class: "h-6 w-6 text-secondary-content" %>
+            </div>
+          </div>
+          <div>
+            <h3 class="font-semibold text-base-content mb-1">
+              Track your location history
+            </h3>
+            <p class="text-sm text-base-content opacity-70">
+              Access interactive maps and personal travel statistics
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start space-x-4 p-4 bg-success/10 rounded-lg border border-success/20">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 rounded-full bg-success flex items-center justify-center">
+              <%= icon 'heart', class: "h-6 w-6 text-success-content" %>
+            </div>
+          </div>
+          <div>
+            <h3 class="font-semibold text-base-content mb-1">
+              Stay Connected
+            </h3>
+            <p class="text-sm text-base-content opacity-70">
+              Keep track of your loved ones' travels and adventures in real-time
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start space-x-4 p-4 bg-warning/10 rounded-lg border border-warning/20">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 rounded-full bg-warning flex items-center justify-center">
+              <%= icon 'shield-check', class: "h-6 w-6 text-warning-content" %>
+            </div>
+          </div>
+          <div>
+            <h3 class="font-semibold text-base-content mb-1">
+              Full Control & Privacy
+            </h3>
+            <p class="text-sm text-base-content opacity-70">
+              You control what and how long you share and can leave the family anytime
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invitation Details -->
+      <div class="bg-base-300 rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold text-base-content mb-6">Invitation Details</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <div class="text-sm text-base-content opacity-60">Family:</div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.family.name %></div>
+          </div>
+          <div class="space-y-2">
+            <div class="text-sm text-base-content opacity-60">Invited by:</div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.invited_by.email %></div>
+          </div>
+          <div class="space-y-2">
+            <div class="text-sm text-base-content opacity-60">Your email:</div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.email %></div>
+          </div>
+          <div class="space-y-2">
+            <div class="text-sm text-base-content opacity-60">Expires:</div>
+            <div class="text-base font-semibold text-base-content"><%= @invitation.expires_at.strftime('%b %d, %Y') %></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="space-y-4">
+        <% if user_signed_in? %>
+          <!-- User is logged in, show accept button -->
+          <%= link_to accept_family_invitation_path(token: @invitation.token),
+                method: :post,
+                class: "btn btn-success btn-lg w-full text-lg shadow-lg" do %>
+            ✓ Accept Invitation & Join Family
+          <% end %>
+
+          <p class="text-sm text-base-content opacity-60 text-center">
+            Logged in as <%= current_user.email %>
+            ·
+            <%= link_to destroy_user_session_path, method: :delete, class: "link link-info" do %>
+              Logout
+            <% end %>
+          </p>
+        <% else %>
+          <!-- User is not logged in, show register button prominently -->
+          <%= link_to new_user_registration_path(invitation_token: @invitation.token),
+                class: "btn btn-primary btn-lg w-full text-lg shadow-lg" do %>
+            Create Account & Join Family →
+          <% end %>
+
+          <div class="text-center">
+            <p class="text-sm text-gray-300 mb-2">
+              Already have an account?
+            </p>
+            <%= link_to new_user_session_path(invitation_token: @invitation.token),
+                  class: "link link-info font-medium" do %>
+              Sign in to accept invitation
+            <% end %>
+          </div>
+        <% end %>
+
+        <!-- Decline Option -->
+        <div class="pt-6 border-t border-base-300 text-center">
+          <p class="text-sm text-base-content opacity-60">
+            Not interested? You can simply close this page.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

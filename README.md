@@ -1,30 +1,43 @@
-# 🌍 Dawarich: Your Self-Hosted Location History Tracker
+# 🌍 Dawarich: Your Self-Hostable Location History Tracker
 
 [![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika)
-
-[![CircleCI](https://circleci.com/gh/Freika/dawarich.svg?style=svg)](https://app.circleci.com/pipelines/github/Freika/dawarich)
 
 ---
 
 ## 📸 Screenshots
 
-![Map](screenshots/map.jpeg)
+![Map](screenshots/map.png)
 *Map View*
 
-![Stats](screenshots/stats.jpeg)
+![Insights](screenshots/insights.png)
+*Insights Page*
+
+![Family](screenshots/family.png)
+*Family Page*
+
+![Stats](screenshots/stats.png)
 *Statistics Overview*
 
-![Import](screenshots/imports.jpeg)
-*Imports page*
+![Trips](screenshots/trips.png)
+*Trips page*
 
 ---
 
 ## 🗺️ About Dawarich
 
-**Dawarich** is a self-hosted web app designed to replace Google Timeline (aka Google Location History). It enables you to:
+If you're looking for Dawarich Cloud, where everything is managed for you, check out [Dawarich Cloud](https://dawarich.app).
+
+**Dawarich** is a self-hostable web app designed to replace Google Timeline (aka Google Location History).
+It enables you to:
+
+- Track your location history.
 - Visualize your data on an interactive map.
-- Import your location history from Google Maps Timeline and Owntracks.
+- Create trips and analyze your travel history.
+- Share your location with family members.
+- Integrate with photo management apps like Immich and Photoprism to visualize geotagged photos.
+- Import your location history from Google Maps Timeline, OwnTracks, GPX, GeoJSON and some other sources
 - Explore statistics like the number of countries and cities visited, total distance traveled, and more!
+- Share your location with family members.
 
 📄 **Changelog**: Find the latest updates [here](CHANGELOG.md).
 
@@ -33,12 +46,13 @@
 
 ## ⚠️ Disclaimer
 
+### Updating strategy
+
 - 💔 **DO NOT UPDATE AUTOMATICALLY**: Read release notes before updating. Automatic updates may break your setup.
 - 🛠️ **Under active development**: Expect frequent updates, bugs, and breaking changes.
 - ❌ **Do not delete your original data** after importing into Dawarich.
 - 📦 **Backup before updates**: Always [backup your data](https://dawarich.app/docs/tutorials/backup-and-restore) before upgrading.
 - 🔄 **Stay up-to-date**: Make sure you're running the latest version for the best experience.
-- ⚠️ **DO NOT USE PRODUCTION ENVIRONMENT**: Dawarich is not yet ready for production.
 
 ---
 
@@ -62,11 +76,13 @@ Simply install one of the supported apps on your device and configure it to send
 1. Clone the repository.
 2. Run the following command to start the app:
    ```bash
-   docker-compose up
+   docker compose -f docker/docker-compose.yml up
    ```
 3. Access the app at `http://localhost:3000`.
 
 ⏹️ **To stop the app**, press `Ctrl+C`.
+
+You can use default values or create a `.env` file based on `.env.example` to customize your setup.
 
 ---
 
@@ -94,6 +110,11 @@ Feel free to change them in the account settings.
   - Lines between points
   - Fog of War
 
+### 👪 Family Sharing
+- Share your location with family members.
+- View locations of family members on the map (with their consent).
+- Each family member can enable or disable location sharing individually.
+
 ### 🔵 Areas
 - Draw areas on the map so Dawarich could suggest your visits there.
 
@@ -104,7 +125,6 @@ Feel free to change them in the account settings.
 - Analyze your travel history: number of countries/cities visited, distance traveled, and time spent, broken down by year and month.
 
 ### ✈️ Trips
-
 - Create a trip to visualize your travels between two points in time. You'll be able to see the route, distance, and time spent, and also add notes to your trip. If you have Immich or Photoprism integration, you'll also be able to see photos from your trips!
 
 ### 📸 Integrations

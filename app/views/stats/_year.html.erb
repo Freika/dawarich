@@ -1,14 +1,22 @@
 <h2 class='text-3xl font-bold mt-10'>
   <%= link_to year, "/stats/#{year}", class: "underline hover:no-underline text-#{header_colors.sample}" %>
-  <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
+  <%= link_to '[Map]', preferred_map_path(year_timespan(year)), class: 'underline hover:no-underline' %>
 </h2>
 <div class='my-10'>
   <%= column_chart(
-    Stat.year_distance(year, current_user),
+    @year_distances[year].map { |month_name, distance_meters|
+      [month_name, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
+    },
     height: '200px',
     suffix: " #{current_user.safe_settings.distance_unit}",
     xtitle: 'Days',
-    ytitle: 'Distance'
+    ytitle: 'Distance',
+    colors: [
+      '#397bb5', '#5A4E9D', '#3B945E',
+      '#7BC96F', '#FFD54F', '#FFA94D',
+      '#FF6B6B', '#FF8C42', '#C97E4F',
+      '#8B4513', '#5A2E2E', '#265d7d'
+    ]
   ) %>
 </div>
 <div class="mt-5 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">

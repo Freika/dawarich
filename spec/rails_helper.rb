@@ -11,6 +11,7 @@ require 'sidekiq/testing'
 require 'super_diff/rspec-rails'
 
 require 'rake'
+require 'shoulda/matchers'
 
 Rails.application.load_tasks
 
@@ -41,14 +42,13 @@ RSpec.configure do |config|
 
   config.before(:suite) do
     Rails.application.reload_routes!
-
-    # DatabaseCleaner.strategy = :transaction
-    # DatabaseCleaner.clean_with(:truncation)
   end
 
   config.before do
     ActiveJob::Base.queue_adapter = :test
     allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+    # Disable OIDC by default in tests to prevent OIDC-only mode from blocking tests
+    allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
   end
 
   config.before(:each, type: :system) do
@@ -65,7 +65,7 @@ RSpec.configure do |config|
 
       driven_by :selenium, using: :headless_chrome, options: {
         browser: :remote,
-        url: "http://chrome:4444/wd/hub",
+        url: 'http://chrome:4444/wd/hub',
         options: {
           args: %w[headless disable-gpu no-sandbox disable-dev-shm-usage]
         }
@@ -92,12 +92,6 @@ RSpec.configure do |config|
   config.after(:suite) do
     Rake::Task['rswag:generate'].invoke
   end
-
-  # config.around(:each) do |example|
-  #   DatabaseCleaner.cleaning do
-  #     example.run
-  #   end
-  # end
 end
 
 Shoulda::Matchers.configure do |config|

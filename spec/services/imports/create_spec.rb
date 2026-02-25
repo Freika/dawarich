@@ -17,7 +17,22 @@ RSpec.describe Imports::Create do
 
       it 'sets status to processing at start' do
         service.call
+
         expect(import.reload.status).to eq('processing').or eq('completed')
+      end
+
+      it 'updates the import source' do
+        service.call
+
+        expect(import.reload.source).to eq('owntracks')
+      end
+
+      it 'resets points counter cache' do
+        allow(User).to receive(:reset_counters)
+
+        service.call
+
+        expect(User).to have_received(:reset_counters).with(user.id, :points)
       end
 
       context 'when import succeeds' do
@@ -29,12 +44,17 @@ RSpec.describe Imports::Create do
 
       context 'when import fails' do
         before do
-          allow(OwnTracks::Importer).to receive(:new).with(import, user.id).and_raise(StandardError)
+          allow(OwnTracks::Importer).to receive(:new).with(import, user.id, kind_of(String)).and_raise(StandardError)
         end
 
         it 'sets status to failed' do
           service.call
           expect(import.reload.status).to eq('failed')
+        end
+
+        it 'sets the error message' do
+          service.call
+          expect(import.reload.error_message).to eq('StandardError')
         end
       end
     end
@@ -51,7 +71,7 @@ RSpec.describe Imports::Create do
 
       it 'calls the GoogleMaps::SemanticHistoryImporter' do
         expect(GoogleMaps::SemanticHistoryImporter).to \
-          receive(:new).with(import, user.id).and_return(double(call: true))
+          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
         service.call
       end
 
@@ -62,10 +82,16 @@ RSpec.describe Imports::Create do
 
     context 'when source is google_phone_takeout' do
       let(:import) { create(:import, source: 'google_phone_takeout') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/google/phone-takeout_w_3_duplicates.json') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'phone-takeout_w_3_duplicates.json',
+                           content_type: 'application/json')
+      end
 
       it 'calls the GoogleMaps::PhoneTakeoutImporter' do
         expect(GoogleMaps::PhoneTakeoutImporter).to \
-          receive(:new).with(import, user.id).and_return(double(call: true))
+          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
         service.call
       end
     end
@@ -81,7 +107,7 @@ RSpec.describe Imports::Create do
 
       it 'calls the OwnTracks::Importer' do
         expect(OwnTracks::Importer).to \
-          receive(:new).with(import, user.id).and_return(double(call: true))
+          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
         service.call
       end
 
@@ -102,7 +128,7 @@ RSpec.describe Imports::Create do
 
       context 'when import fails' do
         before do
-          allow(OwnTracks::Importer).to receive(:new).with(import, user.id).and_raise(StandardError)
+          allow(OwnTracks::Importer).to receive(:new).with(import, user.id, kind_of(String)).and_raise(StandardError)
         end
 
         context 'when self-hosted' do
@@ -153,37 +179,56 @@ RSpec.describe Imports::Create do
 
       it 'calls the Gpx::TrackImporter' do
         expect(Gpx::TrackImporter).to \
-          receive(:new).with(import, user.id).and_return(double(call: true))
+          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
         service.call
       end
     end
 
     context 'when source is geojson' do
       let(:import) { create(:import, source: 'geojson') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/geojson/export.json') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'export.json',
+                           content_type: 'application/json')
+      end
 
       it 'calls the Geojson::Importer' do
         expect(Geojson::Importer).to \
-          receive(:new).with(import, user.id).and_return(double(call: true))
+          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
         service.call
       end
     end
 
     context 'when source is immich_api' do
       let(:import) { create(:import, source: 'immich_api') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/immich/geodata.json') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'geodata.json',
+                           content_type: 'application/json')
+      end
 
       it 'calls the Photos::Importer' do
         expect(Photos::Importer).to \
-          receive(:new).with(import, user.id).and_return(double(call: true))
+          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
+
         service.call
       end
     end
 
     context 'when source is photoprism_api' do
       let(:import) { create(:import, source: 'photoprism_api') }
+      let(:file_path) { Rails.root.join('spec/fixtures/files/immich/geodata.json') }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: 'geodata.json',
+                           content_type: 'application/json')
+      end
 
       it 'calls the Photos::Importer' do
         expect(Photos::Importer).to \
-          receive(:new).with(import, user.id).and_return(double(call: true))
+          receive(:new).with(import, user.id, kind_of(String)).and_return(double(call: true))
         service.call
       end
     end

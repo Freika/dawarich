@@ -1,11 +1,11 @@
-import { showFlashMessage } from "./helpers";
+import Flash from "controllers/flash_controller"
 
 // Add custom CSS for popup styling
 const addPopupStyles = () => {
-  if (!document.querySelector('#area-popup-styles')) {
-    const style = document.createElement('style');
-    style.id = 'area-popup-styles';
-        style.textContent = `
+  if (!document.querySelector("#area-popup-styles")) {
+    const style = document.createElement("style")
+    style.id = "area-popup-styles"
+    style.textContent = `
       .area-form-popup,
       .area-info-popup {
         background: transparent !important;
@@ -70,16 +70,29 @@ const addPopupStyles = () => {
         color: oklch(var(--bc)) !important;
         border-color: oklch(var(--bc) / 0.3) !important;
       }
-    `;
-    document.head.appendChild(style);
+    `
+    document.head.appendChild(style)
   }
-};
+}
 
 export function handleAreaCreated(areasLayer, layer, apiKey) {
   // Add popup styles
-  addPopupStyles();
-  const radius = layer.getRadius();
-  const center = layer.getLatLng();
+  addPopupStyles()
+  const radius = layer.getRadius()
+  const center = layer.getLatLng()
+
+  // Configure the layer with the same settings as existing areas
+  layer.setStyle({
+    color: "red",
+    fillColor: "#f03",
+    fillOpacity: 0.5,
+    weight: 2,
+    interactive: true,
+    bubblingMouseEvents: false,
+  })
+
+  // Set the pane to match existing areas
+  layer.options.pane = "areasPane"
 
   const formHtml = `
     <div class="card w-96 bg-base-100 border border-base-300 shadow-xl">
@@ -109,83 +122,87 @@ export function handleAreaCreated(areasLayer, layer, apiKey) {
         </form>
       </div>
     </div>
-  `;
+  `
 
-  layer.bindPopup(formHtml, {
-    maxWidth: 400,
-    minWidth: 384,
-    maxHeight: 600,
-    closeButton: true,
-    closeOnClick: false,
-    className: 'area-form-popup',
-    autoPan: true,
-    keepInView: true
-  }).openPopup();
+  layer
+    .bindPopup(formHtml, {
+      maxWidth: 400,
+      minWidth: 384,
+      maxHeight: 600,
+      closeButton: true,
+      closeOnClick: false,
+      className: "area-form-popup",
+      autoPan: true,
+      keepInView: true,
+    })
+    .openPopup()
 
-  areasLayer.addLayer(layer);
+  areasLayer.addLayer(layer)
 
   // Bind the event handler immediately after opening the popup
   setTimeout(() => {
-    const form = document.getElementById('circle-form');
-    const saveButton = document.getElementById('save-area-btn');
-    const nameInput = document.getElementById('circle-name');
+    const form = document.getElementById("circle-form")
+    const saveButton = document.getElementById("save-area-btn")
+    const nameInput = document.getElementById("circle-name")
 
     if (!form || !saveButton || !nameInput) {
-      console.error('Required elements not found');
-      return;
+      console.error("Required elements not found")
+      return
     }
 
     // Focus the name input
-    nameInput.focus();
+    nameInput.focus()
 
     // Remove any existing click handlers
-    const newSaveButton = saveButton.cloneNode(true);
-    saveButton.parentNode.replaceChild(newSaveButton, saveButton);
+    const newSaveButton = saveButton.cloneNode(true)
+    saveButton.parentNode.replaceChild(newSaveButton, saveButton)
 
     // Add click handler
-    newSaveButton.addEventListener('click', (e) => {
-      console.log('Save button clicked');
-      e.preventDefault();
-      e.stopPropagation();
+    newSaveButton.addEventListener("click", (e) => {
+      console.log("Save button clicked")
+      e.preventDefault()
+      e.stopPropagation()
 
       if (!nameInput.value.trim()) {
-        nameInput.classList.add('input-error', 'border-error');
-        return;
+        nameInput.classList.add("input-error", "border-error")
+        return
       }
 
-      const formData = new FormData(form);
+      const formData = new FormData(form)
 
-      saveArea(formData, areasLayer, layer, apiKey);
-    });
-  }, 100); // Small delay to ensure DOM is ready
+      saveArea(formData, areasLayer, layer, apiKey)
+    })
+  }, 100) // Small delay to ensure DOM is ready
 }
 
 export function saveArea(formData, areasLayer, layer, apiKey) {
-  const data = {};
+  const data = {}
   formData.forEach((value, key) => {
-    const keys = key.split('[').map(k => k.replace(']', ''));
+    const keys = key.split("[").map((k) => k.replaceAll("]", ""))
     if (keys.length > 1) {
-      if (!data[keys[0]]) data[keys[0]] = {};
-      data[keys[0]][keys[1]] = value;
+      if (!data[keys[0]]) data[keys[0]] = {}
+      data[keys[0]][keys[1]] = value
     } else {
-      data[keys[0]] = value;
+      data[keys[0]] = value
     }
-  });
+  })
 
   fetch(`/api/v1/areas?api_key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json'},
-    body: JSON.stringify(data)
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    return response.json();
-  })
-  .then(data => {
-    layer.closePopup();
-    layer.bindPopup(`
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Network response was not ok")
+      }
+      return response.json()
+    })
+    .then((data) => {
+      layer.closePopup()
+      layer
+        .bindPopup(
+          `
       <div class="card w-80 bg-base-100 border border-base-300 shadow-lg">
         <div class="card-body">
           <h3 class="card-title text-base-content text-lg">${data.name}</h3>
@@ -202,94 +219,103 @@ export function saveArea(formData, areasLayer, layer, apiKey) {
           </div>
         </div>
       </div>
-    `, {
-      maxWidth: 340,
-      minWidth: 320,
-      className: 'area-info-popup',
-      closeButton: true,
-      closeOnClick: false
-    }).openPopup();
+    `,
+          {
+            maxWidth: 340,
+            minWidth: 320,
+            className: "area-info-popup",
+            closeButton: true,
+            closeOnClick: false,
+          },
+        )
+        .openPopup()
 
-    // Add event listener for the delete button
-    layer.on('popupopen', () => {
-      const deleteButton = document.querySelector('.delete-area');
-      if (deleteButton) {
-        deleteButton.addEventListener('click', (e) => {
-          e.preventDefault();
-          deleteArea(data.id, areasLayer, layer, apiKey);
-        });
-      }
-    });
-  })
-  .catch(error => {
-    console.error('There was a problem with the save request:', error);
-  });
+      // Add event listener for the delete button
+      layer.on("popupopen", () => {
+        const deleteButton = document.querySelector(".delete-area")
+        if (deleteButton) {
+          deleteButton.addEventListener("click", (e) => {
+            e.preventDefault()
+            deleteArea(data.id, areasLayer, layer, apiKey)
+          })
+        }
+      })
+    })
+    .catch((error) => {
+      console.error("There was a problem with the save request:", error)
+    })
 }
 
 export function deleteArea(id, areasLayer, layer, apiKey) {
   fetch(`/api/v1/areas/${id}?api_key=${apiKey}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
-    }
+      "Content-Type": "application/json",
+    },
   })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    return response.json();
-  })
-  .then(data => {
-    areasLayer.removeLayer(layer); // Remove the layer from the areas layer group
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Network response was not ok")
+      }
+      return response.json()
+    })
+    .then((_data) => {
+      areasLayer.removeLayer(layer) // Remove the layer from the areas layer group
 
-    showFlashMessage('notice', `Area was successfully deleted!`);
-  })
-  .catch(error => {
-    console.error('There was a problem with the delete request:', error);
-  });
+      Flash.show("notice", `Area was successfully deleted!`)
+    })
+    .catch((error) => {
+      console.error("There was a problem with the delete request:", error)
+    })
 }
 
 export function fetchAndDrawAreas(areasLayer, apiKey) {
   // Add popup styles
-  addPopupStyles();
+  addPopupStyles()
 
   fetch(`/api/v1/areas?api_key=${apiKey}`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
-    }
+      "Content-Type": "application/json",
+    },
   })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    return response.json();
-  })
-  .then(data => {
-    // Clear existing areas
-    areasLayer.clearLayers();
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Network response was not ok")
+      }
+      return response.json()
+    })
+    .then((data) => {
+      // Clear existing areas
+      areasLayer.clearLayers()
 
-    data.forEach(area => {
-      if (area.latitude && area.longitude && area.radius && area.name && area.id) {
-        // Convert string coordinates to numbers
-        const lat = parseFloat(area.latitude);
-        const lng = parseFloat(area.longitude);
-        const radius = parseFloat(area.radius);
+      data.forEach((area) => {
+        if (
+          area.latitude &&
+          area.longitude &&
+          area.radius &&
+          area.name &&
+          area.id
+        ) {
+          // Convert string coordinates to numbers
+          const lat = parseFloat(area.latitude)
+          const lng = parseFloat(area.longitude)
+          const radius = parseFloat(area.radius)
 
-        // Create circle with custom pane
-        const circle = L.circle([lat, lng], {
-          radius: radius,
-          color: 'red',
-          fillColor: '#f03',
-          fillOpacity: 0.5,
-          weight: 2,
-          interactive: true,
-          bubblingMouseEvents: false,
-          pane: 'areasPane'
-        });
+          // Create circle with custom pane
+          const circle = L.circle([lat, lng], {
+            radius: radius,
+            color: "red",
+            fillColor: "#f03",
+            fillOpacity: 0.5,
+            weight: 2,
+            interactive: true,
+            bubblingMouseEvents: false,
+            pane: "areasPane",
+          })
 
-        // Bind popup content with proper theme-aware styling
-        const popupContent = `
+          // Bind popup content with proper theme-aware styling
+          const popupContent = `
           <div class="card w-96 bg-base-100 border border-base-300 shadow-xl">
             <div class="card-body">
               <h2 class="card-title text-base-content text-xl">${area.name}</h2>
@@ -316,67 +342,69 @@ export function fetchAndDrawAreas(areasLayer, apiKey) {
               </div>
             </div>
           </div>
-        `;
-        circle.bindPopup(popupContent, {
-          maxWidth: 400,
-          minWidth: 384,
-          className: 'area-info-popup',
-          closeButton: true,
-          closeOnClick: false
-        });
+        `
+          circle.bindPopup(popupContent, {
+            maxWidth: 400,
+            minWidth: 384,
+            className: "area-info-popup",
+            closeButton: true,
+            closeOnClick: false,
+          })
 
-        // Add delete button handler when popup opens
-        circle.on('popupopen', () => {
-          const deleteButton = document.querySelector('.delete-area[data-id="' + area.id + '"]');
-          if (deleteButton) {
-            deleteButton.addEventListener('click', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (confirm('Are you sure you want to delete this area?')) {
-                deleteArea(area.id, areasLayer, circle, apiKey);
-              }
-            });
-          }
-        });
+          // Add delete button handler when popup opens
+          circle.on("popupopen", () => {
+            const deleteButton = document.querySelector(
+              `.delete-area[data-id="${area.id}"]`,
+            )
+            if (deleteButton) {
+              deleteButton.addEventListener("click", (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (confirm("Are you sure you want to delete this area?")) {
+                  deleteArea(area.id, areasLayer, circle, apiKey)
+                }
+              })
+            }
+          })
 
-        // Add to layer group
-        areasLayer.addLayer(circle);
+          // Add to layer group
+          areasLayer.addLayer(circle)
 
-        // Wait for the circle to be added to the DOM
-        setTimeout(() => {
-          const circlePath = circle.getElement();
-          if (circlePath) {
-            // Add CSS styles
-            circlePath.style.cursor = 'pointer';
-            circlePath.style.transition = 'all 0.3s ease';
+          // Wait for the circle to be added to the DOM
+          setTimeout(() => {
+            const circlePath = circle.getElement()
+            if (circlePath) {
+              // Add CSS styles
+              circlePath.style.cursor = "pointer"
+              circlePath.style.transition = "all 0.3s ease"
 
-            // Add direct DOM event listeners
-            circlePath.addEventListener('click', (e) => {
-              e.stopPropagation();
-              circle.openPopup();
-            });
+              // Add direct DOM event listeners
+              circlePath.addEventListener("click", (e) => {
+                e.stopPropagation()
+                circle.openPopup()
+              })
 
-            circlePath.addEventListener('mouseenter', (e) => {
-              e.stopPropagation();
-              circle.setStyle({
-                fillOpacity: 0.8,
-                weight: 3
-              });
-            });
+              circlePath.addEventListener("mouseenter", (e) => {
+                e.stopPropagation()
+                circle.setStyle({
+                  fillOpacity: 0.8,
+                  weight: 3,
+                })
+              })
 
-            circlePath.addEventListener('mouseleave', (e) => {
-              e.stopPropagation();
-              circle.setStyle({
-                fillOpacity: 0.5,
-                weight: 2
-              });
-            });
-          }
-        }, 100);
-      }
-    });
-  })
-  .catch(error => {
-    console.error('There was a problem with the fetch request:', error);
-  });
+              circlePath.addEventListener("mouseleave", (e) => {
+                e.stopPropagation()
+                circle.setStyle({
+                  fillOpacity: 0.5,
+                  weight: 2,
+                })
+              })
+            }
+          }, 100)
+        }
+      })
+    })
+    .catch((error) => {
+      console.error("There was a problem with the fetch request:", error)
+    })
 }

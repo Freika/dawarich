@@ -1,58 +1,65 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
-  devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable, :trackable
+  include UserFamily
+  include Omniauthable
 
-  has_many :tracked_points, class_name: 'Point', dependent: :destroy
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :validatable, :trackable,
+         :omniauthable, omniauth_providers: ::OMNIAUTH_PROVIDERS
+
+  has_many :points, dependent: :destroy
   has_many :imports,        dependent: :destroy
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
-  has_many :points, through: :imports
-  has_many :places, through: :visits
+  has_many :visited_places, through: :visits, source: :place
+  has_many :places,         dependent: :destroy
+  has_many :tags,           dependent: :destroy
   has_many :trips,  dependent: :destroy
   has_many :tracks, dependent: :destroy
+  has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
+  has_many :digests, class_name: 'Users::Digest', dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? }
+  after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? }
+
   before_save :sanitize_input
 
   validates :email, presence: true
-
   validates :reset_password_token, uniqueness: true, allow_nil: true
 
   attribute :admin, :boolean, default: false
+  attribute :points_count, :integer, default: 0
 
-  enum :status, { inactive: 0, active: 1 }
+  scope :active_or_trial, -> { where(status: %i[active trial]) }
+
+  enum :status, { inactive: 0, active: 1, trial: 2 }
 
   def safe_settings
     Users::SafeSettings.new(settings)
   end
 
   def countries_visited
-    stats.pluck(:toponyms).flatten.map { _1['country'] }.uniq.compact
+    Rails.cache.fetch("dawarich/user_#{id}_countries_visited", expires_in: 1.day) do
+      countries_visited_uncached
+    end
   end
 
   def cities_visited
-    stats
-      .where.not(toponyms: nil)
-      .pluck(:toponyms)
-      .flatten
-      .reject { |toponym| toponym['cities'].blank? }
-      .pluck('cities')
-      .flatten
-      .pluck('city')
-      .uniq
-      .compact
+    Rails.cache.fetch("dawarich/user_#{id}_cities_visited", expires_in: 1.day) do
+      cities_visited_uncached
+    end
   end
 
   def total_distance
-    # Distance is stored in meters, convert to user's preferred unit for display
-    total_distance_meters = stats.sum(:distance)
-    Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
+    Rails.cache.fetch("dawarich/user_#{id}_total_distance", expires_in: 1.day) do
+      total_distance_meters = stats.sum(:distance)
+      Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
+    end
   end
 
   def total_countries
@@ -64,11 +71,11 @@ class User < ApplicationRecord
   end
 
   def total_reverse_geocoded_points
-    tracked_points.where.not(reverse_geocoded_at: nil).count
+    StatsQuery.new(self).points_stats[:geocoded]
   end
 
   def total_reverse_geocoded_points_without_data
-    tracked_points.where(geodata: {}).count
+    points.where(geodata: {}).count
   end
 
   def immich_integration_configured?
@@ -102,7 +109,7 @@ class User < ApplicationRecord
   end
 
   def can_subscribe?
-    (active_until.nil? || active_until&.past?) && !DawarichSettings.self_hosted?
+    (trial? || !active_until&.future?) && !DawarichSettings.self_hosted?
   end
 
   def generate_subscription_token
@@ -121,6 +128,80 @@ class User < ApplicationRecord
     Users::ExportDataJob.perform_later(id)
   end
 
+  def trial_state?
+    (points_count || 0).zero? && trial?
+  end
+
+  delegate :timezone, to: :safe_settings
+
+  # Aggregate countries from all stats' toponyms
+  # This is more accurate than raw point queries as it uses processed data
+  def countries_visited_uncached
+    countries = Set.new
+
+    stats.find_each do |stat|
+      toponyms = stat.toponyms
+      next unless toponyms.is_a?(Array)
+
+      toponyms.each do |toponym|
+        next unless toponym.is_a?(Hash)
+
+        countries.add(toponym['country']) if toponym['country'].present?
+      end
+    end
+
+    countries.to_a.sort
+  end
+
+  # Aggregate cities from all stats' toponyms
+  # This respects min_minutes_spent_in_city since toponyms are already filtered
+  def cities_visited_uncached
+    cities = Set.new
+
+    stats.find_each do |stat|
+      toponyms = stat.toponyms
+      next unless toponyms.is_a?(Array)
+
+      toponyms.each do |toponym|
+        next unless toponym.is_a?(Hash)
+        next unless toponym['cities'].is_a?(Array)
+
+        toponym['cities'].each do |city|
+          next unless city.is_a?(Hash)
+
+          cities.add(city['city']) if city['city'].present?
+        end
+      end
+    end
+
+    cities.to_a.sort
+  end
+
+  def home_place_coordinates
+    home_tag = tags.find_by('LOWER(name) = ?', 'home')
+    return nil unless home_tag
+    return nil if home_tag.privacy_zone?
+
+    home_place = home_tag.places.first
+    return nil unless home_place
+
+    [home_place.latitude, home_place.longitude]
+  end
+
+  def supporter?
+    supporter_info[:supporter] == true
+  end
+
+  def supporter_platform
+    supporter_info[:platform]
+  end
+
+  def supporter_info
+    return { supporter: false } if safe_settings.supporter_email.blank?
+
+    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+  end
+
   private
 
   def create_api_key
@@ -130,7 +211,6 @@ class User < ApplicationRecord
   end
 
   def activate
-    # TODO: Remove the `status` column in the future.
     update(status: :active, active_until: 1000.years.from_now)
   end
 
@@ -138,5 +218,25 @@ class User < ApplicationRecord
     settings['immich_url']&.gsub!(%r{/+\z}, '')
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
+  end
+
+  def start_trial
+    update(status: :trial, active_until: 7.days.from_now)
+    schedule_welcome_emails
+
+    Users::TrialWebhookJob.perform_later(id)
+  end
+
+  def schedule_welcome_emails
+    Users::MailerSendingJob.perform_later(id, 'welcome')
+    Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
+    Users::MailerSendingJob.set(wait: 5.days).perform_later(id, 'trial_expires_soon')
+    Users::MailerSendingJob.set(wait: 7.days).perform_later(id, 'trial_expired')
+    schedule_post_trial_emails
+  end
+
+  def schedule_post_trial_emails
+    Users::MailerSendingJob.set(wait: 9.days).perform_later(id, 'post_trial_reminder_early')
+    Users::MailerSendingJob.set(wait: 14.days).perform_later(id, 'post_trial_reminder_late')
   end
 end

@@ -38,17 +38,18 @@
     <%= current_user.total_cities %>
   </div>
   <div class="stat-title">Cities visited</div>
-          <dialog id="cities_visited" class="modal">
-    <div class="modal-box">
-      <h3 class="font-bold text-lg">Cities visited</h3>
-      <p class="py-4">
-        <% current_user.cities_visited.each do |city| %>
-          <p><%= city %></p>
-        <% end %>
-      </p>
-    </div>
-    <form method="dialog" class="modal-backdrop">
-      <button>close</button>
-    </form>
-  </dialog>
+    <dialog id="cities_visited" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">Cities visited</h3>
+        <p class="py-4">
+          <% current_user.cities_visited.each do |city| %>
+            <p><%= city %></p>
+          <% end %>
+        </p>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+  </div>
 </div>

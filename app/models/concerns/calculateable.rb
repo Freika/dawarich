@@ -10,6 +10,7 @@ module Calculateable
 
   def calculate_distance
     calculated_distance_meters = calculate_distance_from_coordinates
+
     self.distance = convert_distance_for_storage(calculated_distance_meters)
   end
 
@@ -32,7 +33,7 @@ module Calculateable
   private
 
   def path_coordinates
-    points.pluck(:lonlat)
+    points.order(:timestamp).pluck(:lonlat)
   end
 
   def build_path_from_coordinates
@@ -46,7 +47,7 @@ module Calculateable
 
   def calculate_distance_from_coordinates
     # Always calculate in meters for consistent storage
-    Point.total_distance(points, :m)
+    Point.total_distance(points.order(:timestamp), :m)
   end
 
   def convert_distance_for_storage(calculated_distance_meters)
@@ -55,7 +56,7 @@ module Calculateable
   end
 
   def track_model?
-    self.class.name == 'Track'
+    instance_of?(Track)
   end
 
   def save_if_changed!

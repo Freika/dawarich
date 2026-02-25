@@ -1,0 +1,191 @@
+<!-- Put this part before </body> tag -->
+<input type="checkbox" id="route_opacity_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Route opacity</h3>
+    <p class="py-4">
+      Value in percent.
+    </p>
+    <p class="py-4">
+      This value is the opacity of the route on the map. The value is in percent, and it can be set from 0 to 100. The default value is 100, which means that the route is fully visible. If you set the value to 0, the route will be invisible.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="route_opacity_info">Close</label>
+</div>
+
+<input type="checkbox" id="fog_of_war_meters_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Fog of War</h3>
+    <p class="py-4">
+      Value in meters.
+    </p>
+    <p class="py-4">
+      Here you can set the radius of the "cleared" area around a point when Fog of War mode is enabled. The area around the point will be cleared, and the rest of the map will be covered with fog. The cleared area will be a circle with the point as the center and the radius as the value you set here.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="fog_of_war_meters_info">Close</label>
+</div>
+
+<input type="checkbox" id="fog_of_war_threshold_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Fog of War Line Threshold</h3>
+    <p class="py-4">
+      Value in seconds.
+    </p>
+    <p class="py-4">
+      Points in the fog are connected by lines. This value is the maximum time between two points to be connected by a line. If the time between two points is greater than this value, they will not be connected.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="fog_of_war_threshold_info">Close</label>
+</div>
+
+<input type="checkbox" id="meters_between_routes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Meters between routes</h3>
+    <p class="py-4">
+      Value in meters.
+    </p>
+    <p class="py-4">
+      Points on the map are connected by lines. This value is the maximum distance between two points to be connected by a line. If the distance between two points is greater than this value, they will not be connected, and the line will not be drawn. This allows to split the route into smaller segments, and to avoid drawing lines between two points that are far from each other.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="meters_between_routes_info">Close</label>
+</div>
+
+
+<input type="checkbox" id="minutes_between_routes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Minutes between routes</h3>
+    <p class="py-4">
+      Value in minutes.
+    </p>
+    <p class="py-4">
+      Points on the map are connected by lines. This value is the maximum time between two points to be connected by a line. If the time between two points is greater than this value, they will not be connected. This allows to split the route into smaller segments, and to avoid drawing lines between two points that are far in time from each other.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="minutes_between_routes_info">Close</label>
+</div>
+
+<input type="checkbox" id="time_threshold_minutes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Visit time threshold</h3>
+    <p class="py-4">
+      Value in minutes.
+    </p>
+    <p class="py-4">
+      This value is the threshold, based on which a visit is calculated. If the time between two consequent points is greater than this value, the visit is considered a new visit. If the time between two points is less than this value, the visit is considered as a continuation of the previous visit.
+    </p>
+    <p class="py-4">
+      For example, if you set this value to 30 minutes, and you have four points with a time difference of 20 minutes between them, they will be considered as one visit. If the time difference between two first points is 20 minutes, and between third and fourth point is 40 minutes, the visit will be split into two visits.
+    </p>
+    <p class="py-4">
+      Default value is 30 minutes.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="time_threshold_minutes_info">Close</label>
+</div>
+
+<input type="checkbox" id="merge_threshold_minutes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Merge threshold</h3>
+    <p class="py-4">
+      Value in minutes.
+    </p>
+    <p class="py-4">
+      This value is the threshold, based on which two visits are merged into one. If the time between two consequent visits is less than this value, the visits are merged into one visit. If the time between two visits is greater than this value, the visits are considered as separate visits.
+    </p>
+    <p class="py-4">
+      For example, if you set this value to 30 minutes, and you have two visits with a time difference of 20 minutes between them, they will be merged into one visit. If the time difference between two visits is 40 minutes, the visits will be considered as separate visits.
+    </p>
+    <p class="py-4">
+      Default value is 15 minutes.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="merge_threshold_minutes_info">Close</label>
+</div>
+
+<input type="checkbox" id="points_rendering_mode_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Points rendering mode</h3>
+    <p class="py-4">
+      To improve map performance, you can set the rendering mode for points to "Simplified".
+    </p>
+    <p class="py-4">
+      In this mode, the points that are closer to each other than 20 seconds or 50 meters are not being rendered. This can significantly improve the performance of the map, especially if you have a lot of points on the map.
+    </p>
+    <p class="py-4">
+      The "Raw" mode will render all points on the map, regardless of the distance in space and time between them.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="points_rendering_mode_info">Close</label>
+</div>
+
+<input type="checkbox" id="speed_colored_routes_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Speed-colored routes</h3>
+    <p class="py-4">
+      This checkbox will color the routes based on the speed of each segment.
+    </p>
+    <p class="py-4">
+      Uncheck this checkbox if you want to disable the speed-colored routes.
+    </p>
+    <p class="py-4">
+      Speed coloring is based on the following color stops:
+
+      <code>
+        0 km/h — green, stationary or walking
+        <br>
+        15 km/h — cyan, jogging
+        <br>
+        30 km/h — magenta, cycling
+        <br>
+        50 km/h — yellow, urban driving
+        <br>
+        100 km/h — orange-red, highway driving
+      </code>
+    </p>
+  </div>
+  <label class="modal-backdrop" for="speed_colored_routes_info">Close</label>
+</div>
+
+<input type="checkbox" id="live_map_enabled_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Live map</h3>
+    <p class="py-4">
+      This checkbox will enable the live map.
+    </p>
+    <p class="py-4">
+      Uncheck this checkbox if you want to disable the live map.
+    </p>
+    <p class="py-4">
+      When the live map is enabled, the map will update in real-time with the latest points.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="live_map_enabled_info">Close</label>
+</div>
+
+<input type="checkbox" id="speed_color_scale_info" class="modal-toggle" />
+<div class="modal focus:z-99" role="dialog">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Speed color scale</h3>
+    <p class="py-4">
+      Value in format <code>speed_kmh:hex_color|...</code>.
+    </p>
+    <p class="py-4">
+      Here you can set a custom color scale for speed colored routes. It uses color stops at specified km/h values and creates a gradient from it. The default value is <code>0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300</code>
+    </p>
+    <p class="py-4">
+      You can also use the 'Edit Colors' button to edit it using an UI.
+    </p>
+  </div>
+  <label class="modal-backdrop" for="speed_color_scale_info">Close</label>
+</div>

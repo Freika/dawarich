@@ -202,7 +202,7 @@ RSpec.describe Countries::IsoCodeMapper do
     it 'returns all country data' do
       countries = described_class.all_countries
       expect(countries).to be_an(Array)
-      expect(countries.size).to be > 190  # There are 195+ countries
+      expect(countries.size).to be > 190 # There are 195+ countries
 
       # Check that each country has required fields
       countries.each do |country|

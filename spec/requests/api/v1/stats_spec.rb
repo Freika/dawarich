@@ -3,22 +3,38 @@
 require 'rails_helper'
 
 RSpec.describe 'Api::V1::Stats', type: :request do
-  let(:user) { create(:user) }
-
   describe 'GET /index' do
-    let!(:user) { create(:user) }
-    let!(:stats_in_2020) { create_list(:stat, 12, year: 2020, user:) }
-    let!(:stats_in_2021) { create_list(:stat, 12, year: 2021, user:) }
-    let!(:points_in_2020) do
+    let(:user) { create(:user) }
+    let(:stats_in_2020) { (1..12).map { |month| create(:stat, year: 2020, month:, user:) } }
+    let(:stats_in_2021) { (1..12).map { |month| create(:stat, year: 2021, month:, user:) } }
+    let(:points_in_2020) do
       (1..85).map do |i|
-        create(:point, :with_geodata, :reverse_geocoded, timestamp: Time.zone.local(2020, 1, 1).to_i + i.hours, user:)
+        create(:point, :with_geodata,
+               timestamp: Time.zone.local(2020, 1, 1).to_i + i.hours,
+               user:,
+               country_name: 'Test Country',
+               city: 'Test City',
+               reverse_geocoded_at: Time.current)
       end
     end
-    let!(:points_in_2021) do
+    let(:points_in_2021) do
       (1..95).map do |i|
-        create(:point, :with_geodata, :reverse_geocoded, timestamp: Time.zone.local(2021, 1, 1).to_i + i.hours, user:)
+        create(:point, :with_geodata,
+               timestamp: Time.zone.local(2021, 1, 1).to_i + i.hours,
+               user:,
+               country_name: 'Test Country',
+               city: 'Test City',
+               reverse_geocoded_at: Time.current)
       end
     end
+
+    before do
+      stats_in_2020
+      stats_in_2021
+      points_in_2020
+      points_in_2021
+    end
+
     let(:expected_json) do
       {
         totalDistanceKm: (stats_in_2020.map(&:distance).sum + stats_in_2021.map(&:distance).sum) / 1000,
@@ -34,17 +50,17 @@ RSpec.describe 'Api::V1::Stats', type: :request do
             totalCitiesVisited: 1,
             monthlyDistanceKm: {
               january: 1,
-              february: 0,
-              march: 0,
-              april: 0,
-              may: 0,
-              june: 0,
-              july: 0,
-              august: 0,
-              september: 0,
-              october: 0,
-              november: 0,
-              december: 0
+              february: 1,
+              march: 1,
+              april: 1,
+              may: 1,
+              june: 1,
+              july: 1,
+              august: 1,
+              september: 1,
+              october: 1,
+              november: 1,
+              december: 1
             }
           },
           {
@@ -54,17 +70,17 @@ RSpec.describe 'Api::V1::Stats', type: :request do
             totalCitiesVisited: 1,
             monthlyDistanceKm: {
               january: 1,
-              february: 0,
-              march: 0,
-              april: 0,
-              may: 0,
-              june: 0,
-              july: 0,
-              august: 0,
-              september: 0,
-              october: 0,
-              november: 0,
-              december: 0
+              february: 1,
+              march: 1,
+              april: 1,
+              may: 1,
+              june: 1,
+              july: 1,
+              august: 1,
+              september: 1,
+              october: 1,
+              november: 1,
+              december: 1
             }
           }
         ]

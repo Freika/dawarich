@@ -7,9 +7,9 @@ class OwnTracks::Params
     @params = params.to_h.deep_symbolize_keys
   end
 
-  # rubocop:disable Metrics/MethodLength
-  # rubocop:disable Metrics/AbcSize
   def call
+    return unless valid_point?
+
     {
       lonlat:             "POINT(#{params[:lon]} #{params[:lat]})",
       battery:            params[:batt],
@@ -28,11 +28,10 @@ class OwnTracks::Params
       battery_status:,
       connection:,
       trigger:,
+      motion_data:        Points::MotionDataExtractor.from_owntracks(params),
       raw_data:           params.deep_stringify_keys
     }
   end
-  # rubocop:enable Metrics/AbcSize
-  # rubocop:enable Metrics/MethodLength
 
   private
 
@@ -83,5 +82,9 @@ class OwnTracks::Params
 
   def owntracks_point?
     params[:topic].present?
+  end
+
+  def valid_point?
+    params[:lon].present? && params[:lat].present? && params[:tst].present?
   end
 end

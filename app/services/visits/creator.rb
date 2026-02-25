@@ -67,24 +67,24 @@ module Visits
           .where('(started_at BETWEEN ? AND ?) OR (ended_at BETWEEN ? AND ?)',
                  start_time, end_time, start_time, end_time)
           .find_each do |visit|
-        # Skip if the visit doesn't have place or area coordinates
-        next unless visit.place || visit.area
+            # Skip if the visit doesn't have place or area coordinates
+            next unless visit.place || visit.area
 
-        # Get coordinates to compare
-        visit_lat = visit.place&.lat || visit.area&.latitude
-        visit_lon = visit.place&.lon || visit.area&.longitude
+            # Get coordinates to compare
+            visit_lat = visit.place&.lat || visit.area&.latitude
+            visit_lon = visit.place&.lon || visit.area&.longitude
 
-        next unless visit_lat && visit_lon
+            next unless visit_lat && visit_lon
 
-        # Calculate distance between centers
-        distance = Geocoder::Calculations.distance_between(
-          [visit_data[:center_lat], visit_data[:center_lon]],
-          [visit_lat, visit_lon],
-          units: :km
-        )
+            # Calculate distance between centers
+            distance = Geocoder::Calculations.distance_between(
+              [visit_data[:center_lat], visit_data[:center_lon]],
+              [visit_lat, visit_lon],
+              units: :km
+            )
 
-        # If this confirmed visit is within 100 meters of the new suggestion
-        return visit if distance <= 0.1
+            # If this confirmed visit is within 100 meters of the new suggestion
+            return visit if distance <= 0.1
       end
 
       nil

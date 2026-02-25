@@ -35,6 +35,16 @@ RSpec.describe '/trips', type: :request do
       get trips_url
       expect(response).to be_successful
     end
+
+    context 'when trip path is not yet calculated' do
+      let!(:trip_without_path) { create(:trip, user:, path: nil) }
+
+      it 'renders a successful response with loading state' do
+        get trips_url
+        expect(response).to be_successful
+        expect(response.body).to include('Trip path is being calculated...')
+      end
+    end
   end
 
   describe 'GET /show' do
@@ -114,7 +124,7 @@ RSpec.describe '/trips', type: :request do
 
       it "renders a response with 422 status (i.e. to display the 'new' template)" do
         post trips_url, params: { trip: invalid_attributes }
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end
@@ -151,7 +161,7 @@ RSpec.describe '/trips', type: :request do
 
       it 'renders a response with 422 status' do
         patch trip_url(trip), params: { trip: invalid_attributes }
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end

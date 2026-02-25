@@ -3,11 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe '/settings/background_jobs', type: :request do
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   context 'when Dawarich is in self-hosted mode' do
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
@@ -18,7 +13,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
         get settings_background_jobs_url
 
         expect(response).to redirect_to(root_url)
-        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
 
@@ -32,7 +27,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
           get settings_background_jobs_url
 
           expect(response).to redirect_to(root_url)
-          expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+          expect(flash[:alert]).to eq('You are not authorized to perform this action.')
         end
 
         context 'when job name is start_immich_import' do
@@ -63,7 +58,9 @@ RSpec.describe '/settings/background_jobs', type: :request do
       end
 
       context 'when user is an admin' do
-        before { sign_in create(:user, :admin) }
+        let(:admin_user) { create(:user, :admin) }
+
+        before { sign_in admin_user }
 
         describe 'GET /index' do
           it 'renders a successful response' do
@@ -90,6 +87,32 @@ RSpec.describe '/settings/background_jobs', type: :request do
             end
           end
         end
+
+        describe 'PATCH /update' do
+          it 'enables visits suggestions' do
+            patch settings_background_jobs_url, params: { settings: { 'visits_suggestions_enabled' => 'true' } }
+
+            expect(response).to redirect_to(settings_background_jobs_url)
+            expect(flash[:notice]).to eq('Settings updated')
+            expect(admin_user.reload.settings['visits_suggestions_enabled']).to eq('true')
+          end
+
+          it 'disables visits suggestions' do
+            patch settings_background_jobs_url, params: { settings: { 'visits_suggestions_enabled' => 'false' } }
+
+            expect(response).to redirect_to(settings_background_jobs_url)
+            expect(admin_user.reload.settings['visits_suggestions_enabled']).to eq('false')
+          end
+        end
+      end
+
+      context 'when non-admin user patches update' do
+        it 'rejects the request' do
+          patch settings_background_jobs_url, params: { settings: { 'visits_suggestions_enabled' => 'true' } }
+
+          expect(response).to redirect_to(root_url)
+          expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+        end
       end
     end
   end
@@ -104,7 +127,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
         get settings_background_jobs_url
 
         expect(response).to redirect_to(root_url)
-        expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
       end
     end
 
@@ -118,7 +141,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
           get settings_background_jobs_url
 
           expect(response).to redirect_to(root_url)
-          expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+          expect(flash[:alert]).to eq('You are not authorized to perform this action.')
         end
 
         context 'when user is an admin' do
@@ -128,7 +151,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
             get settings_background_jobs_url
 
             expect(response).to redirect_to(root_url)
-            expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+            expect(flash[:alert]).to eq('You are not authorized to perform this action.')
           end
         end
       end
@@ -138,7 +161,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
           post settings_background_jobs_url, params: { job_name: 'start_reverse_geocoding' }
 
           expect(response).to redirect_to(root_url)
-          expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+          expect(flash[:alert]).to eq('You are not authorized to perform this action.')
         end
 
         context 'when job name is start_immich_import' do
@@ -146,7 +169,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
             post settings_background_jobs_url, params: { job_name: 'start_immich_import' }
 
             expect(response).to redirect_to(root_url)
-            expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+            expect(flash[:alert]).to eq('You are not authorized to perform this action.')
           end
         end
 
@@ -155,7 +178,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
             post settings_background_jobs_url, params: { job_name: 'start_photoprism_import' }
 
             expect(response).to redirect_to(root_url)
-            expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+            expect(flash[:alert]).to eq('You are not authorized to perform this action.')
           end
         end
 
@@ -166,7 +189,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
             get settings_background_jobs_url
 
             expect(response).to redirect_to(root_url)
-            expect(flash[:notice]).to eq('You are not authorized to perform this action.')
+            expect(flash[:alert]).to eq('You are not authorized to perform this action.')
           end
         end
       end

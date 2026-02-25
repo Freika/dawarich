@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .reminder { background: #dbeafe; border: 1px solid #2563eb; padding: 15px; border-radius: 6px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 Still Interested in Dawarich?</h1>
+    </div>
+    <div class="content">
+      <p>Hi <%= @user.email %>, this is Evgenii from Dawarich.</p>
+
+      <div class="reminder">
+        <p><strong>Your Dawarich trial ended 2 days ago.</strong></p>
+      </div>
+
+      <p>I noticed you haven't subscribed yet, but I don't want you to miss out on the amazing features Dawarich has to offer!</p>
+
+      <p>Your location data is still safely stored and waiting for you for 365 days. With a subscription, you can pick up exactly where you left off.</p>
+
+      <h3>🌟 What you're missing:</h3>
+      <ul>
+        <li>Real-time location tracking and analysis</li>
+        <li>Beautiful, interactive maps with your travel history</li>
+        <li>Detailed statistics and insights about your journeys</li>
+        <li>Data export capabilities for your peace of mind</li>
+      </ul>
+
+      <a href="https://my.dawarich.app?utm_source=email&utm_medium=email&utm_campaign=post_trial_reminder_early&utm_content=subscribe_now" class="cta">Subscribe Now</a>
+
+      <p>Ready to unlock your location story? Subscribe today and continue your journey with Dawarich!</p>
+
+      <p>Questions? Just reply to this email – I'm here to help.</p>
+
+      <p>Best regards,<br>
+      Evgenii from Dawarich</p>
+    </div>
+  </div>
+</body>
+</html>

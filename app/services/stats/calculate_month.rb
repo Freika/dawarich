@@ -26,7 +26,7 @@ class Stats::CalculateMonth
   def start_timestamp = DateTime.new(year, month, 1).to_i
 
   def end_timestamp
-    DateTime.new(year, month, -1).to_i # -1 returns last day of month
+    DateTime.new(year, month, -1).to_i
   end
 
   def update_month_stats(year, month)
@@ -37,20 +37,26 @@ class Stats::CalculateMonth
       stat.assign_attributes(
         daily_distance: distance_by_day,
         distance: distance(distance_by_day),
-        toponyms: toponyms
+        toponyms: toponyms,
+        h3_hex_ids: calculate_h3_hex_ids
       )
-      stat.save
+
+      stat.save!
+
+      Cache::InvalidateUserCaches.new(user.id, year: year).call
     end
   end
 
   def points
     return @points if defined?(@points)
 
+    # Select all needed columns to avoid duplicate queries
+    # Used for both distance calculation and toponyms extraction
     @points = user
-              .tracked_points
+              .points
               .without_raw_data
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:lonlat, :timestamp, :city, :country)
+              .select(:lonlat, :timestamp, :city, :country_name)
               .order(timestamp: :asc)
   end
 
@@ -59,7 +65,11 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    CountriesAndCities.new(points).call
+    CountriesAndCities.new(
+      points,
+      min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
+      max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
+    ).call
   end
 
   def create_stats_update_failed_notification(user, error)
@@ -73,5 +83,9 @@ class Stats::CalculateMonth
 
   def destroy_month_stats(year, month)
     Stat.where(year:, month:, user:).destroy_all
+  end
+
+  def calculate_h3_hex_ids
+    Stats::HexagonCalculator.new(user.id, year, month).call
   end
 end

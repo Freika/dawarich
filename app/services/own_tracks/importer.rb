@@ -2,19 +2,23 @@
 
 class OwnTracks::Importer
   include Imports::Broadcaster
+  include Imports::FileLoader
 
-  attr_reader :import, :user_id
+  attr_reader :import, :user_id, :file_path
 
-  def initialize(import, user_id)
+  def initialize(import, user_id, file_path = nil)
     @import = import
     @user_id = user_id
+    @file_path = file_path
   end
 
   def call
-    file_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
+    file_content = load_file_content
     parsed_data = OwnTracks::RecParser.new(file_content).call
 
     points_data = parsed_data.map do |point|
+      next unless point_valid?(point)
+
       OwnTracks::Params.new(point).call.merge(
         import_id: import.id,
         user_id: user_id,
@@ -29,9 +33,8 @@ class OwnTracks::Importer
   private
 
   def bulk_insert_points(batch)
-    unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+    unique_batch = batch.compact.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],
@@ -39,7 +42,11 @@ class OwnTracks::Importer
       on_duplicate: :skip
     )
     # rubocop:enable Rails/SkipsModelValidations
+
+    broadcast_import_progress(import, unique_batch.size)
   rescue StandardError => e
+    ExceptionReporter.call(e, "Failed to bulk insert OwnTracks points for user #{user_id}: #{e.message}")
+
     create_notification("Failed to process OwnTracks data: #{e.message}")
   end
 
@@ -50,5 +57,11 @@ class OwnTracks::Importer
       content: message,
       kind: :error
     )
+  end
+
+  def point_valid?(point)
+    point['lat'].present? &&
+      point['lon'].present? &&
+      point['tst'].present?
   end
 end

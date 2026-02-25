@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Trips::CalculatePathJob < ApplicationJob
-  queue_as :default
+  queue_as :trips
 
   def perform(trip_id)
     trip = Trip.find(trip_id)
@@ -17,8 +17,8 @@ class Trips::CalculatePathJob < ApplicationJob
   def broadcast_update(trip)
     Turbo::StreamsChannel.broadcast_update_to(
       "trip_#{trip.id}",
-      target: "trip_path",
-      partial: "trips/path",
+      target: 'trip_path',
+      partial: 'trips/path',
       locals: { trip: trip }
     )
   end

@@ -21,8 +21,8 @@ RSpec.describe DataMigrations::SetPointsCountryIdsJob, type: :job do
   end
 
   describe 'queue' do
-    it 'uses the default queue' do
-      expect(described_class.queue_name).to eq('default')
+    it 'uses the data_migrations queue' do
+      expect(described_class.queue_name).to eq('data_migrations')
     end
   end
 end

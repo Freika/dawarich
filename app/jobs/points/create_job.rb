@@ -12,6 +12,7 @@ class Points::CreateJob < ApplicationJob
         unique_by: %i[lonlat timestamp user_id],
         returning: false
       )
+      # rubocop:enable Rails/SkipsModelValidations
     end
   end
 end

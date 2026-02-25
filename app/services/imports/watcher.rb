@@ -54,11 +54,12 @@ class Imports::Watcher
   def source(file_name)
     case file_name.split('.').last.downcase
     when 'json'
-      if file_name.match?(/location-history/i)
+      case file_name
+      when /location-history/i
         :google_phone_takeout
-      elsif file_name.match?(/Records/i)
+      when /Records/i
         :google_records
-      elsif file_name.match?(/\d{4}_\w+/i)
+      when /\d{4}_\w+/i
         :google_semantic_history
       else
         :geojson
@@ -70,12 +71,14 @@ class Imports::Watcher
   end
 
   def mime_type(source)
-    case source.to_sym
+    case source&.to_sym
     when :gpx then 'application/xml'
     when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history
       'application/json'
     when :owntracks
       'application/octet-stream'
+    when nil
+      'application/octet-stream' # fallback MIME type for nil source
     else
       raise UnsupportedSourceError, "Unsupported source: #{source}"
     end

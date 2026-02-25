@@ -1,41 +1,74 @@
 <div class="hero min-h-content bg-base-200">
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
-      <h1 class="text-5xl font-bold">Login now</h1>
-      <p class="py-6">and take control over your location data.</p>
-      <% if ENV['DEMO_ENV'] == 'true' %>
-        <p class="py-6">
-          Demo account: <strong class="text-success">demo@dawarich.app</strong> / password: <strong class="text-success">password</strong>
+      <% if @invitation %>
+        <h1 class="text-5xl font-bold text-base-content">Sign in to join <%= @invitation.family.name %>!</h1>
+        <p class="py-6 text-base-content opacity-70">
+          You've been invited by <strong><%= @invitation.invited_by.email %></strong> to join their family.
+          Sign in to your account to accept the invitation.
         </p>
+        <% if email_password_login_enabled? %>
+          <div class="alert alert-info">
+            <p class="text-sm">
+              Don't have an account yet?
+              <%= link_to "Create one here", new_user_registration_path(invitation_token: @invitation.token), class: "font-semibold underline" %>
+            </p>
+          </div>
+        <% end %>
+      <% else %>
+        <h1 class="text-5xl font-bold text-base-content">Login now</h1>
+        <p class="py-6 text-base-content opacity-70">and take control over your location data.</p>
       <% end %>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
-      <%= form_for(resource, as: resource_name, url: session_path(resource_name), class: 'form-body ') do |f| %>
-        <div class="form-control">
-          <%= f.label :email, class: 'label' do %>
-            <span class="label-text">Email</span>
+      <% if email_password_login_enabled? %>
+        <%= form_for(resource, as: resource_name, url: session_path(resource_name), class: 'form-body', html: { data: { turbo: session[:dawarich_client] == 'ios' ? false : true } }) do |f| %>
+          <%= render "devise/shared/error_messages", resource: resource %>
+
+          <% if @invitation %>
+            <%= hidden_field_tag :invitation_token, params[:invitation_token] %>
           <% end %>
-          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered' %>
+
+          <div class="form-control">
+            <%= f.label :email, class: 'label' do %>
+              <span class="label-text">Email</span>
+            <% end %>
+            <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered' %>
+          </div>
+          <div class="form-control">
+            <%= f.label :password, class: 'label' do %>
+              <span class="label-text">Password</span>
+            <% end %>
+            <%= f.password_field :password, autocomplete: "current-password", class: 'input input-bordered' %>
+            <% if devise_mapping.rememberable? %>
+              <div class="form-control">
+                <label class="label cursor-pointer">
+                  <span class="label-text">Remember me</span>
+                  <%= f.check_box :remember_me, class: 'checkbox checkbox-sm' %>
+                </label>
+              </div>
+            <% end %>
+          </div>
+          <div class="form-control mt-6">
+            <%= f.submit (@invitation ? "Sign in & Accept Invitation" : "Log in"), class: 'btn btn-primary' %>
+          </div>
+        <% end %>
+
+        <% unless @invitation %>
+          <%= render "devise/shared/links" %>
+        <% end %>
+      <% else %>
+        <%# OIDC-only mode: show OIDC login buttons prominently %>
+        <div class="text-center mb-4">
+          <p class="text-base-content opacity-70 mb-4">Sign in using your organization's identity provider</p>
         </div>
-        <div class="form-control">
-          <%= f.label :password, class: 'label' do %>
-            <span class="label-text">Password</span>
-          <% end %>
-          <%= f.password_field :password, autocomplete: "current-password", class: 'input input-bordered' %>
-          <% if devise_mapping.rememberable? %>
-            <div class="form-control">
-              <label class="label cursor-pointer">
-                <span class="label-text">Remember me</span>
-                <%= f.check_box :remember_me, class: 'checkbox checkbox-sm' %>
-              </label>
+        <% if devise_mapping.omniauthable? %>
+          <% resource_class.omniauth_providers.each do |provider| %>
+            <div class="form-control mt-2">
+              <%= button_to "Sign in with #{oauth_provider_name(provider)}", omniauth_authorize_path(resource_name, provider), class: 'btn btn-primary w-full', data: { turbo: false } %>
             </div>
           <% end %>
-        </div>
-        <div class="form-control mt-6">
-          <%= f.submit "Log in", class: 'btn btn-primary' %>
-        </div>
-
-        <%= render "devise/shared/links" %>
+        <% end %>
       <% end %>
     </div>
   </div>

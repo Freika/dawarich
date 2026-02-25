@@ -27,6 +27,16 @@ export DATABASE_NAME
 # Remove pre-existing puma/passenger server.pid
 rm -f "$APP_PATH/tmp/pids/server.pid"
 
+# Sync static assets from image to volume
+# This ensures new and updated files are copied to the persistent volume
+if [ -d "/tmp/public_assets" ]; then
+  echo "📦 Syncing static assets to public volume..."
+  # Remove old compiled assets to prevent stale files from persisting
+  rm -rf $APP_PATH/public/assets
+  cp -r /tmp/public_assets/* $APP_PATH/public/
+  echo "✅ Static assets synced!"
+fi
+
 # Function to check and create a PostgreSQL database
 create_database() {
   local db_name=$1
@@ -66,6 +76,33 @@ bundle exec rake data:migrate
 
 echo "Running seeds..."
 bundle exec rails db:seed
+
+# Optionally start prometheus exporter alongside the web process
+PROMETHEUS_EXPORTER_PID=""
+if [ "$PROMETHEUS_EXPORTER_ENABLED" = "true" ]; then
+  PROM_HOST=${PROMETHEUS_EXPORTER_HOST:-0.0.0.0}
+  PROM_PORT=${PROMETHEUS_EXPORTER_PORT:-9394}
+
+  case "$PROM_HOST" in
+    ""|"0.0.0.0"|"::"|"127.0.0.1"|"localhost"|"ANY")
+      echo "📈 Starting Prometheus exporter on ${PROM_HOST:-0.0.0.0}:${PROM_PORT}..."
+      bundle exec prometheus_exporter -b "${PROM_HOST:-ANY}" -p "${PROM_PORT}" &
+      PROMETHEUS_EXPORTER_PID=$!
+
+      cleanup() {
+        if [ -n "$PROMETHEUS_EXPORTER_PID" ] && kill -0 "$PROMETHEUS_EXPORTER_PID" 2>/dev/null; then
+          echo "🛑 Stopping Prometheus exporter (PID $PROMETHEUS_EXPORTER_PID)..."
+          kill "$PROMETHEUS_EXPORTER_PID"
+          wait "$PROMETHEUS_EXPORTER_PID" 2>/dev/null || true
+        fi
+      }
+      trap cleanup EXIT INT TERM
+      ;;
+    *)
+      echo "ℹ️ PROMETHEUS_EXPORTER_HOST is set to $PROM_HOST, skipping embedded exporter startup."
+      ;;
+  esac
+fi
 
 # run passed commands
 exec bundle exec "${@}"

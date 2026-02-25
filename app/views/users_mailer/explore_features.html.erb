@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #16a34a; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .feature { margin: 15px 0; padding: 15px; background: white; border-left: 4px solid #16a34a; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Explore Dawarich Features</h1>
+    </div>
+    <div class="content">
+      <p>Hi <%= @user.email %>, this is Evgenii from Dawarich.</p>
+
+      <p>You're now 2 days into your Dawarich trial! I hope you're enjoying tracking your location data.</p>
+
+      <p>Here are some powerful features you might want to explore:</p>
+
+      <div class="feature">
+        <h3>✈️ Reliving your travels</h3>
+        <p>Revisit your past journeys with detailed maps and insights.</p>
+      </div>
+
+      <div class="feature">
+        <h3>📊 Statistics & Analytics</h3>
+        <p>View detailed insights about distances traveled and time spent in different locations.</p>
+      </div>
+
+      <div class="feature">
+        <h3>🗺️ Interactive Maps</h3>
+        <p>Visualize your tracks on beautiful maps with different layers and styling options.</p>
+      </div>
+
+      <div class="feature">
+        <h3>📍 Places & Visits</h3>
+        <p>Discover the places you've visited and get automatic visit detection for frequently visited locations.</p>
+      </div>
+
+      <div class="feature">
+        <h3>📤 Data Export</h3>
+        <p>Export your location data in multiple formats (GPX, GeoJSON) for backup or use with other applications.</p>
+      </div>
+
+      <a href="https://my.dawarich.app?utm_source=email&utm_medium=email&utm_campaign=explore_features&utm_content=continue_exploring" class="cta">Continue Exploring</a>
+
+      <p>You have <strong>5 days</strong> left in your trial. Make the most of it!</p>
+
+      <p>Best regards,<br>
+      Evgenii from Dawarich</p>
+    </div>
+  </div>
+</body>
+</html>

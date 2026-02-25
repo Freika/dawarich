@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Areas::Visits::Create do
   describe '#call' do
-    let(:user) { create(:user) }
+    let!(:user) { create(:user) }
     let(:home_area) { create(:area, user:, latitude: 0, longitude: 0, radius: 100) }
     let(:work_area) { create(:area, user:, latitude: 1, longitude: 1, radius: 100) }
 
@@ -34,6 +34,16 @@ RSpec.describe Areas::Visits::Create do
 
       it 'creates visits' do
         expect { create_visits }.to change { Visit.count }.by(2)
+      end
+
+      it 'returns area points ordered by timestamp' do
+        # We rely on this ordering to skip extra in-memory sorting in Visits::Group (see #2119)
+        service = described_class.new(user, [home_area])
+
+        points = service.send(:area_points_for_month, home_area, '2021-01')
+        timestamps = points.map(&:timestamp)
+
+        expect(timestamps).to eq(timestamps.sort)
       end
 
       it 'creates visits with correct points' do

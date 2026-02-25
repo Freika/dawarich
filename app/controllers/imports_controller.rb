@@ -2,18 +2,24 @@
 
 class ImportsController < ApplicationController
   include ActiveStorage::SetCurrent
+  include Sortable
+
+  SORTABLE_COLUMNS = %w[name status created_at processed byte_size].freeze
 
   before_action :authenticate_user!
-  before_action :authenticate_active_user!, only: %i[new create]
   before_action :set_import, only: %i[show edit update destroy]
+  before_action :authorize_import, only: %i[show edit update destroy]
   before_action :validate_points_limit, only: %i[new create]
+
+  after_action :verify_authorized, except: %i[index]
+  after_action :verify_policy_scoped, only: %i[index]
+
   def index
-    @imports =
-      current_user
-      .imports
-      .select(:id, :name, :source, :created_at, :processed, :status)
-      .order(created_at: :desc)
-      .page(params[:page])
+    scope = policy_scope(Import)
+            .select(:id, :name, :source, :created_at, :processed, :status, :error_message)
+            .with_attached_file
+
+    @imports = sorted(scope).page(params[:page])
   end
 
   def show; end
@@ -22,6 +28,8 @@ class ImportsController < ApplicationController
 
   def new
     @import = Import.new
+
+    authorize @import
   end
 
   def update
@@ -31,49 +39,42 @@ class ImportsController < ApplicationController
   end
 
   def create
-    files_params = params.dig(:import, :files)
-    raw_files = Array(files_params).reject(&:blank?)
+    @import = Import.new
 
+    authorize @import
+
+    raw_files = extract_raw_files
     if raw_files.empty?
-      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_entity
-      return
+      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_content and return
     end
 
-    created_imports = []
+    @created_imports = []
+    process_raw_files(raw_files)
 
-    raw_files.each do |item|
-      next if item.is_a?(ActionDispatch::Http::UploadedFile)
-
-      import = create_import_from_signed_id(item)
-      created_imports << import if import.present?
-    end
-
-    if created_imports.any?
-      redirect_to imports_url,
-                  notice: "#{created_imports.size} files are queued to be imported in background",
-                  status: :see_other
-    else
-      redirect_to new_import_path,
+    unless @created_imports.any?
+      redirect_to(new_import_path,
                   alert: 'No valid file references were found. Please upload files using the file selector.',
-                  status: :unprocessable_entity
+                  status: :unprocessable_content) and return
     end
+
+    redirect_to imports_url,
+                notice: "#{@created_imports.size} files are queued to be imported in background",
+                status: :see_other
   rescue StandardError => e
-    if created_imports.present?
-      import_ids = created_imports.map(&:id).compact
-      Import.where(id: import_ids).destroy_all if import_ids.any?
-    end
+    cleanup_failed_imports
+    report_import_error(e)
 
-    Rails.logger.error "Import error: #{e.message}"
-    Rails.logger.error e.backtrace.join("\n")
-    ExceptionReporter.call(e)
-
-    redirect_to new_import_path, alert: e.message, status: :unprocessable_entity
+    redirect_to new_import_path, alert: e.message, status: :unprocessable_content
   end
 
   def destroy
-    Imports::Destroy.new(current_user, @import).call
+    @import.deleting!
+    Imports::DestroyJob.perform_later(@import.id)
 
-    redirect_to imports_url, notice: 'Import was successfully destroyed.', status: :see_other
+    respond_to do |format|
+      format.html { redirect_to imports_url, notice: 'Import is being deleted.', status: :see_other }
+      format.turbo_stream
+    end
   end
 
   private
@@ -82,8 +83,39 @@ class ImportsController < ApplicationController
     @import = Import.find(params[:id])
   end
 
+  def authorize_import
+    authorize @import
+  end
+
   def import_params
-    params.require(:import).permit(:name, :source, files: [])
+    params.require(:import).permit(:name, files: [])
+  end
+
+  def extract_raw_files
+    files_params = params.dig(:import, :files)
+    Array(files_params).reject(&:blank?)
+  end
+
+  def process_raw_files(raw_files)
+    raw_files.each do |item|
+      next if item.is_a?(ActionDispatch::Http::UploadedFile)
+
+      import = create_import_from_signed_id(item)
+      @created_imports << import if import.present?
+    end
+  end
+
+  def cleanup_failed_imports
+    return if @created_imports.blank?
+
+    import_ids = @created_imports.map(&:id).compact
+    Import.where(id: import_ids).destroy_all if import_ids.any?
+  end
+
+  def report_import_error(error)
+    Rails.logger.error "Import error: #{error.message}"
+    Rails.logger.error error.backtrace.join("\n")
+    ExceptionReporter.call(error)
   end
 
   def create_import_from_signed_id(signed_id)
@@ -91,11 +123,8 @@ class ImportsController < ApplicationController
 
     blob = ActiveStorage::Blob.find_signed(signed_id)
 
-    import = current_user.imports.build(
-      name: blob.filename.to_s,
-      source: params[:import][:source]
-    )
-
+    import_name = generate_unique_import_name(blob.filename.to_s)
+    import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
 
     import.save!
@@ -103,9 +132,21 @@ class ImportsController < ApplicationController
     import
   end
 
+  def generate_unique_import_name(original_name)
+    return original_name unless current_user.imports.exists?(name: original_name)
+
+    # Extract filename and extension
+    basename = File.basename(original_name, File.extname(original_name))
+    extension = File.extname(original_name)
+
+    # Add current datetime
+    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
+    "#{basename}_#{timestamp}#{extension}"
+  end
+
   def validate_points_limit
     limit_exceeded = PointsLimitExceeded.new(current_user).call
 
-    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_entity if limit_exceeded
+    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_content if limit_exceeded
   end
 end

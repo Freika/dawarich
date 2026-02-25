@@ -5,15 +5,23 @@ class StatsController < ApplicationController
   before_action :authenticate_active_user!, only: %i[update update_all]
 
   def index
-    @stats = current_user.stats.group_by(&:year).transform_values { |stats| stats.sort_by(&:updated_at).reverse }.sort.reverse
-    @points_total = current_user.tracked_points.count
-    @points_reverse_geocoded = current_user.total_reverse_geocoded_points
-    @points_reverse_geocoded_without_data = current_user.total_reverse_geocoded_points_without_data
+    @stats = build_stats
+    assign_points_statistics
+    @year_distances = precompute_year_distances
   end
 
   def show
     @year = params[:year].to_i
     @stats = current_user.stats.where(year: @year).order(:month)
+    @year_distances = { @year => Stat.year_distance(@year, current_user) }
+  end
+
+  def month
+    @year = params[:year].to_i
+    @month = params[:month].to_i
+    @stat = current_user.stats.find_by(year: @year, month: @month)
+    @previous_stat = current_user.stats.find_by(year: @year, month: @month - 1) if @month > 1
+    @average_distance_this_year = current_user.stats.where(year: @year).average(:distance).to_i / 1000
   end
 
   def update
@@ -42,5 +50,42 @@ class StatsController < ApplicationController
     end
 
     redirect_to stats_path, notice: 'Stats are being updated', status: :see_other
+  end
+
+  private
+
+  def assign_points_statistics
+    points_stats = ::StatsQuery.new(current_user).points_stats
+
+    @points_total = points_stats[:total]
+    @points_reverse_geocoded = points_stats[:geocoded]
+    @points_reverse_geocoded_without_data = points_stats[:without_data]
+  end
+
+  def precompute_year_distances
+    year_distances = {}
+
+    @stats.each do |year, stats|
+      stats_by_month = stats.index_by(&:month)
+
+      year_distances[year] = (1..12).map do |month|
+        month_name = Date::MONTHNAMES[month]
+        distance = stats_by_month[month]&.distance || 0
+
+        [month_name, distance]
+      end
+    end
+
+    year_distances
+  end
+
+  def build_stats
+    columns = %i[id year month distance updated_at user_id]
+    columns << :toponyms if DawarichSettings.reverse_geocoding_enabled?
+
+    current_user.stats
+                .select(columns)
+                .order(year: :desc, updated_at: :desc)
+                .group_by(&:year)
   end
 end

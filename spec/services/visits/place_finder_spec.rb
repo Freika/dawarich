@@ -20,7 +20,9 @@ RSpec.describe Visits::PlaceFinder do
     end
 
     context 'when an existing place is found' do
-      let!(:existing_place) { create(:place, latitude: latitude, longitude: longitude) }
+      let!(:existing_place) do
+        create(:place, latitude: latitude, longitude: longitude, lonlat: "POINT(#{longitude} #{latitude})")
+      end
 
       it 'returns the existing place as main_place' do
         result = subject.find_or_create_place(visit_data)
@@ -37,16 +39,18 @@ RSpec.describe Visits::PlaceFinder do
       end
 
       it 'finds an existing place by name within search radius' do
+        # Place is outside the global proximity radius (50m) but within the name search radius (100m)
+        offset = 0.0006 # ~67m offset
         similar_named_place = create(:place,
                                      name: 'Test Place',
-                                     latitude: latitude + 0.0001,
-                                     longitude: longitude + 0.0001)
-
-        allow(subject).to receive(:find_existing_place).and_return(similar_named_place)
+                                     latitude: latitude + offset,
+                                     longitude: longitude + offset,
+                                     lonlat: "POINT(#{longitude + offset} #{latitude + offset})")
 
         modified_visit_data = visit_data.merge(
-          center_lat: latitude + 0.0002,
-          center_lon: longitude + 0.0002
+          suggested_name: 'Test Place',
+          center_lat: latitude + offset + 0.0001,
+          center_lon: longitude + offset + 0.0001
         )
 
         result = subject.find_or_create_place(modified_visit_data)
@@ -58,8 +62,7 @@ RSpec.describe Visits::PlaceFinder do
     context 'with places from points data' do
       let(:point_with_geodata) do
         build_stubbed(:point,
-                      latitude: latitude,
-                      longitude: longitude,
+                      lonlat: "POINT(#{longitude} #{latitude})",
                       geodata: {
                         'properties' => {
                           'name' => 'POI from Point',
@@ -75,18 +78,13 @@ RSpec.describe Visits::PlaceFinder do
 
       before do
         allow(Geocoder).to receive(:search).and_return([])
-        allow(subject).to receive(:reverse_geocoded_places).and_return([])
       end
 
       it 'extracts and creates places from point geodata' do
-        allow(subject).to receive(:create_place_from_point).and_call_original
-
         expect do
           result = subject.find_or_create_place(visit_data_with_points)
           expect(result[:main_place].name).to include('POI from Point')
         end.to change(Place, :count).by(1)
-
-        expect(subject).to have_received(:create_place_from_point)
       end
     end
 
@@ -131,7 +129,7 @@ RSpec.describe Visits::PlaceFinder do
           expect(result[:main_place].name).to include('Test Location')
         end.to change(Place, :count).by(2)
 
-        place = Place.find_by_name('Test Location, Test Street, Test City')
+        place = Place.find_by(name: 'Test Location, Test Street, Test City')
 
         expect(place.city).to eq('Test City')
         expect(place.country).to eq('Test Country')
@@ -202,9 +200,7 @@ RSpec.describe Visits::PlaceFinder do
       end
 
       it 'may include places with the same name' do
-        dup_place = create(:place, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
-
-        allow(subject).to receive(:place_name_exists?).and_return(false)
+        create(:place, name: 'Place 1', latitude: latitude + 0.0002, longitude: longitude + 0.0002)
 
         result = subject.find_or_create_place(visit_data)
 
@@ -231,13 +227,37 @@ RSpec.describe Visits::PlaceFinder do
       end
 
       it 'gracefully handles errors in place creation' do
-        allow(subject).to receive(:create_place_from_api_result).and_call_original
-
         result = subject.find_or_create_place(visit_data)
 
         # Should create the default place
         expect(result[:main_place].name).to eq('Test Place')
         expect(result[:main_place].source).to eq('manual')
+      end
+    end
+
+    context 'when Geocoder raises a network error' do
+      before do
+        allow(Geocoder).to receive(:search).and_raise(EOFError.new('end of file reached'))
+        allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:error)
+      end
+
+      it 'handles the error gracefully and continues' do
+        result = subject.find_or_create_place(visit_data)
+
+        # Should still return a result with a default place
+        expect(result[:main_place]).to be_a(Place)
+        expect(result[:main_place].name).to eq('Test Place')
+      end
+
+      it 'logs the error' do
+        subject.find_or_create_place(visit_data)
+        expect(Rails.logger).to have_received(:error).with(/Reverse geocoding error in PlaceFinder/)
+      end
+
+      it 'reports the exception' do
+        subject.find_or_create_place(visit_data)
+        expect(ExceptionReporter).to have_received(:call)
       end
     end
   end

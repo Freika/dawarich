@@ -11,9 +11,9 @@ RSpec.describe DataMigrations::StartSettingsPointsCountryIdsJob, type: :job do
     it 'enqueues SetPointsCountryIdsJob for points without country_id' do
       expect { described_class.perform_now }.to \
         have_enqueued_job(DataMigrations::SetPointsCountryIdsJob)
-          .with(point_without_country1.id)
-          .and have_enqueued_job(DataMigrations::SetPointsCountryIdsJob)
-          .with(point_without_country2.id)
+        .with(point_without_country1.id)
+        .and have_enqueued_job(DataMigrations::SetPointsCountryIdsJob)
+        .with(point_without_country2.id)
     end
 
     it 'does not enqueue jobs for points with country_id' do
@@ -21,13 +21,13 @@ RSpec.describe DataMigrations::StartSettingsPointsCountryIdsJob, type: :job do
 
       expect { described_class.perform_now }.not_to \
         have_enqueued_job(DataMigrations::SetPointsCountryIdsJob)
-          .with(point_with_country.id)
+        .with(point_with_country.id)
     end
   end
 
   describe 'queue' do
-    it 'uses the default queue' do
-      expect(described_class.queue_name).to eq('default')
+    it 'uses the data_migrations queue' do
+      expect(described_class.queue_name).to eq('data_migrations')
     end
   end
 end

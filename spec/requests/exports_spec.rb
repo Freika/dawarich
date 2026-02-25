@@ -6,11 +6,6 @@ RSpec.describe '/exports', type: :request do
   let(:user) { create(:user) }
   let(:params) { { start_at: 1.day.ago, end_at: Time.zone.now } }
 
-  before do
-    stub_request(:any, 'https://api.github.com/repos/Freika/dawarich/tags')
-      .to_return(status: 200, body: '[{"name": "1.0.0"}]', headers: {})
-  end
-
   describe 'GET /index' do
     context 'when user is not logged in' do
       it 'redirects to the login page' do
@@ -70,7 +65,7 @@ RSpec.describe '/exports', type: :request do
       it 'renders a response with 422 status (i.e. to display the "new" template)' do
         post(exports_url, params:)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end

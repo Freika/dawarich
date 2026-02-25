@@ -39,21 +39,23 @@ RSpec.describe Tracks::TrackBuilder do
         ]
       end
 
+      let(:pre_calculated_distance) { 1500 } # 1500 meters
+
       it 'creates a track with correct attributes' do
-        track = builder.create_track_from_points(points)
+        track = builder.create_track_from_points(points, pre_calculated_distance)
 
         expect(track).to be_persisted
         expect(track.user).to eq(user)
         expect(track.start_at).to be_within(1.second).of(Time.zone.at(points.first.timestamp))
         expect(track.end_at).to be_within(1.second).of(Time.zone.at(points.last.timestamp))
-        expect(track.distance).to be > 0
-        expect(track.duration).to eq(90.minutes.to_i)
+        expect(track.distance).to eq(1500)
+        expect(track.duration).to be_within(3.seconds).of(90.minutes.to_i)
         expect(track.avg_speed).to be > 0
         expect(track.original_path).to be_present
       end
 
       it 'calculates elevation statistics correctly' do
-        track = builder.create_track_from_points(points)
+        track = builder.create_track_from_points(points, pre_calculated_distance)
 
         expect(track.elevation_gain).to eq(10) # 110 - 100
         expect(track.elevation_loss).to eq(5)  # 110 - 105
@@ -62,7 +64,7 @@ RSpec.describe Tracks::TrackBuilder do
       end
 
       it 'associates points with the track' do
-        track = builder.create_track_from_points(points)
+        track = builder.create_track_from_points(points, pre_calculated_distance)
 
         points.each(&:reload)
         expect(points.map(&:track)).to all(eq(track))
@@ -73,12 +75,12 @@ RSpec.describe Tracks::TrackBuilder do
       let(:single_point) { [create(:point, user: user)] }
 
       it 'returns nil for single point' do
-        result = builder.create_track_from_points(single_point)
+        result = builder.create_track_from_points(single_point, 1000)
         expect(result).to be_nil
       end
 
       it 'returns nil for empty array' do
-        result = builder.create_track_from_points([])
+        result = builder.create_track_from_points([], 1000)
         expect(result).to be_nil
       end
     end
@@ -100,7 +102,7 @@ RSpec.describe Tracks::TrackBuilder do
           /Failed to create track for user #{user.id}/
         )
 
-        result = builder.create_track_from_points(points)
+        result = builder.create_track_from_points(points, 1000)
         expect(result).to be_nil
       end
     end
@@ -116,36 +118,11 @@ RSpec.describe Tracks::TrackBuilder do
 
     it 'builds path using Tracks::BuildPath service' do
       expect(Tracks::BuildPath).to receive(:new).with(
-        points.map(&:lonlat)
+        points
       ).and_call_original
 
       result = builder.build_path(points)
-      expect(result).to respond_to(:as_text) # RGeo geometry object
-    end
-  end
-
-  describe '#calculate_track_distance' do
-    let(:points) do
-      [
-        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)'),
-        create(:point, user: user, lonlat: 'POINT(-74.0070 40.7130)')
-      ]
-    end
-
-    before do
-      # Mock Point.total_distance to return distance in meters
-      allow(Point).to receive(:total_distance).and_return(1500) # 1500 meters
-    end
-
-    it 'stores distance in meters regardless of user unit preference' do
-      result = builder.calculate_track_distance(points)
-      expect(result).to eq(1500) # Always stored as meters
-    end
-
-    it 'rounds distance to nearest meter' do
-      allow(Point).to receive(:total_distance).and_return(1500.7)
-      result = builder.calculate_track_distance(points)
-      expect(result).to eq(1501) # Rounded to nearest meter
+      expect(result).to be_a(RGeo::Geographic::SphericalLineStringImpl)
     end
   end
 
@@ -246,11 +223,11 @@ RSpec.describe Tracks::TrackBuilder do
       it 'returns default elevation stats' do
         result = builder.calculate_elevation_stats(points)
         expect(result).to eq({
-          gain: 0,
+                               gain: 0,
           loss: 0,
           max: 0,
           min: 0
-        })
+                             })
       end
     end
 
@@ -277,11 +254,11 @@ RSpec.describe Tracks::TrackBuilder do
     it 'returns hash with zero values' do
       result = builder.default_elevation_stats
       expect(result).to eq({
-        gain: 0,
+                             gain: 0,
         loss: 0,
         max: 0,
         min: 0
-      })
+                           })
     end
   end
 
@@ -297,7 +274,7 @@ RSpec.describe Tracks::TrackBuilder do
       invalid_builder = invalid_class.new
       expect { invalid_builder.send(:user) }.to raise_error(
         NotImplementedError,
-        "Including class must implement user method"
+        'Including class must implement user method'
       )
     end
   end
@@ -312,14 +289,16 @@ RSpec.describe Tracks::TrackBuilder do
       ]
     end
 
+    let(:pre_calculated_distance) { 2000 }
+
     it 'creates a complete track end-to-end' do
-      expect { builder.create_track_from_points(points) }.to change(Track, :count).by(1)
+      expect { builder.create_track_from_points(points, pre_calculated_distance) }.to change(Track, :count).by(1)
 
       track = Track.last
       expect(track.user).to eq(user)
       expect(track.points).to match_array(points)
-      expect(track.distance).to be > 0
-      expect(track.duration).to eq(1.hour.to_i)
+      expect(track.distance).to eq(2000)
+      expect(track.duration).to be_within(1.second).of(1.hour.to_i)
       expect(track.elevation_gain).to eq(20)
     end
   end

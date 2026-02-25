@@ -14,7 +14,7 @@
  *= require_self
  */
 
- .emoji-icon {
+.emoji-icon {
   font-size: 36px; /* Adjust size as needed */
   text-align: center;
   line-height: 36px; /* Same as font-size for perfect centering */
@@ -27,9 +27,13 @@
 /* Style for the settings panel */
 .leaflet-settings-panel {
   background-color: white;
-  padding: 10px;
-  border: 1px solid #ccc;
+  border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  position: absolute !important;
+  top: 10px !important;
+  left: 60px !important;
+  transform: none;
+  z-index: 1000;
 }
 
 .leaflet-settings-panel label {
@@ -76,7 +80,7 @@
 .leaflet-loading-control {
   padding: 5px;
   border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
   margin: 10px;
   width: 32px;
   height: 32px;
@@ -92,12 +96,72 @@
 }
 
 .loading-spinner::before {
-  content: '🔵';
+  content: "";
   font-size: 18px;
   animation: spinner 1s linear infinite;
 }
 
 .loading-spinner.done::before {
-  content: '✅';
+  content: "✅";
   animation: none;
+}
+
+/* Flash message animations */
+@keyframes slideInFromRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Family feature specific styles */
+.family-member-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.family-member-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.invitation-card {
+  border-left: 4px solid #f59e0b;
+}
+
+.family-invitation-form {
+  max-width: 500px;
+}
+
+/* Loading states */
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
 }

@@ -6,17 +6,18 @@
     <%= link_to "New import", new_import_path, class: "rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium" %>
 
     <% if current_user.safe_settings.immich_url && current_user.safe_settings.immich_api_key %>
-      <%= link_to 'Import Immich data', settings_background_jobs_path(job_name: 'start_immich_import'), method: :post, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium' %>
+      <%= link_to 'Import Immich data', settings_background_jobs_path(job_name: 'start_immich_import'), method: :post, data: { turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium' %>
     <% else %>
       <a href='' class="rounded-lg py-3 px-5 bg-blue-900 text-gray-500 block font-medium tooltip cursor-not-allowed" data-tip="You need to provide your Immich instance data in the Settings">Import Immich data</a>
     <% end %>
     <% if current_user.safe_settings.photoprism_url && current_user.safe_settings.photoprism_api_key %>
-      <%= link_to 'Import Photoprism data', settings_background_jobs_path(job_name: 'start_photoprism_import'), method: :post, data: { confirm: 'Are you sure?', turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium' %>
+      <%= link_to 'Import Photoprism data', settings_background_jobs_path(job_name: 'start_photoprism_import'), method: :post, data: { turbo_confirm: 'Are you sure?', turbo_method: :post }, class: 'rounded-lg py-3 px-5 bg-blue-600 text-white block font-medium' %>
     <% else %>
       <a href='' class="rounded-lg py-3 px-5 bg-blue-900 text-gray-500 block font-medium tooltip cursor-not-allowed" data-tip="You need to provide your Photoprism instance data in the Settings">Import Photoprism data</a>
     <% end %>
   </div>
 
+  <%= turbo_stream_from current_user, :imports %>
   <div id="imports" class="min-w-full">
     <% if @imports.empty? %>
       <div class="hero min-h-80 bg-base-200 my-5">
@@ -31,19 +32,17 @@
       </div>
     <% else %>
       <div class="flex justify-center my-5">
-        <div class='flex'>
-          <%= paginate @imports %>
-        </div>
+        <%= paginate @imports %>
       </div>
       <div class="overflow-x-auto">
-        <table class="table overflow-x-auto">
+        <table class="table table-zebra overflow-x-auto">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>File size</th>
-              <th>Imported points</th>
-              <th>Status</th>
-              <th>Created at</th>
+              <th><%= sortable_column 'Name', :name, :imports_path %></th>
+              <th><%= sortable_column 'File size', :byte_size, :imports_path %></th>
+              <th><%= sortable_column 'Imported points', :processed, :imports_path %></th>
+              <th><%= sortable_column 'Status', :status, :imports_path %></th>
+              <th><%= sortable_column 'Created at', :created_at, :imports_path %></th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -53,38 +52,13 @@
             data-user-id="<%= current_user.id %>"
           >
             <% @imports.each do |import| %>
-              <tr data-import-id="<%= import.id %>"
-                  id="import-<%= import.id %>"
-                  data-points-total="<%= import.processed %>">
-                <td>
-                  <%= link_to import.name, import, class: 'underline hover:no-underline' %>
-                  (<%= import.source %>)
-                  &nbsp;
-                  <%= link_to '🗺️', map_path(import_id: import.id) %>
-                  &nbsp;
-                  <%= link_to '📋', points_path(import_id: import.id) %>
-                </td>
-                <td><%= number_to_human_size(import.file&.byte_size) || 'N/A' %></td>
-                <td data-points-count>
-                  <%= number_with_delimiter import.processed %>
-                </td>
-                <td data-status-display><%= import.status %></td>
-                <td><%= human_datetime(import.created_at) %></td>
-                <td class="whitespace-nowrap">
-                  <% if import.file.present? %>
-                    <%= link_to 'Download', rails_blob_path(import.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: import.name %>
-                  <% end %>
-                  <%= link_to 'Delete', import, data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
-                </td>
-              </tr>
+              <%= render 'imports/table_row', import: import %>
             <% end %>
           </tbody>
         </table>
       </div>
       <div class="flex justify-center my-5">
-        <div class='flex'>
-          <%= paginate @imports %>
-        </div>
+        <%= paginate @imports %>
       </div>
     <% end %>
   </div>

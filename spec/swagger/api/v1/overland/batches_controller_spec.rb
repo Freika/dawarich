@@ -94,7 +94,8 @@ describe 'Overland Batches API', type: :request do
                     activity: {
                       type: :string,
                       example: 'unknown',
-                      description: 'Activity type, for example: automotive_navigation, fitness, other_navigation or other'
+                      description: 'Activity type, e.g.: automotive_navigation, fitness, ' \
+                                   'other_navigation or other'
                     },
                     desired_accuracy: {
                       type: :number,
@@ -159,6 +160,8 @@ describe 'Overland Batches API', type: :request do
         let(:params) { json }
         let(:locations) { params['locations'] }
         let(:api_key) { create(:user).api_key }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

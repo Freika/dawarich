@@ -1,0 +1,1139 @@
+<div class="map-control-panel" data-maps--maplibre-target="settingsPanel" data-controller="map-panel">
+  <!-- Vertical Icon Tabs (Left Side) -->
+  <div class="panel-tabs">
+    <button class="tab-btn active"
+            data-action="click->map-panel#switchTab"
+            data-tab="layers"
+            data-map-panel-target="tabButton"
+            title="Map Layers">
+      <%= icon 'layer' %>
+    </button>
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
+            data-tab="search"
+            data-map-panel-target="tabButton"
+            title="Search">
+      <%= icon 'search' %>
+    </button>
+
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
+            data-tab="timeline-feed"
+            data-map-panel-target="tabButton"
+            title="Timeline">
+      <%= icon 'calendar-clock' %>
+    </button>
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
+            data-tab="tools"
+            data-map-panel-target="tabButton"
+            title="Tools">
+      <%= icon 'pocket-knife' %>
+    </button>
+
+    <button class="tab-btn"
+            data-action="click->map-panel#switchTab"
+            data-tab="settings"
+            data-map-panel-target="tabButton"
+            title="Settings">
+      <%= icon 'settings' %>
+    </button>
+
+    <% if !DawarichSettings.self_hosted? %>
+      <button class="tab-btn"
+              data-action="click->map-panel#switchTab"
+              data-tab="links"
+              data-map-panel-target="tabButton"
+              title="Links">
+        <%= icon 'info' %>
+      </button>
+    <% end %>
+  </div>
+
+  <!-- Panel Content -->
+  <div class="panel-content">
+    <!-- Panel Header -->
+    <div class="panel-header">
+      <h3 class="panel-title" data-map-panel-target="title">Layers</h3>
+      <button class="btn btn-ghost btn-sm btn-circle"
+              data-action="click->maps--maplibre#toggleSettings"
+              title="Close panel">
+        <%= icon 'x' %>
+      </button>
+    </div>
+
+    <!-- Panel Body -->
+    <div class="panel-body">
+      <!-- Search Tab -->
+      <div class="tab-content" data-tab-content="search" data-map-panel-target="tabContent">
+        <div class="form-control w-full">
+          <label class="label">
+            <span class="label-text">Search for a place</span>
+          </label>
+          <div class="relative">
+            <input type="text"
+                   placeholder="Enter name of a place"
+                   class="input input-bordered w-full"
+                   data-maps--maplibre-target="searchInput"
+                   autocomplete="off" />
+            <!-- Search Results -->
+            <div class="absolute z-50 w-full mt-1 bg-base-100 rounded-lg shadow-lg border border-base-300 hidden max-height:400px;  overflow-y-auto"
+                 data-maps--maplibre-target="searchResults">
+              <!-- Results will be populated by SearchManager -->
+            </div>
+          </div>
+          <p class="text-xs text-base-content/60 mt-2">
+            Search for a location to find places you visited
+          </p>
+        </div>
+      </div>
+
+      <!-- Layers Tab -->
+      <div class="tab-content active" data-tab-content="layers" data-map-panel-target="tabContent">
+        <div class="space-y-4">
+          <!-- Points Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="pointsToggle"
+                     data-action="change->maps--maplibre#togglePoints" />
+              <span class="label-text font-medium">Points</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show individual location points</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Routes Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="routesToggle"
+                     data-action="change->maps--maplibre#toggleRoutes" />
+              <span class="label-text font-medium">Routes</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show connected route lines</p>
+          </div>
+
+          <!-- Speed-Colored Routes Options (conditionally shown) -->
+          <div class="ml-14 space-y-3" data-maps--maplibre-target="routesOptions" style="display: none;">
+            <div class="form-control">
+              <label class="label cursor-pointer py-2">
+                <span class="label-text text-sm">Color by speed</span>
+                <input type="checkbox"
+                       class="toggle toggle-sm toggle-primary"
+                       data-maps--maplibre-target="speedColoredToggle"
+                       data-action="change->maps--maplibre#toggleSpeedColoredRoutes" />
+              </label>
+            </div>
+
+            <!-- Speed Color Scale Editor (shown when speed colors enabled) -->
+            <div class="hidden" data-maps--maplibre-target="speedColorScaleContainer">
+              <button type="button"
+                      class="btn btn-sm btn-outline w-full"
+                      data-action="click->maps--maplibre#openSpeedColorEditor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+                Edit Color Gradient
+              </button>
+              <input type="hidden" data-maps--maplibre-target="speedColorScaleInput" value="" />
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Tracks Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="tracksToggle"
+                     data-action="change->maps--maplibre#toggleTracks" />
+              <span class="label-text font-medium">Tracks</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show backend-calculated tracks</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Heatmap Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="heatmapToggle"
+                     data-action="change->maps--maplibre#toggleHeatmap" />
+              <span class="label-text font-medium">Heatmap</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show density heatmap</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Visits Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="visitsToggle"
+                     data-action="change->maps--maplibre#toggleVisits" />
+              <span class="label-text font-medium">Visits</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show detected area visits</p>
+          </div>
+
+          <!-- Visits Search (conditionally shown) -->
+          <div class="ml-14 space-y-2" data-maps--maplibre-target="visitsSearch" style="display: none;">
+            <input type="text"
+                   id="visits-search"
+                   placeholder="Filter by name..."
+                   class="input input-sm input-bordered w-full"
+                   data-action="input->maps--maplibre#searchVisits" />
+
+            <select class="select select-bordered w-full"
+                    data-action="change->maps--maplibre#filterVisits">
+              <option value="all">All Visits</option>
+              <option value="confirmed">Confirmed Only</option>
+              <option value="suggested">Suggested Only</option>
+            </select>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Places Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="placesToggle"
+                     data-action="change->maps--maplibre#togglePlaces" />
+              <span class="label-text font-medium">Places</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show your saved places</p>
+          </div>
+
+          <!-- Places Tags (conditionally shown) -->
+          <div class="ml-14 space-y-2" data-maps--maplibre-target="placesFilters" style="display: none;">
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-2">
+                <input type="checkbox"
+                       class="toggle toggle-sm"
+                       data-maps--maplibre-target="enableAllPlaceTagsToggle"
+                       data-action="change->maps--maplibre#toggleAllPlaceTags">
+                <span class="label-text text-sm">Enable All Tags</span>
+              </label>
+            </div>
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text text-sm">Filter by Tags</span>
+              </label>
+              <div class="flex flex-wrap gap-2">
+                <!-- Untagged option -->
+                <label class="cursor-pointer">
+                  <input type="checkbox"
+                         name="place_tag_ids[]"
+                         value="untagged"
+                         class="checkbox checkbox-xs hidden peer"
+                         data-action="change->maps--maplibre#filterPlacesByTags">
+                  <span class="badge badge-sm badge-outline transition-all peer-checked:scale-105"
+                        style="border-color: #94a3b8; color: #94a3b8;"
+                        data-checked-style="background-color: #94a3b8; color: white;">
+                    🏷️ Untagged
+                  </span>
+                </label>
+
+                <% current_user.tags.ordered.each do |tag| %>
+                  <label class="cursor-pointer">
+                    <input type="checkbox"
+                           name="place_tag_ids[]"
+                           value="<%= tag.id %>"
+                           class="checkbox checkbox-xs hidden peer"
+                           data-action="change->maps--maplibre#filterPlacesByTags">
+                    <span class="badge badge-sm badge-outline transition-all peer-checked:scale-105"
+                          style="border-color: <%= tag.color %>; color: <%= tag.color %>;"
+                          data-checked-style="background-color: <%= tag.color %>; color: white;">
+                      <%= tag.icon %> #<%= tag.name %>
+                    </span>
+                  </label>
+                <% end %>
+              </div>
+              <label class="label">
+                <span class="label-text-alt">Click tags to filter places</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Photos Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="photosToggle"
+                     data-action="change->maps--maplibre#togglePhotos" />
+              <span class="label-text font-medium">Photos</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show geotagged photos</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Areas Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="areasToggle"
+                     data-action="change->maps--maplibre#toggleAreas" />
+              <span class="label-text font-medium">Areas</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show defined areas</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Fog of War Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="fogToggle"
+                     data-action="change->maps--maplibre#toggleFog" />
+              <span class="label-text font-medium">Fog of War</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show explored areas</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Scratch Map Layer -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="scratchToggle"
+                     data-action="change->maps--maplibre#toggleScratch" />
+              <span class="label-text font-medium">Scratch Map</span>
+            </label>
+            <p class="text-sm text-base-content/60 ml-14">Show scratched countries</p>
+          </div>
+
+          <% if DawarichSettings.family_feature_enabled? %>
+            <div class="divider"></div>
+
+            <!-- Family Members Layer -->
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-3">
+                <input type="checkbox"
+                       class="toggle toggle-primary"
+                       data-maps--maplibre-target="familyToggle"
+                       data-action="change->maps--maplibre#toggleFamily" />
+                <span class="label-text font-medium">Family Members</span>
+              </label>
+              <p class="text-sm text-base-content/60 ml-14">Show family member locations</p>
+            </div>
+
+            <!-- Family Members List (conditionally shown) -->
+            <div class="ml-14 space-y-2" data-maps--maplibre-target="familyMembersList" style="display: none;">
+              <div class="text-xs text-base-content/60 mb-2">
+                Click to center on member
+              </div>
+              <div data-maps--maplibre-target="familyMembersContainer" class="space-y-1">
+                <!-- Family members will be dynamically inserted here -->
+              </div>
+            </div>
+          <% end %>
+
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div class="tab-content" data-tab-content="settings" data-map-panel-target="tabContent">
+        <form data-action="submit->maps--maplibre#updateAdvancedSettings" class="space-y-4">
+          <!-- Map Style -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Map Style</span>
+            </label>
+            <select class="select select-bordered w-full"
+                    name="mapStyle"
+                    data-action="change->maps--maplibre#updateMapStyle">
+              <option value="light" selected>Light</option>
+              <option value="dark">Dark</option>
+              <option value="white">White</option>
+              <option value="black">Black</option>
+              <option value="grayscale">Grayscale</option>
+            </select>
+          </div>
+
+          <!-- Globe Projection -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="globeProjection"
+                     class="toggle toggle-primary"
+                     data-maps--maplibre-target="globeToggle"
+                     data-action="change->maps--maplibre#toggleGlobe" />
+              <span class="label-text font-medium">Globe View</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Render map as a 3D globe (requires page reload)</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Route Opacity -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Route Opacity</span>
+              <span class="label-text-alt">%</span>
+            </label>
+            <input type="range"
+                   name="routeOpacity"
+                   min="10"
+                   max="100"
+                   step="10"
+                   value="100"
+                   class="range range-sm"
+                   data-maps--maplibre-target="routeOpacityRange"
+                   data-action="input->maps--maplibre#updateRouteOpacity" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>10%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Fog of War Settings -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Fog of War Radius</span>
+              <span class="label-text-alt" data-maps--maplibre-target="fogRadiusValue">1000m</span>
+            </label>
+            <input type="range"
+                   name="fogOfWarRadius"
+                   min="5"
+                   max="2000"
+                   step="5"
+                   value="1000"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateFogRadiusDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>5m</span>
+              <span>1000m</span>
+              <span>2000m</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Clear radius around visited points</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Fog of War Threshold</span>
+              <span class="label-text-alt" data-maps--maplibre-target="fogThresholdValue">1</span>
+            </label>
+            <input type="range"
+                   name="fogOfWarThreshold"
+                   min="1"
+                   max="10"
+                   step="1"
+                   value="1"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateFogThresholdDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>1</span>
+              <span>5</span>
+              <span>10</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Minimum points to clear fog</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Route Generation Settings -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Meters Between Routes</span>
+              <span class="label-text-alt" data-maps--maplibre-target="metersBetweenValue">500m</span>
+            </label>
+            <input type="range"
+                   name="metersBetweenRoutes"
+                   min="100"
+                   max="5000"
+                   step="100"
+                   value="500"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateMetersBetweenDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>100m</span>
+              <span>2500m</span>
+              <span>5000m</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Distance threshold for route splitting</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Minutes Between Routes</span>
+              <span class="label-text-alt" data-maps--maplibre-target="minutesBetweenValue">60min</span>
+            </label>
+            <input type="range"
+                   name="minutesBetweenRoutes"
+                   min="1"
+                   max="180"
+                   step="1"
+                   value="60"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateMinutesBetweenDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>1min</span>
+              <span>90min</span>
+              <span>180min</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Time threshold for route splitting</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- City Statistics Settings -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Min Minutes in City</span>
+              <span class="label-text-alt" data-maps--maplibre-target="minMinutesInCityValue">60 min</span>
+            </label>
+            <input type="range"
+                   name="minMinutesSpentInCity"
+                   min="5"
+                   max="120"
+                   step="5"
+                   value="60"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateMinMinutesInCityDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>5min</span>
+              <span>60min</span>
+              <span>120min</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">How long you must stay for a city to count in statistics</p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Max Gap Between Points</span>
+              <span class="label-text-alt" data-maps--maplibre-target="maxGapMinutesValue">120 min</span>
+            </label>
+            <input type="range"
+                   name="maxGapMinutesInCity"
+                   min="30"
+                   max="360"
+                   step="15"
+                   value="120"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateMaxGapMinutesDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>30min</span>
+              <span>195min</span>
+              <span>360min</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">Max gap between points before assuming you left the city</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Transportation Mode Detection Thresholds -->
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              Transportation Mode Detection
+            </summary>
+            <div class="collapse-content">
+              <!-- Recalculation Status Alert -->
+              <div role="alert"
+                   class="text-xs text-warning bg-warning/10 rounded p-2 mb-4 hidden"
+                   data-maps--maplibre-target="transportationRecalculationAlert">
+                <span class="loading loading-spinner loading-xs"></span>
+                <span>Checking status...</span>
+              </div>
+
+              <!-- Locked Message -->
+              <div role="alert"
+                   class="text-xs text-info bg-info/10 rounded p-2 mb-4 hidden"
+                   data-maps--maplibre-target="transportationLockedMessage">
+                <span>Settings are locked while recalculation is in progress.</span>
+              </div>
+
+              <!-- Warning about recalculation -->
+              <div class="text-xs text-warning bg-warning/10 rounded p-2 mb-4">
+                <strong>Note:</strong> Changing these thresholds will trigger a recalculation of transportation modes for all your tracks. This may take some time depending on how many tracks you have.
+              </div>
+
+              <!-- Expert Mode Toggle -->
+              <div class="form-control mb-4">
+                <label class="label cursor-pointer justify-start gap-3 py-1">
+                  <input type="checkbox"
+                         name="transportationExpertMode"
+                         class="toggle toggle-sm toggle-warning"
+                         data-maps--maplibre-target="transportationExpertToggle"
+                         data-action="change->maps--maplibre#toggleTransportationExpertMode" />
+                  <span class="label-text text-sm">Expert Mode</span>
+                </label>
+                <p class="text-xs text-base-content/60 ml-14">Show advanced detection thresholds</p>
+              </div>
+
+              <!-- Basic Settings (always visible) -->
+              <div class="space-y-3" data-maps--maplibre-target="transportationBasicSettings">
+                <!-- Walking Max Speed -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Walking max speed</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="walkingMaxSpeedValue">7 km/h</span>
+                  </label>
+                  <input type="range"
+                         name="walkingMaxSpeed"
+                         min="3"
+                         max="15"
+                         step="1"
+                         value="7"
+                         class="range range-xs"
+                         data-maps--maplibre-target="walkingMaxSpeedInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>3</span>
+                    <span>9</span>
+                    <span>15</span>
+                  </div>
+                </div>
+
+                <!-- Cycling Max Speed -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Cycling max speed</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="cyclingMaxSpeedValue">45 km/h</span>
+                  </label>
+                  <input type="range"
+                         name="cyclingMaxSpeed"
+                         min="20"
+                         max="70"
+                         step="5"
+                         value="45"
+                         class="range range-xs"
+                         data-maps--maplibre-target="cyclingMaxSpeedInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>20</span>
+                    <span>45</span>
+                    <span>70</span>
+                  </div>
+                </div>
+
+                <!-- Driving Max Speed -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Driving max speed</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="drivingMaxSpeedValue">220 km/h</span>
+                  </label>
+                  <input type="range"
+                         name="drivingMaxSpeed"
+                         min="80"
+                         max="300"
+                         step="10"
+                         value="220"
+                         class="range range-xs"
+                         data-maps--maplibre-target="drivingMaxSpeedInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>80</span>
+                    <span>190</span>
+                    <span>300</span>
+                  </div>
+                </div>
+
+                <!-- Flying Min Speed -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Flying min speed</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="flyingMinSpeedValue">150 km/h</span>
+                  </label>
+                  <input type="range"
+                         name="flyingMinSpeed"
+                         min="100"
+                         max="250"
+                         step="10"
+                         value="150"
+                         class="range range-xs"
+                         data-maps--maplibre-target="flyingMinSpeedInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>100</span>
+                    <span>175</span>
+                    <span>250</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Expert Settings (hidden by default) -->
+              <div class="hidden space-y-3 mt-4" data-maps--maplibre-target="transportationExpertSettings">
+                <div class="divider text-xs my-2">Speed Thresholds</div>
+
+                <!-- Stationary Max Speed -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Stationary max speed</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="stationaryMaxSpeedValue">1 km/h</span>
+                  </label>
+                  <input type="range"
+                         name="stationaryMaxSpeed"
+                         min="0.5"
+                         max="5"
+                         step="0.5"
+                         value="1"
+                         class="range range-xs"
+                         data-maps--maplibre-target="stationaryMaxSpeedInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>0.5</span>
+                    <span>2.5</span>
+                    <span>5</span>
+                  </div>
+                </div>
+
+                <!-- Train Min Speed -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Train min speed</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="trainMinSpeedValue">80 km/h</span>
+                  </label>
+                  <input type="range"
+                         name="trainMinSpeed"
+                         min="50"
+                         max="150"
+                         step="10"
+                         value="80"
+                         class="range range-xs"
+                         data-maps--maplibre-target="trainMinSpeedInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>50</span>
+                    <span>100</span>
+                    <span>150</span>
+                  </div>
+                </div>
+
+                <div class="divider text-xs my-2">Acceleration Thresholds</div>
+
+                <!-- Running vs Cycling Acceleration -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Running vs cycling accel</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="runningVsCyclingAccelValue">0.25 m/s²</span>
+                  </label>
+                  <input type="range"
+                         name="runningVsCyclingAccel"
+                         min="0.1"
+                         max="0.8"
+                         step="0.05"
+                         value="0.25"
+                         class="range range-xs"
+                         data-maps--maplibre-target="runningVsCyclingAccelInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>0.1</span>
+                    <span>0.45</span>
+                    <span>0.8</span>
+                  </div>
+                </div>
+
+                <!-- Cycling vs Driving Acceleration -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Cycling vs driving accel</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="cyclingVsDrivingAccelValue">0.4 m/s²</span>
+                  </label>
+                  <input type="range"
+                         name="cyclingVsDrivingAccel"
+                         min="0.2"
+                         max="1.0"
+                         step="0.05"
+                         value="0.4"
+                         class="range range-xs"
+                         data-maps--maplibre-target="cyclingVsDrivingAccelInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>0.2</span>
+                    <span>0.6</span>
+                    <span>1.0</span>
+                  </div>
+                </div>
+
+                <div class="divider text-xs my-2">Segment Detection</div>
+
+                <!-- Min Segment Duration -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Min segment duration</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="minSegmentDurationValue">60 sec</span>
+                  </label>
+                  <input type="range"
+                         name="minSegmentDuration"
+                         min="10"
+                         max="180"
+                         step="10"
+                         value="60"
+                         class="range range-xs"
+                         data-maps--maplibre-target="minSegmentDurationInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>10s</span>
+                    <span>95s</span>
+                    <span>180s</span>
+                  </div>
+                </div>
+
+                <!-- Time Gap Threshold -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Time gap threshold</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="timeGapThresholdValue">180 sec</span>
+                  </label>
+                  <input type="range"
+                         name="timeGapThreshold"
+                         min="30"
+                         max="600"
+                         step="30"
+                         value="180"
+                         class="range range-xs"
+                         data-maps--maplibre-target="timeGapThresholdInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>30s</span>
+                    <span>315s</span>
+                    <span>600s</span>
+                  </div>
+                </div>
+
+                <!-- Min Flight Distance -->
+                <div class="form-control w-full">
+                  <label class="label py-1">
+                    <span class="label-text text-sm">Min flight distance</span>
+                    <span class="label-text-alt" data-maps--maplibre-target="minFlightDistanceValue">100 km</span>
+                  </label>
+                  <input type="range"
+                         name="minFlightDistanceKm"
+                         min="20"
+                         max="300"
+                         step="10"
+                         value="100"
+                         class="range range-xs"
+                         data-maps--maplibre-target="minFlightDistanceInput"
+                         data-action="input->maps--maplibre#updateTransportationThresholdDisplay change->maps--maplibre#markTransportationSettingsDirty" />
+                  <div class="w-full flex justify-between text-xs px-1 mt-1 opacity-60">
+                    <span>20</span>
+                    <span>160</span>
+                    <span>300</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Apply Button -->
+              <div class="mt-4 pt-4 border-t border-base-300">
+                <button type="button"
+                        class="btn btn-primary btn-sm w-full"
+                        data-maps--maplibre-target="transportationApplyButton"
+                        data-action="click->maps--maplibre#applyTransportationSettings"
+                        disabled>
+                  Apply Settings
+                </button>
+                <p class="text-xs text-base-content/60 mt-2 text-center"
+                   data-maps--maplibre-target="transportationDirtyMessage">
+                  Make changes to enable the Apply button
+                </p>
+              </div>
+            </div>
+          </details>
+
+          <div class="divider"></div>
+
+          <!-- Points Rendering Mode -->
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium">Points Rendering Mode</span>
+            </label>
+            <div class="flex flex-col gap-2">
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="raw"
+                       class="radio radio-primary radio-sm"
+                       checked />
+                <span class="label-text">Raw (all points)</span>
+              </label>
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="radio"
+                       name="pointsRenderingMode"
+                       value="simplified"
+                       class="radio radio-primary radio-sm" />
+                <span class="label-text">Simplified (reduced points)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Speed-Colored Routes -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="speedColoredRoutes"
+                     class="toggle toggle-primary" />
+              <span class="label-text font-medium">Speed-Colored Routes</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Color routes by speed</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Live Mode -->
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     class="toggle toggle-primary"
+                     data-action="change->maps--maplibre-realtime#toggleLiveMode"
+                     data-maps--maplibre-realtime-target="liveModeToggle" />
+              <span class="label-text font-medium">Live Mode</span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1">Show new points in real-time</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Update Button -->
+          <button type="submit" class="btn btn-sm btn-primary btn-block">
+            <%= icon 'save' %>
+            Apply Settings
+          </button>
+
+          <!-- Reset Settings -->
+          <button type="button"
+                  class="btn btn-sm btn-outline btn-block"
+                  data-action="click->maps--maplibre#resetSettings">
+            <%= icon 'rotate-ccw' %>
+            Reset to Defaults
+          </button>
+        </form>
+      </div>
+
+      <!-- Timeline Feed Tab -->
+      <div class="tab-content" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
+        <turbo-frame id="timeline-feed-frame"
+                     data-maps--maplibre-target="timelineFeedContainer">
+          <div class="timeline-feed-placeholder text-center text-base-content/60 py-8">
+            <p class="text-sm">Select a date range to see your day-by-day timeline.</p>
+          </div>
+        </turbo-frame>
+        <template id="timeline-feed-skeleton">
+          <div class="timeline-feed-skeleton space-y-2 p-2 animate-pulse">
+            <% 3.times do %>
+              <div class="bg-base-200 rounded-lg p-3">
+                <div class="flex justify-between items-center">
+                  <div class="h-4 bg-base-300 rounded w-36"></div>
+                  <div class="h-4 bg-base-300 rounded w-16"></div>
+                </div>
+                <div class="mt-3 space-y-2">
+                  <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
+                    <div class="h-3 bg-base-300 rounded w-28"></div>
+                  </div>
+                  <div class="ml-1 border-l-2 border-base-300 pl-3 py-1">
+                    <div class="h-3 bg-base-300 rounded w-40"></div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
+                    <div class="h-3 bg-base-300 rounded w-32"></div>
+                  </div>
+                  <div class="ml-1 border-l-2 border-base-300 pl-3 py-1">
+                    <div class="h-3 bg-base-300 rounded w-36"></div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-base-300 rounded-full shrink-0"></div>
+                    <div class="h-3 bg-base-300 rounded w-24"></div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </template>
+      </div>
+
+      <!-- Tools Tab -->
+      <div class="tab-content" data-tab-content="tools" data-map-panel-target="tabContent">
+        <div class="space-y-4">
+          <!-- Tools Grid: Full width on mobile/tablet, 2 columns on large screens -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <!-- Create a Visit Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    data-action="click->maps--maplibre#startCreateVisit">
+              <%= icon 'map-pin-check' %>
+              Create a Visit
+            </button>
+
+            <!-- Create a Place Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    data-action="click->maps--maplibre#startCreatePlace">
+              <%= icon 'map-pin-plus' %>
+              Create a Place
+            </button>
+
+            <!-- Select Area Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    data-maps--maplibre-target="selectAreaButton"
+                    data-action="click->maps--maplibre#startSelectArea">
+              <%= icon 'square-dashed-mouse-pointer' %>
+              Select Area
+            </button>
+
+            <!-- Create Area Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    data-action="click->maps--maplibre#startCreateArea">
+              <%= icon 'circle-plus' %>
+              Create an Area
+            </button>
+
+            <!-- Replay Button -->
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    data-action="click->maps--maplibre#toggleReplay">
+              <%= icon 'clock' %>
+              Replay
+            </button>
+          </div>
+
+          <!-- Info Display (shown when clicking on visit/area/place) -->
+          <div class="hidden mt-4" data-maps--maplibre-target="infoDisplay">
+            <div class="card bg-base-200 shadow-md">
+              <div class="card-body p-4">
+                <div class="flex justify-between items-start mb-2">
+                  <h4 class="card-title text-base" data-maps--maplibre-target="infoTitle"></h4>
+                  <button class="btn btn-ghost btn-xs btn-circle" data-action="click->maps--maplibre#closeInfo" title="Close">✕</button>
+                </div>
+                <div class="space-y-2 text-sm" data-maps--maplibre-target="infoContent">
+                  <!-- Content will be dynamically inserted -->
+                </div>
+                <div class="card-actions justify-end mt-3" data-maps--maplibre-target="infoActions">
+                  <!-- Action buttons will be dynamically inserted -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden template for route info display -->
+          <template data-maps--maplibre-target="routeInfoTemplate">
+            <div class="space-y-2">
+              <div>
+                <span class="font-semibold">Start:</span>
+                <span data-maps--maplibre-target="routeStartTime"></span>
+              </div>
+              <div>
+                <span class="font-semibold">End:</span>
+                <span data-maps--maplibre-target="routeEndTime"></span>
+              </div>
+              <div>
+                <span class="font-semibold">Duration:</span>
+                <span data-maps--maplibre-target="routeDuration"></span>
+              </div>
+              <div>
+                <span class="font-semibold">Distance:</span>
+                <span data-maps--maplibre-target="routeDistance"></span>
+              </div>
+              <div data-maps--maplibre-target="routeSpeedContainer">
+                <span class="font-semibold">Avg Speed:</span>
+                <span data-maps--maplibre-target="routeSpeed"></span>
+              </div>
+              <div>
+                <span class="font-semibold">Points:</span>
+                <span data-maps--maplibre-target="routePoints"></span>
+              </div>
+            </div>
+          </template>
+
+          <!-- Selection Actions (shown after area is selected) -->
+          <div class="hidden mt-4 space-y-2" data-maps--maplibre-target="selectionActions">
+            <button type="button"
+                    class="btn btn-sm btn-outline btn-error btn-block"
+                    data-action="click->maps--maplibre#deleteSelectedPoints"
+                    data-maps--maplibre-target="deletePointsButton">
+              <%= icon 'trash-2' %>
+              <span data-maps--maplibre-target="deleteButtonText">Delete Selected Points</span>
+            </button>
+
+            <!-- Selected Visits Container -->
+            <div class="hidden mt-4 max-h-full overflow-y-auto" data-maps--maplibre-target="selectedVisitsContainer">
+              <!-- Visit cards will be dynamically inserted here -->
+            </div>
+
+            <!-- Bulk Actions for Visits -->
+            <div class="hidden" data-maps--maplibre-target="selectedVisitsBulkActions">
+              <!-- Bulk action buttons will be dynamically inserted here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <% if !DawarichSettings.self_hosted? %>
+        <!-- Links Tab -->
+        <div class="tab-content" data-tab-content="links" data-map-panel-target="tabContent">
+          <div class="space-y-6">
+            <!-- Community Section -->
+            <div>
+              <h4 class="font-semibold text-base mb-3">Community</h4>
+              <div class="flex flex-col gap-2">
+                <a href="https://discord.gg/pHsBjpt5J8" target="_blank" class="link-hover text-sm">Discord</a>
+                <a href="https://x.com/freymakesstuff" target="_blank" class="link-hover text-sm">X</a>
+                <a href="https://github.com/Freika/dawarich" target="_blank" class="link-hover text-sm">Github</a>
+                <a href="https://mastodon.social/@dawarich" target="_blank" class="link-hover text-sm">Mastodon</a>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Docs Section -->
+            <div>
+              <h4 class="font-semibold text-base mb-3">Docs</h4>
+              <div class="flex flex-col gap-2">
+                <a href="https://dawarich.app/docs/intro" target="_blank" class="link-hover text-sm">Tutorial</a>
+                <a href="https://dawarich.app/docs/tutorials/import-existing-data" target="_blank" class="link-hover text-sm">Import existing data</a>
+                <a href="https://dawarich.app/docs/tutorials/export-your-data" target="_blank" class="link-hover text-sm">Exporting data</a>
+                <a href="https://dawarich.app/docs/FAQ" target="_blank" class="link-hover text-sm">FAQ</a>
+                <a href="https://dawarich.app/contact" target="_blank" class="link-hover text-sm">Contact</a>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- More Section -->
+            <div>
+              <h4 class="font-semibold text-base mb-3">More</h4>
+              <div class="flex flex-col gap-2">
+                <a href="https://dawarich.app/privacy-policy" target="_blank" class="link-hover text-sm">Privacy policy</a>
+                <a href="https://dawarich.app/terms-and-conditions" target="_blank" class="link-hover text-sm">Terms and Conditions</a>
+                <a href="https://dawarich.app/refund-policy" target="_blank" class="link-hover text-sm">Refund policy</a>
+                <a href="https://dawarich.app/impressum" target="_blank" class="link-hover text-sm">Impressum</a>
+                <a href="https://dawarich.app/blog" target="_blank" class="link-hover text-sm">Blog</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+

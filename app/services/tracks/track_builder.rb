@@ -25,7 +25,7 @@
 # This ensures consistency when users change their distance unit preferences.
 #
 # Used by:
-# - Tracks::Generator for creating tracks during generation
+# - Tracks::ParallelGenerator and related jobs for creating tracks during parallel generation
 # - Any class that needs to convert point arrays to Track records
 #
 # Example usage:
@@ -49,7 +49,7 @@
 module Tracks::TrackBuilder
   extend ActiveSupport::Concern
 
-  def create_track_from_points(points)
+  def create_track_from_points(points, pre_calculated_distance)
     return nil if points.size < 2
 
     track = Track.new(
@@ -59,36 +59,32 @@ module Tracks::TrackBuilder
       original_path: build_path(points)
     )
 
-    # Calculate track statistics
-    track.distance = calculate_track_distance(points)
-    track.duration = calculate_duration(points)
+    # TODO: Move trips attrs to columns with more precision and range
+    track.distance  = [[pre_calculated_distance.round, 999_999].min, 0].max
+    track.duration  = calculate_duration(points)
     track.avg_speed = calculate_average_speed(track.distance, track.duration)
 
-    # Calculate elevation statistics
+    # Calculate elevation statistics (no DB queries needed)
     elevation_stats = calculate_elevation_stats(points)
     track.elevation_gain = elevation_stats[:gain]
     track.elevation_loss = elevation_stats[:loss]
-    track.elevation_max = elevation_stats[:max]
-    track.elevation_min = elevation_stats[:min]
+    track.elevation_max  = elevation_stats[:max]
+    track.elevation_min  = elevation_stats[:min]
 
     if track.save
       Point.where(id: points.map(&:id)).update_all(track_id: track.id)
+
+      detect_and_create_segments(track, points)
+
       track
     else
       Rails.logger.error "Failed to create track for user #{user.id}: #{track.errors.full_messages.join(', ')}"
-
       nil
     end
   end
 
   def build_path(points)
-    Tracks::BuildPath.new(points.map(&:lonlat)).call
-  end
-
-  def calculate_track_distance(points)
-    # Always calculate and store distance in meters for consistency
-    distance_in_meters = Point.total_distance(points, :m)
-    distance_in_meters.round
+    Tracks::BuildPath.new(points).call
   end
 
   def calculate_duration(points)
@@ -100,7 +96,10 @@ module Tracks::TrackBuilder
 
     # Speed in meters per second, then convert to km/h for storage
     speed_mps = distance_in_meters.to_f / duration_seconds
-    (speed_mps * 3.6).round(2) # m/s to km/h
+    speed_kmh = (speed_mps * 3.6).round(2) # m/s to km/h
+
+    # Cap the speed to prevent database precision overflow (max 999999.99)
+    [speed_kmh, 999_999.99].min
   end
 
   def calculate_elevation_stats(points)
@@ -114,7 +113,7 @@ module Tracks::TrackBuilder
 
     altitudes[1..].each do |altitude|
       diff = altitude - previous_altitude
-      if diff > 0
+      if diff.positive?
         elevation_gain += diff
       else
         elevation_loss += diff.abs
@@ -139,9 +138,44 @@ module Tracks::TrackBuilder
     }
   end
 
+  def detect_and_create_segments(track, points)
+    detector = TransportationModes::Detector.new(track, points)
+    segment_data = detector.call
+
+    return if segment_data.empty?
+
+    segments = segment_data.map do |data|
+      track.track_segments.create(
+        transportation_mode: data[:mode],
+        start_index: data[:start_index],
+        end_index: data[:end_index],
+        distance: data[:distance],
+        duration: data[:duration],
+        avg_speed: data[:avg_speed],
+        max_speed: data[:max_speed],
+        avg_acceleration: data[:avg_acceleration],
+        confidence: data[:confidence],
+        source: data[:source]
+      )
+    end.select(&:persisted?)
+
+    update_dominant_mode(track, segments)
+  rescue StandardError => e
+    Rails.logger.error "Failed to detect transportation modes for track #{track.id}: #{e.message}"
+  end
+
+  def update_dominant_mode(track, segments)
+    return if segments.empty?
+
+    dominant_segment = segments.max_by { |s| s.duration || 0 }
+    return unless dominant_segment
+
+    track.update_column(:dominant_mode, dominant_segment.transportation_mode)
+  end
+
   private
 
   def user
-    raise NotImplementedError, "Including class must implement user method"
+    raise NotImplementedError, 'Including class must implement user method'
   end
 end

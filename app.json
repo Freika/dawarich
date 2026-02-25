@@ -5,18 +5,13 @@
     { "url": "https://github.com/heroku/heroku-buildpack-nodejs.git" },
     { "url": "https://github.com/heroku/heroku-buildpack-ruby.git" }
   ],
-  "scripts": {
-    "dokku": {
-      "predeploy": "bundle exec rails db:migrate"
-    }
-  },
   "healthchecks": {
     "web": [
       {
-        "type":        "startup",
-        "name":        "web check",
+        "type": "startup",
+        "name": "web check",
         "description": "Checking if the app responds to the /api/v1/health endpoint",
-        "path":        "/api/v1/health",
+        "path": "/api/v1/health",
         "attempts": 10,
         "interval": 10
       }

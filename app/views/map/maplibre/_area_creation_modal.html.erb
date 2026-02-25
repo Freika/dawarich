@@ -1,0 +1,46 @@
+<div data-controller="area-creation-v2">
+  <div class="modal z-[10000]" data-area-creation-v2-target="modal">
+    <div class="modal-box max-w-xl">
+      <h3 class="font-bold text-lg mb-4">Create New Area</h3>
+
+      <%= form_with url: areas_path, method: :post, data: {
+        area_creation_v2_target: "form",
+        action: "turbo:submit-end->area-creation-v2#onSubmitEnd"
+      } do |f| %>
+        <%= f.hidden_field :latitude, data: { area_creation_v2_target: "latitudeInput" } %>
+        <%= f.hidden_field :longitude, data: { area_creation_v2_target: "longitudeInput" } %>
+        <%= f.hidden_field :radius, data: { area_creation_v2_target: "radiusInput" } %>
+
+        <div class="space-y-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Area Name *</span>
+            </label>
+            <%= f.text_field :name,
+                placeholder: "e.g. Home, Office, Gym...",
+                class: "input input-bordered w-full",
+                data: { area_creation_v2_target: "nameInput" },
+                required: true %>
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Radius</span>
+            </label>
+            <div class="text-lg font-semibold">
+              <span data-area-creation-v2-target="radiusDisplay">0</span> meters
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <button type="button" class="btn btn-ghost" data-action="click->area-creation-v2#close">Cancel</button>
+          <%= f.submit "Create Area", class: "btn btn-primary",
+              data: { area_creation_v2_target: "submitButton", disable_with: "Creating..." } %>
+        </div>
+      <% end %>
+    </div>
+    <div class="modal-backdrop" data-action="click->area-creation-v2#close"></div>
+  </div>
+
+</div>

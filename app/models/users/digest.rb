@@ -1,0 +1,246 @@
+# frozen_string_literal: true
+
+class Users::Digest < ApplicationRecord
+  self.table_name = 'digests'
+
+  include DistanceConvertible
+
+  EARTH_CIRCUMFERENCE_KM = 40_075
+  MOON_DISTANCE_KM = 384_400
+
+  belongs_to :user
+
+  validates :year, :period_type, presence: true
+  validates :year, uniqueness: { scope: %i[user_id month period_type] }
+  validates :month, presence: true, if: :monthly?
+  validates :month, inclusion: { in: 1..12 }, allow_nil: true
+
+  before_create :generate_sharing_uuid
+
+  enum :period_type, { monthly: 0, yearly: 1 }
+
+  def sharing_enabled?
+    sharing_settings.try(:[], 'enabled') == true
+  end
+
+  def sharing_expired?
+    expiration = sharing_settings.try(:[], 'expiration')
+    return false if expiration.blank?
+
+    expires_at_value = sharing_settings.try(:[], 'expires_at')
+    return true if expires_at_value.blank?
+
+    expires_at = begin
+      Time.zone.parse(expires_at_value)
+    rescue StandardError
+      nil
+    end
+
+    expires_at.present? ? Time.current > expires_at : true
+  end
+
+  def public_accessible?
+    sharing_enabled? && !sharing_expired?
+  end
+
+  def generate_new_sharing_uuid!
+    update!(sharing_uuid: SecureRandom.uuid)
+  end
+
+  def enable_sharing!(expiration: '24h')
+    expiration = '24h' unless %w[1h 12h 24h 1w 1m].include?(expiration)
+
+    expires_at = case expiration
+                 when '1h' then 1.hour.from_now
+                 when '12h' then 12.hours.from_now
+                 when '24h' then 24.hours.from_now
+                 when '1w' then 1.week.from_now
+                 when '1m' then 1.month.from_now
+                 end
+
+    update!(
+      sharing_settings: {
+        'enabled' => true,
+        'expiration' => expiration,
+        'expires_at' => expires_at.iso8601
+      },
+      sharing_uuid: sharing_uuid || SecureRandom.uuid
+    )
+  end
+
+  def disable_sharing!
+    update!(
+      sharing_settings: {
+        'enabled' => false,
+        'expiration' => nil,
+        'expires_at' => nil
+      }
+    )
+  end
+
+  def countries_count
+    return 0 unless toponyms.is_a?(Array)
+
+    toponyms.count { |t| t['country'].present? }
+  end
+
+  def cities_count
+    return 0 unless toponyms.is_a?(Array)
+
+    toponyms.sum { |t| t['cities']&.count || 0 }
+  end
+
+  def first_time_countries
+    first_time_visits['countries'] || []
+  end
+
+  def first_time_cities
+    first_time_visits['cities'] || []
+  end
+
+  def top_countries_by_time
+    time_spent_by_location['countries'] || []
+  end
+
+  def top_cities_by_time
+    time_spent_by_location['cities'] || []
+  end
+
+  def yoy_distance_change
+    year_over_year['distance_change_percent']
+  end
+
+  def yoy_countries_change
+    year_over_year['countries_change']
+  end
+
+  def yoy_cities_change
+    year_over_year['cities_change']
+  end
+
+  def previous_year
+    year_over_year['previous_year']
+  end
+
+  def total_countries_all_time
+    all_time_stats['total_countries'] || 0
+  end
+
+  def total_cities_all_time
+    all_time_stats['total_cities'] || 0
+  end
+
+  def total_distance_all_time
+    (all_time_stats['total_distance'] || 0).to_i
+  end
+
+  # Monthly digest specific methods
+  # Returns daily distances as array of [day, distance] pairs
+  # Format: [[1, 5000], [2, 3000], ...]
+  def daily_distances
+    monthly_distances
+  end
+
+  def active_days_count
+    return 0 unless daily_distances.is_a?(Array)
+
+    daily_distances.count { |pair| pair[1].to_i.positive? }
+  end
+
+  def days_in_month
+    return nil unless month
+
+    Date.new(year, month, -1).day
+  end
+
+  def weekly_pattern
+    return [] unless daily_distances.is_a?(Array) && month.present?
+
+    pattern = Array.new(7, 0)
+    daily_distances.each do |day, distance|
+      date = Date.new(year, month, day.to_i)
+      dow = (date.wday + 6) % 7 # Monday = 0
+      pattern[dow] += distance.to_i
+    end
+    pattern
+  end
+
+  def mom_distance_change
+    year_over_year['distance_change_percent'] if monthly?
+  end
+
+  def mom_countries_change
+    year_over_year['countries_change'] if monthly?
+  end
+
+  def mom_cities_change
+    year_over_year['cities_change'] if monthly?
+  end
+
+  # Travel patterns accessors
+  def time_of_day_distribution
+    travel_patterns['time_of_day'] || {}
+  end
+
+  def seasonality
+    travel_patterns['seasonality'] || {}
+  end
+
+  def day_of_week_distances
+    weekly_pattern
+  end
+
+  def activity_breakdown
+    travel_patterns['activity_breakdown'] || {}
+  end
+
+  def previous_month_value
+    year_over_year['previous_month'] if monthly?
+  end
+
+  def previous_month_year
+    year_over_year['previous_year'] if monthly?
+  end
+
+  def month_name
+    return nil unless month
+
+    Date::MONTHNAMES[month]
+  end
+
+  def untracked_days
+    days_in_year = Date.leap?(year) ? 366 : 365
+    [days_in_year - total_tracked_days, 0].max.round(1)
+  end
+
+  def distance_km
+    distance.to_f / 1000
+  end
+
+  def distance_comparison_text
+    if distance_km >= MOON_DISTANCE_KM
+      percentage = ((distance_km / MOON_DISTANCE_KM) * 100).round(1)
+      "That's #{percentage}% of the distance to the Moon!"
+    else
+      percentage = ((distance_km / EARTH_CIRCUMFERENCE_KM) * 100).round(1)
+      "That's #{percentage}% of Earth's circumference!"
+    end
+  end
+
+  private
+
+  def generate_sharing_uuid
+    self.sharing_uuid ||= SecureRandom.uuid
+  end
+
+  def total_tracked_days
+    (total_tracked_minutes / 1440.0).round(1)
+  end
+
+  def total_tracked_minutes
+    # Use total_country_minutes if available (new digests),
+    # fall back to summing top_countries_by_time (existing digests)
+    time_spent_by_location['total_country_minutes'] ||
+      top_countries_by_time.sum { |country| country['minutes'].to_i }
+  end
+end

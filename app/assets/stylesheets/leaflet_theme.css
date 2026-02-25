@@ -1,0 +1,350 @@
+/* Leaflet Theme Styles - Light and Dark mode support */
+
+/* CSS Custom Properties for Light Theme */
+[data-theme="light"] {
+  --leaflet-bg-color: #ffffff;
+  --leaflet-text-color: #000000;
+  --leaflet-border-color: #e5e7eb;
+  --leaflet-shadow-color: rgba(0, 0, 0, 0.1);
+  --leaflet-hover-color: #f3f4f6;
+  --leaflet-link-color: #0066cc;
+  --leaflet-scale-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* CSS Custom Properties for Dark Theme */
+[data-theme="dark"] {
+  --leaflet-bg-color: #374151;
+  --leaflet-text-color: #ffffff;
+  --leaflet-border-color: #4b5563;
+  --leaflet-shadow-color: rgba(0, 0, 0, 0.3);
+  --leaflet-hover-color: #4b5563;
+  --leaflet-link-color: #66b3ff;
+  --leaflet-scale-bg: rgba(55, 65, 81, 0.9);
+}
+
+/* Leaflet default controls theme override — !important needed to beat CDN leaflet.css specificity */
+.leaflet-control-layers,
+.leaflet-control-zoom,
+.leaflet-control-attribution,
+.leaflet-bar a,
+.leaflet-control-layers-toggle,
+.leaflet-control-layers-list,
+.leaflet-control-draw {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border-color: var(--leaflet-border-color) !important;
+  box-shadow: 0 1px 4px var(--leaflet-shadow-color) !important;
+}
+
+/* Leaflet zoom buttons */
+.leaflet-control-zoom a {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border-bottom: 1px solid var(--leaflet-border-color) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+/* Leaflet layer control */
+.leaflet-control-layers {
+  border: none !important;
+  border-radius: 0.5rem !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  padding: 0 !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 1rem !important;
+  min-width: 200px;
+}
+
+/* Hide the toggle icon when expanded */
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+  display: none !important;
+}
+
+.leaflet-control-layers-toggle {
+  width: 44px !important;
+  height: 44px !important;
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border-radius: 0.5rem !important;
+  /* Replace default icon with custom SVG */
+  background-image: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background-color 0.2s;
+}
+
+.leaflet-control-layers-toggle:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+.leaflet-control-layers-toggle::before {
+  content: "" !important;
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>') !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+/* Dark theme - use white stroke for the icon */
+[data-theme="dark"] .leaflet-control-layers-toggle::before {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>') !important;
+}
+
+/* Light theme - use black stroke for the icon */
+[data-theme="light"] .leaflet-control-layers-toggle::before {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>') !important;
+}
+
+/* Layer list styling */
+.leaflet-control-layers-list {
+  margin-bottom: 0 !important;
+}
+
+.leaflet-control-layers-base,
+.leaflet-control-layers-overlays {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.leaflet-control-layers-separator {
+  height: 1px;
+  margin: 0.75rem 0;
+  background-color: var(--leaflet-border-color);
+}
+
+/* Label styling */
+.leaflet-control-layers label {
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 0 !important;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--leaflet-text-color) !important;
+}
+
+.leaflet-control-layers label:hover {
+  opacity: 0.8;
+}
+
+.leaflet-control-layers label span {
+  margin-left: 0.5rem;
+}
+
+/* Custom Checkbox/Radio styling using DaisyUI/Tailwind logic */
+.leaflet-control-layers input[type="checkbox"],
+.leaflet-control-layers input[type="radio"] {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--leaflet-border-color);
+  border-radius: 0.25rem;
+  /* Rounded for checkbox */
+  background-color: var(--leaflet-bg-color);
+  cursor: pointer;
+  position: relative;
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+
+.leaflet-control-layers input[type="radio"] {
+  border-radius: 9999px;
+  /* Circle for radio */
+}
+
+.leaflet-control-layers input[type="checkbox"]:checked,
+.leaflet-control-layers input[type="radio"]:checked {
+  background-color: var(--leaflet-link-color);
+  border-color: var(--leaflet-link-color);
+}
+
+/* Checkbox checkmark */
+.leaflet-control-layers input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.65rem;
+  height: 0.65rem;
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+  background-size: contain;
+  background-repeat: no-repeat;
+  transform: translate(-50%, -50%);
+}
+
+/* Radio dot */
+.leaflet-control-layers input[type="radio"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Leaflet Draw controls — !important needed to override CDN leaflet.draw.css */
+.leaflet-draw-toolbar a {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border-bottom: 1px solid var(--leaflet-border-color) !important;
+}
+
+.leaflet-draw-toolbar a:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+.leaflet-draw-actions a {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+}
+
+/* Leaflet popups */
+.leaflet-popup-content-wrapper {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+}
+
+.leaflet-popup-tip {
+  background-color: var(--leaflet-bg-color) !important;
+}
+
+/* Attribution control */
+.leaflet-control-attribution a {
+  color: var(--leaflet-link-color) !important;
+}
+
+/* Custom control buttons */
+.leaflet-control-button,
+.add-visit-button,
+.leaflet-bar button {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border: 1px solid var(--leaflet-border-color) !important;
+  box-shadow: 0 1px 4px var(--leaflet-shadow-color) !important;
+}
+
+.leaflet-control-button:hover,
+.add-visit-button:hover,
+.leaflet-bar button:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+/* Any other custom controls */
+.leaflet-top .leaflet-control button,
+.leaflet-bottom .leaflet-control button,
+.leaflet-left .leaflet-control button,
+.leaflet-right .leaflet-control button {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border: 1px solid var(--leaflet-border-color) !important;
+}
+
+/* Location search button */
+.location-search-toggle,
+#location-search-toggle {
+  background-color: var(--leaflet-bg-color) !important;
+  color: var(--leaflet-text-color) !important;
+  border: 1px solid var(--leaflet-border-color) !important;
+  box-shadow: 0 1px 4px var(--leaflet-shadow-color) !important;
+}
+
+.location-search-toggle:hover,
+#location-search-toggle:hover {
+  background-color: var(--leaflet-hover-color) !important;
+}
+
+/* Distance scale control */
+.leaflet-control-scale {
+  background: var(--leaflet-scale-bg) !important;
+  border-radius: 3px !important;
+  padding: 2px !important;
+}
+
+/* Family member tooltip — !important needed to override leaflet.css tooltip defaults */
+.leaflet-tooltip.family-member-tooltip {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+  border: 1px solid #4b5563 !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  font-size: 11px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-tooltip.family-member-tooltip::before {
+  border-top-color: #374151 !important;
+}
+
+/* Family member popup — !important needed to override leaflet.css popup defaults */
+.leaflet-popup-content-wrapper:has(.family-member-popup) {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+}
+
+.leaflet-popup-content-wrapper:has(.family-member-popup) + .leaflet-popup-tip {
+  background-color: #1f2937 !important;
+}
+
+/* Family member marker pulse animation for recent updates */
+@keyframes family-marker-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+
+  50% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.family-member-marker-recent {
+  animation: family-marker-pulse 2s infinite;
+  border-radius: 50% !important;
+}
+
+.family-member-marker-recent .leaflet-marker-icon > div {
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 0 0 rgba(16, 185, 129, 0.7);
+  border-radius: 50%;
+}
+
+/* Fix bottom controls being cut off */
+.leaflet-bottom {
+  padding-bottom: 10px !important;
+  transition: padding-bottom 0.3s ease;
+}
+
+.leaflet-bottom.leaflet-left {
+  padding-left: 10px !important;
+}
+
+.leaflet-bottom.leaflet-right {
+  padding-right: 10px !important;
+}
+
+/* DaisyUI tooltips on map buttons - ensure they appear above date navigation (z-index: 9999) */
+.tooltip:before,
+.tooltip:after {
+  z-index: 10000 !important;
+}

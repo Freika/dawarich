@@ -8,9 +8,12 @@ RSpec.describe DataMigrations::MigratePointsLatlonJob, type: :job do
       user = create(:user)
       point = create(:point, latitude: 2.0, longitude: 1.0, user: user)
 
+      # Clear the lonlat to simulate points that need migration
+      point.update_column(:lonlat, nil)
+
       expect { subject.perform(user.id) }.to change {
         point.reload.lonlat
-      }.to(RGeo::Geographic.spherical_factory.point(1.0, 2.0))
+      }.from(nil).to(RGeo::Geographic.spherical_factory.point(1.0, 2.0))
     end
   end
 end

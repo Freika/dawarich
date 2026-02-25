@@ -30,7 +30,9 @@ RSpec.describe OwnTracks::Params do
         battery_status: 'charging',
         connection: 'wifi',
         trigger: 'background_event',
-        raw_data:   { 'bs' => 2,
+        motion_data: { 'm' => 1, '_type' => 'location' },
+        raw_data:   {
+          'bs' => 2,
           'p' => 100.266,
           'batt' => 94,
           '_type' => 'location',
@@ -50,7 +52,8 @@ RSpec.describe OwnTracks::Params do
           'm' => 1,
           'inrids' => ['5f1d1b'],
           'inregions' => ['home'],
-          '_http' => true }
+          '_http' => true
+        }
       }
     end
 
@@ -183,6 +186,14 @@ RSpec.describe OwnTracks::Params do
 
       it 'returns parsed params' do
         expect(params[:trigger]).to eq('unknown')
+      end
+    end
+
+    context 'when point is invalid' do
+      let(:raw_point_params) { super().merge(lon: nil, lat: nil, tst: nil) }
+
+      it 'returns parsed params' do
+        expect(params).to eq(nil)
       end
     end
   end

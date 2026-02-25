@@ -1,9 +1,27 @@
 # frozen_string_literal: true
 
-class Api::PointSerializer < PointSerializer
-  EXCLUDED_ATTRIBUTES = %w[created_at updated_at visit_id import_id user_id raw_data country_id].freeze
+class Api::PointSerializer
+  EXCLUDED_ATTRIBUTES = %w[
+    created_at updated_at visit_id import_id user_id raw_data
+    country_id
+  ].freeze
+
+  def initialize(point)
+    @point = point
+  end
 
   def call
-    point.attributes.except(*EXCLUDED_ATTRIBUTES)
+    point.attributes.except(*EXCLUDED_ATTRIBUTES).tap do |attributes|
+      lat = point.lat
+      lon = point.lon
+
+      attributes['latitude']  = lat&.to_s
+      attributes['longitude'] = lon&.to_s
+      attributes['country_name'] = point.country_name
+    end
   end
+
+  private
+
+  attr_reader :point
 end

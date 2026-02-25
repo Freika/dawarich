@@ -1,0 +1,36 @@
+<% content_for :title, 'Map' %>
+
+<%= render 'shared/map/date_navigation', start_at: @start_at, end_at: @end_at %>
+
+<!-- Map Container - Fills remaining space -->
+<div class="w-full h-full">
+  <div
+    id='map'
+    class="w-full h-full"
+    data-controller="maps points add-visit family-members"
+    data-points-target="map"
+    data-api_key="<%= current_user.api_key %>"
+    data-self_hosted="<%= @self_hosted %>"
+    data-user_settings='<%= current_user.safe_settings.settings.to_json %>'
+    data-user_theme="<%= current_user&.theme || 'dark' %>"
+    data-coordinates='<%= @coordinates.to_json.html_safe %>'
+    data-tracks='<%= @tracks.to_json.html_safe %>'
+    data-distance="<%= @distance %>"
+    data-points_number="<%= @points_number %>"
+    data-timezone="<%= current_user.timezone %>"
+    data-features='<%= @features.to_json.html_safe %>'
+    data-user_tags='<%= current_user.tags.ordered.select(:id, :name, :icon, :color).as_json.to_json.html_safe %>'
+    data-home_coordinates='<%= @home_coordinates.to_json.html_safe %>'
+    data-family-members-features-value='<%= @features.to_json.html_safe %>'
+    data-family-members-user-theme-value="<%= current_user&.theme || 'dark' %>"
+    data-family-members-timezone-value="<%= current_user.timezone %>">
+    <div data-maps-target="container" class="w-full h-full">
+      <div id="fog" class="fog"></div>
+    </div>
+  </div>
+</div>
+
+<%= render 'map/leaflet/settings_modals' %>
+
+<!-- Include Place Creation Modal -->
+<%= render 'shared/place_creation_modal' %>

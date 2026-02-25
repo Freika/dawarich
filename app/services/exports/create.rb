@@ -10,23 +10,19 @@ class Exports::Create
   end
 
   def call
-    ActiveRecord::Base.transaction do
-      export.update!(status: :processing)
+    export.update!(status: :processing)
 
-      points = time_framed_points
+    tempfile = build_export_tempfile
 
-      data = points_data(points)
+    attach_export_file(tempfile)
 
-      attach_export_file(data)
+    export.update!(status: :completed, error_message: nil)
 
-      export.update!(status: :completed)
-
-      notify_export_finished
-    end
+    notify_export_finished
   rescue StandardError => e
-    notify_export_failed(e)
+    export.update!(status: :failed, error_message: e.message)
 
-    export.update!(status: :failed)
+    notify_export_failed(e)
   end
 
   private
@@ -35,9 +31,17 @@ class Exports::Create
 
   def time_framed_points
     user
-      .tracked_points
+      .points
+      .select(Point.column_names - %w[raw_data])
       .where(timestamp: start_at.to_i..end_at.to_i)
-      .order(timestamp: :asc)
+  end
+
+  def build_export_tempfile
+    case file_format.to_sym
+    when :json then Exports::PointGeojsonSerializer.new(time_framed_points).call
+    when :gpx  then Exports::PointGpxSerializer.new(time_framed_points, export.name).call
+    else raise ArgumentError, "Unsupported file format: #{file_format}"
+    end
   end
 
   def notify_export_finished
@@ -58,27 +62,10 @@ class Exports::Create
     ).call
   end
 
-  def points_data(points)
-    case file_format.to_sym
-    when :json then process_geojson_export(points)
-    when :gpx  then process_gpx_export(points)
-    else raise ArgumentError, "Unsupported file format: #{file_format}"
-    end
-  end
-
-  def process_geojson_export(points)
-    Points::GeojsonSerializer.new(points).call
-  end
-
-  def process_gpx_export(points)
-    Points::GpxSerializer.new(points, export.name).call
-  end
-
-  def attach_export_file(data)
-    export.file.attach(io: StringIO.new(data.to_s), filename: export.name, content_type:)
-  rescue StandardError => e
-    Rails.logger.error("Failed to create export file: #{e.message}")
-    raise
+  def attach_export_file(tempfile)
+    export.file.attach(io: tempfile, filename: export.name, content_type:)
+  ensure
+    tempfile.close!
   end
 
   def content_type

@@ -1,12 +1,21 @@
 ---
 :concurrency: <%= ENV.fetch("BACKGROUND_PROCESSING_CONCURRENCY", 10) %>
 :queues:
+  - data_migrations
   - points
   - default
+  - mailers
+  - families
   - imports
   - exports
   - stats
+  - trips
   - tracks
   - reverse_geocoding
   - visit_suggesting
   - places
+  - app_version_checking
+  - cache
+  - archival
+  - digests
+  - low_priority

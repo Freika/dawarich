@@ -12,7 +12,10 @@
 }
 
 */
-@import 'actiontext.css';
+@import "actiontext.css";
+@import "leaflet_theme.css";
+@import "maps_maplibre_replay.css";
+@import "maps_maplibre_timeline_feed.css";
 
 @layer components {
   .fade-out {
@@ -23,7 +26,8 @@
 
 /* Leaflet Panel Styles */
 .leaflet-right-panel {
-  margin-top: 80px; /* Give space for controls above */
+  margin-top: 80px;
+  /* Give space for controls above */
   margin-right: 10px;
   transform: none;
   transition: right 0.3s ease-in-out;
@@ -33,47 +37,114 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Add Visit Marker Styles */
+.add-visit-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: white;
+  border: 2px solid #007bff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+  animation: pulse-visit 2s infinite;
+}
+
+@keyframes pulse-visit {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+  }
+
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+  }
+}
+
+/* Supporter Badge Animation */
+@keyframes supporter-rainbow-glow {
+  0% {
+    filter: hue-rotate(0deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4));
+  }
+  25% {
+    filter: hue-rotate(90deg) drop-shadow(0 0 8px rgba(236, 72, 153, 0.8));
+  }
+  50% {
+    filter: hue-rotate(180deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4));
+  }
+  75% {
+    filter: hue-rotate(270deg) drop-shadow(0 0 8px rgba(236, 72, 153, 0.8));
+  }
+  100% {
+    filter: hue-rotate(360deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4));
+  }
+}
+
+/* Visit Form Popup Styles */
+.visit-form-popup .leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
 .leaflet-right-panel.controls-shifted {
   right: 310px;
-}
-
-.leaflet-control-button {
-  background-color: white !important;
-  color: #374151 !important;
-}
-
-.leaflet-control-button:hover {
-  background-color: #f3f4f6 !important;
 }
 
 /* Drawer Panel Styles */
 .leaflet-drawer {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 338px;
-  height: 100%;
+  top: 10px;
+  right: 70px;
+  /* Position to the left of the control buttons with margin */
+  width: 24rem;
+  max-height: calc(100% - 20px);
   background: rgba(255, 255, 255, 0.5);
-  transform: translateX(100%);
-  transition: transform 0.3s ease-in-out;
+  border-radius: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.95);
+  transition:
+    opacity 0.2s ease-in-out,
+    transform 0.2s ease-in-out,
+    visibility 0.2s;
   z-index: 450;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  height: auto;
+  /* Make height fit content */
+  cursor: default;
+  /* Override map cursor */
+}
+
+.leaflet-drawer * {
+  cursor: default;
+  /* Ensure all children have default cursor */
+}
+
+.leaflet-drawer a,
+.leaflet-drawer button,
+.leaflet-drawer .btn,
+.leaflet-drawer input[type="checkbox"] {
+  cursor: pointer;
+  /* Interactive elements get pointer cursor */
 }
 
 .leaflet-drawer.open {
-  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
 }
 
-/* Controls transition */
+/* Controls remain in place - no transition needed */
 .leaflet-control-layers,
 .leaflet-control-button,
 .toggle-panel-button {
-  transition: right 0.3s ease-in-out;
   z-index: 500;
-}
-
-.controls-shifted {
-  right: 338px !important;
 }
 
 /* Selection Tool Styles */
@@ -100,6 +171,63 @@
 
 /* Cancel Selection Button */
 #cancel-selection-button {
-  margin-bottom: 1rem;
   width: 100%;
+}
+
+/* Emoji Picker Styles */
+em-emoji-picker {
+  --color-border-over: rgba(0, 0, 0, 0.1);
+  --color-border: rgba(0, 0, 0, 0.05);
+  --font-family:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --rgb-accent: 96, 165, 250;
+  /* Blue accent to match application */
+  position: absolute;
+  z-index: 1000;
+  max-width: 400px;
+  min-width: 318px;
+  resize: horizontal;
+  overflow: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark mode support for emoji picker */
+[data-theme="dark"] em-emoji-picker,
+html.dark em-emoji-picker {
+  --color-border-over: rgba(255, 255, 255, 0.1);
+  --color-border: rgba(255, 255, 255, 0.05);
+  --rgb-accent: 96, 165, 250;
+}
+
+/* Responsive emoji picker on mobile */
+@media (max-width: 768px) {
+  em-emoji-picker {
+    max-width: 90vw;
+    min-width: 280px;
+  }
+}
+
+/* Color Picker Styles */
+.color-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: none;
+  padding: 0;
+}
+
+.color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 0.5rem;
+}
+
+.color-input::-moz-color-swatch {
+  border: none;
+  border-radius: 0.5rem;
 }

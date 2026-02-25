@@ -1,0 +1,84 @@
+<%# Sharing Settings Modal %>
+<dialog id="sharing_modal" class="modal">
+  <div class="modal-box">
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+    </form>
+
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+      <%= icon 'link' %> Sharing Settings
+    </h3>
+
+    <div data-controller="sharing-modal">
+      <%= form_with(url: sharing_stats_path(year: @year, month: @month), method: :patch,
+                    data: { sharing_modal_target: "form" }) do %>
+
+        <%# Enable/Disable Sharing Toggle %>
+        <div class="form-control mb-4">
+          <label class="label cursor-pointer">
+            <span class="label-text font-medium">Enable public access</span>
+            <input type="checkbox"
+                   name="enabled"
+                   value="1"
+                   <%= 'checked' if @stat.sharing_enabled? %>
+                   class="toggle toggle-primary"
+                   data-action="change->sharing-modal#toggleSharing"
+                   data-sharing-modal-target="enableToggle" />
+          </label>
+          <div class="label">
+            <span class="label-text-alt text-gray-500">Allow others to view this monthly digest • Auto-saves on change</span>
+          </div>
+        </div>
+
+        <%# Expiration Settings (shown when enabled) %>
+        <div data-sharing-modal-target="expirationSettings"
+             class="<%= 'hidden' unless @stat.sharing_enabled? %>">
+
+          <div class="form-control mb-4">
+            <label class="label">
+              <span class="label-text font-medium">Link expiration</span>
+            </label>
+            <select name="expiration"
+                    class="select select-bordered w-full"
+                    data-sharing-modal-target="expirationSelect"
+                    data-action="change->sharing-modal#expirationChanged">
+              <%= options_for_select([
+                    ['1 hour', '1h'],
+                    ['12 hours', '12h'],
+                    ['24 hours', '24h'],
+                    ['1 week', '1w'],
+                    ['1 month', '1m']
+                  ], @stat&.sharing_settings&.dig('expiration') || '1h') %>
+            </select>
+          </div>
+
+          <%# Sharing Link Display %>
+          <%= render 'shared/sharing_link',
+              sharing_url: @stat.sharing_enabled? ? shared_stat_url(@stat.sharing_uuid) : '' %>
+        </div>
+
+      <% end %>
+
+      <%# Privacy Notice %>
+      <div class="alert alert-info mb-4">
+        <%= icon 'info' %>
+        <div>
+          <h3 class="font-bold">Privacy Protection</h3>
+          <div class="text-sm">
+            • Exact coordinates are hidden<br>
+            • Personal information is not included
+          </div>
+        </div>
+      </div>
+
+      <%# Modal Actions %>
+      <div class="modal-action">
+        <button type="button"
+                class="btn btn-primary"
+                onclick="sharing_modal.close()">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+</dialog>

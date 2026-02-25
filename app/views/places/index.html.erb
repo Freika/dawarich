@@ -20,9 +20,7 @@
       </div>
     <% else %>
       <div class="flex justify-center my-5">
-        <div class='flex'>
-          <%= paginate @places %>
-        </div>
+        <%= paginate @places %>
       </div>
       <div class="overflow-x-auto">
         <table class="table">
@@ -41,7 +39,7 @@
                 <td><%= human_datetime(place.created_at) %></td>
                 <td><%= "#{place.lat}, #{place.lon}" %></td>
                 <td>
-                  <%= link_to 'Delete', place, data: { confirm: "Are you sure? Deleting a place will result in deleting all visits for this place.", turbo_confirm: "Are you sure? Deleting a place will result in deleting all visits for this place.", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
+                  <%= link_to 'Delete', place, data: { turbo_confirm: "Are you sure? Deleting a place will result in deleting all visits for this place.", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
                 </td>
               </tr>
             <% end %>

@@ -6,15 +6,19 @@ class Api::UserSerializer
   end
 
   def call
-    {
+    data = {
       user: {
         email:     user.email,
         theme:     user.theme,
         created_at: user.created_at,
         updated_at: user.updated_at,
-        settings: settings,
+        settings: settings
       }
     }
+
+    data.merge!(subscription: subscription) unless DawarichSettings.self_hosted?
+
+    data
   end
 
   private
@@ -23,6 +27,7 @@ class Api::UserSerializer
 
   def settings
     {
+      timezone: user.timezone,
       maps: user.safe_settings.maps,
       fog_of_war_meters: user.safe_settings.fog_of_war_meters.to_i,
       meters_between_routes: user.safe_settings.meters_between_routes.to_i,
@@ -38,7 +43,15 @@ class Api::UserSerializer
       photoprism_url: user.safe_settings.photoprism_url,
       visits_suggestions_enabled: user.safe_settings.visits_suggestions_enabled?,
       speed_color_scale: user.safe_settings.speed_color_scale,
-      fog_of_war_threshold: user.safe_settings.fog_of_war_threshold
+      fog_of_war_threshold: user.safe_settings.fog_of_war_threshold,
+      globe_projection: user.safe_settings.globe_projection
+    }
+  end
+
+  def subscription
+    {
+      status: user.status,
+      active_until: user.active_until
     }
   end
 end

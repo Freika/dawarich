@@ -7,12 +7,17 @@ class PointsLimitExceeded
 
   def call
     return false if DawarichSettings.self_hosted?
-    return true if @user.points.count >= points_limit
 
-    false
+    Rails.cache.fetch(cache_key, expires_in: 1.day) do
+      @user.points_count.to_i >= points_limit
+    end
   end
 
   private
+
+  def cache_key
+    "points_limit_exceeded/#{@user.id}"
+  end
 
   def points_limit
     DawarichSettings::BASIC_PAID_PLAN_LIMIT

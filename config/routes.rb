@@ -26,6 +26,7 @@ Rails.application.routes.draw do
   } do
     mount Sidekiq::Web => '/sidekiq'
   end
+  mount RailsPulse::Engine => '/rails_pulse'
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq
   match '/sidekiq' => redirect { |_, request|
@@ -33,9 +34,16 @@ Rails.application.routes.draw do
                         '/'
                       }, via: :get
 
-  resources :settings, only: :index
   namespace :settings do
+    resources :general, only: [:index]
+    patch 'general', to: 'general#update'
+    post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+
+    resources :integrations, only: [:index]
+    patch 'integrations', to: 'integrations#update'
+
     resources :background_jobs, only: %i[index create]
+    patch 'background_jobs', to: 'background_jobs#update'
     resources :users, only: %i[index create destroy edit update] do
       collection do
         get 'export'
@@ -47,15 +55,34 @@ Rails.application.routes.draw do
     patch 'maps', to: 'maps#update'
   end
 
-  patch 'settings', to: 'settings#update'
   get 'settings/theme', to: 'settings#theme'
   post 'settings/generate_api_key', to: 'settings#generate_api_key', as: :generate_api_key
 
   resources :imports
   resources :visits, only: %i[index update]
-  resources :places, only: %i[index destroy]
+  resources :areas, only: [:create]
+  resources :places, only: %i[index destroy create update] do
+    collection do
+      get 'nearby'
+    end
+  end
   resources :exports, only: %i[index create destroy]
   resources :trips
+  resources :tags, except: [:show]
+
+  # Family management routes (only if feature is enabled)
+  if DawarichSettings.family_feature_enabled?
+    resource :family, only: %i[show new create edit update destroy] do
+      resources :invitations, except: %i[edit update], controller: 'family/invitations'
+      resources :members, only: %i[destroy], controller: 'family/memberships'
+
+      patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
+    end
+
+    get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
+    post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
+  end
+
   resources :points, only: %i[index] do
     collection do
       delete :bulk_destroy
@@ -69,25 +96,60 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  resources :insights, only: :index do
+    collection do
+      get :details
+    end
+  end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
+  get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
+  get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
+
+  # Sharing management endpoint (requires auth)
+  patch 'stats/:year/:month/sharing',
+        to: 'shared/stats#update',
+        as: :sharing_stats,
+        constraints: { year: /\d{4}/, month: /\d{1,2}/ }
+
+  # User digests routes (yearly/monthly digest reports)
+  scope module: 'users' do
+    resources :digests, only: %i[index create show destroy], param: :year, as: :users_digests,
+                        constraints: { year: /\d{4}/ }
+  end
+  get 'shared/digest/:uuid', to: 'shared/digests#show', as: :shared_users_digest
+  patch 'digests/:year/sharing',
+        to: 'shared/digests#update',
+        as: :sharing_users_digest,
+        constraints: { year: /\d{4}/ }
 
   root to: 'home#index'
 
-  if SELF_HOSTED
-    devise_for :users, skip: [:registrations]
-    as :user do
-      get 'users/edit' => 'devise/registrations#edit', :as => 'edit_user_registration'
-      put 'users' => 'devise/registrations#update', :as => 'user_registration'
+  get 'auth/ios/success', to: 'auth/ios#success', as: :ios_success
+
+  devise_for :users, controllers: {
+    registrations: 'users/registrations',
+    sessions: 'users/sessions',
+    omniauth_callbacks: 'users/omniauth_callbacks'
+  }
+
+  resources :metrics, only: [:index]
+
+  # Map namespace with versioning
+  namespace :map do
+    get '/v1', to: 'leaflet#index', as: :v1
+    get '/v2', to: 'maplibre#index', as: :v2
+    resources :timeline_feeds, only: [:index] do
+      get :track_info, on: :member
     end
-  else
-    devise_for :users
   end
 
-  get 'map', to: 'map#index'
+  # Backward compatibility redirects
+  get '/map', to: 'map/leaflet#index'
+  get '/maps/v2', to: redirect('/map/v2')
 
   namespace :api do
     namespace :v1 do
@@ -95,11 +157,26 @@ Rails.application.routes.draw do
       get   'health', to: 'health#index'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'users/me', to: 'users#me'
 
-      resources :areas,     only: %i[index create update destroy]
-      resources :points,    only: %i[index create update destroy]
-      resources :visits,    only: %i[index update] do
+      resources :areas,     only: %i[index show create update destroy]
+      resources :places,    only: %i[index show create update destroy] do
+        collection do
+          get 'nearby'
+        end
+      end
+      resources :locations, only: %i[index] do
+        collection do
+          get 'suggestions'
+        end
+      end
+      resources :points, only: %i[index create update destroy] do
+        collection do
+          delete :bulk_destroy
+        end
+      end
+      resources :visits, only: %i[index show create update destroy] do
         get 'possible_places', to: 'visits/possible_places#index', on: :member
         collection do
           post 'merge', to: 'visits#merge'
@@ -107,6 +184,18 @@ Rails.application.routes.draw do
         end
       end
       resources :stats, only: :index
+      resources :insights, only: :index do
+        collection do
+          get :details
+        end
+      end
+      resources :digests, only: %i[index show create destroy], param: :year,
+                          constraints: { year: /\d{4}/ }
+      resources :tags, only: [] do
+        collection do
+          get 'privacy_zones'
+        end
+      end
 
       namespace :overland do
         resources :batches, only: :create
@@ -131,8 +220,22 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :tracks, only: %i[index show] do
+        resources :points, only: [:index], controller: 'tracks/points'
+      end
+
+      resources :timeline, only: [:index]
+
       namespace :maps do
-        resources :tile_usage, only: [:create]
+        resources :hexagons, only: [:index] do
+          collection do
+            get :bounds
+          end
+        end
+      end
+
+      namespace :families do
+        resources :locations, only: [:index]
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
