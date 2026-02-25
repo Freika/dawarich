@@ -2,6 +2,9 @@
 
 class ImportsController < ApplicationController
   include ActiveStorage::SetCurrent
+  include Sortable
+
+  SORTABLE_COLUMNS = %w[name status created_at processed byte_size].freeze
 
   before_action :authenticate_user!
   before_action :set_import, only: %i[show edit update destroy]
@@ -145,21 +148,5 @@ class ImportsController < ApplicationController
     limit_exceeded = PointsLimitExceeded.new(current_user).call
 
     redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_content if limit_exceeded
-  end
-
-  def sorted(scope)
-    if sort_column == 'byte_size'
-      scope.joins(file_attachment: :blob).order("active_storage_blobs.byte_size #{sort_direction}")
-    else
-      scope.order(sort_column => sort_direction)
-    end
-  end
-
-  def sort_column
-    %w[name status created_at processed byte_size].include?(params[:sort_by]) ? params[:sort_by] : 'created_at'
-  end
-
-  def sort_direction
-    %w[asc desc].include?(params[:order_by]) ? params[:order_by] : 'desc'
   end
 end

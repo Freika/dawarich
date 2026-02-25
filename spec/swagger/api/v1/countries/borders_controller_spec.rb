@@ -41,6 +41,8 @@ RSpec.describe 'Countries Borders API', type: :request do
                  }
                }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 
