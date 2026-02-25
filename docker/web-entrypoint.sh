@@ -105,4 +105,4 @@ if [ "$PROMETHEUS_EXPORTER_ENABLED" = "true" ]; then
 fi
 
 # run passed commands
-exec bundle exec ${@}
+exec bundle exec "${@}"
