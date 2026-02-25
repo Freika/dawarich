@@ -12,7 +12,8 @@ module TripsHelper
   end
 
   def photoprism_search_url(base_url, start_date, _end_date)
-    "#{base_url}/library/browse?view=cards&year=#{start_date.year}&month=#{start_date.month}&order=newest&public=true&quality=3"
+    "#{base_url}/library/browse?view=cards&year=#{start_date.year}" \
+      "&month=#{start_date.month}&order=newest&public=true&quality=3"
   end
 
   def photo_search_url(source, settings, start_date, end_date)
@@ -35,26 +36,26 @@ module TripsHelper
     hours = end_time.hour - start_time.hour
 
     # Adjust for negative values
-    if hours < 0
+    if hours.negative?
       hours += 24
       days -= 1
     end
-    if days < 0
+    if days.negative?
       prev_month = end_time.prev_month
       days += (end_time - prev_month).to_i / 1.day
       months -= 1
     end
-    if months < 0
+    if months.negative?
       months += 12
       years -= 1
     end
 
     parts = []
-    parts << "#{years} year#{'s' if years != 1}" if years > 0
-    parts << "#{months} month#{'s' if months != 1}" if months > 0
-    parts << "#{days} day#{'s' if days != 1}" if days > 0
-    parts << "#{hours} hour#{'s' if hours != 1}" if hours > 0
-    parts = ["0 hours"] if parts.empty?
+    parts << "#{years} year#{'s' if years != 1}" if years.positive?
+    parts << "#{months} month#{'s' if months != 1}" if months.positive?
+    parts << "#{days} day#{'s' if days != 1}" if days.positive?
+    parts << "#{hours} hour#{'s' if hours != 1}" if hours.positive?
+    parts = ['0 hours'] if parts.empty?
     parts.join(', ')
   end
 end

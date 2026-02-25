@@ -4,6 +4,13 @@ class Cache::PreheatingJob < ApplicationJob
   queue_as :cache
 
   def perform
+    # Preheat country borders GeoJSON (global, not per-user)
+    Rails.cache.write(
+      'dawarich/countries_codes',
+      Oj.load(File.read(Rails.root.join('lib/assets/countries.geojson'))),
+      expires_in: 1.day
+    )
+
     User.find_each do |user|
       Rails.cache.write(
         "dawarich/user_#{user.id}_years_tracked",
@@ -36,6 +43,9 @@ class Cache::PreheatingJob < ApplicationJob
         Stat.convert_distance(total_distance_meters, user.safe_settings.distance_unit),
         expires_in: 1.day
       )
+
+      # Preheat insights yearly digest cache
+      Cache::PreheatInsightsDigests.new(user).call
     end
   end
 end

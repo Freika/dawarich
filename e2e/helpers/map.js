@@ -7,10 +7,15 @@
  * @param {Page} page - Playwright page object
  */
 export async function waitForMap(page) {
-  await page.waitForFunction(() => {
-    const container = document.querySelector('#map [data-maps-target="container"]');
-    return container && container._leaflet_id !== undefined;
-  }, { timeout: 10000 });
+  await page.waitForFunction(
+    () => {
+      const container = document.querySelector(
+        '#map [data-maps-target="container"]',
+      )
+      return container && container._leaflet_id !== undefined
+    },
+    { timeout: 10000 },
+  )
 }
 
 /**
@@ -19,23 +24,25 @@ export async function waitForMap(page) {
  * @param {string} layerName - Name of the layer to enable (e.g., "Routes", "Heatmap")
  */
 export async function enableLayer(page, layerName) {
-  await page.locator('.leaflet-control-layers').hover();
-  await page.waitForTimeout(300);
+  await page.locator(".leaflet-control-layers").hover()
+  await page.waitForTimeout(300)
 
   // Find the layer by its name in the tree structure
   // Layer names are in spans with class="leaflet-layerstree-header-name"
   // The checkbox is in the same .leaflet-layerstree-header container
-  const layerHeader = page.locator(
-    `.leaflet-layerstree-header:has(.leaflet-layerstree-header-name:text-is("${layerName}"))`
-  ).first();
+  const layerHeader = page
+    .locator(
+      `.leaflet-layerstree-header:has(.leaflet-layerstree-header-name:text-is("${layerName}"))`,
+    )
+    .first()
 
-  const checkbox = layerHeader.locator('input[type="checkbox"]').first();
+  const checkbox = layerHeader.locator('input[type="checkbox"]').first()
 
-  const isChecked = await checkbox.isChecked();
+  const isChecked = await checkbox.isChecked()
 
   if (!isChecked) {
-    await checkbox.check();
-    await page.waitForTimeout(1000);
+    await checkbox.check()
+    await page.waitForTimeout(1000)
   }
 }
 
@@ -46,17 +53,19 @@ export async function enableLayer(page, layerName) {
  */
 export async function clickConfirmedVisit(page) {
   return await page.evaluate(() => {
-    const controller = window.Stimulus?.controllers.find(c => c.identifier === 'maps');
+    const controller = window.Stimulus?.controllers.find(
+      (c) => c.identifier === "maps",
+    )
     if (controller?.visitsManager?.confirmedVisitCircles?._layers) {
-      const layers = controller.visitsManager.confirmedVisitCircles._layers;
-      const firstVisit = Object.values(layers)[0];
+      const layers = controller.visitsManager.confirmedVisitCircles._layers
+      const firstVisit = Object.values(layers)[0]
       if (firstVisit) {
-        firstVisit.fire('click');
-        return true;
+        firstVisit.fire("click")
+        return true
       }
     }
-    return false;
-  });
+    return false
+  })
 }
 
 /**
@@ -66,17 +75,19 @@ export async function clickConfirmedVisit(page) {
  */
 export async function clickSuggestedVisit(page) {
   return await page.evaluate(() => {
-    const controller = window.Stimulus?.controllers.find(c => c.identifier === 'maps');
+    const controller = window.Stimulus?.controllers.find(
+      (c) => c.identifier === "maps",
+    )
     if (controller?.visitsManager?.suggestedVisitCircles?._layers) {
-      const layers = controller.visitsManager.suggestedVisitCircles._layers;
-      const firstVisit = Object.values(layers)[0];
+      const layers = controller.visitsManager.suggestedVisitCircles._layers
+      const firstVisit = Object.values(layers)[0]
       if (firstVisit) {
-        firstVisit.fire('click');
-        return true;
+        firstVisit.fire("click")
+        return true
       }
     }
-    return false;
-  });
+    return false
+  })
 }
 
 /**
@@ -86,9 +97,64 @@ export async function clickSuggestedVisit(page) {
  */
 export async function getMapZoom(page) {
   return await page.evaluate(() => {
-    const controller = window.Stimulus?.controllers.find(c => c.identifier === 'maps');
-    return controller?.map?.getZoom() || null;
-  });
+    const controller = window.Stimulus?.controllers.find(
+      (c) => c.identifier === "maps",
+    )
+    return controller?.map?.getZoom() || null
+  })
+}
+
+/**
+ * Open the settings panel by clicking the gear button
+ * @param {Page} page - Playwright page object
+ */
+export async function openSettingsPanel(page) {
+  await page.locator(".map-settings-button").click()
+  await page.waitForSelector(".leaflet-settings-panel", {
+    state: "visible",
+    timeout: 5000,
+  })
+}
+
+/**
+ * Close the settings panel by clicking the gear button again
+ * @param {Page} page - Playwright page object
+ */
+export async function closeSettingsPanel(page) {
+  await page.locator(".map-settings-button").click()
+  await page.waitForSelector(".leaflet-settings-panel", {
+    state: "detached",
+    timeout: 5000,
+  })
+}
+
+/**
+ * Hover over the first route polyline segment to trigger popup
+ * @param {Page} page - Playwright page object
+ * @returns {Promise<boolean>} - True if a route was hovered, false otherwise
+ */
+export async function hoverFirstRoute(page) {
+  return await page.evaluate(() => {
+    const controller = window.Stimulus?.controllers.find(
+      (c) => c.identifier === "maps",
+    )
+    if (!controller?.polylinesLayer) return false
+    let hovered = false
+    controller.polylinesLayer.eachLayer((layer) => {
+      if (hovered) return
+      if (layer._layers) {
+        Object.values(layer._layers).forEach((segment) => {
+          if (hovered) return
+          const latlngs = segment.getLatLngs?.()
+          if (latlngs?.length > 0) {
+            segment.fire("mouseover", { latlng: latlngs[0] })
+            hovered = true
+          }
+        })
+      }
+    })
+    return hovered
+  })
 }
 
 /**
@@ -96,10 +162,15 @@ export async function getMapZoom(page) {
  * @param {Page} page - Playwright page object
  */
 export async function waitForMapLoad(page) {
-  await page.waitForFunction(() => {
-    return window.map && window.map.loaded();
-  }, { timeout: 10000 });
+  await page.waitForFunction(
+    () => {
+      return window.map?.loaded()
+    },
+    { timeout: 10000 },
+  )
 
   // Wait for initial data load to complete
-  await page.waitForSelector('[data-maps--maplibre-target="loading"].hidden', { timeout: 15000 });
+  await page.waitForSelector('[data-maps--maplibre-target="loading"].hidden', {
+    timeout: 15000,
+  })
 }

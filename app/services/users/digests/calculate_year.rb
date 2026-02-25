@@ -22,7 +22,8 @@ module Users
           time_spent_by_location: calculate_time_spent,
           first_time_visits: calculate_first_time_visits,
           year_over_year: calculate_yoy_comparison,
-          all_time_stats: calculate_all_time_stats
+          all_time_stats: calculate_all_time_stats,
+          travel_patterns: calculate_travel_patterns
         )
 
         digest.save!
@@ -107,41 +108,55 @@ module Users
       end
 
       def calculate_actual_country_minutes
-        points_by_date = group_points_by_date
+        # Use SQL aggregation to avoid loading millions of points into memory
+        # Groups by date and country, returning min/max timestamps and country count per day
+        daily_country_stats = fetch_daily_country_stats
         country_minutes = Hash.new(0)
 
-        points_by_date.each do |_date, day_points|
-          countries_on_day = day_points.map(&:country_name).uniq
-
-          if countries_on_day.size == 1
+        # Group by date to process multi-country days
+        daily_country_stats.group_by { |row| row['point_date'] }.each_value do |day_rows|
+          if day_rows.size == 1
             # Single country day - assign full day
-            country_minutes[countries_on_day.first] += MINUTES_PER_DAY
+            country_minutes[day_rows.first['country_name']] += MINUTES_PER_DAY
           else
             # Multi-country day - calculate proportional time
-            calculate_proportional_time(day_points, country_minutes)
+            calculate_proportional_time_from_stats(day_rows, country_minutes)
           end
         end
 
         country_minutes
       end
 
-      def group_points_by_date
-        points = fetch_year_points_with_country_ordered
+      def fetch_daily_country_stats
+        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        end_of_year = start_of_year.end_of_year
 
-        points.group_by do |point|
-          Time.zone.at(point.timestamp).to_date
-        end
+        sql = <<~SQL
+          SELECT
+            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
+            country_name,
+            MIN(timestamp) as min_timestamp,
+            MAX(timestamp) as max_timestamp
+          FROM points
+          WHERE user_id = #{user.id}
+            AND timestamp >= #{start_of_year.to_i}
+            AND timestamp <= #{end_of_year.to_i}
+            AND country_name IS NOT NULL
+            AND country_name != ''
+          GROUP BY point_date, country_name
+          ORDER BY point_date, min_timestamp
+        SQL
+
+        ActiveRecord::Base.connection.execute(sql).to_a
       end
 
-      def calculate_proportional_time(day_points, country_minutes)
-        country_spans = Hash.new(0)
-        points_by_country = day_points.group_by(&:country_name)
+      def calculate_proportional_time_from_stats(day_rows, country_minutes)
+        country_spans = {}
 
-        points_by_country.each do |country, country_points|
-          timestamps = country_points.map(&:timestamp)
-          span_seconds = timestamps.max - timestamps.min
+        day_rows.each do |row|
+          span_seconds = row['max_timestamp'].to_i - row['min_timestamp'].to_i
           # Minimum 60 seconds (1 min) for single-point countries
-          country_spans[country] = [span_seconds, 60].max
+          country_spans[row['country_name']] = [span_seconds, 60].max
         end
 
         total_spans = country_spans.values.sum.to_f
@@ -150,18 +165,6 @@ module Users
           proportional_minutes = (span / total_spans * MINUTES_PER_DAY).round
           country_minutes[country] += proportional_minutes
         end
-      end
-
-      def fetch_year_points_with_country_ordered
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
-        end_of_year = start_of_year.end_of_year
-
-        user.points
-            .without_raw_data
-            .where('timestamp >= ? AND timestamp <= ?', start_of_year.to_i, end_of_year.to_i)
-            .where.not(country_name: [nil, ''])
-            .select(:country_name, :timestamp)
-            .order(timestamp: :asc)
       end
 
       def calculate_city_time_spent
@@ -219,6 +222,14 @@ module Users
           'total_countries' => user.countries_visited_uncached.size,
           'total_cities' => user.cities_visited_uncached.size,
           'total_distance' => user.stats.sum(:distance).to_s
+        }
+      end
+
+      def calculate_travel_patterns
+        {
+          'time_of_day' => Stats::TimeOfDayQuery.new(user, year, nil, user.timezone).call,
+          'seasonality' => SeasonalityCalculator.new(user, year).call,
+          'activity_breakdown' => ActivityBreakdownCalculator.new(user, year, nil).call
         }
       end
     end

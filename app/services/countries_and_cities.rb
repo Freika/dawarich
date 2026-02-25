@@ -4,8 +4,10 @@ class CountriesAndCities
   CountryData = Struct.new(:country, :cities, keyword_init: true)
   CityData = Struct.new(:city, :points, :timestamp, :stayed_for, keyword_init: true)
 
-  def initialize(points)
+  def initialize(points, min_minutes_spent_in_city: 60, max_gap_minutes: 120)
     @points = points
+    @min_minutes_spent_in_city = min_minutes_spent_in_city
+    @max_gap_minutes = max_gap_minutes
   end
 
   def call
@@ -18,7 +20,7 @@ class CountriesAndCities
 
   private
 
-  attr_reader :points
+  attr_reader :points, :min_minutes_spent_in_city, :max_gap_minutes
 
   def process_country_points(country_points)
     country_points
@@ -38,7 +40,7 @@ class CountriesAndCities
   end
 
   def build_city_data(city, points_count, timestamps, duration)
-    return nil if duration < ::MIN_MINUTES_SPENT_IN_CITY
+    return nil if duration < min_minutes_spent_in_city
 
     CityData.new(
       city: city,
@@ -53,7 +55,7 @@ class CountriesAndCities
 
     sorted = timestamps.sort
     total_minutes = 0
-    gap_threshold_seconds = ::MIN_MINUTES_SPENT_IN_CITY * 60
+    gap_threshold_seconds = max_gap_minutes * 60
 
     sorted.each_cons(2) do |prev_ts, curr_ts|
       interval_seconds = curr_ts - prev_ts

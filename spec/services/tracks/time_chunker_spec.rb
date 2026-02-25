@@ -125,7 +125,7 @@ RSpec.describe Tracks::TimeChunker do
           chunks = chunker.call
 
           expect(chunks).not_to be_empty
-          expect(chunks.first[:start_time]).to be >= Time.at(point1.timestamp)
+          expect(chunks.first[:start_time]).to be >= Time.zone.at(point1.timestamp)
           expect(chunks.last[:end_time]).to be <= 1.day.ago
         end
       end
@@ -135,8 +135,8 @@ RSpec.describe Tracks::TimeChunker do
           chunks = chunker.call
 
           expect(chunks).not_to be_empty
-          expect(chunks.first[:start_time]).to be >= Time.at(point1.timestamp)
-          expect(chunks.last[:end_time]).to be <= Time.at(point3.timestamp)
+          expect(chunks.first[:start_time]).to be >= Time.zone.at(point1.timestamp)
+          expect(chunks.last[:end_time]).to be <= Time.zone.at(point3.timestamp)
         end
       end
 
@@ -201,8 +201,8 @@ RSpec.describe Tracks::TimeChunker do
           chunks.each do |chunk|
             # Verify each chunk has points in its buffer range
             points_exist = user.points
-              .where(timestamp: chunk[:buffer_start_timestamp]..chunk[:buffer_end_timestamp])
-              .exists?
+                               .where(timestamp: chunk[:buffer_start_timestamp]..chunk[:buffer_end_timestamp])
+                               .exists?
             expect(points_exist).to be true
           end
         end
@@ -286,14 +286,14 @@ RSpec.describe Tracks::TimeChunker do
         # Only end provided
         chunker_end = described_class.new(user, end_at: test_end_time)
         result_end = chunker_end.send(:determine_time_range)
-        expect(result_end[0]).to eq(Time.at(point1.timestamp))
+        expect(result_end[0]).to eq(Time.zone.at(point1.timestamp))
         expect(result_end[1]).to be_within(1.second).of(test_end_time.to_time)
 
         # Neither provided
         chunker_neither = described_class.new(user)
         result_neither = chunker_neither.send(:determine_time_range)
-        expect(result_neither[0]).to eq(Time.at(point1.timestamp))
-        expect(result_neither[1]).to eq(Time.at(point2.timestamp))
+        expect(result_neither[0]).to eq(Time.zone.at(point1.timestamp))
+        expect(result_neither[1]).to eq(Time.zone.at(point2.timestamp))
       end
 
       context 'when user has no points and end_at is provided' do

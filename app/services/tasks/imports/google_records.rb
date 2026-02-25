@@ -50,10 +50,16 @@ class Tasks::Imports::GoogleRecords
   end
 
   def log_start
-    Rails.logger.debug("Importing #{@file_path} for #{@user.email}, file size is #{File.size(@file_path)}... This might take a while, have patience!")
+    Rails.logger.debug(
+      "Importing #{@file_path} for #{@user.email}, file size is #{File.size(@file_path)}... " \
+        'This might take a while, have patience!'
+    )
   end
 
   def log_success
-    Rails.logger.info("Imported #{@file_path} for #{@user.email} successfully! Wait for the processing to finish. You can check the status of the import in the Sidekiq UI (http://<your-dawarich-url>/sidekiq).")
+    Rails.logger.info(
+      "Imported #{@file_path} for #{@user.email} successfully! " \
+        'Wait for the processing to finish. Check the import status in the Sidekiq UI.'
+    )
   end
 end

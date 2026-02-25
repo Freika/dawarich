@@ -11,6 +11,11 @@ RSpec.describe 'Users::Registrations', type: :request do
   end
 
   describe 'Family Invitation Registration Flow' do
+    # Allow email/password registration for these tests
+    before do
+      stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+    end
+
     context 'when accessing registration with a valid invitation token' do
       it 'shows family-focused registration page' do
         get new_user_registration_path(invitation_token: invitation.token)
@@ -277,6 +282,11 @@ RSpec.describe 'Users::Registrations', type: :request do
   end
 
   describe 'Invitation Token Handling' do
+    # Allow email/password registration for these tests
+    before do
+      stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+    end
+
     it 'accepts invitation token from params' do
       get new_user_registration_path(invitation_token: invitation.token)
 
@@ -307,6 +317,11 @@ RSpec.describe 'Users::Registrations', type: :request do
   end
 
   describe 'Error Handling' do
+    # Allow email/password registration for these tests
+    before do
+      stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+    end
+
     context 'when invitation acceptance fails' do
       before do
         # Mock service failure
@@ -354,6 +369,11 @@ RSpec.describe 'Users::Registrations', type: :request do
   end
 
   describe 'Validation Error Handling' do
+    # Allow email/password registration for these tests
+    before do
+      stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+    end
+
     context 'when trying to register with an existing email' do
       let!(:existing_user) { create(:user, email: 'existing@example.com') }
 
@@ -411,7 +431,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         }
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(response.body).to include("Password confirmation doesn")
+        expect(response.body).to include('Password confirmation doesn')
         expect(response.body).to include('error_explanation')
       end
     end

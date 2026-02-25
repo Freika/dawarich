@@ -43,7 +43,7 @@ class Stats::CalculateMonth
 
       stat.save!
 
-      Cache::InvalidateUserCaches.new(user.id).call
+      Cache::InvalidateUserCaches.new(user.id, year: year).call
     end
   end
 
@@ -65,8 +65,11 @@ class Stats::CalculateMonth
   end
 
   def toponyms
-    # Reuse already-loaded points instead of making a duplicate query
-    CountriesAndCities.new(points).call
+    CountriesAndCities.new(
+      points,
+      min_minutes_spent_in_city: user.safe_settings.min_minutes_spent_in_city,
+      max_gap_minutes: user.safe_settings.max_gap_minutes_in_city
+    ).call
   end
 
   def create_stats_update_failed_notification(user, error)

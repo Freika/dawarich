@@ -9,6 +9,9 @@
 ![Map](screenshots/map.png)
 *Map View*
 
+![Insights](screenshots/insights.png)
+*Insights Page*
+
 ![Family](screenshots/family.png)
 *Family Page*
 
@@ -34,6 +37,7 @@ It enables you to:
 - Integrate with photo management apps like Immich and Photoprism to visualize geotagged photos.
 - Import your location history from Google Maps Timeline, OwnTracks, GPX, GeoJSON and some other sources
 - Explore statistics like the number of countries and cities visited, total distance traveled, and more!
+- Share your location with family members.
 
 📄 **Changelog**: Find the latest updates [here](CHANGELOG.md).
 
@@ -42,12 +46,13 @@ It enables you to:
 
 ## ⚠️ Disclaimer
 
+### Updating strategy
+
 - 💔 **DO NOT UPDATE AUTOMATICALLY**: Read release notes before updating. Automatic updates may break your setup.
 - 🛠️ **Under active development**: Expect frequent updates, bugs, and breaking changes.
 - ❌ **Do not delete your original data** after importing into Dawarich.
 - 📦 **Backup before updates**: Always [backup your data](https://dawarich.app/docs/tutorials/backup-and-restore) before upgrading.
 - 🔄 **Stay up-to-date**: Make sure you're running the latest version for the best experience.
-- ⚠️ **DO NOT USE PRODUCTION ENVIRONMENT**: Dawarich is not yet ready for production.
 
 ---
 

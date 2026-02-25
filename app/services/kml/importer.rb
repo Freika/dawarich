@@ -117,7 +117,7 @@ class Kml::Importer
   end
 
   def parse_placemark(placemark)
-    return [] unless has_explicit_timestamp?(placemark)
+    return [] unless explicit_timestamp?(placemark)
 
     timestamp = extract_timestamp(placemark)
     points = []
@@ -192,7 +192,7 @@ class Kml::Importer
   end
 
   def build_gx_track_point(timestamp_str, coord_str, index)
-    time = Time.parse(timestamp_str).to_i
+    time = Time.parse(timestamp_str).utc.to_i
     coord_parts = coord_str.split(/\s+/)
     return nil if coord_parts.size < 2
 
@@ -200,7 +200,7 @@ class Kml::Importer
 
     {
       lonlat: "POINT(#{lng} #{lat})",
-      altitude: alt&.to_i || 0,
+      altitude: alt.to_i,
       timestamp: time,
       import_id: import.id,
       velocity: 0.0,
@@ -227,11 +227,11 @@ class Kml::Importer
     {
       lng: parts[0].to_f,
       lat: parts[1].to_f,
-      alt: parts[2]&.to_f || 0.0
+      alt: parts[2].to_f
     }
   end
 
-  def has_explicit_timestamp?(placemark)
+  def explicit_timestamp?(placemark)
     find_timestamp_node(placemark).present?
   end
 
@@ -239,7 +239,7 @@ class Kml::Importer
     node = find_timestamp_node(placemark)
     raise 'No timestamp found in placemark' unless node
 
-    Time.parse(node.text).to_i
+    Time.parse(node.text).utc.to_i
   rescue StandardError => e
     Rails.logger.error("Failed to parse timestamp: #{e.message}")
     raise e
@@ -335,7 +335,6 @@ class Kml::Importer
   end
 
   def upsert_points(batch)
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       batch,
       unique_by: %i[lonlat timestamp user_id],

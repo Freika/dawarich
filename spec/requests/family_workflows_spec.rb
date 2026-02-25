@@ -27,7 +27,7 @@ RSpec.describe 'Family Workflows', type: :request do
       expect(user1.family_owner?).to be true
 
       # Step 2: User1 invites User2
-      post "/family/invitations", params: {
+      post '/family/invitations', params: {
         family_invitation: { email: user2.email }
       }
       expect(response).to redirect_to(family_path)
@@ -56,7 +56,7 @@ RSpec.describe 'Family Workflows', type: :request do
 
       # Step 4: User1 invites User3
       sign_in user1
-      post "/family/invitations", params: {
+      post '/family/invitations', params: {
         family_invitation: { email: user3.email }
       }
 
@@ -73,7 +73,7 @@ RSpec.describe 'Family Workflows', type: :request do
 
       # Step 6: Family owner views members on family show page
       sign_in user1
-      get "/family"
+      get '/family'
       expect(response).to have_http_status(:ok)
 
       # Step 7: Owner removes a member
@@ -194,7 +194,7 @@ RSpec.describe 'Family Workflows', type: :request do
         sign_in user1
 
         expect do
-          delete "/family"
+          delete '/family'
         end.not_to change(Family, :count)
 
         expect(response).to redirect_to(family_path)
@@ -207,7 +207,7 @@ RSpec.describe 'Family Workflows', type: :request do
       sign_in user1
 
       expect do
-        delete "/family"
+        delete '/family'
       end.to change(Family, :count).by(-1)
 
       expect(response).to redirect_to(new_family_path)
@@ -223,7 +223,7 @@ RSpec.describe 'Family Workflows', type: :request do
     it 'enforces proper authorization for family management' do
       # Member cannot invite others
       sign_in user2
-      post "/family/invitations", params: {
+      post '/family/invitations', params: {
         family_invitation: { email: user3.email }
       }
       expect(response).to have_http_status(:see_other)
@@ -235,18 +235,18 @@ RSpec.describe 'Family Workflows', type: :request do
       expect(flash[:alert]).to include('not authorized')
 
       # Member cannot edit family
-      patch "/family", params: { family: { name: 'Hacked Family' } }
+      patch '/family', params: { family: { name: 'Hacked Family' } }
       expect(response).to have_http_status(:see_other)
       expect(flash[:alert]).to include('not authorized')
 
       # Member cannot delete family
-      delete "/family"
+      delete '/family'
       expect(response).to have_http_status(:see_other)
       expect(flash[:alert]).to include('not authorized')
 
       # Outsider cannot access family
       sign_in user3
-      get "/family"
+      get '/family'
       expect(response).to redirect_to(new_family_path)
     end
   end
@@ -260,7 +260,7 @@ RSpec.describe 'Family Workflows', type: :request do
 
       # Mock email delivery
       expect do
-        post "/family/invitations", params: {
+        post '/family/invitations', params: {
           family_invitation: { email: 'newuser@example.com' }
         }
       end.to change(Family::Invitation, :count).by(1)

@@ -8,7 +8,7 @@ class RemoveDuplicatePoints < ActiveRecord::Migration[8.0]
            .group('latitude, longitude, timestamp, user_id')
            .having('COUNT(*) > 1')
 
-    puts "Duplicate groups found: #{duplicate_groups.length}"
+    Rails.logger.debug "Duplicate groups found: #{duplicate_groups.length}"
 
     duplicate_groups.each do |group|
       points = Point.where(

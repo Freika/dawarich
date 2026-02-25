@@ -10,15 +10,22 @@ module Points
       def compress
         io = StringIO.new
         gz = Zlib::GzipWriter.new(io)
+        written_count = 0
+        uncompressed_size = 0
 
-        # Stream points to avoid memory issues with large months
         @points.select(:id, :raw_data).find_each(batch_size: 1000) do |point|
           # Write as JSONL (one JSON object per line)
-          gz.puts({ id: point.id, raw_data: point.raw_data }.to_json)
+          json = { id: point.id, raw_data: point.raw_data }.to_json
+          line = "#{json}\n"
+          uncompressed_size += line.bytesize
+          gz.write(line)
+          written_count += 1
         end
 
         gz.close
-        io.string.force_encoding(Encoding::ASCII_8BIT)  # Returns compressed bytes in binary encoding
+        compressed_data = io.string.force_encoding(Encoding::ASCII_8BIT)
+
+        { data: compressed_data, count: written_count, uncompressed_size: uncompressed_size }
       end
     end
   end

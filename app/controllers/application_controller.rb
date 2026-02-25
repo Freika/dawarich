@@ -6,6 +6,7 @@ class ApplicationController < ActionController::Base
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
   before_action :sign_out_deleted_users
+  around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   protected
@@ -78,6 +79,17 @@ class ApplicationController < ActionController::Base
 
     sign_out current_user
     redirect_to root_path, alert: 'Your account has been deleted.'
+  end
+
+  def set_user_time_zone(&block)
+    if current_user
+      timezone = current_user.timezone
+      Time.use_zone(timezone, &block)
+    else
+      yield
+    end
+  rescue ArgumentError
+    yield
   end
 
   def set_self_hosted_status

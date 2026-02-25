@@ -114,6 +114,38 @@ bundle exec rspec spec/models/       # Model specs only
 npx playwright test                  # E2E tests
 ```
 
+### Testing Best Practices — Test Behavior, Not Implementation
+
+When writing or modifying tests, always test **observable behavior** (return values, state changes, side effects) rather than **implementation details** (which internal methods are called, in what order, with what exact arguments).
+
+**Anti-patterns to AVOID:**
+
+1. **Never mock the object under test** — `allow(subject).to receive(:internal_method)` makes the test a tautology
+2. **Never test private methods via `send()`** — test through the public interface instead; if creating a user triggers a trial, test by creating the user and checking `user.trial?`, not by calling `user.send(:start_trial)`
+3. **Never use `receive_message_chain`** — `allow(x).to receive_message_chain(:a, :b, :c)` breaks on any scope reorder; use real data instead
+4. **Avoid over-stubbing** — if every collaborator is mocked, the test proves nothing; mock only at external boundaries (HTTP, geocoder, external APIs)
+5. **Don't test wiring without outcomes** — `expect(Service).to receive(:new).with(args)` only proves a method was called, not that it works; verify the returned data or state change instead
+6. **Prefer `have_enqueued_job` over `expect(Job).to receive(:perform_later)`** — the former tests real ActiveJob integration; the latter just tests a mock
+7. **Don't assert on cache key formats or internal metric JSON shapes** — test that caching works (2nd call doesn't requery) or that metrics fire, not exact internal formats
+8. **Use real factory data over `allow(user).to receive(:active?).and_return(true)`** — set the actual user state: `create(:user, status: :active)`
+
+**Good test pattern:**
+```ruby
+# Test behavior: creating an export enqueues processing
+it 'enqueues processing job' do
+  expect { create(:export, file_type: :points) }.to have_enqueued_job(ExportJob)
+end
+```
+
+**Bad test pattern:**
+```ruby
+# Tests implementation: mocks the callback interaction
+it 'enqueues processing job' do
+  expect(ExportJob).to receive(:perform_later)  # mock, not real
+  build(:export).save!
+end
+```
+
 ## Background Jobs
 
 ### Sidekiq Jobs
@@ -211,17 +243,125 @@ See `.env.template` for available configuration options including:
 ## Code Quality
 
 ### Tools
-- **Linting**: RuboCop with Rails extensions
+- **Ruby Linting**: RuboCop with Rails extensions
+- **JS/CSS Linting**: Biome (formatting, lint, import sorting)
 - **Security**: Brakeman, bundler-audit
 - **Dependencies**: Strong Migrations for safe database changes
 - **Performance**: Stackprof for profiling
 
 ### Commands
 ```bash
-bundle exec rubocop                  # Code linting
+bundle exec rubocop                  # Ruby linting
+npx @biomejs/biome check --write .   # JS/CSS auto-fix (safe fixes)
+npx @biomejs/biome check --write --unsafe .  # JS/CSS auto-fix (all fixes)
+npx @biomejs/biome ci .              # JS/CSS CI check (read-only)
 bundle exec brakeman                 # Security scan
 bundle exec bundle-audit             # Dependency security
 ```
+
+### Lint Rules
+- **Always run RuboCop** on modified Ruby files before committing: `bundle exec rubocop <files>`
+- **Always run Biome** on modified JS/CSS files before committing: `npx @biomejs/biome check --write <files>`
+- If Biome `--write` leaves remaining errors, use `--write --unsafe` to apply fixes like `parseInt` radix and `Number.isNaN`
+- CI runs `biome ci --changed --since=dev` — it compares against the `dev` branch, not `master`
+- The `noStaticOnlyClass` warning is acceptable and does not fail CI
+- Tailwind CSS files (`*.tailwind.css`) have `@import` position rules disabled in `biome.json` because `@tailwind` directives must come first
+
+## Frontend: Hotwire-First Approach
+
+**Always prefer Turbo + Stimulus over custom JavaScript.** This project uses the Hotwire stack (Turbo Drive, Turbo Frames, Turbo Streams, Stimulus) as its primary frontend architecture. Direct `fetch()` calls, manual DOM manipulation, and standalone JS modules should only be used when Hotwire cannot handle the use case (e.g., map rendering with Leaflet/MapLibre).
+
+### Decision Hierarchy
+
+When adding frontend behavior, follow this order of preference:
+
+1. **Turbo Drive** — Default. Links and forms work as SPAs with zero JS.
+2. **Turbo Frames** — Partial page updates. Wrap a section in `<turbo-frame>` and target it from links/forms.
+3. **Turbo Streams** — Server-pushed DOM updates. Use for CRUD operations that need to update multiple page sections. Respond with `turbo_stream` format from controllers.
+4. **Stimulus controller** — Client-side behavior that Turbo can't handle (toggles, form validation, UI interactions). Keep controllers thin.
+5. **Direct JS** — Last resort. Only for complex map interactions, canvas rendering, or third-party library integration (Leaflet, MapLibre, Chartkick).
+
+### Turbo Stream Responses
+
+For CRUD actions (create, update, destroy), respond with Turbo Streams instead of redirects or JSON:
+
+```ruby
+# Controller
+def create
+  @area = current_user.areas.new(area_params)
+  if @area.save
+    respond_to do |format|
+      format.turbo_stream
+      format.html { redirect_to areas_path }
+    end
+  end
+end
+
+# app/views/areas/create.turbo_stream.erb
+<%= turbo_stream.prepend "areas-list", partial: "areas/area", locals: { area: @area } %>
+<%= stream_flash(:notice, "Area created successfully") %>
+```
+
+Use the `FlashStreamable` concern (included in controllers) to send flash messages via Turbo Streams:
+
+```ruby
+include FlashStreamable
+
+# In turbo_stream responses:
+stream_flash(:notice, "Success message")
+stream_flash(:error, "Error message")
+```
+
+### Flash Messages
+
+- **Server-side (Turbo Stream):** Use `stream_flash` from the `FlashStreamable` concern. This appends a flash partial to the `#flash-messages` container.
+- **Client-side (Stimulus/JS):** Import `Flash` from `flash_controller.js` and call `Flash.show(type, message)`:
+  ```javascript
+  import Flash from "./flash_controller"
+  Flash.show("notice", "Operation completed")
+  Flash.show("error", "Something went wrong")
+  ```
+- **Never** use raw `alert()`, `console.log` for user-facing messages, or create ad-hoc notification DOM elements.
+
+### Stimulus Controllers
+
+- Location: `app/javascript/controllers/`
+- Naming: `<name>_controller.js` maps to `data-controller="<name>"` in HTML
+- Use `static targets` for DOM references, `static values` for data from HTML attributes
+- Always clean up in `disconnect()` (event listeners, timers, subscriptions)
+- Prefer `data-action` attributes in HTML over `addEventListener` in JS
+- For forms, prefer `this.formTarget.requestSubmit()` over manual `fetch()` calls — this preserves Turbo form handling, CSRF tokens, and Turbo Stream responses
+
+### File Uploads
+
+Use the unified `upload` controller (`upload_controller.js`) for all file upload forms. Configure via `data-upload-*-value` attributes:
+
+```erb
+<%= form_with data: {
+  controller: "upload",
+  upload_url_value: rails_direct_uploads_url,
+  upload_field_name_value: "import[files][]",
+  upload_multiple_value: true,
+  upload_target: "form"
+} do |f| %>
+```
+
+### What NOT to Do
+
+- **No `fetch()` for form submissions** — Use `form_with` with Turbo. If you need custom headers (API key), use Stimulus to submit the form via `requestSubmit()`.
+- **No `document.getElementById()` for updates** — Use Turbo Frames/Streams to replace DOM sections server-side.
+- **No `showFlashMessage()` or ad-hoc flash functions** — Use `Flash.show()` (client) or `stream_flash` (server).
+- **No ActionCable subscriptions for CRUD updates** — Use Turbo Stream broadcasts from models/controllers instead.
+- **No separate upload controllers per form** — Use the unified `upload` controller with value attributes for configuration.
+
+### When Direct JS Is Acceptable
+
+- **Map rendering**: Leaflet (Maps v1) and MapLibre GL JS (Maps v2) require imperative JS for layers, markers, and interactions.
+- **Chart rendering**: Chartkick handles its own DOM.
+- **Third-party integrations**: Libraries that don't have Hotwire adapters.
+- **Complex client-side computation**: Haversine distance, coordinate transforms, etc.
+
+Even in these cases, wrap the integration in a Stimulus controller and connect it to the DOM via `data-controller`.
 
 ## Important Notes for Development
 

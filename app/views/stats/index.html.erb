@@ -1,4 +1,5 @@
 <% content_for :title, 'Statistics' %>
+<%= render 'shared/chartkick_scripts' %>
 
 <div class="w-full my-5">
   <div class="flex justify-between items-center mb-6">
@@ -10,25 +11,27 @@
     <% end %>
   </div>
 
-  <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 relative">
-    <div class="stat text-center">
-      <div class="stat-value text-primary">
-        <%= number_with_delimiter(current_user.total_distance.round) %> <%= current_user.safe_settings.distance_unit %>
+  <% cache [current_user.id, "stats_summary", current_user.stats.maximum(:updated_at), @points_total, current_user.safe_settings.distance_unit, DawarichSettings.reverse_geocoding_enabled?], expires_in: 24.hours do %>
+    <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 relative">
+      <div class="stat text-center">
+        <div class="stat-value text-primary">
+          <%= number_with_delimiter(current_user.total_distance.round) %> <%= current_user.safe_settings.distance_unit %>
+        </div>
+        <div class="stat-title">Total distance</div>
       </div>
-      <div class="stat-title">Total distance</div>
-    </div>
 
-    <div class="stat text-center">
-      <div class="stat-value text-success">
-        <%= number_with_delimiter @points_total %>
+      <div class="stat text-center">
+        <div class="stat-value text-success">
+          <%= number_with_delimiter @points_total %>
+        </div>
+        <div class="stat-title">Geopoints tracked</div>
       </div>
-      <div class="stat-title">Geopoints tracked</div>
-    </div>
 
-  <% if DawarichSettings.reverse_geocoding_enabled? %>
-    <%= render 'stats/reverse_geocoding_stats' %>
-  <% else %>
-    </div>
+    <% if DawarichSettings.reverse_geocoding_enabled? %>
+      <%= render 'stats/reverse_geocoding_stats' %>
+    <% else %>
+      </div>
+    <% end %>
   <% end %>
 
   <div class='text-xs text-gray-500 text-center mt-5'>
@@ -41,12 +44,13 @@
 
   <div class="mt-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
     <% @stats.each do |year, stats| %>
+      <% cache [current_user.id, "stats_year_card", year, stats.map(&:updated_at).max, current_user.safe_settings.distance_unit, DawarichSettings.reverse_geocoding_enabled?], expires_in: 24.hours do %>
       <div class="card w-full bg-base-200 shadow-xl">
         <div class="card-body">
-          <h2 class="card-title justify-between text-<%= header_colors.sample %>">
+          <h2 class="card-title justify-between text-<%= header_colors[year % header_colors.size] %>">
             <div>
               <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
-              <%= link_to '[Map]', map_url(year_timespan(year)), class: 'underline hover:no-underline' %>
+              <%= link_to '[Map]', preferred_map_path(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
             <div class="flex items-center gap-2">
               <span class='text-xs text-gray-500'>Last update: <%= human_date(stats.first.updated_at) %></span>
@@ -112,6 +116,7 @@
           ) %>
         </div>
       </div>
+      <% end %>
     <% end %>
   </div>
 </div>

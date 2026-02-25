@@ -22,7 +22,7 @@ RSpec.describe Users::Digest, type: :model do
       end
 
       it 'allows same year for different period types' do
-        monthly = build(:users_digest, user: user, year: 2024, period_type: :monthly)
+        monthly = build(:users_digest, user: user, year: 2024, month: 1, period_type: :monthly)
         expect(monthly).to be_valid
       end
 
@@ -254,9 +254,9 @@ RSpec.describe Users::Digest, type: :model do
       context 'when expiration is present but expires_at is blank' do
         before do
           digest.update(sharing_settings: {
-            'enabled' => true,
+                          'enabled' => true,
             'expiration' => '1h'
-          })
+                        })
         end
 
         it 'returns true' do
@@ -267,10 +267,10 @@ RSpec.describe Users::Digest, type: :model do
       context 'when expires_at is in the future' do
         before do
           digest.update(sharing_settings: {
-            'enabled' => true,
+                          'enabled' => true,
             'expiration' => '1h',
             'expires_at' => 1.hour.from_now.iso8601
-          })
+                        })
         end
 
         it 'returns false' do
@@ -281,10 +281,10 @@ RSpec.describe Users::Digest, type: :model do
       context 'when expires_at is in the past' do
         before do
           digest.update(sharing_settings: {
-            'enabled' => true,
+                          'enabled' => true,
             'expiration' => '1h',
             'expires_at' => 1.hour.ago.iso8601
-          })
+                        })
         end
 
         it 'returns true' do
@@ -295,10 +295,10 @@ RSpec.describe Users::Digest, type: :model do
       context 'when expires_at is invalid date string' do
         before do
           digest.update(sharing_settings: {
-            'enabled' => true,
+                          'enabled' => true,
             'expiration' => '1h',
             'expires_at' => 'invalid-date'
-          })
+                        })
         end
 
         it 'returns true (treats as expired)' do
@@ -327,10 +327,10 @@ RSpec.describe Users::Digest, type: :model do
       context 'when sharing is enabled but expired' do
         before do
           digest.update(sharing_settings: {
-            'enabled' => true,
+                          'enabled' => true,
             'expiration' => '1h',
             'expires_at' => 1.hour.ago.iso8601
-          })
+                        })
         end
 
         it 'returns false' do
@@ -341,10 +341,10 @@ RSpec.describe Users::Digest, type: :model do
       context 'when sharing is enabled and not expired' do
         before do
           digest.update(sharing_settings: {
-            'enabled' => true,
+                          'enabled' => true,
             'expiration' => '1h',
             'expires_at' => 1.hour.from_now.iso8601
-          })
+                        })
         end
 
         it 'returns true' do
@@ -423,6 +423,113 @@ RSpec.describe Users::Digest, type: :model do
     describe '.convert_distance' do
       it 'converts distance to kilometers' do
         expect(described_class.convert_distance(10_000, 'km')).to eq(10.0)
+      end
+    end
+  end
+
+  describe 'monthly digest methods' do
+    let(:user) { create(:user) }
+    let(:monthly_digest) { create(:users_digest, :monthly, user: user, year: 2024, month: 1) }
+
+    describe '#daily_distances' do
+      it 'returns monthly_distances' do
+        expect(monthly_digest.daily_distances).to eq(monthly_digest.monthly_distances)
+      end
+    end
+
+    describe '#active_days_count' do
+      it 'counts days with positive distance from array format' do
+        # Factory has 20 active days (days with distance > 0)
+        expect(monthly_digest.active_days_count).to eq(20)
+      end
+
+      context 'when monthly_distances is nil' do
+        before { monthly_digest.update(monthly_distances: nil) }
+
+        it 'returns 0' do
+          expect(monthly_digest.active_days_count).to eq(0)
+        end
+      end
+
+      context 'when monthly_distances is empty array' do
+        before { monthly_digest.update(monthly_distances: []) }
+
+        it 'returns 0' do
+          expect(monthly_digest.active_days_count).to eq(0)
+        end
+      end
+    end
+
+    describe '#days_in_month' do
+      it 'returns correct days for January' do
+        expect(monthly_digest.days_in_month).to eq(31)
+      end
+
+      it 'returns correct days for February in leap year' do
+        monthly_digest.update(month: 2)
+        expect(monthly_digest.days_in_month).to eq(29) # 2024 is a leap year
+      end
+
+      context 'when month is nil (yearly digest)' do
+        let(:yearly_digest) { create(:users_digest, user: user) }
+
+        it 'returns nil' do
+          expect(yearly_digest.days_in_month).to be_nil
+        end
+      end
+    end
+
+    describe '#weekly_pattern' do
+      it 'aggregates distances by day of week' do
+        pattern = monthly_digest.weekly_pattern
+        expect(pattern).to be_an(Array)
+        expect(pattern.size).to eq(7)
+        # Monday = 0, Tuesday = 1, ..., Sunday = 6
+        expect(pattern.all? { |v| v.is_a?(Integer) }).to be true
+      end
+
+      it 'returns non-zero values for days with activity' do
+        pattern = monthly_digest.weekly_pattern
+        expect(pattern.any?(&:positive?)).to be true
+      end
+
+      context 'when monthly_distances is nil' do
+        before { monthly_digest.update(monthly_distances: nil) }
+
+        it 'returns empty array' do
+          expect(monthly_digest.weekly_pattern).to eq([])
+        end
+      end
+
+      context 'when month is nil' do
+        before { monthly_digest.update(month: nil) }
+
+        it 'returns empty array' do
+          expect(monthly_digest.weekly_pattern).to eq([])
+        end
+      end
+    end
+
+    describe '#month_name' do
+      it 'returns month name for monthly digest' do
+        expect(monthly_digest.month_name).to eq('January')
+      end
+
+      it 'returns nil for yearly digest' do
+        yearly_digest = create(:users_digest, user: user)
+        expect(yearly_digest.month_name).to be_nil
+      end
+    end
+
+    describe '#mom_distance_change' do
+      it 'returns year_over_year distance_change_percent for monthly digest' do
+        monthly_digest.update(year_over_year: { 'distance_change_percent' => 25 })
+        expect(monthly_digest.mom_distance_change).to eq(25)
+      end
+
+      it 'returns nil for yearly digest' do
+        yearly_digest = create(:users_digest, user: user)
+        expect(yearly_digest.mom_distance_change).to be_nil
       end
     end
   end

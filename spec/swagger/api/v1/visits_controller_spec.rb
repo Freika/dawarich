@@ -15,11 +15,16 @@ describe 'Visits API', type: :request do
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
       parameter name: :start_at, in: :query, type: :string, required: false, description: 'Start date (ISO 8601)'
       parameter name: :end_at, in: :query, type: :string, required: false, description: 'End date (ISO 8601)'
-      parameter name: :selection, in: :query, type: :string, required: false, description: 'Set to "true" for area-based search'
-      parameter name: :sw_lat, in: :query, type: :number, required: false, description: 'Southwest latitude for area search'
-      parameter name: :sw_lng, in: :query, type: :number, required: false, description: 'Southwest longitude for area search'
-      parameter name: :ne_lat, in: :query, type: :number, required: false, description: 'Northeast latitude for area search'
-      parameter name: :ne_lng, in: :query, type: :number, required: false, description: 'Northeast longitude for area search'
+      parameter name: :selection, in: :query, type: :string, required: false,
+                description: 'Set to "true" for area-based search'
+      parameter name: :sw_lat, in: :query, type: :number, required: false,
+                description: 'Southwest latitude for area search'
+      parameter name: :sw_lng, in: :query, type: :number, required: false,
+                description: 'Southwest longitude for area search'
+      parameter name: :ne_lat, in: :query, type: :number, required: false,
+                description: 'Northeast latitude for area search'
+      parameter name: :ne_lng, in: :query, type: :number, required: false,
+                description: 'Northeast longitude for area search'
 
       response '200', 'visits found' do
         let(:Authorization) { "Bearer #{api_key}" }
@@ -50,6 +55,8 @@ describe 'Visits API', type: :request do
                  },
                  required: %w[id name status started_at ended_at duration]
                }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -114,6 +121,8 @@ describe 'Visits API', type: :request do
                    }
                  }
                }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -191,12 +200,14 @@ describe 'Visits API', type: :request do
                  place: { type: :object }
                }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 
       response '404', 'visit not found' do
         let(:Authorization) { "Bearer #{api_key}" }
-        let(:id) { 999999 }
+        let(:id) { 999_999 }
         let(:visit) { { visit: { name: 'Updated Visit' } } }
 
         run_test!
@@ -225,7 +236,7 @@ describe 'Visits API', type: :request do
 
       response '404', 'visit not found' do
         let(:Authorization) { "Bearer #{api_key}" }
-        let(:id) { 999999 }
+        let(:id) { 999_999 }
 
         run_test!
       end
@@ -263,12 +274,14 @@ describe 'Visits API', type: :request do
                  }
                }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 
       response '404', 'visit not found' do
         let(:Authorization) { "Bearer #{api_key}" }
-        let(:id) { 999999 }
+        let(:id) { 999_999 }
 
         run_test!
       end
@@ -317,6 +330,8 @@ describe 'Visits API', type: :request do
                  duration: { type: :integer },
                  place: { type: :object }
                }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -371,6 +386,8 @@ describe 'Visits API', type: :request do
                  message: { type: :string },
                  updated_count: { type: :integer }
                }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

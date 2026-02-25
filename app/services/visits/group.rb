@@ -8,8 +8,8 @@ class Visits::Group
     @current_visit = nil
   end
 
-  def call(points)
-    process_points(points.sort_by(&:timestamp))
+  def call(points, already_sorted: false)
+    process_points(already_sorted ? points : points.sort_by(&:timestamp))
     finalize_current_visit
     merge_visits
     convert_to_hash

@@ -65,6 +65,7 @@ class GoogleMaps::PhoneTakeoutImporter
     {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
       timestamp:,
+      motion_data: Points::MotionDataExtractor.from_google_phone_takeout(raw_data),
       raw_data:,
       accuracy: raw_data['accuracyMeters'],
       altitude: raw_data['altitudeMeters'],
@@ -74,17 +75,17 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def parse_visit_place_location(data_point)
     lat, lon = parse_coordinates(data_point['visit']['topCandidate']['placeLocation'])
-    timestamp = DateTime.parse(data_point['startTime']).to_i
+    timestamp = DateTime.parse(data_point['startTime']).utc.to_i
 
     point_hash(lat, lon, timestamp, data_point)
   end
 
   def parse_activity(data_point)
     start_lat, start_lon = parse_coordinates(data_point['activity']['start'])
-    start_timestamp = DateTime.parse(data_point['startTime']).to_i
+    start_timestamp = DateTime.parse(data_point['startTime']).utc.to_i
 
     end_lat, end_lon = parse_coordinates(data_point['activity']['end'])
-    end_timestamp = DateTime.parse(data_point['endTime']).to_i
+    end_timestamp = DateTime.parse(data_point['endTime']).utc.to_i
 
     [
       point_hash(start_lat, start_lon, start_timestamp, data_point),
@@ -107,16 +108,16 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def parse_semantic_visit(segment)
     lat, lon = parse_coordinates(segment['visit']['topCandidate']['placeLocation']['latLng'])
-    timestamp = DateTime.parse(segment['startTime']).to_i
+    timestamp = DateTime.parse(segment['startTime']).utc.to_i
 
     point_hash(lat, lon, timestamp, segment)
   end
 
   def parse_semantic_activity(segment)
     start_lat, start_lon = parse_coordinates(segment['activity']['start']['latLng'])
-    start_timestamp = DateTime.parse(segment['startTime']).to_i
+    start_timestamp = DateTime.parse(segment['startTime']).utc.to_i
     end_lat, end_lon = parse_coordinates(segment['activity']['end']['latLng'])
-    end_timestamp = DateTime.parse(segment['endTime']).to_i
+    end_timestamp = DateTime.parse(segment['endTime']).utc.to_i
 
     [
       point_hash(start_lat, start_lon, start_timestamp, segment),
@@ -127,7 +128,7 @@ class GoogleMaps::PhoneTakeoutImporter
   def parse_semantic_timeline_path(segment)
     segment['timelinePath'].map do |point|
       lat, lon = parse_coordinates(point['point'])
-      timestamp = DateTime.parse(point['time']).to_i
+      timestamp = DateTime.parse(point['time']).utc.to_i
 
       point_hash(lat, lon, timestamp, segment)
     end
@@ -165,7 +166,7 @@ class GoogleMaps::PhoneTakeoutImporter
       next unless segment.dig('position', 'LatLng')
 
       lat, lon = parse_coordinates(segment['position']['LatLng'])
-      timestamp = DateTime.parse(segment['position']['timestamp']).to_i
+      timestamp = DateTime.parse(segment['position']['timestamp']).utc.to_i
 
       point_hash(lat, lon, timestamp, segment)
     end
@@ -174,7 +175,6 @@ class GoogleMaps::PhoneTakeoutImporter
   def bulk_insert_points(batch)
     unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],

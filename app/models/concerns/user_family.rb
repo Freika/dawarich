@@ -37,7 +37,7 @@ module UserFamily
     return false unless sharing_settings['enabled'] == true
 
     expires_at = sharing_settings['expires_at']
-    expires_at.blank? || Time.parse(expires_at).future?
+    expires_at.blank? || Time.zone.parse(expires_at).future?
   end
 
   def update_family_location_sharing!(enabled, duration: nil)
@@ -51,13 +51,13 @@ module UserFamily
 
       if duration.present?
         expiration_time = case duration
-        when '1h' then 1.hour.from_now
-        when '6h' then 6.hours.from_now
-        when '12h' then 12.hours.from_now
-        when '24h' then 24.hours.from_now
-        when 'permanent' then nil
-        else duration.to_i.hours.from_now if duration.to_i > 0
-        end
+                          when '1h' then 1.hour.from_now
+                          when '6h' then 6.hours.from_now
+                          when '12h' then 12.hours.from_now
+                          when '24h' then 24.hours.from_now
+                          when 'permanent' then nil
+                          else duration.to_i.hours.from_now if duration.to_i.positive?
+                          end
 
         sharing_config['expires_at'] = expiration_time.iso8601 if expiration_time
         sharing_config['duration'] = duration
@@ -76,7 +76,7 @@ module UserFamily
     return nil unless sharing_settings.is_a?(Hash)
 
     expires_at = sharing_settings['expires_at']
-    Time.parse(expires_at) if expires_at.present?
+    Time.zone.parse(expires_at) if expires_at.present?
   rescue ArgumentError
     nil
   end

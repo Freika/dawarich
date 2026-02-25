@@ -11,7 +11,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
   describe 'GET /api/v1/places' do
     it 'returns user places' do
       get '/api/v1/places', headers: headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json.size).to eq(1)
@@ -21,9 +21,9 @@ RSpec.describe 'Api::V1::Places', type: :request do
     it 'filters by tag_ids' do
       tagged_place = create(:place, user: user)
       create(:tagging, taggable: tagged_place, tag: tag)
-      
+
       get '/api/v1/places', params: { tag_ids: [tag.id] }, headers: headers
-      
+
       json = JSON.parse(response.body)
       expect(json.size).to eq(1)
       expect(json.first['id']).to eq(tagged_place.id)
@@ -32,9 +32,9 @@ RSpec.describe 'Api::V1::Places', type: :request do
     it 'does not return other users places' do
       other_user = create(:user)
       create(:place, user: other_user, name: 'Private Place')
-      
+
       get '/api/v1/places', headers: headers
-      
+
       json = JSON.parse(response.body)
       expect(json.map { |p| p['name'] }).not_to include('Private Place')
     end
@@ -43,7 +43,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
   describe 'GET /api/v1/places/:id' do
     it 'returns the place' do
       get "/api/v1/places/#{place.id}", headers: headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json['name']).to eq('Home')
@@ -74,10 +74,10 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
 
     it 'creates a place' do
-      expect {
+      expect do
         post '/api/v1/places', params: valid_params, headers: headers
-      }.to change(Place, :count).by(1)
-      
+      end.to change(Place, :count).by(1)
+
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json['name']).to eq('Central Park')
@@ -85,14 +85,14 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
     it 'associates tags with the place' do
       post '/api/v1/places', params: valid_params, headers: headers
-      
+
       place = Place.last
       expect(place.tags).to include(tag)
     end
 
     it 'returns errors for invalid params' do
       post '/api/v1/places', params: { place: { name: '' } }, headers: headers
-      
+
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
       expect(json['errors']).to be_present
@@ -104,18 +104,18 @@ RSpec.describe 'Api::V1::Places', type: :request do
       patch "/api/v1/places/#{place.id}",
             params: { place: { name: 'Updated Home' } },
             headers: headers
-      
+
       expect(response).to have_http_status(:success)
       expect(place.reload.name).to eq('Updated Home')
     end
 
     it 'updates tags' do
       new_tag = create(:tag, user: user, name: 'Work')
-      
+
       patch "/api/v1/places/#{place.id}",
             params: { place: { tag_ids: [new_tag.id] } },
             headers: headers
-      
+
       expect(place.reload.tags).to contain_exactly(new_tag)
     end
 
@@ -134,10 +134,10 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
   describe 'DELETE /api/v1/places/:id' do
     it 'destroys the place' do
-      expect {
+      expect do
         delete "/api/v1/places/#{place.id}", headers: headers
-      }.to change(Place, :count).by(-1)
-      
+      end.to change(Place, :count).by(-1)
+
       expect(response).to have_http_status(:no_content)
     end
 
@@ -145,9 +145,9 @@ RSpec.describe 'Api::V1::Places', type: :request do
       other_user = create(:user)
       other_place = create(:place, user: other_user)
 
-      expect {
+      expect do
         delete "/api/v1/places/#{other_place.id}", headers: headers
-      }.not_to change(Place, :count)
+      end.not_to change(Place, :count)
 
       expect(response).to have_http_status(:not_found)
     end
@@ -162,7 +162,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       get '/api/v1/places/nearby',
           params: { latitude: 40.7128, longitude: -74.0060 },
           headers: headers
-      
+
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json['places']).to be_an(Array)
@@ -170,7 +170,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
     it 'requires latitude and longitude' do
       get '/api/v1/places/nearby', headers: headers
-      
+
       expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body)
       expect(json['error']).to include('latitude and longitude')
@@ -182,11 +182,11 @@ RSpec.describe 'Api::V1::Places', type: :request do
         .with(latitude: 40.7128, longitude: -74.0060, radius: 1.0, limit: 5)
         .and_return(service_double)
       allow(service_double).to receive(:call).and_return([])
-      
+
       get '/api/v1/places/nearby',
           params: { latitude: 40.7128, longitude: -74.0060, radius: 1.0, limit: 5 },
           headers: headers
-      
+
       expect(response).to have_http_status(:success)
     end
   end
@@ -195,7 +195,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
     it 'requires API key for all endpoints' do
       get '/api/v1/places'
       expect(response).to have_http_status(:unauthorized)
-      
+
       post '/api/v1/places', params: { place: { name: 'Test' } }
       expect(response).to have_http_status(:unauthorized)
     end

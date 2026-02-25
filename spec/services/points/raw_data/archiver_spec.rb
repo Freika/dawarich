@@ -126,12 +126,22 @@ RSpec.describe Points::RawData::Archiver do
       expect(archive.chunk_number).to eq(1)
     end
 
-    it 'attaches compressed file' do
+    it 'attaches encrypted file' do
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
 
       archive = user.raw_data_archives.last
       expect(archive.file).to be_attached
-      expect(archive.file.key).to match(%r{raw_data_archives/\d+/\d{4}/\d{2}/001\.jsonl\.gz})
+      expect(archive.file.key).to match(%r{raw_data_archives/\d+/\d{4}/\d{2}/001\.jsonl\.gz\.enc})
+      expect(archive.file.content_type).to eq('application/octet-stream')
+    end
+
+    it 'stores encryption metadata' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      expect(archive.metadata['format_version']).to eq(2)
+      expect(archive.metadata['encryption']).to eq('aes-256-gcm')
+      expect(archive.metadata['content_checksum']).to be_present
     end
   end
 
@@ -190,13 +200,198 @@ RSpec.describe Points::RawData::Archiver do
                             raw_data: { lon: 13.4, lat: 52.5 })
     end
 
-    it 'prevents duplicate processing with advisory locks' do
+    it 'prevents duplicate processing with advisory locks via call' do
       # Simulate lock couldn't be acquired (returns nil/false)
       allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
 
       result = archiver.call
       expect(result[:processed]).to eq(0)
       expect(result[:failed]).to eq(0)
+    end
+
+    it 'prevents duplicate processing with advisory locks via archive_specific_month' do
+      allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
+
+      old_date = 3.months.ago.beginning_of_month
+      expect do
+        archiver.archive_specific_month(user.id, old_date.year, old_date.month)
+      end.to raise_error(RuntimeError, /Could not acquire lock/)
+    end
+
+    it 'uses the same lock key format for both call and archive_specific_month' do
+      old_date = 3.months.ago.beginning_of_month
+      expected_lock_key = "archive_points:#{user.id}:#{old_date.year}:#{old_date.month}"
+
+      # Track the lock key used by archive_specific_month
+      lock_keys = []
+      allow(ActiveRecord::Base).to receive(:with_advisory_lock) do |key, **_opts, &block|
+        lock_keys << key
+        block&.call
+        true
+      end
+
+      archiver.archive_specific_month(user.id, old_date.year, old_date.month)
+
+      expect(lock_keys).to include(expected_lock_key)
+    end
+  end
+
+  describe 'count validation (P0 implementation)' do
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('true')
+    end
+
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+    let!(:test_points) do
+      create_list(:point, 5, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+    end
+
+    it 'validates compression count matches expected count' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      expect(archive.point_count).to eq(5)
+      expect(archive.metadata['expected_count']).to eq(5)
+      expect(archive.metadata['actual_count']).to eq(5)
+    end
+
+    it 'stores both expected and actual counts in metadata' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      expect(archive.metadata).to have_key('expected_count')
+      expect(archive.metadata).to have_key('actual_count')
+      expect(archive.metadata['expected_count']).to eq(archive.metadata['actual_count'])
+    end
+
+    it 'raises error when compression count mismatch occurs' do
+      # Create proper gzip compressed data with only 3 points instead of 5
+      io = StringIO.new
+      gz = Zlib::GzipWriter.new(io)
+      3.times do |i|
+        gz.puts({ id: i, raw_data: { test: 'data' } }.to_json)
+      end
+      gz.close
+      fake_compressed_data = io.string.force_encoding(Encoding::ASCII_8BIT)
+
+      # Mock ChunkCompressor to return mismatched count
+      fake_compressor = instance_double(Points::RawData::ChunkCompressor)
+      allow(Points::RawData::ChunkCompressor).to receive(:new).and_return(fake_compressor)
+      allow(fake_compressor).to receive(:compress).and_return(
+        { data: fake_compressed_data, count: 3 } # Returning 3 instead of 5
+      )
+
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to raise_error(StandardError, /Archive count mismatch/)
+    end
+
+    it 'does not mark points as archived if count mismatch detected' do
+      # Create proper gzip compressed data with only 3 points instead of 5
+      io = StringIO.new
+      gz = Zlib::GzipWriter.new(io)
+      3.times do |i|
+        gz.puts({ id: i, raw_data: { test: 'data' } }.to_json)
+      end
+      gz.close
+      fake_compressed_data = io.string.force_encoding(Encoding::ASCII_8BIT)
+
+      # Mock ChunkCompressor to return mismatched count
+      fake_compressor = instance_double(Points::RawData::ChunkCompressor)
+      allow(Points::RawData::ChunkCompressor).to receive(:new).and_return(fake_compressor)
+      allow(fake_compressor).to receive(:compress).and_return(
+        { data: fake_compressed_data, count: 3 }
+      )
+
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to raise_error(StandardError)
+
+      # Verify points are NOT marked as archived
+      test_points.each(&:reload)
+      expect(test_points.none?(&:raw_data_archived)).to be true
+    end
+  end
+
+  describe 'immediate verification (P0 implementation)' do
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('true')
+    end
+
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+    let!(:test_points) do
+      create_list(:point, 3, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+    end
+
+    it 'runs immediate verification after archiving' do
+      # Spy on the verify_archive_immediately method
+      allow(archiver).to receive(:verify_archive_immediately).and_call_original
+
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      expect(archiver).to have_received(:verify_archive_immediately)
+    end
+
+    it 'rolls back archive if immediate verification fails' do
+      # Mock verification to fail
+      allow(archiver).to receive(:verify_archive_immediately).and_return(
+        { success: false, error: 'Test verification failure' }
+      )
+
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to raise_error(StandardError, /Archive verification failed/)
+
+      # Verify archive was destroyed
+      expect(Points::RawDataArchive.count).to eq(0)
+
+      # Verify points are NOT marked as archived
+      test_points.each(&:reload)
+      expect(test_points.none?(&:raw_data_archived)).to be true
+    end
+
+    it 'completes successfully when immediate verification passes' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      # Verify archive was created
+      expect(Points::RawDataArchive.count).to eq(1)
+
+      # Verify points ARE marked as archived
+      test_points.each(&:reload)
+      expect(test_points.all?(&:raw_data_archived)).to be true
+    end
+
+    it 'validates point IDs checksum during immediate verification' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      expect(archive.point_ids_checksum).to be_present
+
+      # Decrypt, decompress, and verify the archived point IDs match
+      encrypted_content = archive.file.blob.download
+      compressed_content = Points::RawData::Encryption.decrypt(encrypted_content)
+      io = StringIO.new(compressed_content)
+      gz = Zlib::GzipReader.new(io)
+      archived_point_ids = gz.each_line.map { |line| JSON.parse(line)['id'] }
+      gz.close
+
+      expect(archived_point_ids.sort).to eq(test_points.map(&:id).sort)
+    end
+
+    it 'verifies content checksum (SHA256) of encrypted data' do
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      archive = user.raw_data_archives.last
+      encrypted_content = archive.file.blob.download
+      actual_checksum = Digest::SHA256.hexdigest(encrypted_content)
+
+      expect(archive.metadata['content_checksum']).to eq(actual_checksum)
     end
   end
 end

@@ -26,6 +26,7 @@ class Points::Params
         vertical_accuracy:  point[:properties][:vertical_accuracy],
         course_accuracy:    point[:properties][:course_accuracy],
         course:             point[:properties][:course],
+        motion_data:        Points::MotionDataExtractor.from_overland_properties(point[:properties]),
         raw_data:           point,
         user_id:            user_id
       }

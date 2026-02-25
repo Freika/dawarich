@@ -66,7 +66,7 @@ class Photoprism::ImportGeodata
       latitude: asset['Lat'],
       longitude: asset['Lng'],
       lonlat: "SRID=4326;POINT(#{asset['Lng']} #{asset['Lat']})",
-      timestamp: Time.zone.parse(asset['TakenAt']).to_i
+      timestamp: Time.zone.parse(asset['TakenAt']).utc.to_i
     }
   end
 
@@ -79,7 +79,8 @@ class Photoprism::ImportGeodata
       user:,
       kind: :info,
       title: 'Import was not created',
-      content: "Import with the same name (#{import_name}) already exists. If you want to proceed, delete the existing import and try again."
+      content: "Import with the same name (#{import_name}) already exists. " \
+               'If you want to proceed, delete the existing import and try again.'
     ).call
   end
 

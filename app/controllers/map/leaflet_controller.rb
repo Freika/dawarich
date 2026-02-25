@@ -45,6 +45,8 @@ class Map::LeafletController < ApplicationController
 
     # Use PostGIS window function for efficient distance calculation
     # This is O(1) database operation vs O(n) Ruby iteration
+    import_filter = params[:import_id].present? ? 'AND import_id = :import_id' : ''
+
     sql = <<~SQL.squish
       SELECT COALESCE(SUM(distance_m) / 1000.0, 0) as total_km FROM (
         SELECT ST_Distance(
@@ -55,14 +57,15 @@ class Map::LeafletController < ApplicationController
         WHERE user_id = :user_id
           AND timestamp >= :start_at
           AND timestamp <= :end_at
+          #{import_filter}
       ) distances
     SQL
 
+    query_params = { user_id: current_user.id, start_at: start_at, end_at: end_at }
+    query_params[:import_id] = params[:import_id] if params[:import_id].present?
+
     result = Point.connection.select_value(
-      ActiveRecord::Base.sanitize_sql_array([
-        sql,
-        { user_id: current_user.id, start_at: start_at, end_at: end_at }
-      ])
+      ActiveRecord::Base.sanitize_sql_array([sql, query_params])
     )
 
     result&.to_f&.round || 0

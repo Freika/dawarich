@@ -57,7 +57,7 @@
 }
 
 .tab-btn.active::after {
-  content: '';
+  content: "";
   position: absolute;
   right: -1px;
   top: 50%;
@@ -132,7 +132,7 @@
   background: oklch(var(--bc) / 0.3);
 }
 
-/* Toggle Focus State - Remove all focus indicators */
+/* Toggle Focus State - Remove all focus indicators — !important needed to override DaisyUI */
 .toggle:focus,
 .toggle:focus-visible,
 .toggle:focus-within {
@@ -161,11 +161,15 @@
 
 /* Ensure smooth toggle transitions without intermediate states */
 .toggle {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .toggle:checked {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 /* Remove any active/pressed state that might cause intermediate appearance */

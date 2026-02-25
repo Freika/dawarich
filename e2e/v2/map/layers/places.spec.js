@@ -1,13 +1,17 @@
-import { test, expect } from '@playwright/test'
-import { closeOnboardingModal } from '../../../helpers/navigation.js'
-import { navigateToMapsV2, waitForMapLibre, waitForLoadingComplete } from '../../helpers/setup.js'
+import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "../../../helpers/navigation.js"
+import {
+  navigateToMapsV2,
+  waitForLoadingComplete,
+  waitForMapLibre,
+} from "../../helpers/setup.js"
 
 // Helper function to get the place creation modal
-function getPlaceCreationModal(page) {
+function _getPlaceCreationModal(page) {
   return page.locator('[data-controller="place-creation"] .modal-box')
 }
 
-test.describe('Places Layer in Maps V2', () => {
+test.describe("Places Layer in Maps V2", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToMapsV2(page)
     await closeOnboardingModal(page)
@@ -16,9 +20,12 @@ test.describe('Places Layer in Maps V2', () => {
     await page.waitForTimeout(1500)
   })
 
-  test('should have Tools tab with Create a Place button', async ({ page }) => {
+  test("should have Tools tab with Create a Place button", async ({ page }) => {
     // Click settings button
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Tools tab
@@ -30,9 +37,14 @@ test.describe('Places Layer in Maps V2', () => {
     await expect(createPlaceBtn).toBeVisible()
   })
 
-  test('should enable place creation mode when Create a Place is clicked', async ({ page }) => {
+  test("should enable place creation mode when Create a Place is clicked", async ({
+    page,
+  }) => {
     // Open Tools tab
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
     await page.locator('button[data-tab="tools"]').click()
     await page.waitForTimeout(200)
@@ -43,15 +55,20 @@ test.describe('Places Layer in Maps V2', () => {
 
     // Verify cursor changed to crosshair
     const cursorStyle = await page.evaluate(() => {
-      const canvas = document.querySelector('.maplibregl-canvas')
+      const canvas = document.querySelector(".maplibregl-canvas")
       return canvas ? window.getComputedStyle(canvas).cursor : null
     })
-    expect(cursorStyle).toBe('crosshair')
+    expect(cursorStyle).toBe("crosshair")
   })
 
-  test('should open modal when map is clicked in creation mode', async ({ page }) => {
+  test("should open modal when map is clicked in creation mode", async ({
+    page,
+  }) => {
     // Enable creation mode
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
     await page.locator('button[data-tab="tools"]').click()
     await page.waitForTimeout(200)
@@ -59,22 +76,33 @@ test.describe('Places Layer in Maps V2', () => {
     await page.waitForTimeout(500)
 
     // Click on map
-    const mapCanvas = page.locator('.maplibregl-canvas')
+    const mapCanvas = page.locator(".maplibregl-canvas")
     await mapCanvas.click({ position: { x: 400, y: 300 } })
 
     // Wait for place creation modal box to appear
-    const placeModalBox = page.locator('[data-controller="place-creation"] .modal-box')
-    await placeModalBox.waitFor({ state: 'visible', timeout: 10000 })
+    const placeModalBox = page.locator(
+      '[data-controller="place-creation"] .modal-box',
+    )
+    await placeModalBox.waitFor({ state: "visible", timeout: 10000 })
 
     // Verify all form fields exist within the place creation modal
-    await expect(page.locator('[data-place-creation-target="nameInput"]')).toBeVisible()
-    await expect(page.locator('[data-place-creation-target="latitudeInput"]')).toBeAttached()
-    await expect(page.locator('[data-place-creation-target="longitudeInput"]')).toBeAttached()
+    await expect(
+      page.locator('[data-place-creation-target="nameInput"]'),
+    ).toBeVisible()
+    await expect(
+      page.locator('[data-place-creation-target="latitudeInput"]'),
+    ).toBeAttached()
+    await expect(
+      page.locator('[data-place-creation-target="longitudeInput"]'),
+    ).toBeAttached()
   })
 
-  test('should have Places toggle in settings', async ({ page }) => {
+  test("should have Places toggle in settings", async ({ page }) => {
     // Open settings
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
@@ -82,7 +110,10 @@ test.describe('Places Layer in Maps V2', () => {
     await page.waitForTimeout(200)
 
     // Look for Places toggle
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await expect(placesToggle).toBeVisible()
 
     // Verify label exists (the first one is the toggle label)
@@ -90,9 +121,14 @@ test.describe('Places Layer in Maps V2', () => {
     await expect(label).toBeVisible()
   })
 
-  test('should show tag filters when Places toggle is enabled with all tags enabled by default', async ({ page }) => {
+  test("should show tag filters when Places toggle is enabled with all tags enabled by default", async ({
+    page,
+  }) => {
     // Open settings
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
@@ -100,16 +136,23 @@ test.describe('Places Layer in Maps V2', () => {
     await page.waitForTimeout(200)
 
     // Enable Places toggle
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await placesToggle.check()
     await page.waitForTimeout(1000)
 
     // Verify filters are visible
-    const placesFilters = page.locator('[data-maps--maplibre-target="placesFilters"]')
+    const placesFilters = page.locator(
+      '[data-maps--maplibre-target="placesFilters"]',
+    )
     await expect(placesFilters).toBeVisible()
 
     // Verify "Enable All Tags" toggle is enabled by default
-    const enableAllToggle = page.locator('input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]')
+    const enableAllToggle = page.locator(
+      'input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]',
+    )
     await expect(enableAllToggle).toBeChecked()
 
     // Verify all tag checkboxes are checked by default
@@ -120,32 +163,60 @@ test.describe('Places Layer in Maps V2', () => {
     }
 
     // Verify Untagged option exists and is checked (checkbox is hidden, but should exist)
-    const untaggedOption = page.locator('input[name="place_tag_ids[]"][value="untagged"]')
+    const untaggedOption = page.locator(
+      'input[name="place_tag_ids[]"][value="untagged"]',
+    )
     await expect(untaggedOption).toBeAttached()
     await expect(untaggedOption).toBeChecked()
   })
 
-  test('should toggle tag filter styling when clicked', async ({ page }) => {
+  test("should toggle tag filter styling when clicked", async ({ page }) => {
     // Open settings and enable Places
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
     await page.locator('button[data-tab="layers"]').click()
     await page.waitForTimeout(200)
 
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await placesToggle.check()
     await page.waitForTimeout(1000)
 
-    // Get first tag badge (in Places filters section) - click badge since checkbox is hidden
-    const firstBadge = page.locator('[data-maps--maplibre-target="placesFilters"] .badge').first()
-    const firstCheckbox = page.locator('[data-maps--maplibre-target="placesFilters"] input[name="place_tag_ids[]"]').first()
+    // Wait for tag badges to be rendered (checkboxes have CSS class 'hidden' so use badge visibility)
+    await page.waitForSelector(
+      '[data-maps--maplibre-target="placesFilters"] .badge',
+      { timeout: 10000 },
+    )
+    await page.waitForTimeout(500) // Extra wait for initialization to complete
 
-    // Check initial state (should be checked by default)
+    // Get first tag badge (in Places filters section) - click badge since checkbox is hidden
+    const firstBadge = page
+      .locator('[data-maps--maplibre-target="placesFilters"] .badge')
+      .first()
+    const firstCheckbox = page
+      .locator(
+        '[data-maps--maplibre-target="placesFilters"] input[name="place_tag_ids[]"]',
+      )
+      .first()
+
+    // Ensure checkboxes are initialized (checked by default)
+    // If not checked, force-check it first to test the toggle behavior
+    const isInitiallyChecked = await firstCheckbox.isChecked()
+    if (!isInitiallyChecked) {
+      await firstBadge.click()
+      await page.waitForTimeout(300)
+    }
+
     await expect(firstCheckbox).toBeChecked()
-    const initialClass = await firstBadge.getAttribute('class')
-    expect(initialClass).not.toContain('badge-outline')
+    const initialClass = await firstBadge.getAttribute("class")
+    expect(initialClass).not.toContain("badge-outline")
 
     // Click badge to toggle it off (checkbox is hidden, must click label/badge)
     await firstBadge.click()
@@ -154,13 +225,18 @@ test.describe('Places Layer in Maps V2', () => {
     // Verify checkbox is now unchecked
     await expect(firstCheckbox).not.toBeChecked()
     // Verify badge styling changed (outline class added)
-    const updatedClass = await firstBadge.getAttribute('class')
-    expect(updatedClass).toContain('badge-outline')
+    const updatedClass = await firstBadge.getAttribute("class")
+    expect(updatedClass).toContain("badge-outline")
   })
 
-  test('should hide tag filters when Places toggle is disabled', async ({ page }) => {
+  test("should hide tag filters when Places toggle is disabled", async ({
+    page,
+  }) => {
     // Open settings
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
@@ -168,21 +244,29 @@ test.describe('Places Layer in Maps V2', () => {
     await page.waitForTimeout(200)
 
     // Enable then disable Places toggle
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await placesToggle.check()
     await page.waitForTimeout(300)
     await placesToggle.uncheck()
     await page.waitForTimeout(300)
 
     // Verify filters are hidden
-    const placesFilters = page.locator('[data-maps--maplibre-target="placesFilters"]')
+    const placesFilters = page.locator(
+      '[data-maps--maplibre-target="placesFilters"]',
+    )
     const isVisible = await placesFilters.isVisible()
     expect(isVisible).toBe(false)
   })
 
-  test('can toggle places layer', async ({ page }) => {
+  test("can toggle places layer", async ({ page }) => {
     // Open settings
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
@@ -190,7 +274,10 @@ test.describe('Places Layer in Maps V2', () => {
     await page.waitForTimeout(200)
 
     // Enable Places toggle
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await placesToggle.check()
     await page.waitForTimeout(500)
 
@@ -199,59 +286,95 @@ test.describe('Places Layer in Maps V2', () => {
     expect(isChecked).toBe(true)
   })
 
-  test('should show popup when clicking on a place marker', async ({ page }) => {
+  test("should show popup when clicking on a place marker", async ({
+    page,
+  }) => {
     // Enable Places layer
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
     await page.locator('button[data-tab="layers"]').click()
     await page.waitForTimeout(200)
 
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await placesToggle.check()
     await page.waitForTimeout(1000)
 
     // Close settings to make map clickable
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Try to click on a place marker (if any exist)
     // This test will pass if either a popup appears or no places exist
-    const mapCanvas = page.locator('.maplibregl-canvas')
+    const mapCanvas = page.locator(".maplibregl-canvas")
     await mapCanvas.click({ position: { x: 500, y: 400 } })
     await page.waitForTimeout(500)
 
     // Check if popup exists (it's ok if it doesn't - means no place at that location)
-    const popup = page.locator('.maplibregl-popup')
+    const popup = page.locator(".maplibregl-popup")
     const popupExists = await popup.count()
 
     // This test validates the popup mechanism works
     // If there's a place at the clicked location, popup should appear
-    expect(typeof popupExists).toBe('number')
+    expect(typeof popupExists).toBe("number")
   })
 
-  test('should sync Enable All Tags toggle with individual tag checkboxes', async ({ page }) => {
+  test("should sync Enable All Tags toggle with individual tag checkboxes", async ({
+    page,
+  }) => {
     // Open settings and enable Places
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
     await page.locator('button[data-tab="layers"]').click()
     await page.waitForTimeout(200)
 
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await placesToggle.check()
     await page.waitForTimeout(1000)
 
-    const enableAllToggle = page.locator('input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]')
+    // Wait for tag badges to be rendered (checkboxes have CSS class 'hidden' so use badge visibility)
+    await page.waitForSelector(
+      '[data-maps--maplibre-target="placesFilters"] .badge',
+      { timeout: 10000 },
+    )
+    await page.waitForTimeout(500) // Wait for tag initialization to complete
 
-    // Initially all tags should be enabled
+    const enableAllToggle = page.locator(
+      'input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]',
+    )
+
+    // First, ensure all tags are checked by clicking Enable All
+    // This handles the case where saved filters might have some unchecked
+    const isAllChecked = await enableAllToggle.isChecked()
+    if (!isAllChecked) {
+      await enableAllToggle.check()
+      await page.waitForTimeout(500)
+    }
+
     await expect(enableAllToggle).toBeChecked()
 
     // Click first badge to uncheck it (checkbox is hidden, must click badge)
-    const firstBadge = page.locator('[data-maps--maplibre-target="placesFilters"] .badge').first()
-    const firstCheckbox = page.locator('[data-maps--maplibre-target="placesFilters"] input[name="place_tag_ids[]"]').first()
+    const firstBadge = page
+      .locator('[data-maps--maplibre-target="placesFilters"] .badge')
+      .first()
 
     await firstBadge.click()
     await page.waitForTimeout(300)
@@ -267,20 +390,30 @@ test.describe('Places Layer in Maps V2', () => {
     await expect(enableAllToggle).toBeChecked()
   })
 
-  test('should enable/disable all tags when Enable All Tags toggle is clicked', async ({ page }) => {
+  test("should enable/disable all tags when Enable All Tags toggle is clicked", async ({
+    page,
+  }) => {
     // Open settings and enable Places
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
     await page.locator('button[data-tab="layers"]').click()
     await page.waitForTimeout(200)
 
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await placesToggle.check()
     await page.waitForTimeout(1000)
 
-    const enableAllToggle = page.locator('input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]')
+    const enableAllToggle = page.locator(
+      'input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]',
+    )
 
     // Disable all tags
     await enableAllToggle.uncheck()
@@ -303,21 +436,31 @@ test.describe('Places Layer in Maps V2', () => {
     }
   })
 
-  test('should show no places when all tags are unchecked', async ({ page }) => {
+  test("should show no places when all tags are unchecked", async ({
+    page,
+  }) => {
     // Open settings and enable Places
-    await page.locator('[data-action="click->maps--maplibre#toggleSettings"]').first().click()
+    await page
+      .locator('[data-action="click->maps--maplibre#toggleSettings"]')
+      .first()
+      .click()
     await page.waitForTimeout(200)
 
     // Click Layers tab
     await page.locator('button[data-tab="layers"]').click()
     await page.waitForTimeout(200)
 
-    const placesToggle = page.locator('label:has-text("Places")').first().locator('input.toggle')
+    const placesToggle = page
+      .locator('label:has-text("Places")')
+      .first()
+      .locator("input.toggle")
     await placesToggle.check()
     await page.waitForTimeout(1000)
 
     // Disable all tags
-    const enableAllToggle = page.locator('input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]')
+    const enableAllToggle = page.locator(
+      'input[data-maps--maplibre-target="enableAllPlaceTagsToggle"]',
+    )
     await enableAllToggle.uncheck()
     await page.waitForTimeout(1000)
 
@@ -325,7 +468,7 @@ test.describe('Places Layer in Maps V2', () => {
     const placesFeatureCount = await page.evaluate(() => {
       const map = window.mapInstance
       if (!map) return 0
-      const source = map.getSource('places')
+      const source = map.getSource("places")
       return source?._data?.features?.length || 0
     })
 

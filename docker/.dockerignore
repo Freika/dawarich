@@ -1,8 +1,0 @@
-/log
-/tmp
-
-# We need directories for import and export files, but not the files themselves.
-/public/exports/*
-!/public/exports/.keep
-/public/imports/*
-!/public/imports/.keep

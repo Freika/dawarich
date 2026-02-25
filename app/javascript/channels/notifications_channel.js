@@ -1,15 +1,4 @@
-import consumer from "./consumer"
-
-consumer.subscriptions.create("NotificationsChannel", {
-  connected() {
-    // console.log("Connected to the notifications channel!");
-  },
-
-  disconnected() {
-    // Called when the subscription has been terminated by the server
-  },
-
-  received(data) {
-    // Called when there's incoming data on the websocket for this channel
-  }
-});
+// Notifications channel subscriptions are handled by:
+// - controllers/notifications_controller.js (for navbar notifications)
+// - maps_maplibre/channels/map_channel.js (for MapLibre maps)
+// This file is kept for reference but no longer creates global subscriptions.

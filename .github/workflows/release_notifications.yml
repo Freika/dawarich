@@ -1,0 +1,133 @@
+name: Release Notifications
+
+on:
+  workflow_run:
+    workflows: ["Docker image build and push"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    # Only run when build succeeded and was triggered by a release
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'release'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get release info
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          # The head_branch of a release-triggered workflow is the tag name
+          TAG="$HEAD_BRANCH"
+
+          # Fetch release details by tag
+          RELEASE_JSON=$(gh api "repos/$REPO/releases/tags/$TAG" 2>/dev/null || true)
+
+          if [ -z "$RELEASE_JSON" ]; then
+            echo "Could not find release for tag $TAG, trying latest"
+            RELEASE_JSON=$(gh api "repos/$REPO/releases/latest")
+            TAG=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
+          fi
+
+          URL=$(echo "$RELEASE_JSON" | jq -r '.html_url')
+          PRERELEASE=$(echo "$RELEASE_JSON" | jq -r '.prerelease')
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          echo "Release: $TAG (prerelease: $PRERELEASE)"
+
+      - name: Extract changelog for version
+        if: steps.version.outputs.prerelease != 'true'
+        id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.tag }}
+        run: |
+          # Remove 'v' prefix if present for matching changelog headers
+          VERSION_NUM="${VERSION#v}"
+
+          # Extract section between this version and the next version header
+          # The changelog format is: # [version] - date
+          NOTES=$(sed -n "/^# \[$VERSION_NUM\]/,/^# \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
+
+          # Store in output (handle multiline)
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate summary
+        if: steps.version.outputs.prerelease != 'true'
+        id: summary
+        env:
+          NOTES: ${{ steps.changelog.outputs.notes }}
+        run: |
+          # Count items in each section using stateful awk to properly track sections
+          ADDED=$(echo "$NOTES" | awk '/^## Added/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          FIXED=$(echo "$NOTES" | awk '/^## Fixed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          CHANGED=$(echo "$NOTES" | awk '/^## Changed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          REMOVED=$(echo "$NOTES" | awk '/^## Removed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+
+          # Build summary line
+          PARTS=""
+          [ "$ADDED" -gt 0 ] && PARTS="$ADDED new feature$([ "$ADDED" -gt 1 ] && echo 's')"
+          [ "$FIXED" -gt 0 ] && PARTS="${PARTS:+$PARTS, }$FIXED fix$([ "$FIXED" -gt 1 ] && echo 'es')"
+          [ "$CHANGED" -gt 0 ] && PARTS="${PARTS:+$PARTS, }$CHANGED improvement$([ "$CHANGED" -gt 1 ] && echo 's')"
+          [ "$REMOVED" -gt 0 ] && PARTS="${PARTS:+$PARTS, }$REMOVED removal$([ "$REMOVED" -gt 1 ] && echo 's')"
+
+          # Default if nothing found
+          [ -z "$PARTS" ] && PARTS="various updates"
+
+          echo "summary=$PARTS" >> $GITHUB_OUTPUT
+
+      - name: Post to Discord
+        if: steps.version.outputs.prerelease != 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ steps.version.outputs.tag }}
+          RELEASE_URL: ${{ steps.version.outputs.url }}
+          SUMMARY: ${{ steps.summary.outputs.summary }}
+        run: |
+          # Discord embed with summary
+          curl -H "Content-Type: application/json" \
+               -d "{
+                 \"embeds\": [{
+                   \"title\": \"🚀 Dawarich $VERSION Released!\",
+                   \"url\": \"$RELEASE_URL\",
+                   \"color\": 5814783,
+                   \"description\": \"A new version of Dawarich is available!\\n\\n**This release:** $SUMMARY\\n\\n[📋 View full changelog]($RELEASE_URL)\",
+                   \"footer\": {
+                     \"text\": \"docker pull freikin/dawarich:$VERSION\"
+                   }
+                 }]
+               }" \
+               "$DISCORD_WEBHOOK"
+
+      - name: Post to Mastodon
+        if: steps.version.outputs.prerelease != 'true'
+        env:
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          VERSION: ${{ steps.version.outputs.tag }}
+          RELEASE_URL: ${{ steps.version.outputs.url }}
+          SUMMARY: ${{ steps.summary.outputs.summary }}
+        run: |
+          # Build status message using printf for proper newlines
+          STATUS=$(printf '%s\n\n%s\n\n%s\n%s\n\n%s' \
+            "🚀 Dawarich $VERSION is out!" \
+            "This release: $SUMMARY" \
+            "📦 docker pull freikin/dawarich:$VERSION" \
+            "📋 Changelog: $RELEASE_URL" \
+            "#Dawarich #SelfHosted #LocationTracking #Privacy #OpenSource")
+
+          curl -X POST \
+               -H "Authorization: Bearer $MASTODON_ACCESS_TOKEN" \
+               -F "status=$STATUS" \
+               "https://mastodon.social/api/v1/statuses"

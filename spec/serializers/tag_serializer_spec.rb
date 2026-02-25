@@ -14,7 +14,7 @@ RSpec.describe TagSerializer do
 
   it 'returns the correct JSON structure' do
     expect(subject).to eq({
-      tag_id: tag.id,
+                            tag_id: tag.id,
       tag_name: 'Home',
       tag_icon: '🏠',
       tag_color: '#4CAF50',
@@ -27,6 +27,6 @@ RSpec.describe TagSerializer do
           longitude: 20.0
         }
       ]
-    })
+                          })
   end
 end

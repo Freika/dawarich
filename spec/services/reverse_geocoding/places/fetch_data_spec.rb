@@ -13,7 +13,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
           'coordinates' => [13.0948638, 54.2905245]
         },
         'properties' => {
-          'osm_id' => 12345,
+          'osm_id' => 12_345,
           'name' => 'Test Place',
           'osm_value' => 'restaurant',
           'city' => 'Berlin',
@@ -71,7 +71,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
                 'coordinates' => [13.1, 54.3]
               },
               'properties' => {
-                'osm_id' => 67890,
+                'osm_id' => 67_890,
                 'name' => 'Second Place',
                 'osm_value' => 'cafe',
                 'city' => 'Hamburg',
@@ -128,7 +128,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
         it 'updates existing places instead of creating duplicates' do
           place # Force place creation
-          expect { service.call }.not_to change { Place.count }
+          expect { service.call }.not_to(change { Place.count })
         end
 
         it 'updates the existing place attributes' do
@@ -147,7 +147,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
         it 'does not update the original place' do
           place # Force place creation
-          expect { service.call }.not_to change { place.reload.updated_at }
+          expect { service.call }.not_to(change { place.reload.updated_at })
         end
 
         it 'still processes other places' do
@@ -163,7 +163,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
         it 'only updates the original place' do
           place # Force place creation
-          expect { service.call }.not_to change { Place.count }
+          expect { service.call }.not_to(change { Place.count })
         end
 
         it 'returns early when osm_ids is empty' do
@@ -195,7 +195,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
 
       it 'does not update the place' do
-        expect { service.call }.not_to change { place.reload.updated_at }
+        expect { service.call }.not_to(change { place.reload.updated_at })
       end
     end
   end
@@ -270,7 +270,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         ]
 
         result = service.send(:extract_osm_ids, places)
-        expect(result).to eq(['123', '456'])
+        expect(result).to eq(%w[123 456])
       end
     end
 
@@ -286,8 +286,8 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       let!(:existing_place1) { create(:place, :with_geodata) }
       let!(:existing_place2) do
         create(:place, geodata: {
-          'properties' => { 'osm_id' => 999 }
-        })
+                 'properties' => { 'osm_id' => 999 }
+               })
       end
 
       it 'finds existing places by OSM IDs' do
@@ -457,17 +457,29 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
 
       it 'does not update the place' do
-        expect { service.call }.not_to change { place.reload.updated_at }
+        expect { service.call }.not_to(change { place.reload.updated_at })
       end
     end
 
     context 'when Geocoder raises an exception' do
       before do
         allow(Geocoder).to receive(:search).and_raise(StandardError.new('Geocoding failed'))
+        allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:error)
       end
 
-      it 'allows the exception to bubble up' do
-        expect { service.call }.to raise_error(StandardError, 'Geocoding failed')
+      it 'handles the exception gracefully and returns nil' do
+        expect { service.call }.not_to raise_error
+      end
+
+      it 'logs the error' do
+        service.call
+        expect(Rails.logger).to have_received(:error).with(/Reverse geocoding error for place #{place.id}/)
+      end
+
+      it 'reports the exception' do
+        service.call
+        expect(ExceptionReporter).to have_received(:call)
       end
     end
 
@@ -476,7 +488,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         double(
           data: {
             'geometry' => {
-              'coordinates' => ['invalid', 'coordinates']
+              'coordinates' => %w[invalid coordinates]
             },
             'properties' => {
               'osm_id' => nil
@@ -503,7 +515,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
           data: {
             'geometry' => { 'coordinates' => [14.0, 55.0] },
             'properties' => {
-              'osm_id' => 99999,
+              'osm_id' => 99_999,
               'name' => 'Another Place',
               'osm_value' => 'shop'
             }
@@ -550,7 +562,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
     end
 
     context 'when place_id does not exist' do
-      subject(:service) { described_class.new(999999) }
+      subject(:service) { described_class.new(999_999) }
 
       it 'raises ActiveRecord::RecordNotFound' do
         expect { service }.to raise_error(ActiveRecord::RecordNotFound)
@@ -565,7 +577,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
               'coordinates' => [13.0, 54.0]
             },
             'properties' => {
-              'osm_id' => 99999
+              'osm_id' => 99_999
               # Missing name, city, country, etc.
             }
           }
@@ -591,7 +603,9 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
     end
 
     context 'when lonlat is already present on existing place' do
-      let!(:existing_place) { create(:place, :with_geodata, lonlat: 'POINT(10.0 50.0)', latitude: 50.0, longitude: 10.0) }
+      let!(:existing_place) do
+        create(:place, :with_geodata, lonlat: 'POINT(10.0 50.0)', latitude: 50.0, longitude: 10.0)
+      end
       let(:mock_data) do
         double(
           data: {

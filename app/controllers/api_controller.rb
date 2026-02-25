@@ -9,6 +9,17 @@ class ApiController < ApplicationController
 
   private
 
+  def set_user_time_zone(&block)
+    if current_api_user
+      timezone = current_api_user.timezone
+      Time.use_zone(timezone, &block)
+    else
+      yield
+    end
+  rescue ArgumentError
+    yield
+  end
+
   def record_not_found
     render json: { error: 'Record not found' }, status: :not_found
   end

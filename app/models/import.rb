@@ -13,6 +13,8 @@ class Import < ApplicationRecord
   after_commit :remove_attached_file, on: :destroy
   before_commit :recalculate_stats, on: :destroy, if: -> { points.exists? }
 
+  before_save :set_processing_started_at, if: :status_changed_to_processing?
+
   validates :name, presence: true, uniqueness: { scope: :user_id }
   validate :file_size_within_limit, if: -> { user.trial? }
   validate :import_count_within_limit, if: -> { user.trial? }
@@ -57,6 +59,14 @@ class Import < ApplicationRecord
   end
 
   private
+
+  def set_processing_started_at
+    self.processing_started_at = Time.current
+  end
+
+  def status_changed_to_processing?
+    status_changed? && processing?
+  end
 
   def remove_attached_file
     file.purge_later

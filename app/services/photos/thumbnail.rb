@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Photos::Thumbnail
+  include SslConfigurable
+
   SUPPORTED_SOURCES = %w[immich photoprism].freeze
 
   def initialize(user, source, id)
@@ -11,9 +13,15 @@ class Photos::Thumbnail
 
   def call
     raise ArgumentError, 'Photo source cannot be nil' if source.nil?
+
     unsupported_source_error unless SUPPORTED_SOURCES.include?(source)
 
-    HTTParty.get(request_url, headers: headers)
+    HTTParty.get(
+      request_url,
+      http_options_with_ssl(@user, source_type, {
+                              headers: headers
+                            })
+    )
   end
 
   private
@@ -54,5 +62,9 @@ class Photos::Thumbnail
 
   def unsupported_source_error
     raise ArgumentError, "Unsupported source: #{source}"
+  end
+
+  def source_type
+    source == 'immich' ? :immich : :photoprism
   end
 end

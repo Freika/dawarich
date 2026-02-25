@@ -13,7 +13,10 @@ module Points
     validates :year, numericality: { greater_than: 1970, less_than: 2100 }
     validates :month, numericality: { greater_than_or_equal_to: 1, less_than_or_equal_to: 12 }
     validates :chunk_number, numericality: { greater_than: 0 }
+    validates :point_count, numericality: { greater_than: 0 }
     validates :point_ids_checksum, presence: true
+
+    validate :metadata_contains_expected_and_actual_counts
 
     scope :for_month, lambda { |user_id, year, month|
       where(user_id: user_id, year: year, month: month)
@@ -35,6 +38,33 @@ module Points
       return 0 unless file.attached?
 
       (file.blob.byte_size / 1024.0 / 1024.0).round(2)
+    end
+
+    def verified?
+      verified_at.present?
+    end
+
+    def count_mismatch?
+      return false if metadata.blank?
+
+      expected = metadata['expected_count']
+      actual = metadata['actual_count']
+
+      return false if expected.nil? || actual.nil?
+
+      expected != actual
+    end
+
+    private
+
+    def metadata_contains_expected_and_actual_counts
+      return if metadata.blank?
+      return if metadata['format_version'].blank?
+
+      # All archives must contain both expected_count and actual_count for data integrity
+      return unless metadata['expected_count'].blank? || metadata['actual_count'].blank?
+
+      errors.add(:metadata, 'must contain expected_count and actual_count')
     end
   end
 end

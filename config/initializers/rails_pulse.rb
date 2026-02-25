@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 RailsPulse.configure do |config|
   # ====================================================================================================
   #                                         GLOBAL CONFIGURATION
   # ====================================================================================================
 
-  # Enable or disable Rails Pulse
-  config.enabled = true
+  # Disable Rails Pulse in Self-hosted Environments
+  config.enabled = !SELF_HOSTED
 
   # ====================================================================================================
   #                                               THRESHOLDS

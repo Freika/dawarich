@@ -44,7 +44,7 @@ class Gpx::TrackImporter
     {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
       altitude: point['ele'].to_i,
-      timestamp: Time.parse(point['time']).to_i,
+      timestamp: Time.parse(point['time']).utc.to_i,
       import_id: import.id,
       velocity: speed(point),
       raw_data: point,
@@ -57,7 +57,6 @@ class Gpx::TrackImporter
   def bulk_insert_points(batch)
     unique_batch = batch.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
 
-    # rubocop:disable Rails/SkipsModelValidations
     Point.upsert_all(
       unique_batch,
       unique_by: %i[lonlat timestamp user_id],
@@ -85,7 +84,7 @@ class Gpx::TrackImporter
 
     value = point.dig('extensions', 'speed')
     extensions = point.dig('extensions', 'TrackPointExtension')
-    value ||= extensions.is_a?(Hash) ? extensions.dig('speed') : nil
+    value ||= extensions.is_a?(Hash) ? extensions['speed'] : nil
 
     value&.to_f&.round(1) || 0.0
   end

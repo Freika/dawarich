@@ -16,7 +16,7 @@ class Users::ImportData::Trips
     valid_trips = filter_and_prepare_trips
 
     if valid_trips.empty?
-      Rails.logger.info "Trips import completed. Created: 0"
+      Rails.logger.info 'Trips import completed. Created: 0'
       return 0
     end
 
@@ -52,9 +52,7 @@ class Users::ImportData::Trips
       valid_trips << prepared_attributes if prepared_attributes
     end
 
-    if skipped_count > 0
-      Rails.logger.warn "Skipped #{skipped_count} trips with invalid or missing required data"
-    end
+    Rails.logger.warn "Skipped #{skipped_count} trips with invalid or missing required data" if skipped_count.positive?
 
     valid_trips
   end
@@ -82,7 +80,7 @@ class Users::ImportData::Trips
       existing_trips_lookup[key] = true
     end
 
-    filtered_trips = trips.reject do |trip|
+    trips.reject do |trip|
       key = [trip[:name], normalize_timestamp(trip[:started_at]), normalize_timestamp(trip[:ended_at])]
       if existing_trips_lookup[key]
         Rails.logger.debug "Trip already exists: #{trip[:name]}"
@@ -91,8 +89,6 @@ class Users::ImportData::Trips
         false
       end
     end
-
-    filtered_trips
   end
 
   def normalize_timestamp(timestamp)
@@ -112,21 +108,21 @@ class Users::ImportData::Trips
     total_created = 0
 
     trips.each_slice(BATCH_SIZE) do |batch|
-      begin
-        result = Trip.upsert_all(
-          batch,
-          returning: %w[id],
-          on_duplicate: :skip
-        )
+      result = Trip.upsert_all(
+        batch,
+        returning: %w[id],
+        on_duplicate: :skip
+      )
+      # rubocop:enable Rails/SkipsModelValidations
 
-        batch_created = result.count
-        total_created += batch_created
+      batch_created = result.count
+      total_created += batch_created
 
-        Rails.logger.debug "Processed batch of #{batch.size} trips, created #{batch_created}, total created: #{total_created}"
-
-      rescue StandardError => e
-        ExceptionReporter.call(e, 'Failed to process trip batch')
-      end
+      Rails.logger.debug(
+        "Processed batch of #{batch.size} trips, created #{batch_created}, total created: #{total_created}"
+      )
+    rescue StandardError => e
+      ExceptionReporter.call(e, 'Failed to process trip batch')
     end
 
     total_created
@@ -144,7 +140,6 @@ class Users::ImportData::Trips
     Rails.logger.debug "Trip validation failed: #{e.message} for data: #{trip_data.inspect}"
     false
   end
-
 
   def validate_trip_name(trip_data)
     if trip_data['name'].present?

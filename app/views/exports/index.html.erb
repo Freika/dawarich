@@ -1,13 +1,13 @@
 <% content_for :title, "Exports" %>
 
 <div class="w-full my-5">
-  <div class="flex justify-center">
+  <div class="flex justify-between items-center">
     <h1 class="font-bold text-4xl">Exports</h1>
   </div>
 
   <div id="exports" class="min-w-full">
     <% if @exports.empty? %>
-      <div class="hero min-h-80 bg-base-200">
+      <div class="hero min-h-80 bg-base-200 my-5">
         <div class="hero-content text-center">
           <div class="max-w-md">
             <h1 class="text-5xl font-bold">Hello there!</h1>
@@ -19,42 +19,28 @@
       </div>
     <% else %>
       <div class="flex justify-center my-5">
-        <div class='flex'>
-          <%= paginate @exports %>
-        </div>
+        <%= paginate @exports %>
       </div>
       <div class="overflow-x-auto">
-        <table class="table overflow-x-auto">
+        <table class="table table-zebra overflow-x-auto">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>File size</th>
-              <th>Created at</th>
-              <th>Status</th>
+              <th><%= sortable_column 'Name', :name, :exports_path %></th>
+              <th><%= sortable_column 'File size', :byte_size, :exports_path %></th>
+              <th><%= sortable_column 'Status', :status, :exports_path %></th>
+              <th><%= sortable_column 'Created at', :created_at, :exports_path %></th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <% @exports.each do |export| %>
-              <tr>
-                <td><%= export.name %></td>
-                <td><%= number_to_human_size(export.file&.byte_size) || 'N/A' %></td>
-                <td><%= human_datetime(export.created_at) %></td>
-                <td><%= export.status %></td>
-                <td class="whitespace-nowrap">
-                  <% if export.completed? %>
-                    <% if export.file.present? %>
-                      <%= link_to 'Download', rails_blob_path(export.file, disposition: 'attachment'), class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
-                    <% else %>
-                      <%= link_to 'Download', export.url, class: "px-4 py-2 bg-blue-500 text-white rounded-md", download: export.name %>
-                    <% end %>
-                  <% end %>
-                  <%= link_to 'Delete', export, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, method: :delete, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
-                </td>
-              </tr>
+              <%= render 'exports/table_row', export: export %>
             <% end %>
           </tbody>
         </table>
+      </div>
+      <div class="flex justify-center my-5">
+        <%= paginate @exports %>
       </div>
     <% end %>
   </div>

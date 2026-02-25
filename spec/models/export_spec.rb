@@ -19,18 +19,14 @@ RSpec.describe Export, type: :model do
         let(:export) { build(:export, file_type: :points) }
 
         it 'enqueues the ExportJob' do
-          expect(ExportJob).to receive(:perform_later)
-
-          export.save!
+          expect { export.save! }.to have_enqueued_job(ExportJob)
         end
 
         context 'when the export is a user data export' do
           let(:export) { build(:export, file_type: :user_data) }
 
           it 'does not enqueue the ExportJob' do
-            expect(ExportJob).not_to receive(:perform_later).with(export.id)
-
-            export.save!
+            expect { export.save! }.not_to have_enqueued_job(ExportJob).with(export.id)
           end
         end
       end

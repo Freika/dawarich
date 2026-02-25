@@ -64,6 +64,50 @@ RSpec.describe Points::RawData::Restorer do
       end.to raise_error(/No archives found/)
     end
 
+    context 'when archived points have been deleted from database' do
+      let(:existing_point) do
+        create(:point, user: user, timestamp: Time.new(2024, 8, 15).to_i,
+                       raw_data: nil, raw_data_archived: true)
+      end
+
+      let(:nonexistent_point_id) { existing_point.id + 999_999 }
+
+      let!(:mixed_archive) do
+        # Archive references one real point and one that doesn't exist
+        compressed_data = gzip_points_data(
+          [
+            { id: existing_point.id, raw_data: { lon: 13.4, lat: 52.5 } },
+            { id: nonexistent_point_id, raw_data: { lon: 14.0, lat: 53.0 } }
+          ]
+        )
+
+        arc = build(:points_raw_data_archive, user: user, year: 2024, month: 8)
+        arc.file.attach(
+          io: StringIO.new(compressed_data),
+          filename: arc.filename,
+          content_type: 'application/gzip'
+        )
+        arc.save!
+        arc
+      end
+
+      it 'logs a warning about missing points' do
+        expect(Rails.logger).to receive(:warn).with(/no longer exist in database/).at_least(:once)
+        expect(Rails.logger).to receive(:warn).with(/no longer in database/).at_least(:once)
+
+        restorer.restore_to_database(user.id, 2024, 8)
+      end
+
+      it 'still restores points that do exist' do
+        allow(Rails.logger).to receive(:warn)
+
+        restorer.restore_to_database(user.id, 2024, 8)
+
+        existing_point.reload
+        expect(existing_point.raw_data).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
+      end
+    end
+
     context 'with multiple chunks' do
       let!(:more_points) do
         create_list(:point, 2, user: user, timestamp: Time.new(2024, 6, 20).to_i,
@@ -96,6 +140,36 @@ RSpec.describe Points::RawData::Restorer do
         (archived_points + more_points).each(&:reload)
         expect(archived_points.first.raw_data).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
         expect(more_points.first.raw_data).to eq({ 'lon' => 14.0, 'lat' => 53.0 })
+      end
+    end
+  end
+
+  describe 'encrypted archive roundtrip' do
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+    let!(:points) do
+      create_list(:point, 3, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+    end
+
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('true')
+
+      archiver = Points::RawData::Archiver.new
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      # Clear raw_data to simulate what the clearer does
+      Point.where(id: points.map(&:id)).update_all(raw_data: nil)
+    end
+
+    it 'restores raw_data from encrypted archives' do
+      restorer.restore_to_database(user.id, test_date.year, test_date.month)
+
+      points.each(&:reload)
+      points.each do |point|
+        expect(point.raw_data).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
+        expect(point.raw_data_archived).to be false
       end
     end
   end

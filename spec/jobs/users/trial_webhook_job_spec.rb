@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Users::TrialWebhookJob, type: :job do
@@ -47,9 +49,9 @@ RSpec.describe Users::TrialWebhookJob, type: :job do
       it 'skips the webhook for soft-deleted users' do
         user.destroy
 
-        expect(HTTParty).not_to receive(:post)
-
-        described_class.perform_now(user.id)
+        expect do
+          described_class.perform_now(user.id)
+        end.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
   end

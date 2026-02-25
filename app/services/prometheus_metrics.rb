@@ -19,7 +19,7 @@ class PrometheusMetrics
         else
           { success: false, error: "Prometheus server returned #{response.code}" }
         end
-      rescue => e
+      rescue StandardError => e
         Rails.logger.error "Failed to fetch Prometheus metrics: #{e.message}"
         { success: false, error: e.message }
       end

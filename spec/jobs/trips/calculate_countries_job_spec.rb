@@ -38,8 +38,8 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
     it 'broadcasts the update with correct parameters' do
       expect(Turbo::StreamsChannel).to receive(:broadcast_update_to).with(
         "trip_#{trip.id}",
-        target: "trip_countries",
-        partial: "trips/countries",
+        target: 'trip_countries',
+        partial: 'trips/countries',
         locals: { trip: trip, distance_unit: distance_unit }
       )
 
@@ -84,9 +84,9 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
 
     context 'when trip is not found' do
       it 'raises ActiveRecord::RecordNotFound' do
-        expect {
-          described_class.perform_now(999999, distance_unit)
-        }.to raise_error(ActiveRecord::RecordNotFound)
+        expect do
+          described_class.perform_now(999_999, distance_unit)
+        end.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
 
@@ -96,8 +96,8 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
       it 'passes the correct distance_unit to broadcast' do
         expect(Turbo::StreamsChannel).to receive(:broadcast_update_to).with(
           "trip_#{trip.id}",
-          target: "trip_countries",
-          partial: "trips/countries",
+          target: 'trip_countries',
+          partial: 'trips/countries',
           locals: { trip: trip, distance_unit: 'mi' }
         )
 

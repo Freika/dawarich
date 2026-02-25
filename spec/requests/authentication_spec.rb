@@ -126,6 +126,10 @@ RSpec.describe 'Authentication', type: :request do
     end
 
     it 'generates JWT token with correct payload for iOS authentication' do
+      secret_key = 'test-jwt-secret-key'
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AUTH_JWT_SECRET_KEY').and_return(secret_key)
+
       # Test JWT token generation directly using the same logic as after_sign_in_path_for
       payload = { api_key: user.api_key, exp: 5.minutes.from_now.to_i }
 
@@ -271,10 +275,10 @@ RSpec.describe 'Authentication', type: :request do
     it 'redirects to iOS success when invitation is expired' do
       # Create an expired invitation
       expired_invitation = create(:family_invitation,
-                                   family: family,
-                                   invited_by: user,
-                                   email: invitee.email,
-                                   expires_at: 1.day.ago)
+                                  family: family,
+                                  invited_by: user,
+                                  email: invitee.email,
+                                  expires_at: 1.day.ago)
 
       # Sign in with iOS header and expired invitation token
       post user_session_path, params: {

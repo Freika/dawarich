@@ -60,7 +60,7 @@ RSpec.describe LocationSearch::GeocodingService do
 
     context 'with blank query' do
       let(:service) { described_class.new('') }
-      
+
       it 'returns empty array' do
         expect(service.search).to eq([])
       end
