@@ -6,7 +6,8 @@ describe 'Stats API', type: :request do
   path '/api/v1/stats' do
     get 'Retrieves all stats' do
       tags 'Stats'
-      description 'Returns aggregated statistics including total distance, points tracked, countries and cities visited, with yearly breakdowns'
+      description 'Returns aggregated statistics including total distance, points tracked, ' \
+                  'countries and cities visited, with yearly breakdowns'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 

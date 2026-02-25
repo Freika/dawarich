@@ -9,7 +9,8 @@ RSpec.describe 'Locations API', type: :request do
   path '/api/v1/locations' do
     get 'Searches for location history near coordinates' do
       tags 'Locations'
-      description 'Searches for tracked location points near the specified coordinates, optionally filtered by date range'
+      description 'Searches for tracked location points near the specified coordinates, ' \
+                  'optionally filtered by date range'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
       parameter name: :lat, in: :query, type: :number, format: :float, required: true,

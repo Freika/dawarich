@@ -14,7 +14,8 @@ RSpec.describe 'Track Points API', type: :request do
       description 'Returns location points belonging to a specific track, ordered by timestamp ascending'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
-      parameter name: :page, in: :query, type: :integer, required: false, description: 'Page number (optional pagination)'
+      parameter name: :page, in: :query, type: :integer, required: false,
+                description: 'Page number (optional pagination)'
       parameter name: :per_page, in: :query, type: :integer, required: false, description: 'Items per page (max 1000)'
 
       response '200', 'points found' do
@@ -40,7 +41,7 @@ RSpec.describe 'Track Points API', type: :request do
       end
 
       response '404', 'track not found' do
-        let(:track_id) { 999999 }
+        let(:track_id) { 999_999 }
 
         run_test!
       end

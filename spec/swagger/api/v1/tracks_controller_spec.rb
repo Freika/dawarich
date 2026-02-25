@@ -52,7 +52,8 @@ RSpec.describe 'Tracks API', type: :request do
                            avg_speed: { type: :number, description: 'Average speed in km/h' },
                            duration: { type: :number, description: 'Duration in seconds' },
                            dominant_mode: { type: :string, nullable: true, description: 'Primary transportation mode' },
-                           dominant_mode_emoji: { type: :string, nullable: true, description: 'Emoji for transportation mode' }
+                           dominant_mode_emoji: { type: :string, nullable: true,
+description: 'Emoji for transportation mode' }
                          }
                        }
                      }
@@ -100,7 +101,7 @@ RSpec.describe 'Tracks API', type: :request do
       end
 
       response '404', 'track not found' do
-        let(:id) { 999999 }
+        let(:id) { 999_999 }
 
         run_test!
       end

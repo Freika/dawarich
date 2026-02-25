@@ -16,7 +16,8 @@ RSpec.describe 'Insights API', type: :request do
       description 'Returns aggregated insights including totals, activity heatmap, and available years'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
-      parameter name: :year, in: :query, type: :integer, required: false, description: 'Year to get insights for (defaults to most recent year with data)'
+      parameter name: :year, in: :query, type: :integer, required: false,
+                description: 'Year to get insights for (defaults to most recent year with data)'
       parameter name: :distance_unit, in: :query, type: :string, required: false,
                 description: 'Distance unit: km or mi (defaults to user setting)'
 
@@ -103,7 +104,8 @@ RSpec.describe 'Insights API', type: :request do
                    description: 'Travel pattern analysis',
                    properties: {
                      timeOfDay: { type: :object, description: 'Distance distribution by time of day' },
-                     dayOfWeek: { type: :array, items: { type: :integer }, description: 'Distance by day of week (Mon-Sun)' },
+                     dayOfWeek: { type: :array, items: { type: :integer },
+description: 'Distance by day of week (Mon-Sun)' },
                      seasonality: { type: :object, description: 'Seasonal travel patterns' },
                      activityBreakdown: { type: :object, description: 'Breakdown by transportation mode' },
                      topVisitedLocations: {

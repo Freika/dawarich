@@ -37,8 +37,10 @@ describe 'Areas API', type: :request do
                properties: {
                  id: { type: :integer, description: 'The ID of the area' },
                  name: { type: :string, description: 'The name of the area' },
-                 latitude: { oneOf: [{ type: :number }, { type: :string }], description: 'The latitude of the area center' },
-                 longitude: { oneOf: [{ type: :number }, { type: :string }], description: 'The longitude of the area center' },
+                 latitude: { oneOf: [{ type: :number }, { type: :string }],
+description: 'The latitude of the area center' },
+                 longitude: { oneOf: [{ type: :number }, { type: :string }],
+description: 'The longitude of the area center' },
                  radius: { type: :integer, description: 'The radius of the area in meters' },
                  user_id: { type: :integer, description: 'The ID of the owning user' },
                  created_at: { type: :string, format: 'date-time' },
@@ -79,8 +81,10 @@ describe 'Areas API', type: :request do
                  properties: {
                    id: { type: :integer, example: 1, description: 'The ID of the area' },
                    name: { type: :string, example: 'Home', description: 'The name of the area' },
-                   latitude: { oneOf: [{ type: :number }, { type: :string }], example: 40.7128, description: 'The latitude of the area center' },
-                   longitude: { oneOf: [{ type: :number }, { type: :string }], example: -74.0060, description: 'The longitude of the area center' },
+                   latitude: { oneOf: [{ type: :number }, { type: :string }], example: 40.7128,
+description: 'The latitude of the area center' },
+                   longitude: { oneOf: [{ type: :number }, { type: :string }], example: -74.0060,
+description: 'The longitude of the area center' },
                    radius: { type: :integer, example: 100, description: 'The radius of the area in meters' }
                  },
                  required: %w[id name latitude longitude radius]
@@ -114,8 +118,10 @@ describe 'Areas API', type: :request do
                properties: {
                  id: { type: :integer, description: 'The ID of the area' },
                  name: { type: :string, description: 'The name of the area' },
-                 latitude: { oneOf: [{ type: :number }, { type: :string }], description: 'The latitude of the area center' },
-                 longitude: { oneOf: [{ type: :number }, { type: :string }], description: 'The longitude of the area center' },
+                 latitude: { oneOf: [{ type: :number }, { type: :string }],
+description: 'The latitude of the area center' },
+                 longitude: { oneOf: [{ type: :number }, { type: :string }],
+description: 'The longitude of the area center' },
                  radius: { type: :integer, description: 'The radius of the area in meters' }
                }
 
@@ -128,7 +134,7 @@ describe 'Areas API', type: :request do
       end
 
       response '404', 'area not found' do
-        let(:id) { 999999 }
+        let(:id) { 999_999 }
 
         run_test!
       end
@@ -166,8 +172,10 @@ describe 'Areas API', type: :request do
                properties: {
                  id: { type: :integer, description: 'The ID of the area' },
                  name: { type: :string, description: 'The name of the area' },
-                 latitude: { oneOf: [{ type: :number }, { type: :string }], description: 'The latitude of the area center' },
-                 longitude: { oneOf: [{ type: :number }, { type: :string }], description: 'The longitude of the area center' },
+                 latitude: { oneOf: [{ type: :number }, { type: :string }],
+description: 'The latitude of the area center' },
+                 longitude: { oneOf: [{ type: :number }, { type: :string }],
+description: 'The longitude of the area center' },
                  radius: { type: :integer, description: 'The radius of the area in meters' }
                }
 
@@ -181,7 +189,7 @@ describe 'Areas API', type: :request do
       end
 
       response '404', 'area not found' do
-        let(:id) { 999999 }
+        let(:id) { 999_999 }
         let(:area) { { area: { name: 'Updated' } } }
 
         run_test!
@@ -216,7 +224,7 @@ describe 'Areas API', type: :request do
       end
 
       response '404', 'area not found' do
-        let(:id) { 999999 }
+        let(:id) { 999_999 }
 
         run_test!
       end

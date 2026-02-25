@@ -109,7 +109,8 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
                    id: { type: :string, description: 'Photo ID from the source service' },
                    latitude: { type: :number, format: :float, description: 'Latitude where the photo was taken' },
                    longitude: { type: :number, format: :float, description: 'Longitude where the photo was taken' },
-                   localDateTime: { type: :string, format: 'date-time', description: 'Local date and time the photo was taken' },
+                   localDateTime: { type: :string, format: 'date-time',
+description: 'Local date and time the photo was taken' },
                    originalFileName: { type: :string, description: 'Original file name of the photo' },
                    city: { type: :string, description: 'City where the photo was taken' },
                    state: { type: :string, description: 'State/region where the photo was taken' },
@@ -134,11 +135,13 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
   path '/api/v1/photos/{id}/thumbnail' do
     get 'Retrieves a photo thumbnail' do
       tags 'Photos'
-      description 'Returns the thumbnail image data for a specific photo. On success returns binary image/jpeg data. On error returns JSON with error details.'
+      description 'Returns the thumbnail image data for a specific photo. ' \
+                  'On success returns binary image/jpeg data. On error returns JSON with error details.'
       produces 'image/jpeg', 'application/json'
       parameter name: :id, in: :path, type: :string, required: true, description: 'Photo ID from the source service'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
-      parameter name: :source, in: :query, type: :string, required: true, description: 'Photo source (immich or photoprism)'
+      parameter name: :source, in: :query, type: :string, required: true,
+                description: 'Photo source (immich or photoprism)'
 
       response '200', 'photo found' do
         let(:id) { '7fe486e3-c3ba-4b54-bbf9-1281b39ed15c' }

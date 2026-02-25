@@ -9,7 +9,8 @@ RSpec.describe 'Maps Hexagons API', type: :request do
   path '/api/v1/maps/hexagons' do
     get 'Retrieves hexagon grid data for the map' do
       tags 'Maps'
-      description 'Returns hexagonal grid data for map visualization. Supports both authenticated access and public sharing via UUID.'
+      description 'Returns hexagonal grid data for map visualization. ' \
+                  'Supports both authenticated access and public sharing via UUID.'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: false,
                 description: 'API Key (required for authenticated access, omit when using uuid)'
