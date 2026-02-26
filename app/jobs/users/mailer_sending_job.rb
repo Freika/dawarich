@@ -4,18 +4,14 @@ class Users::MailerSendingJob < ApplicationJob
   queue_as :mailers
 
   def perform(user_id, email_type, **options)
-    user = User.find(user_id)
+    user = find_non_deleted_user(user_id)
+    return unless user
 
     return if should_skip_email?(user, email_type)
 
     params = { user: user }.merge(options)
 
     UsersMailer.with(params).public_send(email_type).deliver_later
-  rescue ActiveRecord::RecordNotFound
-    ExceptionReporter.call(
-      'Users::MailerSendingJob',
-      "User with ID #{user_id} not found. Skipping #{email_type} email."
-    )
   end
 
   private

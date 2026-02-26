@@ -19,7 +19,8 @@ class Users::Digests::CalculatingJob < ApplicationJob
   end
 
   def create_digest_failed_notification(user_id, error)
-    user = User.find(user_id)
+    user = find_non_deleted_user(user_id)
+    return unless user
 
     Notifications::Create.new(
       user:,
