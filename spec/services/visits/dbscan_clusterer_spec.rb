@@ -3,6 +3,17 @@
 require 'rails_helper'
 
 RSpec.describe Visits::DbscanClusterer do
+  let(:user_settings) do
+    {
+      'route_opacity' => 60,
+      'meters_between_routes' => '500',
+      'minutes_between_routes' => '30',
+      'fog_of_war_meters' => '100',
+      'time_threshold_minutes' => '30',
+      'merge_threshold_minutes' => '15',
+      'maps' => { 'distance_unit' => 'km' }
+    }
+  end
   let(:user) { create(:user) }
   let(:base_time) { Time.zone.now }
 
@@ -56,6 +67,8 @@ RSpec.describe Visits::DbscanClusterer do
     end
 
     context 'with time gap larger than threshold' do
+      let(:user) { create(:user, settings: user_settings.merge('density_normalization_enabled' => false)) }
+
       before do
         create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 90.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 80.minutes).to_i)
@@ -100,6 +113,8 @@ RSpec.describe Visits::DbscanClusterer do
     end
 
     context 'with points at extreme latitude (near pole)' do
+      let(:user) { create(:user, settings: user_settings.merge('density_normalization_enabled' => false)) }
+
       before do
         create(:point, user: user, lonlat: 'POINT(25.0 89.5)', timestamp: (base_time - 90.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(25.001 89.5)', timestamp: (base_time - 80.minutes).to_i)
@@ -124,6 +139,107 @@ RSpec.describe Visits::DbscanClusterer do
         result = subject.call
 
         expect(result).to be_empty
+      end
+    end
+
+    context 'with density normalization enabled and a gap at the same location' do
+      let(:start_at) { base_time - 3.hours }
+      let(:user) { create(:user, settings: user_settings.merge('density_normalization_enabled' => true)) }
+
+      before do
+        # Cluster 1: two points at location
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 170.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 160.minutes).to_i)
+
+        # 45-minute GPS gap (phone off at restaurant)
+
+        # Cluster 2: two points at same location after the gap
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 115.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 105.minutes).to_i)
+      end
+
+      it 'bridges the gap with synthetic points and produces one cluster' do
+        result = subject.call
+
+        expect(result.size).to eq(1)
+        expect(result.first[:start_time]).to eq((base_time - 170.minutes).to_i)
+        expect(result.first[:end_time]).to eq((base_time - 105.minutes).to_i)
+      end
+
+      it 'includes negative synthetic IDs in point_ids' do
+        result = subject.call
+        point_ids = result.first[:point_ids]
+
+        real_ids = point_ids.select(&:positive?)
+        synthetic_ids = point_ids.select(&:negative?)
+
+        expect(real_ids.size).to eq(4)
+        expect(synthetic_ids).not_to be_empty
+      end
+    end
+
+    context 'with density normalization disabled and a gap at the same location' do
+      let(:start_at) { base_time - 3.hours }
+      let(:user) { create(:user, settings: user_settings.merge('density_normalization_enabled' => false)) }
+
+      before do
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 170.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 160.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 115.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 105.minutes).to_i)
+      end
+
+      it 'produces two separate clusters without synthetic points' do
+        result = subject.call
+
+        expect(result.size).to eq(2)
+        all_ids = result.flat_map { |c| c[:point_ids] }
+        expect(all_ids).to all(be_positive)
+      end
+    end
+
+    context 'with gap exceeding max gap minutes' do
+      let(:start_at) { base_time - 15.hours }
+      let(:user) { create(:user, settings: user_settings.merge('density_normalization_enabled' => true)) }
+
+      before do
+        # Within-cluster points < 60s apart (no synthetic fill within clusters)
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 14.hours).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 14.hours + 30.seconds).to_i)
+
+        # 13-hour gap — exceeds default density_max_gap_minutes (720 min = 12 hours)
+
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 10.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 10.minutes + 30.seconds).to_i)
+      end
+
+      it 'does not generate synthetic points for gaps exceeding max' do
+        result = subject.call
+
+        all_ids = result.flat_map { |c| c[:point_ids] }
+        expect(all_ids).to all(be_positive)
+      end
+    end
+
+    context 'with gap between distant points' do
+      let(:start_at) { base_time - 3.hours }
+      let(:user) { create(:user, settings: user_settings.merge('density_normalization_enabled' => true)) }
+
+      before do
+        # Within-cluster points < 60s apart (no synthetic fill within clusters)
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 170.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 170.minutes + 30.seconds).to_i)
+
+        # 45-minute gap, but endpoint is 500m+ away — exceeds density_max_distance_meters
+        create(:point, user: user, lonlat: 'POINT(-74.0120 40.7180)', timestamp: (base_time - 115.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0121 40.7181)', timestamp: (base_time - 115.minutes + 30.seconds).to_i)
+      end
+
+      it 'does not generate synthetic points when distance exceeds threshold' do
+        result = subject.call
+
+        all_ids = result.flat_map { |c| c[:point_ids] }
+        expect(all_ids).to all(be_positive)
       end
     end
   end

@@ -2,7 +2,7 @@
   <div class="card-body">
     <h2 class="card-title">Visit Detection Settings</h2>
     <p class="text-sm mb-4">Fine-tune how visits are detected from your location data.</p>
-    <%= form_with url: settings_background_jobs_path, method: :patch, local: true do |f| %>
+    <%= form_with url: settings_background_jobs_path, method: :patch do |f| %>
       <div class="form-control mb-3">
         <label class="label">
           <span class="label-text">Clustering distance (meters)</span>

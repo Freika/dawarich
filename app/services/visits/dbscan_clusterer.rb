@@ -40,7 +40,7 @@ module Visits
       raise e unless e.message.include?('canceling statement due to statement timeout')
 
       Rails.logger.warn("DBSCAN query timed out after #{QUERY_TIMEOUT_MS}ms for user #{user.id}")
-      []
+      nil
     end
 
     def parse_results(result)
@@ -74,8 +74,26 @@ module Visits
       user.safe_settings.visit_detection_time_gap_minutes * 60
     end
 
+    def density_normalization_enabled?
+      user.safe_settings.density_normalization_enabled?
+    end
+
+    def density_gap_threshold_seconds
+      density_normalization_enabled? ? user.safe_settings.density_gap_threshold_seconds : 0
+    end
+
+    def density_max_gap_seconds
+      density_normalization_enabled? ? user.safe_settings.density_max_gap_minutes * 60 : 0
+    end
+
+    def density_max_distance_meters
+      density_normalization_enabled? ? user.safe_settings.density_max_distance_meters : 0
+    end
+
     def dbscan_sql
-      params = [user.id, start_at, end_at, eps_meters, min_points,
+      params = [user.id, start_at, end_at,
+                density_gap_threshold_seconds, density_max_gap_seconds, density_max_distance_meters,
+                eps_meters, min_points,
                 time_gap_seconds, min_points, MIN_DURATION_SECONDS]
       ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, *params])
         WITH candidate_points AS (
@@ -86,16 +104,51 @@ module Visits
             AND visit_id IS NULL
             AND lonlat IS NOT NULL
         ),
+        point_gaps AS (
+          SELECT
+            id, lonlat, timestamp, accuracy,
+            LEAD(id) OVER w AS next_id,
+            LEAD(lonlat) OVER w AS next_lonlat,
+            LEAD(timestamp) OVER w AS next_timestamp,
+            LEAD(timestamp) OVER w - timestamp AS gap_seconds,
+            ST_Distance(lonlat::geography, LEAD(lonlat) OVER w::geography) AS gap_distance_m
+          FROM candidate_points
+          WINDOW w AS (ORDER BY timestamp)
+        ),
+        synthetic_points AS (
+          SELECT
+            -(ROW_NUMBER() OVER ())::bigint AS id,
+            ST_LineInterpolatePoint(
+              ST_MakeLine(pg.lonlat::geometry, pg.next_lonlat::geometry),
+              s.frac
+            )::geography AS lonlat,
+            pg.timestamp + (s.frac * pg.gap_seconds)::integer AS timestamp,
+            GREATEST(pg.accuracy, 100) AS accuracy
+          FROM point_gaps pg
+          CROSS JOIN LATERAL (
+            SELECT generate_series(1, GREATEST(FLOOR(pg.gap_seconds / 15.0)::int - 1, 0))::float
+                   / FLOOR(pg.gap_seconds / 15.0) AS frac
+          ) s
+          WHERE pg.gap_seconds > ?
+            AND pg.gap_seconds <= ?
+            AND pg.gap_distance_m <= ?
+            AND pg.next_id IS NOT NULL
+        ),
+        all_points AS (
+          SELECT id, lonlat, timestamp, accuracy FROM candidate_points
+          UNION ALL
+          SELECT id, lonlat, timestamp, accuracy FROM synthetic_points
+        ),
         clustered_points AS (
           SELECT
-            cp.id, cp.lonlat, cp.timestamp, cp.accuracy,
+            ap.id, ap.lonlat, ap.timestamp, ap.accuracy,
             ST_ClusterDBSCAN(
-              ST_Force3D(ST_Transform(cp.lonlat::geometry, 4978)),
+              ST_Force3D(ST_Transform(ap.lonlat::geometry, 4978)),
               eps := ?::double precision,
               minpoints := ?
             ) OVER () as spatial_cluster
-          FROM candidate_points cp
-          ORDER BY cp.timestamp
+          FROM all_points ap
+          ORDER BY ap.timestamp
         ),
         gap_detection AS (
           SELECT *,

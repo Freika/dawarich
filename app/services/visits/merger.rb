@@ -7,6 +7,7 @@ module Visits
     DEFAULT_EXTENDED_MERGE_HOURS = 2
     DEFAULT_TRAVEL_THRESHOLD_METERS = 200
     SIGNIFICANT_MOVEMENT_THRESHOLD = 50 # meters
+    MIN_GAP_POINTS_FOR_TRAVEL_CHECK = 3
 
     attr_reader :points, :user
 
@@ -100,8 +101,6 @@ module Visits
     # Returns true (traveled far) when there are fewer than 3 gap points,
     # because "no data" usually means the device was off — not that the user
     # stayed put. We need enough breadcrumbs to make a travel determination.
-    MIN_GAP_POINTS_FOR_TRAVEL_CHECK = 3
-
     def traveled_far_during_gap?(first_visit, second_visit)
       return false unless user
 
@@ -113,8 +112,10 @@ module Visits
                               .where.not(lonlat: nil)
                               .count
 
-      # Insufficient gap data — can't determine travel, so don't merge
-      return true if gap_points_count < MIN_GAP_POINTS_FOR_TRAVEL_CHECK
+      # With sparse gap data: if density normalization is enabled, assume user
+      # stayed (same_location? already confirmed centers are within 50m).
+      # Without normalization, preserve existing behavior (assume travel).
+      return !density_normalization_enabled? if gap_points_count < MIN_GAP_POINTS_FOR_TRAVEL_CHECK
 
       sql = ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, user.id, start_time, end_time])
         WITH ordered_points AS (
@@ -134,6 +135,10 @@ module Visits
 
       total_distance = Point.connection.select_value(sql)
       total_distance.to_f > travel_merge_threshold
+    end
+
+    def density_normalization_enabled?
+      user&.safe_settings&.density_normalization_enabled?
     end
   end
 end

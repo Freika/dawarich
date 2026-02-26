@@ -15,10 +15,12 @@ module Visits
       @end_at = end_at
     end
 
-    # Returns an array of visit hashes, or nil if DBSCAN fails (signaling fallback).
+    # Returns an array of visit hashes, [] if no visits found, or nil if DBSCAN
+    # failed (signaling the caller should fall back to iteration).
     def call
       raw_clusters = DbscanClusterer.new(user, start_at: start_at, end_at: end_at).call
-      return nil if raw_clusters.empty?
+      return nil if raw_clusters.nil?
+      return [] if raw_clusters.empty?
 
       all_point_ids = raw_clusters.flat_map { |c| c[:point_ids] }
       points_by_id = Point.where(id: all_point_ids).index_by(&:id)

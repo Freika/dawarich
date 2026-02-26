@@ -185,8 +185,11 @@ RSpec.describe Visits::Merger do
 
     context 'with extended merge window but insufficient gap data' do
       # Gap of 1 hour — within extended merge window, but only 1 point
-      # during the gap. Not enough data to determine if user traveled,
-      # so visits should NOT be merged.
+      # during the gap. Not enough data to determine if user traveled.
+      # With density normalization DISABLED, visits should NOT be merged
+      # (original behavior: assume travel with sparse gap data).
+      let(:user) { create(:user, settings: { 'density_normalization_enabled' => false }) }
+
       let(:visit1) do
         {
           start_time: (base_time - 3.hours).to_i,
@@ -245,6 +248,102 @@ RSpec.describe Visits::Merger do
         merged = subject.merge_visits([visit1, visit2])
 
         expect(merged.size).to eq(2)
+      end
+    end
+
+    context 'with density normalization enabled and sparse gap data' do
+      # Same location, 1-hour gap, 0 gap points. With density normalization
+      # enabled, the merger assumes "phone off at same location" and merges.
+      let(:user) { create(:user, settings: { 'density_normalization_enabled' => true }) }
+
+      let(:visit1) do
+        {
+          start_time: (base_time - 3.hours).to_i,
+          end_time: (base_time - 2.hours).to_i,
+          center_lat: 40.7128,
+          center_lon: -74.0060,
+          points: [double('Point1')]
+        }
+      end
+
+      let(:visit2) do
+        {
+          start_time: (base_time - 60.minutes).to_i,
+          end_time: (base_time - 50.minutes).to_i,
+          center_lat: 40.7129,
+          center_lon: -74.0061,
+          points: [double('Point2')]
+        }
+      end
+
+      it 'merges visits when gap data is sparse at the same location' do
+        merged = subject.merge_visits([visit1, visit2])
+
+        expect(merged.size).to eq(1)
+        expect(merged.first[:end_time]).to eq(visit2[:end_time])
+      end
+    end
+
+    context 'with density normalization disabled and sparse gap data' do
+      # Same scenario but normalization disabled — preserves old behavior
+      let(:user) { create(:user, settings: { 'density_normalization_enabled' => false }) }
+
+      let(:visit1) do
+        {
+          start_time: (base_time - 3.hours).to_i,
+          end_time: (base_time - 2.hours).to_i,
+          center_lat: 40.7128,
+          center_lon: -74.0060,
+          points: [double('Point1')]
+        }
+      end
+
+      let(:visit2) do
+        {
+          start_time: (base_time - 60.minutes).to_i,
+          end_time: (base_time - 50.minutes).to_i,
+          center_lat: 40.7129,
+          center_lon: -74.0061,
+          points: [double('Point2')]
+        }
+      end
+
+      it 'does not merge visits (old behavior preserved)' do
+        merged = subject.merge_visits([visit1, visit2])
+
+        expect(merged.size).to eq(2)
+      end
+    end
+
+    context 'with density normalization enabled but no user' do
+      # When no user is provided, traveled_far_during_gap? returns false early,
+      # so merging depends on same_location? and gap checks only.
+      subject { described_class.new(user.points, user: nil) }
+
+      let(:visit1) do
+        {
+          start_time: (base_time - 3.hours).to_i,
+          end_time: (base_time - 2.hours).to_i,
+          center_lat: 40.7128,
+          center_lon: -74.0060,
+          points: [double('Point1')]
+        }
+      end
+
+      let(:visit2) do
+        {
+          start_time: (base_time - 60.minutes).to_i,
+          end_time: (base_time - 50.minutes).to_i,
+          center_lat: 40.7129,
+          center_lon: -74.0061,
+          points: [double('Point2')]
+        }
+      end
+
+      it 'merges visits at the same location (no user means no travel check)' do
+        merged = subject.merge_visits([visit1, visit2])
+
+        expect(merged.size).to eq(1)
       end
     end
   end

@@ -56,7 +56,12 @@ class Users::SafeSettings
     'visit_detection_default_accuracy' => 50,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
-    'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
+    'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
+    # Density normalization: ephemeral gap-filling for visit detection
+    'density_normalization_enabled' => true,
+    'density_max_gap_minutes' => 720,
+    'density_max_distance_meters' => 50,
+    'density_gap_threshold_seconds' => 60
   }.freeze
 
   def initialize(settings = {})
@@ -270,5 +275,21 @@ class Users::SafeSettings
 
   def timezone
     settings['timezone'] || DEFAULT_VALUES['timezone']
+  end
+
+  def density_normalization_enabled?
+    ActiveModel::Type::Boolean.new.cast(settings['density_normalization_enabled'])
+  end
+
+  def density_max_gap_minutes
+    (settings['density_max_gap_minutes'] || DEFAULT_VALUES['density_max_gap_minutes']).to_i.clamp(1, 1440)
+  end
+
+  def density_max_distance_meters
+    (settings['density_max_distance_meters'] || DEFAULT_VALUES['density_max_distance_meters']).to_f.clamp(1, 500)
+  end
+
+  def density_gap_threshold_seconds
+    (settings['density_gap_threshold_seconds'] || DEFAULT_VALUES['density_gap_threshold_seconds']).to_i.clamp(10, 3600)
   end
 end
