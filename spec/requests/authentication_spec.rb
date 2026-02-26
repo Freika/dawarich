@@ -175,7 +175,7 @@ RSpec.describe 'Authentication', type: :request do
           user: { email: user.email, password: 'password123' }
         }
 
-        expect(response).not_to be_redirect
+        expect(response).to redirect_to(new_user_session_path)
         expect(flash[:alert]).to include('deleted')
       end
 

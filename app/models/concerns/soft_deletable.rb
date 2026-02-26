@@ -3,8 +3,22 @@
 module SoftDeletable
   extend ActiveSupport::Concern
 
+  # Devise overrides must be prepended to take priority over Devise's own
+  # method definitions in the ancestor chain.
+  module DeviseOverrides
+    def active_for_authentication?
+      super && !deleted?
+    end
+
+    def inactive_message
+      deleted? ? :deleted : super
+    end
+  end
+
   included do
-    scope :active_accounts, -> { where(deleted_at: nil) }
+    prepend DeviseOverrides
+
+    scope :non_deleted, -> { where(deleted_at: nil) }
     scope :deleted_accounts, -> { where.not(deleted_at: nil) }
   end
 
@@ -18,14 +32,5 @@ module SoftDeletable
 
   def destroy
     mark_as_deleted!
-  end
-
-  # Devise authentication overrides
-  def active_for_authentication?
-    super && !deleted?
-  end
-
-  def inactive_message
-    deleted? ? :deleted : super
   end
 end

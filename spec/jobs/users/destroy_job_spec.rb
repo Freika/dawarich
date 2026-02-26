@@ -95,8 +95,8 @@ RSpec.describe Users::DestroyJob, type: :job do
     end
 
     context 'with retry configuration' do
-      it 'does not retry on failure' do
-        expect(described_class.get_sidekiq_options['retry']).to eq(false)
+      it 'retries up to 3 times on failure' do
+        expect(described_class.get_sidekiq_options['retry']).to eq(3)
       end
     end
 

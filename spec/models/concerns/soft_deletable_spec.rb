@@ -14,20 +14,20 @@ RSpec.describe SoftDeletable do
       deleted_user.mark_as_deleted!
     end
 
-    describe '.active_accounts' do
+    describe '.non_deleted' do
       it 'returns only non-deleted users' do
-        expect(User.active_accounts).to include(active_user)
-        expect(User.active_accounts).not_to include(deleted_user)
+        expect(User.non_deleted).to include(active_user)
+        expect(User.non_deleted).not_to include(deleted_user)
       end
 
       it 'returns all users when none are deleted' do
         deleted_user.update!(deleted_at: nil)
-        expect(User.active_accounts.count).to eq(User.count)
+        expect(User.non_deleted.count).to eq(User.count)
       end
 
       it 'returns empty when all users are deleted' do
         active_user.mark_as_deleted!
-        expect(User.active_accounts).to be_empty
+        expect(User.non_deleted).to be_empty
       end
     end
 
@@ -112,7 +112,7 @@ RSpec.describe SoftDeletable do
         user.destroy
 
         # User count doesn't change from active users perspective
-        expect(User.active_accounts.where(id: user_id).count).to eq(0)
+        expect(User.non_deleted.where(id: user_id).count).to eq(0)
         # But user still exists in database
         expect(User.unscoped.where(id: user_id).count).to eq(1)
       end
@@ -139,41 +139,32 @@ RSpec.describe SoftDeletable do
   describe 'Devise integration' do
     describe '#active_for_authentication?' do
       context 'when user is not deleted' do
-        it 'checks Devise conditions and deletion status' do
-          # Active user should be active for authentication
-          expect(user.deleted?).to be false
-          # Result depends on Devise's super implementation
+        it 'returns true' do
+          expect(user.active_for_authentication?).to be true
         end
       end
 
       context 'when user is deleted' do
-        before do
-          user.mark_as_deleted!
-        end
+        before { user.mark_as_deleted! }
 
-        it 'prevents authentication for deleted users' do
-          # Deleted users should not be active for authentication
-          expect(user.deleted?).to be true
+        it 'returns false' do
+          expect(user.active_for_authentication?).to be false
         end
       end
     end
 
     describe '#inactive_message' do
       context 'when user is not deleted' do
-        it 'does not return deleted message' do
-          # Active users should not have deleted message
-          expect(user.deleted?).to be false
+        it 'returns default Devise message' do
+          expect(user.inactive_message).not_to eq(:deleted)
         end
       end
 
       context 'when user is deleted' do
-        before do
-          user.mark_as_deleted!
-        end
+        before { user.mark_as_deleted! }
 
-        it 'indicates account is deleted' do
-          expect(user.deleted?).to be true
-          # The inactive_message should be :deleted
+        it 'returns :deleted' do
+          expect(user.inactive_message).to eq(:deleted)
         end
       end
     end
@@ -196,7 +187,7 @@ RSpec.describe SoftDeletable do
       user.mark_as_deleted!
 
       # Active accounts scope should not find deleted user
-      expect(User.active_accounts.find_by(id: user_id)).to be_nil
+      expect(User.non_deleted.find_by(id: user_id)).to be_nil
 
       # Deleted accounts scope should find deleted user
       expect(User.deleted_accounts.find_by(id: user_id)).to be_present

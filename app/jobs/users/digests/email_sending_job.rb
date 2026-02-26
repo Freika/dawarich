@@ -4,7 +4,9 @@ class Users::Digests::EmailSendingJob < ApplicationJob
   queue_as :mailers
 
   def perform(user_id, year)
-    user = User.find(user_id)
+    user = find_non_deleted_user(user_id)
+    return unless user
+
     digest = user.digests.yearly.find_by(year: year)
 
     return unless should_send_email?(user, digest)
@@ -12,11 +14,6 @@ class Users::Digests::EmailSendingJob < ApplicationJob
     Users::DigestsMailer.with(user: user, digest: digest).year_end_digest.deliver_later
 
     digest.update!(sent_at: Time.current)
-  rescue ActiveRecord::RecordNotFound
-    ExceptionReporter.call(
-      'Users::Digests::EmailSendingJob',
-      "User with ID #{user_id} not found. Skipping year-end digest email."
-    )
   end
 
   private

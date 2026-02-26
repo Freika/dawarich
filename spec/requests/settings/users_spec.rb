@@ -31,6 +31,27 @@ RSpec.describe '/settings/users', type: :request do
       end
 
       context 'when user is an admin' do
+        describe 'GET /index' do
+          before { sign_in admin }
+
+          it 'does not include soft-deleted users' do
+            deleted_user = create(:user)
+            deleted_user.mark_as_deleted!
+
+            get settings_users_url
+
+            expect(response.body).not_to include(deleted_user.email)
+          end
+
+          it 'includes active users' do
+            active_user = create(:user)
+
+            get settings_users_url
+
+            expect(response.body).to include(active_user.email)
+          end
+        end
+
         describe 'POST /create' do
           before { sign_in admin }
 
@@ -94,6 +115,7 @@ RSpec.describe '/settings/users', type: :request do
 
           context 'with a regular user' do
             it 'soft deletes the user' do
+              user # force creation before count check
               expect {
                 delete settings_user_url(user)
               }.not_to change(User, :count)
@@ -136,11 +158,10 @@ RSpec.describe '/settings/users', type: :request do
               }.not_to change { user.reload.deleted_at }
             end
 
-            it 'redirects with error message' do
+            it 'returns unprocessable content with error message' do
               delete settings_user_url(user)
 
               expect(response).to have_http_status(:unprocessable_content)
-              expect(response).to redirect_to(settings_users_url)
               expect(flash[:alert]).to eq('Cannot delete account while being owner of a family which has other members.')
             end
 

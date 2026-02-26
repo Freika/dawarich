@@ -26,6 +26,11 @@ class Users::Destroy
 
     cancel_scheduled_jobs
 
+    # Purge ActiveStorage attachments before delete_all (which bypasses callbacks)
+    purge_attachments_for('Import', user.imports)
+    purge_attachments_for('Export', user.exports)
+    purge_attachments_for('Points::RawDataArchive', user.raw_data_archives)
+
     ActiveRecord::Base.transaction do
       # Delete associated records first (dependent: :destroy associations)
       # IMPORTANT: Order matters due to foreign key constraints!
@@ -70,10 +75,6 @@ class Users::Destroy
     cleanup_user_cache(user_id)
 
     true
-  rescue StandardError => e
-    Rails.logger.error "Error during user deletion: #{e.message}"
-    ExceptionReporter.call(e, "User destroy service failed for user_id #{user_id}")
-    raise
   end
 
   private
@@ -89,6 +90,14 @@ class Users::Destroy
   rescue StandardError => e
     Rails.logger.warn "Failed to cancel scheduled jobs for user #{user.id}: #{e.message}"
     ExceptionReporter.call(e, "Failed to cancel scheduled jobs during user deletion")
+  end
+
+  def purge_attachments_for(record_type, relation)
+    ActiveStorage::Attachment
+      .where(record_type: record_type, record_id: relation.select(:id))
+      .find_each { |a| a.purge }
+  rescue StandardError => e
+    Rails.logger.warn "Failed to purge #{record_type} attachments: #{e.message}"
   end
 
   def cleanup_user_cache(user_id)

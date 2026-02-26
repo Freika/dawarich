@@ -6,7 +6,7 @@ class Settings::UsersController < ApplicationController
   before_action :authenticate_admin!, except: %i[export import]
 
   def index
-    @users = User.order(created_at: :desc)
+    @users = User.non_deleted.order(created_at: :desc)
   end
 
   def edit

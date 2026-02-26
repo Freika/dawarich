@@ -7,7 +7,7 @@ class DataMigrations::PrefillPointsCounterCacheJob < ApplicationJob
     if user_id
       prefill_counter_for_user(user_id)
     else
-      User.find_each(batch_size: 100) do |user|
+      User.non_deleted.find_each(batch_size: 100) do |user|
         prefill_counter_for_user(user.id)
       end
     end

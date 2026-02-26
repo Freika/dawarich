@@ -11,7 +11,6 @@ module UserFamily
              inverse_of: :invited_by, dependent: :destroy
 
     validate :cannot_delete_with_family_members, if: :deleted_at_changed?
-    before_destroy :check_family_ownership
   end
 
   def in_family?
@@ -115,10 +114,4 @@ module UserFamily
     errors.add(:base, 'Cannot delete account while being a family owner with other members')
   end
 
-  def check_family_ownership
-    return if can_delete_account?
-
-    errors.add(:base, 'Cannot delete account while being a family owner with other members')
-    raise ActiveRecord::DeleteRestrictionError, 'Cannot delete user with family members'
-  end
 end

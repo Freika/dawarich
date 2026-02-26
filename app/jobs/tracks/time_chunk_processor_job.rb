@@ -9,7 +9,9 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   queue_as :tracks
 
   def perform(user_id, session_id, chunk_data)
-    @user = User.find(user_id)
+    @user = find_non_deleted_user(user_id)
+    return unless @user
+
     @session_manager = Tracks::SessionManager.new(user_id, session_id)
     @chunk_data = chunk_data
 

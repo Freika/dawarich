@@ -3,7 +3,7 @@
 class Users::DestroyJob < ApplicationJob
   queue_as :default
 
-  sidekiq_options retry: false
+  sidekiq_options retry: 3
 
   def perform(user_id)
     user = User.deleted_accounts.find_by(id: user_id)

@@ -276,29 +276,28 @@ RSpec.describe Users::Destroy do
         allow(user.points).to receive(:delete_all).and_raise(StandardError, 'Database constraint violation')
       end
 
-      it 'logs the error' do
-        allow(Rails.logger).to receive(:error)
-        allow(ExceptionReporter).to receive(:call)
-
-        expect { service.call }.to raise_error(StandardError)
-
-        expect(Rails.logger).to have_received(:error).with(/Error during user deletion/)
-      end
-
-      it 'reports the exception' do
-        expect(ExceptionReporter).to receive(:call).with(
-          instance_of(StandardError),
-          /User destroy service failed for user_id #{user.id}/
-        )
-
-        expect { service.call }.to raise_error(StandardError)
-      end
-
-      it 're-raises the error' do
-        allow(Rails.logger).to receive(:error)
-        allow(ExceptionReporter).to receive(:call)
-
+      it 'lets the exception propagate to the caller' do
         expect { service.call }.to raise_error(StandardError, 'Database constraint violation')
+      end
+    end
+
+    context 'with ActiveStorage attachments' do
+      let!(:import_record) { create(:import, user:) }
+
+      before do
+        import_record.file.attach(
+          io: StringIO.new('test'),
+          filename: 'test.gpx',
+          content_type: 'application/gpx+xml'
+        )
+      end
+
+      it 'purges attachment blobs' do
+        blob = import_record.file.blob
+
+        service.call
+
+        expect(ActiveStorage::Blob.exists?(blob.id)).to be false
       end
     end
 
