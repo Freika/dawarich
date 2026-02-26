@@ -67,7 +67,7 @@ RSpec.describe Visits::Suggest do
     end
 
     it 'creates visits' do
-      expect { subject }.to change(Visit, :count).by(1)
+      expect { subject }.to change(Visit, :count).by(2)
     end
 
     it 'creates visits notification' do
@@ -88,7 +88,7 @@ RSpec.describe Visits::Suggest do
       it 'enqueues reverse geocoding jobs for created visits' do
         described_class.new(user, start_at: reverse_geocoding_start_at, end_at: reverse_geocoding_end_at).call
 
-        expect(enqueued_jobs.count).to eq(1)
+        expect(enqueued_jobs.count).to eq(2)
         expect(enqueued_jobs).to all(have_job_class('ReverseGeocodingJob'))
         expect(enqueued_jobs).to all(have_arguments_starting_with('place'))
       end

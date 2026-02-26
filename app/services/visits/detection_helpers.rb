@@ -37,6 +37,8 @@ module Visits
 
     def calculate_visit_radius(points, center)
       point_array = Array(points)
+      return 15 if point_array.empty?
+
       max_distance = point_array.map do |point|
         Geocoder::Calculations.distance_between(center, [point.lat, point.lon], units: :km)
       end.max

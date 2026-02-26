@@ -99,7 +99,7 @@ module Visits
               cp.lonlat::geometry,
               eps := ec.eps_degrees,
               minpoints := ?
-            ) OVER (ORDER BY cp.timestamp) as spatial_cluster
+            ) OVER () as spatial_cluster
           FROM candidate_points cp, eps_calc ec
           ORDER BY cp.timestamp
         ),

@@ -131,8 +131,10 @@ RSpec.describe Visits::Merger do
       before do
         # Points during the gap that don't travel far (nearby)
         create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
-               timestamp: (base_time - 110.minutes).to_i)
+               timestamp: (base_time - 115.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)',
+               timestamp: (base_time - 110.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
                timestamp: (base_time - 100.minutes).to_i)
       end
 
@@ -175,6 +177,43 @@ RSpec.describe Visits::Merger do
       end
 
       it 'does not merge visits when travel is significant' do
+        merged = subject.merge_visits([visit1, visit2])
+
+        expect(merged.size).to eq(2)
+      end
+    end
+
+    context 'with extended merge window but insufficient gap data' do
+      # Gap of 1 hour — within extended merge window, but only 1 point
+      # during the gap. Not enough data to determine if user traveled,
+      # so visits should NOT be merged.
+      let(:visit1) do
+        {
+          start_time: (base_time - 3.hours).to_i,
+          end_time: (base_time - 2.hours).to_i,
+          center_lat: 40.7128,
+          center_lon: -74.0060,
+          points: [double('Point1')]
+        }
+      end
+
+      let(:visit2) do
+        {
+          start_time: (base_time - 60.minutes).to_i,
+          end_time: (base_time - 50.minutes).to_i,
+          center_lat: 40.7129,
+          center_lon: -74.0061,
+          points: [double('Point2')]
+        }
+      end
+
+      before do
+        # Only 1 point during the gap — not enough to determine travel
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
+               timestamp: (base_time - 110.minutes).to_i)
+      end
+
+      it 'does not merge visits when gap data is insufficient' do
         merged = subject.merge_visits([visit1, visit2])
 
         expect(merged.size).to eq(2)

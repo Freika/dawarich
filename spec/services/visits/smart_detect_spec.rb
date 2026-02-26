@@ -63,28 +63,53 @@ RSpec.describe Visits::SmartDetect do
 
   describe 'monthly batching' do
     context 'with range under 31 days' do
-      let(:start_at) { 20.days.ago }
-      let(:end_at) { Time.current }
+      let(:base_time) { Time.zone.now }
+      let(:start_at) { base_time - 20.days }
+      let(:end_at) { base_time }
 
-      it 'does not batch' do
-        expect(subject).not_to receive(:process_in_batches)
-        subject.call
+      before do
+        allow(Geocoder).to receive(:search).and_return([])
+
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
+               timestamp: (base_time - 10.days).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)',
+               timestamp: (base_time - 10.days + 10.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0062 40.7130)',
+               timestamp: (base_time - 10.days + 20.minutes).to_i)
+      end
+
+      it 'creates visits from data within a single range' do
+        expect { subject.call }.to change(Visit, :count).by_at_least(1)
       end
     end
 
     context 'with range over 31 days' do
-      let(:start_at) { 60.days.ago }
-      let(:end_at) { Time.current }
+      let(:base_time) { Time.zone.now }
+      let(:start_at) { base_time - 60.days }
+      let(:end_at) { base_time }
 
       before do
-        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
-               timestamp: 30.days.ago.to_i)
         allow(Geocoder).to receive(:search).and_return([])
+
+        # Points in the first month
+        create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)',
+               timestamp: (base_time - 50.days).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)',
+               timestamp: (base_time - 50.days + 10.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-74.0062 40.7130)',
+               timestamp: (base_time - 50.days + 20.minutes).to_i)
+
+        # Points in a later month
+        create(:point, user: user, lonlat: 'POINT(-73.9800 40.7600)',
+               timestamp: (base_time - 10.days).to_i)
+        create(:point, user: user, lonlat: 'POINT(-73.9801 40.7601)',
+               timestamp: (base_time - 10.days + 10.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(-73.9802 40.7602)',
+               timestamp: (base_time - 10.days + 20.minutes).to_i)
       end
 
-      it 'processes in batches' do
-        expect(subject).to receive(:process_in_batches).and_call_original
-        subject.call
+      it 'creates visits from data spread across months' do
+        expect { subject.call }.to change(Visit, :count).by_at_least(2)
       end
     end
   end

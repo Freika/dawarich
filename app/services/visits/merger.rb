@@ -96,11 +96,25 @@ module Visits
 
     # Calculate cumulative travel distance during the gap using PostGIS.
     # This helps detect if user actually traveled somewhere and came back.
+    #
+    # Returns true (traveled far) when there are fewer than 3 gap points,
+    # because "no data" usually means the device was off — not that the user
+    # stayed put. We need enough breadcrumbs to make a travel determination.
+    MIN_GAP_POINTS_FOR_TRAVEL_CHECK = 3
+
     def traveled_far_during_gap?(first_visit, second_visit)
       return false unless user
 
       start_time = first_visit[:end_time]
       end_time = second_visit[:start_time]
+
+      gap_points_count = Point.where(user_id: user.id)
+                              .where(timestamp: (start_time + 1)..(end_time - 1))
+                              .where.not(lonlat: nil)
+                              .count
+
+      # Insufficient gap data — can't determine travel, so don't merge
+      return true if gap_points_count < MIN_GAP_POINTS_FOR_TRAVEL_CHECK
 
       sql = ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, user.id, start_time, end_time])
         WITH ordered_points AS (

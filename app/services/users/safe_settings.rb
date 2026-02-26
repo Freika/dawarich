@@ -229,7 +229,9 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
   end
 
-  # Visit detection settings (coerced to numeric and clamped to safe ranges)
+  # Visit detection settings (coerced to numeric and clamped to safe ranges).
+  # Backend clamp ranges are intentionally wider than the UI form min/max to
+  # support API users who may need values outside the default form bounds.
   def visit_detection_eps_meters
     (settings['visit_detection_eps_meters'] || DEFAULT_VALUES['visit_detection_eps_meters']).to_f.clamp(1, 5000)
   end
@@ -239,11 +241,13 @@ class Users::SafeSettings
   end
 
   def visit_detection_time_gap_minutes
-    (settings['visit_detection_time_gap_minutes'] || DEFAULT_VALUES['visit_detection_time_gap_minutes']).to_i.clamp(1, 1440)
+    key = 'visit_detection_time_gap_minutes'
+    (settings[key] || DEFAULT_VALUES[key]).to_i.clamp(1, 1440)
   end
 
   def visit_detection_extended_merge_hours
-    (settings['visit_detection_extended_merge_hours'] || DEFAULT_VALUES['visit_detection_extended_merge_hours']).to_i.clamp(1, 24)
+    key = 'visit_detection_extended_merge_hours'
+    (settings[key] || DEFAULT_VALUES[key]).to_i.clamp(1, 24)
   end
 
   def visit_detection_travel_threshold_meters
@@ -252,7 +256,8 @@ class Users::SafeSettings
   end
 
   def visit_detection_default_accuracy
-    (settings['visit_detection_default_accuracy'] || DEFAULT_VALUES['visit_detection_default_accuracy']).to_f.clamp(1, 1000)
+    key = 'visit_detection_default_accuracy'
+    (settings[key] || DEFAULT_VALUES[key]).to_f.clamp(1, 1000)
   end
 
   def min_minutes_spent_in_city

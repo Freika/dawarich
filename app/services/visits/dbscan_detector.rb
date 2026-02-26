@@ -32,7 +32,7 @@ module Visits
         finalize_visit_from_cluster(cluster_points, cluster)
       end
     rescue ActiveRecord::StatementInvalid => e
-      Rails.logger.warn("DBSCAN clustering failed, falling back to iteration: #{e.message}")
+      Rails.logger.warn("DBSCAN visit detection failed (point lookup/assembly): #{e.message}")
       nil
     end
 
