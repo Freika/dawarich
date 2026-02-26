@@ -4,9 +4,9 @@ module Visits
   # Uses PostGIS DBSCAN for efficient spatial clustering of GPS points.
   # This replaces the O(n²) Ruby iteration with database-level clustering.
   #
-  # Clustering uses EPSG:4326 (WGS 84) geometry with eps converted from meters
-  # to degrees using the average latitude of the queried points. This avoids the
-  # distance distortion that Web Mercator (EPSG:3857) introduces at higher latitudes.
+  # Points are transformed to EPSG:4978 (geocentric 3D Cartesian, meters) before
+  # clustering, so eps is passed directly in meters. This works correctly at all
+  # latitudes including poles and across the dateline.
   class DbscanClusterer
     MIN_DURATION_SECONDS = 180 # 3 minutes (not configurable)
     QUERY_TIMEOUT_MS = 30_000 # 30 seconds timeout for DBSCAN query
@@ -86,21 +86,15 @@ module Visits
             AND visit_id IS NULL
             AND lonlat IS NOT NULL
         ),
-        avg_lat AS (
-          SELECT COALESCE(AVG(ST_Y(lonlat::geometry)), 0) AS lat_deg FROM candidate_points
-        ),
-        eps_calc AS (
-          SELECT ? / (111320.0 * COS(RADIANS(lat_deg))) AS eps_degrees FROM avg_lat
-        ),
         clustered_points AS (
           SELECT
             cp.id, cp.lonlat, cp.timestamp, cp.accuracy,
             ST_ClusterDBSCAN(
-              cp.lonlat::geometry,
-              eps := ec.eps_degrees,
+              ST_Force3D(ST_Transform(cp.lonlat::geometry, 4978)),
+              eps := ?::double precision,
               minpoints := ?
             ) OVER () as spatial_cluster
-          FROM candidate_points cp, eps_calc ec
+          FROM candidate_points cp
           ORDER BY cp.timestamp
         ),
         gap_detection AS (

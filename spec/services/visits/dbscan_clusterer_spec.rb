@@ -99,6 +99,21 @@ RSpec.describe Visits::DbscanClusterer do
       end
     end
 
+    context 'with points at extreme latitude (near pole)' do
+      before do
+        create(:point, user: user, lonlat: 'POINT(25.0 89.5)', timestamp: (base_time - 90.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(25.001 89.5)', timestamp: (base_time - 80.minutes).to_i)
+        create(:point, user: user, lonlat: 'POINT(25.002 89.5)', timestamp: (base_time - 70.minutes).to_i)
+      end
+
+      it 'clusters points correctly at extreme latitudes' do
+        result = subject.call
+
+        expect(result.size).to eq(1)
+        expect(result.first[:point_count]).to eq(3)
+      end
+    end
+
     context 'with points outside the time range' do
       before do
         create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 5.hours).to_i)
