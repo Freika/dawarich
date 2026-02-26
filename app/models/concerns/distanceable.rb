@@ -22,58 +22,75 @@ module Distanceable
 
       total_meters = points.each_cons(2).sum do |p1, p2|
         # Extract coordinates from lonlat (source of truth)
-        begin
-          # Check if lonlat exists and is valid
-          if p1.lonlat.nil? || p2.lonlat.nil?
-            Rails.logger.warn "Skipping distance calculation for points with nil lonlat: p1(#{p1.id}), p2(#{p2.id})"
-            next 0
-          end
 
-          lat1, lon1 = p1.lat, p1.lon
-          lat2, lon2 = p2.lat, p2.lon
-          
-          # Check for nil coordinates extracted from lonlat
-          if lat1.nil? || lon1.nil? || lat2.nil? || lon2.nil?
-            Rails.logger.warn "Skipping distance calculation for points with nil extracted coordinates: p1(#{p1.id}: #{lat1}, #{lon1}), p2(#{p2.id}: #{lat2}, #{lon2})"
-            next 0
-          end
-
-          # Check for NaN or infinite coordinates
-          if [lat1, lon1, lat2, lon2].any? { |coord| !coord.finite? }
-            Rails.logger.warn "Skipping distance calculation for points with invalid coordinates: p1(#{p1.id}: #{lat1}, #{lon1}), p2(#{p2.id}: #{lat2}, #{lon2})"
-            next 0
-          end
-
-          # Check for valid latitude/longitude ranges
-          if lat1.abs > 90 || lat2.abs > 90 || lon1.abs > 180 || lon2.abs > 180
-            Rails.logger.warn "Skipping distance calculation for points with out-of-range coordinates: p1(#{p1.id}: #{lat1}, #{lon1}), p2(#{p2.id}: #{lat2}, #{lon2})"
-            next 0
-          end
-
-          distance_km = Geocoder::Calculations.distance_between(
-            [lat1, lon1],
-            [lat2, lon2],
-            units: :km
-          )
-
-          # Check if Geocoder returned NaN or infinite value
-          if !distance_km.finite?
-            Rails.logger.warn "Geocoder returned invalid distance (#{distance_km}) for points: p1(#{p1.id}: #{lat1}, #{lon1}), p2(#{p2.id}: #{lat2}, #{lon2})"
-            next 0
-          end
-
-          distance_km * 1000 # Convert km to meters
-        rescue StandardError => e
-          Rails.logger.error "Error extracting coordinates from lonlat for points #{p1.id}, #{p2.id}: #{e.message}"
+        # Check if lonlat exists and is valid
+        if p1.lonlat.nil? || p2.lonlat.nil?
+          Rails.logger.warn "Skipping distance calculation for points with nil lonlat: p1(#{p1.id}), p2(#{p2.id})"
           next 0
         end
+
+        lat1 = p1.lat
+        lon1 = p1.lon
+        lat2 = p2.lat
+        lon2 = p2.lon
+
+        # Check for nil coordinates extracted from lonlat
+        if lat1.nil? || lon1.nil? || lat2.nil? || lon2.nil?
+          Rails.logger.warn(
+            'Skipping distance calc for points with nil coordinates: ' \
+              "p1(#{p1.id}: #{lat1}, #{lon1}), p2(#{p2.id}: #{lat2}, #{lon2})"
+          )
+          next 0
+        end
+
+        # Check for NaN or infinite coordinates
+        if [lat1, lon1, lat2, lon2].any? { |coord| !coord.finite? }
+          Rails.logger.warn(
+            'Skipping distance calc for points with invalid coordinates: ' \
+              "p1(#{p1.id}: #{lat1}, #{lon1}), p2(#{p2.id}: #{lat2}, #{lon2})"
+          )
+          next 0
+        end
+
+        # Check for valid latitude/longitude ranges
+        if lat1.abs > 90 || lat2.abs > 90 || lon1.abs > 180 || lon2.abs > 180
+          Rails.logger.warn(
+            'Skipping distance calc for out-of-range coordinates: ' \
+              "p1(#{p1.id}: #{lat1}, #{lon1}), p2(#{p2.id}: #{lat2}, #{lon2})"
+          )
+          next 0
+        end
+
+        distance_km = Geocoder::Calculations.distance_between(
+          [lat1, lon1],
+          [lat2, lon2],
+          units: :km
+        )
+
+        # Check if Geocoder returned NaN or infinite value
+        unless distance_km.finite?
+          Rails.logger.warn(
+            "Geocoder returned invalid distance (#{distance_km}) for points: " \
+              "p1(#{p1.id}: #{lat1}, #{lon1}), p2(#{p2.id}: #{lat2}, #{lon2})"
+          )
+          next 0
+        end
+
+        distance_km * 1000 # Convert km to meters
+      rescue StandardError => e
+        Rails.logger.error(
+          "Error extracting coordinates from lonlat for points #{p1.id}, #{p2.id}: #{e.message}"
+        )
+        next 0
       end
 
       result = total_meters.to_f / ::DISTANCE_UNITS[unit.to_sym]
 
       # Final validation of result
-      if !result.finite?
-        Rails.logger.error "Final distance calculation resulted in invalid value (#{result}) for #{points.length} points"
+      unless result.finite?
+        Rails.logger.error(
+          "Final distance calculation resulted in invalid value (#{result}) for #{points.length} points"
+        )
         return 0
       end
 
@@ -130,7 +147,7 @@ module Distanceable
 
       # Create parameterized placeholders for VALUES clause using ? placeholders
       values_placeholders = point_pairs.map do |_|
-        "(?, ST_GeomFromEWKT(?)::geography, ST_GeomFromEWKT(?)::geography)"
+        '(?, ST_GeomFromEWKT(?)::geography, ST_GeomFromEWKT(?)::geography)'
       end.join(', ')
 
       # Flatten parameters: [pair_id, lonlat1, lonlat2, pair_id, lonlat1, lonlat2, ...]
@@ -190,40 +207,50 @@ module Distanceable
     begin
       # Extract coordinates from lonlat (source of truth) for current point
       if lonlat.nil?
-        Rails.logger.warn "Cannot calculate distance: current point has nil lonlat"
+        Rails.logger.warn 'Cannot calculate distance: current point has nil lonlat'
         return 0
       end
 
-      current_lat, current_lon = lat, lon
-      
+      current_lat = lat
+      current_lon = lon
+
       other_lat, other_lon = case other_point
                              when Array
                                [other_point[0], other_point[1]]
                              else
                                # For other Point objects, extract from their lonlat too
                                if other_point.respond_to?(:lonlat) && other_point.lonlat.nil?
-                                 Rails.logger.warn "Cannot calculate distance: other point has nil lonlat"
+                                 Rails.logger.warn 'Cannot calculate distance: other point has nil lonlat'
                                  return 0
                                end
                                [other_point.lat, other_point.lon]
                              end
-      
+
       # Check for nil coordinates extracted from lonlat
       if current_lat.nil? || current_lon.nil? || other_lat.nil? || other_lon.nil?
-        Rails.logger.warn "Cannot calculate distance: nil coordinates detected - current(#{current_lat}, #{current_lon}), other(#{other_lat}, #{other_lon})"
+        Rails.logger.warn(
+          'Cannot calculate distance: nil coordinates - ' \
+            "current(#{current_lat}, #{current_lon}), other(#{other_lat}, #{other_lon})"
+        )
         return 0
       end
 
       # Check for NaN or infinite coordinates
       coords = [current_lat, current_lon, other_lat, other_lon]
       if coords.any? { |coord| !coord.finite? }
-        Rails.logger.warn "Cannot calculate distance: invalid coordinates detected - current(#{current_lat}, #{current_lon}), other(#{other_lat}, #{other_lon})"
+        Rails.logger.warn(
+          'Cannot calculate distance: invalid coordinates - ' \
+            "current(#{current_lat}, #{current_lon}), other(#{other_lat}, #{other_lon})"
+        )
         return 0
       end
 
       # Check for valid latitude/longitude ranges
       if current_lat.abs > 90 || other_lat.abs > 90 || current_lon.abs > 180 || other_lon.abs > 180
-        Rails.logger.warn "Cannot calculate distance: out-of-range coordinates - current(#{current_lat}, #{current_lon}), other(#{other_lat}, #{other_lon})"
+        Rails.logger.warn(
+          'Cannot calculate distance: out-of-range coordinates - ' \
+            "current(#{current_lat}, #{current_lon}), other(#{other_lat}, #{other_lon})"
+        )
         return 0
       end
 
@@ -234,15 +261,18 @@ module Distanceable
       )
 
       # Check if Geocoder returned valid distance
-      if !distance_km.finite?
-        Rails.logger.warn "Geocoder returned invalid distance (#{distance_km}) for points: current(#{current_lat}, #{current_lon}), other(#{other_lat}, #{other_lon})"
+      unless distance_km.finite?
+        Rails.logger.warn(
+          "Geocoder returned invalid distance (#{distance_km}) for points: " \
+            "current(#{current_lat}, #{current_lon}), other(#{other_lat}, #{other_lon})"
+        )
         return 0
       end
 
       result = (distance_km * 1000).to_f / ::DISTANCE_UNITS[unit.to_sym]
 
       # Final validation
-      if !result.finite?
+      unless result.finite?
         Rails.logger.error "Final distance calculation resulted in invalid value (#{result})"
         return 0
       end

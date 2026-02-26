@@ -53,7 +53,9 @@ class Api::V1::PointsController < ApiController
 
     if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
       if point.track_id.present?
-        Rails.logger.info "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
+        Rails.logger.info(
+          "[PointsController] Point #{point.id} updated, enqueuing Tracks::RecalculateJob for track #{point.track_id}"
+        )
         Tracks::RecalculateJob.perform_later(point.track_id)
       end
 

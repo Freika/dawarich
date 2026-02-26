@@ -84,3 +84,16 @@ export function formatTimeOnly(timestamp, timezone = "UTC") {
     timeZone: timezone,
   })
 }
+
+/**
+ * Escape HTML special characters to prevent XSS when using innerHTML.
+ * @param {*} value - Value to escape (coerced to string)
+ * @returns {string} HTML-safe string
+ */
+export function escapeHtml(value) {
+  if (value == null) return ""
+  const str = String(value)
+  const div = document.createElement("div")
+  div.textContent = str
+  return div.innerHTML
+}

@@ -108,24 +108,24 @@ module TransportationModes
       metrics
     end
 
-    def calculate_distance(p1, p2)
+    def calculate_distance(point1, point2)
       # Use PostGIS distance if available
-      if p1.respond_to?(:distance_to)
+      if point1.respond_to?(:distance_to)
         begin
-          p1.distance_to(p2, :m)
+          point1.distance_to(point2, :m)
         rescue StandardError
-          geocoder_distance(p1, p2)
+          geocoder_distance(point1, point2)
         end
       else
-        geocoder_distance(p1, p2)
+        geocoder_distance(point1, point2)
       end
     end
 
-    def geocoder_distance(p1, p2)
-      lat1 = p1.lat
-      lat2 = p2.lat
-      lon1 = p1.lon
-      lon2 = p2.lon
+    def geocoder_distance(point1, point2)
+      lat1 = point1.lat
+      lat2 = point2.lat
+      lon1 = point1.lon
+      lon2 = point2.lon
 
       # Return 0 if any coordinate is missing
       return 0 if lat1.nil? || lat2.nil? || lon1.nil? || lon2.nil?
@@ -144,10 +144,10 @@ module TransportationModes
       0
     end
 
-    def get_speed(_p1, p2, distance, time_diff)
+    def get_speed(_point1, point2, distance, time_diff)
       # Prefer stored velocity from GPS
-      if p2.velocity.present?
-        stored_speed = p2.velocity.to_f
+      if point2.velocity.present?
+        stored_speed = point2.velocity.to_f
         return stored_speed if stored_speed >= 0
       end
 
@@ -302,16 +302,16 @@ module TransportationModes
       ((a1 * d1) + (a2 * d2)) / (d1 + d2).to_f
     end
 
-    def lower_confidence(c1, c2)
+    def lower_confidence(conf1, conf2)
       order = { high: 3, medium: 2, low: 1 }
-      v1 = order[c1&.to_sym] || 1
-      v2 = order[c2&.to_sym] || 1
-      v1 <= v2 ? c1 : c2
+      val1 = order[conf1&.to_sym] || 1
+      val2 = order[conf2&.to_sym] || 1
+      val1 <= val2 ? conf1 : conf2
     end
 
     def build_segment(boundary, movement_data)
       segment_metrics = movement_data[boundary[:start]..boundary[:end]]
-      return nil if segment_metrics.nil? || segment_metrics.empty?
+      return nil if segment_metrics.blank?
 
       # Calculate segment statistics with nil protection
       speeds = segment_metrics.map { |m| m[:speed_kmh] }.compact

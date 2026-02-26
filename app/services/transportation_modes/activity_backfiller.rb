@@ -121,14 +121,14 @@ module TransportationModes
       parse_timestamp_value(ts)
     end
 
-    def parse_segment_timestamp(ts)
-      parse_timestamp_value(ts)
+    def parse_segment_timestamp(timestamp)
+      parse_timestamp_value(timestamp)
     end
 
-    def parse_timestamp_value(ts)
-      return nil unless ts
+    def parse_timestamp_value(timestamp)
+      return nil unless timestamp
 
-      Timestamps.parse_timestamp(ts)
+      Timestamps.parse_timestamp(timestamp)
     end
   end
 end

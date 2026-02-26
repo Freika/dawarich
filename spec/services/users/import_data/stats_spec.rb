@@ -67,7 +67,7 @@ RSpec.describe Users::ImportData::Stats, type: :service do
 
       it 'logs the import process' do
         expect(Rails.logger).to receive(:info).with("Importing 2 stats for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Stats import completed. Created: 2")
+        expect(Rails.logger).to receive(:info).with('Stats import completed. Created: 2')
 
         service.call
       end
@@ -89,7 +89,7 @@ RSpec.describe Users::ImportData::Stats, type: :service do
 
       it 'logs when skipping duplicates' do
         allow(Rails.logger).to receive(:debug) # Allow any debug logs
-        expect(Rails.logger).to receive(:debug).with("Stat already exists: 2024-1")
+        expect(Rails.logger).to receive(:debug).with('Stat already exists: 2024-1')
 
         service.call
       end
@@ -143,7 +143,7 @@ RSpec.describe Users::ImportData::Stats, type: :service do
       let(:stats_data) { nil }
 
       it 'does not create any stats' do
-        expect { service.call }.not_to change { user.stats.count }
+        expect { service.call }.not_to(change { user.stats.count })
       end
 
       it 'returns 0' do
@@ -156,7 +156,7 @@ RSpec.describe Users::ImportData::Stats, type: :service do
       let(:stats_data) { 'invalid_data' }
 
       it 'does not create any stats' do
-        expect { service.call }.not_to change { user.stats.count }
+        expect { service.call }.not_to(change { user.stats.count })
       end
 
       it 'returns 0' do
@@ -169,12 +169,12 @@ RSpec.describe Users::ImportData::Stats, type: :service do
       let(:stats_data) { [] }
 
       it 'does not create any stats' do
-        expect { service.call }.not_to change { user.stats.count }
+        expect { service.call }.not_to(change { user.stats.count })
       end
 
       it 'logs the import process with 0 count' do
         expect(Rails.logger).to receive(:info).with("Importing 0 stats for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Stats import completed. Created: 0")
+        expect(Rails.logger).to receive(:info).with('Stats import completed. Created: 0')
 
         service.call
       end

@@ -5,7 +5,7 @@ OmniAuth.config.test_mode = true
 module OmniauthHelpers
   def mock_github_auth(email: 'test@github.com')
     OmniAuth.config.mock_auth[:github] = OmniAuth::AuthHash.new({
-      provider: 'github',
+                                                                  provider: 'github',
       uid: '123545',
       info: {
         email: email,
@@ -14,7 +14,7 @@ module OmniauthHelpers
       },
       credentials: {
         token: 'mock_token',
-        expires_at: Time.now + 1.week
+        expires_at: Time.zone.now + 1.week
       },
       extra: {
         raw_info: {
@@ -24,12 +24,12 @@ module OmniauthHelpers
           email: email
         }
       }
-    })
+                                                                })
   end
 
   def mock_google_auth(email: 'test@gmail.com')
     OmniAuth.config.mock_auth[:google_oauth2] = OmniAuth::AuthHash.new({
-      provider: 'google_oauth2',
+                                                                         provider: 'google_oauth2',
       uid: '123545',
       info: {
         email: email,
@@ -39,7 +39,7 @@ module OmniauthHelpers
       credentials: {
         token: 'mock_token',
         refresh_token: 'mock_refresh_token',
-        expires_at: Time.now + 1.hour
+        expires_at: Time.zone.now + 1.hour
       },
       extra: {
         raw_info: {
@@ -51,12 +51,12 @@ module OmniauthHelpers
           picture: 'https://lh3.googleusercontent.com/a/test'
         }
       }
-    })
+                                                                       })
   end
 
-  def mock_openid_connect_auth(email: 'test@oidc.com', provider_name: 'Authelia')
+  def mock_openid_connect_auth(email: 'test@oidc.com', _provider_name: 'Authelia')
     OmniAuth.config.mock_auth[:openid_connect] = OmniAuth::AuthHash.new({
-      provider: 'openid_connect',
+                                                                          provider: 'openid_connect',
       uid: '123545',
       info: {
         email: email,
@@ -66,7 +66,7 @@ module OmniauthHelpers
       credentials: {
         token: 'mock_token',
         refresh_token: 'mock_refresh_token',
-        expires_at: Time.now + 1.hour,
+        expires_at: Time.zone.now + 1.hour,
         id_token: 'mock_id_token'
       },
       extra: {
@@ -81,7 +81,7 @@ module OmniauthHelpers
           picture: 'https://example.com/avatar.jpg'
         }
       }
-    })
+                                                                        })
   end
 
   def mock_oauth_failure(provider)

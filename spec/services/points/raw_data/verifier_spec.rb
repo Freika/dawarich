@@ -40,7 +40,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
 
     it 'detects point count mismatch' do
@@ -49,7 +49,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
 
     it 'detects checksum mismatch' do
@@ -58,7 +58,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
 
     it 'still verifies successfully when points are deleted from database' do
@@ -84,7 +84,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive_id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
 
     it 'verifies raw_data matches between archive and database' do
@@ -127,7 +127,7 @@ RSpec.describe Points::RawData::Verifier do
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to change { archive.reload.verified_at }
+      end.not_to(change { archive.reload.verified_at })
     end
   end
 

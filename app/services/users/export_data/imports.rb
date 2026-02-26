@@ -12,10 +12,10 @@ class Users::ExportData::Imports
     imports_with_files = user.imports.includes(:file_attachment).to_a
 
     if imports_with_files.size > 1
-      results = Parallel.map(imports_with_files, in_threads: 2) do |import|
+      Parallel.map(imports_with_files, in_threads: 2) do |import|
         process_import(import)
       end
-      results
+
     else
       imports_with_files.map { |import| process_import(import) }
     end

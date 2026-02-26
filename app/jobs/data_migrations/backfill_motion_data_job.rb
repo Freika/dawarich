@@ -14,7 +14,6 @@ class DataMigrations::BackfillMotionDataJob < ApplicationJob
       updates = points.filter_map { |point| build_update(point) }
 
       if updates.any?
-        # rubocop:disable Rails/SkipsModelValidations
         Point.upsert_all(updates, unique_by: :id, update_only: [:motion_data])
         # rubocop:enable Rails/SkipsModelValidations
       end

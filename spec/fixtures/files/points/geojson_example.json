@@ -1,136 +1,118 @@
 {
-  "locations" : [
+  "locations": [
     {
-      "type" : "Feature",
-      "geometry" : {
-        "type" : "Point",
-        "coordinates" : [
-          -122.40530871,
-          37.744304130000003
-        ]
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.40530871, 37.744304130000003]
       },
-      "properties" : {
-        "horizontal_accuracy" : 5,
-        "track_id" : "799F32F5-89BB-45FB-A639-098B1B95B09F",
-        "speed_accuracy" : 0,
-        "vertical_accuracy" : -1,
-        "course_accuracy" : 0,
-        "altitude" : 0,
-        "speed" : 92.087999999999994,
-        "course" : 27.07,
-        "timestamp" : "2025-01-17T21:03:01Z",
-        "device_id" : "8D5D4197-245B-4619-A88B-2049100ADE46"
+      "properties": {
+        "horizontal_accuracy": 5,
+        "track_id": "799F32F5-89BB-45FB-A639-098B1B95B09F",
+        "speed_accuracy": 0,
+        "vertical_accuracy": -1,
+        "course_accuracy": 0,
+        "altitude": 0,
+        "speed": 92.087999999999994,
+        "course": 27.07,
+        "timestamp": "2025-01-17T21:03:01Z",
+        "device_id": "8D5D4197-245B-4619-A88B-2049100ADE46"
       }
     },
     {
-      "type" : "Feature",
-      "properties" : {
-        "timestamp" : "2025-01-17T21:03:02Z",
-        "horizontal_accuracy" : 5,
-        "course" : 24.260000000000002,
-        "speed_accuracy" : 0,
-        "device_id" : "8D5D4197-245B-4619-A88B-2049100ADE46",
-        "vertical_accuracy" : -1,
-        "altitude" : 0,
-        "track_id" : "799F32F5-89BB-45FB-A639-098B1B95B09F",
-        "speed" : 92.448000000000008,
-        "course_accuracy" : 0
+      "type": "Feature",
+      "properties": {
+        "timestamp": "2025-01-17T21:03:02Z",
+        "horizontal_accuracy": 5,
+        "course": 24.260000000000002,
+        "speed_accuracy": 0,
+        "device_id": "8D5D4197-245B-4619-A88B-2049100ADE46",
+        "vertical_accuracy": -1,
+        "altitude": 0,
+        "track_id": "799F32F5-89BB-45FB-A639-098B1B95B09F",
+        "speed": 92.448000000000008,
+        "course_accuracy": 0
       },
-      "geometry" : {
-        "type" : "Point",
-        "coordinates" : [
-          -122.40518926999999,
-          37.744513759999997
-        ]
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.40518926999999, 37.744513759999997]
       }
     },
     {
-      "type" : "Feature",
-      "properties" : {
-        "altitude" : 0,
-        "horizontal_accuracy" : 5,
-        "speed" : 123.76800000000001,
-        "course_accuracy" : 0,
-        "speed_accuracy" : 0,
-        "course" : 309.73000000000002,
-        "track_id" : "F63A3CF9-2FF8-4076-8F59-5BB1EDC23888",
-        "device_id" : "8D5D4197-245B-4619-A88B-2049100ADE46",
-        "timestamp" : "2025-01-17T21:18:38Z",
-        "vertical_accuracy" : -1
+      "type": "Feature",
+      "properties": {
+        "altitude": 0,
+        "horizontal_accuracy": 5,
+        "speed": 123.76800000000001,
+        "course_accuracy": 0,
+        "speed_accuracy": 0,
+        "course": 309.73000000000002,
+        "track_id": "F63A3CF9-2FF8-4076-8F59-5BB1EDC23888",
+        "device_id": "8D5D4197-245B-4619-A88B-2049100ADE46",
+        "timestamp": "2025-01-17T21:18:38Z",
+        "vertical_accuracy": -1
       },
-      "geometry" : {
-        "type" : "Point",
-        "coordinates" : [
-          -122.28487643,
-          37.454486080000002
-        ]
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.28487643, 37.454486080000002]
       }
     },
     {
-      "type" : "Feature",
-      "properties" : {
-        "track_id" : "F63A3CF9-2FF8-4076-8F59-5BB1EDC23888",
-        "device_id" : "8D5D4197-245B-4619-A88B-2049100ADE46",
-        "speed_accuracy" : 0,
-        "course_accuracy" : 0,
-        "speed" : 123.3,
-        "horizontal_accuracy" : 5,
-        "course" : 309.38,
-        "altitude" : 0,
-        "timestamp" : "2025-01-17T21:18:39Z",
-        "vertical_accuracy" : -1
+      "type": "Feature",
+      "properties": {
+        "track_id": "F63A3CF9-2FF8-4076-8F59-5BB1EDC23888",
+        "device_id": "8D5D4197-245B-4619-A88B-2049100ADE46",
+        "speed_accuracy": 0,
+        "course_accuracy": 0,
+        "speed": 123.3,
+        "horizontal_accuracy": 5,
+        "course": 309.38,
+        "altitude": 0,
+        "timestamp": "2025-01-17T21:18:39Z",
+        "vertical_accuracy": -1
       },
-      "geometry" : {
-        "coordinates" : [
-          -122.28517332,
-          37.454684899999997
-        ],
-        "type" : "Point"
+      "geometry": {
+        "coordinates": [-122.28517332, 37.454684899999997],
+        "type": "Point"
       }
     },
     {
-      "geometry" : {
-        "coordinates" : [
-          -122.28547306,
-          37.454883219999999
-        ],
-        "type" : "Point"
+      "geometry": {
+        "coordinates": [-122.28547306, 37.454883219999999],
+        "type": "Point"
       },
-      "properties" : {
-        "course_accuracy" : 0,
-        "device_id" : "8D5D4197-245B-4619-A88B-2049100ADE46",
-        "vertical_accuracy" : -1,
-        "course" : 309.73000000000002,
-        "speed_accuracy" : 0,
-        "timestamp" : "2025-01-17T21:18:40Z",
-        "horizontal_accuracy" : 5,
-        "speed" : 125.06400000000001,
-        "track_id" : "F63A3CF9-2FF8-4076-8F59-5BB1EDC23888",
-        "altitude" : 0
+      "properties": {
+        "course_accuracy": 0,
+        "device_id": "8D5D4197-245B-4619-A88B-2049100ADE46",
+        "vertical_accuracy": -1,
+        "course": 309.73000000000002,
+        "speed_accuracy": 0,
+        "timestamp": "2025-01-17T21:18:40Z",
+        "horizontal_accuracy": 5,
+        "speed": 125.06400000000001,
+        "track_id": "F63A3CF9-2FF8-4076-8F59-5BB1EDC23888",
+        "altitude": 0
       },
-      "type" : "Feature"
+      "type": "Feature"
     },
     {
-      "geometry" : {
-        "type" : "Point",
-        "coordinates" : [
-          -122.28577665,
-          37.455080109999997
-        ]
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.28577665, 37.455080109999997]
       },
-      "properties" : {
-        "course_accuracy" : 0,
-        "speed_accuracy" : 0,
-        "speed" : 124.05600000000001,
-        "track_id" : "F63A3CF9-2FF8-4076-8F59-5BB1EDC23888",
-        "course" : 309.73000000000002,
-        "device_id" : "8D5D4197-245B-4619-A88B-2049100ADE46",
-        "altitude" : 0,
-        "horizontal_accuracy" : 5,
-        "vertical_accuracy" : -1,
-        "timestamp" : "2025-01-17T21:18:41Z"
+      "properties": {
+        "course_accuracy": 0,
+        "speed_accuracy": 0,
+        "speed": 124.05600000000001,
+        "track_id": "F63A3CF9-2FF8-4076-8F59-5BB1EDC23888",
+        "course": 309.73000000000002,
+        "device_id": "8D5D4197-245B-4619-A88B-2049100ADE46",
+        "altitude": 0,
+        "horizontal_accuracy": 5,
+        "vertical_accuracy": -1,
+        "timestamp": "2025-01-17T21:18:41Z"
       },
-      "type" : "Feature"
+      "type": "Feature"
     }
   ]
 }

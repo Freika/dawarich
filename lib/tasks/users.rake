@@ -9,7 +9,6 @@ namespace :users do
     end
 
     puts 'Activating all users...'
-    # rubocop:disable Rails/SkipsModelValidations
     User.update_all(status: :active)
     # rubocop:enable Rails/SkipsModelValidations
 

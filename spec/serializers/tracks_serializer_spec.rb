@@ -87,7 +87,7 @@ RSpec.describe TracksSerializer do
       subject(:serializer) { described_class.new(user, track_ids).call }
 
       let!(:existing_track) { create(:track, user: user) }
-      let(:track_ids) { [existing_track.id, 999999] }
+      let(:track_ids) { [existing_track.id, 999_999] }
 
       it 'only returns existing tracks' do
         serialized_ids = serializer.map { |track| track[:id] }

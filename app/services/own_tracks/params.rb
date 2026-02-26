@@ -29,7 +29,7 @@ class OwnTracks::Params
       connection:,
       trigger:,
       motion_data:        Points::MotionDataExtractor.from_owntracks(params),
-      raw_data:           {}
+      raw_data:           params.deep_stringify_keys
     }
   end
 

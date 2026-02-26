@@ -7,11 +7,13 @@
  * @param {Page} page - Playwright page object
  */
 export async function closeOnboardingModal(page) {
-  const onboardingModal = page.locator('#getting_started');
-  const isModalOpen = await onboardingModal.evaluate((dialog) => dialog.open).catch(() => false);
+  const onboardingModal = page.locator("#getting_started")
+  const isModalOpen = await onboardingModal
+    .evaluate((dialog) => dialog.open)
+    .catch(() => false)
   if (isModalOpen) {
-    await page.locator('#getting_started button.btn-primary').click();
-    await page.waitForTimeout(500);
+    await page.locator("#getting_started button.btn-primary").click()
+    await page.waitForTimeout(500)
   }
 }
 
@@ -20,8 +22,8 @@ export async function closeOnboardingModal(page) {
  * @param {Page} page - Playwright page object
  */
 export async function navigateToMap(page) {
-  await page.goto('/map');
-  await closeOnboardingModal(page);
+  await page.goto("/map")
+  await closeOnboardingModal(page)
 }
 
 /**
@@ -31,15 +33,17 @@ export async function navigateToMap(page) {
  * @param {string} endDate - End date in format 'YYYY-MM-DDTHH:mm'
  */
 export async function navigateToDate(page, startDate, endDate) {
-  const startInput = page.locator('input[type="datetime-local"][name="start_at"]');
-  await startInput.clear();
-  await startInput.fill(startDate);
+  const startInput = page.locator(
+    'input[type="datetime-local"][name="start_at"]',
+  )
+  await startInput.clear()
+  await startInput.fill(startDate)
 
-  const endInput = page.locator('input[type="datetime-local"][name="end_at"]');
-  await endInput.clear();
-  await endInput.fill(endDate);
+  const endInput = page.locator('input[type="datetime-local"][name="end_at"]')
+  await endInput.clear()
+  await endInput.fill(endDate)
 
-  await page.click('input[type="submit"][value="Search"]');
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1000);
+  await page.click('input[type="submit"][value="Search"]')
+  await page.waitForLoadState("networkidle")
+  await page.waitForTimeout(1000)
 }

@@ -26,7 +26,8 @@ RSpec.describe Users::Digests::CalculatingJob, type: :job do
 
     context 'when Users::Digests::CalculateYear raises an error' do
       before do
-        allow_any_instance_of(Users::Digests::CalculateYear).to receive(:call).and_raise(StandardError.new('Test error'))
+        allow_any_instance_of(Users::Digests::CalculateYear)
+          .to receive(:call).and_raise(StandardError.new('Test error'))
       end
 
       it 'creates an error notification' do

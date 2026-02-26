@@ -9,7 +9,6 @@ export class PhotoPopupFactory {
    */
   static createPhotoPopup(properties) {
     const {
-      id,
       thumbnail_url,
       taken_at,
       filename,
@@ -17,12 +16,13 @@ export class PhotoPopupFactory {
       state,
       country,
       type,
-      source
+      source,
     } = properties
 
-    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : 'Unknown'
-    const location = [city, state, country].filter(Boolean).join(', ') || 'Unknown location'
-    const mediaType = type === 'VIDEO' ? '🎥 Video' : '📷 Photo'
+    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : "Unknown"
+    const location =
+      [city, state, country].filter(Boolean).join(", ") || "Unknown location"
+    const mediaType = type === "VIDEO" ? "🎥 Video" : "📷 Photo"
 
     return `
       <div class="photo-popup">

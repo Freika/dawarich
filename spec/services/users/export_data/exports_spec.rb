@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Users::ExportData::Exports, type: :service do
   let(:user) { create(:user) }
-  let(:files_directory) { Rails.root.join('tmp', 'test_export_files') }
+  let(:files_directory) { Rails.root.join('tmp/test_export_files') }
   let(:service) { described_class.new(user, files_directory) }
 
   subject { service.call }
@@ -29,12 +29,11 @@ RSpec.describe Users::ExportData::Exports, type: :service do
     context 'when user has exports without files' do
       let!(:export_without_file) do
         create(:export,
-          user: user,
-          name: 'Test Export',
-          file_format: :json,
-          file_type: :points,
-          status: :completed
-        )
+               user: user,
+               name: 'Test Export',
+               file_format: :json,
+               file_type: :points,
+               status: :completed)
       end
 
       it 'returns export data without file information' do

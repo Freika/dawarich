@@ -29,8 +29,8 @@ RSpec.describe Users::SafeSettings do
             distance_unit: 'km',
             visits_suggestions_enabled: true,
             speed_color_scale: nil,
-            fog_of_war_threshold: nil,
-            enabled_map_layers: %w[Routes Heatmap],
+            fog_of_war_threshold: 50,
+            enabled_map_layers: %w[Tracks Heatmap],
             maps_maplibre_style: 'light',
             globe_projection: false,
             transportation_thresholds: {
@@ -85,6 +85,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.settings).to eq(
           {
             'fog_of_war_meters' => 100,
+            'fog_of_war_threshold' => 50,
             'meters_between_routes' => 1000,
             'preferred_map_layer' => 'Satellite',
             'speed_colored_routes' => true,
@@ -159,7 +160,7 @@ RSpec.describe Users::SafeSettings do
             distance_unit: 'km',
             visits_suggestions_enabled: false,
             speed_color_scale: nil,
-            fog_of_war_threshold: nil,
+            fog_of_war_threshold: 50,
             enabled_map_layers: %w[Points Routes Areas Photos],
             maps_maplibre_style: 'light',
             globe_projection: false,
@@ -239,7 +240,7 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.photoprism_api_key).to be_nil
         expect(safe_settings.maps).to eq({ 'distance_unit' => 'km' })
         expect(safe_settings.visits_suggestions_enabled?).to be true
-        expect(safe_settings.enabled_map_layers).to eq(%w[Routes Heatmap])
+        expect(safe_settings.enabled_map_layers).to eq(%w[Tracks Heatmap])
         expect(safe_settings.timezone).to eq('UTC')
       end
     end

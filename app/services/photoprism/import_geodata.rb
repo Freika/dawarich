@@ -79,7 +79,8 @@ class Photoprism::ImportGeodata
       user:,
       kind: :info,
       title: 'Import was not created',
-      content: "Import with the same name (#{import_name}) already exists. If you want to proceed, delete the existing import and try again."
+      content: "Import with the same name (#{import_name}) already exists. " \
+               'If you want to proceed, delete the existing import and try again.'
     ).call
   end
 

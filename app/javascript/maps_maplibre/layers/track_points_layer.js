@@ -1,5 +1,5 @@
-import { BaseLayer } from "./base_layer";
-import { Toast } from "maps_maplibre/components/toast";
+import { Toast } from "maps_maplibre/components/toast"
+import { BaseLayer } from "./base_layer"
 
 /**
  * Track points layer for displaying and editing points belonging to a specific track.
@@ -7,19 +7,21 @@ import { Toast } from "maps_maplibre/components/toast";
  */
 export class TrackPointsLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: "track-points", ...options });
-    this.apiClient = options.apiClient;
-    this.trackId = null;
-    this.isDragging = false;
-    this.draggedFeature = null;
-    this.canvas = null;
+    super(map, { id: "track-points", ...options })
+    this.apiClient = options.apiClient
+    this.trackId = null
+    this.isDragging = false
+    this.hasMoved = false
+    this.justDragged = false
+    this.draggedFeature = null
+    this.canvas = null
 
     // Bind event handlers once
-    this._onMouseEnter = this.onMouseEnter.bind(this);
-    this._onMouseLeave = this.onMouseLeave.bind(this);
-    this._onMouseDown = this.onMouseDown.bind(this);
-    this._onMouseMove = this.onMouseMove.bind(this);
-    this._onMouseUp = this.onMouseUp.bind(this);
+    this._onMouseEnter = this.onMouseEnter.bind(this)
+    this._onMouseLeave = this.onMouseLeave.bind(this)
+    this._onMouseDown = this.onMouseDown.bind(this)
+    this._onMouseMove = this.onMouseMove.bind(this)
+    this._onMouseUp = this.onMouseUp.bind(this)
   }
 
   getSourceConfig() {
@@ -29,7 +31,7 @@ export class TrackPointsLayer extends BaseLayer {
         type: "FeatureCollection",
         features: [],
       },
-    };
+    }
   }
 
   getLayerConfigs() {
@@ -45,7 +47,7 @@ export class TrackPointsLayer extends BaseLayer {
           "circle-stroke-color": "#ffffff",
         },
       },
-    ];
+    ]
   }
 
   /**
@@ -55,33 +57,33 @@ export class TrackPointsLayer extends BaseLayer {
    */
   async loadTrackPoints(trackId) {
     if (!this.apiClient) {
-      throw new Error("API client not configured");
+      throw new Error("API client not configured")
     }
 
-    this.trackId = trackId;
+    this.trackId = trackId
 
     try {
-      const points = await this.apiClient.fetchTrackPoints(trackId);
+      const points = await this.apiClient.fetchTrackPoints(trackId)
 
       // Convert to GeoJSON
-      const geojson = this.pointsToGeoJSON(points);
+      const geojson = this.pointsToGeoJSON(points)
 
       // Add or update the layer
       if (!this.map.getSource(this.sourceId)) {
-        this.add(geojson);
+        this.add(geojson)
       } else {
-        this.update(geojson);
+        this.update(geojson)
       }
 
-      this.enableDragging();
+      this.enableDragging()
 
       console.log(
         `[TrackPointsLayer] Loaded ${points.length} points for track ${trackId}`,
-      );
+      )
     } catch (error) {
-      console.error("[TrackPointsLayer] Failed to load track points:", error);
-      Toast.error("Failed to load track points");
-      throw error;
+      console.error("[TrackPointsLayer] Failed to load track points:", error)
+      Toast.error("Failed to load track points")
+      throw error
     }
   }
 
@@ -97,116 +99,145 @@ export class TrackPointsLayer extends BaseLayer {
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: [parseFloat(point.longitude), parseFloat(point.latitude)],
+          coordinates: [
+            parseFloat(point.longitude),
+            parseFloat(point.latitude),
+          ],
         },
         properties: {
           id: point.id,
           timestamp: point.timestamp,
+          altitude: point.altitude,
+          battery: point.battery,
+          velocity: point.velocity,
+          accuracy: point.accuracy,
+          country_name: point.country_name,
           track_id: this.trackId,
         },
       })),
-    };
+    }
   }
 
   /**
    * Enable dragging for points
    */
   enableDragging() {
-    if (this.draggingEnabled) return;
+    if (this.draggingEnabled) return
 
-    this.draggingEnabled = true;
-    this.canvas = this.map.getCanvasContainer();
+    this.draggingEnabled = true
+    this.canvas = this.map.getCanvasContainer()
 
-    this.map.on("mouseenter", this.id, this._onMouseEnter);
-    this.map.on("mouseleave", this.id, this._onMouseLeave);
-    this.map.on("mousedown", this.id, this._onMouseDown);
+    this.map.on("mouseenter", this.id, this._onMouseEnter)
+    this.map.on("mouseleave", this.id, this._onMouseLeave)
+    this.map.on("mousedown", this.id, this._onMouseDown)
   }
 
   /**
    * Disable dragging for points
    */
   disableDragging() {
-    if (!this.draggingEnabled) return;
+    if (!this.draggingEnabled) return
 
-    this.draggingEnabled = false;
+    this.draggingEnabled = false
 
-    this.map.off("mouseenter", this.id, this._onMouseEnter);
-    this.map.off("mouseleave", this.id, this._onMouseLeave);
-    this.map.off("mousedown", this.id, this._onMouseDown);
+    this.map.off("mouseenter", this.id, this._onMouseEnter)
+    this.map.off("mouseleave", this.id, this._onMouseLeave)
+    this.map.off("mousedown", this.id, this._onMouseDown)
   }
 
   onMouseEnter() {
-    this.canvas.style.cursor = "move";
+    this.canvas.style.cursor = "move"
   }
 
   onMouseLeave() {
     if (!this.isDragging) {
-      this.canvas.style.cursor = "";
+      this.canvas.style.cursor = ""
     }
   }
 
   onMouseDown(e) {
-    e.preventDefault();
+    e.preventDefault()
 
-    this.draggedFeature = e.features[0];
-    this.isDragging = true;
-    this.canvas.style.cursor = "grabbing";
+    this.draggedFeature = e.features[0]
+    this.isDragging = true
+    this.hasMoved = false
+    this.justDragged = false
 
-    this.map.on("mousemove", this._onMouseMove);
-    this.map.once("mouseup", this._onMouseUp);
+    this.map.on("mousemove", this._onMouseMove)
+    this.map.once("mouseup", this._onMouseUp)
   }
 
   onMouseMove(e) {
-    if (!this.isDragging || !this.draggedFeature) return;
+    if (!this.isDragging || !this.draggedFeature) return
 
-    const coords = e.lngLat;
+    if (!this.hasMoved) {
+      this.hasMoved = true
+      this.canvas.style.cursor = "grabbing"
+    }
+
+    const coords = e.lngLat
 
     // Update the feature's coordinates in the source
-    const source = this.map.getSource(this.sourceId);
+    const source = this.map.getSource(this.sourceId)
     if (source) {
-      const data = source._data;
+      const data = source._data
       const feature = data.features.find(
         (f) => f.properties.id === this.draggedFeature.properties.id,
-      );
+      )
       if (feature) {
-        feature.geometry.coordinates = [coords.lng, coords.lat];
-        source.setData(data);
+        feature.geometry.coordinates = [coords.lng, coords.lat]
+        source.setData(data)
       }
     }
   }
 
   async onMouseUp(e) {
-    if (!this.isDragging || !this.draggedFeature) return;
+    if (!this.isDragging || !this.draggedFeature) return
 
-    const coords = e.lngLat;
-    const pointId = this.draggedFeature.properties.id;
-    const originalCoords = this.draggedFeature.geometry.coordinates;
+    const coords = e.lngLat
+    const pointId = this.draggedFeature.properties.id
+    const originalCoords = this.draggedFeature.geometry.coordinates
+    const wasDrag = this.hasMoved
 
     // Clean up drag state
-    this.isDragging = false;
-    this.canvas.style.cursor = "";
-    this.map.off("mousemove", this._onMouseMove);
+    this.isDragging = false
+    this.hasMoved = false
+    this.canvas.style.cursor = ""
+    this.map.off("mousemove", this._onMouseMove)
+
+    if (!wasDrag) {
+      // Just a click — no position update, let the click handler show info
+      this.draggedFeature = null
+      return
+    }
+
+    // Set justDragged so the subsequent click event (fired by MapLibre after mouseup)
+    // doesn't open the info panel. Reset asynchronously after the click event fires.
+    this.justDragged = true
+    setTimeout(() => {
+      this.justDragged = false
+    }, 0)
 
     // Update the point on the backend
     try {
-      await this.updatePointPosition(pointId, coords.lat, coords.lng);
-      Toast.success("Point updated. Track will be recalculated.");
+      await this.updatePointPosition(pointId, coords.lat, coords.lng)
+      Toast.success("Point updated. Track will be recalculated.")
     } catch (error) {
-      console.error("Failed to update point:", error);
+      console.error("Failed to update point:", error)
       // Revert the point position on error
-      const source = this.map.getSource(this.sourceId);
+      const source = this.map.getSource(this.sourceId)
       if (source) {
-        const data = source._data;
-        const feature = data.features.find((f) => f.properties.id === pointId);
+        const data = source._data
+        const feature = data.features.find((f) => f.properties.id === pointId)
         if (feature && originalCoords) {
-          feature.geometry.coordinates = originalCoords;
-          source.setData(data);
+          feature.geometry.coordinates = originalCoords
+          source.setData(data)
         }
       }
-      Toast.error("Failed to update point position. Please try again.");
+      Toast.error("Failed to update point position. Please try again.")
     }
 
-    this.draggedFeature = null;
+    this.draggedFeature = null
   }
 
   /**
@@ -217,7 +248,7 @@ export class TrackPointsLayer extends BaseLayer {
    */
   async updatePointPosition(pointId, latitude, longitude) {
     if (!this.apiClient) {
-      throw new Error("API client not configured");
+      throw new Error("API client not configured")
     }
 
     const response = await fetch(`/api/v1/points/${pointId}`, {
@@ -233,29 +264,29 @@ export class TrackPointsLayer extends BaseLayer {
           longitude: longitude.toString(),
         },
       }),
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    return response.json();
+    return response.json()
   }
 
   /**
    * Clear track points and remove layer
    */
   clear() {
-    this.disableDragging();
-    this.trackId = null;
-    this.remove();
+    this.disableDragging()
+    this.trackId = null
+    this.remove()
   }
 
   /**
    * Override remove method to clean up dragging handlers
    */
   remove() {
-    this.disableDragging();
-    super.remove();
+    this.disableDragging()
+    super.remove()
   }
 }

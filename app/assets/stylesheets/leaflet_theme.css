@@ -22,7 +22,7 @@
   --leaflet-scale-bg: rgba(55, 65, 81, 0.9);
 }
 
-/* Leaflet default controls theme override */
+/* Leaflet default controls theme override — !important needed to beat CDN leaflet.css specificity */
 .leaflet-control-layers,
 .leaflet-control-zoom,
 .leaflet-control-attribution,
@@ -34,7 +34,6 @@
   color: var(--leaflet-text-color) !important;
   border-color: var(--leaflet-border-color) !important;
   box-shadow: 0 1px 4px var(--leaflet-shadow-color) !important;
-
 }
 
 /* Leaflet zoom buttons */
@@ -52,7 +51,9 @@
 .leaflet-control-layers {
   border: none !important;
   border-radius: 0.5rem !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
   background-color: var(--leaflet-bg-color) !important;
   color: var(--leaflet-text-color) !important;
   padding: 0 !important;
@@ -87,7 +88,7 @@
 }
 
 .leaflet-control-layers-toggle::before {
-  content: '' !important;
+  content: "" !important;
   display: block !important;
   width: 24px !important;
   height: 24px !important;
@@ -173,7 +174,7 @@
 
 /* Checkbox checkmark */
 .leaflet-control-layers input[type="checkbox"]:checked::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -187,7 +188,7 @@
 
 /* Radio dot */
 .leaflet-control-layers input[type="radio"]:checked::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -198,7 +199,7 @@
   transform: translate(-50%, -50%);
 }
 
-/* Leaflet Draw controls */
+/* Leaflet Draw controls — !important needed to override CDN leaflet.draw.css */
 .leaflet-draw-toolbar a {
   background-color: var(--leaflet-bg-color) !important;
   color: var(--leaflet-text-color) !important;
@@ -276,7 +277,7 @@
   padding: 2px !important;
 }
 
-/* Family member tooltip - dark styled like the visit popup */
+/* Family member tooltip — !important needed to override leaflet.css tooltip defaults */
 .leaflet-tooltip.family-member-tooltip {
   background-color: #374151 !important;
   color: #ffffff !important;
@@ -291,13 +292,13 @@
   border-top-color: #374151 !important;
 }
 
-/* Family member popup - just override colors, keep default layout */
+/* Family member popup — !important needed to override leaflet.css popup defaults */
 .leaflet-popup-content-wrapper:has(.family-member-popup) {
   background-color: #1f2937 !important;
   color: #f9fafb !important;
 }
 
-.leaflet-popup-content-wrapper:has(.family-member-popup)+.leaflet-popup-tip {
+.leaflet-popup-content-wrapper:has(.family-member-popup) + .leaflet-popup-tip {
   background-color: #1f2937 !important;
 }
 
@@ -321,8 +322,10 @@
   border-radius: 50% !important;
 }
 
-.family-member-marker-recent .leaflet-marker-icon>div {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(16, 185, 129, 0.7);
+.family-member-marker-recent .leaflet-marker-icon > div {
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 0 0 rgba(16, 185, 129, 0.7);
   border-radius: 50%;
 }
 

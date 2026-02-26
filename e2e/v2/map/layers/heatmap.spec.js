@@ -1,15 +1,15 @@
-import { test, expect } from '@playwright/test'
-import { closeOnboardingModal } from '../../../helpers/navigation.js'
+import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "../../../helpers/navigation.js"
 
-test.describe('Heatmap Layer', () => {
+test.describe("Heatmap Layer", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59')
+    await page.goto("/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59")
     await closeOnboardingModal(page)
     await page.waitForTimeout(2000)
   })
 
-  test.describe('Creation', () => {
-    test('heatmap layer can be enabled', async ({ page }) => {
+  test.describe("Creation", () => {
+    test("heatmap layer can be enabled", async ({ page }) => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(500)
 
@@ -17,36 +17,54 @@ test.describe('Heatmap Layer', () => {
       await page.waitForTimeout(300)
 
       const heatmapLabel = page.locator('label:has-text("Heatmap")').first()
-      const heatmapToggle = heatmapLabel.locator('input.toggle')
+      const heatmapToggle = heatmapLabel.locator("input.toggle")
       await heatmapToggle.check()
 
       // Wait for heatmap layer to be created
-      await page.waitForFunction(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
-        if (!element) return false
-        const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        return controller?.map?.getLayer('heatmap') !== undefined
-      }, { timeout: 3000 }).catch(() => false)
+      await page
+        .waitForFunction(
+          () => {
+            const element = document.querySelector(
+              '[data-controller*="maps--maplibre"]',
+            )
+            if (!element) return false
+            const app = window.Stimulus || window.Application
+            const controller = app?.getControllerForElementAndIdentifier(
+              element,
+              "maps--maplibre",
+            )
+            return controller?.map?.getLayer("heatmap") !== undefined
+          },
+          { timeout: 3000 },
+        )
+        .catch(() => false)
 
       const hasHeatmap = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre"]',
+        )
         if (!element) return false
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre')
-        return controller?.map?.getLayer('heatmap') !== undefined
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre",
+        )
+        return controller?.map?.getLayer("heatmap") !== undefined
       })
 
       expect(hasHeatmap).toBe(true)
     })
 
-    test('heatmap can be toggled', async ({ page }) => {
+    test("heatmap can be toggled", async ({ page }) => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(500)
       await page.click('button[data-tab="layers"]')
       await page.waitForTimeout(300)
 
-      const heatmapToggle = page.locator('label:has-text("Heatmap")').first().locator('input.toggle')
+      const heatmapToggle = page
+        .locator('label:has-text("Heatmap")')
+        .first()
+        .locator("input.toggle")
 
       await heatmapToggle.check()
       await page.waitForTimeout(500)
@@ -58,19 +76,22 @@ test.describe('Heatmap Layer', () => {
     })
   })
 
-  test.describe('Persistence', () => {
-    test('heatmap setting persists', async ({ page }) => {
+  test.describe("Persistence", () => {
+    test("heatmap setting persists", async ({ page }) => {
       await page.click('button[title="Open map settings"]')
       await page.waitForTimeout(500)
       await page.click('button[data-tab="layers"]')
       await page.waitForTimeout(300)
 
-      const heatmapToggle = page.locator('label:has-text("Heatmap")').first().locator('input.toggle')
+      const heatmapToggle = page
+        .locator('label:has-text("Heatmap")')
+        .first()
+        .locator("input.toggle")
       await heatmapToggle.check()
       await page.waitForTimeout(500)
 
       const settings = await page.evaluate(() => {
-        return localStorage.getItem('dawarich-maps-maplibre-settings')
+        return localStorage.getItem("dawarich-maps-maplibre-settings")
       })
 
       // Settings might be null if not saved yet or only saved to backend

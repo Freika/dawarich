@@ -1,82 +1,82 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modal", "form", "nameInput", "latitudeInput", "longitudeInput", "noteInput",
-                   "nearbyList", "loadingSpinner", "tagCheckboxes", "loadMoreContainer", "loadMoreButton",
-                   "modalTitle", "submitButton", "placeIdInput"]
-  static values = {
-    apiKey: String
-  }
+  static targets = [
+    "modal",
+    "form",
+    "nameInput",
+    "latitudeInput",
+    "longitudeInput",
+    "noteInput",
+    "nearbyFrame",
+    "tagCheckboxes",
+    "modalTitle",
+    "submitButton",
+    "placeIdInput",
+  ]
 
   connect() {
-    this.setupEventListeners()
-    this.currentRadius = 0.5 // Start with 500m (0.5km)
-    this.maxRadius = 1.5 // Max 1500m (1.5km)
-    this.setupTagListeners()
     this.editingPlaceId = null
+    this.setupEventListeners()
+    this.setupTagListeners()
   }
 
   setupEventListeners() {
-    document.addEventListener('place:create', (e) => {
+    document.addEventListener("place:create", (e) => {
       this.open(e.detail.latitude, e.detail.longitude)
     })
-
-    document.addEventListener('place:edit', (e) => {
+    document.addEventListener("place:edit", (e) => {
       this.openForEdit(e.detail.place)
     })
   }
 
   setupTagListeners() {
-    // Listen for checkbox changes to update badge styling
-    if (this.hasTagCheckboxesTarget) {
-      this.tagCheckboxesTarget.addEventListener('change', (e) => {
-        if (e.target.type === 'checkbox' && e.target.name === 'tag_ids[]') {
-          const badge = e.target.nextElementSibling
-          const color = badge.dataset.color
+    if (!this.hasTagCheckboxesTarget) return
 
-          if (e.target.checked) {
-            // Filled style
-            badge.classList.remove('badge-outline')
-            badge.style.backgroundColor = color
-            badge.style.borderColor = color
-            badge.style.color = 'white'
-          } else {
-            // Outline style
-            badge.classList.add('badge-outline')
-            badge.style.backgroundColor = 'transparent'
-            badge.style.borderColor = color
-            badge.style.color = color
-          }
-        }
-      })
-    }
+    this.tagCheckboxesTarget.addEventListener("change", (e) => {
+      if (e.target.type !== "checkbox" || e.target.name !== "place[tag_ids][]")
+        return
+      const badge = e.target.nextElementSibling
+      const color = badge.dataset.color
+
+      if (e.target.checked) {
+        badge.classList.remove("badge-outline")
+        badge.style.backgroundColor = color
+        badge.style.borderColor = color
+        badge.style.color = "white"
+      } else {
+        badge.classList.add("badge-outline")
+        badge.style.backgroundColor = "transparent"
+        badge.style.borderColor = color
+        badge.style.color = color
+      }
+    })
   }
 
-  async open(latitude, longitude) {
+  open(latitude, longitude) {
     this.editingPlaceId = null
     this.latitudeInputTarget.value = latitude
     this.longitudeInputTarget.value = longitude
-    this.currentRadius = 0.5 // Reset radius when opening modal
 
-    // Update modal for creation mode
-    if (this.hasModalTitleTarget) {
-      this.modalTitleTarget.textContent = 'Create New Place'
-    }
-    if (this.hasSubmitButtonTarget) {
-      this.submitButtonTarget.textContent = 'Create Place'
-    }
+    // Set form for creation mode
+    this.formTarget.action = "/places"
+    this.formTarget.method = "post"
+    this.removeMethodOverride()
 
-    this.modalTarget.classList.add('modal-open')
+    if (this.hasModalTitleTarget)
+      this.modalTitleTarget.textContent = "Create New Place"
+    if (this.hasSubmitButtonTarget)
+      this.submitButtonTarget.value = "Create Place"
+
+    this.modalTarget.classList.add("modal-open")
     this.nameInputTarget.focus()
 
-    await this.loadNearbyPlaces(latitude, longitude)
+    // Load nearby places via Turbo Frame
+    this.loadNearbyFrame(latitude, longitude)
   }
 
-  async openForEdit(place) {
+  openForEdit(place) {
     this.editingPlaceId = place.id
-    this.currentRadius = 0.5
-
-    // Fill in form with place data
     this.nameInputTarget.value = place.name
     this.latitudeInputTarget.value = place.latitude
     this.longitudeInputTarget.value = place.longitude
@@ -85,207 +85,95 @@ export default class extends Controller {
       this.noteInputTarget.value = place.note
     }
 
-    // Update modal for edit mode
-    if (this.hasModalTitleTarget) {
-      this.modalTitleTarget.textContent = 'Edit Place'
-    }
-    if (this.hasSubmitButtonTarget) {
-      this.submitButtonTarget.textContent = 'Update Place'
-    }
+    // Set form for edit mode
+    this.formTarget.action = `/places/${place.id}`
+    this.addMethodOverride("patch")
 
-    // Check the appropriate tag checkboxes
-    const tagCheckboxes = this.formTarget.querySelectorAll('input[name="tag_ids[]"]')
-    tagCheckboxes.forEach(checkbox => {
-      const isSelected = place.tags.some(tag => tag.id === parseInt(checkbox.value))
+    if (this.hasModalTitleTarget)
+      this.modalTitleTarget.textContent = "Edit Place"
+    if (this.hasSubmitButtonTarget)
+      this.submitButtonTarget.value = "Update Place"
+
+    // Check appropriate tag checkboxes
+    const tagCheckboxes = this.formTarget.querySelectorAll(
+      'input[name="place[tag_ids][]"]',
+    )
+    tagCheckboxes.forEach((checkbox) => {
+      const isSelected = place.tags.some(
+        (tag) => tag.id === Number.parseInt(checkbox.value, 10),
+      )
       checkbox.checked = isSelected
-
-      // Trigger change event to update badge styling
-      const event = new Event('change', { bubbles: true })
-      checkbox.dispatchEvent(event)
+      checkbox.dispatchEvent(new Event("change", { bubbles: true }))
     })
 
-    this.modalTarget.classList.add('modal-open')
+    this.modalTarget.classList.add("modal-open")
     this.nameInputTarget.focus()
 
-    // Load nearby places for suggestions
-    await this.loadNearbyPlaces(place.latitude, place.longitude)
+    this.loadNearbyFrame(place.latitude, place.longitude)
   }
 
   close() {
-    this.modalTarget.classList.remove('modal-open')
+    this.modalTarget.classList.remove("modal-open")
     this.formTarget.reset()
-    this.nearbyListTarget.innerHTML = ''
-    this.loadMoreContainerTarget.classList.add('hidden')
-    this.currentRadius = 0.5
     this.editingPlaceId = null
 
-    const event = new CustomEvent('place:create:cancelled')
-    document.dispatchEvent(event)
-  }
-
-  async loadNearbyPlaces(latitude, longitude, radius = null) {
-    this.loadingSpinnerTarget.classList.remove('hidden')
-
-    // Use provided radius or current radius
-    const searchRadius = radius || this.currentRadius
-    const isLoadingMore = radius !== null && radius > this.currentRadius - 0.5
-
-    // Only clear the list on initial load, not when loading more
-    if (!isLoadingMore) {
-      this.nearbyListTarget.innerHTML = ''
+    // Reset nearby frame
+    if (this.hasNearbyFrameTarget) {
+      this.nearbyFrameTarget.innerHTML =
+        '<p class="text-sm text-gray-500">Open modal to load nearby suggestions</p>'
     }
 
-    try {
-      const response = await fetch(
-        `/api/v1/places/nearby?latitude=${latitude}&longitude=${longitude}&radius=${searchRadius}&limit=5`,
-        { headers: { 'Authorization': `Bearer ${this.apiKeyValue}` } }
-      )
-
-      if (!response.ok) throw new Error('Failed to load nearby places')
-
-      const data = await response.json()
-      this.renderNearbyPlaces(data.places, isLoadingMore)
-
-      // Show load more button if we can expand radius further
-      if (searchRadius < this.maxRadius) {
-        this.loadMoreContainerTarget.classList.remove('hidden')
-        this.updateLoadMoreButton(searchRadius)
-      } else {
-        this.loadMoreContainerTarget.classList.add('hidden')
-      }
-    } catch (error) {
-      console.error('Error loading nearby places:', error)
-      this.nearbyListTarget.innerHTML = '<p class="text-error">Failed to load suggestions</p>'
-    } finally {
-      this.loadingSpinnerTarget.classList.add('hidden')
-    }
+    document.dispatchEvent(new CustomEvent("place:create:cancelled"))
   }
 
-  renderNearbyPlaces(places, append = false) {
-    if (!places || places.length === 0) {
-      if (!append) {
-        this.nearbyListTarget.innerHTML = '<p class="text-sm text-gray-500">No nearby places found</p>'
-      }
-      return
-    }
+  loadNearbyFrame(latitude, longitude) {
+    if (!this.hasNearbyFrameTarget) return
 
-    // Calculate starting index based on existing items
-    const currentCount = append ? this.nearbyListTarget.querySelectorAll('.card').length : 0
-
-    const html = places.map((place, index) => `
-      <div class="card card-compact bg-base-200 cursor-pointer hover:bg-base-300 transition"
-           data-action="click->place-creation#selectNearby"
-           data-place-name="${this.escapeHtml(place.name)}"
-           data-place-latitude="${place.latitude}"
-           data-place-longitude="${place.longitude}">
-        <div class="card-body">
-          <div class="flex gap-2">
-            <span class="badge badge-primary badge-sm">#${currentCount + index + 1}</span>
-            <div class="flex-1">
-              <h4 class="font-semibold">${this.escapeHtml(place.name)}</h4>
-              ${place.street ? `<p class="text-sm">${this.escapeHtml(place.street)}</p>` : ''}
-              ${place.city ? `<p class="text-xs text-gray-500">${this.escapeHtml(place.city)}, ${this.escapeHtml(place.country || '')}</p>` : ''}
-            </div>
-          </div>
-        </div>
-      </div>
-    `).join('')
-
-    if (append) {
-      this.nearbyListTarget.insertAdjacentHTML('beforeend', html)
-    } else {
-      this.nearbyListTarget.innerHTML = html
-    }
-  }
-
-  async loadMore() {
-    // Increase radius by 500m (0.5km) up to max of 1500m (1.5km)
-    if (this.currentRadius >= this.maxRadius) return
-
-    this.currentRadius = Math.min(this.currentRadius + 0.5, this.maxRadius)
-
-    const latitude = parseFloat(this.latitudeInputTarget.value)
-    const longitude = parseFloat(this.longitudeInputTarget.value)
-
-    await this.loadNearbyPlaces(latitude, longitude, this.currentRadius)
-  }
-
-  updateLoadMoreButton(currentRadius) {
-    const nextRadius = Math.min(currentRadius + 0.5, this.maxRadius)
-    const radiusInMeters = Math.round(nextRadius * 1000)
-    this.loadMoreButtonTarget.textContent = `Load More (search up to ${radiusInMeters}m)`
+    this.nearbyFrameTarget.src = `/places/nearby?latitude=${latitude}&longitude=${longitude}&radius=0.5&limit=5`
   }
 
   selectNearby(event) {
-    const element = event.currentTarget
-    this.nameInputTarget.value = element.dataset.placeName
-    this.latitudeInputTarget.value = element.dataset.placeLatitude
-    this.longitudeInputTarget.value = element.dataset.placeLongitude
+    const el = event.currentTarget
+    this.nameInputTarget.value = el.dataset.placeName
+    this.latitudeInputTarget.value = el.dataset.placeLatitude
+    this.longitudeInputTarget.value = el.dataset.placeLongitude
   }
 
-  async submit(event) {
-    event.preventDefault()
+  onSubmitEnd(event) {
+    if (!event.detail.success) return
 
-    const formData = new FormData(this.formTarget)
-    const tagIds = Array.from(this.formTarget.querySelectorAll('input[name="tag_ids[]"]:checked'))
-                        .map(cb => cb.value)
+    const dataEl = document.getElementById("place-creation-data")
+    if (!dataEl?.dataset.place) return
 
-    const payload = {
-      place: {
-        name: formData.get('name'),
-        latitude: parseFloat(formData.get('latitude')),
-        longitude: parseFloat(formData.get('longitude')),
-        note: formData.get('note') || null,
-        source: 'manual',
-        tag_ids: tagIds
-      }
+    const place = JSON.parse(dataEl.dataset.place)
+    const eventName =
+      dataEl.dataset.updated === "true" ? "place:updated" : "place:created"
+
+    document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
+
+    // Reset data element
+    delete dataEl.dataset.place
+    delete dataEl.dataset.created
+    delete dataEl.dataset.updated
+
+    this.close()
+  }
+
+  // --- Private helpers ---
+
+  addMethodOverride(method) {
+    let input = this.formTarget.querySelector('input[name="_method"]')
+    if (!input) {
+      input = document.createElement("input")
+      input.type = "hidden"
+      input.name = "_method"
+      this.formTarget.prepend(input)
     }
-
-    try {
-      const isEdit = this.editingPlaceId !== null
-      const url = isEdit ? `/api/v1/places/${this.editingPlaceId}` : '/api/v1/places'
-      const method = isEdit ? 'PATCH' : 'POST'
-
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKeyValue}`
-        },
-        body: JSON.stringify(payload)
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.errors?.join(', ') || `Failed to ${isEdit ? 'update' : 'create'} place`)
-      }
-
-      const place = await response.json()
-
-      this.close()
-      this.showNotification(`Place ${isEdit ? 'updated' : 'created'} successfully!`, 'success')
-
-      const eventName = isEdit ? 'place:updated' : 'place:created'
-      const customEvent = new CustomEvent(eventName, { detail: { place } })
-      document.dispatchEvent(customEvent)
-    } catch (error) {
-      console.error(`Error ${this.editingPlaceId ? 'updating' : 'creating'} place:`, error)
-      this.showNotification(error.message, 'error')
-    }
+    input.value = method
   }
 
-  showNotification(message, type = 'info') {
-    const event = new CustomEvent('notification:show', {
-      detail: { message, type },
-      bubbles: true
-    })
-    document.dispatchEvent(event)
-  }
-
-  escapeHtml(text) {
-    if (!text) return ''
-    const div = document.createElement('div')
-    div.textContent = text
-    return div.innerHTML
+  removeMethodOverride() {
+    const input = this.formTarget.querySelector('input[name="_method"]')
+    if (input) input.remove()
   }
 }

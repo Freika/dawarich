@@ -100,6 +100,7 @@ module Points
         point_ids.each_slice(BATCH_SIZE) do |batch|
           Point.transaction do
             cleared = Point.where(id: batch, raw_data_archived: true).update_all(raw_data: {})
+            # rubocop:enable Rails/SkipsModelValidations
             total_cleared += cleared
           end
         end

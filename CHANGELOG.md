@@ -4,21 +4,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.3.0] - Unreleased
+## [1.3.0] - 2026-02-25
+
+The Storage & Timeline Interaction Release
+
+This release adds a dedicated `motion_data` column for transportation-relevant fields alongside the existing `raw_data`. Users can now set their timezone for accurate date/time display across the app. The Timeline feed in Map v2 gains richer map interaction: hovering a journey highlights its track with an animated border, clicking zooms to fit and selects it, and expanding a day shows visit markers even when the Visits layer is off. User data export/import is enhanced with a new v2 format using JSONL files and monthly splitting for large datasets, while remaining backward-compatible with the old format.
 
 ### Added
 
 - Per-user timezone setting. Users can now select their timezone from Settings > General, and all dates/times across the app (including background jobs and API responses) will respect it. Defaults to the server's `TIME_ZONE` environment variable for existing users.
 - `motion_data` JSONB column on the `points` table for storing transportation-relevant fields separately from `raw_data`.
 - Background job (`DataMigrations::BackfillMotionDataJob`) to backfill `motion_data` from `raw_data` for existing points.
+- New Timeline feed in Map v2 Tools panel for browsing daily location history. Distances and speeds respect the user's distance unit preference (km/mi).
+- Clicking a track point (when "Show Points" is enabled) now displays point info (timestamp, battery, altitude, speed) in the track info panel instead of triggering a position update. Dragging a point still updates its position and triggers track recalculation.
+- Timeline-map interaction: hovering a journey entry in the Timeline feed now highlights the matching track on the map with the animated border and flow effect. Clicking a journey entry zooms the map to fit the track and keeps it selected. Expanding a day in the Timeline now temporarily shows visit markers for that day, even if the Visits layer is disabled.
+- AES-256-GCM encryption for raw data archives (format version 2). Set `ARCHIVE_ENCRYPTION_KEY` to use a custom key; otherwise derives from `SECRET_KEY_BASE`. Existing unencrypted archives (format version 1) are read transparently.
+- v2 export/import format with JSONL files and monthly splitting for large entities (points, visits, stats, tracks, digests). The new format streams data to avoid memory issues with large datasets, while remaining backward-compatible with v1 archives (`data.json`).
+- User data export now includes Tags, Taggings, Tracks (with embedded TrackSegments), Digests, and Raw Data Archives — previously missing from export/import, meaning users who exported and re-imported would lose these entities.
+- Tracks are exported with their `original_path` serialized as WKT and `track_segments` embedded as a nested array, preserving transportation mode detection data across export/import cycles.
+- Digests get a fresh `sharing_uuid` on import for security — old share links from the original user won't work for the importing user.
+- Raw Data Archives are exported with their attached gzip files, enabling full data restoration.
+- Failed imports now will have an error message shown to the user.
+- Pagination now looks nicer and more informative, indicating current page. #2279
+- Imports and exports now can be sorted by name, file size, number of points, and creation date. #2279
+- Lots of missing Swagger specs for the API endpoints have been added, improving API documentation and enabling better client generation. swagger.yaml is updated.
 
 ### Changed
 
-- New points from OwnTracks, Overland, GPX, GeoJSON, Photos, and KML sources no longer store full `raw_data`, significantly reducing per-point storage (~500 bytes saved per point).
-- Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column, keeping transportation mode detection working while dropping redundant data.
-- Google imports continue storing full `raw_data` (rich metadata) and additionally write to `motion_data`.
+- Transportation-relevant fields (motion, activity, action) are now stored in a dedicated `motion_data` column alongside `raw_data`, enabling efficient transportation mode detection.
+- All import sources now write both `raw_data` (full original payload) and `motion_data` (transportation-relevant fields).
 - The `STORE_GEODATA` setting now correctly controls whether geodata is written during reverse geocoding.
 - Dropped unused `idx_points_user_city` database index (304 MB) and replaced the full `reverse_geocoded_at` index (1,149 MB) with a smaller partial index covering only un-geocoded rows.
+- Selecting a track on Map v2 now always dims other tracks, regardless of whether the track has transportation mode segments.
+- Default map layers for new users changed from Routes + Heatmap to Tracks + Heatmap. Existing users' settings are unaffected.
+- Renamed the bottom-panel "Timeline" feature to "Replay" to avoid naming collision with the new Timeline feed sidebar.
+- Default value for `RAILS_ENV` in `docker-compose.yml` is now `production` instead of `development`
+
+### Fixed
+
+- Stats queries (daily distance, time of day) now correctly handle timezone conversion without double-converting from UTC.
+- Timezone validation in stats queries now properly resolves Rails timezone names to IANA identifiers.
+- Clicking on [Map] on Stats page now correctly respects the user's preferred map version (v1 or v2) instead of always linking to Map v1. #2281
 
 
 ## [1.2.0] - 2026-02-15

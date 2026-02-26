@@ -100,10 +100,10 @@ module Insights
       }
     end
 
-    def percentile(sorted_array, p)
+    def percentile(sorted_array, pct)
       return 0 if sorted_array.empty?
 
-      k = (p / 100.0 * (sorted_array.length - 1)).round
+      k = (pct / 100.0 * (sorted_array.length - 1)).round
       sorted_array[k]
     end
 

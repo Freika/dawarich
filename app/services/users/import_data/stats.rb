@@ -96,7 +96,6 @@ class Users::ImportData::Stats
     total_created = 0
 
     stats.each_slice(BATCH_SIZE) do |batch|
-      # rubocop:disable Rails/SkipsModelValidations
       result = Stat.upsert_all(
         batch,
         returning: %w[id],

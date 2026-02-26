@@ -14,7 +14,8 @@
 */
 @import "actiontext.css";
 @import "leaflet_theme.css";
-@import "maps_maplibre_timeline.css";
+@import "maps_maplibre_replay.css";
+@import "maps_maplibre_timeline_feed.css";
 
 @layer components {
   .fade-out {

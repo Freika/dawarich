@@ -123,6 +123,8 @@ export class TracksLayer extends BaseLayer {
    * @param {Object|null} feature - Track feature or null to clear
    */
   setSelectedTrack(feature) {
+    if (!this.map) return
+
     const selectionSource = this.map.getSource(this.selectionSourceId)
     if (!selectionSource) return
 
@@ -137,11 +139,21 @@ export class TracksLayer extends BaseLayer {
         features: [feature],
       })
       this._startFlowAnimation()
+
+      // Dim all tracks to highlight the selected one
+      if (this.map.getLayer(this.id)) {
+        this.map.setPaintProperty(this.id, "line-opacity", 0.3)
+      }
     } else {
       this._stopFlowAnimation()
       this.segmentsActive = false
       this.selectedTrackLength = 0
       selectionSource.setData({ type: "FeatureCollection", features: [] })
+
+      // Restore original track opacity
+      if (this.map.getLayer(this.id)) {
+        this.map.setPaintProperty(this.id, "line-opacity", 0.7)
+      }
     }
   }
 
@@ -243,6 +255,10 @@ export class TracksLayer extends BaseLayer {
 
     const animate = (timestamp) => {
       if (!this.animationActive) return
+      if (!this.map || typeof this.map.getLayer !== "function") {
+        this._stopFlowAnimation()
+        return
+      }
       if (!startTime) startTime = timestamp
 
       const phase = ((timestamp - startTime) / cycleDuration) % 1
@@ -412,11 +428,6 @@ export class TracksLayer extends BaseLayer {
     if (this.map.getLayer(this.flowLayerId)) {
       this.map.moveLayer(this.flowLayerId)
     }
-
-    // Dim the original track to highlight segments
-    if (this.map.getLayer(this.id)) {
-      this.map.setPaintProperty(this.id, "line-opacity", 0.3)
-    }
   }
 
   /**
@@ -428,11 +439,6 @@ export class TracksLayer extends BaseLayer {
     // Hide segment layer
     if (this.map.getLayer(this.segmentLayerId)) {
       this.map.setLayoutProperty(this.segmentLayerId, "visibility", "none")
-    }
-
-    // Restore original track opacity
-    if (this.map.getLayer(this.id)) {
-      this.map.setPaintProperty(this.id, "line-opacity", 0.7)
     }
   }
 
@@ -579,6 +585,8 @@ export class TracksLayer extends BaseLayer {
 
     // Remove segment event handlers
     this._removeSegmentHoverEvents()
+
+    if (!this.map) return
 
     // Remove segment layer and source
     if (this.map.getLayer(this.segmentLayerId)) {

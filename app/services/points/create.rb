@@ -16,7 +16,6 @@ class Points::Create
     created_points = []
 
     deduplicated_data.each_slice(1000) do |location_batch|
-      # rubocop:disable Rails/SkipsModelValidations
       result = Point.upsert_all(
         location_batch,
         unique_by: %i[lonlat timestamp user_id],

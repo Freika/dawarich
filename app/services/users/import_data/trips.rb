@@ -108,7 +108,6 @@ class Users::ImportData::Trips
     total_created = 0
 
     trips.each_slice(BATCH_SIZE) do |batch|
-      # rubocop:disable Rails/SkipsModelValidations
       result = Trip.upsert_all(
         batch,
         returning: %w[id],
