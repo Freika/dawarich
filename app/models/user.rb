@@ -3,6 +3,7 @@
 class User < ApplicationRecord
   include UserFamily
   include Omniauthable
+  include SoftDeletable
 
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,

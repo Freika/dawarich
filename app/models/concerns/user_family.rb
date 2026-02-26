@@ -3,14 +3,16 @@
 module UserFamily
   extend ActiveSupport::Concern
 
+  # Family ownership check for deletion is handled by:
+  # - Controller: checks can_delete_account? before soft-deleting
+  # - Users::Destroy service: validates before hard-deleting
+
   included do
     has_one :family_membership, dependent: :destroy, class_name: 'Family::Membership'
     has_one :family, through: :family_membership
     has_one :created_family, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
     has_many :sent_family_invitations, class_name: 'Family::Invitation', foreign_key: 'invited_by_id',
              inverse_of: :invited_by, dependent: :destroy
-
-    before_destroy :check_family_ownership
   end
 
   def in_family?
@@ -103,14 +105,5 @@ module UserFamily
       timestamp: latest_point.timestamp,
       updated_at: Time.zone.at(latest_point.timestamp)
     }
-  end
-
-  private
-
-  def check_family_ownership
-    return if can_delete_account?
-
-    errors.add(:base, 'Cannot delete account while being a family owner with other members')
-    raise ActiveRecord::DeleteRestrictionError, 'Cannot delete user with family members'
   end
 end

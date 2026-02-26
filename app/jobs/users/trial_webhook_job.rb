@@ -4,7 +4,8 @@ class Users::TrialWebhookJob < ApplicationJob
   queue_as :default
 
   def perform(user_id)
-    user = User.find(user_id)
+    user = find_non_deleted_user(user_id)
+    return unless user
 
     payload = {
       user_id: user.id,

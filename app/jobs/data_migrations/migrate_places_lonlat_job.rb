@@ -4,7 +4,8 @@ class DataMigrations::MigratePlacesLonlatJob < ApplicationJob
   queue_as :data_migrations
 
   def perform(user_id)
-    user = User.find(user_id)
+    user = find_non_deleted_user(user_id)
+    return unless user
 
     # Find all places with nil lonlat
     places_to_update = user.visited_places.where(lonlat: nil)

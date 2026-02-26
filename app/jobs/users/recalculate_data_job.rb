@@ -9,7 +9,9 @@ class Users::RecalculateDataJob < ApplicationJob
   queue_as :default
 
   def perform(user_id, year: nil)
-    @user = User.find(user_id)
+    @user = find_non_deleted_user(user_id)
+    return unless @user
+
     @year = year&.to_i
 
     with_user_timezone(user) do

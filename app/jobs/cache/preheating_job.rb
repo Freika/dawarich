@@ -11,7 +11,7 @@ class Cache::PreheatingJob < ApplicationJob
       expires_in: 1.day
     )
 
-    User.find_each do |user|
+    User.non_deleted.find_each do |user|
       Rails.cache.write(
         "dawarich/user_#{user.id}_years_tracked",
         user.years_tracked,

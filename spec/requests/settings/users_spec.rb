@@ -31,6 +31,27 @@ RSpec.describe '/settings/users', type: :request do
       end
 
       context 'when user is an admin' do
+        describe 'GET /index' do
+          before { sign_in admin }
+
+          it 'does not include soft-deleted users' do
+            deleted_user = create(:user)
+            deleted_user.mark_as_deleted!
+
+            get settings_users_url
+
+            expect(response.body).not_to include(deleted_user.email)
+          end
+
+          it 'includes active users' do
+            active_user = create(:user)
+
+            get settings_users_url
+
+            expect(response.body).to include(active_user.email)
+          end
+        end
+
         describe 'POST /create' do
           before { sign_in admin }
 
@@ -83,6 +104,89 @@ RSpec.describe '/settings/users', type: :request do
               user.reload
               expect(user.email).to eq(new_attributes[:email])
               expect(user.valid_password?(new_attributes[:password])).to be_truthy
+            end
+          end
+        end
+
+        describe 'DELETE /destroy' do
+          let(:user) { create(:user) }
+
+          before { sign_in admin }
+
+          context 'with a regular user' do
+            it 'soft deletes the user' do
+              user # force creation before count check
+              expect do
+                delete settings_user_url(user)
+              end.not_to change(User, :count)
+
+              expect(user.reload.deleted?).to be true
+            end
+
+            it 'enqueues a background deletion job' do
+              expect do
+                delete settings_user_url(user)
+              end.to have_enqueued_job(Users::DestroyJob).with(user.id)
+            end
+
+            it 'redirects to settings users page with notice' do
+              delete settings_user_url(user)
+
+              expect(response).to redirect_to(settings_users_url)
+              expect(flash[:notice]).to eq(
+                'User deletion has been initiated. The account will be fully removed shortly.'
+              )
+            end
+
+            it 'immediately marks user as deleted' do
+              delete settings_user_url(user)
+
+              expect(user.reload.deleted_at).to be_present
+            end
+          end
+
+          context 'when user is a family owner with members' do
+            let(:family) { create(:family, creator: user) }
+            let(:member) { create(:user) }
+
+            before do
+              create(:family_membership, user: user, family: family, role: :owner)
+              create(:family_membership, user: member, family: family, role: :member)
+            end
+
+            it 'does not delete the user' do
+              expect do
+                delete settings_user_url(user)
+              end.not_to(change { user.reload.deleted_at })
+            end
+
+            it 'returns unprocessable content with error message' do
+              delete settings_user_url(user)
+
+              expect(response).to have_http_status(:unprocessable_content)
+              expect(flash[:alert]).to eq(
+                'Cannot delete account while being owner of a family which has other members.'
+              )
+            end
+
+            it 'does not enqueue deletion job' do
+              expect do
+                delete settings_user_url(user)
+              end.not_to have_enqueued_job(Users::DestroyJob)
+            end
+          end
+
+          context 'concurrent deletion attempts' do
+            it 'handles multiple deletion requests gracefully' do
+              # First deletion
+              delete settings_user_url(user)
+              expect(user.reload.deleted?).to be true
+
+              # Second deletion attempt on already-deleted user
+              delete settings_user_url(user)
+
+              # Should not raise error, user still deleted
+              expect(user.reload.deleted?).to be true
             end
           end
         end
