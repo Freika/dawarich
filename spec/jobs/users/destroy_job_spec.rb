@@ -135,7 +135,7 @@ RSpec.describe Users::DestroyJob, type: :job do
 
         described_class.perform_now(user.id)
 
-        expect(User.deleted_accounts.find_by(id: user.id)).to be_present
+        expect(User.deleted.find_by(id: user.id)).to be_present
       end
 
       it 'does not log success message' do

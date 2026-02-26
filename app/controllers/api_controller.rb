@@ -54,10 +54,7 @@ class ApiController < ApplicationController
   end
 
   def current_api_user
-    @current_api_user ||= begin
-      user = User.non_deleted.find_by(api_key:)
-      user if user&.active_for_authentication?
-    end
+    @current_api_user ||= User.non_deleted.find_by(api_key:)
   end
 
   def api_key

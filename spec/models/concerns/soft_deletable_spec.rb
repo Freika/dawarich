@@ -31,20 +31,20 @@ RSpec.describe SoftDeletable do
       end
     end
 
-    describe '.deleted_accounts' do
+    describe '.deleted' do
       it 'returns only deleted users' do
-        expect(User.deleted_accounts).to include(deleted_user)
-        expect(User.deleted_accounts).not_to include(active_user)
+        expect(User.deleted).to include(deleted_user)
+        expect(User.deleted).not_to include(active_user)
       end
 
       it 'returns empty when no users are deleted' do
         deleted_user.update!(deleted_at: nil)
-        expect(User.deleted_accounts).to be_empty
+        expect(User.deleted).to be_empty
       end
 
       it 'returns all users when all are deleted' do
         active_user.mark_as_deleted!
-        expect(User.deleted_accounts.count).to eq(User.count)
+        expect(User.deleted.count).to eq(User.count)
       end
     end
   end
@@ -189,8 +189,8 @@ RSpec.describe SoftDeletable do
       # Active accounts scope should not find deleted user
       expect(User.non_deleted.find_by(id: user_id)).to be_nil
 
-      # Deleted accounts scope should find deleted user
-      expect(User.deleted_accounts.find_by(id: user_id)).to be_present
+      # Deleted scope should find deleted user
+      expect(User.deleted.find_by(id: user_id)).to be_present
 
       # Should find with unscoped
       expect(User.unscoped.find_by(id: user_id)).to be_present

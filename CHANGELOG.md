@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - User deletion now being done in the background to prevent request timeouts for users with large amount of data.
 
+### Fixed
+
+- Point speed in Map V2 is now correctly calculated from m/s to km/h or mph based on user preference. #2308
+
 ## [1.3.0] - 2026-02-25
 
 The Storage & Timeline Interaction Release

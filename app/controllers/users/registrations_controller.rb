@@ -27,20 +27,21 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def destroy
-    begin
-      resource.mark_as_deleted!
-
-      Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
-
-      Users::DestroyJob.perform_later(resource.id)
-
-      set_flash_message! :notice, :destroyed
-      yield resource if block_given?
-      respond_with_navigational(resource) { redirect_to after_sign_out_path_for(resource_name) }
-    rescue ActiveRecord::RecordInvalid
+    unless resource.can_delete_account?
       set_flash_message! :alert, :cannot_delete
       redirect_to edit_user_registration_path, status: :unprocessable_content
+      return
     end
+
+    resource.mark_as_deleted!
+
+    Devise.sign_out_all_scopes ? sign_out : sign_out(resource_name)
+
+    Users::DestroyJob.perform_later(resource.id)
+
+    set_flash_message! :notice, :destroyed
+    yield resource if block_given?
+    respond_with_navigational(resource) { redirect_to after_sign_out_path_for(resource_name) }
   end
 
   protected

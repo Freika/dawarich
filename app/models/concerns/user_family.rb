@@ -9,8 +9,6 @@ module UserFamily
     has_one :created_family, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
     has_many :sent_family_invitations, class_name: 'Family::Invitation', foreign_key: 'invited_by_id',
              inverse_of: :invited_by, dependent: :destroy
-
-    validate :cannot_delete_with_family_members, if: :deleted_at_changed?
   end
 
   def in_family?
@@ -107,11 +105,7 @@ module UserFamily
 
   private
 
-  def cannot_delete_with_family_members
-    return unless deleted_at.present? && deleted_at_changed?
-    return if can_delete_account?
-
-    errors.add(:base, 'Cannot delete account while being a family owner with other members')
-  end
-
+  # Family ownership check for deletion is handled by:
+  # - Controller: checks can_delete_account? before soft-deleting
+  # - Users::Destroy service: validates before hard-deleting
 end

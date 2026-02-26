@@ -6,7 +6,7 @@ class Users::DestroyJob < ApplicationJob
   sidekiq_options retry: 3
 
   def perform(user_id)
-    user = User.deleted_accounts.find_by(id: user_id)
+    user = User.deleted.find_by(id: user_id)
 
     return unless user
 

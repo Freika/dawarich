@@ -19,7 +19,7 @@ module SoftDeletable
     prepend DeviseOverrides
 
     scope :non_deleted, -> { where(deleted_at: nil) }
-    scope :deleted_accounts, -> { where.not(deleted_at: nil) }
+    scope :deleted, -> { where.not(deleted_at: nil) }
   end
 
   def deleted?
@@ -30,6 +30,10 @@ module SoftDeletable
     update!(deleted_at: Time.current)
   end
 
+  # Overrides ActiveRecord#destroy to perform soft-delete instead of hard-delete.
+  # Intentionally does NOT call super — this prevents dependent: :destroy callbacks
+  # from firing. Associated records are cleaned up by Users::Destroy service during
+  # the background hard-deletion phase (Users::DestroyJob).
   def destroy
     mark_as_deleted!
   end

@@ -58,11 +58,9 @@ class Users::Destroy
       Family::Membership.where(user_id: user.id).delete_all
 
       # If user created a family, delete all remaining memberships and the family
-      created_family = Family.find_by(creator_id: user.id)
+      # Reuses created_family from the validation check above
       if created_family
-        # Delete all remaining memberships in the created family (other users' memberships)
         Family::Membership.where(family_id: created_family.id).delete_all
-        # Then delete the family itself
         created_family.delete
       end
 
@@ -79,11 +77,22 @@ class Users::Destroy
 
   private
 
+  CANCELLABLE_JOB_CLASSES = %w[
+    Users::MailerSendingJob
+    Users::Digests::EmailSendingJob
+    Tracks::RealtimeGenerationJob
+    Tracks::BoundaryResolverJob
+  ].freeze
+
   def cancel_scheduled_jobs
     scheduled_set = Sidekiq::ScheduledSet.new
 
     jobs_cancelled = scheduled_set.select { |job|
-      job.klass == 'Users::MailerSendingJob' && job.args.first == user.id
+      wrapped_class = job.item['wrapped']
+      next false unless CANCELLABLE_JOB_CLASSES.include?(wrapped_class)
+
+      # ActiveJob stores arguments in args[0]['arguments'], first argument is user_id
+      job.args.first&.dig('arguments')&.first == user.id
     }.map(&:delete).count
 
     Rails.logger.info "Cancelled #{jobs_cancelled} scheduled jobs for user #{user.id}"

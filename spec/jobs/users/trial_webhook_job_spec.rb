@@ -54,5 +54,13 @@ RSpec.describe Users::TrialWebhookJob, type: :job do
         described_class.perform_now(user.id)
       end
     end
+
+    context 'when user does not exist' do
+      it 'does not raise error' do
+        expect(HTTParty).not_to receive(:post)
+
+        expect { described_class.perform_now(999_999) }.not_to raise_error
+      end
+    end
   end
 end
