@@ -104,7 +104,7 @@ class Users::Destroy
   def purge_attachments_for(record_type, relation)
     ActiveStorage::Attachment
       .where(record_type: record_type, record_id: relation.select(:id))
-      .find_each { |a| a.purge }
+      .find_each(&:purge)
   rescue StandardError => e
     Rails.logger.warn "Failed to purge #{record_type} attachments: #{e.message}"
   end
