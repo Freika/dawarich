@@ -119,8 +119,8 @@ RSpec.describe Users::Destroy do
     context 'with cache cleanup' do
       before do
         # Populate cache with user data
-        Rails.cache.write("dawarich/user_#{user.id}_countries_visited", ['US', 'CA'])
-        Rails.cache.write("dawarich/user_#{user.id}_cities_visited", ['NYC', 'SF'])
+        Rails.cache.write("dawarich/user_#{user.id}_countries_visited", %w[US CA])
+        Rails.cache.write("dawarich/user_#{user.id}_cities_visited", %w[NYC SF])
         Rails.cache.write("dawarich/user_#{user.id}_total_distance", 1000)
         Rails.cache.write("dawarich/user_#{user.id}_years_tracked", [2023, 2024])
       end
@@ -237,7 +237,6 @@ RSpec.describe Users::Destroy do
           expect(Family.where(id: family_id).count).to eq(0)
         end
       end
-
     end
 
     context 'with user as family member only' do

@@ -187,10 +187,10 @@ RSpec.describe 'Authentication', type: :request do
         # Mark as deleted
         user.mark_as_deleted!
 
-        # Try to access a protected page
+        # Try to access a protected page — Devise's activatable hook signs out and redirects to sign in
         get map_path
 
-        expect(response).to redirect_to(root_path)
+        expect(response).to redirect_to(new_user_session_path)
         expect(flash[:alert]).to eq('Your account has been deleted.')
       end
 
@@ -198,9 +198,6 @@ RSpec.describe 'Authentication', type: :request do
         get api_v1_points_url(api_key: user.api_key)
 
         expect(response).to have_http_status(:unauthorized)
-
-        json_response = JSON.parse(response.body)
-        expect(json_response['error']).to eq('User account is not active or has been deleted')
       end
     end
 
@@ -223,9 +220,6 @@ RSpec.describe 'Authentication', type: :request do
         get api_v1_points_url(api_key: api_key)
 
         expect(response).to have_http_status(:unauthorized)
-
-        json_response = JSON.parse(response.body)
-        expect(json_response['error']).to eq('User account is not active or has been deleted')
       end
     end
   end

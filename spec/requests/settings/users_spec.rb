@@ -116,24 +116,26 @@ RSpec.describe '/settings/users', type: :request do
           context 'with a regular user' do
             it 'soft deletes the user' do
               user # force creation before count check
-              expect {
+              expect do
                 delete settings_user_url(user)
-              }.not_to change(User, :count)
+              end.not_to change(User, :count)
 
               expect(user.reload.deleted?).to be true
             end
 
             it 'enqueues a background deletion job' do
-              expect {
+              expect do
                 delete settings_user_url(user)
-              }.to have_enqueued_job(Users::DestroyJob).with(user.id)
+              end.to have_enqueued_job(Users::DestroyJob).with(user.id)
             end
 
             it 'redirects to settings users page with notice' do
               delete settings_user_url(user)
 
               expect(response).to redirect_to(settings_users_url)
-              expect(flash[:notice]).to eq('User deletion has been initiated. The account will be fully removed shortly.')
+              expect(flash[:notice]).to eq(
+                'User deletion has been initiated. The account will be fully removed shortly.'
+              )
             end
 
             it 'immediately marks user as deleted' do
@@ -153,22 +155,24 @@ RSpec.describe '/settings/users', type: :request do
             end
 
             it 'does not delete the user' do
-              expect {
+              expect do
                 delete settings_user_url(user)
-              }.not_to change { user.reload.deleted_at }
+              end.not_to(change { user.reload.deleted_at })
             end
 
             it 'returns unprocessable content with error message' do
               delete settings_user_url(user)
 
               expect(response).to have_http_status(:unprocessable_content)
-              expect(flash[:alert]).to eq('Cannot delete account while being owner of a family which has other members.')
+              expect(flash[:alert]).to eq(
+                'Cannot delete account while being owner of a family which has other members.'
+              )
             end
 
             it 'does not enqueue deletion job' do
-              expect {
+              expect do
                 delete settings_user_url(user)
-              }.not_to have_enqueued_job(Users::DestroyJob)
+              end.not_to have_enqueued_job(Users::DestroyJob)
             end
           end
 

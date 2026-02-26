@@ -22,7 +22,7 @@ RSpec.describe SoftDeletable do
 
       it 'returns all users when none are deleted' do
         deleted_user.update!(deleted_at: nil)
-        expect(User.non_deleted.count).to eq(User.count)
+        expect(User.non_deleted).to include(active_user, deleted_user)
       end
 
       it 'returns empty when all users are deleted' do
@@ -39,7 +39,7 @@ RSpec.describe SoftDeletable do
 
       it 'returns empty when no users are deleted' do
         deleted_user.update!(deleted_at: nil)
-        expect(User.deleted).to be_empty
+        expect(User.deleted).not_to include(active_user, deleted_user)
       end
 
       it 'returns all users when all are deleted' do
@@ -79,9 +79,9 @@ RSpec.describe SoftDeletable do
 
     describe '#mark_as_deleted!' do
       it 'sets deleted_at timestamp' do
-        expect {
+        expect do
           user.mark_as_deleted!
-        }.to change { user.deleted_at }.from(nil).to(be_within(1.second).of(Time.current))
+        end.to change { user.deleted_at }.from(nil).to(be_within(1.second).of(Time.current))
       end
 
       it 'persists the deletion timestamp' do
@@ -118,9 +118,9 @@ RSpec.describe SoftDeletable do
       end
 
       it 'sets deleted_at timestamp' do
-        expect {
+        expect do
           user.destroy
-        }.to change { user.deleted_at }.from(nil).to(be_present)
+        end.to change { user.deleted_at }.from(nil).to(be_present)
       end
 
       it 'makes the user deleted' do

@@ -58,7 +58,7 @@ RSpec.describe Users::DestroyJob, type: :job do
     context 'when user has already been hard deleted' do
       it 'logs a warning' do
         user.mark_as_deleted!
-        user.delete  # Hard delete
+        user.delete # Hard delete
 
         allow(Rails.logger).to receive(:warn)
 

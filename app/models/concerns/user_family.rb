@@ -3,6 +3,10 @@
 module UserFamily
   extend ActiveSupport::Concern
 
+  # Family ownership check for deletion is handled by:
+  # - Controller: checks can_delete_account? before soft-deleting
+  # - Users::Destroy service: validates before hard-deleting
+
   included do
     has_one :family_membership, dependent: :destroy, class_name: 'Family::Membership'
     has_one :family, through: :family_membership
@@ -102,10 +106,4 @@ module UserFamily
       updated_at: Time.zone.at(latest_point.timestamp)
     }
   end
-
-  private
-
-  # Family ownership check for deletion is handled by:
-  # - Controller: checks can_delete_account? before soft-deleting
-  # - Users::Destroy service: validates before hard-deleting
 end

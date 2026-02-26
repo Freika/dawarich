@@ -20,7 +20,7 @@ class Users::Destroy
         error_message = 'Cannot delete user who owns a family with other members'
         Rails.logger.warn "#{error_message}: user_id=#{user_id}"
         user.errors.add(:base, error_message)
-        raise ActiveRecord::RecordInvalid.new(user)
+        raise ActiveRecord::RecordInvalid, user
       end
     end
 
@@ -87,18 +87,18 @@ class Users::Destroy
   def cancel_scheduled_jobs
     scheduled_set = Sidekiq::ScheduledSet.new
 
-    jobs_cancelled = scheduled_set.select { |job|
+    jobs_cancelled = scheduled_set.select do |job|
       wrapped_class = job.item['wrapped']
       next false unless CANCELLABLE_JOB_CLASSES.include?(wrapped_class)
 
       # ActiveJob stores arguments in args[0]['arguments'], first argument is user_id
       job.args.first&.dig('arguments')&.first == user.id
-    }.map(&:delete).count
+    end.map(&:delete).count
 
     Rails.logger.info "Cancelled #{jobs_cancelled} scheduled jobs for user #{user.id}"
   rescue StandardError => e
     Rails.logger.warn "Failed to cancel scheduled jobs for user #{user.id}: #{e.message}"
-    ExceptionReporter.call(e, "Failed to cancel scheduled jobs during user deletion")
+    ExceptionReporter.call(e, 'Failed to cancel scheduled jobs during user deletion')
   end
 
   def purge_attachments_for(record_type, relation)

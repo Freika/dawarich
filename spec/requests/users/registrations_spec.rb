@@ -444,17 +444,17 @@ RSpec.describe 'Users::Registrations', type: :request do
 
     context 'when user deletes their own account' do
       it 'soft deletes the user' do
-        expect {
+        expect do
           delete user_registration_path
-        }.not_to change(User, :count)
+        end.not_to change(User, :count)
 
         expect(user.reload.deleted?).to be true
       end
 
       it 'enqueues a background deletion job' do
-        expect {
+        expect do
           delete user_registration_path
-        }.to have_enqueued_job(Users::DestroyJob).with(user.id)
+        end.to have_enqueued_job(Users::DestroyJob).with(user.id)
       end
 
       it 'signs out the user' do
@@ -478,25 +478,25 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
 
     context 'when user is a family owner with members' do
-      let(:family) { create(:family, creator: user) }
+      let(:user_family) { create(:family, creator: user) }
       let(:member) { create(:user) }
 
       before do
-        create(:family_membership, user: user, family: family, role: :owner)
-        create(:family_membership, user: member, family: family, role: :member)
+        create(:family_membership, user: user, family: user_family, role: :owner)
+        create(:family_membership, user: member, family: user_family, role: :member)
       end
 
       it 'does not delete the account' do
-        expect {
+        expect do
           delete user_registration_path
-        }.not_to change { user.reload.deleted_at }
+        end.not_to(change { user.reload.deleted_at })
       end
 
-      it 'redirects with error message' do
+      it 'returns unprocessable content with error message' do
         delete user_registration_path
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(response).to redirect_to(edit_user_registration_path)
+        expect(response.location).to eq(edit_user_registration_url)
         expect(flash[:alert]).to eq('Cannot delete your account while you own a family with other members.')
       end
 
@@ -507,9 +507,9 @@ RSpec.describe 'Users::Registrations', type: :request do
       end
 
       it 'does not enqueue deletion job' do
-        expect {
+        expect do
           delete user_registration_path
-        }.not_to have_enqueued_job(Users::DestroyJob)
+        end.not_to have_enqueued_job(Users::DestroyJob)
       end
     end
 
@@ -528,16 +528,16 @@ RSpec.describe 'Users::Registrations', type: :request do
     end
 
     context 'when user can delete (family owner with no other members)' do
-      let(:family) { create(:family, creator: user) }
+      let(:user_family) { create(:family, creator: user) }
 
       before do
-        create(:family_membership, user: user, family: family, role: :owner)
+        create(:family_membership, user: user, family: user_family, role: :owner)
       end
 
       it 'allows deletion' do
-        expect {
+        expect do
           delete user_registration_path
-        }.not_to change(User, :count)
+        end.not_to change(User, :count)
 
         expect(user.reload.deleted?).to be true
       end
