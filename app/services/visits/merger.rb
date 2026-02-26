@@ -39,18 +39,12 @@ module Visits
     private
 
     def extended_merge_window
-      hours = if user
-                user.safe_settings.visit_detection_extended_merge_hours || DEFAULT_EXTENDED_MERGE_HOURS
-              else
-                DEFAULT_EXTENDED_MERGE_HOURS
-              end
+      hours = user&.safe_settings&.visit_detection_extended_merge_hours || DEFAULT_EXTENDED_MERGE_HOURS
       hours.hours
     end
 
     def travel_merge_threshold
-      return DEFAULT_TRAVEL_THRESHOLD_METERS unless user
-
-      user.safe_settings.visit_detection_travel_threshold_meters || DEFAULT_TRAVEL_THRESHOLD_METERS
+      user&.safe_settings&.visit_detection_travel_threshold_meters || DEFAULT_TRAVEL_THRESHOLD_METERS
     end
 
     def can_merge_visits?(first_visit, second_visit)

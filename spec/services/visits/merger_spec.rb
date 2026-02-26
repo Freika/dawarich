@@ -4,18 +4,10 @@ require 'rails_helper'
 
 RSpec.describe Visits::Merger do
   let(:user) { create(:user) }
+  let(:base_time) { Time.zone.now }
   let(:points) { user.points }
 
   subject { described_class.new(points, user: user) }
-
-  describe 'constants' do
-    it 'has expected default values' do
-      expect(described_class::MAXIMUM_VISIT_GAP).to eq(30.minutes)
-      expect(described_class::DEFAULT_EXTENDED_MERGE_HOURS).to eq(2)
-      expect(described_class::DEFAULT_TRAVEL_THRESHOLD_METERS).to eq(200)
-      expect(described_class::SIGNIFICANT_MOVEMENT_THRESHOLD).to eq(50)
-    end
-  end
 
   describe '#merge_visits' do
     context 'when visits can be merged' do
@@ -94,29 +86,7 @@ RSpec.describe Visits::Merger do
         }
       end
 
-      let(:visit3) do
-        {
-          start_time: 30.minutes.ago.to_i,
-          end_time: 20.minutes.ago.to_i,
-          center_lat: 40.8000,
-          center_lon: -74.1000,
-          points: [double('Point5')]
-        }
-      end
-
-      let(:visits) { [visit1, visit2, visit3] }
-
       subject { described_class.new(points) }
-
-      let(:visit2) do
-        {
-          start_time: (base_time - 80.minutes).to_i,
-          end_time: (base_time - 70.minutes).to_i,
-          center_lat: 40.7500,
-          center_lon: -74.0500,
-          points: [double('Point2')]
-        }
-      end
 
       it 'keeps them separate' do
         merged = subject.merge_visits([visit1, visit2])

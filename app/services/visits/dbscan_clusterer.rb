@@ -4,15 +4,10 @@ module Visits
   # Uses PostGIS DBSCAN for efficient spatial clustering of GPS points.
   # This replaces the O(n²) Ruby iteration with database-level clustering.
   #
-  # NOTE: Uses EPSG:3857 (Web Mercator) projection for DBSCAN clustering.
-  # This introduces distance distortion at higher latitudes — e.g., at 60°N
-  # (Oslo, Helsinki), the effective clustering distance is ~half the configured
-  # eps_meters value. For most use cases this is acceptable, but users at extreme
-  # latitudes may need to increase their clustering distance setting.
+  # Clustering uses EPSG:4326 (WGS 84) geometry with eps converted from meters
+  # to degrees using the average latitude of the queried points. This avoids the
+  # distance distortion that Web Mercator (EPSG:3857) introduces at higher latitudes.
   class DbscanClusterer
-    DEFAULT_EPS_METERS = 50
-    DEFAULT_MIN_POINTS = 2
-    DEFAULT_TIME_GAP_MINUTES = 30
     MIN_DURATION_SECONDS = 180 # 3 minutes (not configurable)
     QUERY_TIMEOUT_MS = 30_000 # 30 seconds timeout for DBSCAN query
 
@@ -45,7 +40,7 @@ module Visits
       raise e unless e.message.include?('canceling statement due to statement timeout')
 
       Rails.logger.warn("DBSCAN query timed out after #{QUERY_TIMEOUT_MS}ms for user #{user.id}")
-      [] # Return empty array on timeout, will fall back to iteration
+      []
     end
 
     def parse_results(result)
@@ -64,7 +59,6 @@ module Visits
       return [] if array_string.nil?
       return array_string if array_string.is_a?(Array)
 
-      # Parse PostgreSQL array format: {1,2,3}
       array_string.gsub(/[{}]/, '').split(',').map(&:to_i)
     end
 
@@ -80,24 +74,34 @@ module Visits
       user.safe_settings.visit_detection_time_gap_minutes * 60
     end
 
-    def dbscan_sql # rubocop:disable Metrics/MethodLength
-      params = [eps_meters, min_points, user.id, start_at, end_at,
+    def dbscan_sql
+      params = [user.id, start_at, end_at, eps_meters, min_points,
                 time_gap_seconds, min_points, MIN_DURATION_SECONDS]
       ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, *params])
-        WITH clustered_points AS (
-          SELECT
-            id, lonlat, timestamp, accuracy,
-            ST_ClusterDBSCAN(
-              ST_Transform(lonlat::geometry, 3857),
-              eps := ?,
-              minpoints := ?
-            ) OVER (ORDER BY timestamp) as spatial_cluster
+        WITH candidate_points AS (
+          SELECT id, lonlat, timestamp, accuracy
           FROM points
           WHERE user_id = ?
             AND timestamp BETWEEN ? AND ?
             AND visit_id IS NULL
             AND lonlat IS NOT NULL
-          ORDER BY timestamp
+        ),
+        avg_lat AS (
+          SELECT COALESCE(AVG(ST_Y(lonlat::geometry)), 0) AS lat_deg FROM candidate_points
+        ),
+        eps_calc AS (
+          SELECT ? / (111320.0 * COS(RADIANS(lat_deg))) AS eps_degrees FROM avg_lat
+        ),
+        clustered_points AS (
+          SELECT
+            cp.id, cp.lonlat, cp.timestamp, cp.accuracy,
+            ST_ClusterDBSCAN(
+              cp.lonlat::geometry,
+              eps := ec.eps_degrees,
+              minpoints := ?
+            ) OVER (ORDER BY cp.timestamp) as spatial_cluster
+          FROM candidate_points cp, eps_calc ec
+          ORDER BY cp.timestamp
         ),
         gap_detection AS (
           SELECT *,

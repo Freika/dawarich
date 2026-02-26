@@ -229,30 +229,30 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
   end
 
-  # Visit detection settings (coerced to numeric for SQL safety)
+  # Visit detection settings (coerced to numeric and clamped to safe ranges)
   def visit_detection_eps_meters
-    (settings['visit_detection_eps_meters'] || DEFAULT_VALUES['visit_detection_eps_meters']).to_f
+    (settings['visit_detection_eps_meters'] || DEFAULT_VALUES['visit_detection_eps_meters']).to_f.clamp(1, 5000)
   end
 
   def visit_detection_min_points
-    (settings['visit_detection_min_points'] || DEFAULT_VALUES['visit_detection_min_points']).to_i
+    (settings['visit_detection_min_points'] || DEFAULT_VALUES['visit_detection_min_points']).to_i.clamp(1, 100)
   end
 
   def visit_detection_time_gap_minutes
-    (settings['visit_detection_time_gap_minutes'] || DEFAULT_VALUES['visit_detection_time_gap_minutes']).to_i
+    (settings['visit_detection_time_gap_minutes'] || DEFAULT_VALUES['visit_detection_time_gap_minutes']).to_i.clamp(1, 1440)
   end
 
   def visit_detection_extended_merge_hours
-    (settings['visit_detection_extended_merge_hours'] || DEFAULT_VALUES['visit_detection_extended_merge_hours']).to_i
+    (settings['visit_detection_extended_merge_hours'] || DEFAULT_VALUES['visit_detection_extended_merge_hours']).to_i.clamp(1, 24)
   end
 
   def visit_detection_travel_threshold_meters
     key = 'visit_detection_travel_threshold_meters'
-    (settings[key] || DEFAULT_VALUES[key]).to_f
+    (settings[key] || DEFAULT_VALUES[key]).to_f.clamp(1, 100_000)
   end
 
   def visit_detection_default_accuracy
-    (settings['visit_detection_default_accuracy'] || DEFAULT_VALUES['visit_detection_default_accuracy']).to_f
+    (settings['visit_detection_default_accuracy'] || DEFAULT_VALUES['visit_detection_default_accuracy']).to_f.clamp(1, 1000)
   end
 
   def min_minutes_spent_in_city

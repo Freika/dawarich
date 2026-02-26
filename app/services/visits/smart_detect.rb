@@ -3,9 +3,6 @@
 module Visits
   # Coordinates the process of detecting and creating visits from tracked points
   class SmartDetect
-    MINIMUM_VISIT_DURATION = 3.minutes
-    MAXIMUM_VISIT_GAP = 30.minutes
-    MINIMUM_POINTS_FOR_VISIT = 3
     BATCH_THRESHOLD_DAYS = 31 # Process in monthly batches if range exceeds this
     # Overlap batches by 1 hour to avoid splitting visits at month boundaries
     BATCH_OVERLAP_SECONDS = 1.hour.to_i

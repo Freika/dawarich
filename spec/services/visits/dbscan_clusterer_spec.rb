@@ -14,7 +14,6 @@ RSpec.describe Visits::DbscanClusterer do
   describe '#call' do
     context 'with clusterable points' do
       before do
-        # Create a cluster of points close together in space and time
         create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 90.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 80.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(-74.0062 40.7130)', timestamp: (base_time - 70.minutes).to_i)
@@ -45,7 +44,6 @@ RSpec.describe Visits::DbscanClusterer do
 
     context 'with points spread apart spatially' do
       before do
-        # Points far apart in space should not cluster
         create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 90.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(-75.0000 41.0000)', timestamp: (base_time - 80.minutes).to_i)
       end
@@ -59,11 +57,10 @@ RSpec.describe Visits::DbscanClusterer do
 
     context 'with time gap larger than threshold' do
       before do
-        # First cluster
         create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 90.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 80.minutes).to_i)
 
-        # Same location but 40 minutes later (beyond TIME_GAP_SECONDS)
+        # Same location but 40 minutes later (beyond time gap threshold)
         create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 30.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 20.minutes).to_i)
       end
@@ -71,14 +68,12 @@ RSpec.describe Visits::DbscanClusterer do
       it 'splits clusters on time gaps' do
         result = subject.call
 
-        # Should get two separate clusters due to time gap
         expect(result.size).to eq(2)
       end
     end
 
     context 'with visits too short in duration' do
       before do
-        # Points close in time (less than MIN_DURATION_SECONDS = 180)
         create(:point, user: user, lonlat: 'POINT(-74.0060 40.7128)', timestamp: (base_time - 90.minutes).to_i)
         create(:point, user: user, lonlat: 'POINT(-74.0061 40.7129)', timestamp: (base_time - 89.minutes).to_i)
       end
@@ -115,15 +110,6 @@ RSpec.describe Visits::DbscanClusterer do
 
         expect(result).to be_empty
       end
-    end
-  end
-
-  describe 'constants' do
-    it 'has expected default values' do
-      expect(described_class::DEFAULT_EPS_METERS).to eq(50)
-      expect(described_class::DEFAULT_MIN_POINTS).to eq(2)
-      expect(described_class::DEFAULT_TIME_GAP_MINUTES).to eq(30)
-      expect(described_class::MIN_DURATION_SECONDS).to eq(180)
     end
   end
 end

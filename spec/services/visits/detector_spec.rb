@@ -223,9 +223,12 @@ RSpec.describe Visits::Detector do
     end
 
     describe 'accuracy-weighted center calculation' do
+      before do
+        allow(Visits::Names::Suggester).to receive(:new).and_return(double(call: nil))
+        allow(Visits::Names::Fetcher).to receive(:new).and_return(double(call: nil))
+      end
+
       context 'with points having different accuracy values' do
-        # Points very close together so they form one visit,
-        # but with different accuracy to test weighting
         let(:weighted_points) do
           [
             build_stubbed(:point, lonlat: 'POINT(-74.0060 40.7128)', accuracy: 5,
@@ -239,14 +242,10 @@ RSpec.describe Visits::Detector do
 
         subject { described_class.new(weighted_points) }
 
-        before { allow(subject).to receive(:suggest_place_name).and_return(nil) }
-
         it 'produces visit center weighted toward high accuracy points' do
           visits = subject.detect_potential_visits
 
           expect(visits.size).to eq(1)
-          # Center should be much closer to the high accuracy points (40.7128)
-          # than to the low accuracy point (40.7129) — difference is subtle but measurable
           expect(visits.first[:center_lat]).to be_within(0.0005).of(40.7128)
           expect(visits.first[:center_lon]).to be_within(0.0005).of(-74.0060)
         end
@@ -265,8 +264,6 @@ RSpec.describe Visits::Detector do
         end
 
         subject { described_class.new(equal_accuracy_points) }
-
-        before { allow(subject).to receive(:suggest_place_name).and_return(nil) }
 
         it 'produces visit center at the centroid' do
           visits = subject.detect_potential_visits

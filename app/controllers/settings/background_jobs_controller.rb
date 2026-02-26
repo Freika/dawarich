@@ -39,6 +39,11 @@ class Settings::BackgroundJobsController < ApplicationController
   private
 
   def settings_params
-    params.require(:settings).permit(:visits_suggestions_enabled)
+    params.require(:settings).permit(
+      :visits_suggestions_enabled,
+      :visit_detection_eps_meters, :visit_detection_min_points,
+      :visit_detection_time_gap_minutes, :visit_detection_extended_merge_hours,
+      :visit_detection_travel_threshold_meters, :visit_detection_default_accuracy
+    )
   end
 end
