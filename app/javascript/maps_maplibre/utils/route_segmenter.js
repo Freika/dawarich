@@ -118,13 +118,10 @@ export class RouteSegmenter {
    * Unwrap coordinates to handle International Date Line (IDL) crossings
    * This ensures routes draw the short way across IDL instead of wrapping around globe
    * @param {Array} segment - Array of points with longitude and latitude properties
-   * @returns {Array} Array of [lon, lat] coordinate pairs with IDL unwrapping applied
+   * @returns {Array} Array of [lon, lat] coordinate pairs, or an array of such arrays if the IDL is crossed
    */
   static unwrapCoordinates(segment) {
     let crossingIndices = this.findIDLCrossings(segment)
-    if (crossingIndices.length > 2) {
-      console.log("IDL crossing logic.");
-    }
     const coordsList = []
     for (let i = 0; i < crossingIndices.length - 1; i++) {
       let subsegment = segment.slice(crossingIndices[i], crossingIndices[i+1])
@@ -217,7 +214,7 @@ export class RouteSegmenter {
   }
 
   /**
-   * Convert a segment to a GeoJSON LineString feature
+   * Convert a segment to a GeoJSON LineString (or MultiLineString if the IDL is crossed) feature
    * @param {Array} segment - Array of points
    * @returns {Object} GeoJSON Feature
    */
