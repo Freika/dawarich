@@ -3,6 +3,9 @@
 module SoftDeletable
   extend ActiveSupport::Concern
 
+  # WARNING: This concern adds a default_scope that excludes soft-deleted records.
+  # Use User.unscoped or User.deleted to access soft-deleted records.
+
   # Devise overrides must be prepended to take priority over Devise's own
   # method definitions in the ancestor chain.
   module DeviseOverrides
@@ -34,11 +37,12 @@ module SoftDeletable
   # Returns true if this caller performed the soft-delete, false if already deleted.
   # Uses UPDATE ... WHERE deleted_at IS NULL to guarantee only one caller wins.
   def mark_as_deleted_atomically!
+    now = Time.current
     rows_updated = self.class.unscoped.where(id: id, deleted_at: nil)
-                       .update_all(deleted_at: Time.current)
+                       .update_all(deleted_at: now)
 
     if rows_updated.positive?
-      self.deleted_at = Time.current
+      self.deleted_at = now
       true
     else
       false
