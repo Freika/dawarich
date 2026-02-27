@@ -172,6 +172,7 @@ export default class extends Controller {
     this.settingsController = new SettingsController(this)
     await this.settingsController.loadSettings()
     this.settings = this.settingsController.settings
+    this.settings.timezone = this.timezoneValue
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Point speed in Map V2 is now correctly calculated from m/s to km/h or mph based on user preference. #2308
 - Family members are now being loaded correctly on Map V2 when family layer is enabled. #2250
+- Photos popups on Map V2 now show the photo timestamp in user's timezone. #2310
 
 ## [1.3.0] - 2026-02-25
 

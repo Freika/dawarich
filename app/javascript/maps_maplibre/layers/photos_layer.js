@@ -1,4 +1,5 @@
 import maplibregl from "maplibre-gl"
+import { formatTimestamp } from "../utils/geojson_transformers"
 import { getCurrentTheme, getThemeColors } from "../utils/popup_theme"
 import { BaseLayer } from "./base_layer"
 
@@ -10,6 +11,7 @@ import { BaseLayer } from "./base_layer"
 export class PhotosLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "photos", ...options })
+    this.timezone = options.timezone || "UTC"
     this.markerCache = new Map() // keyed by feature id for efficient reuse
     this.legCache = new Map() // spider leg layer ids keyed by feature id
     this._spiderfiedMarkers = []
@@ -537,7 +539,9 @@ export class PhotosLayer extends BaseLayer {
     } = feature.properties
     const [lng, lat] = feature.geometry.coordinates
 
-    const takenDate = taken_at ? new Date(taken_at).toLocaleString() : "Unknown"
+    const takenDate = taken_at
+      ? formatTimestamp(taken_at, this.timezone)
+      : "Unknown"
     const location =
       [city, state, country].filter(Boolean).join(", ") || "Unknown location"
     const mediaType = type === "VIDEO" ? "🎥 Video" : "📷 Photo"
