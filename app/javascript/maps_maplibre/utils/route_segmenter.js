@@ -141,8 +141,9 @@ export class RouteSegmenter {
         let lastPoint = coordsList[i].at(-1)
         let nextPoint = coordsList[i+1][0]
         let interpLat = this.getInterpolatedLat(lastPoint[1], lastPoint[0], nextPoint[1], nextPoint[0], 180)
-        coordsList[i].push([180 * Math.sign(lastPoint[0]), interpLat])
-        coordsList[i+1].unshift([180 * Math.sign(nextPoint[0]), interpLat])
+        const safeInterpLat = Number.isFinite(interpLat) ? interpLat : lastPoint[1]
+        coordsList[i].push([180 * Math.sign(lastPoint[0]), safeInterpLat])
+        coordsList[i+1].unshift([180 * Math.sign(nextPoint[0]), safeInterpLat])
       }
       return coordsList
     }
