@@ -4,11 +4,7 @@ class Users::Digests::EmailSendingJob < ApplicationJob
   queue_as :mailers
 
   def perform(user_id, year)
-    user = User.find_by(id: user_id)
-    unless user
-      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping"
-      return
-    end
+    user = find_user_or_skip(user_id) || return
 
     digest = user.digests.yearly.find_by(year: year)
 

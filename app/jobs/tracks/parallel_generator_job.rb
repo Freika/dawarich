@@ -6,11 +6,7 @@ class Tracks::ParallelGeneratorJob < ApplicationJob
   queue_as :tracks
 
   def perform(user_id, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day)
-    user = User.find_by(id: user_id)
-    unless user
-      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping"
-      return
-    end
+    user = find_user_or_skip(user_id) || return
 
     Tracks::ParallelGenerator.new(
       user,

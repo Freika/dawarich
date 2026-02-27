@@ -107,6 +107,7 @@ class Users::Destroy
       .find_each(&:purge)
   rescue StandardError => e
     Rails.logger.warn "Failed to purge #{record_type} attachments: #{e.message}"
+    ExceptionReporter.call(e, "Failed to purge #{record_type} attachments for user #{user.id}")
   end
 
   def cleanup_user_cache(user_id)

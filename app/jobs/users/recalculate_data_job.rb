@@ -9,11 +9,7 @@ class Users::RecalculateDataJob < ApplicationJob
   queue_as :default
 
   def perform(user_id, year: nil)
-    @user = User.find_by(id: user_id)
-    unless @user
-      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping"
-      return
-    end
+    @user = find_user_or_skip(user_id) || return
 
     @year = year&.to_i
 

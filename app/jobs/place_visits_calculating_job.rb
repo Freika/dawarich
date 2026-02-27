@@ -5,11 +5,7 @@ class PlaceVisitsCalculatingJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform(user_id)
-    user = User.find_by(id: user_id)
-    unless user
-      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping"
-      return
-    end
+    user = find_user_or_skip(user_id) || return
 
     places = user.places # Only user-owned places (with user_id)
 
