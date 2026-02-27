@@ -9,12 +9,24 @@ echo "⚠️ Starting Sidekiq in $RAILS_ENV environment ⚠️"
 
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
-  # Extract components from DATABASE_URL
-  DATABASE_HOST="$(echo "$DATABASE_URL" | awk -F[@/] '{print $4}')"
-  DATABASE_PORT="$(echo "$DATABASE_URL" | awk -F[@/:] '{print $5}')"
-  DATABASE_USERNAME="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $4}')"
-  DATABASE_PASSWORD="$(echo "$DATABASE_URL" | awk -F[:/@] '{print $5}')"
-  DATABASE_NAME="$(echo "$DATABASE_URL" | awk -F[@/] '{print $5}')"
+  # Strip scheme (postgres:// or postgresql://)
+  _db_url_stripped="${DATABASE_URL#*://}"
+  # Split at '@' -> credentials @ host_path
+  _db_credentials="${_db_url_stripped%%@*}"
+  _db_host_path="${_db_url_stripped#*@}"
+  # Extract username and password from credentials
+  DATABASE_USERNAME="${_db_credentials%%:*}"
+  DATABASE_PASSWORD="${_db_credentials#*:}"
+  # Extract host_port and dbname from host_path
+  _db_host_port="${_db_host_path%%/*}"
+  DATABASE_NAME="${_db_host_path#*/}"
+  # Split host and port (port may be absent)
+  DATABASE_HOST="${_db_host_port%%:*}"
+  if [ "$_db_host_port" != "$DATABASE_HOST" ]; then
+    DATABASE_PORT="${_db_host_port#*:}"
+  else
+    DATABASE_PORT="5432"
+  fi
 fi
 
 # Wait for the database to become available
