@@ -147,7 +147,6 @@ RSpec.describe SoftDeletable do
       end
 
       it 'refreshes attributes from database' do
-        original_email = user.email
         User.unscoped.where(id: user.id).update_all(email: 'changed@example.com')
         user.reload
         expect(user.email).to eq('changed@example.com')
