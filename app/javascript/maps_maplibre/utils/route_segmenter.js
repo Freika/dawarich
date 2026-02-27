@@ -226,7 +226,6 @@ export class RouteSegmenter {
       // This ensures the same route always has the same ID across re-renders
       const routeId = `route-${startTime}-${endTime}`
       const isMultiPath = Array.isArray(coordinates[0][0]);
-      let test = coordinates.flat().length
 
       return {
         type: 'Feature',
