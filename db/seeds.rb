@@ -26,7 +26,7 @@ if Country.none?
   countries_multi_polygon = RGeo::GeoJSON.decode(countries_json.to_json, geo_factory: factory)
 
   ActiveRecord::Base.transaction do
-    countries_multi_polygon.each_key do |country|
+    countries_multi_polygon.each do |country|
       Rails.logger.debug "Creating #{country.properties['name']}..."
 
       Country.create!(
