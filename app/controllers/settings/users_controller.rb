@@ -6,7 +6,7 @@ class Settings::UsersController < ApplicationController
   before_action :authenticate_admin!, except: %i[export import]
 
   def index
-    @users = User.non_deleted.order(created_at: :desc)
+    @users = User.order(created_at: :desc)
   end
 
   def edit
@@ -47,8 +47,7 @@ class Settings::UsersController < ApplicationController
       return
     end
 
-    @user.mark_as_deleted! unless @user.deleted?
-    Users::DestroyJob.perform_later(@user.id)
+    Users::DestroyJob.perform_later(@user.id) if @user.mark_as_deleted_atomically!
 
     redirect_to settings_users_url,
                 notice: 'User deletion has been initiated. The account will be fully removed shortly.'

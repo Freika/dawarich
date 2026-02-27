@@ -54,7 +54,7 @@ class ApiController < ApplicationController
   end
 
   def current_api_user
-    @current_api_user ||= User.non_deleted.find_by(api_key:)
+    @current_api_user ||= User.find_by(api_key:)
   end
 
   def api_key

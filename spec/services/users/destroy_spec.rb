@@ -13,7 +13,7 @@ RSpec.describe Users::Destroy do
 
     context 'with minimal user data' do
       it 'hard deletes the user record' do
-        expect { service.call }.to change(User, :count).by(-1)
+        expect { service.call }.to change { User.unscoped.count }.by(-1)
       end
 
       it 'returns true on success' do

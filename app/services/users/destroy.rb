@@ -11,19 +11,6 @@ class Users::Destroy
     user_id = user.id
     user_email = user.email
 
-    # Validate user can be deleted (not a family owner with other members)
-    # Use direct queries to avoid association cache issues with soft-deleted users
-    created_family = Family.find_by(creator_id: user_id)
-    if created_family
-      member_count = Family::Membership.where(family_id: created_family.id).count
-      if member_count > 1
-        error_message = 'Cannot delete user who owns a family with other members'
-        Rails.logger.warn "#{error_message}: user_id=#{user_id}"
-        user.errors.add(:base, error_message)
-        raise ActiveRecord::RecordInvalid, user
-      end
-    end
-
     cancel_scheduled_jobs
 
     # Purge ActiveStorage attachments before delete_all (which bypasses callbacks)
@@ -32,6 +19,19 @@ class Users::Destroy
     purge_attachments_for('Points::RawDataArchive', user.raw_data_archives)
 
     ActiveRecord::Base.transaction do
+      # Validate inside transaction to prevent TOCTOU race
+      # (a member could join/leave between check and delete if outside)
+      created_family = Family.find_by(creator_id: user_id)
+      if created_family
+        member_count = Family::Membership.where(family_id: created_family.id).count
+        if member_count > 1
+          error_message = 'Cannot delete user who owns a family with other members'
+          Rails.logger.warn "#{error_message}: user_id=#{user_id}"
+          user.errors.add(:base, error_message)
+          raise ActiveRecord::RecordInvalid, user
+        end
+      end
+
       # Delete associated records first (dependent: :destroy associations)
       # IMPORTANT: Order matters due to foreign key constraints!
 

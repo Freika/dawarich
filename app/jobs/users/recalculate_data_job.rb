@@ -9,8 +9,11 @@ class Users::RecalculateDataJob < ApplicationJob
   queue_as :default
 
   def perform(user_id, year: nil)
-    @user = find_non_deleted_user(user_id)
-    return unless @user
+    @user = User.find_by(id: user_id)
+    unless @user
+      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping"
+      return
+    end
 
     @year = year&.to_i
 

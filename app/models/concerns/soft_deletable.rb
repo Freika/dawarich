@@ -18,8 +18,8 @@ module SoftDeletable
   included do
     prepend DeviseOverrides
 
-    scope :non_deleted, -> { where(deleted_at: nil) }
-    scope :deleted, -> { where.not(deleted_at: nil) }
+    default_scope { where(deleted_at: nil) }
+    scope :deleted, -> { unscoped.where.not(deleted_at: nil) }
   end
 
   def deleted?
@@ -28,6 +28,28 @@ module SoftDeletable
 
   def mark_as_deleted!
     update!(deleted_at: Time.current)
+  end
+
+  # Atomic soft-delete that prevents race conditions.
+  # Returns true if this caller performed the soft-delete, false if already deleted.
+  # Uses UPDATE ... WHERE deleted_at IS NULL to guarantee only one caller wins.
+  def mark_as_deleted_atomically!
+    rows_updated = self.class.unscoped.where(id: id, deleted_at: nil)
+                       .update_all(deleted_at: Time.current)
+
+    if rows_updated.positive?
+      self.deleted_at = Time.current
+      true
+    else
+      false
+    end
+  end
+
+  # Override reload to use unscoped so soft-deleted records can still be refreshed.
+  # Without this, user.reload after soft-deletion raises RecordNotFound because
+  # the default scope excludes the record.
+  def reload(options = nil)
+    self.class.unscoped { super }
   end
 
   # Overrides ActiveRecord#destroy to perform soft-delete instead of hard-delete.

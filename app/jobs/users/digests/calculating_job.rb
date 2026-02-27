@@ -19,8 +19,11 @@ class Users::Digests::CalculatingJob < ApplicationJob
   end
 
   def create_digest_failed_notification(user_id, error)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = User.find_by(id: user_id)
+    unless user
+      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping"
+      return
+    end
 
     Notifications::Create.new(
       user:,

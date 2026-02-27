@@ -40,10 +40,14 @@ RSpec.describe Users::DestroyJob, type: :job do
         described_class.perform_now(user.id)
       end
 
-      it 'returns early without processing' do
-        expect(destroy_service).not_to receive(:call)
+      it 'logs that user was not found among soft-deleted users' do
+        allow(Rails.logger).to receive(:info)
 
         described_class.perform_now(user.id)
+
+        expect(Rails.logger).to have_received(:info).with(
+          /User #{user.id} not found among soft-deleted users, skipping/
+        )
       end
     end
 
@@ -53,44 +57,63 @@ RSpec.describe Users::DestroyJob, type: :job do
 
         described_class.perform_now(999_999)
       end
-    end
 
-    context 'when user has already been hard deleted' do
-      it 'logs a warning' do
-        user.mark_as_deleted!
-        user.delete # Hard delete
+      it 'logs that user was not found' do
+        allow(Rails.logger).to receive(:info)
 
-        allow(Rails.logger).to receive(:warn)
+        described_class.perform_now(999_999)
 
-        described_class.perform_now(user.id)
-
-        # Should not raise error, just skip
-        expect(Rails.logger).not_to have_received(:warn)
+        expect(Rails.logger).to have_received(:info).with(
+          /User 999999 not found among soft-deleted users, skipping/
+        )
       end
     end
 
-    context 'when deletion fails' do
+    context 'when user has already been hard deleted' do
+      it 'logs and skips without raising' do
+        user.mark_as_deleted!
+        user.delete # Hard delete
+
+        allow(Rails.logger).to receive(:info)
+
+        described_class.perform_now(user.id)
+
+        expect(Rails.logger).to have_received(:info).with(
+          /User #{user.id} not found among soft-deleted users, skipping/
+        )
+      end
+    end
+
+    context 'when deletion fails with StandardError' do
       before do
         user.mark_as_deleted!
         allow(destroy_service).to receive(:call).and_raise(StandardError, 'Database error')
       end
 
-      it 'reports the exception' do
-        expect(ExceptionReporter).to receive(:call).with(
+      it 'reports the exception and re-raises for Sidekiq retry' do
+        allow(ExceptionReporter).to receive(:call)
+
+        expect { described_class.perform_now(user.id) }.to raise_error(StandardError, 'Database error')
+
+        expect(ExceptionReporter).to have_received(:call).with(
           instance_of(StandardError),
           "User deletion failed for user_id #{user.id}"
         )
+      end
+    end
 
-        described_class.perform_now(user.id)
+    context 'when deletion fails with RecordInvalid' do
+      before do
+        user.mark_as_deleted!
+        allow(destroy_service).to receive(:call).and_raise(ActiveRecord::RecordInvalid.new(user))
       end
 
-      it 'does not log success message' do
+      it 'reports but does not re-raise (not transient)' do
         allow(Rails.logger).to receive(:info)
+        allow(Rails.logger).to receive(:error)
         allow(ExceptionReporter).to receive(:call)
 
-        described_class.perform_now(user.id)
-
-        expect(Rails.logger).not_to have_received(:info).with("Successfully deleted user #{user.id}")
+        expect { described_class.perform_now(user.id) }.not_to raise_error
       end
     end
 

@@ -14,20 +14,32 @@ RSpec.describe SoftDeletable do
       deleted_user.mark_as_deleted!
     end
 
-    describe '.non_deleted' do
-      it 'returns only non-deleted users' do
-        expect(User.non_deleted).to include(active_user)
-        expect(User.non_deleted).not_to include(deleted_user)
+    describe 'default_scope' do
+      it 'excludes soft-deleted users from queries' do
+        expect(User.all).to include(active_user)
+        expect(User.all).not_to include(deleted_user)
       end
 
-      it 'returns all users when none are deleted' do
+      it 'excludes soft-deleted users from find_by' do
+        expect(User.find_by(id: deleted_user.id)).to be_nil
+      end
+
+      it 'raises RecordNotFound for soft-deleted users with find' do
+        expect { User.find(deleted_user.id) }.to raise_error(ActiveRecord::RecordNotFound)
+      end
+
+      it 'includes all users when none are deleted' do
         deleted_user.update!(deleted_at: nil)
-        expect(User.non_deleted).to include(active_user, deleted_user)
+        expect(User.all).to include(active_user, deleted_user)
       end
 
       it 'returns empty when all users are deleted' do
         active_user.mark_as_deleted!
-        expect(User.non_deleted).to be_empty
+        expect(User.all).to be_empty
+      end
+
+      it 'can be bypassed with unscoped' do
+        expect(User.unscoped.where(id: deleted_user.id)).to exist
       end
     end
 
@@ -44,7 +56,7 @@ RSpec.describe SoftDeletable do
 
       it 'returns all users when all are deleted' do
         active_user.mark_as_deleted!
-        expect(User.deleted.count).to eq(User.count)
+        expect(User.deleted.count).to eq(User.unscoped.count)
       end
     end
   end
@@ -106,13 +118,49 @@ RSpec.describe SoftDeletable do
       end
     end
 
+    describe '#mark_as_deleted_atomically!' do
+      it 'returns true on first call' do
+        expect(user.mark_as_deleted_atomically!).to be true
+      end
+
+      it 'returns false on second call' do
+        user.mark_as_deleted_atomically!
+        expect(user.mark_as_deleted_atomically!).to be false
+      end
+
+      it 'sets deleted_at in memory' do
+        user.mark_as_deleted_atomically!
+        expect(user.deleted_at).to be_present
+      end
+
+      it 'persists the deletion timestamp' do
+        user.mark_as_deleted_atomically!
+        expect(User.unscoped.find(user.id).deleted_at).to be_present
+      end
+    end
+
+    describe '#reload' do
+      it 'works after soft-deletion' do
+        user.mark_as_deleted!
+        expect { user.reload }.not_to raise_error
+        expect(user.deleted?).to be true
+      end
+
+      it 'refreshes attributes from database' do
+        original_email = user.email
+        User.unscoped.where(id: user.id).update_all(email: 'changed@example.com')
+        user.reload
+        expect(user.email).to eq('changed@example.com')
+      end
+    end
+
     describe '#destroy' do
       it 'soft deletes instead of hard deleting' do
         user_id = user.id
         user.destroy
 
-        # User count doesn't change from active users perspective
-        expect(User.non_deleted.where(id: user_id).count).to eq(0)
+        # Default scope excludes the user
+        expect(User.where(id: user_id).count).to eq(0)
         # But user still exists in database
         expect(User.unscoped.where(id: user_id).count).to eq(1)
       end
@@ -186,8 +234,8 @@ RSpec.describe SoftDeletable do
       user_id = user.id
       user.mark_as_deleted!
 
-      # Active accounts scope should not find deleted user
-      expect(User.non_deleted.find_by(id: user_id)).to be_nil
+      # Default scope excludes deleted user
+      expect(User.find_by(id: user_id)).to be_nil
 
       # Deleted scope should find deleted user
       expect(User.deleted.find_by(id: user_id)).to be_present

@@ -7,8 +7,11 @@ class AreaVisitsCalculatingJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform(user_id)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = User.find_by(id: user_id)
+    unless user
+      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping"
+      return
+    end
 
     with_user_timezone(user) do
       areas = user.areas

@@ -4,8 +4,11 @@ class Users::Digests::EmailSendingJob < ApplicationJob
   queue_as :mailers
 
   def perform(user_id, year)
-    user = find_non_deleted_user(user_id)
-    return unless user
+    user = User.find_by(id: user_id)
+    unless user
+      Rails.logger.info "#{self.class.name}: User #{user_id} not found, skipping"
+      return
+    end
 
     digest = user.digests.yearly.find_by(year: year)
 
