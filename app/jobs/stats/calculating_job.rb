@@ -12,7 +12,8 @@ class Stats::CalculatingJob < ApplicationJob
   private
 
   def create_stats_update_failed_notification(user_id, error)
-    user = User.find(user_id)
+    user = find_non_deleted_user(user_id)
+    return unless user
 
     Notifications::Create.new(
       user:,

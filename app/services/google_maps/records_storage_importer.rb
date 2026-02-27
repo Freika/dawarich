@@ -5,7 +5,7 @@
 
 class GoogleMaps::RecordsStorageImporter
   include Imports::FileLoader
-  
+
   BATCH_SIZE = 1000
 
   def initialize(import, user_id, file_path = nil)

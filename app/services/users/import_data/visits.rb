@@ -95,7 +95,7 @@ class Users::ImportData::Visits
 
     # Try coordinate-only match with close proximity
     place = Place.where(
-      "latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?",
+      'latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?',
       latitude - 0.0001, latitude + 0.0001,
       longitude - 0.0001, longitude + 0.0001
     ).first

@@ -177,8 +177,6 @@ class Imports::SourceDetector
       rescue Oj::ParseError, JSON::ParserError
         nil
       end
-    else
-      nil
     end
   end
 

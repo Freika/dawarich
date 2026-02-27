@@ -1,15 +1,19 @@
-import { test, expect } from '@playwright/test'
-import { closeOnboardingModal } from '../../helpers/navigation.js'
-import { navigateToMapsV2, waitForMapLibre, waitForLoadingComplete } from '../helpers/setup.js'
-import { API_KEYS, TEST_USERS, TEST_LOCATIONS } from '../helpers/constants.js'
+import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "../../helpers/navigation.js"
 import {
-  sendOwnTracksPoint,
   enableLiveMode,
+  sendOwnTracksPoint,
   waitForActionCableConnection,
-  waitForFamilyMemberOnMap
-} from '../helpers/api.js'
+  waitForFamilyMemberOnMap,
+} from "../helpers/api.js"
+import { API_KEYS, TEST_LOCATIONS, TEST_USERS } from "../helpers/constants.js"
+import {
+  navigateToMapsV2,
+  waitForLoadingComplete,
+  waitForMapLibre,
+} from "../helpers/setup.js"
 
-test.describe('Realtime Family Tracking', () => {
+test.describe("Realtime Family Tracking", () => {
   test.beforeEach(async ({ page }) => {
     await navigateToMapsV2(page)
     await closeOnboardingModal(page)
@@ -17,28 +21,36 @@ test.describe('Realtime Family Tracking', () => {
     await waitForLoadingComplete(page)
   })
 
-  test.describe('Family Layer', () => {
-    test('family layer controller is initialized', async ({ page }) => {
+  test.describe("Family Layer", () => {
+    test("family layer controller is initialized", async ({ page }) => {
       // Verify the realtime controller exists and can handle family data
       const hasRealtimeController = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
         return controller !== undefined
       })
 
       expect(hasRealtimeController).toBe(true)
     })
 
-    test('family member location appears on map when point is created', async ({ page, request }) => {
+    test("family member location appears on map when point is created", async ({
+      page,
+      request,
+    }) => {
       // Enable live mode to setup channels
       await enableLiveMode(page)
       await waitForActionCableConnection(page)
       await page.waitForTimeout(1000)
 
       // Send a point as family member
-      const testLat = TEST_LOCATIONS.BERLIN_SOUTH.lat + (Math.random() * 0.001)
-      const testLon = TEST_LOCATIONS.BERLIN_SOUTH.lon + (Math.random() * 0.001)
+      const testLat = TEST_LOCATIONS.BERLIN_SOUTH.lat + Math.random() * 0.001
+      const testLon = TEST_LOCATIONS.BERLIN_SOUTH.lon + Math.random() * 0.001
       const timestamp = Math.floor(Date.now() / 1000)
 
       const response = await sendOwnTracksPoint(
@@ -46,7 +58,7 @@ test.describe('Realtime Family Tracking', () => {
         API_KEYS.FAMILY_MEMBER_1,
         testLat,
         testLon,
-        timestamp
+        timestamp,
       )
 
       // API should always work with valid API key
@@ -59,19 +71,23 @@ test.describe('Realtime Family Tracking', () => {
       const memberAppeared = await waitForFamilyMemberOnMap(
         page,
         TEST_USERS.FAMILY_1.email,
-        5000
+        5000,
       )
 
       if (memberAppeared) {
-        console.log('[Test] Family member location displayed successfully')
+        console.log("[Test] Family member location displayed successfully")
       } else {
-        console.log('[Test] Family member API call successful, display depends on feature config')
+        console.log(
+          "[Test] Family member API call successful, display depends on feature config",
+        )
       }
     })
   })
 
-  test.describe('ActionCable Connection', () => {
-    test('establishes ActionCable connection for family tracking', async ({ page }) => {
+  test.describe("ActionCable Connection", () => {
+    test("establishes ActionCable connection for family tracking", async ({
+      page,
+    }) => {
       // Enable live mode to setup channels
       await enableLiveMode(page)
 
@@ -81,23 +97,30 @@ test.describe('Realtime Family Tracking', () => {
 
       // Verify channels object exists
       const channelsExist = await page.evaluate(() => {
-        const element = document.querySelector('[data-controller*="maps--maplibre-realtime"]')
+        const element = document.querySelector(
+          '[data-controller*="maps--maplibre-realtime"]',
+        )
         const app = window.Stimulus || window.Application
-        const controller = app?.getControllerForElementAndIdentifier(element, 'maps--maplibre-realtime')
+        const controller = app?.getControllerForElementAndIdentifier(
+          element,
+          "maps--maplibre-realtime",
+        )
         return controller?.channels !== undefined
       })
 
       expect(channelsExist).toBe(true)
     })
 
-    test('can send location points for multiple family members', async ({ request }) => {
+    test("can send location points for multiple family members", async ({
+      request,
+    }) => {
       const timestamp = Math.floor(Date.now() / 1000)
 
       // Send points for all family members
       const members = [
-        { apiKey: API_KEYS.FAMILY_MEMBER_1, lat: 52.520, lon: 13.400 },
+        { apiKey: API_KEYS.FAMILY_MEMBER_1, lat: 52.52, lon: 13.4 },
         { apiKey: API_KEYS.FAMILY_MEMBER_2, lat: 52.525, lon: 13.405 },
-        { apiKey: API_KEYS.FAMILY_MEMBER_3, lat: 52.530, lon: 13.410 }
+        { apiKey: API_KEYS.FAMILY_MEMBER_3, lat: 52.53, lon: 13.41 },
       ]
 
       for (const member of members) {
@@ -106,7 +129,7 @@ test.describe('Realtime Family Tracking', () => {
           member.apiKey,
           member.lat,
           member.lon,
-          timestamp
+          timestamp,
         )
 
         // All family members should have valid API keys

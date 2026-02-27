@@ -4,7 +4,7 @@
 export class FilterManager {
   constructor(dataLoader) {
     this.dataLoader = dataLoader
-    this.currentVisitFilter = 'all'
+    this.currentVisitFilter = "all"
     this.allVisits = []
   }
 
@@ -21,14 +21,16 @@ export class FilterManager {
   filterAndUpdateVisits(searchTerm, statusFilter, visitsLayer) {
     if (!this.allVisits || !visitsLayer) return
 
-    const filtered = this.allVisits.filter(visit => {
+    const filtered = this.allVisits.filter((visit) => {
       // Apply search
-      const matchesSearch = !searchTerm ||
+      const matchesSearch =
+        !searchTerm ||
         visit.name?.toLowerCase().includes(searchTerm) ||
         visit.place?.name?.toLowerCase().includes(searchTerm)
 
       // Apply status filter
-      const matchesStatus = statusFilter === 'all' || visit.status === statusFilter
+      const matchesStatus =
+        statusFilter === "all" || visit.status === statusFilter
 
       return matchesSearch && matchesStatus
     })

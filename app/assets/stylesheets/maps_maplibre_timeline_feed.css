@@ -1,0 +1,245 @@
+/* Timeline Feed — Vertical timeline with rail, nodes, and connectors */
+
+/* Loading state: Turbo adds [busy] while fetching a frame's src */
+#timeline-feed-frame[busy] .timeline-feed-placeholder {
+  display: none;
+}
+
+#timeline-feed-frame[busy]::after {
+  content: "";
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 2rem auto;
+  border: 2px solid oklch(var(--bc) / 0.15);
+  border-top-color: oklch(var(--p));
+  border-radius: 50%;
+  animation: timeline-spin 0.6s linear infinite;
+}
+
+@keyframes timeline-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Tighter padding for the timeline tab (panel-body has 24px by default) */
+.tab-content[data-tab-content="timeline-feed"] {
+  margin: -24px;
+  padding: 16px;
+}
+
+/* --- Rail: the vertical line running through all entries --- */
+.timeline-rail {
+  position: relative;
+  padding-left: 1.25rem; /* space for the rail line + nodes */
+}
+
+/* --- Day header --- */
+.timeline-day-accordion .collapse-title {
+  padding-right: 2rem;
+}
+
+.timeline-day-accordion .collapse-content {
+  padding-bottom: 0.75rem;
+}
+
+/* --- Summary: stat badges + activity bar --- */
+.timeline-summary-stats {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.timeline-summary-bar {
+  height: 0.375rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+  background: oklch(var(--bc) / 0.08);
+}
+
+.timeline-summary-bar-moving {
+  background: oklch(var(--p));
+  transition: width 0.3s ease;
+}
+
+.timeline-summary-bar-stationary {
+  background: oklch(var(--bc) / 0.15);
+  transition: width 0.3s ease;
+}
+
+/* --- Visit node + card --- */
+.timeline-visit-wrapper {
+  position: relative;
+  padding-bottom: 0.25rem;
+}
+
+/* Timestamp above the node */
+.timeline-timestamp {
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: oklch(var(--bc) / 0.45);
+  padding-bottom: 0.25rem;
+}
+
+/* Container for node dot + horizontal rule */
+.timeline-node-line {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.375rem;
+  margin-left: -1.25rem; /* extend back into the rail padding */
+  padding-left: 0; /* node sits at rail edge */
+}
+
+/* The node dot */
+.timeline-node {
+  flex-shrink: 0;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: oklch(var(--p));
+  border: 2px solid oklch(var(--b1));
+  box-shadow: 0 0 0 2px oklch(var(--p) / 0.3);
+  z-index: 1;
+}
+
+/* Horizontal rule extending from node */
+.timeline-node-rule {
+  flex: 1;
+  height: 2px;
+  background: oklch(var(--p) / 0.25);
+  margin-left: 0.25rem;
+}
+
+/* Solid vertical line from visit downward */
+.timeline-visit-wrapper::before {
+  content: "";
+  position: absolute;
+  left: calc(-1.25rem + 0.375rem); /* rail padding + center of 0.75rem node */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: oklch(var(--p) / 0.25);
+}
+
+/* Visit card */
+.timeline-visit-card {
+  background: oklch(var(--b1));
+  border: 1px solid oklch(var(--bc) / 0.1);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  box-shadow: 0 1px 2px oklch(var(--bc) / 0.04);
+  overflow: hidden;
+  min-width: 0;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* Hover feedback on visit cards */
+.timeline-visit-wrapper:hover .timeline-visit-card {
+  border-color: oklch(var(--p) / 0.35);
+  box-shadow: 0 1px 4px oklch(var(--p) / 0.1);
+}
+
+/* --- Journey connector (dashed line between visits) --- */
+.timeline-journey-connector {
+  position: relative;
+  padding: 0.375rem 0;
+  padding-left: 0.25rem;
+}
+
+/* Dashed vertical line for journey */
+.timeline-journey-connector::before {
+  content: "";
+  position: absolute;
+  left: calc(-1.25rem + 0.375rem); /* same alignment as visit rail */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    oklch(var(--s) / 0.35) 0,
+    oklch(var(--s) / 0.35) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.timeline-journey-content {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.55);
+  flex-wrap: wrap;
+}
+
+.timeline-journey-content .journey-mode {
+  font-weight: 500;
+  color: oklch(var(--bc) / 0.7);
+}
+
+/* Hover feedback on journey connectors */
+.timeline-journey-connector:hover .timeline-journey-content {
+  color: oklch(var(--bc) / 0.75);
+}
+
+/* Track info panel sits inside the connector area */
+.timeline-journey-connector .track-info-panel {
+  margin-top: 0.375rem;
+}
+
+/* Chevron rotation for expanded track info */
+.timeline-journey-connector .track-info-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+/* --- Empty state --- */
+.timeline-empty {
+  color: oklch(var(--bc) / 0.5);
+  font-size: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+/* --- First and last entry cleanup --- */
+.timeline-rail > .timeline-visit-wrapper:first-child::before {
+  top: 1.25rem; /* start the rail at the node, not above the timestamp */
+}
+
+.timeline-rail > :last-child.timeline-visit-wrapper::before,
+.timeline-rail > :last-child.timeline-journey-connector::before {
+  display: none; /* no trailing line after the last entry */
+}
+
+/* --- Responsive padding overrides (must match panel-body padding per breakpoint) --- */
+@media (max-width: 1024px) {
+  .tab-content[data-tab-content="timeline-feed"] {
+    margin: -20px;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tab-content[data-tab-content="timeline-feed"] {
+    margin: -16px -20px;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tab-content[data-tab-content="timeline-feed"] {
+    margin: -16px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 375px) {
+  .tab-content[data-tab-content="timeline-feed"] {
+    margin: -12px;
+    padding: 8px;
+  }
+}

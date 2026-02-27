@@ -9,7 +9,9 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   queue_as :tracks
 
   def perform(user_id, session_id, chunk_data)
-    @user = User.find(user_id)
+    @user = find_non_deleted_user(user_id)
+    return unless @user
+
     @session_manager = Tracks::SessionManager.new(user_id, session_id)
     @chunk_data = chunk_data
 
@@ -93,8 +95,10 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
       distance = Point.calculate_distance_for_array_geocoder(points, :km)
 
       # Additional validation for the distance result
-      if !distance.finite? || distance < 0
-        Rails.logger.error "Invalid distance calculated (#{distance}) for #{points.size} points in chunk #{chunk_data[:chunk_id]}"
+      if !distance.finite? || distance.negative?
+        Rails.logger.error(
+          "Invalid distance calculated (#{distance}) for #{points.size} points in chunk #{chunk_data[:chunk_id]}"
+        )
         Rails.logger.debug "Point coordinates: #{points.map { |p| [p.latitude, p.longitude] }.inspect}"
         return nil
       end
@@ -108,14 +112,14 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
       end
 
       track
-    rescue StandardError => e
+    rescue StandardError
       nil
     end
   end
 
   def update_session_progress(tracks_created)
     session_manager.increment_completed_chunks
-    session_manager.increment_tracks_created(tracks_created) if tracks_created > 0
+    session_manager.increment_tracks_created(tracks_created) if tracks_created.positive?
   end
 
   def mark_session_failed(error_message)

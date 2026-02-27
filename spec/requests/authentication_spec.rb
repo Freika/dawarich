@@ -126,6 +126,10 @@ RSpec.describe 'Authentication', type: :request do
     end
 
     it 'generates JWT token with correct payload for iOS authentication' do
+      secret_key = 'test-jwt-secret-key'
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AUTH_JWT_SECRET_KEY').and_return(secret_key)
+
       # Test JWT token generation directly using the same logic as after_sign_in_path_for
       payload = { api_key: user.api_key, exp: 5.minutes.from_now.to_i }
 
@@ -157,6 +161,66 @@ RSpec.describe 'Authentication', type: :request do
       # Should redirect to default path (not iOS success)
       expect(response).not_to redirect_to(%r{auth/ios/success})
       expect(response.location).not_to include('auth/ios/success')
+    end
+  end
+
+  describe 'Deleted User Authentication' do
+    context 'when user is soft-deleted' do
+      before do
+        user.mark_as_deleted!
+      end
+
+      it 'prevents sign in for deleted users' do
+        post user_session_path, params: {
+          user: { email: user.email, password: 'password123' }
+        }
+
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to include('deleted')
+      end
+
+      it 'signs out already signed-in deleted users' do
+        # Sign in first (before deletion)
+        user.update!(deleted_at: nil)
+        sign_in user
+
+        # Mark as deleted
+        user.mark_as_deleted!
+
+        # Try to access a protected page — Devise's activatable hook signs out and redirects to sign in
+        get map_path
+
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to eq('Your account has been deleted.')
+      end
+
+      it 'prevents API access for deleted users' do
+        get api_v1_points_url(api_key: user.api_key)
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when user is hard-deleted' do
+      it 'prevents sign in for non-existent users' do
+        user_email = user.email
+        user.delete
+
+        post user_session_path, params: {
+          user: { email: user_email, password: 'password123' }
+        }
+
+        expect(response).not_to be_redirect
+      end
+
+      it 'prevents API access for hard-deleted users' do
+        api_key = user.api_key
+        user.delete
+
+        get api_v1_points_url(api_key: api_key)
+
+        expect(response).to have_http_status(:unauthorized)
+      end
     end
   end
 
@@ -205,10 +269,10 @@ RSpec.describe 'Authentication', type: :request do
     it 'redirects to iOS success when invitation is expired' do
       # Create an expired invitation
       expired_invitation = create(:family_invitation,
-                                   family: family,
-                                   invited_by: user,
-                                   email: invitee.email,
-                                   expires_at: 1.day.ago)
+                                  family: family,
+                                  invited_by: user,
+                                  email: invitee.email,
+                                  expires_at: 1.day.ago)
 
       # Sign in with iOS header and expired invitation token
       post user_session_path, params: {

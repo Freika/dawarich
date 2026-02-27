@@ -66,19 +66,24 @@ RSpec.describe Users::Digests::EmailSendingJob, type: :job do
     end
 
     context 'when user does not exist' do
-      before { user.destroy }
-
       it 'does not raise error' do
         expect { described_class.perform_now(999_999, year) }.not_to raise_error
       end
 
-      it 'reports the exception' do
-        expect(ExceptionReporter).to receive(:call).with(
-          'Users::Digests::EmailSendingJob',
-          anything
-        )
-
+      it 'does not send the email' do
         described_class.perform_now(999_999, year)
+
+        expect(Users::DigestsMailer).not_to have_received(:with)
+      end
+    end
+
+    context 'when user is soft-deleted' do
+      before { user.mark_as_deleted! }
+
+      it 'does not send the email' do
+        described_class.perform_now(user.id, year)
+
+        expect(Users::DigestsMailer).not_to have_received(:with)
       end
     end
   end

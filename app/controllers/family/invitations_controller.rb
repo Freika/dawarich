@@ -16,13 +16,11 @@ class Family::InvitationsController < ApplicationController
     token = params[:token] || params[:id]
     @invitation = Family::Invitation.find_by!(token: token)
 
-    if @invitation.expired?
-      redirect_to root_path, alert: 'This invitation has expired.' and return
-    end
+    redirect_to root_path, alert: 'This invitation has expired.' and return if @invitation.expired?
 
-    unless @invitation.pending?
-      redirect_to root_path, alert: 'This invitation is no longer valid.' and return
-    end
+    return if @invitation.pending?
+
+    redirect_to root_path, alert: 'This invitation is no longer valid.' and return
   end
 
   def create

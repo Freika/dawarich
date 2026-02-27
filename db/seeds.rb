@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 if User.none?
-  puts 'Creating user...'
+  Rails.logger.debug 'Creating user...'
 
   email = 'demo@dawarich.app'
 
@@ -14,11 +14,11 @@ if User.none?
     active_until: 100.years.from_now
   )
 
-  puts "User created: '#{email}' / password: 'password'"
+  Rails.logger.debug "User created: '#{email}' / password: 'password'"
 end
 
 if Country.none?
-  puts 'Creating countries...'
+  Rails.logger.debug 'Creating countries...'
 
   countries_json = Oj.load(File.read(Rails.root.join('lib/assets/countries.geojson')))
 
@@ -26,8 +26,8 @@ if Country.none?
   countries_multi_polygon = RGeo::GeoJSON.decode(countries_json.to_json, geo_factory: factory)
 
   ActiveRecord::Base.transaction do
-    countries_multi_polygon.each do |country, index|
-      p "Creating #{country.properties['name']}..."
+    countries_multi_polygon.each_key do |country|
+      Rails.logger.debug "Creating #{country.properties['name']}..."
 
       Country.create!(
         name: country.properties['name'],
@@ -40,7 +40,7 @@ if Country.none?
 end
 
 if Tag.none?
-  puts 'Creating default tags...'
+  Rails.logger.debug 'Creating default tags...'
 
   default_tags = [
     { name: 'Home', color: '#FF5733', icon: '🏡' },

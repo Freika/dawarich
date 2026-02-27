@@ -13,11 +13,14 @@ export class RouteSegmenter {
    */
   static haversineDistance(lat1, lon1, lat2, lon2) {
     const R = 6371 // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180
-    const dLon = (lon2 - lon1) * Math.PI / 180
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     return R * c
   }
@@ -156,9 +159,11 @@ export class RouteSegmenter {
   static calculateSegmentDistance(segment) {
     let totalDistance = 0
     for (let i = 0; i < segment.length - 1; i++) {
-      totalDistance += this.haversineDistance(
-        segment[i].latitude, segment[i].longitude,
-        segment[i + 1].latitude, segment[i + 1].longitude
+      totalDistance += RouteSegmenter.haversineDistance(
+        segment[i].latitude,
+        segment[i].longitude,
+        segment[i + 1].latitude,
+        segment[i + 1].longitude,
       )
     }
     return totalDistance
@@ -183,9 +188,11 @@ export class RouteSegmenter {
       const curr = points[i]
 
       // Calculate distance between consecutive points
-      const distance = this.haversineDistance(
-        prev.latitude, prev.longitude,
-        curr.latitude, curr.longitude
+      const distance = RouteSegmenter.haversineDistance(
+        prev.latitude,
+        prev.longitude,
+        curr.latitude,
+        curr.longitude,
       )
 
       // Calculate time difference in minutes
@@ -254,7 +261,7 @@ export class RouteSegmenter {
    */
   static pointsToRoutes(points, options = {}) {
     if (points.length < 2) {
-      return { type: 'FeatureCollection', features: [] }
+      return { type: "FeatureCollection", features: [] }
     }
 
     // Default thresholds (matching V1 defaults from polylines.js)
@@ -267,17 +274,19 @@ export class RouteSegmenter {
     const sorted = points.slice().sort((a, b) => a.timestamp - b.timestamp)
 
     // Split into segments based on distance and time gaps
-    const segments = this.splitIntoSegments(sorted, {
+    const segments = RouteSegmenter.splitIntoSegments(sorted, {
       distanceThresholdKm,
-      timeThresholdMinutes
+      timeThresholdMinutes,
     })
 
     // Convert segments to LineStrings
-    const features = segments.map(segment => this.segmentToFeature(segment))
+    const features = segments.map((segment) =>
+      RouteSegmenter.segmentToFeature(segment),
+    )
 
     return {
-      type: 'FeatureCollection',
-      features
+      type: "FeatureCollection",
+      features,
     }
   }
 }

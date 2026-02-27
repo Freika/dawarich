@@ -263,6 +263,84 @@ RSpec.describe Stat, type: :model do
       end
     end
 
+    describe '#user_timezone' do
+      subject { stat.send(:user_timezone) }
+
+      context 'when user has a timezone set' do
+        let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
+        let(:stat) { create(:stat, year: year, month: 1, user: user) }
+
+        it 'returns the user timezone' do
+          expect(subject).to eq('Europe/Berlin')
+        end
+      end
+
+      context 'when user timezone is blank' do
+        let(:user) { create(:user, settings: { 'timezone' => '' }) }
+        let(:stat) { create(:stat, year: year, month: 1, user: user) }
+
+        it 'falls back to Time.zone.name' do
+          expect(subject).to eq(Time.zone.name)
+        end
+      end
+
+      context 'when user timezone is not set' do
+        let(:user) { create(:user, settings: {}) }
+        let(:stat) { create(:stat, year: year, month: 1, user: user) }
+
+        it 'returns the default UTC timezone' do
+          expect(subject).to eq('UTC')
+        end
+      end
+    end
+
+    describe '#distance_by_day with timezone' do
+      let(:stat) { create(:stat, year: year, month: 1, user: user) }
+
+      # Two points at 23:00 and 23:30 UTC on Jan 1
+      # UTC: both day 1; Berlin (+1): both day 2
+      let!(:point1) do
+        create(:point, user: user, lonlat: 'POINT(13.4 52.5)',
+               timestamp: DateTime.new(year, 1, 1, 23, 0, 0).to_i)
+      end
+      let!(:point2) do
+        create(:point, user: user, lonlat: 'POINT(13.5 52.6)',
+               timestamp: DateTime.new(year, 1, 1, 23, 30, 0).to_i)
+      end
+
+      context 'with UTC user' do
+        let(:user) { create(:user, settings: { 'timezone' => 'Etc/UTC' }) }
+
+        it 'assigns distance to day 1' do
+          result = stat.distance_by_day
+          day1_distance = result.find { |day, _| day == 1 }&.last
+          expect(day1_distance).to be > 0
+        end
+
+        it 'assigns zero distance to day 2' do
+          result = stat.distance_by_day
+          day2_distance = result.find { |day, _| day == 2 }&.last
+          expect(day2_distance).to eq(0)
+        end
+      end
+
+      context 'with Europe/Berlin user' do
+        let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
+
+        it 'assigns zero distance to day 1 (both points shift to day 2 in Berlin)' do
+          result = stat.distance_by_day
+          day1_distance = result.find { |day, _| day == 1 }&.last
+          expect(day1_distance).to eq(0)
+        end
+
+        it 'assigns distance to day 2' do
+          result = stat.distance_by_day
+          day2_distance = result.find { |day, _| day == 2 }&.last
+          expect(day2_distance).to be > 0
+        end
+      end
+    end
+
     describe 'sharing settings' do
       let(:user) { create(:user) }
       let(:stat) { create(:stat, year: 2024, month: 6, user: user) }
@@ -329,9 +407,9 @@ RSpec.describe Stat, type: :model do
         context 'when expiration is present but expires_at is blank' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h'
-            })
+                        })
           end
 
           it 'returns true' do
@@ -342,10 +420,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is in the future' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.hour.from_now.iso8601
-            })
+                        })
           end
 
           it 'returns false' do
@@ -356,10 +434,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is in the past' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.hour.ago.iso8601
-            })
+                        })
           end
 
           it 'returns true' do
@@ -370,10 +448,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is 1 second in the future' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.second.from_now.iso8601
-            })
+                        })
           end
 
           it 'returns false (not yet expired)' do
@@ -384,10 +462,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is invalid date string' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 'invalid-date'
-            })
+                        })
           end
 
           it 'returns true (treats as expired)' do
@@ -398,10 +476,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is nil' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => nil
-            })
+                        })
           end
 
           it 'returns true' do
@@ -412,10 +490,10 @@ RSpec.describe Stat, type: :model do
         context 'when expires_at is empty string' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => ''
-            })
+                        })
           end
 
           it 'returns true' do
@@ -444,10 +522,10 @@ RSpec.describe Stat, type: :model do
         context 'when sharing is enabled but expired' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.hour.ago.iso8601
-            })
+                        })
           end
 
           it 'returns false' do
@@ -458,10 +536,10 @@ RSpec.describe Stat, type: :model do
         context 'when sharing is enabled and not expired' do
           before do
             stat.update(sharing_settings: {
-              'enabled' => true,
+                          'enabled' => true,
               'expiration' => '1h',
               'expires_at' => 1.hour.from_now.iso8601
-            })
+                        })
           end
 
           it 'returns true' do

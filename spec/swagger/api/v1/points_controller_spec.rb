@@ -6,6 +6,7 @@ describe 'Points API', type: :request do
   path '/api/v1/points' do
     get 'Retrieves all points' do
       tags 'Points'
+      description 'Returns paginated location points for the authenticated user, optionally filtered by date range'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
       parameter name: :start_at, in: :query, type: :string,
@@ -16,53 +17,61 @@ describe 'Points API', type: :request do
       parameter name: :per_page, in: :query, type: :integer, required: false, description: 'Number of points per page'
       parameter name: :order, in: :query, type: :string, required: false,
                 description: 'Order of points, valid values are `asc` or `desc`'
+
       response '200', 'points found' do
         schema type: :array,
                items: {
                  type: :object,
                  properties: {
-                   id:                { type: :integer },
-                   battery_status:    { type: :number },
-                   ping:              { type: :number },
-                   battery:           { type: :number },
-                   tracker_id:        { type: :string },
-                   topic:             { type: :string },
-                   altitude:          { type: :number },
-                   longitude:         { type: :number },
-                   velocity:          { type: :number },
-                   trigger:           { type: :string },
-                   bssid:             { type: :string },
-                   ssid:              { type: :string },
-                   connection:        { type: :string },
-                   vertical_accuracy: { type: :number },
-                   accuracy:          { type: :number },
-                   timestamp:         { type: :number },
-                   latitude:          { type: :number },
-                   mode:              { type: :number },
-                   inrids:            { type: :array, items: { type: :string } },
-                   in_regions:        { type: :array, items: { type: :string } },
-                   raw_data:          { type: :string },
-                   import_id:         { type: :string },
-                   city:              { type: :string },
-                   country:           { type: :string },
-                   created_at:        { type: :string },
-                   updated_at:        { type: :string },
-                   user_id:           { type: :integer },
-                   geodata:           { type: :string },
-                   visit_id:          { type: :string }
+                   id: { type: :integer, description: 'Unique point identifier' },
+                   battery_status: { type: :number, nullable: true, description: 'Battery status code' },
+                   ping: { type: :number, nullable: true, description: 'Ping value' },
+                   battery: { type: :number, nullable: true, description: 'Battery level' },
+                   tracker_id: { type: :string, nullable: true, description: 'Tracker identifier' },
+                   topic: { type: :string, nullable: true, description: 'MQTT topic' },
+                   altitude: { type: :number, nullable: true, description: 'Altitude in meters' },
+                   longitude: { type: :number, description: 'Longitude coordinate' },
+                   velocity: { type: :number, nullable: true, description: 'Velocity in km/h' },
+                   trigger: { type: :string, nullable: true, description: 'Trigger type' },
+                   bssid: { type: :string, nullable: true, description: 'WiFi access point MAC address' },
+                   ssid: { type: :string, nullable: true, description: 'WiFi network name' },
+                   connection: { type: :string, nullable: true, description: 'Connection type (w=wifi, m=mobile)' },
+                   vertical_accuracy: { type: :number, nullable: true, description: 'Vertical accuracy in meters' },
+                   accuracy: { type: :number, nullable: true, description: 'Horizontal accuracy in meters' },
+                   timestamp: { type: :number, description: 'Unix timestamp of the point' },
+                   latitude: { type: :number, description: 'Latitude coordinate' },
+                   mode: { type: :number, nullable: true, description: 'Tracking mode' },
+                   inrids: { type: :array, items: { type: :string }, nullable: true, description: 'Region IDs' },
+                   in_regions: { type: :array, items: { type: :string }, nullable: true, description: 'Region names' },
+                   raw_data: { type: :string, nullable: true, description: 'Raw data from the tracking device' },
+                   import_id: { type: :string, nullable: true, description: 'Import ID if point was imported' },
+                   city: { type: :string, nullable: true, description: 'Reverse-geocoded city name' },
+                   country: { type: :string, nullable: true, description: 'Reverse-geocoded country name' },
+                   created_at: { type: :string, format: 'date-time', description: 'Record creation timestamp' },
+                   updated_at: { type: :string, format: 'date-time', description: 'Record last update timestamp' },
+                   user_id: { type: :integer, description: 'Owning user ID' },
+                   geodata: { type: :string, nullable: true, description: 'Reverse-geocoded geodata' },
+                   visit_id: { type: :string, nullable: true, description: 'Associated visit ID' }
                  }
                }
 
-        let(:user)      { create(:user) }
-        let(:areas)     { create_list(:area, 3, user:) }
-        let(:api_key)   { user.api_key }
-        let(:start_at)  { Time.zone.now - 1.day }
-        let(:end_at)    { Time.zone.now }
-        let(:points) do
-          (1..10).map do |i|
-            create(:point, user:, timestamp: 2.hours.ago + i.minutes)
-          end
-        end
+        header 'X-Current-Page', schema: { type: :integer }, description: 'Current page number'
+        header 'X-Total-Pages', schema: { type: :integer }, description: 'Total number of pages'
+
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+        let(:start_at) { Time.zone.now - 1.day }
+        let(:end_at) { Time.zone.now }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:start_at) { 1.day.ago.iso8601 }
+        let(:end_at) { Time.zone.now.iso8601 }
 
         run_test!
       end
@@ -190,6 +199,8 @@ describe 'Points API', type: :request do
         let(:locations) { json }
         let(:api_key) { create(:user).api_key }
 
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
         run_test!
       end
 
@@ -206,17 +217,136 @@ describe 'Points API', type: :request do
   end
 
   path '/api/v1/points/{id}' do
+    parameter name: :id, in: :path, type: :string, required: true, description: 'Point ID'
+
+    patch 'Updates a point' do
+      tags 'Points'
+      description 'Updates the latitude and/or longitude of a point'
+      consumes 'application/json'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      parameter name: :point, in: :body, schema: {
+        type: :object,
+        properties: {
+          point: {
+            type: :object,
+            properties: {
+              latitude: { type: :number, description: 'Updated latitude coordinate' },
+              longitude: { type: :number, description: 'Updated longitude coordinate' }
+            }
+          }
+        }
+      }
+
+      response '200', 'point updated' do
+        let(:user) { create(:user) }
+        let(:existing_point) { create(:point, user:) }
+        let(:api_key) { user.api_key }
+        let(:id) { existing_point.id }
+        let(:point) { { point: { latitude: 52.52, longitude: 13.405 } } }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '422', 'invalid request' do
+        let(:user) { create(:user) }
+        let(:existing_point) { create(:point, user:) }
+        let(:api_key) { user.api_key }
+        let(:id) { existing_point.id }
+        let(:point) { { point: { latitude: nil } } }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:id) { create(:point).id }
+        let(:point) { { point: { latitude: 52.52 } } }
+
+        run_test!
+      end
+    end
+
     delete 'Deletes a point' do
       tags 'Points'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
-      parameter name: :id, in: :path, type: :string, required: true, description: 'Point ID'
 
       response '200', 'point deleted' do
-        let(:user)    { create(:user) }
-        let(:point)   { create(:point, user:) }
+        schema type: :object,
+               properties: {
+                 message: { type: :string, description: 'Confirmation message' }
+               }
+
+        let(:user) { create(:user) }
+        let(:point) { create(:point, user:) }
         let(:api_key) { user.api_key }
-        let(:id)      { point.id }
+        let(:id) { point.id }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:id) { create(:point).id }
+
+        run_test!
+      end
+    end
+  end
+
+  path '/api/v1/points/bulk_destroy' do
+    delete 'Bulk deletes points' do
+      tags 'Points'
+      description 'Deletes multiple points by their IDs'
+      consumes 'application/json'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      parameter name: :bulk_params, in: :body, schema: {
+        type: :object,
+        properties: {
+          point_ids: {
+            type: :array,
+            items: { type: :integer },
+            description: 'Array of point IDs to delete'
+          }
+        },
+        required: %w[point_ids]
+      }
+
+      response '200', 'points deleted' do
+        schema type: :object,
+               properties: {
+                 message: { type: :string, description: 'Confirmation message' },
+                 count: { type: :integer, description: 'Number of points deleted' }
+               }
+
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+        let(:point1) { create(:point, user:) }
+        let(:point2) { create(:point, user:) }
+        let(:bulk_params) { { point_ids: [point1.id, point2.id] } }
+
+        after { |example| SwaggerResponseExample.capture(example, response) }
+
+        run_test!
+      end
+
+      response '422', 'no points selected' do
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+        let(:bulk_params) { { point_ids: [] } }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:bulk_params) { { point_ids: [1] } }
 
         run_test!
       end

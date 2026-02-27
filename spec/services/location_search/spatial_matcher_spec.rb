@@ -12,30 +12,27 @@ RSpec.describe LocationSearch::SpatialMatcher do
   describe '#find_points_near' do
     let!(:near_point) do
       create(:point,
-        user: user,
-        lonlat: "POINT(13.4051 52.5201)",
-        timestamp: 1.hour.ago.to_i,
-        city: 'Berlin',
-        country: 'Germany',
-        altitude: 100,
-        accuracy: 5
-      )
+             user: user,
+             lonlat: 'POINT(13.4051 52.5201)',
+             timestamp: 1.hour.ago.to_i,
+             city: 'Berlin',
+             country: 'Germany',
+             altitude: 100,
+             accuracy: 5)
     end
 
     let!(:far_point) do
       create(:point,
-        user: user,
-        lonlat: "POINT(13.5000 52.6000)",
-        timestamp: 2.hours.ago.to_i
-      )
+             user: user,
+             lonlat: 'POINT(13.5000 52.6000)',
+             timestamp: 2.hours.ago.to_i)
     end
 
     let!(:other_user_point) do
       create(:point,
-        user: create(:user),
-        lonlat: "POINT(13.4051 52.5201)",
-        timestamp: 30.minutes.ago.to_i
-      )
+             user: create(:user),
+             lonlat: 'POINT(13.4051 52.5201)',
+             timestamp: 30.minutes.ago.to_i)
     end
 
     context 'with points within radius' do
@@ -91,15 +88,14 @@ RSpec.describe LocationSearch::SpatialMatcher do
       it 'orders results by timestamp descending (most recent first)' do
         # Create another nearby point with older timestamp
         older_point = create(:point,
-          user: user,
-          lonlat: "POINT(13.4049 52.5199)",
-          timestamp: 3.hours.ago.to_i
-        )
+                             user: user,
+                             lonlat: 'POINT(13.4049 52.5199)',
+                             timestamp: 3.hours.ago.to_i)
 
         results = service.find_points_near(user, latitude, longitude, radius_meters)
 
         expect(results.first[:id]).to eq(near_point.id) # More recent
-        expect(results.last[:id]).to eq(older_point.id)  # Older
+        expect(results.last[:id]).to eq(older_point.id) # Older
       end
     end
 
@@ -113,10 +109,9 @@ RSpec.describe LocationSearch::SpatialMatcher do
 
       let!(:old_point) do
         create(:point,
-          user: user,
-          lonlat: "POINT(13.4051 52.5201)",
-          timestamp: 1.week.ago.to_i
-        )
+               user: user,
+               lonlat: 'POINT(13.4051 52.5201)',
+               timestamp: 1.week.ago.to_i)
       end
 
       it 'filters points by date range' do
@@ -171,10 +166,9 @@ RSpec.describe LocationSearch::SpatialMatcher do
       it 'handles negative coordinates' do
         # Create point with negative coordinates
         negative_point = create(:point,
-          user: user,
-          lonlat: "POINT(151.2093 -33.8688)",
-          timestamp: 1.hour.ago.to_i
-        )
+                                user: user,
+                                lonlat: 'POINT(151.2093 -33.8688)',
+                                timestamp: 1.hour.ago.to_i)
 
         results = service.find_points_near(user, -33.8688, 151.2093, 1000)
 
@@ -185,10 +179,9 @@ RSpec.describe LocationSearch::SpatialMatcher do
       it 'handles coordinates near poles' do
         # Create point near north pole
         polar_point = create(:point,
-          user: user,
-          lonlat: "POINT(0.0 89.0)",
-          timestamp: 1.hour.ago.to_i
-        )
+                             user: user,
+                             lonlat: 'POINT(0.0 89.0)',
+                             timestamp: 1.hour.ago.to_i)
 
         results = service.find_points_near(user, 89.0, 0.0, 1000)
 
@@ -202,10 +195,9 @@ RSpec.describe LocationSearch::SpatialMatcher do
         # Create many points to test performance
         50.times do |i|
           create(:point,
-            user: user,
-            lonlat: "POINT(#{longitude + (i * 0.0001)} #{latitude + (i * 0.0001)})", # Spread points slightly
-            timestamp: i.hours.ago.to_i
-          )
+                 user: user,
+                 lonlat: "POINT(#{longitude + (i * 0.0001)} #{latitude + (i * 0.0001)})", # Spread points slightly
+                 timestamp: i.hours.ago.to_i)
         end
       end
 

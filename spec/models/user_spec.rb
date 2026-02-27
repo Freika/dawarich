@@ -340,8 +340,26 @@ RSpec.describe User, type: :model do
     end
 
     describe '#timezone' do
-      it 'returns the app timezone' do
-        expect(user.timezone).to eq(Time.zone.name)
+      context 'when timezone is not set in settings' do
+        it 'returns UTC as default' do
+          expect(user.timezone).to eq('UTC')
+        end
+      end
+
+      context 'when timezone is set in settings' do
+        let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
+
+        it 'returns the user timezone from settings' do
+          expect(user.timezone).to eq('Europe/Berlin')
+        end
+      end
+
+      context 'when timezone is set to America/New_York' do
+        let(:user) { create(:user, settings: { 'timezone' => 'America/New_York' }) }
+
+        it 'returns the configured timezone' do
+          expect(user.timezone).to eq('America/New_York')
+        end
       end
     end
   end

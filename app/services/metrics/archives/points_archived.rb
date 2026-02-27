@@ -3,7 +3,7 @@
 class Metrics::Archives::PointsArchived
   def initialize(count:, operation:)
     @count = count
-    @operation = operation  # 'added' or 'removed'
+    @operation = operation # 'added' or 'removed'
   end
 
   def call

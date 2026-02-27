@@ -1,7 +1,7 @@
 [
   {
-    "latitude": 59.0000,
-    "longitude": 30.0000,
+    "latitude": 59.0,
+    "longitude": 30.0,
     "lonlat": "SRID=4326;POINT(30.0000 59.0000)",
     "timestamp": 978296400
   },

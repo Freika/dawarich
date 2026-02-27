@@ -3,6 +3,7 @@
 class User < ApplicationRecord
   include UserFamily
   include Omniauthable
+  include SoftDeletable
 
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
@@ -132,9 +133,7 @@ class User < ApplicationRecord
     (points_count || 0).zero? && trial?
   end
 
-  def timezone
-    Time.zone.name
-  end
+  delegate :timezone, to: :safe_settings
 
   # Aggregate countries from all stats' toponyms
   # This is more accurate than raw point queries as it uses processed data

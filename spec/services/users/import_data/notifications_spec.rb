@@ -59,7 +59,7 @@ RSpec.describe Users::ImportData::Notifications, type: :service do
 
       it 'logs the import process' do
         expect(Rails.logger).to receive(:info).with("Importing 2 notifications for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Notifications import completed. Created: 2")
+        expect(Rails.logger).to receive(:info).with('Notifications import completed. Created: 2')
 
         service.call
       end
@@ -82,7 +82,7 @@ RSpec.describe Users::ImportData::Notifications, type: :service do
 
       it 'logs when skipping duplicates' do
         allow(Rails.logger).to receive(:debug) # Allow any debug logs
-        expect(Rails.logger).to receive(:debug).with("Notification already exists: Import completed")
+        expect(Rails.logger).to receive(:debug).with('Notification already exists: Import completed')
 
         service.call
       end
@@ -136,7 +136,7 @@ RSpec.describe Users::ImportData::Notifications, type: :service do
       let(:notifications_data) { nil }
 
       it 'does not create any notifications' do
-        expect { service.call }.not_to change { user.notifications.count }
+        expect { service.call }.not_to(change { user.notifications.count })
       end
 
       it 'returns 0' do
@@ -149,7 +149,7 @@ RSpec.describe Users::ImportData::Notifications, type: :service do
       let(:notifications_data) { 'invalid_data' }
 
       it 'does not create any notifications' do
-        expect { service.call }.not_to change { user.notifications.count }
+        expect { service.call }.not_to(change { user.notifications.count })
       end
 
       it 'returns 0' do
@@ -162,12 +162,12 @@ RSpec.describe Users::ImportData::Notifications, type: :service do
       let(:notifications_data) { [] }
 
       it 'does not create any notifications' do
-        expect { service.call }.not_to change { user.notifications.count }
+        expect { service.call }.not_to(change { user.notifications.count })
       end
 
       it 'logs the import process with 0 count' do
         expect(Rails.logger).to receive(:info).with("Importing 0 notifications for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with("Notifications import completed. Created: 0")
+        expect(Rails.logger).to receive(:info).with('Notifications import completed. Created: 0')
 
         service.call
       end

@@ -13,11 +13,11 @@ RSpec.describe Users::Digests::FirstTimeVisitsCalculator do
       let!(:current_year_stats) do
         [
           create(:stat, user: user, year: 2024, month: 1, toponyms: [
-            { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
-          ]),
+                   { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
+                 ]),
           create(:stat, user: user, year: 2024, month: 2, toponyms: [
-            { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
-          ])
+                   { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+                 ])
         ]
       end
 
@@ -33,18 +33,18 @@ RSpec.describe Users::Digests::FirstTimeVisitsCalculator do
     context 'when user has previous years data' do
       let!(:previous_year_stats) do
         create(:stat, user: user, year: 2023, month: 1, toponyms: [
-          { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
-        ])
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
+               ])
       end
 
       let!(:current_year_stats) do
         [
           create(:stat, user: user, year: 2024, month: 1, toponyms: [
-            { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }, { 'city' => 'Munich' }] }
-          ]),
+                   { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }, { 'city' => 'Munich' }] }
+                 ]),
           create(:stat, user: user, year: 2024, month: 2, toponyms: [
-            { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
-          ])
+                   { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+                 ])
         ]
       end
 
@@ -60,21 +60,21 @@ RSpec.describe Users::Digests::FirstTimeVisitsCalculator do
     context 'when user has multiple previous years' do
       let!(:stats_2022) do
         create(:stat, user: user, year: 2022, month: 1, toponyms: [
-          { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
-        ])
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
+               ])
       end
 
       let!(:stats_2023) do
         create(:stat, user: user, year: 2023, month: 1, toponyms: [
-          { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
-        ])
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+               ])
       end
 
       let!(:current_year_stats) do
         create(:stat, user: user, year: 2024, month: 1, toponyms: [
-          { 'country' => 'Spain', 'cities' => [{ 'city' => 'Madrid' }] },
-          { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
-        ])
+                 { 'country' => 'Spain', 'cities' => [{ 'city' => 'Madrid' }] },
+                 { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }
+               ])
       end
 
       it 'considers all previous years when determining first time visits' do

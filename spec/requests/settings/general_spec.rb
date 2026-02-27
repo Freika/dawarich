@@ -46,6 +46,34 @@ RSpec.describe 'settings/general', type: :request do
         expect(response).to redirect_to(settings_general_index_path)
         expect(user.reload.settings['news_emails_enabled']).to eq(true)
       end
+
+      it 'updates timezone setting with valid timezone' do
+        patch settings_general_path, params: { timezone: 'America/New_York' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['timezone']).to eq('America/New_York')
+      end
+
+      it 'persists timezone across page loads' do
+        patch settings_general_path, params: { timezone: 'Asia/Tokyo' }
+        user.reload
+
+        expect(user.timezone).to eq('Asia/Tokyo')
+      end
+
+      it 'rejects invalid timezone' do
+        patch settings_general_path, params: { timezone: 'Invalid/Timezone' }
+
+        expect(user.reload.settings['timezone']).to be_nil
+        # Should not save invalid timezone
+      end
+
+      it 'accepts UTC timezone' do
+        patch settings_general_path, params: { timezone: 'UTC' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings['timezone']).to eq('UTC')
+      end
     end
 
     describe 'POST /verify_supporter' do

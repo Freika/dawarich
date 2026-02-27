@@ -14,18 +14,20 @@
     <div class="flex justify-between my-5">
       <div>
         <div class='w-full'
-             data-api_key="<%= current_user.api_key %>"
-             data-controller="visit-modal-places"
-             data-id="<%= visit.id %>">
+             data-controller="visit-modal-places">
           <% if visit.suggested_places.any? %>
-            <%= select_tag :place_id,
-                options_for_select(
-                  visit.suggested_places.map { |place| [place.name, place.id] },
-                  (visit.place_id || visit.suggested_places.first.id)
-                ),
-                class: 'w-full select select-bordered',
-                data: { action: 'change->visit-modal-places#selectPlace' }
-            %>
+            <%= form_with(model: visit, url: visit_path(visit), method: :patch,
+                          data: { visit_modal_places_target: "form" }) do |f| %>
+              <%= f.select :place_id,
+                  options_for_select(
+                    visit.suggested_places.map { |place| [place.name, place.id] },
+                    (visit.place_id || visit.suggested_places.first&.id)
+                  ),
+                  {},
+                  class: 'w-full select select-bordered',
+                  data: { action: 'change->visit-modal-places#selectPlace' }
+              %>
+            <% end %>
           <% end %>
         </div>
       </div>

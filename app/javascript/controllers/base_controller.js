@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static values = {
-    selfHosted: Boolean
+    selfHosted: Boolean,
   }
 
   // Every controller that extends BaseController and uses initialize()
@@ -16,7 +16,7 @@ export default class extends Controller {
   initialize() {
     // Get the self-hosted value from the HTML root element
     if (!this.hasSelfHostedValue) {
-      const selfHosted = document.documentElement.dataset.selfHosted === 'true'
+      const selfHosted = document.documentElement.dataset.selfHosted === "true"
       this.selfHostedValue = selfHosted
     }
   }

@@ -9,6 +9,17 @@ class ApiController < ApplicationController
 
   private
 
+  def set_user_time_zone(&block)
+    if current_api_user
+      timezone = current_api_user.timezone
+      Time.use_zone(timezone, &block)
+    else
+      yield
+    end
+  rescue ArgumentError
+    yield
+  end
+
   def record_not_found
     render json: { error: 'Record not found' }, status: :not_found
   end
@@ -27,13 +38,23 @@ class ApiController < ApplicationController
   end
 
   def authenticate_active_api_user!
-    render json: { error: 'User is not active' }, status: :unauthorized unless current_api_user&.active_until&.future?
+    if current_api_user.nil?
+      render json: { error: 'User account is not active or has been deleted' }, status: :unauthorized
+
+      return false
+    end
+
+    if current_api_user.active_until&.past?
+      render json: { error: 'User subscription is not active' }, status: :unauthorized
+
+      return false
+    end
 
     true
   end
 
   def current_api_user
-    @current_api_user ||= User.find_by(api_key:)
+    @current_api_user ||= User.non_deleted.find_by(api_key:)
   end
 
   def api_key

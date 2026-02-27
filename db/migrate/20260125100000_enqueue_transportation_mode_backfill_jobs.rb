@@ -30,7 +30,7 @@ class EnqueueTransportationModeBackfillJobs < ActiveRecord::Migration[8.0]
       TransportationModes::BackfillJob.set(wait: delay).perform_later(user_id)
     end
 
-    Rails.logger.info "[Migration] Enqueued BackfillJob for all users"
+    Rails.logger.info '[Migration] Enqueued BackfillJob for all users'
   rescue StandardError => e
     Rails.logger.error "[Migration] Failed to enqueue BackfillJob: #{e.message}"
     # Don't fail the migration if Redis/Sidekiq is unavailable
@@ -58,7 +58,7 @@ class EnqueueTransportationModeBackfillJobs < ActiveRecord::Migration[8.0]
       TransportationModes::ImportBackfillJob.set(wait: delay).perform_later(import_id)
     end
 
-    Rails.logger.info "[Migration] Enqueued ImportBackfillJob for all imports"
+    Rails.logger.info '[Migration] Enqueued ImportBackfillJob for all imports'
   rescue StandardError => e
     Rails.logger.error "[Migration] Failed to enqueue ImportBackfillJob: #{e.message}"
     # Don't fail the migration if Redis/Sidekiq is unavailable

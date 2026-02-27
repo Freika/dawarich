@@ -69,11 +69,11 @@ RSpec.describe Stats::HexagonCalculator do
           # Stub to simulate too many hexagons on first call, then acceptable on second
           allow_any_instance_of(described_class).to receive(:calculate_h3_indexes).and_call_original
           call_count = 0
-          allow_any_instance_of(described_class).to receive(:calculate_h3_indexes) do |instance, points, resolution|
+          allow_any_instance_of(described_class).to receive(:calculate_h3_indexes) do |_instance, _points, _resolution|
             call_count += 1
             if call_count == 1
               # First call: return too many hexagons
-              Hash.new.tap do |hash|
+              {}.tap do |hash|
                 (described_class::MAX_HEXAGONS + 1).times do |i|
                   hash[i.to_s(16)] = [1, timestamp1, timestamp1]
                 end

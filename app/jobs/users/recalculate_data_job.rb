@@ -4,24 +4,30 @@
 # Optionally accepts a year to limit the recalculation scope.
 # If no year is provided, recalculates for all tracked years.
 class Users::RecalculateDataJob < ApplicationJob
+  include UserTimezone
+
   queue_as :default
 
   def perform(user_id, year: nil)
-    @user = User.find(user_id)
+    @user = find_non_deleted_user(user_id)
+    return unless @user
+
     @year = year&.to_i
 
-    years_to_process = determine_years
+    with_user_timezone(user) do
+      years_to_process = determine_years
 
-    if years_to_process.empty?
-      Rails.logger.info "No data to recalculate for user #{user_id}"
-      return
+      if years_to_process.empty?
+        Rails.logger.info "No data to recalculate for user #{user_id}"
+        return
+      end
+
+      recalculate_stats(years_to_process)
+      recalculate_tracks(years_to_process)
+      recalculate_digests(years_to_process)
+
+      create_success_notification(years_to_process)
     end
-
-    recalculate_stats(years_to_process)
-    recalculate_tracks(years_to_process)
-    recalculate_digests(years_to_process)
-
-    create_success_notification(years_to_process)
   rescue StandardError => e
     create_failure_notification(e)
     raise

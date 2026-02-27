@@ -3,20 +3,35 @@
 module Points
   module RawData
     class Restorer
+      BATCH_SIZE = 1000
+
       def restore_to_database(user_id, year, month)
         archives = Points::RawDataArchive.for_month(user_id, year, month)
 
         raise "No archives found for user #{user_id}, #{year}-#{month}" if archives.empty?
 
         Rails.logger.info("Restoring #{archives.count} archives to database...")
-        total_points = archives.sum(:point_count)
+
+        total_restored = 0
+        total_missing = 0
 
         begin
           Point.transaction do
-            archives.each { restore_archive_to_db(_1) }
+            archives.each do |archive|
+              result = restore_archive_to_db(archive)
+              total_restored += result[:restored]
+              total_missing += result[:missing]
+            end
           end
 
-          Rails.logger.info("✓ Restored #{total_points} points")
+          Rails.logger.info("✓ Restored #{total_restored} points")
+
+          if total_missing.positive?
+            Rails.logger.warn(
+              "⚠ #{total_missing} archived points no longer exist in database " \
+              "for user #{user_id}, #{year}-#{month}. Their raw_data cannot be restored."
+            )
+          end
 
           Metrics::Archives::Operation.new(
             operation: 'restore',
@@ -24,10 +39,10 @@ module Points
           ).call
 
           Metrics::Archives::PointsArchived.new(
-            count: total_points,
+            count: total_restored,
             operation: 'removed'
           ).call
-        rescue StandardError => e
+        rescue StandardError
           Metrics::Archives::Operation.new(
             operation: 'restore',
             status: 'failure'
@@ -74,16 +89,52 @@ module Points
 
       def restore_archive_to_db(archive)
         decompressed = download_and_decompress(archive)
+        archived_data = parse_archived_data(decompressed)
 
-        decompressed.each_line do |line|
+        total_restored = 0
+        total_missing = 0
+
+        archived_data.each_slice(BATCH_SIZE) do |batch|
+          result = restore_batch(batch)
+          total_restored += result[:restored]
+          total_missing += result[:missing]
+        end
+
+        { restored: total_restored, missing: total_missing }
+      end
+
+      def parse_archived_data(decompressed)
+        decompressed.each_line.map do |line|
           data = JSON.parse(line)
+          [data['id'], data['raw_data']]
+        end
+      end
 
-          Point.where(id: data['id']).update_all(
-            raw_data: data['raw_data'],
-            raw_data_archived: false,
-            raw_data_archive_id: nil
+      def restore_batch(batch)
+        point_ids = batch.map(&:first)
+        existing_ids = Point.where(id: point_ids).pluck(:id).to_set
+
+        missing_ids = point_ids.reject { |id| existing_ids.include?(id) }
+        if missing_ids.any?
+          Rails.logger.warn(
+            "Points no longer in database (skipping restore): #{missing_ids.join(', ')}"
           )
         end
+
+        restorable = batch.select { |id, _| existing_ids.include?(id) }
+        batch_update_points(restorable) if restorable.any?
+
+        { restored: restorable.size, missing: missing_ids.size }
+      end
+
+      def batch_update_points(entries)
+        updates = entries.map do |id, raw_data|
+          { id: id, raw_data: raw_data, raw_data_archived: false, raw_data_archive_id: nil }
+        end
+
+        Point.upsert_all(updates, unique_by: :id,
+                          update_only: %i[raw_data raw_data_archived raw_data_archive_id])
+        # rubocop:enable Rails/SkipsModelValidations
       end
 
       def restore_archive_to_cache(archive, cache_key_prefix)
@@ -106,7 +157,9 @@ module Points
       end
 
       def download_and_decompress(archive)
-        compressed_content = archive.file.blob.download
+        raw_content = archive.file.blob.download
+
+        compressed_content = Encryption.decrypt_if_needed(raw_content, archive)
 
         io = StringIO.new(compressed_content)
         gz = Zlib::GzipReader.new(io)
@@ -115,7 +168,7 @@ module Points
 
         content
       rescue StandardError => e
-        Rails.logger.error("Failed to download/decompress archive #{archive.id}: #{e.message}")
+        Rails.logger.error("Failed to download/decrypt/decompress archive #{archive.id}: #{e.message}")
         raise
       end
     end

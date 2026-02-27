@@ -8,7 +8,9 @@ class Tracks::BoundaryResolverJob < ApplicationJob
   MAX_RETRIES = 5
 
   def perform(user_id, session_id, retry_count = 0)
-    @user = User.find(user_id)
+    @user = find_non_deleted_user(user_id)
+    return unless @user
+
     @session_manager = Tracks::SessionManager.new(user_id, session_id)
     @retry_count = retry_count
 
@@ -43,9 +45,9 @@ class Tracks::BoundaryResolverJob < ApplicationJob
     boundary_detector.resolve_cross_chunk_tracks
   end
 
-  def finalize_session(boundary_tracks_resolved)
+  def finalize_session(_boundary_tracks_resolved)
     session_data = session_manager.get_session_data
-    total_tracks = session_data['tracks_created'] + boundary_tracks_resolved
+    session_data['tracks_created']
 
     session_manager.mark_completed
   end

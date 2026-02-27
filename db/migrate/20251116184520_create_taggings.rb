@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateTaggings < ActiveRecord::Migration[8.0]
   def change
     create_table :taggings do |t|
@@ -7,6 +9,7 @@ class CreateTaggings < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :taggings, [:taggable_type, :taggable_id, :tag_id], unique: true, name: 'index_taggings_on_taggable_and_tag'
+    add_index :taggings, %i[taggable_type taggable_id tag_id], unique: true,
+name: 'index_taggings_on_taggable_and_tag'
   end
 end
