@@ -298,6 +298,15 @@ export default class extends Controller {
     )
 
     this.loadMapData()
+
+    // Load family members if enabled in settings
+    if (this.settings?.familyEnabled) {
+      this.loadFamilyMembers()
+
+      if (this.hasFamilyMembersListTarget) {
+        this.familyMembersListTarget.style.display = "block"
+      }
+    }
   }
 
   disconnect() {
