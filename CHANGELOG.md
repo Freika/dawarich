@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Point speed in Map V2 is now correctly calculated from m/s to km/h or mph based on user preference. #2308
+- Family members are now being loaded correctly on Map V2 when family layer is enabled. #2250
 
 ## [1.3.0] - 2026-02-25
 
