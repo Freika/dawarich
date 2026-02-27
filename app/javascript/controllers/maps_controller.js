@@ -2070,14 +2070,9 @@ export default class extends BaseController {
             layer.addTo(this.map)
             console.log("Enabled layer: Family Members (from ready event)")
 
-            // Refresh family locations
-            if (
-              window.familyMembersController &&
-              typeof window.familyMembersController.refreshFamilyLocations ===
-                "function"
-            ) {
-              window.familyMembersController.refreshFamilyLocations()
-            }
+            // No explicit refreshFamilyLocations() call needed here —
+            // layer.addTo() fires Leaflet's overlayadd event, which
+            // triggers refreshFamilyLocations() in the family controller.
 
             // Reset flag after a short delay to allow all events to complete
             setTimeout(() => {

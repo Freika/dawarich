@@ -74,7 +74,7 @@ export class EventHandlers {
         <div><span class="font-semibold">Time:</span> ${formatTimestamp(properties.timestamp, this.controller.timezoneValue)}</div>
         ${properties.battery ? `<div><span class="font-semibold">Battery:</span> ${properties.battery}%</div>` : ""}
         ${properties.altitude ? `<div><span class="font-semibold">Altitude:</span> ${Math.round(properties.altitude)}m</div>` : ""}
-        ${properties.velocity ? `<div><span class="font-semibold">Speed:</span> ${formatSpeed(properties.velocity, distanceUnit)}</div>` : ""}
+        ${properties.velocity ? `<div><span class="font-semibold">Speed:</span> ${formatSpeed(properties.velocity * 3.6, distanceUnit)}</div>` : ""}
       </div>
     `
   }

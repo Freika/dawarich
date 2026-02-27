@@ -172,6 +172,7 @@ export default class extends Controller {
     this.settingsController = new SettingsController(this)
     await this.settingsController.loadSettings()
     this.settings = this.settingsController.settings
+    this.settings.timezone = this.timezoneValue
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
@@ -297,7 +298,16 @@ export default class extends Controller {
       new Date(this.endDateValue),
     )
 
-    this.loadMapData()
+    this.loadMapData().then(() => {
+      if (this.settings?.familyEnabled) {
+        this.loadFamilyMembers()
+      }
+    })
+
+    // Show family members list immediately (doesn't depend on layer)
+    if (this.settings?.familyEnabled && this.hasFamilyMembersListTarget) {
+      this.familyMembersListTarget.style.display = "block"
+    }
   }
 
   disconnect() {
@@ -445,7 +455,7 @@ export default class extends Controller {
     // Append family count if family layer is enabled
     if (this.settings?.familyEnabled) {
       const familyCount = this._familyMemberCount || 0
-      parts.push(`${familyCount.toLocaleString()} family`)
+      parts.push(`${familyCount.toLocaleString()} family members`)
     }
 
     // Detect when a new data source appears and trigger a pop animation

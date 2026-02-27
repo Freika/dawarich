@@ -9,7 +9,8 @@ class Users::RecalculateDataJob < ApplicationJob
   queue_as :default
 
   def perform(user_id, year: nil)
-    @user = User.find(user_id)
+    @user = find_user_or_skip(user_id) || return
+
     @year = year&.to_i
 
     with_user_timezone(user) do

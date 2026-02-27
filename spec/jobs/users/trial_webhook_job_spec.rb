@@ -46,12 +46,20 @@ RSpec.describe Users::TrialWebhookJob, type: :job do
     end
 
     context 'when user is deleted' do
-      it 'raises ActiveRecord::RecordNotFound' do
-        user.destroy
+      before { user.mark_as_deleted! }
 
-        expect do
-          described_class.perform_now(user.id)
-        end.to raise_error(ActiveRecord::RecordNotFound)
+      it 'skips the webhook for soft-deleted users' do
+        expect(HTTParty).not_to receive(:post)
+
+        described_class.perform_now(user.id)
+      end
+    end
+
+    context 'when user does not exist' do
+      it 'does not raise error' do
+        expect(HTTParty).not_to receive(:post)
+
+        expect { described_class.perform_now(999_999) }.not_to raise_error
       end
     end
   end

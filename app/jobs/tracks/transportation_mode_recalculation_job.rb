@@ -6,8 +6,7 @@ module Tracks
     sidekiq_options retry: 1
 
     def perform(user_id)
-      @user = User.find_by(id: user_id)
-      return unless @user
+      @user = find_user_or_skip(user_id) || return
 
       @status = TransportationRecalculationStatus.new(user_id)
       reprocess_all_tracks

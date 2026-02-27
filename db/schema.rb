@@ -529,7 +529,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_22_215414) do
     t.string "utm_content"
     t.string "provider"
     t.string "uid"
+    t.datetime "deleted_at"
     t.index ["api_key"], name: "index_users_on_api_key"
+    t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true

@@ -59,11 +59,13 @@ export default class extends Controller {
     // Expose controller globally for ActionCable channel
     window.familyMembersController = this
 
-    // Add to layer control immediately (layer will be empty until data is fetched)
-    this.addToLayerControl()
-
-    // Listen for family data updates
+    // Register event listeners BEFORE adding to layer control
+    // so the overlayadd handler is ready when layer.addTo(map) fires
     this.setupEventListeners()
+
+    // Add to layer control (dispatches family:layer:ready,
+    // which may trigger layer.addTo() and overlayadd)
+    this.addToLayerControl()
   }
 
   createFamilyMarkers() {
