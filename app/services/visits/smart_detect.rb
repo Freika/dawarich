@@ -64,7 +64,7 @@ module Visits
                          .order(timestamp: :asc)
                          .where(timestamp: range_start..range_end)
 
-      return [] if batch_points.empty?
+      return [] unless batch_points.exists?
 
       potential_visits = Visits::Detector.new(
         batch_points,

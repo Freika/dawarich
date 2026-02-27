@@ -18,7 +18,7 @@ module Visits
       weighted_lon = 0.0
 
       point_array.each do |point|
-        accuracy = point.accuracy.presence || default_accuracy_meters
+        accuracy = point.accuracy || default_accuracy_meters
         weight = 1.0 / [accuracy, 1].max
 
         weighted_lat += point.lat * weight

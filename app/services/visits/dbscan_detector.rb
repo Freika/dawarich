@@ -22,7 +22,7 @@ module Visits
       return nil if raw_clusters.nil?
       return [] if raw_clusters.empty?
 
-      all_point_ids = raw_clusters.flat_map { |c| c[:point_ids] }
+      all_point_ids = raw_clusters.flat_map { |c| c[:point_ids] }.select(&:positive?)
       points_by_id = Point.where(id: all_point_ids).index_by(&:id)
 
       raw_clusters.filter_map do |cluster|
