@@ -25,7 +25,7 @@ export class RouteSegmenter {
   /**
    * Calculates the interpolated latitude for a given longitude on a Great Circle path.
    * Unlike linear interpolation, this accounts for the Earth's spherical shape.
-   * * @param {number} lat1 - Latitude of the first point.
+   * @param {number} lat1 - Latitude of the first point.
    * @param {number} lon1 - Longitude of the first point.
    * @param {number} lat2 - Latitude of the second point.
    * @param {number} lon2 - Longitude of the second point.
