@@ -37,6 +37,16 @@ class ApiController < ApplicationController
     true
   end
 
+  def require_pro_or_self_hosted_api!
+    return if current_api_user&.pro_or_self_hosted?
+
+    render json: {
+      error: 'pro_plan_required',
+      message: 'This feature requires a Pro plan.',
+      upgrade_url: 'https://dawarich.app/pricing'
+    }, status: :forbidden
+  end
+
   def authenticate_active_api_user!
     if current_api_user.nil?
       render json: { error: 'User account is not active or has been deleted' }, status: :unauthorized
