@@ -66,8 +66,9 @@ class ApplicationController < ActionController::Base
     end
   end
 
-  def require_pro_or_self_hosted!
-    return if current_user&.pro_or_self_hosted?
+  def require_pro!
+    return if DawarichSettings.self_hosted?
+    return if current_user&.pro?
 
     respond_to do |format|
       format.html do
