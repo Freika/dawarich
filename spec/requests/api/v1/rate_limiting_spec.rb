@@ -18,6 +18,7 @@ RSpec.describe 'API Rate Limiting', type: :request do
     context 'when user is on lite plan' do
       let!(:user) do
         u = create(:user)
+        # update_columns bypasses the activate callback that resets plan to :pro
         u.update_columns(plan: User.plans[:lite])
         u
       end
@@ -38,6 +39,7 @@ RSpec.describe 'API Rate Limiting', type: :request do
     context 'when user is on pro plan' do
       let!(:user) do
         u = create(:user)
+        # update_columns bypasses the activate callback that resets plan to :pro
         u.update_columns(plan: User.plans[:pro])
         u
       end
@@ -70,6 +72,7 @@ RSpec.describe 'API Rate Limiting', type: :request do
     context 'when lite user exceeds rate limit' do
       let!(:user) do
         u = create(:user)
+        # update_columns bypasses the activate callback that resets plan to :pro
         u.update_columns(plan: User.plans[:lite])
         u
       end
@@ -98,6 +101,7 @@ RSpec.describe 'API Rate Limiting', type: :request do
     context 'when pro user exceeds rate limit' do
       let!(:user) do
         u = create(:user)
+        # update_columns bypasses the activate callback that resets plan to :pro
         u.update_columns(plan: User.plans[:pro])
         u
       end
@@ -118,8 +122,9 @@ RSpec.describe 'API Rate Limiting', type: :request do
     context 'when on a self-hosted instance' do
       let!(:user) { create(:user) }
 
-      it 'is not rate limited' do
-        get api_v1_points_url(api_key: user.api_key)
+      it 'is not rate limited even after many requests' do
+        Rack::Attack.api_rate_limits = { 'lite' => 2, 'pro' => 2 }
+        5.times { get api_v1_points_url(api_key: user.api_key) }
 
         expect(response).to have_http_status(:ok)
       end

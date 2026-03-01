@@ -6,7 +6,7 @@
 
 Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
   url: ENV['REDIS_URL'],
-  db: ENV.fetch('RACK_ATTACK_REDIS_DB', 2)
+  db: ENV.fetch('RACK_ATTACK_REDIS_DB', 3) # dbs 0-2 are reserved for app caching, sidekiq and ws.
 )
 
 # Configurable per-plan limits. Override in tests via Rack::Attack.api_rate_limits=
@@ -40,11 +40,12 @@ end
 
 Rack::Attack.throttled_responder = lambda do |request|
   match_data = request.env['rack.attack.match_data'] || {}
-  now = Time.zone.now
+  now = Time.current
+  period = match_data[:period] || 3600
 
   headers = {
     'Content-Type' => 'application/json',
-    'Retry-After' => (match_data[:period] - (now.to_i % match_data[:period])).to_s
+    'Retry-After' => (period - (now.to_i % period)).to_s
   }
 
   body = {

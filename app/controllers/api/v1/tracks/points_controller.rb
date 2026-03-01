@@ -6,7 +6,7 @@ class Api::V1::Tracks::PointsController < ApiController
 
     # First try to get points directly associated with the track
     points = track.points.without_raw_data.includes(:country).order(timestamp: :asc)
-    points = points.where('timestamp >= ?', 12.months.ago.to_i) if current_api_user.lite?
+    points = points.where('timestamp >= ?', 12.months.ago.to_i) if !DawarichSettings.self_hosted? && current_api_user.lite?
 
     # If no points are associated, fall back to fetching by time range
     # This handles tracks created before point association was implemented

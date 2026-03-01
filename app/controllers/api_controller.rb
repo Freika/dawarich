@@ -39,8 +39,9 @@ class ApiController < ApplicationController
   end
 
   def require_pro_api!
+    return unless current_api_user # auth already handled by authenticate_api_key
     return if DawarichSettings.self_hosted?
-    return if current_api_user&.pro?
+    return if current_api_user.pro?
 
     render json: {
       error: 'pro_plan_required',
@@ -50,8 +51,9 @@ class ApiController < ApplicationController
   end
 
   def require_write_api!
+    return unless current_api_user # auth already handled by authenticate_api_key
     return if DawarichSettings.self_hosted?
-    return if current_api_user&.pro?
+    return if current_api_user.pro?
 
     render json: {
       error: 'write_api_restricted',
@@ -64,6 +66,8 @@ class ApiController < ApplicationController
   # Lite users see only the last 12 months; Pro users see everything.
   def scoped_points(user = current_api_user)
     points = user.points
+    return points if DawarichSettings.self_hosted?
+
     points = points.where('timestamp >= ?', 12.months.ago.to_i) if user.lite?
     points
   end

@@ -150,6 +150,7 @@ RSpec.describe '/api/v1/tracks/:track_id/points', type: :request do
     context 'when user is on lite plan' do
       let(:lite_user) do
         u = create(:user)
+        # update_columns bypasses the activate callback that resets plan to :pro
         u.update_columns(plan: User.plans[:lite])
         u
       end
