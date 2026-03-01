@@ -51,7 +51,8 @@ class Api::UserSerializer
   def subscription
     {
       status: user.status,
-      active_until: user.active_until
+      active_until: user.active_until,
+      plan: user.plan
     }
   end
 end

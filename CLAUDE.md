@@ -372,7 +372,8 @@ Even in these cases, wrap the integration in a Stimulus controller and connect i
 4. **Testing**: Include both unit and integration tests for location-based features
 5. **Performance**: Consider database indexes for geographic queries
 6. **Security**: Never log or expose user location data inappropriately
-7. **Public Sharing**: When implementing features that interact with stats, consider public sharing access patterns:
+7. **Migrations**: Put all migrations (schema and data) in `db/migrate/`, not `db/data/`. Data manipulation migrations use the same `ActiveRecord::Migration` class and should run in the standard migration sequence.
+8. **Public Sharing**: When implementing features that interact with stats, consider public sharing access patterns:
    - Use `public_accessible?` method to check if a stat can be publicly accessed
    - Support UUID-based access in API endpoints when appropriate
    - Respect expiration settings and disable sharing when expired
