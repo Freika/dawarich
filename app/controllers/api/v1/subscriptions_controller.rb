@@ -7,7 +7,11 @@ class Api::V1::SubscriptionsController < ApiController
     decoded_token = Subscription::DecodeJwtToken.new(params[:token]).call
 
     user = User.find(decoded_token[:user_id])
-    user.update!(status: decoded_token[:status], active_until: decoded_token[:active_until])
+    user.update!(
+      status: decoded_token[:status],
+      active_until: decoded_token[:active_until],
+      plan_name: decoded_token[:plan_name] || 'personal'
+    )
 
     render json: { message: 'Subscription updated successfully' }
   rescue JWT::DecodeError => e

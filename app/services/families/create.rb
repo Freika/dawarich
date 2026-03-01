@@ -63,22 +63,13 @@ module Families
     def validate_feature_access
       return true if can_create_family?
 
-      @error_message =
-        if DawarichSettings.self_hosted?
-          'Family feature is not available on this instance'
-        else
-          'Family feature requires an active subscription'
-        end
+      @error_message = 'Family feature requires a Family plan'
 
       false
     end
 
     def can_create_family?
-      return true if DawarichSettings.self_hosted?
-
-      # TODO: Add cloud plan validation here when needed
-      # For now, allow all users to create families
-      true
+      @user.family_feature_available?
     end
 
     def create_family

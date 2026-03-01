@@ -96,7 +96,7 @@ class Point < ApplicationRecord
   end
 
   def should_broadcast_to_family?
-    return false unless DawarichSettings.family_feature_enabled?
+    return false unless user.family_feature_available?
     return false unless user.in_family?
     return false unless user.family_sharing_enabled?
 

@@ -70,18 +70,16 @@ Rails.application.routes.draw do
   resources :trips
   resources :tags, except: [:show]
 
-  # Family management routes (only if feature is enabled)
-  if DawarichSettings.family_feature_enabled?
-    resource :family, only: %i[show new create edit update destroy] do
-      resources :invitations, except: %i[edit update], controller: 'family/invitations'
-      resources :members, only: %i[destroy], controller: 'family/memberships'
+  # Family management routes
+  resource :family, only: %i[show new create edit update destroy] do
+    resources :invitations, except: %i[edit update], controller: 'family/invitations'
+    resources :members, only: %i[destroy], controller: 'family/memberships'
 
-      patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
-    end
-
-    get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
-    post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
+    patch 'location_sharing', to: 'family/location_sharing#update', as: :location_sharing
   end
+
+  get 'invitations/:token', to: 'family/invitations#show', as: :public_invitation
+  post 'family/memberships', to: 'family/memberships#create', as: :accept_family_invitation
 
   resources :points, only: %i[index] do
     collection do

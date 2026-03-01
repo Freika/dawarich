@@ -9,7 +9,7 @@
         <li><%= link_to 'Trips'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
         <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
         <li><%= link_to 'Insights<sup>α</sup>'.html_safe, insights_url, class: "#{active_class?(insights_url)}" %></li>
-        <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
+        <% if user_signed_in? && current_user.family_feature_available? %>
           <li>
             <% if current_user.in_family? %>
               <div data-controller="family-navbar-indicator"
@@ -82,7 +82,7 @@
       <li><%= link_to 'Trips'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
       <li><%= link_to 'Stats', stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
       <li><%= link_to 'Insights<sup>α</sup>'.html_safe, insights_url, class: "mx-1 #{active_class?(insights_url)}" %></li>
-      <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
+      <% if user_signed_in? && current_user.family_feature_available? %>
         <li>
           <% if current_user.in_family? %>
             <div data-controller="family-navbar-indicator"

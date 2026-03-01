@@ -325,7 +325,7 @@
             <p class="text-sm text-base-content/60 ml-14">Show scratched countries</p>
           </div>
 
-          <% if DawarichSettings.family_feature_enabled? %>
+          <% if user_signed_in? && current_user.family_feature_available? %>
             <div class="divider"></div>
 
             <!-- Family Members Layer -->

@@ -7,11 +7,8 @@ class FamilyPolicy < ApplicationPolicy
 
   def create?
     return false if user.in_family?
-    return true if DawarichSettings.self_hosted?
 
-    # Add cloud subscription checks here when implemented
-    # For now, allow all users to create families
-    true
+    user.family_feature_available?
   end
 
   def update?

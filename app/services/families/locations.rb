@@ -20,7 +20,7 @@ class Families::Locations
   private
 
   def family_feature_enabled?
-    DawarichSettings.family_feature_enabled?
+    user.family_feature_available?
   end
 
   def family_members_with_sharing_enabled

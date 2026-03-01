@@ -67,9 +67,13 @@ class ApplicationController < ActionController::Base
   end
 
   def ensure_family_feature_enabled!
-    return if DawarichSettings.family_feature_enabled?
+    user = current_user || (respond_to?(:current_api_user, true) && current_api_user)
+    return if user&.family_feature_available?
 
-    render json: { error: 'Family feature is not enabled' }, status: :forbidden
+    respond_to do |format|
+      format.html { redirect_to root_path, alert: 'Family feature requires a Family plan.' }
+      format.json { render json: { error: 'Family plan required' }, status: :forbidden }
+    end
   end
 
   private
