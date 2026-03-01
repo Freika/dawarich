@@ -433,16 +433,16 @@ All Lite plan work must be developed in **separate feature branches** that merge
 
 **Branch structure:**
 ```
-feature/lite                    ← integration branch
-├── feature/lite/plan-enum      ← User model + plan enum + self-hosted bypass
-├── feature/lite/api-gating     ← Write API 403 + Read API scoping + rack-attack rate limiting
-├── feature/lite/map-layers     ← Frontend layer gating + lock UI + previews
-├── feature/lite/data-retention ← Application-level archival filter + archived data rendering
-├── feature/lite/archival-jobs  ← Sidekiq warning jobs (11mo, 11.5mo, 12mo banners/emails)
-├── feature/lite/insights       ← Limited vs full year-in-review + shareable cards
-├── feature/lite/upgrade-ui     ← Upgrade prompts at all trigger points
-├── feature/lite/billing        ← Paddle Lite plan + Manager JWT updates + plan selection UI
-└── feature/lite/inactive-state ← Lapsed subscription handling (read-only + export)
+feature/lite                     ← integration branch
+├── feature/lite-plan-enum       ← User model + plan enum + self-hosted bypass
+├── feature/lite-api-gating      ← Write API 403 + Read API scoping + rack-attack rate limiting
+├── feature/lite-map-layers      ← Frontend layer gating + lock UI + previews
+├── feature/lite-data-retention  ← Application-level archival filter + archived data rendering
+├── feature/lite-archival-jobs   ← Sidekiq warning jobs (11mo, 11.5mo, 12mo banners/emails)
+├── feature/lite-insights        ← Limited vs full year-in-review + shareable cards
+├── feature/lite-upgrade-ui      ← Upgrade prompts at all trigger points
+├── feature/lite-billing         ← Paddle Lite plan + Manager JWT updates + plan selection UI
+└── feature/lite-inactive-state  ← Lapsed subscription handling (read-only + export)
 ```
 
 Each branch should be independently deployable (behind a plan check that defaults to Pro for existing users). The integration branch is used to test all features together before merging to `dev`.
@@ -645,45 +645,49 @@ Implementation: Add an `authenticate_active_api_user!` check variant that allows
 Each item below maps to a separate feature branch merging into `feature/lite`.
 
 **Core infrastructure (must ship first):**
-- [ ] Add `plan` enum to User model in both Dawarich and Manager (migration) — `feature/lite/plan-enum`
-- [ ] Implement plan-aware feature checks (`pro?` / `lite?` / `self_hoster?` helpers) — `feature/lite/plan-enum`
-- [ ] Data migration: set existing active Cloud users to `pro`, self-hosted to `self_hoster` — `feature/lite/plan-enum`
+- [x] Add `plan` enum to User model in Dawarich (migration) — `feature/lite-plan-enum` ✔
+- [x] Implement plan-aware feature checks (`pro?` / `lite?` / `self_hoster?` / `pro_or_self_hosted?` helpers) — `feature/lite-plan-enum` ✔
+- [x] Data migration: set existing active Cloud users to `pro`, self-hosted to `self_hoster` — `feature/lite-plan-enum` ✔
+- [x] Server-side plan guards (`require_pro_or_self_hosted!` / `require_pro_or_self_hosted_api!`) — `feature/lite-plan-enum` ✔
+- [x] Update subscription callback to read `plan` from JWT payload — `feature/lite-plan-enum` ✔
+- [x] Expose `plan` in API user serializer and MapLibre frontend — `feature/lite-plan-enum` ✔
+- [ ] Add `plan` enum to Manager User model (migration) — `feature/lite-billing`
 
 **API gating:**
-- [ ] Add write API enforcement for Lite (403 on general write endpoints) — `feature/lite/api-gating`
-- [ ] Scope Read API to 12-month window for Lite users — `feature/lite/api-gating`
-- [ ] Implement API rate limiting per plan using `rack-attack` — `feature/lite/api-gating`
+- [ ] Add write API enforcement for Lite (403 on general write endpoints) — `feature/lite-api-gating`
+- [ ] Scope Read API to 12-month window for Lite users — `feature/lite-api-gating`
+- [ ] Implement API rate limiting per plan using `rack-attack` — `feature/lite-api-gating`
 
 **Data retention:**
-- [ ] Add data retention archival logic (application-level filter by `created_at`) — `feature/lite/data-retention`
-- [ ] Implement archived data visual treatment on map (semi-transparent + lock on tap) — `feature/lite/data-retention`
+- [ ] Add data retention archival logic (application-level filter by `created_at`) — `feature/lite-data-retention`
+- [ ] Implement archived data visual treatment on map (semi-transparent + lock on tap) — `feature/lite-data-retention`
 
 **Archival warnings:**
-- [ ] Add archival warning jobs (11-month notification, 11.5-month email, 12-month banner) — `feature/lite/archival-jobs`
+- [ ] Add archival warning jobs (11-month notification, 11.5-month email, 12-month banner) — `feature/lite-archival-jobs`
 
 **Map & visualization:**
-- [ ] Gate map layers in frontend (lock UI for heatmap, fog-of-war, globe, scratch map) — `feature/lite/map-layers`
-- [ ] Implement live preview on gated layer click (15-30s timer) — `feature/lite/map-layers`
+- [ ] Gate map layers in frontend (lock UI for heatmap, fog-of-war, globe, scratch map) — `feature/lite-map-layers`
+- [ ] Implement live preview on gated layer click (15-30s timer) — `feature/lite-map-layers`
 
 **Insights:**
-- [ ] Implement limited vs full year-in-review — `feature/lite/insights`
-- [ ] Add shareable year-in-review card generation (social media optimized) — `feature/lite/insights`
-- [ ] Add referral hook in shared cards — `feature/lite/insights`
+- [ ] Implement limited vs full year-in-review — `feature/lite-insights`
+- [ ] Add shareable year-in-review card generation (social media optimized) — `feature/lite-insights`
+- [ ] Add referral hook in shared cards — `feature/lite-insights`
 
 **Upgrade prompts:**
-- [ ] Add upgrade prompts at all trigger points (see Upgrade Trigger Map) — `feature/lite/upgrade-ui`
-- [ ] Gate Immich/PhotoPrism integration, public stats sharing — `feature/lite/upgrade-ui`
+- [ ] Add upgrade prompts at all trigger points (see Upgrade Trigger Map) — `feature/lite-upgrade-ui`
+- [ ] Gate Immich/PhotoPrism integration, public stats sharing — `feature/lite-upgrade-ui`
 
 **Billing:**
-- [ ] Set up Lite annual plan in Paddle — `feature/lite/billing`
-- [ ] Update Manager to include `plan` in JWT callback — `feature/lite/billing`
-- [ ] Update Dawarich to decode and store `plan` from JWT — `feature/lite/billing`
-- [ ] Add plan selection UI in Manager dashboard — `feature/lite/billing`
-- [ ] Handle upgrade/downgrade flows — `feature/lite/billing`
+- [ ] Set up Lite annual plan in Paddle — `feature/lite-billing`
+- [ ] Update Manager to include `plan` in JWT callback — `feature/lite-billing`
+- [ ] Update Dawarich to decode and store `plan` from JWT — `feature/lite-billing`
+- [ ] Add plan selection UI in Manager dashboard — `feature/lite-billing`
+- [ ] Handle upgrade/downgrade flows — `feature/lite-billing`
 
 **Inactive state:**
-- [ ] Implement lapsed subscription handling (read-only + export) — `feature/lite/inactive-state`
-- [ ] Block tracking ingestion for inactive users — `feature/lite/inactive-state`
+- [ ] Implement lapsed subscription handling (read-only + export) — `feature/lite-inactive-state`
+- [ ] Block tracking ingestion for inactive users — `feature/lite-inactive-state`
 
 ### Phase 2 — Test
 
