@@ -155,6 +155,23 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        post "/api/v1/points?api_key=#{user.api_key}", params: point_params
+
+        expect(response).to have_http_status(:forbidden)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['error']).to eq('write_api_restricted')
+        expect(json_response['upgrade_url']).to be_present
+      end
+    end
   end
 
   describe 'PUT /update' do
@@ -177,6 +194,21 @@ RSpec.describe 'Api::V1::Points', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        put "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}",
+            params: { point: { latitude: 1.0, longitude: 1.1 } }
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+      end
+    end
   end
 
   describe 'DELETE /destroy' do
@@ -195,6 +227,20 @@ RSpec.describe 'Api::V1::Points', type: :request do
         delete "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}"
 
         expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        delete "/api/v1/points/#{points.first.id}?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
       end
     end
   end
@@ -304,6 +350,91 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
         json_response = JSON.parse(response.body)
         expect(json_response['count']).to eq(5)
+      end
+    end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 with write_api_restricted error' do
+        delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+               params: { point_ids: }
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+      end
+
+      it 'does not delete any points' do
+        expect do
+          delete "/api/v1/points/bulk_destroy?api_key=#{user.api_key}",
+                 params: { point_ids: }
+        end.not_to(change { user.points.count })
+      end
+    end
+  end
+
+  describe 'GET /index (read API scoping for lite plan)' do
+    context 'when user is on lite plan' do
+      let!(:lite_user) do
+        u = create(:user)
+        # Bypass the activate callback that overrides plan
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+
+      let!(:recent_point) do
+        create(:point, user: lite_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: lite_user, timestamp: 13.months.ago.to_i)
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'returns only points within the 12-month window' do
+        get api_v1_points_url(api_key: lite_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).not_to include(old_point.id)
+      end
+    end
+
+    context 'when user is on pro plan' do
+      let!(:pro_user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:pro])
+        u
+      end
+
+      let!(:recent_point) do
+        create(:point, user: pro_user, timestamp: 1.month.ago.to_i)
+      end
+
+      let!(:old_point) do
+        create(:point, user: pro_user, timestamp: 13.months.ago.to_i)
+      end
+
+      it 'returns all points regardless of age' do
+        get api_v1_points_url(api_key: pro_user.api_key)
+
+        expect(response).to have_http_status(:ok)
+
+        json_response = JSON.parse(response.body)
+        returned_ids = json_response.map { |p| p['id'] }
+
+        expect(returned_ids).to include(recent_point.id)
+        expect(returned_ids).to include(old_point.id)
       end
     end
   end

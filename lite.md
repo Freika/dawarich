@@ -654,9 +654,9 @@ Each item below maps to a separate feature branch merging into `feature/lite`.
 - [ ] Add `plan` enum to Manager User model (migration) — `feature/lite-billing`
 
 **API gating:**
-- [ ] Add write API enforcement for Lite (403 on general write endpoints) — `feature/lite-api-gating`
-- [ ] Scope Read API to 12-month window for Lite users — `feature/lite-api-gating`
-- [ ] Implement API rate limiting per plan using `rack-attack` — `feature/lite-api-gating`
+- [x] Add write API enforcement for Lite (403 on general write endpoints) — `feature/lite-api-gating`
+- [x] Scope Read API to 12-month window for Lite users — `feature/lite-api-gating`
+- [x] Implement API rate limiting per plan using `rack-attack` — `feature/lite-api-gating`
 
 **Data retention:**
 - [ ] Add data retention archival logic (application-level filter by `created_at`) — `feature/lite-data-retention`
