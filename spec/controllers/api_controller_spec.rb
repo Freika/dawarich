@@ -2,28 +2,38 @@
 
 require 'rails_helper'
 
-# Test the plan-gating guard via a real API endpoint.
-# We use the health endpoint (GET /api/v1/health) as the test vehicle
-# and test the guard method directly on the controller instance.
 RSpec.describe ApiController, type: :controller do
-  describe '#require_pro_or_self_hosted_api!' do
-    let(:controller_instance) { described_class.new }
+  controller do
+    before_action :require_pro_or_self_hosted_api!
 
+    def index
+      render json: { ok: true }
+    end
+  end
+
+  before do
+    routes.draw { get 'index' => 'anonymous#index' }
+  end
+
+  describe '#require_pro_or_self_hosted_api!' do
     context 'when user is on pro plan' do
       let(:user) { create(:user, plan: :pro) }
 
-      it 'returns nil (allows through)' do
-        allow(controller_instance).to receive(:current_api_user).and_return(user)
-        expect(controller_instance.send(:require_pro_or_self_hosted_api!)).to be_nil
+      it 'allows access' do
+        get :index, params: { api_key: user.api_key }
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)).to eq('ok' => true)
       end
     end
 
     context 'when user is self_hoster' do
       let(:user) { create(:user, plan: :self_hoster) }
 
-      it 'returns nil (allows through)' do
-        allow(controller_instance).to receive(:current_api_user).and_return(user)
-        expect(controller_instance.send(:require_pro_or_self_hosted_api!)).to be_nil
+      it 'allows access' do
+        get :index, params: { api_key: user.api_key }
+
+        expect(response).to have_http_status(:ok)
       end
     end
 
@@ -34,30 +44,21 @@ RSpec.describe ApiController, type: :controller do
 
       let(:user) { create(:user, plan: :lite) }
 
-      it 'renders 403 forbidden' do
-        allow(controller_instance).to receive(:current_api_user).and_return(user)
-        allow(controller_instance).to receive(:render)
+      it 'returns 403 forbidden with upgrade info' do
+        get :index, params: { api_key: user.api_key }
 
-        controller_instance.send(:require_pro_or_self_hosted_api!)
-
-        expect(controller_instance).to have_received(:render).with(
-          json: hash_including(error: 'pro_plan_required'),
-          status: :forbidden
-        )
+        expect(response).to have_http_status(:forbidden)
+        body = JSON.parse(response.body)
+        expect(body['error']).to eq('pro_plan_required')
+        expect(body['upgrade_url']).to be_present
       end
     end
 
-    context 'when user is nil' do
-      it 'renders 403 forbidden' do
-        allow(controller_instance).to receive(:current_api_user).and_return(nil)
-        allow(controller_instance).to receive(:render)
+    context 'when user is not authenticated' do
+      it 'returns 401 unauthorized' do
+        get :index
 
-        controller_instance.send(:require_pro_or_self_hosted_api!)
-
-        expect(controller_instance).to have_received(:render).with(
-          json: hash_including(error: 'pro_plan_required'),
-          status: :forbidden
-        )
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end

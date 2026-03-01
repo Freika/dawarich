@@ -9,12 +9,12 @@ class SetPlanForExistingUsers < ActiveRecord::Migration[8.0]
     else
       # Cloud: active/trial users get pro plan (the current plan, renamed)
       User.where(status: %i[active trial]).update_all(plan: :pro)
-      # Inactive Cloud users default to self_hoster (0) which is fine —
-      # they'll get a proper plan assigned when they resubscribe
+      # Inactive Cloud users get lite — self_hoster would bypass plan gates
+      User.where(status: :inactive).update_all(plan: :lite)
     end
   end
 
   def down
-    User.update_all(plan: :self_hoster)
+    # No-op: we don't want to revert users back to the old plan values
   end
 end
