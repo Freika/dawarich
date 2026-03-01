@@ -90,6 +90,23 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
           end
         end
 
+        context 'with valid token containing invalid plan' do
+          let(:token) do
+            JWT.encode(
+              { user_id: user.id, status: 'active', active_until: 1.year.from_now, plan: 'enterprise' },
+              'test_secret',
+              'HS256'
+            )
+          end
+
+          it 'returns unprocessable_content error' do
+            post '/api/v1/subscriptions/callback', params: { token: token }
+
+            expect(response).to have_http_status(:unprocessable_content)
+            expect(JSON.parse(response.body)['message']).to include('Invalid plan')
+          end
+        end
+
         context 'with valid token without plan field' do
           let(:token) do
             JWT.encode(

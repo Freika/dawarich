@@ -8,7 +8,15 @@ class Api::V1::SubscriptionsController < ApiController
 
     user = User.find(decoded_token[:user_id])
     attrs = { status: decoded_token[:status], active_until: decoded_token[:active_until] }
-    attrs[:plan] = decoded_token[:plan] if decoded_token[:plan].present?
+
+    if decoded_token[:plan].present?
+      unless User.plans.key?(decoded_token[:plan])
+        return render json: { message: "Invalid plan: #{decoded_token[:plan]}" }, status: :unprocessable_content
+      end
+
+      attrs[:plan] = decoded_token[:plan]
+    end
+
     user.update!(attrs)
 
     render json: { message: 'Subscription updated successfully' }

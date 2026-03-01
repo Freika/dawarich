@@ -3,56 +3,68 @@
 require 'rails_helper'
 
 RSpec.describe ApplicationController, type: :controller do
-  describe '#require_pro_or_self_hosted!' do
-    let(:controller_instance) { described_class.new }
+  controller do
+    before_action :require_pro_or_self_hosted!
 
+    def index
+      render plain: 'ok'
+    end
+  end
+
+  before do
+    routes.draw { get 'index' => 'anonymous#index' }
+  end
+
+  describe '#require_pro_or_self_hosted!' do
     context 'when user is on pro plan' do
       let(:user) { create(:user, plan: :pro) }
 
-      it 'returns nil (allows through)' do
-        allow(controller_instance).to receive(:current_user).and_return(user)
-        expect(controller_instance.send(:require_pro_or_self_hosted!)).to be_nil
+      before { sign_in user }
+
+      it 'allows access' do
+        get :index
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to eq('ok')
       end
     end
 
     context 'when user is self_hoster' do
       let(:user) { create(:user, plan: :self_hoster) }
 
-      it 'returns nil (allows through)' do
-        allow(controller_instance).to receive(:current_user).and_return(user)
-        expect(controller_instance.send(:require_pro_or_self_hosted!)).to be_nil
+      before { sign_in user }
+
+      it 'allows access' do
+        get :index
+
+        expect(response).to have_http_status(:ok)
       end
     end
 
     context 'when user is on lite plan' do
-      before do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      end
-
       let(:user) { create(:user, plan: :lite) }
 
-      it 'does not allow through' do
-        allow(controller_instance).to receive(:current_user).and_return(user)
-        allow(controller_instance).to receive(:respond_to).and_yield(
-          double(
-            html: nil,
-            json: nil,
-            turbo_stream: nil
-          )
-        )
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        sign_in user
+      end
 
-        # The method should not return nil when user is lite
-        # (it triggers a respond_to block instead)
-        expect(user.pro_or_self_hosted?).to be false
+      it 'redirects back with alert' do
+        get :index
+
+        expect(response).to have_http_status(:see_other)
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('This feature requires a Pro plan.')
       end
     end
 
-    context 'when user is nil' do
-      it 'does not allow through' do
-        allow(controller_instance).to receive(:current_user).and_return(nil)
+    context 'when user is not signed in' do
+      it 'redirects back with alert' do
+        get :index
 
-        # nil&.pro_or_self_hosted? returns nil (falsy), so guard blocks
-        expect(nil&.pro_or_self_hosted?).to be_nil
+        expect(response).to have_http_status(:see_other)
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('This feature requires a Pro plan.')
       end
     end
   end
