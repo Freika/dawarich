@@ -92,4 +92,20 @@ class ApiController < ApplicationController
 
     render json: { error: 'Points limit exceeded' }, status: :unauthorized if limit_exceeded
   end
+
+  # Returns points scoped to the user's plan data window.
+  # Lite users see only 12 months; Pro/self_hoster see everything.
+  def scoped_points(user = current_api_user)
+    points = user.points
+    points = points.where('timestamp >= ?', 12.months.ago.to_i) if user.lite?
+    points
+  end
+
+  # Returns only archived points (older than 12 months) for Lite users.
+  # Pro and self-hoster users have no archived concept — returns none.
+  def archived_points(user = current_api_user)
+    return user.points.none unless user.lite?
+
+    user.points.where('timestamp < ?', 12.months.ago.to_i)
+  end
 end
