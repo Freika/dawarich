@@ -47,9 +47,21 @@ class Users::SafeSettings
       'min_flight_distance_km' => 100
     },
     'transportation_expert_mode' => false,
+    # Visit detection settings
+    'visit_detection_eps_meters' => 50,
+    'visit_detection_min_points' => 2,
+    'visit_detection_time_gap_minutes' => 30,
+    'visit_detection_extended_merge_hours' => 2,
+    'visit_detection_travel_threshold_meters' => 200,
+    'visit_detection_default_accuracy' => 50,
     'min_minutes_spent_in_city' => 60,
     'max_gap_minutes_in_city' => 120,
-    'timezone' => ENV.fetch('TIME_ZONE', 'UTC')
+    'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
+    # Density normalization: ephemeral gap-filling for visit detection
+    'density_normalization_enabled' => true,
+    'density_max_gap_minutes' => 720,
+    'density_max_distance_meters' => 50,
+    'density_gap_threshold_seconds' => 60
   }.freeze
 
   def initialize(settings = {})
@@ -222,6 +234,37 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
   end
 
+  # Visit detection settings (coerced to numeric and clamped to safe ranges).
+  # Backend clamp ranges are intentionally wider than the UI form min/max to
+  # support API users who may need values outside the default form bounds.
+  def visit_detection_eps_meters
+    (settings['visit_detection_eps_meters'] || DEFAULT_VALUES['visit_detection_eps_meters']).to_f.clamp(1, 5000)
+  end
+
+  def visit_detection_min_points
+    (settings['visit_detection_min_points'] || DEFAULT_VALUES['visit_detection_min_points']).to_i.clamp(1, 100)
+  end
+
+  def visit_detection_time_gap_minutes
+    key = 'visit_detection_time_gap_minutes'
+    (settings[key] || DEFAULT_VALUES[key]).to_i.clamp(1, 1440)
+  end
+
+  def visit_detection_extended_merge_hours
+    key = 'visit_detection_extended_merge_hours'
+    (settings[key] || DEFAULT_VALUES[key]).to_i.clamp(1, 24)
+  end
+
+  def visit_detection_travel_threshold_meters
+    key = 'visit_detection_travel_threshold_meters'
+    (settings[key] || DEFAULT_VALUES[key]).to_f.clamp(1, 100_000)
+  end
+
+  def visit_detection_default_accuracy
+    key = 'visit_detection_default_accuracy'
+    (settings[key] || DEFAULT_VALUES[key]).to_f.clamp(1, 1000)
+  end
+
   def min_minutes_spent_in_city
     (settings['min_minutes_spent_in_city'] || DEFAULT_VALUES['min_minutes_spent_in_city']).to_i
   end
@@ -232,5 +275,21 @@ class Users::SafeSettings
 
   def timezone
     settings['timezone'] || DEFAULT_VALUES['timezone']
+  end
+
+  def density_normalization_enabled?
+    ActiveModel::Type::Boolean.new.cast(settings['density_normalization_enabled'])
+  end
+
+  def density_max_gap_minutes
+    (settings['density_max_gap_minutes'] || DEFAULT_VALUES['density_max_gap_minutes']).to_i.clamp(1, 1440)
+  end
+
+  def density_max_distance_meters
+    (settings['density_max_distance_meters'] || DEFAULT_VALUES['density_max_distance_meters']).to_f.clamp(1, 500)
+  end
+
+  def density_gap_threshold_seconds
+    (settings['density_gap_threshold_seconds'] || DEFAULT_VALUES['density_gap_threshold_seconds']).to_i.clamp(10, 3600)
   end
 end

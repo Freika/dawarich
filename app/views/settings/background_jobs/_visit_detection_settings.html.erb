@@ -1,0 +1,77 @@
+<div class="card bg-base-300 w-96 shadow-xl m-5">
+  <div class="card-body">
+    <h2 class="card-title">Visit Detection Settings</h2>
+    <p class="text-sm mb-4">Fine-tune how visits are detected from your location data.</p>
+    <%= form_with url: settings_background_jobs_path, method: :patch do |f| %>
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text">Clustering distance (meters)</span>
+          <span class="label-text-alt tooltip" data-tip="Points within this distance are grouped together">?</span>
+        </label>
+        <%= f.number_field 'settings[visit_detection_eps_meters]',
+            value: current_user.safe_settings.visit_detection_eps_meters.to_i,
+            min: 10, max: 500, step: 10,
+            class: 'input input-bordered input-sm w-full' %>
+      </div>
+
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text">Min points per visit</span>
+          <span class="label-text-alt tooltip" data-tip="Minimum number of points required to form a visit">?</span>
+        </label>
+        <%= f.number_field 'settings[visit_detection_min_points]',
+            value: current_user.safe_settings.visit_detection_min_points,
+            min: 2, max: 10, step: 1,
+            class: 'input input-bordered input-sm w-full' %>
+      </div>
+
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text">Time gap threshold (minutes)</span>
+          <span class="label-text-alt tooltip" data-tip="Split visits when gap exceeds this">?</span>
+        </label>
+        <%= f.number_field 'settings[visit_detection_time_gap_minutes]',
+            value: current_user.safe_settings.visit_detection_time_gap_minutes,
+            min: 5, max: 120, step: 5,
+            class: 'input input-bordered input-sm w-full' %>
+      </div>
+
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text">Extended merge window (hours)</span>
+          <span class="label-text-alt tooltip" data-tip="Check travel distance for gaps up to this duration">?</span>
+        </label>
+        <%= f.number_field 'settings[visit_detection_extended_merge_hours]',
+            value: current_user.safe_settings.visit_detection_extended_merge_hours,
+            min: 1, max: 12, step: 1,
+            class: 'input input-bordered input-sm w-full' %>
+      </div>
+
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text">Travel merge threshold (meters)</span>
+          <span class="label-text-alt tooltip" data-tip="Max travel distance to still merge visits">?</span>
+        </label>
+        <%= f.number_field 'settings[visit_detection_travel_threshold_meters]',
+            value: current_user.safe_settings.visit_detection_travel_threshold_meters.to_i,
+            min: 50, max: 1000, step: 50,
+            class: 'input input-bordered input-sm w-full' %>
+      </div>
+
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text">Default GPS accuracy (meters)</span>
+          <span class="label-text-alt tooltip" data-tip="Used when point accuracy is unknown">?</span>
+        </label>
+        <%= f.number_field 'settings[visit_detection_default_accuracy]',
+            value: current_user.safe_settings.visit_detection_default_accuracy.to_i,
+            min: 5, max: 200, step: 5,
+            class: 'input input-bordered input-sm w-full' %>
+      </div>
+
+      <div class="card-actions justify-end mt-4">
+        <%= f.submit 'Save Settings', class: 'btn btn-primary btn-sm' %>
+      </div>
+    <% end %>
+  </div>
+</div>

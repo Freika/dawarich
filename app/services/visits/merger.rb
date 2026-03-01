@@ -4,12 +4,16 @@ module Visits
   # Merges consecutive visits that are likely part of the same stay
   class Merger
     MAXIMUM_VISIT_GAP = 30.minutes
+    DEFAULT_EXTENDED_MERGE_HOURS = 2
+    DEFAULT_TRAVEL_THRESHOLD_METERS = 200
     SIGNIFICANT_MOVEMENT_THRESHOLD = 50 # meters
+    MIN_GAP_POINTS_FOR_TRAVEL_CHECK = 3
 
-    attr_reader :points
+    attr_reader :points, :user
 
-    def initialize(points)
+    def initialize(points, user: nil)
       @points = points
+      @user = user
     end
 
     def merge_visits(visits)
@@ -35,12 +39,28 @@ module Visits
 
     private
 
+    def extended_merge_window
+      hours = user&.safe_settings&.visit_detection_extended_merge_hours || DEFAULT_EXTENDED_MERGE_HOURS
+      hours.hours
+    end
+
+    def travel_merge_threshold
+      user&.safe_settings&.visit_detection_travel_threshold_meters || DEFAULT_TRAVEL_THRESHOLD_METERS
+    end
+
     def can_merge_visits?(first_visit, second_visit)
       return false unless same_location?(first_visit, second_visit)
-      return false if gap_too_large?(first_visit, second_visit)
-      return false if significant_movement_between?(first_visit, second_visit)
 
-      true
+      gap = second_visit[:start_time] - first_visit[:end_time]
+
+      # Fast path: small gap, check for movement
+      return !significant_movement_between?(first_visit, second_visit) if gap <= MAXIMUM_VISIT_GAP
+
+      # Extended check: larger gap but maybe user didn't really leave
+      return false if gap > extended_merge_window
+
+      # Check if travel distance during gap is minimal
+      !traveled_far_during_gap?(first_visit, second_visit)
     end
 
     def same_location?(first_visit, second_visit)
@@ -52,11 +72,6 @@ module Visits
 
       # Convert to meters and check if within threshold
       (distance * 1000) <= SIGNIFICANT_MOVEMENT_THRESHOLD
-    end
-
-    def gap_too_large?(first_visit, second_visit)
-      gap = second_visit[:start_time] - first_visit[:end_time]
-      gap > MAXIMUM_VISIT_GAP
     end
 
     def significant_movement_between?(first_visit, second_visit)
@@ -78,6 +93,52 @@ module Visits
 
       # Convert to meters and check if exceeds threshold
       (max_distance * 1000) > SIGNIFICANT_MOVEMENT_THRESHOLD
+    end
+
+    # Calculate cumulative travel distance during the gap using PostGIS.
+    # This helps detect if user actually traveled somewhere and came back.
+    #
+    # Returns true (traveled far) when there are fewer than 3 gap points,
+    # because "no data" usually means the device was off — not that the user
+    # stayed put. We need enough breadcrumbs to make a travel determination.
+    def traveled_far_during_gap?(first_visit, second_visit)
+      return false unless user
+
+      start_time = first_visit[:end_time]
+      end_time = second_visit[:start_time]
+
+      gap_points_count = Point.where(user_id: user.id)
+                              .where(timestamp: (start_time + 1)..(end_time - 1))
+                              .where.not(lonlat: nil)
+                              .count
+
+      # With sparse gap data: if density normalization is enabled, assume user
+      # stayed (same_location? already confirmed centers are within 50m).
+      # Without normalization, preserve existing behavior (assume travel).
+      return !density_normalization_enabled? if gap_points_count < MIN_GAP_POINTS_FOR_TRAVEL_CHECK
+
+      sql = ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish, user.id, start_time, end_time])
+        WITH ordered_points AS (
+          SELECT lonlat, ROW_NUMBER() OVER (ORDER BY timestamp) as rn
+          FROM points
+          WHERE user_id = ?
+            AND timestamp > ?
+            AND timestamp < ?
+            AND lonlat IS NOT NULL
+        )
+        SELECT COALESCE(SUM(
+          ST_Distance(p1.lonlat::geography, p2.lonlat::geography)
+        ), 0)
+        FROM ordered_points p1
+        JOIN ordered_points p2 ON p2.rn = p1.rn + 1
+      SQL
+
+      total_distance = Point.connection.select_value(sql)
+      total_distance.to_f > travel_merge_threshold
+    end
+
+    def density_normalization_enabled?
+      user&.safe_settings&.density_normalization_enabled?
     end
   end
 end

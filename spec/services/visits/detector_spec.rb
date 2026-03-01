@@ -222,6 +222,61 @@ RSpec.describe Visits::Detector do
       end
     end
 
+    describe 'accuracy-weighted center calculation' do
+      before do
+        allow(Visits::Names::Suggester).to receive(:new).and_return(double(call: nil))
+        allow(Visits::Names::Fetcher).to receive(:new).and_return(double(call: nil))
+      end
+
+      context 'with points having different accuracy values' do
+        let(:weighted_points) do
+          [
+            build_stubbed(:point, lonlat: 'POINT(-74.0060 40.7128)', accuracy: 5,
+                          timestamp: (base_time - 1.hour).to_i),
+            build_stubbed(:point, lonlat: 'POINT(-74.0061 40.7129)', accuracy: 100,
+                          timestamp: (base_time - 50.minutes).to_i),
+            build_stubbed(:point, lonlat: 'POINT(-74.0060 40.7128)', accuracy: 5,
+                          timestamp: (base_time - 40.minutes).to_i)
+          ]
+        end
+
+        subject { described_class.new(weighted_points) }
+
+        it 'produces visit center weighted toward high accuracy points' do
+          visits = subject.detect_potential_visits
+
+          expect(visits.size).to eq(1)
+          expect(visits.first[:center_lat]).to be_within(0.0005).of(40.7128)
+          expect(visits.first[:center_lon]).to be_within(0.0005).of(-74.0060)
+        end
+      end
+
+      context 'with points having equal accuracy' do
+        let(:equal_accuracy_points) do
+          [
+            build_stubbed(:point, lonlat: 'POINT(-74.0060 40.7128)', accuracy: 10,
+                          timestamp: (base_time - 1.hour).to_i),
+            build_stubbed(:point, lonlat: 'POINT(-74.0061 40.7129)', accuracy: 10,
+                          timestamp: (base_time - 50.minutes).to_i),
+            build_stubbed(:point, lonlat: 'POINT(-74.0062 40.7130)', accuracy: 10,
+                          timestamp: (base_time - 40.minutes).to_i)
+          ]
+        end
+
+        subject { described_class.new(equal_accuracy_points) }
+
+        it 'produces visit center at the centroid' do
+          visits = subject.detect_potential_visits
+
+          expect(visits.size).to eq(1)
+          expected_lat = (40.7128 + 40.7129 + 40.7130) / 3.0
+          expected_lon = (-74.0060 + -74.0061 + -74.0062) / 3.0
+          expect(visits.first[:center_lat]).to be_within(0.0001).of(expected_lat)
+          expect(visits.first[:center_lon]).to be_within(0.0001).of(expected_lon)
+        end
+      end
+    end
+
     describe '#calculate_visit_radius' do
       let(:center) { [40.7128, -74.0060] }
       let(:test_points) do

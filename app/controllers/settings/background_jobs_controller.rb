@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Settings::BackgroundJobsController < ApplicationController
+  include FlashStreamable
+
   before_action :authenticate_self_hosted!
   before_action :authenticate_admin!, unless: lambda {
     action_name == 'create' &&
@@ -14,9 +16,19 @@ class Settings::BackgroundJobsController < ApplicationController
     updated_settings = existing_settings.merge(settings_params)
 
     if current_user.update(settings: updated_settings)
-      redirect_to settings_background_jobs_path, notice: 'Settings updated'
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: stream_flash(:notice, 'Settings updated')
+        end
+        format.html { redirect_to settings_background_jobs_path, notice: 'Settings updated' }
+      end
     else
-      redirect_to settings_background_jobs_path, alert: 'Settings could not be updated'
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: stream_flash(:error, 'Settings could not be updated')
+        end
+        format.html { redirect_to settings_background_jobs_path, alert: 'Settings could not be updated' }
+      end
     end
   end
 
@@ -39,6 +51,11 @@ class Settings::BackgroundJobsController < ApplicationController
   private
 
   def settings_params
-    params.require(:settings).permit(:visits_suggestions_enabled)
+    params.require(:settings).permit(
+      :visits_suggestions_enabled,
+      :visit_detection_eps_meters, :visit_detection_min_points,
+      :visit_detection_time_gap_minutes, :visit_detection_extended_merge_hours,
+      :visit_detection_travel_threshold_meters, :visit_detection_default_accuracy
+    )
   end
 end

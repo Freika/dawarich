@@ -1,20 +1,37 @@
 # frozen_string_literal: true
 
 module Visits
-  # Detects potential visits from a collection of tracked points
+  # Detects potential visits from a collection of tracked points.
+  # Delegates to DBSCAN (preferred) or falls back to iteration-based detection.
   class Detector
+    include DetectionHelpers
+
     MINIMUM_VISIT_DURATION = 3.minutes
     MAXIMUM_VISIT_GAP = 30.minutes
     MINIMUM_POINTS_FOR_VISIT = 2
 
-    attr_reader :points, :place_name_suggester
+    attr_reader :points, :user, :start_at, :end_at, :use_dbscan
 
-    def initialize(points)
+    def initialize(points, user: nil, start_at: nil, end_at: nil, use_dbscan: true)
       @points = points
-      @place_name_suggester = Visits::Names::Suggester
+      @user = user
+      @start_at = start_at
+      @end_at = end_at
+      @use_dbscan = use_dbscan
     end
 
     def detect_potential_visits
+      if use_dbscan && user && start_at && end_at
+        DbscanDetector.new(points, user: user, start_at: start_at, end_at: end_at).call ||
+          detect_with_iteration
+      else
+        detect_with_iteration
+      end
+    end
+
+    private
+
+    def detect_with_iteration
       visits = []
       current_visit = nil
 
@@ -33,13 +50,10 @@ module Visits
         end
       end
 
-      # Handle the last visit
       visits << finalize_visit(current_visit) if current_visit && valid_visit?(current_visit)
 
       visits
     end
-
-    private
 
     def initialize_visit(point)
       {
@@ -55,25 +69,21 @@ module Visits
       time_gap = point.timestamp - visit[:end_time]
       return false if time_gap > MAXIMUM_VISIT_GAP
 
-      # Calculate distance from visit center
       distance = Geocoder::Calculations.distance_between(
         [visit[:center_lat], visit[:center_lon]],
         [point.lat, point.lon],
         units: :km
       )
 
-      # Dynamically adjust radius based on visit duration
       max_radius = calculate_max_radius(visit[:end_time] - visit[:start_time])
 
       distance <= max_radius
     end
 
     def calculate_max_radius(duration_seconds)
-      # Start with a small radius for short visits, increase for longer stays
-      # but cap it at a reasonable maximum
       base_radius = 0.05 # 50 meters
       duration_hours = duration_seconds / 3600.0
-      [base_radius * (1 + Math.log(1 + duration_hours)), 0.5].min # Cap at 500 meters
+      [base_radius * (1 + Math.log(1 + duration_hours)), 0.5].min
     end
 
     def valid_visit?(visit)
@@ -83,7 +93,7 @@ module Visits
 
     def finalize_visit(visit)
       points = visit[:points]
-      center = calculate_center(points)
+      center = calculate_weighted_center(points)
 
       visit.merge(
         duration: visit[:end_time] - visit[:start_time],
@@ -92,31 +102,6 @@ module Visits
         radius: calculate_visit_radius(points, center),
         suggested_name: suggest_place_name(points) || fetch_place_name(center)
       )
-    end
-
-    def calculate_center(points)
-      lat_sum = points.sum(&:lat)
-      lon_sum = points.sum(&:lon)
-      count = points.size.to_f
-
-      [lat_sum / count, lon_sum / count]
-    end
-
-    def calculate_visit_radius(points, center)
-      max_distance = points.map do |point|
-        Geocoder::Calculations.distance_between(center, [point.lat, point.lon], units: :km)
-      end.max
-
-      # Convert to meters and ensure minimum radius
-      [(max_distance * 1000), 15].max
-    end
-
-    def suggest_place_name(points)
-      place_name_suggester.new(points).call
-    end
-
-    def fetch_place_name(center)
-      Visits::Names::Fetcher.new(center).call
     end
   end
 end

@@ -126,9 +126,19 @@ RSpec.describe Users::SafeSettings do
               'min_flight_distance_km' => 100
             },
             'transportation_expert_mode' => false,
+            'visit_detection_eps_meters' => 50,
+            'visit_detection_min_points' => 2,
+            'visit_detection_time_gap_minutes' => 30,
+            'visit_detection_extended_merge_hours' => 2,
+            'visit_detection_travel_threshold_meters' => 200,
+            'visit_detection_default_accuracy' => 50,
             'min_minutes_spent_in_city' => 60,
             'max_gap_minutes_in_city' => 120,
-            'timezone' => 'UTC'
+            'timezone' => 'UTC',
+            'density_normalization_enabled' => true,
+            'density_max_gap_minutes' => 720,
+            'density_max_distance_meters' => 50,
+            'density_gap_threshold_seconds' => 60
           }
         )
       end
@@ -421,6 +431,79 @@ RSpec.describe Users::SafeSettings do
 
       it 'returns true for transportation expert mode' do
         expect(safe_settings.transportation_expert_mode?).to be true
+      end
+    end
+  end
+
+  describe 'density normalization settings' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'with default values' do
+      let(:settings) { {} }
+
+      it 'returns true for density_normalization_enabled?' do
+        expect(safe_settings.density_normalization_enabled?).to be true
+      end
+
+      it 'returns default density_max_gap_minutes' do
+        expect(safe_settings.density_max_gap_minutes).to eq(720)
+      end
+
+      it 'returns default density_max_distance_meters' do
+        expect(safe_settings.density_max_distance_meters).to eq(50.0)
+      end
+
+      it 'returns default density_gap_threshold_seconds' do
+        expect(safe_settings.density_gap_threshold_seconds).to eq(60)
+      end
+    end
+
+    context 'with custom values' do
+      let(:settings) do
+        {
+          'density_normalization_enabled' => false,
+          'density_max_gap_minutes' => 360,
+          'density_max_distance_meters' => 100,
+          'density_gap_threshold_seconds' => 120
+        }
+      end
+
+      it 'returns false for density_normalization_enabled?' do
+        expect(safe_settings.density_normalization_enabled?).to be false
+      end
+
+      it 'returns custom density_max_gap_minutes' do
+        expect(safe_settings.density_max_gap_minutes).to eq(360)
+      end
+
+      it 'returns custom density_max_distance_meters' do
+        expect(safe_settings.density_max_distance_meters).to eq(100.0)
+      end
+
+      it 'returns custom density_gap_threshold_seconds' do
+        expect(safe_settings.density_gap_threshold_seconds).to eq(120)
+      end
+    end
+
+    context 'with values outside clamp ranges' do
+      let(:settings) do
+        {
+          'density_max_gap_minutes' => 9999,
+          'density_max_distance_meters' => 0,
+          'density_gap_threshold_seconds' => 5
+        }
+      end
+
+      it 'clamps density_max_gap_minutes to max 1440' do
+        expect(safe_settings.density_max_gap_minutes).to eq(1440)
+      end
+
+      it 'clamps density_max_distance_meters to min 1' do
+        expect(safe_settings.density_max_distance_meters).to eq(1.0)
+      end
+
+      it 'clamps density_gap_threshold_seconds to min 10' do
+        expect(safe_settings.density_gap_threshold_seconds).to eq(10)
       end
     end
   end
