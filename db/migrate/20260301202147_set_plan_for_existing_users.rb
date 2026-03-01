@@ -15,6 +15,6 @@ class SetPlanForExistingUsers < ActiveRecord::Migration[8.0]
   end
 
   def down
-    User.update_all(plan: :self_hoster)
+    # No-op: we don't want to revert users back to the old plan values
   end
 end
