@@ -39,6 +39,11 @@ class User < ApplicationRecord
   scope :active_or_trial, -> { where(status: %i[active trial]) }
 
   enum :status, { inactive: 0, active: 1, trial: 2 }
+  enum :plan, { self_hoster: 0, lite: 1, pro: 2 }, default: :self_hoster
+
+  def pro_or_self_hosted?
+    pro? || self_hoster?
+  end
 
   def safe_settings
     Users::SafeSettings.new(settings)
@@ -212,7 +217,7 @@ class User < ApplicationRecord
   end
 
   def activate
-    update(status: :active, active_until: 1000.years.from_now)
+    update(status: :active, active_until: 1000.years.from_now, plan: :self_hoster)
   end
 
   def sanitize_input

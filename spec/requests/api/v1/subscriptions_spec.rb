@@ -55,6 +55,59 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
           end
         end
 
+        context 'with valid token containing plan' do
+          let(:token) do
+            JWT.encode(
+              { user_id: user.id, status: 'active', active_until: 1.year.from_now, plan: 'pro' },
+              'test_secret',
+              'HS256'
+            )
+          end
+
+          it 'updates user plan from JWT payload' do
+            post '/api/v1/subscriptions/callback', params: { token: token }
+
+            expect(user.reload.plan).to eq('pro')
+            expect(user.reload.status).to eq('active')
+            expect(response).to have_http_status(:ok)
+          end
+        end
+
+        context 'with valid token containing lite plan' do
+          let(:token) do
+            JWT.encode(
+              { user_id: user.id, status: 'active', active_until: 1.year.from_now, plan: 'lite' },
+              'test_secret',
+              'HS256'
+            )
+          end
+
+          it 'sets user plan to lite' do
+            post '/api/v1/subscriptions/callback', params: { token: token }
+
+            expect(user.reload.plan).to eq('lite')
+            expect(response).to have_http_status(:ok)
+          end
+        end
+
+        context 'with valid token without plan field' do
+          let(:token) do
+            JWT.encode(
+              { user_id: user.id, status: 'active', active_until: 1.year.from_now },
+              'test_secret',
+              'HS256'
+            )
+          end
+
+          it 'does not change user plan' do
+            user.update_column(:plan, User.plans[:pro])
+            post '/api/v1/subscriptions/callback', params: { token: token }
+
+            expect(user.reload.plan).to eq('pro')
+            expect(response).to have_http_status(:ok)
+          end
+        end
+
         context 'with token for different user' do
           let(:other_user) { create(:user) }
           let(:token) do

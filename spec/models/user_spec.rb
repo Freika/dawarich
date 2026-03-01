@@ -20,6 +20,37 @@ RSpec.describe User, type: :model do
 
   describe 'enums' do
     it { is_expected.to define_enum_for(:status).with_values(inactive: 0, active: 1, trial: 2) }
+    it { is_expected.to define_enum_for(:plan).with_values(self_hoster: 0, lite: 1, pro: 2) }
+  end
+
+  describe '#pro_or_self_hosted?' do
+    context 'when user is a self_hoster' do
+      let(:user) { create(:user, plan: :self_hoster) }
+
+      it 'returns true' do
+        expect(user.pro_or_self_hosted?).to be true
+      end
+    end
+
+    context 'when user is on pro plan' do
+      let(:user) { create(:user, plan: :pro) }
+
+      it 'returns true' do
+        expect(user.pro_or_self_hosted?).to be true
+      end
+    end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      let(:user) { create(:user, plan: :lite) }
+
+      it 'returns false' do
+        expect(user.pro_or_self_hosted?).to be false
+      end
+    end
   end
 
   describe 'callbacks' do
@@ -42,6 +73,10 @@ RSpec.describe User, type: :model do
         it 'activates user after creation' do
           expect(user.active?).to be_truthy
           expect(user.active_until).to be_within(1.minute).of(1000.years.from_now)
+        end
+
+        it 'sets plan to self_hoster' do
+          expect(user.self_hoster?).to be true
         end
       end
 
